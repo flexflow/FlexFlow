@@ -39,6 +39,15 @@ typename data_type_enum_to_class<DT>::type cast_to(T t) {
 template <DataType DT> 
 using real_type = typename data_type_enum_to_class<DT>::type;
 
+using DataTypeValue = variant<
+  real_type<DT_FLOAT>,
+  real_type<DT_DOUBLE>,
+  real_type<DT_INT32>,
+  real_type<DT_INT64>,
+  real_type<DT_HALF>,
+  real_type<DT_BOOLEAN>
+>;
+
 size_t size_of(DataType);
 
 class GenericTensorAccessorW : public use_visitable_eq<GenericTensorAccessorW> {

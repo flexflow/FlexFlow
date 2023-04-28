@@ -147,8 +147,19 @@ private:
   using Interface = ILabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>;
 public:
   LabelledOpenMultiDiGraph() = delete;
-  LabelledOpenMultiDiGraph(LabelledOpenMultiDiGraph const &) = default;
-  LabelledOpenMultiDiGraph& operator=(LabelledOpenMultiDiGraph const &) = default;
+  LabelledOpenMultiDiGraph(LabelledOpenMultiDiGraph const &other)
+    : ptr(other.ptr->clone()) { }
+
+  LabelledOpenMultiDiGraph& operator=(LabelledOpenMultiDiGraph const &other) {
+    swap(*this, other);
+    return *this;
+  }
+
+  friend void swap(LabelledOpenMultiDiGraph &lhs, LabelledOpenMultiDiGraph &rhs) {
+    using std::swap;
+
+    swap(lhs.ptr, rhs.ptr);
+  }
 
   Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
   NodeLabel &at(Node const &n) { return this->ptr->at(n); }
@@ -175,12 +186,6 @@ public:
   create() {
     return LabelledOpenMultiDiGraph(make_unique<BaseImpl>());
   }
-
-  friend void swap(LabelledOpenMultiDiGraph &lhs, LabelledOpenMultiDiGraph &rhs) {
-    using std::swap;
-
-    swap(lhs.ptr, rhs.ptr);
-  }
 private:
   LabelledOpenMultiDiGraph(std::unique_ptr<Interface> ptr)
     : ptr(std::move(ptr))
@@ -188,6 +193,25 @@ private:
 private:
   std::unique_ptr<Interface> ptr;
 };
+static_assert(std::is_copy_constructible<NodeLabelledMultiDiGraph<int>>::value, "");
+static_assert(std::is_move_constructible<NodeLabelledMultiDiGraph<int>>::value, "");
+static_assert(std::is_copy_assignable<NodeLabelledMultiDiGraph<int>>::value, "");
+static_assert(std::is_move_assignable<NodeLabelledMultiDiGraph<int>>::value, "");
+
+static_assert(std::is_copy_constructible<LabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_constructible<LabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_copy_assignable<LabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_assignable<LabelledMultiDiGraph<int, int>>::value, "");
+
+static_assert(std::is_copy_constructible<OutputLabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_constructible<OutputLabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_copy_assignable<OutputLabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_assignable<OutputLabelledMultiDiGraph<int, int>>::value, "");
+
+static_assert(std::is_copy_constructible<LabelledOpenMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_constructible<LabelledOpenMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_copy_assignable<LabelledOpenMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_assignable<LabelledOpenMultiDiGraph<int, int>>::value, "");
 
 }
 

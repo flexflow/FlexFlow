@@ -19,72 +19,22 @@
 #include "op-attrs/ffconst.h"
 #include "legion.h"
 #include "parallel_tensor.h"
+#include "op-attrs/ops/loss_functions.h"
+#include "operator.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 
-class FFModel;
+LossType from_loss_type_name(std::string const &loss_type_name);
 
-class Loss {
-public:
-  Loss(std::string const &loss, bool _repl_labels = false);
-  Loss(LossType _loss_type, bool _repl_labels = false);
+template <> TaskSignature get_signature<LOSS_BWD_TASK_ID>();
+template <> void register_task<LOSS_BWD_TASK_ID>();
 
-  static void backward_task(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
-  template <int NDIM>
-  static void
-      backward_task_with_dim(Legion::Task const *task,
-                             std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx,
-                             Legion::Runtime *runtime);
-  void backward(FFModel *model,
-                const ParallelTensor logit,
-                const ParallelTensor label);
-  template <int NDIM>
-  void backward_with_dim(FFModel *model,
-                         const ParallelTensor logit,
-                         const ParallelTensor label);
-  static void sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
-      float *logit_grad_ptr,
-      float const *logit_ptr,
-      int const *label_ptr,
-      size_t logit_volume,
-      size_t logit_grad_volume,
-      int num_samples,
-      int num_classes,
-      int k,
-      float scale_factor);
-  static void categorical_crossentropy_loss_backward_kernel_wrapper(
-      float *logit_grad_ptr,
-      float const *logit_ptr,
-      float const *label_ptr,
-      size_t logit_volume,
-      size_t logit_grad_volume,
-      float scale_factor);
-  static void mean_squared_error_avg_loss_backward_kernel_wrapper(
-      float *logit_grad_ptr,
-      float const *logit_ptr,
-      float const *label_ptr,
-      size_t logit_volume,
-      size_t logit_grad_volume,
-      float scale_factor);
-  static void identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
-                                                    float const *loss_ptr,
-                                                    size_t loss_volume,
-                                                    size_t loss_grad_volume,
-                                                    float scale_factor);
+TaskInvocation backward_invocation(LossAttrs const &, 
+                                   EnableProfiling, 
+                                   parallel_tensor_guid_t logit, 
+                                   parallel_tensor_guid_t label);
 
-public:
-  FFModel *model;
-  LossType loss_type;
-  bool repl_labels; // for aggregate_spec: More predictions than labels
-  // scale factor for computing the logit gradients
-  // normally 1.0f / global_batch_size
-  float scale_factor;
-};
-
-}; // namespace FlexFlow
+}
 
 #endif

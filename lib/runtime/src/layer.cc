@@ -4,11 +4,9 @@
 
 namespace FlexFlow {
 
-Layer::Layer(LayerID _guid,
-             DataType _data_type,
-             std::string const &_name,
-             CompGraphOperatorAttrs const &_attrs)
-  : guid(_guid), data_type(_data_type), name(_name), attrs(_attrs)
+Layer::Layer(CompGraphOperatorAttrs const &_attrs,
+             std::string const &_name)
+  : attrs(_attrs), name(_name)
 { }
 
 }

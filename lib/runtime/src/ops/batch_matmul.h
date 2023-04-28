@@ -22,15 +22,10 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void serialize(Legion::Serializer &) const override;
   /* static PCG::Node deserialize(FFModel &ff, */
   /*                              Legion::Deserializer &d, */
   /*                              ParallelTensor inputs[], */
   /*                              int num_inputs); */
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
-
   static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,

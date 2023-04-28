@@ -28,6 +28,7 @@ target_link_libraries(
   ${LEGION_LIBRARY}
   compiler
   kernels
+  pcg
 )
 
 define_ff_vars(${project_target})

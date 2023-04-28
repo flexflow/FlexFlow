@@ -6,8 +6,8 @@
 
 namespace FlexFlow {
 
-struct ff_dim_t : strong_typedef<ff_dim_t, int> {
-  using strong_typedef::strong_typedef;
+struct ff_dim_t : numerical_typedef<ff_dim_t, int> {
+  using numerical_typedef::numerical_typedef;
 };
 
 }

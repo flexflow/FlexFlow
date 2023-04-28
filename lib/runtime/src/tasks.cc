@@ -457,13 +457,14 @@ void register_flexflow_internal_tasks() {
         registrar, "softmax_bwd_task");
   }
   // compute Loss
-  {
-    TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Loss::backward_task>(
-        registrar, "Loss Backward Task");
-  }
+  register_task<LOSS_BWD_TASK_ID>();
+  /* { */
+  /*   TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward"); */
+  /*   registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC)); */
+  /*   registrar.set_leaf(); */
+  /*   Runtime::preregister_task_variant<Loss::backward_task>( */
+  /*       registrar, "Loss Backward Task"); */
+  /* } */
   // compute Metrics
   {
     TaskVariantRegistrar registrar(METRICS_COMP_TASK_ID, "Metrics Compute");

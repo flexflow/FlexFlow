@@ -54,6 +54,8 @@ struct DimOrdered {
 
   using iterator = typename stack_vector<T, MAX_TENSOR_DIM>::iterator;
   using const_iterator = typename stack_vector<T, MAX_TENSOR_DIM>::const_iterator;
+  using reverse_iterator = typename stack_vector<T, MAX_TENSOR_DIM>::reverse_iterator;
+  using const_reverse_iterator = typename stack_vector<T, MAX_TENSOR_DIM>::const_reverse_iterator;
   using value_type = T;
   using pointer = value_type *;
   using const_pointer = value_type const *;
@@ -82,6 +84,30 @@ struct DimOrdered {
 
   const_iterator cend() const {
     return this->contents.cend();
+  }
+
+  reverse_iterator rbegin() {
+    return this->contents.rbegin();
+  }
+
+  const_reverse_iterator rbegin() const {
+    return this->crbegin();
+  }
+
+  const_reverse_iterator crbegin() const {
+    return this->contents.crbegin();
+  }
+
+  reverse_iterator rend() {
+    return this->contents.crend();
+  }
+
+  const_reverse_iterator rend() const {
+    return this->crend();
+  }
+
+  const_reverse_iterator crend() const {
+    return this->contents.crend();
   }
 
   size_t size() const {

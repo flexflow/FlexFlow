@@ -35,7 +35,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-void Op::inner_measure_operator_cost(Simulator *sim,
+void inner_measure_operator_cost(Simulator *sim,
                                      std::function<void(ffStream_t)> const &forward,
                                      std::function<void(ffStream_t)> const &backward,
                                      CostMetrics &cost_metrics) const {

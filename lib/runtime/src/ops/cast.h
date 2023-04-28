@@ -50,19 +50,6 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-//   template <typename IDT>
-//   static void backward_task_with_1_type(
-//       Legion::Task const *task,
-//       std::vector<Legion::PhysicalRegion> const &regions,
-//       Legion::Context ctx,
-//       Legion::Runtime *runtime);
-//   template <typename IDT, typename ODT>
-//   static void backward_task_with_2_type(
-//       Legion::Task const *task,
-//       std::vector<Legion::PhysicalRegion> const &regions,
-//       Legion::Context ctx,
-//       Legion::Runtime *runtime);
-
   OpTaskBinding get_init_task_binding() const override;
   OpTaskBinding get_fwd_task_binding() const override;
   OpTaskBinding get_bwd_task_binding() const override;
@@ -70,14 +57,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const;
-  void serialize(Legion::Serializer &s) const override;
-  /* static PCG::Node deserialize(FFModel &ff, */
-  /*                              Legion::Deserializer &d, */
-  /*                              ParallelTensor inputs[], */
-  /*                              int num_inputs); */
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
 };
 
 }

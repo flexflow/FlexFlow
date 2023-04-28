@@ -15,6 +15,7 @@
 #include "bidict.h"
 #include "stack_map.h"
 #include <map>
+#include <numeric>
 
 namespace FlexFlow {
 
@@ -67,6 +68,12 @@ Element product(Container const &container) {
     result *= element;
   }
   return result;
+}
+
+template <typename It>
+typename It::value_type product(It begin, It end) {
+  using Element = typename It::value_type;
+  return std::accumulate(begin, end, 1, [](Element const &lhs, Element const &rhs) { return lhs * rhs; });
 }
 
 template <typename Container>

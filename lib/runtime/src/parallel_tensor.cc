@@ -465,33 +465,6 @@ bool ParallelTensorBase::check_valid() const {
   return true;
 }
 
-void TensorBase::print(std::string const &name) const {
-  printf("%s: sizes[", name.c_str());
-
-  for (int i = 0; i < num_dims; i++) {
-    printf("%d ", dims[i]);
-  }
-  printf("]\n");
-}
-
-void ParallelTensorBase::print(std::string const &name) const {
-  printf("%s: sizes[", name.c_str());
-
-  for (int i = 0; i < num_dims; i++) {
-    printf("%d ", dims[i].size);
-  }
-  printf("] degree[");
-  for (int i = 0; i < num_dims; i++) {
-    printf("%d ", dims[i].degree);
-  }
-  printf("] parallel_ids[");
-  for (int i = 0; i < num_dims; i++) {
-    printf("%d ", dims[i].parallel_idx);
-  }
-  printf("]\n");
-}
-
-
 namespace FlexFlow {
 
 ParallelTensorShape ParallelTensorBase::get_shape() const {

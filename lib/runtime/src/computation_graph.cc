@@ -4,15 +4,16 @@
 #include "utils/expected.h"
 #include "op-attrs/ffconst_utils.h"
 #include "utils/fmt.h"
+#include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
 
 Tensor ComputationGraph::as_type(Tensor const &x, DataType data_type, std::string const &name) {
-  if (x->data_type < data_type) {
+  if (x.data_type < data_type) {
     return this->cast(x, data_type, name);
-  } else if (x->data_type > data_type) {
+  } else if (x.data_type > data_type) {
     throw mk_runtime_error("Could not convert provided tensor data type {} to desired data type {}",
-                           x->data_type, data_type);
+                           x.data_type, data_type);
   }
   return x;
 }
@@ -35,7 +36,7 @@ Tensor ComputationGraph::element_unary(variant<ElementUnaryAttrs, ElementScalarU
 
   Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
 
-  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);  
+  Layer layer = { widen<ComputationGraphAttrs>(attrs), name };
   TensorShape output_shape = get_output_shape(attrs, input);
 
   return this->add_layer(layer, {input}, {}, output_shape);
@@ -54,15 +55,15 @@ Tensor ComputationGraph::element_scalar_unary(OperatorType op_type, Tensor const
 Tensor ComputationGraph::element_binary(OperatorType op_type, Tensor const &lhs, Tensor const &rhs, optional<std::string> const &maybe_name) {
   std::string name = maybe_name.value_or(get_default_name(op_type));
 
-  TensorShape compute_shape = this->get_broadcast_target_shape({lhs->get_shape(), rhs->get_shape()});
-  DataType compute_type = std::max(lhs->data_type, rhs->data_type);
+  TensorShape compute_shape = this->get_broadcast_target_shape({lhs, rhs});
+  DataType compute_type = std::max(lhs.data_type, rhs.data_type);
 
   Tensor const lhs_input = this->as_type(this->broadcast(lhs, compute_shape), compute_type, name + "_inputl_pre_cast");
   Tensor const rhs_input = this->as_type(this->broadcast(rhs, compute_shape), compute_type, name + "_inputr_pre_cast");
 
-  ElementBinaryAttrs attrs = { op_type, false, false };
+  ElementBinaryAttrs attrs = { op_type, compute_type, false, false };
 
-  Layer layer = this->layer_mgr.create(attrs, compute_type, name);
+  Layer layer = { attrs, name };
   TensorShape output_shape = get_output_shape(attrs, lhs_input, rhs_input);
 
   return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
@@ -182,7 +183,7 @@ Tensor ComputationGraph::conv2d(Tensor const &x,
 
   Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
 
-  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);  
+  Layer layer = { attrs, name };
   TensorShape output_shape = get_output_shape(attrs, input);
 
   std::vector<std::pair<TensorShape, Initializer *>> weights;
@@ -206,7 +207,7 @@ Tensor ComputationGraph::dropout(Tensor const &x,
   DropoutAttrs attrs = { rate, seed };
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  Layer layer = { attrs, name };
   Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
 
   TensorShape output_shape = get_output_shape(attrs, input);
@@ -224,7 +225,7 @@ Tensor ComputationGraph::embedding(Tensor const &x,
   EmbeddingAttrs attrs = { num_entries, outDim, aggr, dtype };
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  Layer layer = { attrs, name };
   Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
 
   TensorShape output_shape = get_output_shape(attrs, input);
@@ -240,21 +241,20 @@ std::vector<Tensor> ComputationGraph::gather(Tensor const &input,
   GatherAttrs attrs = { dim };
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
-  if (index->data_type != DT_INT32 && index->data_type != DT_INT64) {
+  Layer layer = { attrs, name };
+  if (index.data_type != DT_INT32 && index.data_type != DT_INT64) {
     throw mk_runtime_error("Invalid data type for input tensor 2 for Gather: {} (should be {} or {})", 
-                           input->data_type, DT_INT32, DT_INT64);
+                           input.data_type, DT_INT32, DT_INT64);
   }
   std::vector<TensorShape> output_shapes = get_output_shapes(attrs, input, index);
 
   return this->add_layer(layer, {input}, {}, output_shapes);
 }
 
+
 void swap(ComputationGraph &lhs, ComputationGraph &rhs) {
   using std::swap;
 
-  swap(lhs.layer_mgr, rhs.layer_mgr);
-  swap(lhs.tensor_mgr, rhs.tensor_mgr);
   swap(lhs.graph, rhs.graph);
 }
 

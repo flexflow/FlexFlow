@@ -16,6 +16,10 @@ struct TensorSourceInfo {
   int idx;
 };
 
+struct tensor_guid_t : strong_typedef<tensor_guid_t, Node> {
+  using strong_typedef::strong_typedef;  
+};
+
 struct ComputationGraph {
 public:
   ComputationGraph() = default;
@@ -250,7 +254,8 @@ public:
   std::vector<Tensor> get_outputs(Layer const &) const;
   Tensor get_output(Layer const &, int idx) const;
 
-  Tensor at(tensor_guid_t) const; 
+  Tensor at(MultiDiEdge const &) const; 
+  Layer at(Node const &) const;
 
   friend void swap(ComputationGraph &, ComputationGraph &);
 private:
@@ -276,8 +281,6 @@ private:
   Tensor element_scalar_unary(OperatorType, Tensor const &input, float scalar, optional<std::string> const &name = nullopt);
   Tensor element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &, Tensor const &input, optional<std::string> const &name = nullopt);
 private:
-  LayerManager layer_mgr; 
-  TensorManager tensor_mgr;
   OutputLabelledMultiDiGraph<Layer, Tensor> graph;
 };
 
@@ -287,5 +290,7 @@ static_assert(std::is_copy_assignable<ComputationGraph>::value, "");
 static_assert(std::is_copy_constructible<ComputationGraph>::value, "");
 
 }
+
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::tensor_guid_t);
 
 #endif

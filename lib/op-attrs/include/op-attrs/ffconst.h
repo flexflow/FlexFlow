@@ -157,45 +157,4 @@ enum OperatorType {
   OP_INVALID,
 };
 
-/* enum TNParameter { */
-/*   INPUT_0 = 100, */
-/*   INPUT_1 = 101, */
-/*   INPUT_2 = 102, */
-/*   INPUT_3 = 103, */
-/*   INPUT_4 = 104, */
-/*   INPUT_5 = 105, */
-/*   WEIGHT_0 = 200, */
-/*   WEIGHT_1 = 201, */
-/*   WEIGHT_2 = 202, */
-/*   WEIGHT_3 = 203, */
-/*   WEIGHT_4 = 204, */
-/*   WEIGHT_5 = 205, */
-/*   OUTPUT_0 = 300, */
-/*   OUTPUT_1 = 301, */
-/*   OUTPUT_2 = 302, */
-/*   OUTPUT_3 = 303, */
-/*   OUTPUT_4 = 304, */
-/*   OUTPUT_5 = 305, */
-/* }; */
-
-/* enum DIMParameter { */
-/*   DIM_0 = 500, */
-/*   DIM_1 = 501, */
-/*   DIM_2 = 502, */
-/*   DIM_3 = 503, */
-/*   DIM_4 = 504, */
-/*   DIM_ND = 510, */
-/* }; */
-
-enum {
-  LAYER_GUID_FIRST_VALID = 1000000,
-  LAYER_GUID_LAST_VALID = 1999999,
-  OP_GUID_FIRST_VALID = 2000000,
-  OP_GUID_LAST_VALID = 2999999,
-  TENSOR_GUID_FIRST_VALID = 3000000,
-  TENSOR_GUID_LAST_VALID = 3999999,
-  PARALLEL_TENSOR_GUID_FIRST_VALID = 4000000,
-  NODE_GUID_FIRST_VALID = 5000000,
-};
-
 #endif 

@@ -97,8 +97,6 @@ public:
   /* static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, */
   /*                                       bool use_bias); */
 
-  tl::optional<RecordFormatter> as_dot() const override;
-
 public:
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w,
       padding_h, padding_w;

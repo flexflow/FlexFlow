@@ -28,12 +28,13 @@ public:
   std::size_t num_elements() const;
   std::size_t num_dims() const;
 
-  std::size_t operator[](std::size_t) const;
+  std::size_t operator[](legion_dim_t) const;
+  std::size_t at(legion_dim_t) const;
 
   optional<std::size_t> at_maybe(std::size_t) const;
 
   ArrayShape reversed_dim_order() const;
-  ArrayShape sub_shape(optional<std::size_t> start, optional<std::size_t> end);
+  ArrayShape sub_shape(optional<legion_dim_t> start, optional<legion_dim_t> end);
 };
 
 }

@@ -1,48 +1,22 @@
-#ifndef _FLEXFLOW_RUNTIME_TASK_SPEC_H
-#define _FLEXFLOW_RUNTIME_TASK_SPEC_H
+#ifndef _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_H
+#define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_H
 
-#include "legion.h"
-#include "tasks.h"
-#include "utils/optional.h"
-#include "runtime/config.h"
-#include <unordered_set>
-#include <unordered_map>
-#include "utils/bidict.h"
-#include "accessor.h"
-#include "serialization.h"
+#include "utils/strong_typedef.h"
+#include "utils/visitable.h"
 #include <typeindex>
-#include "utils/stack_map.h"
+#include "serialization.h"
 #include "accessor.h"
+#include "runtime/config.h"
+#include "parallel_tensor_guid_t.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 
-struct Op;
+struct RuntimeBacking;
 
-enum class TensorRole {
-  INPUT,
-  PARAM,
-  OUTPUT,
-};
-
-enum class IsGrad {
-  YES,
-  NO
-};
-
-enum class IsTrainable {
-  YES,
-  NO
-};
-
-enum class TaskType {
+enum class InvocationType {
   INDEX,
   STANDARD
-};
-
-enum class OpTaskType {
-  INIT,
-  FWD,
-  BWD
 };
 
 enum class SlotType {
@@ -50,134 +24,105 @@ enum class SlotType {
   VARIADIC
 };
 
-using slot_id = int;
+enum class ArgSlotType {
+  INDEX,
+  STANDARD
+};
+
+enum class IsGrad {
+  YES,
+  NO
+};
+
+struct ArgSpec : public use_visitable_cmp<ArgSpec> {
+public:
+  ArgSpec() = delete;
+  ArgSpec(std::type_index, size_t start, size_t size);
+
+  size_t get_stop() const;
+public:
+  std::type_index type;
+  size_t start;
+  size_t size;
+};
+
+/* struct IndexArgSpec : public use_visitable_cmp<IndexArgSpec> { */
+
+/* }; */
+
+struct slot_id : strong_typedef<slot_id, int> {
+  using strong_typedef::strong_typedef;
+
+  slot_id(int);
+};
 
 struct region_idx_t : strong_typedef<region_idx_t, int> {
   using strong_typedef::strong_typedef;
 };
 
-struct TensorSpec {
-  TensorSpec() = delete;
-  TensorSpec(TensorRole, int, bool is_trainable, DataType, IsGrad is_grad = IsGrad::NO, optional<Legion::PrivilegeMode> mode = nullopt);
-  TensorSpec(TensorRole, int, IsTrainable, DataType, IsGrad is_grad = IsGrad::NO, optional<Legion::PrivilegeMode> mode = nullopt);
+}
 
-  bool operator==(TensorSpec const &) const;
-  bool operator!=(TensorSpec const &) const;
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::slot_id);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::slot_id, "slot_id");
 
-  TensorRole role;
-  int idx;
-  IsGrad is_grad;
-  IsTrainable is_trainable;
-  DataType datatype;
-  optional<Legion::PrivilegeMode> mode;
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::region_idx_t);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::region_idx_t, "region_idx");
 
-  TensorSpec grad() const;
+namespace FlexFlow {
 
-  Legion::PrivilegeMode get_privileges() const;
+struct ParallelTensorSpec : public use_visitable_cmp<ParallelTensorSpec> {
+public:
+  ParallelTensorSpec() = delete;
+  ParallelTensorSpec(parallel_tensor_guid_t);
+
+  ParallelTensorSpec grad() const;
+public:
+  parallel_tensor_guid_t parallel_tensor_guid; 
+  IsGrad is_grad = IsGrad::NO;
 };
 
-TensorSpec input_tensor(int, IsTrainable);
-TensorSpec input_tensor(int, bool);
+struct ParallelTensorSlotSpec {
+public:
+  ParallelTensorSlotSpec() = delete;
+  ParallelTensorSlotSpec(SlotType, Legion::PrivilegeMode);
 
-TensorSpec output_tensor(int);
-TensorSpec param_tensor(int);
-
-Legion::PrivilegeMode get_default_mode(OpTaskType, TensorRole, IsGrad);
-
-struct TensorSlotSpec {
-  TensorSlotSpec() = delete;
-  TensorSlotSpec(slot_id, SlotType, TensorRole, IsGrad);
-
-  slot_id name;
+public:
   SlotType slot_type;
-  TensorRole tensor_role;
-  IsGrad is_grad;
-
-  Legion::PrivilegeMode get_privileges(OpTaskType) const;
+  Legion::PrivilegeMode privileges;
 };
 
-TensorSlotSpec get_backward_slot(TensorSlotSpec const &forward_slot);
-TensorSlotSpec get_backward_grad_slot(TensorSlotSpec const &forward_slot);
+struct TaskSignature {
+  TaskSignature() = default;
 
-using ArgSlotSpec = std::type_index;
-
-struct ArgSpec {
-  std::type_index type;
-  size_t start;
-  size_t size;
-
-  size_t stop() const;
-};
-
-using SlotSpec = variant<TensorSlotSpec, ArgSlotSpec>;
-
-bool is_tensor_slot(SlotSpec const &);
-bool is_arg_slot(SlotSpec const &);
-TensorSlotSpec get_tensor_slot(SlotSpec const &);
-ArgSlotSpec get_arg_slot(SlotSpec const &);
-
-struct OpTaskSignature {
-  OpTaskSignature(OpTaskType);
-
-  void add_slot(SlotSpec const &);
-  void add_slot(TensorSlotSpec const &);
-
-  void add_slot(slot_id, TensorRole, SlotType);
-  void add_grad_slot(slot_id, TensorRole, SlotType);
+  void add_slot(slot_id, ParallelTensorSlotSpec const &);
 
   template <typename T>
   void add_arg_slot(slot_id name) {
-    static_assert(is_serializable<T>, "Type must be serializable");
+    static_assert(is_serializable<T>, "Argument type must be serializable");
 
-    this->task_arg_types.insert({ name, typeid(T) });
+    this->task_arg_types.insert({ name, { typeid(T), ArgSlotType::STANDARD }});
   }
 
-  void add_input_slot(slot_id);
-  void add_input_slot(slot_id, SlotType);
-  void add_input_slot(slot_id, Legion::PrivilegeMode);
-  void add_input_slot(slot_id, SlotType, Legion::PrivilegeMode);
+  template <typename T, typename F>
+  void add_index_arg_slot(slot_id name, F const &idx_to_arg) {
+    static_assert(is_serializable<T>, "Argument type must be serializable");
 
-  void add_param_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-  void add_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+    this->task_arg_types.insert({ name, { typeid(T), ArgSlotType::INDEX }});
+  }
 
-  void add_input_grad_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-  void add_param_grad_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-  void add_output_grad_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-
-  bool operator==(OpTaskSignature const &) const;
-
-  std::unordered_set<SlotSpec> get_slots() const;
-
-  SlotSpec get_slot(slot_id) const;
-  OpTaskType get_task_type() const;
+  bool operator==(TaskSignature const &) const;
+  bool operator!=(TaskSignature const &) const;
 private:
-  std::unordered_map<slot_id, std::type_index> task_arg_types;
-  std::unordered_map<slot_id, TensorRole> slots;
+  std::unordered_map<slot_id, std::pair<std::type_index, ArgSlotType>> task_arg_types;
+  std::unordered_map<slot_id, ParallelTensorSlotSpec> tensor_slots;
 };
 
-using TensorArgumentFormat = variant<
-  std::pair<region_idx_t, TensorSpec>,
-  std::vector<std::pair<region_idx_t, TensorSpec>>
->;
+struct TaskBinding {
+public:
+  TaskBinding(optional<Legion::Domain const &> = nullopt);
+  TaskBinding(InvocationType);
 
-using SlotKey = std::pair<slot_id, IsGrad>;
-
-constexpr size_t MAX_NUM_TASK_REGIONS = 20;
-constexpr size_t MAX_NUM_TASK_ARGUMENTS = 5;
-
-struct OpTaskArgumentFormat {
-  stack_map<SlotKey, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
-  stack_map<slot_id, ArgSpec, MAX_NUM_TASK_ARGUMENTS> argument_offsets;
-  ArgSpec self_offset;
-};
-
-struct OpTaskBinding {
-  OpTaskBinding() {
-    serializer.reserve_bytes(sizeof(OpTaskArgumentFormat));
-  }
-
-  void bind(slot_id, TensorSpec const &);
-  void bind_grad(slot_id, TensorSpec const &);
+  void bind(slot_id, ParallelTensorSpec const &);
 
   template <typename T>
   void bind_arg(slot_id name, T const &t) {
@@ -186,12 +131,16 @@ struct OpTaskBinding {
     arg_bindings.insert({name, arg_spec});
   }
 
-  void bind(std::vector<std::pair<slot_id, TensorSpec>> const &);
-
-  std::unordered_map<slot_id, TensorSpec> const &get_tensor_bindings() const;
-  std::unordered_map<slot_id, ArgSpec> const &get_arg_bindings() const;
-
-  Legion::TaskArgument get_legion_task_arg() const;
+  template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
+  void bind_index_arg(slot_id name, F const &f) {
+    assert (this->domain.has_value());
+    Legion::Domain d = this->domain.value();
+    assert (!contains_key(this->arg_bindings, name));
+    for (Legion::Domain::DomainPointIterator it(d); it; it++) {
+      auto arg_spec = this->generate_idx_arg_spec<T>(f(*it), *it);
+      arg_bindings.insert({{*it, name}, arg_spec});
+    }
+  }
 private:
   template <typename T>
   ArgSpec generate_arg_spec(T const &t) {
@@ -207,26 +156,57 @@ private:
     };
   }
 
-  Legion::Serializer serializer;
-  std::unordered_map<slot_id, ArgSpec> arg_bindings;
-  std::unordered_map<slot_id, TensorSpec> bindings;
-  void *task_format_location;
+  template <typename T>
+  ArgSpec generate_idx_arg_spec(T const &t, Legion::DomainPoint const &pt) {
+    static_assert(is_serializable<T>, "Type must be serializable");
 
-  friend OpTaskArgumentFormat compile_task_invocation(OpTaskSignature const &, OpTaskBinding &);
+    Legion::Serializer ser = this->idx_serializers.at(pt);
+    size_t pre_size = ser.get_used_bytes();
+    ff_task_serialize(ser, t);
+    size_t post_size = ser.get_used_bytes();
+    return {
+      typeid(T), 
+      pre_size, 
+      post_size - pre_size
+    };
+  }
+
+private:
+  Legion::Serializer serializer;
+  optional<Legion::Domain> domain;
+  std::unordered_map<slot_id, ArgSpec> arg_bindings;
+  std::map<Legion::DomainPoint, Legion::Serializer> idx_serializers;
+  std::unordered_map<std::pair<slot_id, Legion::DomainPoint>, ArgSpec> index_arg_bindings;
+  std::unordered_map<slot_id, ParallelTensorSpec> bindings;
 };
 
-OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
-OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
+using NonvariadicFormat = std::pair<region_idx_t, ParallelTensorSpec>;
+using VariadicFormat = std::vector<NonvariadicFormat>;
 
-std::unordered_map<int, TensorSpec> get_regions_idxs(OpTaskArgumentFormat const &);
+using TensorArgumentFormat = variant<NonvariadicFormat, VariadicFormat>;
 
-OpTaskArgumentFormat compile_task_invocation(OpTaskSignature const &, OpTaskBinding const &);
+bool is_variadic(TensorArgumentFormat const &);
+VariadicFormat get_variadic_format(TensorArgumentFormat const &);
+NonvariadicFormat get_nonvariadic_format(TensorArgumentFormat const &);
 
-struct OpTaskArgumentAccessor {
-  OpTaskArgumentAccessor(Legion::Task const *task, 
-                         std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
+struct TaskArgumentFormat : use_visitable_eq<TaskArgumentFormat> {
+  stack_map<slot_id, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
+  stack_map<slot_id, ArgSpec, MAX_NUM_TASK_ARGUMENTS> argument_offsets;
+  stack_map<region_idx_t, Legion::PrivilegeMode, MAX_NUM_TASK_REGIONS> regions;
+  stack_map<ParallelTensorSpec, DataType, MAX_NUM_TASK_REGIONS> data_types;
+  ArgSpec self_offset;
+};
+
+Legion::PrivilegeMode get_privileges(TaskArgumentFormat const &, region_idx_t);
+Legion::PrivilegeMode get_privileges(TaskArgumentFormat const &, ParallelTensorSpec const &);
+region_idx_t get_region_idx(TaskArgumentFormat const &, ParallelTensorSpec const &);
+DataType get_datatype(TaskArgumentFormat const &, ParallelTensorSpec const &);
+
+struct TaskArgumentAccessor {
+  TaskArgumentAccessor(Legion::Task const *task, 
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx, 
+                       Legion::Runtime *runtime);
 
   template <typename T>
   T const &get_argument(slot_id slot) {
@@ -246,32 +226,27 @@ struct OpTaskArgumentAccessor {
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(TensorSpec const &tensor_spec, region_idx_t idx) {
-    auto tensor_privs = tensor_spec.get_privileges();
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(ParallelTensorSpec const &tensor_spec, region_idx_t idx) {
+    auto tensor_privs = get_privileges(this->args_fmt, tensor_spec);
     if (tensor_privs != PRIV) {
       std::ostringstream oss;
       oss << "Privilege mismatch while accessing tensor: " << to_string(tensor_privs) << " != " << to_string(PRIV);
       throw std::runtime_error(oss.str());
     }
     
-    return helperGetGenericTensorAccessor<PRIV>(tensor_spec.datatype, regions[idx.value()], task->regions[idx.value()], FID_DATA, ctx, runtime);
+    return helperGetGenericTensorAccessor<PRIV>(get_datatype(this->args_fmt, tensor_spec), regions[idx.value()], task->regions[idx.value()], FID_DATA, ctx, runtime);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx_t, TensorSpec> const &p) {
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx_t, ParallelTensorSpec> const &p) {
     return this->get_generic_accessor<PRIV>(p.second, p.first);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot, IsGrad is_grad) {
-    auto argument_format = get<std::pair<int, TensorSpec>>(this->args_fmt.region_idxs.at({slot, is_grad}));
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) {
+    auto argument_format = get<NonvariadicFormat>(this->args_fmt.region_idxs.at(slot));
 
     return this->get_generic_accessor<PRIV>(argument_format);
-  }
-
-  template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) {
-    return this->get_tensor<PRIV>(slot, IsGrad::NO);
   }
 
   template <Legion::PrivilegeMode PRIV>
@@ -280,20 +255,15 @@ struct OpTaskArgumentAccessor {
   }
 
   template <Legion::PrivilegeMode PRIV>
-  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot, IsGrad is_grad) {
+  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot) {
     std::vector<privilege_mode_to_accessor<PRIV>> result;
 
-    auto argument_format = get<std::vector<std::pair<region_idx_t, TensorSpec>>>(this->args_fmt.region_idxs.at({slot, is_grad}));
+    auto argument_format = get<VariadicFormat>(this->args_fmt.region_idxs.at(slot));
     for (auto const &argument : argument_format) {
       result.push_back(this->get_generic_accessor<PRIV>(argument));
     }
 
     return result;
-  }
-
-  template <Legion::PrivilegeMode PRIV>
-  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot) {
-    return this->get_variadic_tensor<PRIV>(slot, IsGrad::NO);
   }
 
   template <Legion::PrivilegeMode PRIV>
@@ -305,15 +275,34 @@ private:
   std::vector<Legion::PhysicalRegion> const &regions;
   Legion::Context ctx;
   Legion::Runtime *runtime;
-  OpTaskArgumentFormat const &args_fmt;
+  TaskArgumentFormat const &args_fmt;
 };
+
+struct TaskInvocation : public use_visitable_cmp<TaskInvocation> {
+public:
+  TaskInvocation() = delete;
+  TaskInvocation(task_id_t const &task_id, TaskBinding const &binding)
+    : task_id(task_id), binding(binding) { }
+
+public:
+  task_id_t task_id;
+  TaskBinding binding;
+};
+
+/* TaskArgumentFormat compile_task_invocation(TaskInvocation const &); */
+
+/* std::unordered_map<Legion::DomainPoint, TaskArgumentFormat> compile_index_task_invocation(TaskSignature const &signature, */
+/*                                                                                           TaskBinding const &binding); */
+
+void execute_task(LegionConfig const &config, 
+                  TaskInvocation const &,
+                  RuntimeBacking const &backing);
+
+template <task_id_t> TaskSignature get_signature();
+TaskSignature get_signature(task_id_t);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::TensorSpec, role, idx, is_grad, is_trainable, mode);
-
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::region_idx_t);
-MAKE_TYPEDEF_PRINTABLE(::FlexFlow::region_idx_t, "region_idx");
-
+VISITABLE_STRUCT(::FlexFlow::TaskInvocation, task_id, binding);
 
 #endif

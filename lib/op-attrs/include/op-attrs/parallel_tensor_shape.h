@@ -38,6 +38,8 @@ static_assert(is_copy_constructible<ParallelDim>::value, "ParallelDim must be co
 
 struct ParallelTensorDims : public FFOrdered<ParallelDim> {
   explicit ParallelTensorDims(TensorDims const &);
+
+  size_t get_volume() const; 
 };
 
 /**

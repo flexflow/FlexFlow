@@ -5,12 +5,14 @@
 #include "operator.h"
 #include "utils/graph.h"
 #include "legion_parallel_tensor_shape.h"
+#include "utils/strong_typedef.h"
+#include "operator_guid_t.h"
 
 namespace FlexFlow {
 
 class ParallelComputationGraph {
 public:
-  ParallelComputationGraph() = default;
+  ParallelComputationGraph() = delete;
   ParallelComputationGraph(ParallelComputationGraph const &) = default;
   ParallelComputationGraph &operator=(ParallelComputationGraph const &) = default;
 
@@ -20,26 +22,20 @@ public:
   Operator get_final_operator() const;
 private:
   ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
-                                        CreateGrad create_grad = CreateGrad::YES,
-                                        optional<tensor_guid_t> tensor_guid = nullopt);
+                                        CreateGrad create_grad = CreateGrad::YES);
   ParallelTensor create_parallel_tensor(LegionParallelTensorShape const &,
-                                        CreateGrad create_grad = CreateGrad::YES,
-                                        optional<tensor_guid_t> tensor_guid = nullopt);
+                                        CreateGrad create_grad = CreateGrad::YES);
   ParallelParameter create_parallel_weight(ParallelTensorShape const &,
                                            CreateGrad create_grad = CreateGrad::YES,
                                            Initializer *initializer = nullptr,
-                                           ParameterSyncType sync_type = ParameterSyncType::NONE,
-                                           optional<tensor_guid_t> tensor_guid = nullopt);
+                                           ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight(LegionParallelTensorShape const &,
                                            CreateGrad create_grad = CreateGrad::YES,
                                            Initializer *initializer = nullptr,
-                                           ParameterSyncType sync_type = ParameterSyncType::NONE,
-                                           optional<tensor_guid_t> tensor_guid = nullopt);
+                                           ParameterSyncType sync_type = ParameterSyncType::NONE);
   
   friend void swap(ParallelComputationGraph &, ParallelComputationGraph &);
 private:
-  ParallelTensorManager parallel_tensor_mgr;
-  OperatorManager op_mgr;
   LabelledOpenMultiDiGraph<Operator, ParallelTensor> graph;
 };
 

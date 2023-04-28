@@ -17,47 +17,34 @@
 #define _FLEXFLOW_INITIALIZER_H_
 
 #include "legion.h"
-#include "parallel_tensor.h"
 #include "runtime/config.h"
+#include "kernels/accessor.h"
+#include "task_spec.h"
 
 namespace FlexFlow {
 
-class FFModel;
+struct ParallelTensor;
+struct parallel_tensor_guid_t;
 
-class Initializer {
+class GlorotUniform : public use_visitable_cmp<GlorotUniform> {
 public:
-  Initializer() = default;
-  virtual ~Initializer() = default;
-  virtual void init(LegionConfig const &, ParallelTensor const &) = 0;
-};
+  GlorotUniform() = delete;
+  GlorotUniform(int seed);
 
-class GlorotUniform : public Initializer {
-public:
-  GlorotUniform(int _seed);
-  ~GlorotUniform() = default;
-  void init(LegionConfig const &, ParallelTensor const &);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime);
-  int seed;
-  float scale;
-  DataType data_type;
-};
-
-class Op;
-struct ZeroInitMeta {
-  static int const MAX_NUM_REGIONS = 64;
-  int num_regions;
-  Op *op_ptr;
-  DataType data_types[MAX_NUM_REGIONS];
-};
-
-class ZeroInitializer : public Initializer {
 public:
-  ZeroInitializer(void);
-  ~ZeroInitializer() = default;
-  void init(LegionConfig const &, ParallelTensor const &p);
+  int seed;
+  /* float scale; */
+  /* DataType data_type; */
+};
+
+class ZeroInitializer : public use_visitable_cmp<ZeroInitializer> {
+public:
+  ZeroInitializer() = default;
+
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
@@ -68,41 +55,33 @@ public:
                             Legion::Runtime *runtime);
 };
 
-class UniformInitializer : public Initializer {
+class UniformInitializer : public use_visitable_cmp<UniformInitializer> {
 public:
-  UniformInitializer(int _seed, float _min, float _max);
-  ~UniformInitializer() = default;
-  void init(LegionConfig const &, ParallelTensor const &);
+  UniformInitializer(int seed, float min, float max);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime);
+public:
   int seed;
   float min_val, max_val;
-  DataType data_type;
 };
 
-class NormInitializer : public Initializer {
+class NormInitializer : public use_visitable_cmp<NormInitializer> {
 public:
-  NormInitializer(int _seed, float _mean, float _stddev);
-  ~NormInitializer() = default;
-  void init(LegionConfig const &, ParallelTensor const &);
+  NormInitializer(int seed, float mean, float stddev);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime);
+public:
   int seed;
   float mean, stddev;
-  DataType data_type;
 };
 
-class ConstantInitializer : public Initializer {
+class ConstantInitializer : public use_visitable_cmp<ConstantInitializer> {
 public:
-  ConstantInitializer(float _value);
-  ConstantInitializer(int64_t _value);
-  ConstantInitializer(int _value);
-  ~ConstantInitializer(void);
-  void init(LegionConfig const &, ParallelTensor const &);
+  ConstantInitializer(DataTypeValue const &value);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
@@ -113,12 +92,40 @@ public:
                             Legion::Runtime *runtime);
 
 public:
-  DataType data_type;
-  float float_value;
-  int64_t int64_value;
-  int int32_value;
+  DataTypeValue value;
 };
 
+using Initializer = variant<
+  GlorotUniform,
+  ZeroInitializer,
+  UniformInitializer,
+  NormInitializer,
+  ConstantInitializer
+>;
+
+TaskInvocation apply_initializer(GlorotUniform const &, 
+                                 parallel_tensor_guid_t const &,
+                                 ParallelTensor const &, 
+                                 TensorShape const &); 
+TaskInvocation apply_initializer(ZeroInitializer const &, 
+                                 parallel_tensor_guid_t const &,
+                                 ParallelTensor const &);
+TaskInvocation apply_initializer(UniformInitializer const &, 
+                                 parallel_tensor_guid_t const &,
+                                 ParallelTensor const &);
+TaskInvocation apply_initializer(NormInitializer const &, 
+                                 parallel_tensor_guid_t const &,
+                                 ParallelTensor const &);
+TaskInvocation apply_initializer(ConstantInitializer const &, 
+                                 parallel_tensor_guid_t const &,
+                                 ParallelTensor const &);
+
 }
+
+VISITABLE_STRUCT(::FlexFlow::GlorotUniform, seed);
+VISITABLE_STRUCT_EMPTY(::FlexFlow::ZeroInitializer);
+VISITABLE_STRUCT(::FlexFlow::UniformInitializer, seed, min_val, max_val);
+VISITABLE_STRUCT(::FlexFlow::NormInitializer, seed, mean, stddev);
+VISITABLE_STRUCT(::FlexFlow::ConstantInitializer, value);
 
 #endif

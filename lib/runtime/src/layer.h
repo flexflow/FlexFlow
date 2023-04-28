@@ -15,42 +15,17 @@ namespace FlexFlow {
 struct Layer : public use_visitable_cmp<Layer> {
 public:
   Layer() = delete;
-  Layer(LayerID,
-        DataType,
-        std::string const &name,
-        CompGraphOperatorAttrs const &attrs);
+  Layer(CompGraphOperatorAttrs const &attrs,
+        std::string const &name);
+
 public:
-  LayerID guid;
-  DataType data_type;
   stack_string<MAX_OPNAME> name;
-  bool profiling;
   CompGraphOperatorAttrs attrs;
-};
-
-struct LayerManager {
-public:
-  Layer create(CompGraphOperatorAttrs const &attrs,
-        DataType data_type,
-        std::string const &name) {
-    return {this->next_id(), data_type, name, attrs};
-  }
-
-  template <typename ...Args>
-  Layer create(variant<Args...> const &attrs, DataType data_type, std::string const &name) {
-    return this->create(widen<CompGraphOperatorAttrs>(attrs), data_type, name);
-  }
-
-private:
-  LayerID next_id() {
-    return LayerID(this->layer_global_guid++);
-  }
-private:
-  size_t layer_global_guid = LAYER_GUID_FIRST_VALID;
 };
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::Layer, guid, data_type, name, profiling, attrs);
+VISITABLE_STRUCT(::FlexFlow::Layer, attrs, name);
 MAKE_VISIT_HASHABLE(::FlexFlow::Layer);
 
 namespace FlexFlow {
@@ -63,6 +38,7 @@ static_assert(std::is_move_constructible<Layer>::value, "Layer must be move cons
 static_assert(std::is_copy_assignable<Layer>::value, "Layer must be copy assignable");
 static_assert(std::is_move_assignable<Layer>::value, "Layer must be move assignable");
 static_assert(!std::is_default_constructible<Layer>::value, "Layer must not be default constructible");
+static_assert(is_fmtable<Layer>::value, "Layer must be fmtable");
 
 }
 

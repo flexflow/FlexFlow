@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/memory_optimization.h"
+#include "memory_optimization.h"
 
 namespace FlexFlow {
 

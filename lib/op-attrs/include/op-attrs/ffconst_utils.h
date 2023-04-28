@@ -226,6 +226,38 @@ struct formatter<::OperatorType> : formatter<string_view> {
   }
 };
 
+template <>
+struct formatter<ParameterSyncType> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(ParameterSyncType d, FormatContext& ctx) const -> decltype(ctx.out()) {
+    string_view name = "unknown";
+    switch (d) {
+      case NONE: name = "NONE"; break;
+      case PS: name = "PS"; break;
+      case NCCL: name = "NCCL"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  } 
+  
 };
+
+template <>
+struct formatter<LossType> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(LossType d, FormatContext& ctx) const -> decltype(ctx.out()) {
+    string_view name = "unknown";
+    switch (d) {
+      case LOSS_CATEGORICAL_CROSSENTROPY: name = "CategoricalCrossEntropy"; break;
+      case LOSS_SPARSE_CATEGORICAL_CROSSENTROPY: name = "SparseCategoricalCrossEntropy"; break;
+      case LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE: name = "MeanSquaredErrorAvgReduce"; break;
+      case LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE: name = "MeanSquaredErrorSumReduce"; break;
+      case LOSS_IDENTITY: name = "Identity"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  } 
+  
+};
+
+}
 
 #endif

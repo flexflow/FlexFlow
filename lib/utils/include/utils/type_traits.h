@@ -64,20 +64,24 @@ template <typename T>
 struct is_hashable<T, void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
   : std::true_type { };
 
-template <template <typename, typename = void> typename Cond, 
-          typename T, 
-          typename Enable = void> 
-struct elements_satisfy;
+template <template <typename, typename = void> class Cond, 
+          typename Enable,
+          typename ...Ts> 
+struct elements_satisfy_impl;
 
-template <template <typename, typename = void> typename Cond, typename T>
-struct elements_satisfy<Cond, T, typename std::enable_if<is_visitable<T>::value>::type>
+template <template <typename, typename = void> class Cond,
+          typename T>
+struct elements_satisfy : elements_satisfy_impl<Cond, void, T> { };
+
+template <template <typename, typename = void> class Cond, typename T>
+struct elements_satisfy_impl<Cond, typename std::enable_if<is_visitable<T>::value>::type, T>
   : elements_satisfy<Cond, visit_as_tuple<T>> { };
 
-template <template <typename, typename = void> typename Cond, typename Head, typename ...Ts>
+template <template <typename, typename = void> class Cond, typename Head, typename ...Ts>
 struct elements_satisfy<Cond, std::tuple<Head, Ts...>>
   : conjunction<Cond<Head>, elements_satisfy<Cond, std::tuple<Ts...>>> { };
 
-template <template <typename, typename = void> typename Cond>
+template <template <typename, typename = void> class Cond>
 struct elements_satisfy<Cond, std::tuple<>> : std::true_type { };
 
 static_assert(elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");

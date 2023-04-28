@@ -14,10 +14,10 @@ enum class TensorUseType {
 
 struct TensorUseDescription {
   TensorUseDescription() = delete;
-  TensorUseDescription(TensorUseType const &, Layer const *, int);
+  TensorUseDescription(TensorUseType const &, Layer const &, int);
 
   TensorUseType type;
-  Layer const *layer;
+  Layer const &layer;
   int idx;
 };
 
@@ -25,7 +25,6 @@ struct TensorUses {
   TensorUses() = default;
 
   std::vector<TensorUseDescription> at(Tensor const &) const;
-  std::vector<TensorUseDescription> at(TensorBase const *) const;
   std::vector<TensorUseDescription> at(size_t tensor_guid) const;
 
   void update(Layer const &);

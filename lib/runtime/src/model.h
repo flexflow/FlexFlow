@@ -38,7 +38,6 @@
 #include "op-attrs/ffconst.h"
 #include "layer_id.h"
 #include "kernels/ff_handler.h"
-#include "op_node.h"
 #include "op-attrs/tensor_shape.h"
 #include "legion_parallel_tensor_shape.h"
 #include "index_space_manager.h"
@@ -130,11 +129,10 @@ private:
   std::vector<Op *> get_operators();
   std::vector<Op const *> get_operators() const;
 public:
-  size_t op_global_guid = OP_GUID_FIRST_VALID;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer = nullptr;
-  optional<Loss> loss_op = nullopt;
+  optional<LossAttrs> loss_op = nullopt;
   optional<Metrics> metrics_op = nullopt;
   std::unique_ptr<Simulator> simulator = nullptr;
   int metrics_input;
@@ -142,8 +140,6 @@ public:
   optional<Tensor> label_tensor;
 
   IndexSpaceManager index_space_mgr;
-  ParallelTensorManager parallel_tensor_mgr;
-  OpNodeManager op_node_mgr;
   ComputationGraph computation_graph;
   ParallelComputationGraph pcg;
   ParallelTensorUses uses;
@@ -177,7 +173,6 @@ private:
                float scalar = 0.0);
   ElementUnary *
       unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
-  OpNode new_node(Op const *);
 };
 
 

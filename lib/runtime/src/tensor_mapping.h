@@ -10,11 +10,10 @@ struct TensorMapping {
 public:
   TensorMapping() = default;
 
-  std::vector<parallel_tensor_guid_t> at(tensor_guid_t) const;
-  std::vector<parallel_tensor_guid_t> at(Tensor const &) const;
+  parallel_tensor_guid_t at(tensor_guid_t) const;
   void add_dependence(tensor_guid_t, parallel_tensor_guid_t);
 private:
-  std::unordered_map<tensor_guid_t, std::vector<parallel_tensor_guid_t>> contents;
+  std::unordered_map<tensor_guid_t, parallel_tensor_guid_t> contents;
 };
 
 }
