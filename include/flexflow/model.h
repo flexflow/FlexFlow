@@ -520,25 +520,17 @@ public:
   Tensor flat(const Tensor input, char const *name = NULL);
   // Add a softmax layer
   Tensor softmax(const Tensor input, int dim = -1, char const *name = NULL);
-  // Add a transpose layer
+  // Create input tensors and constants
   Tensor transpose(const Tensor input,
                    std::vector<int> const &perm,
                    char const *name = NULL);
-  // Add a reduce_mean layer
-  Tensor reduce_mean(const Tensor input,
-                     std::vector<int> const &axes,
-                     bool keepdims = false,
-                     char const *name = nullptr);
-  // Add a reduce_sum layer
   Tensor reduce_sum(const Tensor input,
                     std::vector<int> const &axes,
                     bool keepdims = false,
                     char const *name = nullptr);
-  // Add a reshape layer
   Tensor reshape(const Tensor input,
                  std::vector<int> const &shape,
                  char const *name = NULL);
-  // Add a reverse layer
   Tensor reverse(const Tensor input, int axis, char const *name = NULL);
   void top_k(const Tensor input,
              Tensor *outputs,
@@ -960,11 +952,6 @@ private:
                float scalar = 0.0);
   ElementUnary *
       unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
-  Tensor reduce(OperatorType op,
-                const Tensor input,
-                std::vector<int> const &axes,
-                bool keepdims = false,
-                char const *name = nullptr);
   PCG::Node new_node(Op *);
 };
 

@@ -13,8 +13,6 @@ public:
              Reduce const *rd,
              Legion::Domain const &input_domain);
   ~ReduceMeta(void);
-  OperatorType op_type;
-  size_t reduction_size;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceDesc;
@@ -33,7 +31,6 @@ public:
          const Input input,
          char const *name = nullptr);
   Reduce(FFModel &model,
-         OperatorType op_type,
          const ParallelTensor input,
          std::vector<int> const &axes,
          bool keepdims,

@@ -6,7 +6,6 @@ namespace FlexFlow {
 
 struct ReduceParams {
   std::vector<int> axes;
-  OperatorType op_type;
   bool keepdims;
   bool is_valid(ParallelTensorShape const &) const;
 };

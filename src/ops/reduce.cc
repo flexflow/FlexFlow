@@ -43,13 +43,12 @@ ReduceParams Reduce::get_params() const {
   return params;
 }
 
-Tensor FFModel::reduce(OperatorType op,
-                       const Tensor input,
-                       std::vector<int> const &_axes,
-                       bool keepdims,
-                       char const *name) {
+Tensor FFModel::reduce_sum(const Tensor input,
+                           std::vector<int> const &_axes,
+                           bool keepdims,
+                           char const *name) {
   Layer *rd = new Layer(this,
-                        op,
+                        OP_REDUCE_SUM,
                         DT_FLOAT,
                         name,
                         1 /*input*/,
@@ -93,20 +92,6 @@ Tensor FFModel::reduce(OperatorType op,
   return rd->outputs[0];
 }
 
-Tensor FFModel::reduce_sum(const Tensor input,
-                           std::vector<int> const &_axes,
-                           bool keepdims,
-                           char const *name) {
-  return this->reduce(OP_REDUCE_SUM, input, _axes, keepdims, name);
-}
-
-Tensor FFModel::reduce_mean(const Tensor input,
-                            std::vector<int> const &_axes,
-                            bool keepdims,
-                            char const *name) {
-  return this->reduce(OP_REDUCE_MEAN, input, _axes, keepdims, name);
-}
-
 Op *Reduce::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
@@ -116,25 +101,22 @@ Op *Reduce::create_operator_from_layer(
   layer->get_int_vector_property("legion_axes", axes);
   layer->get_int_property("keepdims", value);
   bool keepdims = value;
-  return new Reduce(
-      model, layer->op_type, inputs[0], axes, keepdims, layer->name);
+  return new Reduce(model, inputs[0], axes, keepdims, layer->name);
 }
 
 Reduce::Reduce(FFModel &model,
                ReduceParams const &params,
                const ParallelTensor input,
                char const *name)
-    : Reduce(model, params.op_type, input, params.axes, params.keepdims, name) {
-}
+    : Reduce(model, input, params.axes, params.keepdims, name) {}
 
 Reduce::Reduce(FFModel &model,
-               OperatorType _op_type,
                const ParallelTensor input,
                std::vector<int> const &_axes,
                bool _keepdims,
                char const *name)
     : Op(model,
-         _op_type,
+         OP_REDUCE_SUM,
          input->data_type,
          name,
          1 /*inputs*/,
@@ -380,7 +362,6 @@ bool Reduce::measure_operator_cost(Simulator *sim,
 
 void Reduce::serialize(Legion::Serializer &sez) const {
   ReduceParams params = get_params();
-  sez.serialize(params.op_type);
   sez.serialize(params.axes.size());
   for (size_t i = 0; i < params.axes.size(); i++) {
     sez.serialize(params.axes[i]);
@@ -394,11 +375,9 @@ Node Reduce::deserialize(FFModel &ff,
                          ParallelTensor inputs[],
                          int num_inputs) {
   assert(num_inputs == 1);
-  OperatorType op_type;
   size_t axes_size;
   bool keepdims;
   std::vector<int> axes;
-  dez.deserialize(op_type);
   dez.deserialize(axes_size);
   for (size_t i = 0; i < axes_size; i++) {
     int dim_idx;
@@ -406,7 +385,7 @@ Node Reduce::deserialize(FFModel &ff,
     axes.push_back(dim_idx);
   }
   dez.deserialize(keepdims);
-  return ff.get_or_create_node<Reduce>(inputs[0], {axes, op_type, keepdims});
+  return ff.get_or_create_node<Reduce>(inputs[0], {axes, keepdims});
 }
 
 Op *Reduce::materialize(FFModel &ff,
@@ -422,7 +401,6 @@ namespace std {
 size_t hash<FlexFlow::ReduceParams>::operator()(
     FlexFlow::ReduceParams const &params) const {
   size_t key = 0;
-  hash_combine(key, params.op_type);
   hash_combine(key, params.axes.size());
   for (int n : params.axes) {
     hash_combine(key, n);
