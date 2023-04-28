@@ -138,6 +138,12 @@ __host__ void updateGAS(float *para_ptr,
 
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
+template <typename T>
+void print_beam_tensor(T const *ptr,
+                       size_t num_elements,
+                       int skip,
+                       int channel,
+                       char const *prefix);
 
 template <typename T>
 void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
