@@ -2752,7 +2752,6 @@ Op *FFModel::create_operator_from_layer(
     case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
       Op *op = SpecIncMultiHeadSelfAttention::create_operator_from_layer(
           *this, layer, inputs);
-      
       operators.push_back(op);
       return op;
     }

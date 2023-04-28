@@ -27,6 +27,8 @@
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
@@ -117,6 +119,10 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((AggregateSpec *)op)->get_params();
     case OP_RMS_NORM:
       return ((RMSNorm *)op)->get_params();
+    case OP_ARG_TOPK:
+      return ((ArgTopK *)op)->get_params();
+    case OP_BEAM_TOPK:
+      return ((BeamTopK *)op)->get_params();
 
       // TODO: implement the get_params() function for the operators below and
       // uncomment the lines below

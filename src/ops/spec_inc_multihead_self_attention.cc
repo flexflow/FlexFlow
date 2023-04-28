@@ -54,18 +54,19 @@ bool SpecIncMultiHeadSelfAttentionParams::is_valid(
   return is_valid;
 }
 
-Tensor FFModel::spec_inc_multihead_self_attention(const Tensor input,
-                                             int embed_dim,
-                                             int num_heads,
-                                             int kdim,
-                                             int vdim,
-                                             float dropout,
-                                             bool bias,
-                                             bool add_bias_kv,
-                                             bool add_zero_attn,
-                                             Initializer *kernel_initializer,
-                                             bool apply_rotary_embedding,
-                                             char const *name) {
+Tensor
+    FFModel::spec_inc_multihead_self_attention(const Tensor input,
+                                               int embed_dim,
+                                               int num_heads,
+                                               int kdim,
+                                               int vdim,
+                                               float dropout,
+                                               bool bias,
+                                               bool add_bias_kv,
+                                               bool add_zero_attn,
+                                               Initializer *kernel_initializer,
+                                               bool apply_rotary_embedding,
+                                               char const *name) {
   // Currently assume that
   Layer *li = new Layer(this,
                         OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION,
@@ -122,7 +123,7 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
 
-  std::cout << "spec create operator: " << layer->name<<"\n";    
+  std::cout << "spec create operator: " << layer->name << "\n";
   long long value;
   layer->get_int_property("embed_dim", value);
   int embed_dim = value;
@@ -143,19 +144,19 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
   layer->get_int_property("apply_rotary_embedding", value);
   bool apply_rotary_embedding = (bool)value;
   return new SpecIncMultiHeadSelfAttention(model,
-                                       layer->layer_guid,
-                                       inputs[0],
-                                       embed_dim,
-                                       num_heads,
-                                       kdim,
-                                       vdim,
-                                       dropout,
-                                       bias,
-                                       add_bias_kv,
-                                       add_zero_attn,
-                                       apply_rotary_embedding,
-                                       false /*allocate_weights*/,
-                                       layer->name);
+                                           layer->layer_guid,
+                                           inputs[0],
+                                           embed_dim,
+                                           num_heads,
+                                           kdim,
+                                           vdim,
+                                           dropout,
+                                           bias,
+                                           add_bias_kv,
+                                           add_zero_attn,
+                                           apply_rotary_embedding,
+                                           false /*allocate_weights*/,
+                                           layer->name);
 }
 
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
@@ -332,19 +333,19 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     const ParallelTensor input,
     bool allocate_weights)
     : SpecIncMultiHeadSelfAttention(model,
-                                other.layer_guid,
-                                input,
-                                other.oProjSize,
-                                other.num_heads,
-                                other.qProjSize,
-                                other.vProjSize,
-                                other.dropout,
-                                other.bias,
-                                other.add_bias_kv,
-                                other.add_zero_attn,
-                                other.apply_rotary_embedding,
-                                allocate_weights,
-                                other.name) {}
+                                    other.layer_guid,
+                                    input,
+                                    other.oProjSize,
+                                    other.num_heads,
+                                    other.qProjSize,
+                                    other.vProjSize,
+                                    other.dropout,
+                                    other.bias,
+                                    other.add_bias_kv,
+                                    other.add_zero_attn,
+                                    other.apply_rotary_embedding,
+                                    allocate_weights,
+                                    other.name) {}
 
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     FFModel &model,
@@ -353,19 +354,19 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     bool allocate_weights,
     char const *name)
     : SpecIncMultiHeadSelfAttention(model,
-                                params.layer_guid,
-                                input,
-                                params.embed_dim,
-                                params.num_heads,
-                                params.kdim,
-                                params.vdim,
-                                params.dropout,
-                                params.bias,
-                                params.add_bias_kv,
-                                params.add_zero_attn,
-                                params.apply_rotary_embedding,
-                                allocate_weights,
-                                name) {}
+                                    params.layer_guid,
+                                    input,
+                                    params.embed_dim,
+                                    params.num_heads,
+                                    params.kdim,
+                                    params.vdim,
+                                    params.dropout,
+                                    params.bias,
+                                    params.add_bias_kv,
+                                    params.add_zero_attn,
+                                    params.apply_rotary_embedding,
+                                    allocate_weights,
+                                    name) {}
 
 void SpecIncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
@@ -380,14 +381,15 @@ void SpecIncMultiHeadSelfAttention::init_inference(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(SpecIncMultiHeadSelfAttention)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
+  IndexLauncher launcher(
+      SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+      parallel_is,
+      TaskArgument(this, sizeof(SpecIncMultiHeadSelfAttention)),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -418,14 +420,15 @@ void SpecIncMultiHeadSelfAttention::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(SpecIncMultiHeadSelfAttention)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+  IndexLauncher launcher(
+      SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+      parallel_is,
+      TaskArgument(this, sizeof(SpecIncMultiHeadSelfAttention)),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      outputs[0]->machine_view.hash());
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -577,11 +580,18 @@ void SpecIncMultiHeadSelfAttention::inference_task(
                       input_domain.get_volume(),
                       "[Attention:forward:query]"); */
 
-  SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(m,
-                                                      bc,
-                                                      input.get_float_ptr(),
-                                                      weight.get_float_ptr(),
-                                                      output.get_float_ptr());
+  SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
+      m,
+      bc,
+      input.get_float_ptr(),
+      weight.get_float_ptr(),
+      output.get_float_ptr());
+
+  // if(bc->beam_slots.at(0).current_depth == 1){
+  //     print_beam_tensor<float>(input.get_float_ptr(), 50, 4096, 40, "mha topk
+  //     input"); print_beam_tensor<float>(output.get_float_ptr(), 50, 4096, 40,
+  //     "mha topk output");
+  // }
 }
 
 void SpecIncMultiHeadSelfAttention::backward(FFModel const &ff) {
@@ -590,7 +600,7 @@ void SpecIncMultiHeadSelfAttention::backward(FFModel const &ff) {
 }
 
 bool SpecIncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
-                                                  int *value) const {
+                                                      int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
       *value = num_heads;
@@ -598,6 +608,14 @@ bool SpecIncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
     default:
       return Op::get_int_parameter(para, value);
   }
+}
+
+Op *SpecIncMultiHeadSelfAttention::materialize(FFModel &ff,
+                                               ParallelTensor inputs[],
+                                               int num_inputs) const {
+  SpecIncMultiHeadSelfAttentionParams params = get_params();
+  return new SpecIncMultiHeadSelfAttention(
+      ff, params, inputs[0], true, this->name);
 }
 
 bool SpecIncMultiHeadSelfAttention::measure_operator_cost(
@@ -615,7 +633,8 @@ bool operator==(SpecIncMultiHeadSelfAttentionParams const &lhs,
          lhs.apply_rotary_embedding == rhs.apply_rotary_embedding;
 }
 
-SpecIncMultiHeadSelfAttentionParams SpecIncMultiHeadSelfAttention::get_params() const {
+SpecIncMultiHeadSelfAttentionParams
+    SpecIncMultiHeadSelfAttention::get_params() const {
   SpecIncMultiHeadSelfAttentionParams params;
   params.layer_guid = this->layer_guid;
   params.embed_dim = this->oProjSize;

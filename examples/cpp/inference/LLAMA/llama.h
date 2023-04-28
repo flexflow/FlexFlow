@@ -39,12 +39,6 @@ struct LLAMAConfig {
     max_seq_len = 8;
     max_beam_width = 3;
 
-    // todo from args
-    weight_file_path =
-        "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/weights/";
-    input_path = "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/tokens/"
-                 "llama_demo_tokens";
-
     // hidden dim
     hidden_dim = 4 * dim;
     hidden_dim = int(2 * hidden_dim / 3);
@@ -94,7 +88,8 @@ public:
   void store_outputs(BatchConfig *bc,
                      InferenceResult const &ir,
                      std::map<size_t, Prediction_result> &batch_predictions);
-  void update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions);                   
+  void update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions);
+  void update_beam_tree();                   
 
 public:
   int num_samples, next_index, next_token_idx, next_batch_index;

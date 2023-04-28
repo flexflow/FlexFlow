@@ -22,7 +22,6 @@ LegionRuntime::Logger::Category log_app("llama");
 
 void parse_input_args(char **argv, int argc, LLAMAConfig &config) {
   for (int i = 1; i < argc; i++) {
-
     // input
     if (!strcmp(argv[i], "--dataset")) {
       config.input_path = std::string(argv[++i]);
@@ -46,10 +45,10 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel ff(ffconfig);
   std::unordered_map<std::string, Layer *> weights_layers;
 
-  // InputArgs const &command_args = HighLevelRuntime::get_input_args();
-  // char **argv = command_args.argv;
-  // int argc = command_args.argc;
-  // parse_input_args(argv, argc, llamaConfig);
+  InputArgs const &command_args = HighLevelRuntime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
+  parse_input_args(argv, argc, llamaConfig);
 
   std::cout << "print llama config: " << llamaConfig.input_path << "-->"
             << llamaConfig.batchSize;
@@ -211,12 +210,6 @@ void FlexFlow::top_level_task(Task const *task,
     } else {
       loader.load_from_file(
           data, volume, llamaConfig.weight_file_path + v.first);
-      if (v.first.find("attention_norm") != std::string::npos) {
-        // std::cout << "norm weight data" << std::endl;
-        // for (int i = 0; i < 100; i++) {
-        //   std::cout << data[i] << ", ";
-        // }
-      }
     }
 
     ParallelTensor weight_pt;
@@ -225,7 +218,9 @@ void FlexFlow::top_level_task(Task const *task,
   }
   std::cout << "------load wieght finished----------" << std::endl;
 
-  //------------------------------ do inference---------------------------
+  //------------------------------ do inference, we only have 5 prompts for the
+  //test case, so simplify the batch_configs with 1
+  //entry---------------------------
   int processed_requests = 0;
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
@@ -245,17 +240,13 @@ void FlexFlow::top_level_task(Task const *task,
       Future future = future_handlers[bid];
       if (!future.is_ready(true /*subscribe*/)) {
         continue;
-      } else {
-        std::cout << "future is ready...." << std::endl;
       }
-      // process end
+
+      //one beam search iteration finished, store the output and update beam slots
       InferenceResult ir = future.get_result<InferenceResult>();
-      std::cout << "get success...." << std::endl;
       bc = batch_configs[bid];
-
-      std::cout << "store outputs start...." << std::endl;
+      std::cout << "store beam search outputs...." << std::endl;
       loader.store_outputs(bc, ir, batch_predictions[bid]);
-
       // uodate beam slot and store the tree;
       loader.update_beam_slots(bc, batch_predictions[bid]);
       processed_requests += bc->update_results(ir);
@@ -263,8 +254,8 @@ void FlexFlow::top_level_task(Task const *task,
     }
     // batch cofig register 5 reqs
     // init length relate to the min_prompt_size for llama
-    
-    //regist once, no activate data
+
+    // regist once, no activate data
     if (new_req) {
       for (int i = 0; i < llamaConfig.batchSize; i++) {
         assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347, 3));
@@ -273,9 +264,7 @@ void FlexFlow::top_level_task(Task const *task,
 
     new_req = false;
     bc->prepare_next_batch();
-    std::cout << "new tokens: " << bc->num_active_tokens();
     loader.next_batch(ff, bc, batch_predictions[bid]);
-
     FutureMap fm = im.inference(bid, *bc);
     assert(fm.get_future_map_domain().get_volume() == 1);
     future_handlers[bid] = fm.get_future(0);

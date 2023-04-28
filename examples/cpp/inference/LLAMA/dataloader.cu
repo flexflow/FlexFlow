@@ -56,7 +56,7 @@ void DataLoader::load_input(Task const *task,
   size_t start_idx = meta.token_indexes[0].token_position;
   size_t dst_idx = 0;
 
-  std::cout << "num samples " << meta.num_samples << "\n";
+  std::cout << "load token nums " << meta.num_samples << "\n";
 
   for (size_t i = 0; i <= meta.num_samples; i++) {
 
@@ -72,21 +72,10 @@ void DataLoader::load_input(Task const *task,
         // so this is the initial input, load from file.
 
         size_t copy_start_index = guid * llamaconfig.sentence_len;
-        std::cout << "copy index:  " << copy_start_index << "\n";
         copy_kernel<<<GET_BLOCKS(tokens_to_copy), CUDA_NUM_THREADS>>>(
             batch_input.ptr + dst_idx,
             full_input.ptr + copy_start_index,
             tokens_to_copy);
-
-        std::cout << "------------req---------------: " << guid << "\n";
-        if (guid == 0) {
-          std::cout << "guid: " << meta.guids[i] << ", i: " << i << std::endl;
-        }
-        for (int i = 0; i < 8; i++) {
-          std::cout << "value: " << full_input.ptr[copy_start_index + i]
-                    << std::endl;
-        }
-        std::cout << "dst index: " << dst_idx << "\n";
 
       } else {
 
@@ -94,20 +83,17 @@ void DataLoader::load_input(Task const *task,
         // generate token based on the sub request size
         // get beam width
         int request_index = meta.token_indexes[i - 1].request_index;
-        std::cout << "i: " << i << "request index: " << request_index << "\n";
         int sub_request_size = input_struct.bc.sub_requests[request_index];
-        
 
         for (int j = 0; j < sub_request_size; j++) {
-          long new_token = input_struct.bc.beam_slots.at(request_index).tokens[j];
+          long new_token =
+              input_struct.bc.beam_slots.at(request_index).tokens[j];
           long token = prev_batch_preds.at(guid).tokens[j];
-          std::cout << "token: " << j << "value: " << token << "new_token order" << new_token<< "\n";
           cudaMemcpy(batch_input.ptr + dst_idx + j,
-                   &new_token,
-                   sizeof(long) * 1,
-                   cudaMemcpyHostToDevice);
+                     &new_token,
+                     sizeof(long) * 1,
+                     cudaMemcpyHostToDevice);
         }
-
       }
 
       // update for next req

@@ -325,7 +325,10 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
 
     // naive cache stealing
     if (sub_req_id != parent_id) {
-      printf("cache stealing!\n");
+      if(data_idx == 0 && head_idx == 0 && k_cache){
+          printf("cache stealing!, depth %d req_id %d sub_req_id %d, parentid %d, tok_id %d\n", beam_depth, req_id, sub_req_id, parent_id, tok_id);
+      }
+      
       for (int depth = 0; depth < beam_depth; depth++) {
         int steal_token_idx = tok_id - beam_depth + depth;
         int steal_from_idx = (req_id * max_beam_width + parent_id) *
@@ -337,6 +340,10 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
                            head_idx * (max_seq_len * proj_size) +
                            steal_token_idx * proj_size + data_idx;
         cache_ptr[steal_to_idx] = cache_ptr[steal_from_idx];
+
+      //   if(data_idx == 0 && head_idx == 0 && k_cache && req_id == 1){
+      //     printf("cache stealing kernel!, steal_token_idx %d\n", steal_token_idx);
+      // }
       }
     }
 
