@@ -30,6 +30,7 @@
 #include "optimizer.h"
 #include "parallel_tensor.h"
 #include "recompile.h"
+#include "runtime.h"
 #include "simulator.h"
 #include "tensor.h"
 #include "tl/optional.hpp"
