@@ -585,16 +585,16 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                                     m->vSize * m->vProjSize));
     *m->has_load_weights = true;
   }
-  // phase 1: Implement kernel to compute KQV for input tokens
-  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
-
-  // phase 2: Update key/val cache
+  // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::tokensInfo),
                   cudaMemcpyHostToDevice,
                   stream);
+  // phase 1: Implement kernel to compute KQV for input tokens
+  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
+  // phase 2: Update key/val cache
   inference_kernel2(m, bc, stream);
 
   // phase 3: Compute attention score
