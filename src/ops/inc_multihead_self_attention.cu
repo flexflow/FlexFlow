@@ -588,7 +588,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
-                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::tokensInfo),
+                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
