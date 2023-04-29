@@ -25,7 +25,6 @@ void DataLoader::load_input(Task const *task,
 
   DataLoaderNextBatchInput const input_struct =
       *((DataLoaderNextBatchInput *)task->args);
-  // BatchConfig::SampleIdxs const &meta = input_struct.meta;
 
   BatchConfig *bc = input_struct.bc;
   BatchConfig::PerRequestInfo *requestInfo = bc->requestsInfo;
@@ -76,7 +75,6 @@ void DataLoader::load_input(Task const *task,
       batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(int)));
 
   size_t guid = requestInfo[tokensInfo[0].request_index].guid;
-  // size_t guid = tokensInfo[0].guid;
   size_t start_idx = tokensInfo[0].abs_depth_in_request;
   size_t dst_idx = 0;
   size_t total_tokens = 0;
@@ -87,7 +85,6 @@ void DataLoader::load_input(Task const *task,
 
       size_t tokens_to_copy =
           (tokensInfo[i - 1].abs_depth_in_request - start_idx + 1);
-      // size_t size_to_copy = token_dim * tokens_to_copy;
       assert(tokens_to_copy > 0);
 
       size_t request_index = tokensInfo[i - 1].request_index;
@@ -109,26 +106,15 @@ void DataLoader::load_input(Task const *task,
         assert(tokensInfo[i - 1].abs_depth_in_request >= token_start_offset);
         assert(tokens_to_copy == 1);
 
-        /* std::cout << "Looking for guid: " << guid << std::endl;
-        std::cout << "prev_batch_preds: ";
-        for (const auto& elem : prev_batch_preds){
-            std::cout << elem.first << ":" << elem.second << ", ";
-        }
-        std::cout << std::endl; */
         assert(prev_batch_preds.find(guid) != prev_batch_preds.end());
         int token = prev_batch_preds.at(guid);
         int *dst_ptr = batch_input_ptr + dst_idx;
         cudaMemcpy(dst_ptr, &token, sizeof(int), cudaMemcpyHostToDevice);
-        // copy_kernel<<<GET_BLOCKS(tokens_to_copy),
-        // CUDA_NUM_THREADS>>>(dst_ptr, &token, tokens_to_copy);
-        //  cudaMemcpyAsync(batch_input_ptr + dst_idx * token_dim, &token, 1,
-        //  cudaMemcpyHostToDevice);
       }
       total_tokens += tokens_to_copy;
 
       if (i < bc->num_active_tokens()) {
         guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
-        // guid = tokensInfo[i].guid;
         start_idx = tokensInfo[i].abs_depth_in_request;
       }
       dst_idx = i;

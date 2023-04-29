@@ -85,19 +85,6 @@ void DataLoader::next_batch(FFModel &ff,
     Domain domain =
         runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
-    // int idx = next_index;
-    // for (Domain::DomainPointIterator it(domain); it; it++) {
-    //   SampleIdxs meta;
-    //   assert(ff.config.batchSize % batch_input->dims[1].size == 0);
-    //   meta.num_samples = ff.config.batchSize / batch_input->dims[2].size;
-    //   for (int i = 0; i < meta.num_samples; i++) {
-    //     meta.idxs[i] = idx++;
-    //     meta.token_idx = next_token_idx;
-    //     meta.batch_idx = next_batch_index;
-    //   }
-
-    //   argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
-    // }
 
     DataLoaderNextBatchInput next_batch_input = {bc, batch_predictions};
     DataLoaderNextBatchInput const *ptr = &next_batch_input;
@@ -217,11 +204,6 @@ void DataLoader::load_attention_weights(T *ptr,
 
     for (int i = 0; i < 32; i++) {
       size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
-      // if (file_index == 3) {
-      //   printf("print wo start index %d, data %.10f\n",
-      //          start_index,
-      //          host_array.at(data_index));
-      // }
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
         ptr[j] = host_array.at(data_index);
         data_index += 1;
@@ -237,8 +219,6 @@ void DataLoader::load_attention_weights(T *ptr,
 void DataLoader::store_outputs(BatchConfig *bc,
                                InferenceResult const &ir,
                                std::map<size_t, long> &batch_predictions) {
-  // assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
-  //        bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
 
   std::cout << "store outputs...." << std::endl;
   batch_predictions.clear();
@@ -247,7 +227,7 @@ void DataLoader::store_outputs(BatchConfig *bc,
   size_t guid = bc->requestsInfo[bc->tokensInfo[0].request_index].guid;
 
   size_t start_idx = bc->tokensInfo[0].abs_depth_in_request;
-  // token2ids.token_indexes[0].token_position;
+
   // only store the last token of each req
   for (size_t i = 0; i <= bc->num_active_tokens(); i++) {
     size_t current_guid =
@@ -263,18 +243,11 @@ void DataLoader::store_outputs(BatchConfig *bc,
 
       if (i < bc->num_active_tokens()) {
         guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
-        // guid = bc->tokensInfo[i].guid;
         start_idx = bc->tokensInfo[i].abs_depth_in_request;
       }
     }
   }
-  // bc->print();
-  // for (size_t i = 0; i < bc->num_active_requests(); i++) {
-  //   batch_predictions[i] = ir.results[i];
-  //   std::cout << "i: " << i << ", ith pred: " << i
-  //             << ", value: " << batch_predictions[i]
-  //             << std::endl;
-  // }
+
   assert(batch_predictions.size() == bc->num_active_requests());
 }
 

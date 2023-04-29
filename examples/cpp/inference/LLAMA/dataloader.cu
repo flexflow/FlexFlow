@@ -24,11 +24,6 @@ void DataLoader::load_input(Task const *task,
   LLAMAConfig llamaconfig;
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  //   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-
-  // DataLoaderNextBatchInput const input_struct =
-  //     *((DataLoaderNextBatchInput *)task->args);
-  // BatchConfig::SampleIdxs const &meta = input_struct.meta;
 
   DataLoaderNextBatchInput const input_struct =
       *((DataLoaderNextBatchInput *)task->args);
@@ -55,7 +50,6 @@ void DataLoader::load_input(Task const *task,
   coord_t batch_size =
       batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
 
-  // size_t guid = bc->tokensInfo[0].guid;
   size_t guid = bc->requestsInfo[bc->tokensInfo[0].request_index].guid;
   size_t start_idx = bc->tokensInfo[0].abs_depth_in_request;
   size_t dst_idx = 0;
@@ -93,9 +87,6 @@ void DataLoader::load_input(Task const *task,
         // for token by token generating, get token from the previous inference.
 
         long token = prev_batch_preds.at(guid);
-        // std::cout << "next iter  " << meta.token_indexes[i -
-        // 1].token_position
-        //           << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
 
         std::cout << "next iter  " << bc->tokensInfo[i - 1].abs_depth_in_request
                   << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
@@ -106,18 +97,11 @@ void DataLoader::load_input(Task const *task,
 
       if (i < bc->num_active_tokens()) {
         guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
-        // guid = bc->tokensInfo[i].guid;
         start_idx = bc->tokensInfo[i].abs_depth_in_request;
       }
       dst_idx = i;
     }
   }
-
-  // copy 1 token from each batch
-  //  FIXME: currently assume continous indices
-  // size_t guid = meta.guids[0];
-  // size_t start_idx = meta.token_indexes[0].token_position;
-  // size_t dst_idx = 0;
 
   std::cout << "load input finished....." << std::endl;
 }
