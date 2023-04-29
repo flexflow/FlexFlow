@@ -39,6 +39,7 @@ BatchConfig::BatchConfig() {
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
     tokensInfo[i].abs_depth_in_request = SIZE_MAX;
     tokensInfo[i].request_index = SIZE_MAX;
+    tokensInfo[i].value = SIZE_MAX;
     // token2ids.guids[i] = SIZE_MAX;
     // token2ids.token_indexes[i].request_index = SIZE_MAX;
     // token2ids.token_indexes[i].token_position = SIZE_MAX;
