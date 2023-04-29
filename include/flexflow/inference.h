@@ -17,6 +17,7 @@
 
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
+#include <mutex>
 
 namespace FlexFlow {
 
@@ -39,6 +40,20 @@ public:
   int max_num_inflight_batches;
   int num_devices;
   std::vector<MachineView> machine_views;
+};
+
+class RequestManager {
+public:
+  using RequestGuid = size_t;
+  using TokenIndex = int;
+  RequestManager();
+  RequestGuid register_new_request(std::vector<TokenIndex> const &prompt);
+  bool prepare_next_batch(BatchConfig &bc);
+private:
+  std::unordered_map<RequestGuid, std::vector<TokenIndex> > pending_request_queue;
+  std::unordered_map<RequestGuid, std::vector<TokenIndex> > running_request_queue;
+  std::mutex request_queue_mutex;
+  RequestGuid next_available_guid;
 };
 
 } // namespace FlexFlow
