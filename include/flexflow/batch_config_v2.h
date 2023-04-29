@@ -25,7 +25,7 @@
 
 namespace FlexFlow {
 
-struct InferenceResult {
+struct InferenceResultV2 {
   static int const MAX_NUM_TOKENS = MAX_SEQ_LEN * BATCH_SIZE;
   int results[MAX_NUM_TOKENS];
 };
@@ -37,61 +37,68 @@ public:
                             int initial_len,
                             int tokens_to_generate);
   void prepare_next_batch();
-  int update_results(InferenceResult const &ir);
+  int update_results(InferenceResultV2 const &ir);
   void update_num_active_requests_tokens();
   int num_active_requests() const;
   int num_active_tokens() const;
   void print() const;
   static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
-  static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
+  static int const MAX_NUM_TOKENS = InferenceResultV2::MAX_NUM_TOKENS;
   // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
   //  These are set by update
   int num_tokens, num_requests;
   bool cached_results;
 
   struct PerRequestInfo {
-    int token_start_offset;
-    int num_tokens_in_batch;
+    size_t token_start_offset;
+    size_t num_tokens_in_batch;
     size_t guid;
   };
   struct PerTokenInfo {
-    int abs_depth_in_request;
-    int request_index;
+    size_t abs_depth_in_request;
+    size_t request_index;
     size_t guid;
     // size_t token_position
   };
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
-  //todo --------remove this-------------------
-//   int token_start_idx[MAX_NUM_REQUESTS]; // index of first token in a request
-//                                          // that should be processed in the
-//                                          // current batch/iteration
-//   int token_last_available_idx
-//       [MAX_NUM_REQUESTS]; // last valid token index in a request. This includes
-//                           // both the prompt and generated tokens
-//   int num_processing_tokens[MAX_NUM_REQUESTS]; // a request's number of tokens
-//                                                // being processed in the current
-//                                                // batch/iteration
-//   size_t initial_length[MAX_NUM_REQUESTS];
+  // todo --------remove this-------------------
+  //   int token_start_idx[MAX_NUM_REQUESTS]; // index of first token in a
+  //   request
+  //                                          // that should be processed in the
+  //                                          // current batch/iteration
+  //   int token_last_available_idx
+  //       [MAX_NUM_REQUESTS]; // last valid token index in a request. This
+  //       includes
+  //                           // both the prompt and generated tokens
+  //   int num_processing_tokens[MAX_NUM_REQUESTS]; // a request's number of
+  //   tokens
+  //                                                // being processed in the
+  //                                                current
+  //                                                // batch/iteration
+  //   size_t initial_length[MAX_NUM_REQUESTS];
   size_t max_sequence_length[MAX_NUM_REQUESTS];
 
-//   struct token_idxs {
-//     size_t request_index;  // the index within the BatchConfig of the request
-//                            // that the token belongs to
-//     size_t token_position; // the index indicating the position of each token
-//                            // within its request
-//     size_t initial_length;
-//   };
+  //   struct token_idxs {
+  //     size_t request_index;  // the index within the BatchConfig of the
+  //     request
+  //                            // that the token belongs to
+  //     size_t token_position; // the index indicating the position of each
+  //     token
+  //                            // within its request
+  //     size_t initial_length;
+  //   };
 
-//   struct SampleIdxs {
-//     size_t num_samples;
-//     size_t guids[InferenceResult::MAX_NUM_TOKENS]; // the guid of the request
-//                                                    // each token belongs to
-//     token_idxs token_indexes[InferenceResult::MAX_NUM_TOKENS];
-//   };
+  //   struct SampleIdxs {
+  //     size_t num_samples;
+  //     size_t guids[InferenceResult::MAX_NUM_TOKENS]; // the guid of the
+  //     request
+  //                                                    // each token belongs to
+  //     token_idxs token_indexes[InferenceResult::MAX_NUM_TOKENS];
+  //   };
 
-//   SampleIdxs token2ids;
+  //   SampleIdxs token2ids;
   size_t request_guid[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
 };

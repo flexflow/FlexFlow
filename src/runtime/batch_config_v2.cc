@@ -47,7 +47,7 @@ BatchConfigV2::BatchConfigV2() {
   update_num_active_requests_tokens();
 }
 
-int BatchConfigV2::update_results(InferenceResult const &ir) {
+int BatchConfigV2::update_results(InferenceResultV2 const &ir) {
   cached_results = false;
   // int tokens_processed = 0;
   int completed = 0;
@@ -56,13 +56,14 @@ int BatchConfigV2::update_results(InferenceResult const &ir) {
       continue;
     }
     assert(requestsInfo[i].num_tokens_in_batch > 0);
-    int processed_tokens = requestsInfo[i].token_start_offset += requestsInfo[i].num_tokens_in_batch;
+    int processed_tokens = requestsInfo[i].token_start_offset +=
+        requestsInfo[i].num_tokens_in_batch;
     if (processed_tokens >= max_sequence_length[i]
         // || ir.results[t] == 0 TODO: replace this with <EOS>
     ) {
       log_bcv2.print("[Done] guid(%zu) final_length(%d)",
-                   request_guid[i],
-                   processed_tokens);
+                     request_guid[i],
+                     processed_tokens);
       request_completed[i] = true;
       requestsInfo[i].num_tokens_in_batch = 0;
       requestsInfo[i].token_start_offset = 0;
@@ -85,8 +86,8 @@ int BatchConfigV2::update_results(InferenceResult const &ir) {
 }
 
 bool BatchConfigV2::register_new_request(size_t guid,
-                                       int initial_len,
-                                       int tokens_to_generate) {
+                                         int initial_len,
+                                         int tokens_to_generate) {
   cached_results = false;
   assert(initial_len > 0 && tokens_to_generate > 0);
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
@@ -150,12 +151,13 @@ void BatchConfigV2::update_num_active_requests_tokens() {
         // token2ids.token_indexes[num_tokens].token_position =
         //     token_start_idx[i] + j;
         // token2ids.token_indexes[num_tokens].request_index = i;
-        // token2ids.token_indexes[num_tokens].initial_length = initial_length[i];
+        // token2ids.token_indexes[num_tokens].initial_length =
+        // initial_length[i];
         num_tokens++;
       }
     }
   }
-//   token2ids.num_samples = num_tokens;
+  //   token2ids.num_samples = num_tokens;
   cached_results = true;
 }
 
