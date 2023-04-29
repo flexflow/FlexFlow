@@ -28,6 +28,7 @@ void DataLoader::load_input(Task const *task,
   // BatchConfig::SampleIdxs const &meta = input_struct.meta;
 
   BatchConfig *bc = input_struct.bc;
+  BatchConfig::PerRequestInfo *requestInfo = bc->requestsInfo;
   BatchConfig::PerTokenInfo *tokensInfo = bc->tokensInfo;
   std::map<size_t, int> const &prev_batch_preds = input_struct.prev_batch_preds;
 
@@ -60,7 +61,9 @@ void DataLoader::load_input(Task const *task,
   // Currently assume continous indices
   assert(bc->num_active_tokens() <= batch_size * sequence_length);
   for (int i = 1; i < bc->num_active_tokens(); i++) {
-    if (tokensInfo[i].guid == tokensInfo[i - 1].guid) {
+    size_t prev_guid = requestInfo[tokensInfo[i - 1].request_index].guid;
+    size_t guid = requestInfo[tokensInfo[i].request_index].guid;
+    if (guid == prev_guid) {
       assert(tokensInfo[i].abs_depth_in_request ==
              tokensInfo[i - 1].abs_depth_in_request + 1);
     }
@@ -72,13 +75,15 @@ void DataLoader::load_input(Task const *task,
   checkCUDA(cudaMemset(
       batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(int)));
 
-  size_t guid = tokensInfo[0].guid;
+  size_t guid = requestInfo[tokensInfo[0].request_index].guid;
+  // size_t guid = tokensInfo[0].guid;
   size_t start_idx = tokensInfo[0].abs_depth_in_request;
   size_t dst_idx = 0;
   size_t total_tokens = 0;
 
   for (size_t i = 1; i <= bc->num_active_tokens(); i++) {
-    if (i == bc->num_active_tokens() || tokensInfo[i].guid != guid) {
+    size_t current_guid = requestInfo[tokensInfo[i].request_index].guid;
+    if (i == bc->num_active_tokens() || current_guid != guid) {
 
       size_t tokens_to_copy =
           (tokensInfo[i - 1].abs_depth_in_request - start_idx + 1);
@@ -122,7 +127,8 @@ void DataLoader::load_input(Task const *task,
       total_tokens += tokens_to_copy;
 
       if (i < bc->num_active_tokens()) {
-        guid = tokensInfo[i].guid;
+        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+        // guid = tokensInfo[i].guid;
         start_idx = tokensInfo[i].abs_depth_in_request;
       }
       dst_idx = i;

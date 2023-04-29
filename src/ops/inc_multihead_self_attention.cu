@@ -40,17 +40,18 @@ __global__ void build_w_out_tensor(float const *weight_ptr,
   }
 }
 
-__global__ void apply_rotary_embedding(float *input_ptr,
-                                       cuFloatComplex *complex_input,
-                                       BatchConfig::PerTokenInfo const *tokenInfos,
-                                       int qProjSize,
-                                       int kProjSize,
-                                       int num_heads,
-                                       int num_tokens,
-                                       int q_block_size,
-                                       int k_block_size,
-                                       int v_block_size,
-                                       bool q_tensor) {
+__global__ void
+    apply_rotary_embedding(float *input_ptr,
+                           cuFloatComplex *complex_input,
+                           BatchConfig::PerTokenInfo const *tokenInfos,
+                           int qProjSize,
+                           int kProjSize,
+                           int num_heads,
+                           int num_tokens,
+                           int q_block_size,
+                           int k_block_size,
+                           int v_block_size,
+                           bool q_tensor) {
   int proj_size = q_tensor ? qProjSize : kProjSize;
   CUDA_KERNEL_LOOP(i, num_tokens * proj_size * num_heads / 2) {
     // create complex number
@@ -370,7 +371,8 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-    int total_tokens = bc->requestsInfo[i].token_start_offset + bc->requestsInfo[i].num_tokens_in_batch;
+    int total_tokens = bc->requestsInfo[i].token_start_offset +
+                       bc->requestsInfo[i].num_tokens_in_batch;
     // bc->token_last_available_idx[i] + 1;
     // Compute (QK^T/sqrt(d_k))
     int m_ = num_new_tokens;
@@ -679,7 +681,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
             sizeof(float) +
         tokeninfo_size *
             sizeof(BatchConfig::PerTokenInfo); // more components will
-                                             // be added here later
+                                               // be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));

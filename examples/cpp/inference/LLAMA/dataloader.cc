@@ -5,8 +5,8 @@
 using namespace Legion;
 
 DataLoader::DataLoader(FFModel &ff,
-                           LLAMAConfig const *llamaconfig,
-                           ParallelTensor const &input) {
+                       LLAMAConfig const *llamaconfig,
+                       ParallelTensor const &input) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   num_samples = llamaconfig->sentence_len;
@@ -52,11 +52,10 @@ DataLoader::DataLoader(FFModel &ff,
   runtime->execute_task(ctx, launcher);
 }
 
-void DataLoader::load_entire_dataset(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   LLAMAConfig const *llamaconfig = (LLAMAConfig *)task->args;
@@ -77,8 +76,8 @@ void DataLoader::load_entire_dataset(
 }
 
 void DataLoader::next_batch(FFModel &ff,
-                              BatchConfig *bc,
-                              std::map<size_t, long> &batch_predictions) {
+                            BatchConfig *bc,
+                            std::map<size_t, long> &batch_predictions) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   // Load Input
@@ -174,9 +173,9 @@ void DataLoader::load_from_file(T *ptr, size_t size, std::string filename) {
 
 template <typename T>
 void DataLoader::load_attention_weights(T *ptr,
-                                          size_t size,
-                                          std::string layer_name,
-                                          std::string weight_path) {
+                                        size_t size,
+                                        std::string layer_name,
+                                        std::string weight_path) {
 
   std::string q_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
@@ -236,22 +235,25 @@ void DataLoader::load_attention_weights(T *ptr,
 }
 
 void DataLoader::store_outputs(BatchConfig *bc,
-                                 InferenceResult const &ir,
-                                 std::map<size_t, long> &batch_predictions) {
+                               InferenceResult const &ir,
+                               std::map<size_t, long> &batch_predictions) {
   // assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
   //        bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
 
   std::cout << "store outputs...." << std::endl;
   batch_predictions.clear();
 
-  size_t guid = bc->tokensInfo[0].guid;
+  // size_t guid = bc->tokensInfo[0].guid;
+  size_t guid = bc->requestsInfo[bc->tokensInfo[0].request_index].guid;
 
   size_t start_idx = bc->tokensInfo[0].abs_depth_in_request;
   // token2ids.token_indexes[0].token_position;
   // only store the last token of each req
   for (size_t i = 0; i <= bc->num_active_tokens(); i++) {
-    if (i == bc->num_active_tokens() || bc->tokensInfo[i].guid != guid) {
-      
+    size_t current_guid =
+        bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+    if (i == bc->num_active_tokens() || current_guid != guid) {
+
       int result_index = bc->tokensInfo[i - 1].abs_depth_in_request - start_idx;
       batch_predictions[guid] = ir.results[i - 1];
 
@@ -260,7 +262,8 @@ void DataLoader::store_outputs(BatchConfig *bc,
                 << "\n";
 
       if (i < bc->num_active_tokens()) {
-        guid = bc->tokensInfo[i].guid;
+        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+        // guid = bc->tokensInfo[i].guid;
         start_idx = bc->tokensInfo[i].abs_depth_in_request;
       }
     }
@@ -278,11 +281,11 @@ void DataLoader::store_outputs(BatchConfig *bc,
 template void DataLoader::load_attention_weights<float>(
     float *ptr, size_t size, std::string layer_name, std::string weight_path);
 template void DataLoader::load_from_file<long>(long *ptr,
-                                                 size_t size,
-                                                 std::string filename);
+                                               size_t size,
+                                               std::string filename);
 template void DataLoader::load_from_file<float>(float *ptr,
-                                                  size_t size,
-                                                  std::string filename);
+                                                size_t size,
+                                                std::string filename);
 
 void FlexFlow::register_custom_tasks() {
   // Load entire dataset

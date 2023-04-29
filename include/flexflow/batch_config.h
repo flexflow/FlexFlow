@@ -57,7 +57,7 @@ public:
   struct PerTokenInfo {
     size_t abs_depth_in_request;
     size_t request_index;
-    size_t guid;
+    // size_t guid;
     // size_t token_position
   };
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
@@ -99,7 +99,7 @@ public:
   //   };
 
   //   SampleIdxs token2ids;
-  size_t request_guid[MAX_NUM_REQUESTS];
+  // size_t request_guid[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
 };
 

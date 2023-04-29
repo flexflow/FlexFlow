@@ -55,20 +55,24 @@ void DataLoader::load_input(Task const *task,
   coord_t batch_size =
       batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
 
-  size_t guid = bc->tokensInfo[0].guid;
+  // size_t guid = bc->tokensInfo[0].guid;
+  size_t guid = bc->requestsInfo[bc->tokensInfo[0].request_index].guid;
   size_t start_idx = bc->tokensInfo[0].abs_depth_in_request;
   size_t dst_idx = 0;
 
   for (int i = 0; i <= bc->num_active_tokens(); i++) {
-    if (i == bc->num_active_tokens() || bc->tokensInfo[i].guid != guid) {
+    size_t current_guid =
+        bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+    if (i == bc->num_active_tokens() || current_guid != guid) {
       size_t tokens_to_copy =
           (bc->tokensInfo[i - 1].abs_depth_in_request - start_idx + 1);
-      
 
       size_t request_index = bc->tokensInfo[i - 1].request_index;
-      size_t token_start_offset = bc->requestsInfo[request_index].token_start_offset;
-    
-      std::cout << "size to copy:  " << tokens_to_copy << ", start offset: " << token_start_offset << "\n";
+      size_t token_start_offset =
+          bc->requestsInfo[request_index].token_start_offset;
+
+      std::cout << "size to copy:  " << tokens_to_copy
+                << ", start offset: " << token_start_offset << "\n";
       if (tokens_to_copy > 1 || token_start_offset == 0) {
         // token pos < init length, the init length is the input sentence length
         // so this is the initial input, load from file.
@@ -101,7 +105,8 @@ void DataLoader::load_input(Task const *task,
       }
 
       if (i < bc->num_active_tokens()) {
-        guid = bc->tokensInfo[i].guid;
+        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+        // guid = bc->tokensInfo[i].guid;
         start_idx = bc->tokensInfo[i].abs_depth_in_request;
       }
       dst_idx = i;

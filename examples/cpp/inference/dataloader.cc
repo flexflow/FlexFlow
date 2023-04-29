@@ -185,22 +185,27 @@ void DataLoader::store_outputs(BatchConfig *bc,
                                std::map<size_t, int> &batch_predictions) {
   // assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
   //        bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
-
+  assert((bc->num_active_tokens() == 0) == (bc->num_active_requests() == 0));
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
   // there is no num_samples, replace it with num_active_tokens
   batch_predictions.clear();
   // bc->print();
-  for (size_t i = 0; i <= bc->num_active_tokens(); i++) {
+  // printf("bc->num_active_tokens(): %i\n", bc->num_active_tokens());
+  for (size_t i = 0; i < bc->num_active_tokens(); i++) {
+    size_t guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
     if (i == bc->num_active_tokens() - 1 ||
-        bc->tokensInfo[i].guid != bc->tokensInfo[i + 1].guid) {
+        guid != bc->requestsInfo[bc->tokensInfo[i + 1].request_index].guid) {
       // assert(bc->token2ids.token_indexes[i].token_position ==
       //        bc->token_last_available_idx[bc->token2ids.token_indexes[i]
       //                                         .request_index]);
 
-      if (outputs.find(bc->tokensInfo[i].guid) == outputs.end()) {
+      if (outputs.find(guid) == outputs.end()) {
         std::vector<int> v{ir.results[i]};
-        outputs[bc->tokensInfo[i].guid] = v;
+        outputs[guid] = v;
       } else {
-        outputs[bc->tokensInfo[i].guid].push_back(ir.results[i]);
+        outputs[guid].push_back(ir.results[i]);
       }
       /* std::cout << "outputs: ";
       for(const auto& elem : outputs){
@@ -220,9 +225,11 @@ void DataLoader::store_outputs(BatchConfig *bc,
       // assert(outputs[bc->tokensInfo[i].guid].size() ==
       //        (bc->tokensInfo[i].abs_depth_in_request + 1) -
       //            (bc->token2ids.token_indexes[i].initial_length - 1));
-      batch_predictions[bc->tokensInfo[i].guid] = ir.results[i];
+      batch_predictions[guid] = ir.results[i];
     }
   }
+  // printf("bc->num_active_requests(): %i, batch_predictions.size(): %i\n",
+  // bc->num_active_requests(), batch_predictions.size()); bc->print();
   assert(batch_predictions.size() == bc->num_active_requests());
 }
 
