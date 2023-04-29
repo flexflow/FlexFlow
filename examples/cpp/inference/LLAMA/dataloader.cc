@@ -1,11 +1,12 @@
+
 #include "llama.h"
 #include <random>
 
 using namespace Legion;
 
 DataLoader::DataLoader(FFModel &ff,
-                       LLAMAConfig const *llamaconfig,
-                       ParallelTensor const &input) {
+                           LLAMAConfig const *llamaconfig,
+                           ParallelTensor const &input) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   num_samples = llamaconfig->sentence_len;
@@ -51,10 +52,11 @@ DataLoader::DataLoader(FFModel &ff,
   runtime->execute_task(ctx, launcher);
 }
 
-void DataLoader::load_entire_dataset(Task const *task,
-                                     std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+void DataLoader::load_entire_dataset(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   LLAMAConfig const *llamaconfig = (LLAMAConfig *)task->args;
@@ -75,8 +77,8 @@ void DataLoader::load_entire_dataset(Task const *task,
 }
 
 void DataLoader::next_batch(FFModel &ff,
-                            BatchConfig *bc,
-                            std::map<size_t, long> &batch_predictions) {
+                              BatchConfig *bc,
+                              std::map<size_t, long> &batch_predictions) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   // Load Input
@@ -98,8 +100,7 @@ void DataLoader::next_batch(FFModel &ff,
     //   argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     // }
 
-    DataLoaderNextBatchInput next_batch_input = {bc->token2ids,
-                                                 batch_predictions};
+    DataLoaderNextBatchInput next_batch_input = {bc, batch_predictions};
     DataLoaderNextBatchInput const *ptr = &next_batch_input;
     size_t next_batch_input_sz = sizeof(next_batch_input);
     assert(ptr->prev_batch_preds.size() == batch_predictions.size());
@@ -173,9 +174,9 @@ void DataLoader::load_from_file(T *ptr, size_t size, std::string filename) {
 
 template <typename T>
 void DataLoader::load_attention_weights(T *ptr,
-                                        size_t size,
-                                        std::string layer_name,
-                                        std::string weight_path) {
+                                          size_t size,
+                                          std::string layer_name,
+                                          std::string weight_path) {
 
   std::string q_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
@@ -235,30 +236,32 @@ void DataLoader::load_attention_weights(T *ptr,
 }
 
 void DataLoader::store_outputs(BatchConfig *bc,
-                               InferenceResult const &ir,
-                               std::map<size_t, long> &batch_predictions) {
-  assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
-         bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
+                                 InferenceResult const &ir,
+                                 std::map<size_t, long> &batch_predictions) {
+  // assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
+  //        bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
 
   std::cout << "store outputs...." << std::endl;
   batch_predictions.clear();
-  size_t guid = bc->token2ids.guids[0];
-  size_t start_idx = bc->token2ids.token_indexes[0].token_position;
 
-  for (size_t i = 0; i <= bc->token2ids.num_samples; i++) {
-    if (i == bc->token2ids.num_samples || bc->token2ids.guids[i] != guid) {
-      // see how many tokens has been put to model in this req
-      // to get the index of the final token
-      int result_index =
-          bc->token2ids.token_indexes[i - 1].token_position - start_idx;
+  size_t guid = bc->tokensInfo[0].guid;
+
+  size_t start_idx = bc->tokensInfo[0].abs_depth_in_request;
+  // token2ids.token_indexes[0].token_position;
+  // only store the last token of each req
+  for (size_t i = 0; i <= bc->num_active_tokens(); i++) {
+    if (i == bc->num_active_tokens() || bc->tokensInfo[i].guid != guid) {
+      
+      int result_index = bc->tokensInfo[i - 1].abs_depth_in_request - start_idx;
       batch_predictions[guid] = ir.results[i - 1];
+
       std::cout << "i: " << i << ", dds-" << guid << ", result index"
                 << result_index << ", result value: " << batch_predictions[guid]
                 << "\n";
 
-      if (i < bc->token2ids.num_samples) {
-        guid = bc->token2ids.guids[i];
-        start_idx = bc->token2ids.token_indexes[i].token_position;
+      if (i < bc->num_active_tokens()) {
+        guid = bc->tokensInfo[i].guid;
+        start_idx = bc->tokensInfo[i].abs_depth_in_request;
       }
     }
   }
@@ -275,11 +278,11 @@ void DataLoader::store_outputs(BatchConfig *bc,
 template void DataLoader::load_attention_weights<float>(
     float *ptr, size_t size, std::string layer_name, std::string weight_path);
 template void DataLoader::load_from_file<long>(long *ptr,
-                                               size_t size,
-                                               std::string filename);
+                                                 size_t size,
+                                                 std::string filename);
 template void DataLoader::load_from_file<float>(float *ptr,
-                                                size_t size,
-                                                std::string filename);
+                                                  size_t size,
+                                                  std::string filename);
 
 void FlexFlow::register_custom_tasks() {
   // Load entire dataset

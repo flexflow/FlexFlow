@@ -25,10 +25,13 @@ void DataLoader::load_input(Task const *task,
 
   DataLoaderNextBatchInput const input_struct =
       *((DataLoaderNextBatchInput *)task->args);
-  BatchConfig::SampleIdxs const &meta = input_struct.meta;
+  // BatchConfig::SampleIdxs const &meta = input_struct.meta;
+
+  BatchConfig *bc = input_struct.bc;
+  BatchConfig::PerTokenInfo *tokensInfo = bc->tokensInfo;
   std::map<size_t, int> const &prev_batch_preds = input_struct.prev_batch_preds;
 
-  if (meta.num_samples == 0) {
+  if (bc->num_active_tokens() == 0) {
     return;
   }
   int const *full_input_ptr = helperGetTensorPointerRO<int>(
@@ -55,11 +58,11 @@ void DataLoader::load_input(Task const *task,
   assert(batch_size <= full_input_batch_size);
 
   // Currently assume continous indices
-  assert(meta.num_samples <= batch_size * sequence_length);
-  for (int i = 1; i < meta.num_samples; i++) {
-    if (meta.guids[i] == meta.guids[i - 1]) {
-      assert(meta.token_indexes[i].token_position ==
-             meta.token_indexes[i - 1].token_position + 1);
+  assert(bc->num_active_tokens() <= batch_size * sequence_length);
+  for (int i = 1; i < bc->num_active_tokens(); i++) {
+    if (tokensInfo[i].guid == tokensInfo[i - 1].guid) {
+      assert(tokensInfo[i].abs_depth_in_request ==
+             tokensInfo[i - 1].abs_depth_in_request + 1);
     }
   }
   // keep things simple for now
@@ -69,22 +72,28 @@ void DataLoader::load_input(Task const *task,
   checkCUDA(cudaMemset(
       batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(int)));
 
-  size_t guid = meta.guids[0];
-  size_t start_idx = meta.token_indexes[0].token_position;
+  size_t guid = tokensInfo[0].guid;
+  size_t start_idx = tokensInfo[0].abs_depth_in_request;
   size_t dst_idx = 0;
   size_t total_tokens = 0;
-  for (size_t i = 1; i <= meta.num_samples; i++) {
-    if (i == meta.num_samples || meta.guids[i] != guid) {
+
+  for (size_t i = 1; i <= bc->num_active_tokens(); i++) {
+    if (i == bc->num_active_tokens() || tokensInfo[i].guid != guid) {
 
       size_t tokens_to_copy =
-          (meta.token_indexes[i - 1].token_position - start_idx + 1);
+          (tokensInfo[i - 1].abs_depth_in_request - start_idx + 1);
       // size_t size_to_copy = token_dim * tokens_to_copy;
       assert(tokens_to_copy > 0);
-      if (tokens_to_copy > 1 || meta.token_indexes[i - 1].token_position <
-                                    meta.token_indexes[i - 1].initial_length) {
+
+      size_t request_index = tokensInfo[i - 1].request_index;
+      size_t token_start_offset =
+          bc->requestsInfo[request_index].token_start_offset;
+      size_t num_processing_tokens =
+          bc->requestsInfo[request_index].num_tokens_in_batch;
+      if (tokens_to_copy > 1 || token_start_offset == 0) {
         // initialization phase
-        assert(meta.token_indexes[i - 1].token_position <
-               meta.token_indexes[i - 1].initial_length);
+        assert(tokensInfo[i - 1].abs_depth_in_request <
+               (token_start_offset + num_processing_tokens));
         int const *input_zc =
             full_input_ptr + (guid * sequence_length) + start_idx;
         int *dst_ptr = batch_input_ptr + dst_idx;
@@ -92,8 +101,7 @@ void DataLoader::load_input(Task const *task,
             dst_ptr, input_zc, tokens_to_copy);
       } else {
         // incremental phase
-        assert(meta.token_indexes[i - 1].token_position >=
-               meta.token_indexes[i - 1].initial_length);
+        assert(tokensInfo[i - 1].abs_depth_in_request >= token_start_offset);
         assert(tokens_to_copy == 1);
 
         /* std::cout << "Looking for guid: " << guid << std::endl;
@@ -113,14 +121,14 @@ void DataLoader::load_input(Task const *task,
       }
       total_tokens += tokens_to_copy;
 
-      if (i < meta.num_samples) {
-        guid = meta.guids[i];
-        start_idx = meta.token_indexes[i].token_position;
+      if (i < bc->num_active_tokens()) {
+        guid = tokensInfo[i].guid;
+        start_idx = tokensInfo[i].abs_depth_in_request;
       }
       dst_idx = i;
     }
   }
-  assert(total_tokens == meta.num_samples);
+  assert(total_tokens == bc->num_active_tokens());
   /*printf("token_dim: %lli, sequence_length: %lli, batch_size: %lli\n",
   token_dim, sequence_length, batch_size); printf("total_tokens: %lu\n",
   total_tokens); printf("guid: %lu\n", guid);

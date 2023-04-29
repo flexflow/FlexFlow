@@ -95,42 +95,6 @@ public:
   FlexFlow::ParallelTensor full_input, batch_input;
 };
 
-class DataLoaderV2 {
-public:
-  DataLoaderV2(FFModel &ff,
-               LLAMAConfig const *llamaconfig,
-               ParallelTensor const &input);
-  void next_batch(FFModel &ff,
-                  BatchConfigV2 *bc,
-                  std::map<size_t, long> &batch_predictions);
-  void reset();
-  static void load_entire_dataset(Task const *task,
-                                  std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime);
-  static void load_input(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime);
-
-  template <typename T>
-  static void load_from_file(T *ptr, size_t size, std::string filename);
-
-  template <typename T>
-  static void load_attention_weights(T *ptr,
-                                     size_t size,
-                                     std::string layer_name,
-                                     std::string weight_path);
-  void store_outputs(BatchConfigV2 *bc,
-                     InferenceResultV2 const &ir,
-                     std::map<size_t, long> &batch_predictions);
-
-public:
-  int num_samples, next_index, next_token_idx, next_batch_index;
-  std::map<size_t, std::vector<int>> outputs;
-  FlexFlow::ParallelTensor full_input, batch_input;
-};
-
 struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
@@ -139,11 +103,7 @@ struct SampleIdxs {
 };
 
 struct DataLoaderNextBatchInput {
-  BatchConfig::SampleIdxs const &meta;
-  std::map<size_t, long> const &prev_batch_preds;
-};
-
-struct DataLoaderNextBatchInputV2 {
-  BatchConfigV2 *bc;
+  // BatchConfig::SampleIdxs const &meta;
+  BatchConfig *bc;
   std::map<size_t, long> const &prev_batch_preds;
 };

@@ -25,19 +25,24 @@ LegionRuntime::Logger::Category log_bc("BatchConfig");
 BatchConfig::BatchConfig() {
   cached_results = false;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    token_start_idx[i] = 0;
-    token_last_available_idx[i] = -1;
+    requestsInfo[i].token_start_offset = 0;
+    requestsInfo[i].num_tokens_in_batch = 0;
     request_completed[i] = true;
-    num_processing_tokens[i] = 0;
-    max_sequence_length[i] = 0;
-    initial_length[i] = 0;
+    // token_start_idx[i] = 0;
+    // token_last_available_idx[i] = -1;
+
+    // num_processing_tokens[i] = 0;
+    // max_sequence_length[i] = 0;
+    // initial_length[i] = 0;
   }
-  token2ids.num_samples = 0;
+  //   token2ids.num_samples = 0;
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    token2ids.guids[i] = SIZE_MAX;
-    token2ids.token_indexes[i].request_index = SIZE_MAX;
-    token2ids.token_indexes[i].token_position = SIZE_MAX;
-    token2ids.token_indexes[i].initial_length = SIZE_MAX;
+    tokensInfo[i].abs_depth_in_request = SIZE_MAX;
+    tokensInfo[i].request_index = SIZE_MAX;
+    // token2ids.guids[i] = SIZE_MAX;
+    // token2ids.token_indexes[i].request_index = SIZE_MAX;
+    // token2ids.token_indexes[i].token_position = SIZE_MAX;
+    // token2ids.token_indexes[i].initial_length = SIZE_MAX;
   }
   update_num_active_requests_tokens();
 }
@@ -50,31 +55,29 @@ int BatchConfig::update_results(InferenceResult const &ir) {
     if (request_completed[i]) {
       continue;
     }
-    assert(num_processing_tokens[i] > 0);
-    // if (num_processing_tokens[i] == 0) {
-    //   continue;
-    // }
-    // tokens_processed += num_processing_tokens[i];
-    token_start_idx[i] += num_processing_tokens[i];
-    if (token_start_idx[i] >= max_sequence_length[i]
+    assert(requestsInfo[i].num_tokens_in_batch > 0);
+    int processed_tokens = requestsInfo[i].token_start_offset + requestsInfo[i].num_tokens_in_batch;
+    if (processed_tokens >= max_sequence_length[i]
         // || ir.results[t] == 0 TODO: replace this with <EOS>
     ) {
       log_bc.print("[Done] guid(%zu) final_length(%d)",
-                   request_guid[i],
-                   token_start_idx[i]);
+                     request_guid[i],
+                     processed_tokens);
       request_completed[i] = true;
-      token_start_idx[i] = 0;
-      token_last_available_idx[i] = -1;
-      num_processing_tokens[i] = 0;
+      requestsInfo[i].num_tokens_in_batch = 0;
+      requestsInfo[i].token_start_offset = 0;
+      //   token_last_available_idx[i] = -1;
+      //   num_processing_tokens[i] = 0;
       completed++;
     } else {
-      if (token_start_idx[i] == token_last_available_idx[i] + 1) {
-        token_last_available_idx[i]++;
-        num_processing_tokens[i] = 1; // incremental phase
-      } else {
-        assert(false);
-      }
-      assert(token_start_idx[i] <= token_last_available_idx[i]);
+      //   if (token_start_idx[i] == token_last_available_idx[i] + 1) {
+      //     token_last_available_idx[i]++;
+      //     num_processing_tokens[i] = 1; // incremental phase
+      //   } else {
+      //     assert(false);
+      //   }
+      requestsInfo[i].token_start_offset += requestsInfo[i].num_tokens_in_batch;
+      requestsInfo[i].num_tokens_in_batch = 1;
     }
   }
   update_num_active_requests_tokens();
@@ -82,21 +85,23 @@ int BatchConfig::update_results(InferenceResult const &ir) {
 }
 
 bool BatchConfig::register_new_request(size_t guid,
-                                       int initial_len,
-                                       int tokens_to_generate) {
+                                         int initial_len,
+                                         int tokens_to_generate) {
   cached_results = false;
   assert(initial_len > 0 && tokens_to_generate > 0);
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, initial_len);
-      token_start_idx[i] = 0;
-      token_last_available_idx[i] = initial_len - 1;
+      requestsInfo[i].token_start_offset = 0;
+      requestsInfo[i].num_tokens_in_batch = initial_len;
+      //   token_start_idx[i] = 0;
+      //   token_last_available_idx[i] = initial_len - 1;
       max_sequence_length[i] = initial_len + tokens_to_generate;
-      initial_length[i] = initial_len;
+      //   initial_length[i] = initial_len;
       request_guid[i] = guid;
-      num_processing_tokens[i] = 0;
+      //   num_processing_tokens[i] = 0;
       request_completed[i] = false;
-      update_num_active_requests_tokens();
+      // update_num_active_requests_tokens();
       return true;
     }
   }
@@ -111,14 +116,20 @@ void BatchConfig::prepare_next_batch() {
     if (request_completed[i]) {
       continue;
     }
-    if (num_tokens + token_last_available_idx[i] - token_start_idx[i] + 1 <=
-        MAX_NUM_TOKENS) {
-      num_processing_tokens[i] =
-          token_last_available_idx[i] - token_start_idx[i] + 1;
+
+    if (num_tokens + requestsInfo[i].num_tokens_in_batch <= MAX_NUM_TOKENS) {
+      // do nothing, delete it later
     } else {
-      num_processing_tokens[i] = MAX_NUM_TOKENS - num_tokens;
+      requestsInfo[i].num_tokens_in_batch = MAX_NUM_TOKENS - num_tokens;
     }
-    count += num_processing_tokens[i];
+    // if (num_tokens + token_last_available_idx[i] - token_start_idx[i] + 1 <=
+    //     MAX_NUM_TOKENS) {
+    //   num_processing_tokens[i] =
+    //       token_last_available_idx[i] - token_start_idx[i] + 1;
+    // } else {
+    //   num_processing_tokens[i] = MAX_NUM_TOKENS - num_tokens;
+    // }
+    count += requestsInfo[i].num_tokens_in_batch;
   }
   update_num_active_requests_tokens();
   log_bc.print("[NextBatch] num_tokens(%d)", count);
@@ -130,17 +141,24 @@ void BatchConfig::update_num_active_requests_tokens() {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
-      for (int j = 0; j < num_processing_tokens[i]; j++) {
-        token2ids.guids[num_tokens] = request_guid[i];
-        token2ids.token_indexes[num_tokens].token_position =
-            token_start_idx[i] + j;
-        token2ids.token_indexes[num_tokens].request_index = i;
-        token2ids.token_indexes[num_tokens].initial_length = initial_length[i];
+      for (int j = 0; j < requestsInfo[i].num_tokens_in_batch; j++) {
+        int start_idx = requestsInfo[i].token_start_offset;
+        tokensInfo[num_tokens].abs_depth_in_request = start_idx + j;
+        std::cout << "token num: " << num_tokens << ", depth: " << tokensInfo[num_tokens].abs_depth_in_request << ", tokens in batch" << requestsInfo[i].num_tokens_in_batch;
+        tokensInfo[num_tokens].request_index = i;
+        tokensInfo[num_tokens].guid = request_guid[i];
+        // token2ids.guids[num_tokens] = request_guid[i];
+        // token2ids.token_indexes[num_tokens].token_position =
+        //     token_start_idx[i] + j;
+        // token2ids.token_indexes[num_tokens].request_index = i;
+        // token2ids.token_indexes[num_tokens].initial_length =
+        // initial_length[i];
         num_tokens++;
       }
     }
   }
-  token2ids.num_samples = num_tokens;
+  //   token2ids.num_samples = num_tokens;
+  std::cout<<"num of request: " << num_requests << "\n";
   cached_results = true;
 }
 
@@ -150,7 +168,7 @@ int BatchConfig::num_active_requests() const {
   } else {
     assert(false &&
            "some BatchConfig functions updated requests but didn't call "
-           "update_num_active_requests_tokens() before exit");
+           "() before exit");
   }
 }
 
@@ -162,77 +180,6 @@ int BatchConfig::num_active_tokens() const {
            "some BatchConfig functions updated requests but didn't call "
            "update_num_active_requests_tokens() before exit");
   }
-}
-
-void BatchConfig::print() const {
-  printf("--------------------------BatchConfig--------------------------\n");
-  printf("num_tokens: %i, num_requests: %i, cached_results: %i\n",
-         num_tokens,
-         num_requests,
-         cached_results);
-
-  printf("requests_completed: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", request_completed[i]);
-  }
-  printf("\n");
-
-  printf("token_start_idx: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", token_start_idx[i]);
-  }
-  printf("\n");
-
-  printf("token_last_available_idx: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", token_last_available_idx[i]);
-  }
-  printf("\n");
-
-  printf("num_processing_tokens: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", num_processing_tokens[i]);
-  }
-  printf("\n");
-
-  printf("max_sequence_length: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%lu ", max_sequence_length[i]);
-  }
-  printf("\n");
-
-  printf("request_guid: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%lu ", request_guid[i]);
-  }
-  printf("\n");
-
-  printf("token2ids.num_samples:%lu\n", token2ids.num_samples);
-
-  printf("token2ids.guids: ");
-  for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.guids[i]);
-  }
-  printf("\n");
-
-  printf("token2ids.token_indexes[i].request_index: ");
-  for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.token_indexes[i].request_index);
-  }
-  printf("\n");
-
-  printf("token2ids.token_indexes[i].token_position: ");
-  for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.token_indexes[i].token_position);
-  }
-
-  printf("token2ids.token_indexes[i].initial_length: ");
-  for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.token_indexes[i].initial_length);
-  }
-  printf("\n");
-  printf("---------------------------------------------------------------------"
-         "---------\n");
 }
 
 }; // namespace FlexFlow
