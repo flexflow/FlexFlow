@@ -20,13 +20,12 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-RequestManager::RequestManager()
-  : next_available_guid(1000000) {}
+RequestManager::RequestManager() : next_available_guid(1000000) {}
 
 RequestManager::RequestGuid
-  RequestManager::register_new_request(std::vector<TokenId> const &prompt) {
+    RequestManager::register_new_request(std::vector<TokenId> const &prompt) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
-  RequestGuid guid = next_available_guid ++;
+  RequestGuid guid = next_available_guid++;
 
   // Add a new request
   pending_request_queue[guid] = prompt;
@@ -38,4 +37,4 @@ bool RequestManager::prepare_next_batch(BatchConfig &bc) {
   return true;
 };
 
-};
+}; // namespace FlexFlow

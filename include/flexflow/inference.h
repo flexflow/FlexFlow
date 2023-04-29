@@ -49,9 +49,12 @@ public:
   RequestManager();
   RequestGuid register_new_request(std::vector<TokenIndex> const &prompt);
   bool prepare_next_batch(BatchConfig &bc);
+
 private:
-  std::unordered_map<RequestGuid, std::vector<TokenIndex> > pending_request_queue;
-  std::unordered_map<RequestGuid, std::vector<TokenIndex> > running_request_queue;
+  std::unordered_map<RequestGuid, std::vector<TokenIndex>>
+      pending_request_queue;
+  std::unordered_map<RequestGuid, std::vector<TokenIndex>>
+      running_request_queue;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
 };

@@ -26,6 +26,6 @@ public:
   FFHandler handlers[MAX_NUM_WORKERS];
 };
 
-}
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_RUNTIME_H_

@@ -24,10 +24,11 @@ void RequestManager::load_tokens(Task const *task,
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
 
-  BatchConfig const batch_config = *((BatchConfig*)task->args);
+  BatchConfig const batch_config = *((BatchConfig *)task->args);
   TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
-  for (int i = 0; i < batch_config.num_tokens; i++)
+  for (int i = 0; i < batch_config.num_tokens; i++) {
     dram_copy[i] = batch_config.tokens[i].token_id;
+  }
   TokenId *fb_ptr = helperGetTensorPointerWO<TokenId>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain domain = runtime->get_index_space_domain(
@@ -35,5 +36,9 @@ void RequestManager::load_tokens(Task const *task,
   assert(batch_config.num_tokens <= domain.get_volume());
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cudaMemcpyAync(fb_ptr, dram_copy, sizeof(TokenId) * batch_config.num_tokens, cudaMemcpyHostToDevice, stream));
+  checkCUDA(cudaMemcpyAync(fb_ptr,
+                           dram_copy,
+                           sizeof(TokenId) * batch_config.num_tokens,
+                           cudaMemcpyHostToDevice,
+                           stream));
 };
