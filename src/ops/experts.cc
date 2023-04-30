@@ -828,6 +828,7 @@ void Experts::inference_task(Task const *task,
   assert(weights_domain.hi()[2] - weights_domain.lo()[2] + 1 == num_replicas);
 
   float const *bias_ptr = nullptr;
+  int nparams_bias = -1;
   if (use_bias) {
     bias_ptr = helperGetTensorPointerRO<float>(
         regions[5], task->regions[5], FID_DATA, ctx, runtime);
@@ -835,9 +836,9 @@ void Experts::inference_task(Task const *task,
         ctx, task->regions[5].region.get_index_space());
     int bias_dims = bias_domain.get_dim();
     assert(bias_dims == 3);
-    int nparams_bias = (m->experts_num_layers == 1)
-                           ? out_dim
-                           : (m->experts_internal_dim_size + out_dim);
+    nparams_bias = (m->experts_num_layers == 1)
+                       ? out_dim
+                       : (m->experts_internal_dim_size + out_dim);
     assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == nparams_bias);
     assert(bias_domain.hi()[1] - bias_domain.lo()[1] + 1 == num_experts);
     assert(bias_domain.hi()[2] - bias_domain.lo()[2] + 1 == num_replicas);
@@ -851,6 +852,8 @@ void Experts::inference_task(Task const *task,
     std::cout << m->out_dim << std::endl;
     std::cout << m->num_chosen_experts << std::endl;
     std::cout << m->effective_batch_size << std::endl;
+    std::cout << m->experts_num_layers << std::endl;
+    std::cout << m->experts_internal_dim_size << std::endl;
     std::cout << m->num_experts << std::endl;
     std::cout << m->use_bias << std::endl;
 
@@ -915,66 +918,137 @@ void Experts::inference_task(Task const *task,
     free(cpu_topk_gate_pred_ptr);
 
     /* ----------------Expert Weights--------------*/
-    float *cpu_experts_1 = new float[data_dim * out_dim];
-    float *cpu_experts_2 = new float[data_dim * out_dim];
-    checkCUDA(cudaMemcpy(cpu_experts_1,
-                         weights_ptrs[0],
-                         data_dim * out_dim * sizeof(float),
+    assert(m->experts_num_layers == 2 || m->experts_num_layers == 1);
+    size_t layer0_size = m->experts_num_layers == 1
+                             ? data_dim * out_dim
+                             : data_dim * m->experts_internal_dim_size;
+    size_t layer1_size = m->experts_internal_dim_size * out_dim;
+    float *cpu_experts_0_layer0 = new float[layer0_size];
+    float *cpu_experts_1_layer0 = new float[layer0_size];
+    float *cpu_experts_0_layer1 =
+        m->experts_num_layers == 1 ? nullptr : new float[layer1_size];
+    float *cpu_experts_1_layer1 =
+        m->experts_num_layers == 1 ? nullptr : new float[layer1_size];
+    /*checkCUDA(cudaMemcpy(cpu_experts_0_layer0,
+                         weights_ptr,
+                         layer0_size * sizeof(float),
                          cudaMemcpyDeviceToHost));
-    checkCUDA(cudaMemcpy(cpu_experts_2,
-                         weights_ptrs[2],
-                         data_dim * out_dim * sizeof(float),
+    checkCUDA(cudaMemcpy(cpu_experts_1_layer0,
+                         weights_ptr[nparams_weight],
+                         layer0_size * sizeof(float),
                          cudaMemcpyDeviceToHost));
+    if (m->experts_num_layers == 2) {
+      checkCUDA(cudaMemcpy(cpu_experts_0_layer1,
+                         weights_ptr[layer0_size],
+                         layer1_size * sizeof(float),
+                         cudaMemcpyDeviceToHost));
+      checkCUDA(cudaMemcpy(cpu_experts_1_layer1,
+                           weights_ptr[nparams_weight + layer0_size],
+                           layer1_size * sizeof(float),
+                           cudaMemcpyDeviceToHost));
+    }*/
     cpu_sum = 0;
-    for (int i = 0; i < data_dim * out_dim; i++) {
-      cpu_experts_1[i] = float(i) / float(data_dim * out_dim);
-      cpu_sum += cpu_experts_1[i];
+    for (int i = 0; i < layer0_size; i++) {
+      cpu_experts_0_layer0[i] = float(i) / float(nparams_weight);
+      cpu_sum += cpu_experts_0_layer0[i];
+    }
+    if (m->experts_num_layers == 2) {
+      for (int i = 0; i < layer1_size; i++) {
+        cpu_experts_0_layer1[i] =
+            float(layer0_size + i) / float(nparams_weight);
+        cpu_sum += cpu_experts_0_layer1[i];
+      }
     }
     std::cout << "[CPU] Experts 0 weights sum = " << cpu_sum << std::endl;
 
-    for (int i = 0; i < data_dim * out_dim; i++) {
-      cpu_experts_2[i] =
-          float(data_dim * out_dim - i) / float(data_dim * out_dim);
-      cpu_sum += cpu_experts_2[i];
+    cpu_sum = 0;
+    for (int i = 0; i < layer0_size; i++) {
+      cpu_experts_1_layer0[i] =
+          float(nparams_weight - i) / float(nparams_weight);
+      assert(cpu_experts_1_layer0[i] > 0);
+      cpu_sum += cpu_experts_1_layer0[i];
+    }
+    if (m->experts_num_layers == 2) {
+      for (int i = 0; i < layer1_size; i++) {
+        cpu_experts_1_layer1[i] =
+            float(nparams_weight - layer0_size + i) / float(nparams_weight);
+        assert(cpu_experts_1_layer1[i] > 0);
+        cpu_sum += cpu_experts_1_layer1[i];
+      }
     }
     std::cout << "[CPU] Experts 1 weights sum = " << cpu_sum << std::endl;
 
     for (int i = 0; i < num_experts; i++) {
-      if (i % 2 == 0) {
-        checkCUDA(cudaMemcpy((float *)weights_ptrs[i * (1 + use_bias)],
-                             cpu_experts_1,
-                             data_dim * out_dim * sizeof(float),
-                             cudaMemcpyHostToDevice));
-      } else {
-        checkCUDA(cudaMemcpy((float *)weights_ptrs[i * (1 + use_bias)],
-                             cpu_experts_2,
-                             data_dim * out_dim * sizeof(float),
-                             cudaMemcpyHostToDevice));
+      // first layer
+      checkCUDA(
+          cudaMemcpy((float *)&weights_ptr[nparams_weight * i],
+                     i % 2 == 0 ? cpu_experts_0_layer0 : cpu_experts_1_layer0,
+                     layer0_size * sizeof(float),
+                     cudaMemcpyHostToDevice));
+      // second layer
+      if (m->experts_num_layers == 2) {
+        checkCUDA(
+            cudaMemcpy((float *)&weights_ptr[nparams_weight * i + layer0_size],
+                       i % 2 == 0 ? cpu_experts_0_layer1 : cpu_experts_1_layer1,
+                       layer1_size * sizeof(float),
+                       cudaMemcpyHostToDevice));
       }
     }
-    free(cpu_experts_1);
-    free(cpu_experts_2);
+    free(cpu_experts_0_layer0);
+    free(cpu_experts_1_layer0);
+    free(cpu_experts_0_layer1);
+    free(cpu_experts_1_layer1);
 
     /* ----------------Expert Bias--------------*/
     if (use_bias) {
-      float *bias_experts_1 = new float[out_dim];
-      checkCUDA(cudaMemcpy(bias_experts_1,
-                           weights_ptrs[1],
-                           out_dim * sizeof(float),
+      size_t layer0_size =
+          m->experts_num_layers == 1 ? out_dim : m->experts_internal_dim_size;
+      size_t layer1_size = out_dim;
+      float *bias_experts_0_layer0 = new float[layer0_size];
+      float *bias_experts_0_layer1 =
+          m->experts_num_layers == 1 ? nullptr : new float[layer1_size];
+
+      checkCUDA(cudaMemcpy(bias_experts_0_layer0,
+                           bias_ptr,
+                           layer0_size * sizeof(float),
                            cudaMemcpyDeviceToHost));
       cpu_sum = 0;
-      for (int i = 0; i < out_dim; i++) {
-        cpu_sum += bias_experts_1[i];
+      for (int i = 0; i < layer0_size; i++) {
+        cpu_sum += bias_experts_0_layer0[i];
         // bias_experts_1[i] = 1.0f;
       }
-      std::cout << "[CPU] Bias 0 sum = " << cpu_sum << std::endl;
-      for (int i = 0; i < num_experts; i++) {
-        checkCUDA(cudaMemcpy((float *)weights_ptrs[i * (1 + use_bias) + 1],
-                             bias_experts_1,
-                             out_dim * sizeof(float),
-                             cudaMemcpyHostToDevice));
+      std::cout << "[CPU] Bias expert 0 (layer 0) sum = " << cpu_sum
+                << std::endl;
+
+      if (m->experts_num_layers == 2) {
+        checkCUDA(cudaMemcpy(bias_experts_0_layer1,
+                             (float *)&bias_ptr[layer0_size],
+                             layer1_size * sizeof(float),
+                             cudaMemcpyDeviceToHost));
+        cpu_sum = 0;
+        for (int i = 0; i < layer1_size; i++) {
+          cpu_sum += bias_experts_0_layer1[i];
+          // bias_experts_1[i] = 1.0f;
+        }
+        std::cout << "[CPU] Bias expert 0 (layer 1) sum = " << cpu_sum
+                  << std::endl;
       }
-      free(bias_experts_1);
+
+      for (int i = 0; i < num_experts; i++) {
+        checkCUDA(cudaMemcpy((float *)&bias_ptr[nparams_bias * i],
+                             bias_experts_0_layer0,
+                             layer0_size * sizeof(float),
+                             cudaMemcpyHostToDevice));
+        if (m->experts_num_layers == 2) {
+          checkCUDA(
+              cudaMemcpy((float *)&bias_ptr[nparams_bias * i + layer0_size],
+                         bias_experts_0_layer1,
+                         layer1_size * sizeof(float),
+                         cudaMemcpyHostToDevice));
+        }
+      }
+      free(bias_experts_0_layer0);
+      free(bias_experts_0_layer1);
     }
   }
 #endif
