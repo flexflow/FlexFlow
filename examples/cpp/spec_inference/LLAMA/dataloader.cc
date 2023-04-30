@@ -1,6 +1,5 @@
 #include "llama.h"
 #include <random>
-// #include<iomanip>
 
 using namespace Legion;
 
@@ -36,12 +35,9 @@ DataLoader::DataLoader(FFModel &ff,
     ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
 
-  size_t llamaconfig_size = sizeof(llamaconfig);
-  std::cout << "llama config dataloader: " << llamaconfig->input_path;
-
   // Load entire dataset
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
-                        TaskArgument(llamaconfig, llamaconfig_size));
+                        TaskArgument(llamaconfig, sizeof(LLAMAConfig)));
   // regions[1]: full_input
   launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                     WRITE_ONLY,
@@ -71,8 +67,7 @@ void DataLoader::load_entire_dataset(Task const *task,
   // load from file
   load_from_file(input_ptr,
                  rect_input.volume(),
-                 "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/tokens/"
-                 "llama_demo_tokens");
+                 llamaconfig->input_path);
 }
 
 void DataLoader::next_batch(
@@ -275,6 +270,8 @@ void DataLoader::store_outputs(
 
 void DataLoader::update_beam_slots(
     BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions) {
+  std::cout << "--------------update results--------"
+            << "\n";
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
     if (bc->request_completed[i]) {
       continue;
@@ -282,13 +279,14 @@ void DataLoader::update_beam_slots(
     Prediction_result result = batch_predictions.at(i);
     bc->beam_slots.at(i).current_depth += 1;
     int beam_size = bc->beam_slots.at(i).beam_size;
-    std::cout << "--------------before stealllllling--------" << "\n";
+    std::cout << "--------------before stealllllling--------"
+              << "\n";
 
     for (int j = 0; j < beam_size; j++) {
       std::cout << "before request id: " << i << "beam id = " << j
                 << "parnt: " << result.parent_ids[j]
-                << "token: " << result.tokens[j]
-                << "probs: " <<result.probs[j]<< std::endl;
+                << "token: " << result.tokens[j] << "probs: " << result.probs[j]
+                << std::endl;
     }
 
     if (bc->beam_slots.at(i).current_depth == 1) {
@@ -300,7 +298,7 @@ void DataLoader::update_beam_slots(
     } else {
       std::set<int> parents;
       std::set<int> childs;
-      //cache stealing
+      // cache stealing
       for (int j = 0; j < beam_size; j++) {
         int parent_id = result.parent_ids[j];
         if (childs.find(parent_id) == childs.end()) {
@@ -315,30 +313,30 @@ void DataLoader::update_beam_slots(
       if (parents.size() < beam_size) {
         for (int j = 0; j < beam_size; j++) {
           if (parents.find(j) == parents.end()) {
-            //this slot has not been assigned
-            //find the smallest not assigned child and put in
-            for(int k = 0; k < beam_size; k++){
-              if(childs.find(k) == childs.end()){
-                  //parent -> j to child k;
-                  bc->beam_slots.at(i).parent_id[k] = result.parent_ids[j];
-                  bc->beam_slots.at(i).probs[k] = result.probs[j];
-                  bc->beam_slots.at(i).tokens[k] = result.tokens[j];
-                  parents.emplace(j);
-                  childs.emplace(k);
-                  break;
+            // this slot has not been assigned
+            // find the smallest not assigned child and put in
+            for (int k = 0; k < beam_size; k++) {
+              if (childs.find(k) == childs.end()) {
+                // parent -> j to child k;
+                bc->beam_slots.at(i).parent_id[k] = result.parent_ids[j];
+                bc->beam_slots.at(i).probs[k] = result.probs[j];
+                bc->beam_slots.at(i).tokens[k] = result.tokens[j];
+                parents.emplace(j);
+                childs.emplace(k);
+                break;
               }
             }
           }
         }
       }
     }
-    std::cout<< "-----------after stealing-----------"<<std::endl;
+    std::cout << "-----------after stealing-----------" << std::endl;
     for (int j = 0; j < beam_size; j++) {
       std::cout << "after request id: " << i << "beam id = " << j
                 << "parnt: " << bc->beam_slots.at(i).parent_id[j]
                 << "token: " << bc->beam_slots.at(i).tokens[j]
                 << "probs: " << bc->beam_slots.at(i).probs[j] << std::endl;
-                // std::fixed << std::setprecision(15)<< 
+      // std::fixed << std::setprecision(15)<<
     }
 
     // if(bc->beam_slots.at(i).current_depth > 1){
@@ -346,6 +344,8 @@ void DataLoader::update_beam_slots(
     // }
   }
 }
+
+void ::DataLoader::update_beam_tree() {}
 
 template void DataLoader::load_attention_weights<float>(
     float *ptr, size_t size, std::string layer_name, std::string weight_path);

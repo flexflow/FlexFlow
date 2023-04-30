@@ -334,14 +334,6 @@ int batch_index,
       top_k_parents[rank] = parent_id[request_id * BatchConfig::MAX_NUM_BEAMS + ((shard_index % max_heap_size) / k)];
       int next_shard_index = shard_index + num_shards;
 
-
-      // if (batch_index == 1) {
-      //   printf("shard_index %d, value %.15f\n",
-      //          shard_index,
-      //          entries[shard_index].value);
-      // }
-      // For rank < k-1, each top k heap still contains at least 1 element,
-
       float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + ((next_shard_index % max_heap_size) / k)];
       if (batch_index == 0) {
         printf("next_shard_index %d, value %.15f\n, prob %.15f",

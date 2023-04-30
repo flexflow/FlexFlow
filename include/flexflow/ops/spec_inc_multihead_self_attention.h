@@ -23,42 +23,42 @@ public:
   using Input = ParallelTensor;
 
   SpecIncMultiHeadSelfAttention(FFModel &model,
-                            LayerID const &layer_guid,
-                            const ParallelTensor _input,
-                            int _embed_dim,
-                            int _num_heads,
-                            int _kdim,
-                            int _vdim,
-                            float _dropout,
-                            bool _bias,
-                            bool _add_bias_kv,
-                            bool _add_zero_attn,
-                            bool _apply_rotary_embedding,
-                            bool allocate_weights,
-                            char const *name);
+                                LayerID const &layer_guid,
+                                const ParallelTensor _input,
+                                int _embed_dim,
+                                int _num_heads,
+                                int _kdim,
+                                int _vdim,
+                                float _dropout,
+                                bool _bias,
+                                bool _add_bias_kv,
+                                bool _add_zero_attn,
+                                bool _apply_rotary_embedding,
+                                bool allocate_weights,
+                                char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
-                            const ParallelTensor _input,
-                            const ParallelTensor _weight,
-                            int _embed_dim,
-                            int _num_heads,
-                            int _kdim,
-                            int _vdim,
-                            float _dropout,
-                            bool _bias,
-                            bool _add_bias_kv,
-                            bool _add_zero_attn,
-                            bool _apply_rotary_embedding,
-                            bool allocate_weights,
-                            char const *name);
+                                const ParallelTensor _input,
+                                const ParallelTensor _weight,
+                                int _embed_dim,
+                                int _num_heads,
+                                int _kdim,
+                                int _vdim,
+                                float _dropout,
+                                bool _bias,
+                                bool _add_bias_kv,
+                                bool _add_zero_attn,
+                                bool _apply_rotary_embedding,
+                                bool allocate_weights,
+                                char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
-                            SpecIncMultiHeadSelfAttention const &other,
-                            const ParallelTensor input,
-                            bool allocate_weights);
+                                SpecIncMultiHeadSelfAttention const &other,
+                                const ParallelTensor input,
+                                bool allocate_weights);
   SpecIncMultiHeadSelfAttention(FFModel &model,
-                            Params const &params,
-                            Input const &inputs,
-                            bool allocate_weights = false,
-                            char const *name = nullptr);
+                                Params const &params,
+                                Input const &inputs,
+                                bool allocate_weights = false,
+                                char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -88,15 +88,19 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;                           
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
-                                       BatchConfig const *bc,
-                                       float const *input_ptr,
-                                       float const *weight_ptr,
-                                       float *output_ptr);
+  static void
+      inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
+                               BatchConfig const *bc,
+                               float const *input_ptr,
+                               float const *weight_ptr,
+                               float *output_ptr);
   Params get_params() const;
 
 public:
@@ -111,11 +115,11 @@ public:
 class SpecIncMultiHeadSelfAttentionMeta : public OpMeta {
 public:
   SpecIncMultiHeadSelfAttentionMeta(FFHandler handler,
-                                SpecIncMultiHeadSelfAttention const *attn,
-                                float const *weight_ptr,
-                                Legion::Memory gpu_mem,
-                                int num_samples,
-                                int _num_heads);
+                                    SpecIncMultiHeadSelfAttention const *attn,
+                                    float const *weight_ptr,
+                                    Legion::Memory gpu_mem,
+                                    int num_samples,
+                                    int _num_heads);
   ~SpecIncMultiHeadSelfAttentionMeta(void);
 
 public:

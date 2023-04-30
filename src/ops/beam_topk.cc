@@ -388,8 +388,6 @@ InferenceResult
   download_tensor<int>(index_ptr, ir.results, batch_size * m->max_beam_width);
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
   download_tensor<int>(parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
-  // print_tensor<int>(index_ptr, 85, "beamk: top elements");
-  // print_tensor<float>(in_ptr, 85, "beamk: ");
   return ir;
 }
 
