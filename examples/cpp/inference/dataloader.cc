@@ -136,20 +136,11 @@ void DataLoader::next_batch(FFModel &ff,
     }
     int batch_size = batch_input[bid]->dims[input_dims - 2].size;
     int seq_len = batch_input[bid]->dims[input_dims - 3].size;
-    /* printf("ff.config.batchSize: %i, batch_size: %i, seq_len: %i,
-       num_active_tokens: %i\n", ff.config.batchSize, batch_size, seq_len,
-       num_active_tokens); */
+
     assert(ff.config.batchSize == batch_size &&
            batch_size * seq_len >= num_active_tokens);
 
-    /* std::cout << "About to call next_batch function..." << std::endl;
-    bc->print();
-    std::cout << "batch_predictions: ";
-    for (const auto& elem : batch_predictions){
-        std::cout << elem.first << ":" << elem.second << ", ";
-    } */
-    DataLoaderNextBatchInput next_batch_input = {bc->token2ids,
-                                                 batch_predictions};
+    DataLoaderNextBatchInput next_batch_input = {bc, batch_predictions};
     DataLoaderNextBatchInput const *ptr = &next_batch_input;
     size_t next_batch_input_sz = sizeof(next_batch_input);
     assert(ptr->prev_batch_preds.size() == batch_predictions.size());
@@ -184,41 +175,23 @@ void DataLoader::next_batch(FFModel &ff,
 void DataLoader::store_outputs(BatchConfig *bc,
                                InferenceResult const &ir,
                                std::map<size_t, int> &batch_predictions) {
-  assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
-         bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
+  assert((bc->num_active_tokens() == 0) == (bc->num_active_requests() == 0));
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
+  // there is no num_samples, replace it with num_active_tokens
   batch_predictions.clear();
-  // bc->print();
-  for (size_t i = 0; i < bc->token2ids.num_samples; i++) {
-    if (i == bc->token2ids.num_samples - 1 ||
-        bc->token2ids.guids[i] != bc->token2ids.guids[i + 1]) {
-      assert(bc->token2ids.token_indexes[i].token_position ==
-             bc->token_last_available_idx[bc->token2ids.token_indexes[i]
-                                              .request_index]);
-      if (outputs.find(bc->token2ids.guids[i]) == outputs.end()) {
+  for (size_t i = 0; i < bc->num_active_tokens(); i++) {
+    size_t guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+    if (i == bc->num_active_tokens() - 1 ||
+        guid != bc->requestsInfo[bc->tokensInfo[i + 1].request_index].guid) {
+      if (outputs.find(guid) == outputs.end()) {
         std::vector<int> v{ir.results[i]};
-        outputs[bc->token2ids.guids[i]] = v;
+        outputs[guid] = v;
       } else {
-        outputs[bc->token2ids.guids[i]].push_back(ir.results[i]);
+        outputs[guid].push_back(ir.results[i]);
       }
-      /* std::cout << "outputs: ";
-      for(const auto& elem : outputs){
-        std::cout << elem.first << ": [";
-        for (const auto &vel : elem.second) {
-          std::cout << vel << " ";
-        }
-        std::cout << "]" << std::endl;
-      } */
-      // std::cout << "outputs[bc->token2ids.guids[i]].size(): " <<
-      // outputs[bc->token2ids.guids[i]].size() << std::endl; std::cout << "i: "
-      // << i << std::endl; std::cout <<
-      // "bc->token2ids.token_indexes[i].token_position: " <<
-      // bc->token2ids.token_indexes[i].token_position << std::endl; std::cout
-      // << "bc->token2ids.token_indexes[i].initial_length: " <<
-      // bc->token2ids.token_indexes[i].initial_length << std::endl;
-      assert(outputs[bc->token2ids.guids[i]].size() ==
-             (bc->token2ids.token_indexes[i].token_position + 1) -
-                 (bc->token2ids.token_indexes[i].initial_length - 1));
-      batch_predictions[bc->token2ids.guids[i]] = ir.results[i];
+      batch_predictions[guid] = ir.results[i];
     }
   }
   assert(batch_predictions.size() == bc->num_active_requests());
