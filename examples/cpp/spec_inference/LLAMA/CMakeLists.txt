@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(FlexFlowExample_LLAMA)
-set(project_target LLAMA)
+project(FlexFlowExample_SPEC_LLAMA)
+set(project_target SPEC_LLAMA)
 
 
 set(CPU_SRC

@@ -456,8 +456,10 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/inference/transformers)
 endif()
 
+
+
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/LLAMA)
+  add_subdirectory(examples/cpp/spec_inference/LLAMA)
 endif()
 
 # installation
