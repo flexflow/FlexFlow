@@ -224,25 +224,25 @@ void DataLoader::store_outputs(BatchConfig *bc,
   batch_predictions.clear();
 
   // size_t guid = bc->tokensInfo[0].guid;
-  size_t guid = bc->requestsInfo[bc->tokensInfo[0].request_index].guid;
+  auto guid = bc->requestsInfo[bc->tokensInfo[0].request_index].request_guid;
 
-  size_t start_idx = bc->tokensInfo[0].abs_depth_in_request;
+  int start_idx = bc->tokensInfo[0].abs_depth_in_request;
 
   // only store the last token of each req
   for (size_t i = 0; i <= bc->num_active_tokens(); i++) {
-    size_t current_guid =
-        bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+    auto current_guid =
+        bc->requestsInfo[bc->tokensInfo[i].request_index].request_guid;
     if (i == bc->num_active_tokens() || current_guid != guid) {
 
       int result_index = bc->tokensInfo[i - 1].abs_depth_in_request - start_idx;
-      batch_predictions[guid] = ir.results[i - 1];
+      batch_predictions[guid] = ir.token_ids[i - 1];
 
       std::cout << "i: " << i << ", dds-" << guid << ", result index"
                 << result_index << ", result value: " << batch_predictions[guid]
                 << "\n";
 
       if (i < bc->num_active_tokens()) {
-        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].request_guid;
         start_idx = bc->tokensInfo[i].abs_depth_in_request;
       }
     }

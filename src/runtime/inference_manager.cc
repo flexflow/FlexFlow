@@ -148,10 +148,18 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   // on the device_index-th device (except for the experts layers)
   int batch_index = index % max_num_inflight_batches;
   FutureMap fm;
+  bool found_input_operator = false;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
-    if (op->op_type == OP_WEIGHT || op->op_type == OP_INPUT) {
+    if (op->op_type == OP_WEIGHT) {
       continue;
+    }
+    if (op->op_type == OP_INPUT) {
+      assert(!found_input_operator);
+      found_input_operator = true;
+      assert(op->numOutputs == 1);
+      ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
+      load_input_tokens_from_batch_config(bc, pt);
     }
 
     std::vector<ParallelTensor> inputs(op->numInputs);
@@ -178,5 +186,28 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   }
   return fm;
 };
+
+void InferenceManager::load_input_tokens_from_batch_config(BatchConfig const &bc,
+                                                           ParallelTensor const input) {
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
+  size_t machine_view_hash = input->machine_view.hash();
+  ArgumentMap argmap;
+  IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
+                         input->parallel_is,
+                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(input->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    input->region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
 
 }; // namespace FlexFlow

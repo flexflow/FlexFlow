@@ -13,11 +13,14 @@
  * limitations under the License.
  */
 
+#include "flexflow/inference.h"
+#include "flexflow/utils/cuda_helper.h"
+
 namespace FlexFlow {
 
 using namespace Legion;
 
-void RequestManager::load_tokens(Task const *task,
+void RequestManager::load_tokens_task(Task const *task,
                                  std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
@@ -25,9 +28,9 @@ void RequestManager::load_tokens(Task const *task,
   assert(task->regions.size() == 1);
 
   BatchConfig const batch_config = *((BatchConfig *)task->args);
-  TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
+  BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
   for (int i = 0; i < batch_config.num_tokens; i++) {
-    dram_copy[i] = batch_config.tokens[i].token_id;
+    dram_copy[i] = batch_config.tokensInfo[i].token_id;
   }
   TokenId *fb_ptr = helperGetTensorPointerWO<TokenId>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -36,9 +39,11 @@ void RequestManager::load_tokens(Task const *task,
   assert(batch_config.num_tokens <= domain.get_volume());
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cudaMemcpyAync(fb_ptr,
+  checkCUDA(cudaMemcpyAsync(fb_ptr,
                            dram_copy,
                            sizeof(TokenId) * batch_config.num_tokens,
                            cudaMemcpyHostToDevice,
                            stream));
+}
+
 };

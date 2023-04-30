@@ -182,16 +182,16 @@ void DataLoader::store_outputs(BatchConfig *bc,
   // there is no num_samples, replace it with num_active_tokens
   batch_predictions.clear();
   for (size_t i = 0; i < bc->num_active_tokens(); i++) {
-    size_t guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+    auto guid = bc->requestsInfo[bc->tokensInfo[i].request_index].request_guid;
     if (i == bc->num_active_tokens() - 1 ||
-        guid != bc->requestsInfo[bc->tokensInfo[i + 1].request_index].guid) {
+        guid != bc->requestsInfo[bc->tokensInfo[i + 1].request_index].request_guid) {
       if (outputs.find(guid) == outputs.end()) {
-        std::vector<int> v{ir.results[i]};
+        std::vector<int> v{ir.token_ids[i]};
         outputs[guid] = v;
       } else {
-        outputs[guid].push_back(ir.results[i]);
+        outputs[guid].push_back(ir.token_ids[i]);
       }
-      batch_predictions[guid] = ir.results[i];
+      batch_predictions[guid] = ir.token_ids[i];
     }
   }
   assert(batch_predictions.size() == bc->num_active_requests());

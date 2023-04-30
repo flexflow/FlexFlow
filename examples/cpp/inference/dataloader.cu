@@ -14,6 +14,7 @@
  */
 
 #include "dataloader.h"
+#include "flexflow/inference.h"
 #include "flexflow/utils/cuda_helper.h"
 
 void DataLoader::load_input(Task const *task,
@@ -60,8 +61,8 @@ void DataLoader::load_input(Task const *task,
   // Currently assume continous indices
   assert(bc->num_active_tokens() <= batch_size * sequence_length);
   for (int i = 1; i < bc->num_active_tokens(); i++) {
-    size_t prev_guid = requestInfo[tokensInfo[i - 1].request_index].guid;
-    size_t guid = requestInfo[tokensInfo[i].request_index].guid;
+    auto prev_guid = requestInfo[tokensInfo[i - 1].request_index].request_guid;
+    auto guid = requestInfo[tokensInfo[i].request_index].request_guid;
     if (guid == prev_guid) {
       assert(tokensInfo[i].abs_depth_in_request ==
              tokensInfo[i - 1].abs_depth_in_request + 1);
@@ -74,23 +75,23 @@ void DataLoader::load_input(Task const *task,
   checkCUDA(cudaMemset(
       batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(int)));
 
-  size_t guid = requestInfo[tokensInfo[0].request_index].guid;
-  size_t start_idx = tokensInfo[0].abs_depth_in_request;
-  size_t dst_idx = 0;
-  size_t total_tokens = 0;
+  auto guid = requestInfo[tokensInfo[0].request_index].request_guid;
+  int start_idx = tokensInfo[0].abs_depth_in_request;
+  int dst_idx = 0;
+  int total_tokens = 0;
 
   for (size_t i = 1; i <= bc->num_active_tokens(); i++) {
-    size_t current_guid = requestInfo[tokensInfo[i].request_index].guid;
+    auto current_guid = requestInfo[tokensInfo[i].request_index].request_guid;
     if (i == bc->num_active_tokens() || current_guid != guid) {
 
       size_t tokens_to_copy =
           (tokensInfo[i - 1].abs_depth_in_request - start_idx + 1);
       assert(tokens_to_copy > 0);
 
-      size_t request_index = tokensInfo[i - 1].request_index;
-      size_t token_start_offset =
+      int request_index = tokensInfo[i - 1].request_index;
+      int token_start_offset =
           bc->requestsInfo[request_index].token_start_offset;
-      size_t num_processing_tokens =
+      int num_processing_tokens =
           bc->requestsInfo[request_index].num_tokens_in_batch;
       if (tokens_to_copy > 1 || token_start_offset == 0) {
         // initialization phase
@@ -109,12 +110,12 @@ void DataLoader::load_input(Task const *task,
         assert(prev_batch_preds.find(guid) != prev_batch_preds.end());
         int token = prev_batch_preds.at(guid);
         int *dst_ptr = batch_input_ptr + dst_idx;
-        cudaMemcpy(dst_ptr, &token, sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(dst_ptr, &token, sizeof(FlexFlow::RequestManager::TokenId), cudaMemcpyHostToDevice);
       }
       total_tokens += tokens_to_copy;
 
       if (i < bc->num_active_tokens()) {
-        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].request_guid;
         start_idx = tokensInfo[i].abs_depth_in_request;
       }
       dst_idx = i;

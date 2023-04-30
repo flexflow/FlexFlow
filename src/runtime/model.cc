@@ -1288,7 +1288,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
   }
 }
 
-FFRuntime* ffruntime_singleton = nullptr;
+FFRuntime *ffruntime_singleton = nullptr;
 
 FFModel::FFModel(FFConfig &_config)
     : op_global_guid(OP_GUID_FIRST_VALID),
@@ -1325,8 +1325,9 @@ FFModel::FFModel(FFConfig &_config)
   //} else {
   //  dataLoader = new DataLoader(config.datasetPath);
   //}
-  for (int idx = 0; idx < config.workersPerNode * config.numNodes; idx++)
+  for (int idx = 0; idx < config.workersPerNode * config.numNodes; idx++) {
     handlers[idx] = ffruntime_singleton->handlers[idx];
+  }
 }
 
 void FFModel::clear_graph_search_cache() {
@@ -3865,6 +3866,14 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
         registrar, "cuda_init_task");
+  }
+  // RequestManager load_tokens
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_TOKENS_TASK_ID, "RequestManager Load Tokens");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
+        registrar, "RequestManager Load Tokens Task");
   }
   // ElementUnary task
   {
