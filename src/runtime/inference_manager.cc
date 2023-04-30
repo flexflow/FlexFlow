@@ -155,7 +155,9 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
       continue;
     }
     if (op->op_type == OP_INPUT) {
-      assert(!found_input_operator);
+      //FIXME: this is a hack, should be replace with an input ParallelTensor
+      if (found_input_operator)
+        continue;
       found_input_operator = true;
       assert(op->numOutputs == 1);
       ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];

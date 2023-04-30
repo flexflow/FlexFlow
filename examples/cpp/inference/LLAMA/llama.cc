@@ -58,7 +58,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor input;
   {
     int const token_dims[] = {llamaConfig.batchSize, llamaConfig.max_seq_len};
-    input = ff.create_tensor<2>(token_dims, DT_INT64);
+    input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
@@ -217,6 +217,7 @@ void FlexFlow::top_level_task(Task const *task,
         0,
         0,
         0,
+        0
     };
     rm.register_new_request(tokens, 347);
   }

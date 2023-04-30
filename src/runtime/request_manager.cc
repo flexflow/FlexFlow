@@ -76,6 +76,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
     } else {
+      new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].token_start_offset = processed_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
