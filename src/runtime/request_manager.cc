@@ -44,13 +44,15 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Step 1: use result to update requests
   for (int i = 0; i < old_bc.num_tokens; i++) {
-    size_t guid = old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
-    Request & request = running_request_queue[guid];
+    size_t guid =
+        old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
+    Request &request = running_request_queue[guid];
     if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size()) {
       // This is a prompt token
       continue;
     } else {
-      assert(old_bc.tokensInfo[i].abs_depth_in_request + 1 == request.tokens.size());
+      assert(old_bc.tokensInfo[i].abs_depth_in_request + 1 ==
+             request.tokens.size());
       // This is a decoding token
       request.tokens.push_back(result.token_ids[i]);
     }
@@ -62,7 +64,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       continue;
     }
     assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
-    Request & request = running_request_queue[old_bc.requestsInfo[i].request_guid];
+    Request &request =
+        running_request_queue[old_bc.requestsInfo[i].request_guid];
     int processed_tokens = old_bc.requestsInfo[i].token_start_offset +
                            old_bc.requestsInfo[i].num_tokens_in_batch;
     assert(processed_tokens < request.tokens.size());
@@ -75,13 +78,18 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     } else {
       new_bc.requestsInfo[i].token_start_offset = processed_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length = old_bc.requestsInfo[i].max_sequence_length;
-      if (new_bc.requestsInfo[i].token_start_offset + 1 == request.tokens.size()) {
+      new_bc.requestsInfo[i].max_sequence_length =
+          old_bc.requestsInfo[i].max_sequence_length;
+      if (new_bc.requestsInfo[i].token_start_offset + 1 ==
+          request.tokens.size()) {
         // Incremental phase
         new_bc.requestsInfo[i].num_tokens_in_batch = 1;
       } else {
         // Prompt phase
-        new_bc.requestsInfo[i].num_tokens_in_batch = std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens, (int)request.tokens.size() - new_bc.requestsInfo[i].token_start_offset);
+        new_bc.requestsInfo[i].num_tokens_in_batch =
+            std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
+                     (int)request.tokens.size() -
+                         new_bc.requestsInfo[i].token_start_offset);
       }
       for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
         int depth = new_bc.requestsInfo[i].token_start_offset + j;
@@ -89,32 +97,38 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
         assert(depth < request.tokens.size());
         new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
-        new_bc.num_tokens ++;
+        new_bc.num_tokens++;
       }
     }
   }
   // Step 3: add new requests to the next batch
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (new_bc.request_completed[i]) {
-      if (!pending_request_queue.empty() && new_bc.num_tokens < BatchConfig::MAX_NUM_TOKENS) {
+      if (!pending_request_queue.empty() &&
+          new_bc.num_tokens < BatchConfig::MAX_NUM_TOKENS) {
         Request const &new_request = pending_request_queue.front();
         pending_request_queue.pop();
         running_request_queue[new_request.guid] = new_request;
         new_bc.requestsInfo[i].token_start_offset = 0;
         new_bc.requestsInfo[i].request_guid = new_request.guid;
-        new_bc.requestsInfo[i].num_tokens_in_batch = std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens, (int)new_request.tokens.size());
-        new_bc.requestsInfo[i].max_sequence_length = new_request.max_sequence_length;
+        new_bc.requestsInfo[i].num_tokens_in_batch =
+            std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
+                     (int)new_request.tokens.size());
+        new_bc.requestsInfo[i].max_sequence_length =
+            new_request.max_sequence_length;
         new_bc.request_completed[i] = false;
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
           int depth = new_bc.requestsInfo[i].token_start_offset + j;
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
           new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
           assert(depth < new_request.tokens.size());
-          new_bc.tokensInfo[new_bc.num_tokens].token_id = new_request.tokens[depth];
-          new_bc.num_tokens ++;
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              new_request.tokens[depth];
+          new_bc.num_tokens++;
         }
-        if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS)
+        if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
           break;
+        }
       }
     }
   }

@@ -114,22 +114,24 @@ void BatchConfig::update_num_active_requests_tokens() {
 
 int BatchConfig::num_active_requests() const {
   int num_requests = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++)
-    if (!request_completed[i])
-      num_requests ++;
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i]) {
+      num_requests++;
+    }
+  }
   return num_requests;
-  //if (cached_results) {
-  //  return num_requests;
-  //} else {
-  //  assert(false &&
-  //         "some BatchConfig functions updated requests but didn't call "
-  //         "() before exit");
-  //}
+  // if (cached_results) {
+  //   return num_requests;
+  // } else {
+  //   assert(false &&
+  //          "some BatchConfig functions updated requests but didn't call "
+  //          "() before exit");
+  // }
 }
 
 int BatchConfig::num_active_tokens() const {
-  //if (cached_results) {
-    return num_tokens;
+  // if (cached_results) {
+  return num_tokens;
   //} else {
   //  assert(false &&
   //         "some BatchConfig functions updated requests but didn't call "
@@ -142,7 +144,7 @@ void BatchConfig::print() const {
   std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
-  //std::cout << "Cached results: " << cached_results << std::endl;
+  // std::cout << "Cached results: " << cached_results << std::endl;
 
   std::cout << "Per-request info:\n";
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
@@ -153,8 +155,8 @@ void BatchConfig::print() const {
       std::cout << "    Number of tokens in batch: "
                 << requestsInfo[i].num_tokens_in_batch << std::endl;
       std::cout << "    GUID: " << requestsInfo[i].request_guid << std::endl;
-      std::cout << "    Max sequence length: " << requestsInfo[i].max_sequence_length
-                << std::endl;
+      std::cout << "    Max sequence length: "
+                << requestsInfo[i].max_sequence_length << std::endl;
       std::cout << "    Request completed: " << request_completed[i]
                 << std::endl;
     }
@@ -167,8 +169,7 @@ void BatchConfig::print() const {
               << tokensInfo[i].abs_depth_in_request << std::endl;
     std::cout << "    Request index: " << tokensInfo[i].request_index
               << std::endl;
-    std::cout << "    Token id: " << tokensInfo[i].token_id
-              << std::endl;
+    std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
   }
 }
 

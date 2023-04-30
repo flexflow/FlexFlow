@@ -20,8 +20,8 @@
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
 #define MAX_SEQ_LEN 20
-//#define BATCH_SIZE 16
-//#define MAX_REQUESTS 256
+// #define BATCH_SIZE 16
+// #define MAX_REQUESTS 256
 
 namespace FlexFlow {
 
@@ -61,7 +61,7 @@ public:
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
-  //size_t max_sequence_length[MAX_NUM_REQUESTS];
+  // size_t max_sequence_length[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
 };
 
@@ -69,6 +69,5 @@ struct InferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
 };
-
 
 }; // namespace FlexFlow

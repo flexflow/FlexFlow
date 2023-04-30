@@ -92,7 +92,10 @@ void DataLoader::load_input(Task const *task,
                   << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
         long *dst_ptr = batch_input.ptr + dst_idx;
 
-        cudaMemcpy(dst_ptr, &token, sizeof(FlexFlow::RequestManager::TokenId), cudaMemcpyHostToDevice);
+        cudaMemcpy(dst_ptr,
+                   &token,
+                   sizeof(FlexFlow::RequestManager::TokenId),
+                   cudaMemcpyHostToDevice);
       }
 
       if (i < bc->num_active_tokens()) {

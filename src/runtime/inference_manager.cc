@@ -187,8 +187,8 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   return fm;
 };
 
-void InferenceManager::load_input_tokens_from_batch_config(BatchConfig const &bc,
-                                                           ParallelTensor const input) {
+void InferenceManager::load_input_tokens_from_batch_config(
+    BatchConfig const &bc, ParallelTensor const input) {
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
@@ -201,11 +201,8 @@ void InferenceManager::load_input_tokens_from_batch_config(BatchConfig const &bc
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-  launcher.add_region_requirement(RegionRequirement(input->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    input->region));
+  launcher.add_region_requirement(RegionRequirement(
+      input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, input->region));
   launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

@@ -3869,7 +3869,8 @@ void register_flexflow_internal_tasks() {
   }
   // RequestManager load_tokens
   {
-    TaskVariantRegistrar registrar(RM_LOAD_TOKENS_TASK_ID, "RequestManager Load Tokens");
+    TaskVariantRegistrar registrar(RM_LOAD_TOKENS_TASK_ID,
+                                   "RequestManager Load Tokens");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<RequestManager::load_tokens_task>(

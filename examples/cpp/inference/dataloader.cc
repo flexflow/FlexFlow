@@ -184,7 +184,8 @@ void DataLoader::store_outputs(BatchConfig *bc,
   for (size_t i = 0; i < bc->num_active_tokens(); i++) {
     auto guid = bc->requestsInfo[bc->tokensInfo[i].request_index].request_guid;
     if (i == bc->num_active_tokens() - 1 ||
-        guid != bc->requestsInfo[bc->tokensInfo[i + 1].request_index].request_guid) {
+        guid != bc->requestsInfo[bc->tokensInfo[i + 1].request_index]
+                    .request_guid) {
       if (outputs.find(guid) == outputs.end()) {
         std::vector<int> v{ir.token_ids[i]};
         outputs[guid] = v;

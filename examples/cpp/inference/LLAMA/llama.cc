@@ -209,7 +209,15 @@ void FlexFlow::top_level_task(Task const *task,
   loader.reset();
 
   for (int i = 0; i < llamaConfig.batchSize; i++) {
-    std::vector<BatchConfig::TokenId> tokens{0, 0, 0, 0, 0, 0, 0, };
+    std::vector<BatchConfig::TokenId> tokens{
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    };
     rm.register_new_request(tokens, 347);
   }
 

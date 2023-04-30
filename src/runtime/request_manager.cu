@@ -20,10 +20,11 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-void RequestManager::load_tokens_task(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
+void RequestManager::load_tokens_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
 
@@ -40,10 +41,10 @@ void RequestManager::load_tokens_task(Task const *task,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(cudaMemcpyAsync(fb_ptr,
-                           dram_copy,
-                           sizeof(TokenId) * batch_config.num_tokens,
-                           cudaMemcpyHostToDevice,
-                           stream));
+                            dram_copy,
+                            sizeof(TokenId) * batch_config.num_tokens,
+                            cudaMemcpyHostToDevice,
+                            stream));
 }
 
-};
+}; // namespace FlexFlow
