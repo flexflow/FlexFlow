@@ -963,7 +963,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
       (float const **)calloc(gemm_batch_count, sizeof(float const *));
   assert(weight_idx_array_thrust);
   checkCUDA(cudaMemcpy(weight_idx_array_thrust,
-                       m->weight_idx_array,
+                       m->weight_idx_array1,
                        sizeof(float const *) * gemm_batch_count,
                        cudaMemcpyDeviceToHost));
   std::vector<float const *> weight_idx_array_thrust_vec(
@@ -983,7 +983,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(bias_idx_array_thrust);
   if (use_bias) {
     checkCUDA(cudaMemcpy(bias_idx_array_thrust,
-                         m->bias_idx_array,
+                         m->bias_idx_array1,
                          sizeof(float const *) * gemm_batch_count,
                          cudaMemcpyDeviceToHost));
   }
@@ -1160,7 +1160,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(dev_batch_outputs_cuda);
   checkCUDA(
       cudaMemcpy(dev_batch_outputs_cuda,
-                 m->dev_batch_outputs,
+                 m->dev_batch_outputs1,
                  sizeof(float *) * num_chosen_experts * m->effective_batch_size,
                  cudaMemcpyDeviceToHost));
   std::vector<float *> dev_batch_outputs_cuda_vec(
@@ -1168,8 +1168,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
       dev_batch_outputs_cuda + num_chosen_experts * m->effective_batch_size);
 
   std::vector<float *> batch_outputs_host_vec(
-      m->batch_outputs,
-      m->batch_outputs + num_chosen_experts * m->effective_batch_size);
+      m->batch_outputs1,
+      m->batch_outputs1 + num_chosen_experts * m->effective_batch_size);
   assert(batch_outputs_host_vec == dev_batch_outputs_cuda_vec);
 
   /* std::cout << "dev_batch_outputs_cuda_vec[i]: ";
