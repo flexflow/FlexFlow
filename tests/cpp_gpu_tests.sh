@@ -1,5 +1,6 @@
 #! /usr/bin/env bash
 set -e
+set -x
 
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"

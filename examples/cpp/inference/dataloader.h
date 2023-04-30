@@ -62,7 +62,7 @@ public:
     DataGenerator &_data_generator;
   };
   struct DataLoaderNextBatchInput {
-    BatchConfig::SampleIdxs const &meta;
+    BatchConfig *bc;
     std::map<size_t, int> const &prev_batch_preds;
   };
 };

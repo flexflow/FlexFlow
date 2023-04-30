@@ -143,6 +143,7 @@ MachineView *InferenceManager::get_machine_view(int mv_id) {
 }
 
 FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
+  assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
   int batch_index = index % max_num_inflight_batches;
