@@ -23,22 +23,22 @@ namespace FlexFlow {
 LegionRuntime::Logger::Category log_bc("BatchConfig");
 
 BatchConfig::BatchConfig() {
-  cached_results = false;
+  num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     requestsInfo[i].token_start_offset = 0;
     requestsInfo[i].num_tokens_in_batch = 0;
     request_completed[i] = true;
   }
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    tokensInfo[i].abs_depth_in_request = SIZE_MAX;
-    tokensInfo[i].request_index = SIZE_MAX;
-    tokensInfo[i].value = SIZE_MAX;
+    tokensInfo[i].abs_depth_in_request = -1;
+    tokensInfo[i].request_index = -1;
+    tokensInfo[i].token_id = -1;
   }
-  update_num_active_requests_tokens();
 }
 
-int BatchConfig::update_results(InferenceResult const &ir) {
-  cached_results = false;
+// Deprecated API; should use RequestManager::update_batch
+int BatchConfig::update_results(InferenceResult const *ir) {
+  assert(false);
   int completed = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
@@ -47,11 +47,11 @@ int BatchConfig::update_results(InferenceResult const &ir) {
     assert(requestsInfo[i].num_tokens_in_batch > 0);
     int processed_tokens = requestsInfo[i].token_start_offset +
                            requestsInfo[i].num_tokens_in_batch;
-    if (processed_tokens >= max_sequence_length[i]
+    if (processed_tokens >= requestsInfo[i].max_sequence_length
         // || ir.results[t] == 0 TODO: replace this with <EOS>
     ) {
       log_bc.print("[Done] guid(%zu) final_length(%d)",
-                   requestsInfo[i].guid,
+                   requestsInfo[i].request_guid,
                    processed_tokens);
       request_completed[i] = true;
       requestsInfo[i].num_tokens_in_batch = 0;
@@ -62,22 +62,23 @@ int BatchConfig::update_results(InferenceResult const &ir) {
       requestsInfo[i].num_tokens_in_batch = 1;
     }
   }
-  update_num_active_requests_tokens();
   return completed;
 }
 
+// Deprecated API; RequestManager::new_batch and RequestManager::update_batch
+// automatically register new requests.
 bool BatchConfig::register_new_request(size_t guid,
                                        int initial_len,
                                        int tokens_to_generate) {
-  cached_results = false;
+  assert(false);
   assert(initial_len > 0 && tokens_to_generate > 0);
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, initial_len);
       requestsInfo[i].token_start_offset = 0;
       requestsInfo[i].num_tokens_in_batch = initial_len;
-      requestsInfo[i].guid = guid;
-      max_sequence_length[i] = initial_len + tokens_to_generate;
+      requestsInfo[i].request_guid = guid;
+      requestsInfo[i].max_sequence_length = initial_len + tokens_to_generate;
       request_completed[i] = false;
       update_num_active_requests_tokens();
       return true;
@@ -87,55 +88,63 @@ bool BatchConfig::register_new_request(size_t guid,
   return false;
 }
 
+// Deprecated API
 void BatchConfig::prepare_next_batch() {
-  assert(cached_results);
-  assert(num_requests > 0 && num_tokens > 0);
+  assert(false);
+  assert(num_tokens > 0);
   log_bc.print("[NextBatch] num_tokens(%d)", num_tokens);
 }
 
+// Deprecated API; cannot use this since we need to
+// add token_id, which is missing in this API
 void BatchConfig::update_num_active_requests_tokens() {
-  num_requests = 0;
+  assert(false);
   num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
-      num_requests++;
+      int start_idx = requestsInfo[i].token_start_offset;
       for (int j = 0; j < requestsInfo[i].num_tokens_in_batch; j++) {
-        int start_idx = requestsInfo[i].token_start_offset;
         tokensInfo[num_tokens].abs_depth_in_request = start_idx + j;
         tokensInfo[num_tokens].request_index = i;
         num_tokens++;
       }
     }
   }
-  cached_results = true;
 }
 
 int BatchConfig::num_active_requests() const {
-  if (cached_results) {
-    return num_requests;
-  } else {
-    assert(false &&
-           "some BatchConfig functions updated requests but didn't call "
-           "() before exit");
+  int num_requests = 0;
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i]) {
+      num_requests++;
+    }
   }
+  return num_requests;
+  // if (cached_results) {
+  //   return num_requests;
+  // } else {
+  //   assert(false &&
+  //          "some BatchConfig functions updated requests but didn't call "
+  //          "() before exit");
+  // }
 }
 
 int BatchConfig::num_active_tokens() const {
-  if (cached_results) {
-    return num_tokens;
-  } else {
-    assert(false &&
-           "some BatchConfig functions updated requests but didn't call "
-           "update_num_active_requests_tokens() before exit");
-  }
+  // if (cached_results) {
+  return num_tokens;
+  //} else {
+  //  assert(false &&
+  //         "some BatchConfig functions updated requests but didn't call "
+  //         "update_num_active_requests_tokens() before exit");
+  //}
 }
 
 void BatchConfig::print() const {
   std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
   std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
-  std::cout << "Number of requests: " << num_requests << std::endl;
-  std::cout << "Cached results: " << cached_results << std::endl;
+  std::cout << "Number of requests: " << num_active_requests() << std::endl;
+  // std::cout << "Cached results: " << cached_results << std::endl;
 
   std::cout << "Per-request info:\n";
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
@@ -145,9 +154,9 @@ void BatchConfig::print() const {
                 << requestsInfo[i].token_start_offset << std::endl;
       std::cout << "    Number of tokens in batch: "
                 << requestsInfo[i].num_tokens_in_batch << std::endl;
-      std::cout << "    GUID: " << requestsInfo[i].guid << std::endl;
-      std::cout << "    Max sequence length: " << max_sequence_length[i]
-                << std::endl;
+      std::cout << "    GUID: " << requestsInfo[i].request_guid << std::endl;
+      std::cout << "    Max sequence length: "
+                << requestsInfo[i].max_sequence_length << std::endl;
       std::cout << "    Request completed: " << request_completed[i]
                 << std::endl;
     }
@@ -160,6 +169,7 @@ void BatchConfig::print() const {
               << tokensInfo[i].abs_depth_in_request << std::endl;
     std::cout << "    Request index: " << tokensInfo[i].request_index
               << std::endl;
+    std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
   }
 }
 

@@ -50,19 +50,19 @@ void DataLoader::load_input(Task const *task,
   coord_t batch_size =
       batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
 
-  size_t guid = bc->requestsInfo[bc->tokensInfo[0].request_index].guid;
-  size_t start_idx = bc->tokensInfo[0].abs_depth_in_request;
-  size_t dst_idx = 0;
+  auto guid = bc->requestsInfo[bc->tokensInfo[0].request_index].request_guid;
+  int start_idx = bc->tokensInfo[0].abs_depth_in_request;
+  int dst_idx = 0;
 
   for (int i = 0; i <= bc->num_active_tokens(); i++) {
-    size_t current_guid =
-        bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+    auto current_guid =
+        bc->requestsInfo[bc->tokensInfo[i].request_index].request_guid;
     if (i == bc->num_active_tokens() || current_guid != guid) {
-      size_t tokens_to_copy =
+      int tokens_to_copy =
           (bc->tokensInfo[i - 1].abs_depth_in_request - start_idx + 1);
 
-      size_t request_index = bc->tokensInfo[i - 1].request_index;
-      size_t token_start_offset =
+      int request_index = bc->tokensInfo[i - 1].request_index;
+      int token_start_offset =
           bc->requestsInfo[request_index].token_start_offset;
 
       std::cout << "size to copy:  " << tokens_to_copy
@@ -70,7 +70,7 @@ void DataLoader::load_input(Task const *task,
       if (tokens_to_copy > 1 || token_start_offset == 0) {
         // token pos < init length, the init length is the input sentence length
         // so this is the initial input, load from file.
-        size_t copy_start_index = guid * llamaconfig.sentence_len;
+        int copy_start_index = guid * llamaconfig.sentence_len;
         std::cout << "copy index:  " << copy_start_index << "\n";
         copy_kernel<<<GET_BLOCKS(tokens_to_copy), CUDA_NUM_THREADS>>>(
             batch_input.ptr + dst_idx,
@@ -92,11 +92,14 @@ void DataLoader::load_input(Task const *task,
                   << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
         long *dst_ptr = batch_input.ptr + dst_idx;
 
-        cudaMemcpy(dst_ptr, &token, sizeof(long), cudaMemcpyHostToDevice);
+        cudaMemcpy(dst_ptr,
+                   &token,
+                   sizeof(FlexFlow::RequestManager::TokenId),
+                   cudaMemcpyHostToDevice);
       }
 
       if (i < bc->num_active_tokens()) {
-        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].guid;
+        guid = bc->requestsInfo[bc->tokensInfo[i].request_index].request_guid;
         start_idx = bc->tokensInfo[i].abs_depth_in_request;
       }
       dst_idx = i;

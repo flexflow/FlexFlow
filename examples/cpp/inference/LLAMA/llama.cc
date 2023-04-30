@@ -58,7 +58,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor input;
   {
     int const token_dims[] = {llamaConfig.batchSize, llamaConfig.max_seq_len};
-    input = ff.create_tensor<2>(token_dims, DT_INT64);
+    input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
@@ -79,7 +79,7 @@ void FlexFlow::top_level_task(Task const *task,
   // }
 
   // n transformer blocks impl
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 10; i++) {
     // step 1: attention
     std::vector<int> axes = {2};
     Tensor att_norm = ff.rms_norm(token, llamaConfig.norm_eps, llamaConfig.dim);
@@ -145,6 +145,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::cout << "------start compile ----------" << std::endl;
   InferenceManager im(&ff, llamaConfig.batchSize, 1);
   im.compile_model_and_allocate_buffer();
+  RequestManager rm;
 
   std::cout << "------init ops----------" << std::endl;
   im.init_operators_inference();
@@ -203,18 +204,36 @@ void FlexFlow::top_level_task(Task const *task,
   //------------------------------ do inference---------------------------
   int processed_requests = 0;
   std::map<int, Future> future_handlers;
-  std::map<int, BatchConfig *> batch_configs;
-  BatchConfig *bc = nullptr;
+  std::map<int, BatchConfig> batch_configs;
   std::map<size_t, long> batch_predictions[1];
   loader.reset();
 
-  bool new_req = true;
+  for (int i = 0; i < llamaConfig.batchSize; i++) {
+    std::vector<BatchConfig::TokenId> tokens{
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    };
+    rm.register_new_request(tokens, 347);
+  }
 
   while (processed_requests < llamaConfig.sentence_len) {
     int bid = 0;
     size_t max_reqs, max_tkns;
     if (future_handlers.find(bid) == future_handlers.end()) {
-      bc = new BatchConfig();
+      BatchConfig bc;
+      InferenceResult ir;
+      bc = rm.prepare_next_batch(bc, ir);
+      std::cout << "new tokens: " << bc.num_tokens;
+      FutureMap fm = im.inference(bid, bc);
+      assert(fm.get_future_map_domain().get_volume() == 1);
+      future_handlers[bid] = fm.get_future(0);
+      batch_configs[bid] = bc;
     } else {
       // have luanched this bid
       Future future = future_handlers[bid];
@@ -225,33 +244,15 @@ void FlexFlow::top_level_task(Task const *task,
       }
       // process end
       InferenceResult ir = future.get_result<InferenceResult>();
-      bc = batch_configs[bid];
-
-      std::cout << "store outputs start...." << std::endl;
-      loader.store_outputs(bc, ir, batch_predictions[bid]);
-      processed_requests += bc->update_results(ir);
-
-      if (!new_req) {
-        break;
-      }
-      new_req = false;
+      BatchConfig bc = batch_configs[bid];
+      processed_requests += bc.num_tokens;
+      bc = rm.prepare_next_batch(bc, ir);
+      std::cout << "new tokens: " << bc.num_tokens;
+      FutureMap fm = im.inference(bid, bc);
+      assert(fm.get_future_map_domain().get_volume() == 1);
+      future_handlers[bid] = fm.get_future(0);
+      batch_configs[bid] = bc;
     }
-    // batch cofig register 5 reqs
-    // init length relate to the min_prompt_size for llama
-    if (new_req) {
-      for (int i = 0; i < llamaConfig.batchSize; i++) {
-        assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347));
-      }
-    }
-
-    bc->prepare_next_batch();
-    std::cout << "new tokens: " << bc->num_active_tokens();
-    loader.next_batch(ff, bc, batch_predictions[bid]);
-
-    FutureMap fm = im.inference(bid, *bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    future_handlers[bid] = fm.get_future(0);
-    batch_configs[bid] = bc;
   }
 
   // float* data
