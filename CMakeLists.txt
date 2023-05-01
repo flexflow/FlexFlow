@@ -48,8 +48,9 @@ option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
+set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
 
-if (FF_GASNET_CONDUIT STREQUAL "ucx")
+if ((FF_USE_GASNET STREQUAL "ON" AND FF_GASNET_CONDUIT STREQUAL "ucx") OR FF_LEGION_NETWORKS STREQUAL "ucx")
     if("${FF_UCX_URL}" STREQUAL "")
         set(UCX_URL "https://github.com/openucx/ucx/releases/download/v1.14.0-rc1/ucx-1.14.0.tar.gz")
     else()
@@ -114,7 +115,7 @@ if (FF_GASNET_CONDUIT STREQUAL "ucx")
         execute_process(COMMAND tar xzf ${UCX_COMPRESSED_FILE_PATH} -C ${UCX_DIR} --strip-components 1)
         message(STATUS "Building UCX...")
         execute_process(
-            COMMAND sh -c "cd ${UCX_DIR} && ${UCX_DIR}/contrib/configure-release --prefix=${UCX_DIR}/install && make -j8 && make install"
+            COMMAND sh -c "cd ${UCX_DIR} && ${UCX_DIR}/contrib/configure-release --prefix=${UCX_DIR}/install --enable-mt && make -j8 && make install"
             RESULT_VARIABLE UCX_BUILD_STATUS
             OUTPUT_FILE ${UCX_BUILD_OUTPUT}
             ERROR_FILE ${UCX_BUILD_OUTPUT}
@@ -128,7 +129,15 @@ if (FF_GASNET_CONDUIT STREQUAL "ucx")
         file(WRITE ${UCX_CONFIG_FILE} "${UCX_URL}")
     endif()
 
-    set(ENV{UCX_HOME} "${UCX_DIR}/install")
+    if (FF_USE_GASNET STREQUAL "ON" AND FF_GASNET_CONDUIT STREQUAL "ucx")
+        set(ENV{UCX_HOME} "${UCX_DIR}/install")
+    endif()
+
+    if (FF_LEGION_NETWORKS STREQUAL "ucx")
+        set(ucx_DIR ${UCX_DIR}/cmake)
+        set(ENV{Legion_NETWORKS} "ucx")
+        message(STATUS "Legion_NETWORKS: $ENV{Legion_NETWORKS}")
+    endif()
 else()
     message(STATUS "FF_GASNET_CONDUIT: ${FF_GASNET_CONDUIT}")
 endif()
