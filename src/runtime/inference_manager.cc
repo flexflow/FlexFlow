@@ -1,4 +1,4 @@
-/* Copyright 2022 CMU, Stanford, Facebook, LANL
+/* Copyright 2023 CMU, Stanford, Facebook, LANL
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -143,15 +143,28 @@ MachineView *InferenceManager::get_machine_view(int mv_id) {
 }
 
 FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
+  assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
   int batch_index = index % max_num_inflight_batches;
   FutureMap fm;
+  bool found_input_operator = false;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
-    if (op->op_type == OP_WEIGHT || op->op_type == OP_INPUT || op->op_type == OP_PLACE_HOLDER) {
+    if (op->op_type == OP_WEIGHT) {
       continue;
     }
+    if (op->op_type == OP_INPUT) {
+      // FIXME: this is a hack, should be replace with an input ParallelTensor
+      if (found_input_operator) {
+        continue;
+      }
+      found_input_operator = true;
+      assert(op->numOutputs == 1);
+      ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
+      load_input_tokens_from_batch_config(bc, pt);
+    }
+
     std::vector<ParallelTensor> inputs(op->numInputs);
     std::vector<ParallelTensor> outputs(op->numOutputs);
     for (int i = 0; i < op->numInputs; i++) {
@@ -176,5 +189,25 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   }
   return fm;
 };
+
+void InferenceManager::load_input_tokens_from_batch_config(
+    BatchConfig const &bc, ParallelTensor const input) {
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
+  size_t machine_view_hash = input->machine_view.hash();
+  ArgumentMap argmap;
+  IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
+                         input->parallel_is,
+                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(
+      input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, input->region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
 
 }; // namespace FlexFlow
