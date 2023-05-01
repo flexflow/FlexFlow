@@ -70,4 +70,18 @@ struct InferenceResult {
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
 };
 
+class BeamSearchBatchConfig : public BatchConfig {
+public:
+  int beam_width;
+
+  struct BeamSearchPerTokenInfo : public PerTokenInfo {
+    int parent_token_id;
+    int token_id;
+    int request_index;
+    int abs_depth_in_request;
+  };
+
+  BeamSearchBatchConfig(int beam_width);
+};
+
 }; // namespace FlexFlow
