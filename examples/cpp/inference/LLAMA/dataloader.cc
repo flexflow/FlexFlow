@@ -29,27 +29,27 @@ DataLoader::DataLoader(FFModel &ff,
       // Assume only the first dim can be the replica dim
       assert(i == num_dims - 1 || (!dims[i].is_replica_dim));
     }
-    dims[num_dims - 1].size = num_samples;
-    full_input =
-        ff.create_parallel_tensor_legion_ordering(num_dims, dims, DT_INT64);
-    assert(full_input != nullptr && "full_input is nullptr");
-    ff.map_tensor(full_input, NULL /*parallel_op*/);
+    // dims[num_dims - 1].size = num_samples;
+    // full_input =
+    //     ff.create_parallel_tensor_legion_ordering(num_dims, dims, DT_INT64);
+    // assert(full_input != nullptr && "full_input is nullptr");
+    // ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
 
-  size_t llamaconfig_size = sizeof(llamaconfig);
-  std::cout << "llama config dataloader: " << llamaconfig->input_path;
+  // size_t llamaconfig_size = sizeof(llamaconfig);
+  // std::cout << "llama config dataloader: " << llamaconfig->input_path;
 
-  // Load entire dataset
-  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
-                        TaskArgument(llamaconfig, llamaconfig_size));
-  // regions[1]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->region,
-                                                    MAP_TO_FB_MEMORY));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_task(ctx, launcher);
+  // // Load entire dataset
+  // TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
+  //                      TaskArgument(llamaconfig, llamaconfig_size));
+  // // regions[1]: full_input
+  // launcher.add_region_requirement(RegionRequirement(full_input->region,
+  //                                                  WRITE_ONLY,
+  //                                                  EXCLUSIVE,
+  //                                                  full_input->region,
+  //                                                  MAP_TO_FB_MEMORY));
+  // launcher.add_field(0, FID_DATA);
+  // runtime->execute_task(ctx, launcher);
 }
 
 void DataLoader::load_entire_dataset(Task const *task,
