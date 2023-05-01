@@ -3878,6 +3878,16 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
         registrar, "RequestManager Load Tokens Task");
   }
+  // RequestManager load_tokens
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_TASK_ID,
+                                   "RequestManager Prepare Next Batch");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchConfig,
+                                      RequestManager::prepare_next_batch_task>(
+        registrar, "RequestManager Prepare Next Batch Task");
+  }
   // ElementUnary task
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID,

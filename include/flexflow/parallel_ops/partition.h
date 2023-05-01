@@ -36,7 +36,7 @@ public:
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &bc,
+                              BatchConfigFuture const &bc,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;

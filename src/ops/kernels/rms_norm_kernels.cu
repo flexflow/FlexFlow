@@ -35,6 +35,7 @@ RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
   in_dim = rms->data_dim;
   batch_size = rms->effective_batch_size;
   num_elements = in_dim * batch_size;
+  profiling = rms->profiling;
 
   checkCUDA(cudaMalloc(&rms_ptr, batch_size * sizeof(float)));
   checkCUDA(cudaMalloc(&norm_ptr, num_elements * sizeof(float)));
@@ -144,7 +145,6 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
   RowwiseRootMeanSquareKernel<float>
       <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
           m->in_dim, m->eps, input.get_float_ptr(), m->rms_ptr);
-
   NormKernel<float><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
       m->in_dim, input.get_float_ptr(), m->rms_ptr, m->norm_ptr);
 

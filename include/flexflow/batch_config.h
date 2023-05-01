@@ -15,8 +15,8 @@
 
 #pragma once
 
+#include "legion.h"
 #include <cstdlib>
-
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
 #define MAX_SEQ_LEN 20
@@ -26,6 +26,9 @@
 namespace FlexFlow {
 
 class InferenceResult;
+
+using BatchConfigFuture = Legion::Future;
+using InferenceResultFuture = Legion::Future;
 
 class BatchConfig {
 public:

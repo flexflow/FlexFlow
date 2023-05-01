@@ -225,7 +225,7 @@ void Cast::forward(FFModel const &ff) {
 }
 
 FutureMap Cast::inference(FFModel const &ff,
-                          BatchConfig const &bc,
+                          BatchConfigFuture const &bc,
                           std::vector<ParallelTensor> const &batch_inputs,
                           std::vector<ParallelTensor> const &batch_outputs,
                           MachineView const *mv) {

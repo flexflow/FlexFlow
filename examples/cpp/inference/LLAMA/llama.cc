@@ -168,7 +168,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::cout << "------start compile ----------" << std::endl;
   InferenceManager im(&ff, llamaConfig.batchSize, 1);
   im.compile_model_and_allocate_buffer(&ff, mapping);
-  RequestManager rm;
+  RequestManager rm(ffconfig);
 
   //------------------------------ load inputs --------------------------
   std::cout << "------create dataloaders ----------" << std::endl;
@@ -227,47 +227,64 @@ void FlexFlow::top_level_task(Task const *task,
 
   //------------------------------ do inference---------------------------
   int processed_requests = 0;
-  std::map<int, Future> future_handlers;
-  std::map<int, BatchConfig> batch_configs;
-  std::map<size_t, long> batch_predictions[1];
+  std::unordered_map<int, Future> batch_config_futures;
+  std::unordered_map<int, Future> inference_result_futures;
+  // std::map<int, BatchConfigFuture> batch_config_futures;
+  // std::map<size_t, long> batch_predictions[1];
   loader.reset();
 
+  // init batch_config_futures
+  // warm up tracing
+  runtime->begin_trace(ctx, 111 /*trace_id*/);
+  for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
+    BatchConfig bc;
+    InferenceResult ir;
+    Future bcf = Future::from_value<BatchConfig>(bc);
+    Future irf = Future::from_value<InferenceResult>(ir);
+    Future new_bc = rm.prepare_next_batch(bcf, irf);
+    // std::cout << "new tokens: " << bc.num_tokens;
+    FutureMap fm = im.inference(&ff, bid, new_bc);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    inference_result_futures[bid] = fm.get_future(0);
+    batch_config_futures[bid] = new_bc;
+  }
+  runtime->end_trace(ctx, 111 /*trace_id*/);
+  {
+    Future future = runtime->issue_execution_fence(ctx);
+    future.get_void_result();
+  }
+  // register new requests
   for (int i = 0; i < llamaConfig.batchSize; i++) {
     std::vector<BatchConfig::TokenId> tokens{0, 0, 0, 0, 0, 0, 0, 0};
     rm.register_new_request(tokens, 347);
   }
-
-  while (processed_requests < llamaConfig.sentence_len) {
-    int bid = 0;
-    size_t max_reqs, max_tkns;
-    if (future_handlers.find(bid) == future_handlers.end()) {
-      BatchConfig bc;
-      InferenceResult ir;
-      bc = rm.prepare_next_batch(bc, ir);
-      std::cout << "new tokens: " << bc.num_tokens;
-      FutureMap fm = im.inference(&ff, bid, bc);
-      assert(fm.get_future_map_domain().get_volume() == 1);
-      future_handlers[bid] = fm.get_future(0);
-      batch_configs[bid] = bc;
-    } else {
+  int count = 0;
+  while (rm.get_num_processed_requests() < llamaConfig.batchSize &&
+         (count++ < 32)) {
+    // size_t max_reqs, max_tkns;
+    runtime->begin_trace(ctx, 111 /*trace_id*/);
+    for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
       // have luanched this bid
-      Future future = future_handlers[bid];
-      if (!future.is_ready(true /*subscribe*/)) {
-        continue;
-      } else {
-        std::cout << "future is ready...." << std::endl;
-      }
+      Future old_ir = inference_result_futures[bid];
+      Future old_bc = batch_config_futures[bid];
       // process end
-      InferenceResult ir = future.get_result<InferenceResult>();
-      BatchConfig bc = batch_configs[bid];
-      processed_requests += bc.num_tokens;
-      bc = rm.prepare_next_batch(bc, ir);
-      std::cout << "new tokens: " << bc.num_tokens;
-      FutureMap fm = im.inference(&ff, bid, bc);
+      // InferenceResult ir = future.get_result<InferenceResult>();
+      // BatchConfig bc = batch_configs[bid];
+      // processed_requests += bc.num_tokens;
+      Future new_bc = rm.prepare_next_batch(old_bc, old_ir);
+      // std::cout << "new tokens: " << bc.num_tokens;
+      FutureMap fm = im.inference(&ff, bid, new_bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
-      future_handlers[bid] = fm.get_future(0);
-      batch_configs[bid] = bc;
+      inference_result_futures[bid] = fm.get_future(0);
+      batch_config_futures[bid] = new_bc;
     }
+    runtime->end_trace(ctx, 111 /*trace_id*/);
+  }
+
+  // Execution fence
+  {
+    Future future = runtime->issue_execution_fence(ctx);
+    future.get_void_result();
   }
 
   // float* data

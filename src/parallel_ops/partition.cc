@@ -201,7 +201,7 @@ void Repartition::create_input_partition_inference(
 
 FutureMap
     Repartition::inference(FFModel const &ff,
-                           BatchConfig const &bc,
+                           BatchConfigFuture const &bc,
                            std::vector<ParallelTensor> const &batch_inputs,
                            std::vector<ParallelTensor> const &batch_outputs,
                            MachineView const *mv) {

@@ -22,7 +22,9 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
-RequestManager::RequestManager() : next_available_guid(1000000) {}
+RequestManager::RequestManager(FFConfig const &_config)
+    : config(_config), next_available_guid(1000000), num_processed_requests(0) {
+}
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
@@ -37,6 +39,35 @@ RequestManager::RequestGuid
 
   pending_request_queue.push(request);
   return request.guid;
+}
+
+size_t RequestManager::get_num_processed_requests() {
+  return num_processed_requests;
+}
+
+BatchConfigFuture
+    RequestManager::prepare_next_batch(BatchConfigFuture const &old_bc,
+                                       InferenceResultFuture const &result) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
+  RequestManager *rm = this;
+  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_TASK_ID,
+                        TaskArgument(&rm, sizeof(RequestManager *)));
+  launcher.add_future(old_bc);
+  launcher.add_future(result);
+  return runtime->execute_task(ctx, launcher);
+}
+
+BatchConfig RequestManager::prepare_next_batch_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  RequestManager *rm = *((RequestManager **)task->args);
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  InferenceResult const &result =
+      Future(task->futures[1]).get_result<InferenceResult>();
+  return rm->prepare_next_batch(bc, result);
 }
 
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
@@ -75,6 +106,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
+      num_processed_requests++;
     } else {
       new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].token_start_offset = processed_tokens;
