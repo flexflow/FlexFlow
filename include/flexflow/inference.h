@@ -17,6 +17,7 @@
 
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
+#include <mutex>
 
 namespace FlexFlow {
 
@@ -31,6 +32,8 @@ public:
   void init_operators_inference();
   MachineView *get_machine_view(int mv_id);
   Legion::FutureMap inference(int index, BatchConfig const &bc);
+  void load_input_tokens_from_batch_config(BatchConfig const &bc,
+                                           ParallelTensor const input);
 
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
@@ -39,6 +42,34 @@ public:
   int max_num_inflight_batches;
   int num_devices;
   std::vector<MachineView> machine_views;
+};
+
+struct Request {
+  BatchConfig::RequestGuid guid;
+  int max_sequence_length;
+  std::vector<BatchConfig::TokenId> tokens;
+};
+
+class RequestManager {
+public:
+  using RequestGuid = BatchConfig::RequestGuid;
+  using TokenId = BatchConfig::TokenId;
+  RequestManager();
+  RequestGuid register_new_request(std::vector<TokenId> const &prompt,
+                                   int max_sequence_length);
+  BatchConfig prepare_next_batch(BatchConfig const &bc,
+                                 InferenceResult const &result);
+  static void
+      load_tokens_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
+
+private:
+  std::queue<Request> pending_request_queue;
+  std::unordered_map<RequestGuid, Request> running_request_queue;
+  std::mutex request_queue_mutex;
+  RequestGuid next_available_guid;
 };
 
 } // namespace FlexFlow

@@ -1255,37 +1255,9 @@ OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
   }
 }
 
-FFModel::FFModel(FFConfig &_config)
-    : op_global_guid(OP_GUID_FIRST_VALID),
-      layer_global_guid(LAYER_GUID_FIRST_VALID),
-      tensor_global_guid(TENSOR_GUID_FIRST_VALID),
-      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
-      node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
-      loss_op(NULL), metrics_op(NULL), simulator(NULL) {
-  this->search = new PCG::SearchHelper(this);
-  this->graph_search = new PCG::GraphSearchHelper(this);
-
+FFRuntime::FFRuntime(FFConfig &config) {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
-  // Register machine views
-  register_all_machine_views(config.numNodes,
-                             config.workersPerNode,
-                             config.cpusPerNode,
-                             all_valid_views);
-  metrics_input = -1;
-  // Load strategy file
-  // Create field space
-  {
-    FieldAllocator allocator =
-        runtime->create_field_allocator(ctx, config.field_space);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
-  // Build training dataset
-  // if (config.datasetPath.length() == 0) {
-  //  dataLoader = NULL;
-  //} else {
-  //  dataLoader = new DataLoader(config.datasetPath);
-  //}
 
   ArgumentMap argmap;
   Rect<1> task_rect(Point<1>(0),
@@ -1316,6 +1288,48 @@ FFModel::FFModel(FFConfig &_config)
   int idx = 0;
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
+  }
+}
+
+FFRuntime *ffruntime_singleton = nullptr;
+
+FFModel::FFModel(FFConfig &_config)
+    : op_global_guid(OP_GUID_FIRST_VALID),
+      layer_global_guid(LAYER_GUID_FIRST_VALID),
+      tensor_global_guid(TENSOR_GUID_FIRST_VALID),
+      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
+      node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
+      loss_op(NULL), metrics_op(NULL), simulator(NULL) {
+  this->search = new PCG::SearchHelper(this);
+  this->graph_search = new PCG::GraphSearchHelper(this);
+
+  if (ffruntime_singleton == nullptr) {
+    ffruntime_singleton = new FFRuntime(_config);
+  }
+
+  Runtime *runtime = config.lg_hlr;
+  Context ctx = config.lg_ctx;
+  // Register machine views
+  register_all_machine_views(config.numNodes,
+                             config.workersPerNode,
+                             config.cpusPerNode,
+                             all_valid_views);
+  metrics_input = -1;
+  // Load strategy file
+  // Create field space
+  {
+    FieldAllocator allocator =
+        runtime->create_field_allocator(ctx, config.field_space);
+    allocator.allocate_field(sizeof(float), FID_DATA);
+  }
+  // Build training dataset
+  // if (config.datasetPath.length() == 0) {
+  //  dataLoader = NULL;
+  //} else {
+  //  dataLoader = new DataLoader(config.datasetPath);
+  //}
+  for (int idx = 0; idx < config.workersPerNode * config.numNodes; idx++) {
+    handlers[idx] = ffruntime_singleton->handlers[idx];
   }
 }
 
@@ -3872,6 +3886,15 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
         registrar, "cuda_init_task");
+  }
+  // RequestManager load_tokens
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_TOKENS_TASK_ID,
+                                   "RequestManager Load Tokens");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
+        registrar, "RequestManager Load Tokens Task");
   }
   // ElementUnary task
   {

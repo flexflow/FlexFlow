@@ -138,7 +138,9 @@ public:
   float *attn_heads, *W_out_contiguous;
   // void *reserveSpace;
 
-  BatchConfig::token_idxs *dev_token2ids;
+  // BatchConfig::token_idxs *dev_token2ids;
+
+  BatchConfig::PerTokenInfo *token_infos;
 };
 
 }; // namespace FlexFlow

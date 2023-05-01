@@ -30,6 +30,7 @@
 #include "optimizer.h"
 #include "parallel_tensor.h"
 #include "recompile.h"
+#include "runtime.h"
 #include "simulator.h"
 #include "tensor.h"
 #include "tl/optional.hpp"
@@ -212,6 +213,8 @@ enum TaskIDs {
   FUSED_PARALLELOP_INIT_TASK_ID,
   FUSED_PARALLELOP_FWD_TASK_ID,
   FUSED_PARALLELOP_BWD_TASK_ID,
+  // InferenceManager & RequestManager
+  RM_LOAD_TOKENS_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
