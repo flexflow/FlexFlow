@@ -30,9 +30,9 @@ BatchConfig::BatchConfig() {
     request_completed[i] = true;
   }
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    tokensInfo[i].abs_depth_in_request = -1;
-    tokensInfo[i].request_index = -1;
-    tokensInfo[i].token_id = -1;
+    tokensInfo[i].abs_depth_in_request = 0;
+    tokensInfo[i].request_index = 0;
+    tokensInfo[i].token_id = 0;
   }
 }
 
