@@ -49,8 +49,8 @@ public:
   int num_tokens;
 
   struct PerRequestInfo {
-    int token_start_offset;
-    int num_tokens_in_batch;
+    int token_start_offset; // input[token_start_offset * data_dim] is the first token
+    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim : (token_start_offset + num_token_in_batch) * data_dim]
     int max_sequence_length;
     RequestGuid request_guid;
   };
@@ -83,16 +83,19 @@ public:
   
   size_t beam_width;
   size_t target_iterations;
+  static int const MAX_BEAM_WIDTH = 8;
+  static int const MAX_BEAM_DEPTH = 8;
 
   struct BeamSearchPerTokenInfo : public PerTokenInfo {
-    int parent_token_id;
     int token_id;
     int request_index;
-    int abs_depth_in_request;
-    float cum_log_prob;
+    int abs_depth_in_request; 
+    int parent_token_id; // parent token id in the previous iteration
+    float cum_log_prob;  // cumulative log probability so far
+    size_t num_out_beam; // number of beams take this token as output
   };
 
-  BeamSearchPerTokenInfo tokensInfo[MAX_NUM_TOKENS];
+  BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS];
 
 private:
   size_t current_iteration;
