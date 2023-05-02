@@ -238,7 +238,7 @@ void RMSNorm::init_inference(FFModel const &ff,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                         machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,

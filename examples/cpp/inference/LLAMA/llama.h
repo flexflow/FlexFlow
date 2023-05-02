@@ -41,7 +41,7 @@ struct LLAMAConfig {
 
     // todo from args
     weight_file_path =
-        "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/weights/";
+        "/home/ubuntu/FlexFlow_Inference/examples/cpp/inference/LLAMA/weights/";
     input_path = "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/tokens/"
                  "llama_demo_tokens";
 

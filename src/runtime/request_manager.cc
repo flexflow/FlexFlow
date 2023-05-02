@@ -107,7 +107,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     if (new_bc.request_completed[i]) {
       if (!pending_request_queue.empty() &&
           new_bc.num_tokens < BatchConfig::MAX_NUM_TOKENS) {
-        Request const &new_request = pending_request_queue.front();
+        Request new_request = pending_request_queue.front();
         pending_request_queue.pop();
         running_request_queue[new_request.guid] = new_request;
         new_bc.requestsInfo[i].token_start_offset = 0;
