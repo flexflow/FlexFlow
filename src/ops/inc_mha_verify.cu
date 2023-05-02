@@ -663,9 +663,10 @@ void inference_kernel3(IncMultiHeadSelfAttentionVerifyMeta const *m,
                              ldc,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      tokens_previous_requests += num_new_tokens;
+      tokens_previous_tree_branches += num_new_tokens;
       tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
+    tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
   }
 
   assert(tokens_previous_requests == num_tokens);
