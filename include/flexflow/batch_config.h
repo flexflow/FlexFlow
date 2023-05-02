@@ -86,6 +86,14 @@ public:
   static int const MAX_BEAM_WIDTH = 8;
   static int const MAX_BEAM_DEPTH = 8;
 
+  struct BeamSearchPerRequestInfo {
+    int token_start_offset; // input[token_start_offset * data_dim] is the first token
+    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim : (token_start_offset + num_token_in_batch) * data_dim]
+    int max_sequence_length;
+    RequestGuid request_guid;
+    bool request_completed;
+  };
+
   struct BeamSearchPerTokenInfo : public PerTokenInfo {
     int token_id;
     int request_index;
@@ -95,6 +103,7 @@ public:
     size_t num_out_beam; // number of beams take this token as output
   };
 
+  BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
   BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS];
 
 private:
