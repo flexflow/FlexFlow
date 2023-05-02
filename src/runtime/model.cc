@@ -1762,8 +1762,10 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
           runtime->get_logical_partition(ctx, tensor->region_grad, ip);
     }
   }
-  // Step 3: initialize the tensor
-  if (tensor->initializer != NULL) {
+  // Step 3: initialize the tensor; don't randomly initialize weights
+  // for inference
+  if (tensor->initializer != NULL &&
+      config.computationMode == COMP_MODE_TRAINING) {
     tensor->initializer->init(this, tensor);
   }
 }

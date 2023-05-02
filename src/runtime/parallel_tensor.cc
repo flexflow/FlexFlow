@@ -667,7 +667,7 @@ bool ParallelTensorBase::set_tensor(FFModel const *ff,
   for (size_t i = 0; i < dim_sizes.size(); i++) {
     volume = volume * dim_sizes[i];
   }
-  RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
+  RegionRequirement req(region, WRITE_ONLY, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion pr = runtime->map_region(ctx, launcher);
@@ -675,7 +675,7 @@ bool ParallelTensorBase::set_tensor(FFModel const *ff,
   switch (num_dims) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    TensorAccessorW<T, DIM> acc(pr, req, FID_DATA, ctx, runtime, true);        \
+    TensorAccessorW<T, DIM> acc(pr, req, FID_DATA, ctx, runtime, false);       \
     assert(acc.rect.volume() == volume * num_replicas);                        \
     T *ptr = acc.ptr;                                                          \
     for (size_t i = 0; i < num_replicas; i++) {                                \

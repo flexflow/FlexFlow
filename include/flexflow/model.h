@@ -866,6 +866,7 @@ Tensor spec_inc_multihead_self_attention(const Tensor input,
                LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
+  void compile_inference();
   void graph_optimize(size_t budget,
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
