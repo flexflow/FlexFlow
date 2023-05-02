@@ -65,6 +65,19 @@ public:
   bool request_completed[MAX_NUM_REQUESTS];
 };
 
+class TreeVerifyBatchConfig : public BatchConfig {
+public:
+  struct PerRequestInfo : BatchConfig::PerRequestInfo {
+    int num_tree_branches;
+  };
+  struct PerTokenInfo : BatchConfig::PerTokenInfo {
+    int tree_branch_idx;
+  };
+  void compute_tree_branches_sizes();
+  PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
+  PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
+};
+
 struct InferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];

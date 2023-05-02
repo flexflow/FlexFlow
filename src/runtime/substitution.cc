@@ -28,6 +28,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -3707,20 +3708,25 @@ bool FFModel::convert_graph_to_operators(
         new_op = new MultiHeadAttention(
             *this, *attn, inputs[0], inputs[1], inputs[2], true);
         break;
-        break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(inList.size() == 1);
         IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)node.ptr;
         new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
         break;
+      }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
+        assert(inList.size() == 1);
+        IncMultiHeadSelfAttentionVerify *attn =
+            (IncMultiHeadSelfAttentionVerify *)node.ptr;
+        new_op =
+            new IncMultiHeadSelfAttentionVerify(*this, *attn, inputs[0], true);
         break;
       }
       case OP_RMS_NORM: {
         assert(inList.size() == 1);
         RMSNorm *rms = (RMSNorm *)node.ptr;
         new_op = new RMSNorm(*this, *rms, inputs[0], true);
-        break;
         break;
       }
       case OP_SOFTMAX: {

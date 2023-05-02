@@ -149,6 +149,7 @@ enum OperatorType {
   OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
   OP_RMS_NORM,
   OP_INC_MULTIHEAD_SELF_ATTENTION,
+  OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY,
   // Parallel Ops
   OP_REPARTITION,
   OP_COMBINE,
