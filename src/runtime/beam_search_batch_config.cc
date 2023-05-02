@@ -18,43 +18,32 @@
 #include <cassert>
 #include <climits>
 
+#define DEFAULT_BEAM_WIDTH 1
+#define DEFAULT_TARGET_ITERATIONS 3
+
 namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_bc("BeamSearchBatchConfig");
 
-BeamSearchBatchConfig::BeamSearchBatchConfig(int beam_width) {
-  num_tokens = 0;
-  beam_width = beam_width;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    requestsInfo[i].token_start_offset = 0;
-    requestsInfo[i].num_tokens_in_batch = 0;
-    request_completed[i] = true;
-  }
-  for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    tokensInfo[i].abs_depth_in_request = -1;
-    tokensInfo[i].request_index = -1;
-    tokensInfo[i].token_id = -1;
-  }
+BeamSearchBatchConfig::BeamSearchBatchConfig() : BatchConfig() {
+  this->beam_width = DEFAULT_BEAM_WIDTH;
+  this->target_iterations = DEFAULT_TARGET_ITERATIONS;
+  current_iteration = 0;
 }
 
-int BeamSearchBatchConfig::num_active_requests() const {
-  int num_requests = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (!request_completed[i]) {
-      num_requests++;
-    }
-  }
-  return num_requests;
+BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
+                                             size_t target_iterations)
+    : BatchConfig() {
+  this->beam_width = beam_width;
+  this->target_iterations = target_iterations;
+  current_iteration = 0;
 }
 
-int BeamSearchBatchConfig::num_active_tokens() const {
-  // if (cached_results) {
-  return num_tokens;
-  //} else {
-  //  assert(false &&
-  //         "some BatchConfig functions updated requests but didn't call "
-  //         "update_num_active_requests_tokens() before exit");
-  //}
+BeamSearchBatchConfig::~BeamSearchBatchConfig() {}
+
+bool BeamSearchBatchConfig::done() {
+  assert (current_iteration <= target_iterations);
+  return current_iteration == target_iterations;
 }
 
 void BeamSearchBatchConfig::print() const {
@@ -62,7 +51,9 @@ void BeamSearchBatchConfig::print() const {
   std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
-  // std::cout << "Cached results: " << cached_results << std::endl;
+  std::cout << "Beam width: " << beam_width << std::endl;
+  std::cout << "Target Iterations" << target_iterations << std::endl;
+  std::cout << "Current Iterations" << current_iteration << std::endl;
 
   std::cout << "Per-request info:\n";
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
@@ -88,6 +79,9 @@ void BeamSearchBatchConfig::print() const {
     std::cout << "    Request index: " << tokensInfo[i].request_index
               << std::endl;
     std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
+    std::cout << "    Parent token id: " << tokensInfo[i].parent_token_id << std::endl;
+    std::cout << "    Accumulated log prob: "
+              << tokensInfo[i].cum_log_prob << std::endl;
   }
 }
 

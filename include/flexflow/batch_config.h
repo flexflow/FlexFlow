@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdlib>
 
 // #define MAX_SEQ_LEN 1024
@@ -71,17 +72,30 @@ struct InferenceResult {
 };
 
 class BeamSearchBatchConfig : public BatchConfig {
-public:
-  int beam_width;
+public:  
+  BeamSearchBatchConfig();
+  BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
+
+  ~BeamSearchBatchConfig();
+
+  void print() const;
+  bool done() const;
+  
+  size_t beam_width;
+  size_t target_iterations;
 
   struct BeamSearchPerTokenInfo : public PerTokenInfo {
     int parent_token_id;
     int token_id;
     int request_index;
     int abs_depth_in_request;
+    float cum_log_prob;
   };
 
-  BeamSearchBatchConfig(int beam_width);
+  BeamSearchPerTokenInfo tokensInfo[MAX_NUM_TOKENS];
+
+private:
+  size_t current_iteration;
 };
 
 }; // namespace FlexFlow
