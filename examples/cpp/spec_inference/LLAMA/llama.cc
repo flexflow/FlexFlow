@@ -228,7 +228,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::map<size_t, Prediction_result> batch_predictions[1];
   loader.reset();
 
-  bool new_req = true;
+  bool new_req = true; 
 
   while (processed_requests < llamaConfig.sentence_len) {
     int bid = 0;
