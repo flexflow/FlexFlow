@@ -1,12 +1,6 @@
 #include "compiler/unity_algorithm.h"
-#include "utils/graph/algorithms.h"
 
 namespace FlexFlow {
-
-struct ParallelComputationGraph {
-  IMultiDiGraphView const &graph() const;
-  PCGOperatorAttrs const &at(Node const &) const;
-};
 
 SerialParallelDecomposition get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
   return get_serial_parallel_decomposition(*unsafe_view_as_digraph(pcg.graph()));
@@ -99,43 +93,45 @@ void minimize(T &t, T const &v) {
 
 using SubParallelComputationGraph = LabelledOpenMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape, MachineView>;
 
-std::unordered_set<Node> get_closed_sources(IOpenMultiDiGraphView const &g);
-std::unordered_set<Node> get_closed_sinks(IOpenMultiDiGraphView const &g);
-std::unordered_set<Node> get_open_sources(IOpenMultiDiGraphView const &g);
-std::unordered_set<Node> get_open_sinks(IOpenMultiDiGraphView const &g);
-
-std::unordered_set<MultiDiEdge> get_cut(IOpenMultiDiGraphView const &g, GraphSplit const &split);
-
-enum class InputSettings {
-  INCLUDE_INPUTS,
-  EXCLUDE_INPUTS
-};
-
-enum class OutputSettings {
-  INCLUDE_OUTPUTS,
-  EXCLUDE_OUTPUTS
-};
-
 SubParallelComputationGraph get_subgraph(
   SubParallelComputationGraph const &g,
   std::unordered_set<Node> const &nodes,
   InputSettings input_settings,
   OutputSettings output_settings) {
   
-  auto base_graph = g.graph(); // Need the access to the base graph
-  auto base_subgraph = get_subgraph(base_graph, nodes);
+  OpenMultiDiGraph const &base_graph(g);
+  // I need to access the view of an OpenMultiDiGraph
+  OpenMultiDiGraph base_subgraph = get_subgraph(base_graph, nodes);
 
-  // Need interfaces to create a labelled open graph
+  if (input_settings == InputSettings::EXCLUDE_INPUTS) {
+    for (auto input_edge : get_sources(base_subgraph)) {
+      base_subgraph.remove_edge(input_edge);
+    }
+  }
+
+  if (output_settings == OutputSettings::EXCLUDE_OUTPUTS) {
+    for (auto output_edge : get_sinks(base_subgraph)) {
+      base_subgraph.remove_edge(output_edge);
+    }
+  }
+
+  auto subgraph = SubParallelComputationGraph::create<OpenMultiDiGraph>();
+  // Can I create without manually adding each node and edge?
+  for (Node node : get_nodes(base_subgraph)) {
+    subgraph.add_node(g.at(node));
+  }
+  for (OpenMultiDiEdge edge : get_edges(base_subgraph)) {
+    if (holds_alternative<InputMultiDiEdge>(edge)) {
+      subgraph.add_edge(get<InputMultiDiEdge>(edge), g.at(get<InputMultiDiEdge>(edge)));
+    } else if (holds_alternative<OutputMultiDiEdge>(edge)) {
+      subgraph.add_edge(get<OutputMultiDiEdge>(edge), g.at(get<OutputMultiDiEdge>(edge)));
+    } else {
+      subgraph.add_edge(get<MultiDiEdge>(edge), g.at(get<MultiDiEdge>(edge)));
+    }
+  }
+
+  return subgraph;
 }
-
-struct ICostEstimator {
-  virtual float estimate_cost(PCGOperatorAttrs const &op, 
-                              std::vector<ParallelTensorShape> const &inputs, 
-                              MachineView const &mv) const = 0;
-  virtual float estimate_cost(ParallelTensorShape const &tensor_shape,
-                              MachineView const &src, 
-                              MachineView const &dst) = 0;
-};
 
 float estimate_cost(SubParallelComputationGraph const &g,
                     ICostEstimator const &estimator,
@@ -203,10 +199,10 @@ std::pair<
   SubParallelComputationGraph
 > apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
   // Need the access to the graph view
-  auto g1 = unsafe_view_as_subgraph(g.graph(), split.first);
-  auto g2 = unsafe_view_as_subgraph(g.graph(), split.second);
+  auto g1 = unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.first);
+  auto g2 = unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.second);
 
-  if (get_cut(g.graph(), split).size() > 0) {
+  if (get_cut(OpenMultiDiGraph(g), split).size() > 0) {
     // Sequential split
     if (get_open_sinks(*g1).size() <= get_open_sources(*g2).size()) {
       // get_open_sinks(*g1).size() should be 1 in perfect sp graphs
@@ -249,29 +245,24 @@ std::vector<std::pair<MachineResource, MachineResource>> get_resource_split(Mach
 //   }
 // }
 
-struct Strategy {
-  Strategy(float runtime, std::unordered_map<Node, MachineView> machine_views)
-    : runtime(runtime), machine_views(machine_views) {}
+Strategy::Strategy(float runtime, std::unordered_map<Node, MachineView> machine_views)
+  : runtime(runtime), machine_views(machine_views) {}
 
-  bool operator<(Strategy const &s) const {
-    return runtime < s.runtime;
-  }
+bool Strategy::operator<(Strategy const &s) const {
+  return runtime < s.runtime;
+}
 
-  static Strategy sequential_combine(Strategy const &s1, Strategy const &s2) {
-    return Strategy(s1.runtime + s2.runtime, merge_maps(s1.machine_views, s2.machine_views));
-  }
+Strategy Strategy::sequential_combine(Strategy const &s1, Strategy const &s2) {
+  return Strategy(s1.runtime + s2.runtime, merge_maps(s1.machine_views, s2.machine_views));
+}
 
-  static Strategy parallel_combine(Strategy const &s1, Strategy const &s2) {
-    return Strategy(std::max(s1.runtime, s2.runtime), merge_maps(s1.machine_views, s2.machine_views));
-  }
+Strategy Strategy::parallel_combine(Strategy const &s1, Strategy const &s2) {
+  return Strategy(std::max(s1.runtime, s2.runtime), merge_maps(s1.machine_views, s2.machine_views));
+}
 
-  static Strategy infinity() {
-    return Strategy(std::numeric_limits<float>::infinity(), std::unordered_map<Node, MachineView>{});
-  }
-
-  float runtime;
-  std::unordered_map<Node, MachineView> machine_views;
-};
+Strategy Strategy::infinity() {
+  return Strategy(std::numeric_limits<float>::infinity(), std::unordered_map<Node, MachineView>{});
+}
 
 struct OptimalCost {
   OptimalCost(SubParallelComputationGraph const &g, 
@@ -334,8 +325,8 @@ struct OptimalCost {
     auto subgraphs = apply_split(g, get_graph_split(pre_decompn, post_decompn));
     SubParallelComputationGraph pre_graph = subgraphs.first, post_graph = subgraphs.second;
     
-    std::unordered_set<Node> pre_graph_sinks = get_closed_sinks(pre_graph.graph());
-    std::unordered_set<Node> post_graph_sources = get_closed_sources(post_graph.graph());
+    std::unordered_set<Node> pre_graph_sinks = get_closed_sinks(OpenMultiDiGraph(pre_graph));
+    std::unordered_set<Node> post_graph_sources = get_closed_sources(OpenMultiDiGraph(post_graph));
 
     assert(pre_graph_sinks.size() + post_graph_sources.size() == 1); // assume perfect SP
 
@@ -379,12 +370,12 @@ struct OptimalCost {
 
   Strategy optimal_cost(Node const &node) const {
     if (source_machine_view) {
-      assert(get_closed_sources(g.graph()).empty());
+      assert(get_closed_sources(OpenMultiDiGraph(g)).empty());
       assert(contains(allowed_machine_views(g.at(node), resource), source_machine_view.value()));
       std::unordered_map<Node, MachineView> mv_map{{node, source_machine_view.value()}};
       return Strategy(estimate_cost(g, cost_estimator, mv_map), mv_map);
     } else if (sink_machine_view) {
-      assert(get_closed_sinks(g.graph()).empty());
+      assert(get_closed_sinks(OpenMultiDiGraph(g)).empty());
       assert(contains(allowed_machine_views(g.at(node), resource), sink_machine_view.value()));
       std::unordered_map<Node, MachineView> mv_map{{node, sink_machine_view.value()}};
       return Strategy(estimate_cost(g, cost_estimator, mv_map), mv_map);
@@ -407,10 +398,22 @@ struct OptimalCost {
   std::unordered_map<size_t, Strategy> &cached_subgraph_costs;
 };
 
-// float optimal_cost(ParallelComputationGraph const &g, 
-//                    SerialParallelDecomposition const &sp_decomposition, 
-//                    std::unordered_set<MachineView> const &allowed_machine_views,
-//                    ICostEstimator const &cost_estimator) {
-//   return visit(OptimalCost(g, allowed_machine_views, cost_estimator), sp_decomposition);
-// }
+SubParallelComputationGraph to_sub_parallel_computation_graph(ParallelComputationGraph const &g) {
+}
+
+Strategy optimal_cost(ParallelComputationGraph const &g,
+                   SerialParallelDecomposition const &sp_decomposition,
+                   std::function<std::unordered_set<MachineView>(PCGOperatorAttrs const &, MachineResource const &)> const &allowed_machine_views,
+                   ICostEstimator const &cost_estimator,
+                   MachineResource const &resources) {
+    std::unordered_map<size_t, Strategy> cached_subgraph_costs;
+    return visit(OptimalCost(to_sub_parallel_computation_graph(g),
+                  cost_estimator,
+                  resources,
+                  nullopt,
+                  nullopt,
+                  allowed_machine_views,
+                  cached_subgraph_costs),
+                get_serial_parallel_decomposition(g));
+}
 }

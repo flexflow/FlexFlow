@@ -19,6 +19,60 @@ namespace FlexFlow {
 /*                    SerialParallelDecomposition const &, */ 
 /*                    std::unordered_set<MachineView> const &allowed_machine_views); */
 
+struct ICostEstimator {
+  virtual float estimate_cost(PCGOperatorAttrs const &op, 
+                              std::vector<ParallelTensorShape> const &inputs, 
+                              MachineView const &mv) const = 0;
+  virtual float estimate_cost(ParallelTensorShape const &tensor_shape,
+                              MachineView const &src, 
+                              MachineView const &dst) = 0;
+};
+
+std::unordered_set<Node> get_closed_sources(IOpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_closed_sinks(IOpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sources(IOpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sinks(IOpenMultiDiGraphView const &g);
+
+std::unordered_set<MultiDiEdge> get_cut(IOpenMultiDiGraphView const &g, GraphSplit const &split);
+
+SubParallelComputationGraph get_subgraph(SubParallelComputationGraph const &g,
+                                        std::unordered_set<Node> const &nodes,
+                                        InputSettings input_settings,
+                                        OutputSettings output_settings);
+
+enum class InputSettings {
+  INCLUDE_INPUTS,
+  EXCLUDE_INPUTS
+};
+
+enum class OutputSettings {
+  INCLUDE_OUTPUTS,
+  EXCLUDE_OUTPUTS
+};
+
+struct ParallelComputationGraph {
+  IMultiDiGraphView const &graph() const;
+  PCGOperatorAttrs const &at(Node const &) const;
+};
+
+struct Strategy {
+  Strategy(float runtime, std::unordered_map<Node, MachineView> machine_views);
+  bool operator<(Strategy const &s) const;
+
+  static Strategy sequential_combine(Strategy const &s1, Strategy const &s2);
+  static Strategy parallel_combine(Strategy const &s1, Strategy const &s2);
+  static Strategy infinity();
+
+  float runtime;
+  std::unordered_map<Node, MachineView> machine_views;
+};
+
+Strategy optimal_cost(ParallelComputationGraph const &g,
+                   SerialParallelDecomposition const &sp_decomposition,
+                   std::function<std::unordered_set<MachineView>(PCGOperatorAttrs const &, MachineResource const &)> const &allowed_machine_views,
+                   ICostEstimator const &cost_estimator,
+                   MachineResource const &resources);
+
 }
 
 #endif 

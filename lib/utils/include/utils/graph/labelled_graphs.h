@@ -173,7 +173,7 @@ public:
     return this->output_map.at(e);
   }
 
-  OutputLabel &at(DownwardOpenMultiDiEdge const &e) {
+  OutputLabel &at(OutputOpenMultiDiEdge const &e) {
     return this->output_map.at(e);
   }
 
