@@ -26,8 +26,8 @@ LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 RequestManager::RequestManager() : next_available_guid(1000000) {}
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt,
-                                         int max_sequence_length) {
+RequestManager::register_new_request(std::vector<TokenId> const &prompt,
+                                     int max_sequence_length) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
   // Add a new request
@@ -137,21 +137,23 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   return new_bc;
 }
 
-SpeculativeRequestManager::SpeculativeRequestManager() : next_available_guid(1000000) {}
+SpeculativeRequestManager::SpeculativeRequestManager()
+    : next_available_guid(1000000) {}
 
 SpeculativeRequestManager::~SpeculativeRequestManager() {}
 
-BeamSearchBatchConfig 
-  SpeculativeRequestManager::prepare_next_batch_for_speculation(BeamSearchBatchConfig const &old_bc, 
-                                                                InferenceResult const &result)
-{
+// TODO: Initial solution, need to be modified to fit final version of the beam search structures
+BeamSearchBatchConfig
+SpeculativeRequestManager::prepare_next_batch_for_speculation(
+    BeamSearchBatchConfig const &old_bc, InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Step 1: use result to update requests
   for (int i = 0; i < old_bc.num_tokens; i++) {
     size_t guid =
         old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
     SpecRequest &request = running_request_queue[guid];
-    if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size() + bc.iterations) {
+    if (old_bc.tokensInfo[i].abs_depth_in_request + 1 <
+        request.tokens.size() + old_bc.iterations) {
       // This is a prompt token
       continue;
     } else {
@@ -160,10 +162,9 @@ BeamSearchBatchConfig
       // This is a decoding token
       request.candidate_tokens.push_back(result.token_ids[i]);
       request.candidate_parent_ids.push_back(result.parent_ids[i]);
-      request.candidate_cum_probs.push_back(result.cum_probs[i]);
     }
   }
-  
+
   // Step 2: preparing the next batch for existing requests
   BeamSearchBatchConfig new_bc;
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
@@ -178,8 +179,7 @@ BeamSearchBatchConfig
     // assert(processed_tokens < request.tokens.size());
     if (old_bc.done()) { // Finalize the request for verification
       log_req_mgr.print("[Done] guid(%zu) with spec_tree_depth(%d)",
-                        old_bc.requestsInfo[i].request_guid,
-                        bc.iterations);
+                        old_bc.requestsInfo[i].request_guid, bc.iterations);
     } else {
       // Update new bc's request info, each sub request take one spot
       new_bc.request_completed[i] = false;
@@ -195,7 +195,8 @@ BeamSearchBatchConfig
         new_bc.requestsInfo[i].num_tokens_in_batch = 1;
       } else {
         // Prompt phase (check this part later)
-        assert(new_bc.iterations == 0); // Prompt phase only happens in the first batch
+        assert(new_bc.iterations ==
+               0); // Prompt phase only happens in the first batch
         new_bc.requestsInfo[i].num_tokens_in_batch =
             std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
                      (int)request.tokens.size() -
@@ -214,9 +215,10 @@ BeamSearchBatchConfig
     }
   }
 
-  // Step 3: add new requests to the next batch (should not happens in beam searchspeculation phase)
+  // Step 3: add new requests to the next batch (should not happens in beam
+  // searchspeculation phase)
 
-  if(old_bc.done()) { // check this logic later
+  if (old_bc.done()) { // check this logic later
     is_verification_phase = true;
     return std::nullptr;
   }
@@ -224,20 +226,73 @@ BeamSearchBatchConfig
   return new_bc;
 }
 
-std::vector<std::pair<BatchConfig::TokenId, int>> 
-      SpeculativeRequestManager::bfs_to_dfs(BatchConfig::TokenId root_token,
-                                            std::vector<BatchConfig::TokenId> const &candidate_tokens,
-                                            std::vector<int> const &candidate_parent_ids,
-                                            int beam_width,
-                                            int leaf_depth) {
+
+// TODO: Not finished yet
+TreeVerifyBatchConfig
+SpeculativeRequestManager::prepare_next_batch_for_verification(
+    BeamSearchBatchConfig const &old_bc, InferenceResult const &result)
+{
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  assert(old_bc.done());
+  assert(is_verification_phase);
+  // Step 1: Construct the TreeVerifyBatchConfig
+  TreeVerifyBatchConfig new_bc;
+
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (old_bc.request_completed[i]) {
+      continue;
+    }
+    size_t guid =
+        old_bc.requestsInfo[i].request_guid;
+
+    SpecRequest &request = running_request_queue[guid];
+    std::vector<std::pair<BatchConfig::TokenId, int>> tokens_to_verify = 
+      bfs_to_dfs(request.tokens.back(), 
+        request.candidate_tokens, 
+        request.candidate_parent_ids, 
+        request.beam_width,
+        old_bc.iterations);
+
+    // ToDo: for the first verification iteration, include all prompt tokens
+
+    // Add tokens to verify to the next batch
+    for (int j = 0; j < tokens_to_verify.size(); j++) {
+      int depth = tokens_to_verify[j].second + request.tokens.size();
+      assert(depth < request.tokens.size() + old_bc.iterations);
+      new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+      new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+      new_bc.tokensInfo[new_bc.num_tokens].token_id = tokens_to_verify[j].first;
+      new_bc.num_tokens++;
+    }
+
+    // Update new bc's request info
+    new_bc.requestInfo[i].request_guid = guid;
+    new_bc.requestInfo[i].max_sequence_length = request.max_sequence_length;
+    new_bc.requestInfo[i].num_tokens_in_batch = tokens_to_verify.size();
+
+    int offset = new_bc.num_tokens;
+    new_bc.requestInfo[i].token_start_offset = offset;
+    new_bc.request_completed[i] = false;
+  }
+
+  return new_bc;
+}
+
+std::vector<std::pair<BatchConfig::TokenId, int>>
+SpeculativeRequestManager::bfs_to_dfs(
+    BatchConfig::TokenId root_token,
+    std::vector<BatchConfig::TokenId> const &candidate_tokens,
+    std::vector<int> const &candidate_parent_ids, int beam_width,
+    int leaf_depth) {
   // tree in format of <token_id, depth>
   std::vector<std::pair<BatchConfig::TokenId, int>> tree;
-  std::unordered_map<BatchConfig::TokenId, std::vector<BatchConfig::TokenId>> children;
+  std::unordered_map<BatchConfig::TokenId, std::vector<BatchConfig::TokenId>>
+      children;
 
   // tree.push_back(std::make_pair(root_token, 0));
   children[root_token] = std::vector<int>();
 
-  for(int i = 0; i < candidate_tokens.size(); i++) {
+  for (int i = 0; i < candidate_tokens.size(); i++) {
     int depth = i / beam_width;
     if (depth == 0) {
       children[root_token].push_back(candidate_tokens[i]);
@@ -249,19 +304,20 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
     children[candidate_tokens[i]] = std::vector<int>();
   }
 
- // ToDo: BFS to DFS
+  // Build DFS Serilized Tree
   std::stack<std::pair<BatchConfig::TokenId, int>> q;
   q.push(std::make_pair(root_token, 0));
 
-  while(!q.empty()) {
+  while (!q.empty()) {
     std::pair<BatchConfig::TokenId, int> cur = q.top();
     q.pop();
     if (children[cur.first].size() == 0 and cur.second != leaf_depth) {
       continue;
     }
     tree.push_back(std::make_pair(cur.first, cur.second));
-    std::cout << "Pushed: " << cur.first << ", depth: " << cur.second << std::endl;
-    for(auto child : children[cur.first]) {
+    std::cout << "Pushed: " << cur.first << ", depth: " << cur.second
+              << std::endl;
+    for (auto child : children[cur.first]) {
       q.push(std::make_pair(child, cur.second + 1));
     }
   }

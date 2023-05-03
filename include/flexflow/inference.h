@@ -78,7 +78,6 @@ private:
 struct SpecRequest : public Request {
   std::vector<BatchConfig::TokenId> candidate_tokens;
   std::vector<int> candidate_parent_ids;
-  std::vector<float> candidate_cum_probs;
   int beam_width;
 };
 
@@ -92,8 +91,12 @@ public:
   BeamSearchBatchConfig prepare_next_batch_for_speculation(BeamSearchBatchConfig const &bc,
                                  InferenceResult const &result);
 
-  // TreeVerifyBatchConfig prepare_next_batch_for_verification(BeamSearchBatchConfig const &bc,
+  TreeVerifyBatchConfig prepare_next_batch_for_verification(BeamSearchBatchConfig const &bc,
+                                 InferenceResult const &result);
+
+  // BeamSearchBatchConfig prepare_new_batch_for_speculation(BeamSearchBatchConfig const &bc,
   //                                InferenceResult const &result);
+  
   // static void
   //     load_tokens_task(Legion::Task const *task,
   //                      std::vector<Legion::PhysicalRegion> const &regions,
