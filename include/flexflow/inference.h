@@ -79,6 +79,7 @@ struct SpecRequest : public Request {
   std::vector<BatchConfig::TokenId> candidate_tokens;
   std::vector<int> candidate_parent_ids;
   std::vector<float> candidate_cum_probs;
+  int beam_width;
 };
 
 class SpeculativeRequestManager : public RequestManager {
@@ -90,6 +91,7 @@ public:
   //                                  int max_sequence_length);
   BeamSearchBatchConfig prepare_next_batch_for_speculation(BeamSearchBatchConfig const &bc,
                                  InferenceResult const &result);
+
   // TreeVerifyBatchConfig prepare_next_batch_for_verification(BeamSearchBatchConfig const &bc,
   //                                InferenceResult const &result);
   // static void
@@ -99,10 +101,16 @@ public:
   //                      Legion::Runtime *runtime);
 
 private:
+  bool is_verification_phase = false;
   std::queue<SpecRequest> pending_request_queue;
   std::unordered_map<RequestGuid, SpecRequest> running_request_queue;
   std::mutex request_queue_mutex;
   // RequestGuid next_available_guid;
+
+  std::vector<std::pair<BatchConfig::TokenId, int>> bfs_to_dfs(BatchConfig::TokenId root_token,
+                                             std::vector<BatchConfig::TokenId> const &candidate_tokens,
+                                             std::vector<int> const &candidate_parent_ids,
+                                             int beam_width);
 };
 
 } // namespace FlexFlow

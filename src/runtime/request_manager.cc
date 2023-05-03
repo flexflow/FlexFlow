@@ -15,6 +15,7 @@
 
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
+#include <algorithm>
 
 namespace FlexFlow {
 
@@ -216,10 +217,40 @@ BeamSearchBatchConfig
   // Step 3: add new requests to the next batch (should not happens in beam searchspeculation phase)
 
   if(old_bc.done()) { // check this logic later
+    is_verification_phase = true;
     return std::nullptr;
   }
 
   return new_bc;
+}
+
+std::vector<std::pair<BatchConfig::TokenId, int>> 
+      SpeculativeRequestManager::bfs_to_dfs(BatchConfig::TokenId root_token,
+                                            std::vector<BatchConfig::TokenId> const &candidate_tokens,
+                                            std::vector<int> const &candidate_parent_ids,
+                                            int beam_width) {
+  // tree in format of <token_id, depth>
+  std::vector<std::pair<BatchConfig::TokenId, int>> tree;
+  std::unordered_map<BatchConfig::TokenId, std::vector<BatchConfig::TokenId>> children;
+
+  tree.push_back(std::make_pair(root_token, 0));
+  children[root_token] = std::vector<int>();
+
+  for(int i = 0; i < candidate_tokens.size(); i++) {
+    int depth = i / beam_width;
+    if (depth == 0) {
+      children[root_token].push_back(candidate_tokens[i]);
+    } else {
+      int index = (depth - 1) * beam_width + candidate_parent_ids[i];
+      BatchConfig::TokenId parent_token = candidate_tokens[index];
+      children[parent_token].push_back(candidate_tokens[i]);
+    }
+    children[candidate_tokens[i]] = std::vector<int>();
+  }
+
+ // ToDo: BFS to DFS
+
+  return tree;
 }
 
 }; // namespace FlexFlow
