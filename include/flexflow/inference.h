@@ -110,7 +110,8 @@ private:
   std::vector<std::pair<BatchConfig::TokenId, int>> bfs_to_dfs(BatchConfig::TokenId root_token,
                                              std::vector<BatchConfig::TokenId> const &candidate_tokens,
                                              std::vector<int> const &candidate_parent_ids,
-                                             int beam_width);
+                                             int beam_width,
+                                             int leaf_depth);
 };
 
 } // namespace FlexFlow

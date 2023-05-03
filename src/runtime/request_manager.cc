@@ -228,12 +228,13 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
       SpeculativeRequestManager::bfs_to_dfs(BatchConfig::TokenId root_token,
                                             std::vector<BatchConfig::TokenId> const &candidate_tokens,
                                             std::vector<int> const &candidate_parent_ids,
-                                            int beam_width) {
+                                            int beam_width,
+                                            int leaf_depth) {
   // tree in format of <token_id, depth>
   std::vector<std::pair<BatchConfig::TokenId, int>> tree;
   std::unordered_map<BatchConfig::TokenId, std::vector<BatchConfig::TokenId>> children;
 
-  tree.push_back(std::make_pair(root_token, 0));
+  // tree.push_back(std::make_pair(root_token, 0));
   children[root_token] = std::vector<int>();
 
   for(int i = 0; i < candidate_tokens.size(); i++) {
@@ -249,6 +250,21 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   }
 
  // ToDo: BFS to DFS
+  std::stack<std::pair<BatchConfig::TokenId, int>> q;
+  q.push(std::make_pair(root_token, 0));
+
+  while(!q.empty()) {
+    std::pair<BatchConfig::TokenId, int> cur = q.top();
+    q.pop();
+    if (children[cur.first].size() == 0 and cur.second != leaf_depth) {
+      continue;
+    }
+    tree.push_back(std::make_pair(cur.first, cur.second));
+    std::cout << "Pushed: " << cur.first << ", depth: " << cur.second << std::endl;
+    for(auto child : children[cur.first]) {
+      q.push(std::make_pair(child, cur.second + 1));
+    }
+  }
 
   return tree;
 }
