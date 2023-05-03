@@ -18,6 +18,7 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
 #include <mutex>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -72,6 +73,36 @@ private:
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
+};
+
+struct SpecRequest : public Request {
+  std::vector<BatchConfig::TokenId> candidate_tokens;
+  std::vector<int> candidate_parent_ids;
+  std::vector<float> candidate_cum_probs;
+};
+
+class SpeculativeRequestManager : public RequestManager {
+public:
+  using RequestGuid = BatchConfig::RequestGuid;
+  using TokenId = BatchConfig::TokenId;
+  SpeculativeRequestManager();
+  // RequestGuid register_new_request(std::vector<TokenId> const &prompt,
+  //                                  int max_sequence_length);
+  BeamSearchBatchConfig prepare_next_batch_for_speculation(BeamSearchBatchConfig const &bc,
+                                 InferenceResult const &result);
+  // TreeVerifyBatchConfig prepare_next_batch_for_verification(BeamSearchBatchConfig const &bc,
+  //                                InferenceResult const &result);
+  // static void
+  //     load_tokens_task(Legion::Task const *task,
+  //                      std::vector<Legion::PhysicalRegion> const &regions,
+  //                      Legion::Context ctx,
+  //                      Legion::Runtime *runtime);
+
+private:
+  std::queue<SpecRequest> pending_request_queue;
+  std::unordered_map<RequestGuid, SpecRequest> running_request_queue;
+  std::mutex request_queue_mutex;
+  // RequestGuid next_available_guid;
 };
 
 } // namespace FlexFlow

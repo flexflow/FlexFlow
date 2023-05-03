@@ -136,4 +136,90 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   return new_bc;
 }
 
+SpeculativeRequestManager::SpeculativeRequestManager() : next_available_guid(1000000) {}
+
+SpeculativeRequestManager::~SpeculativeRequestManager() {}
+
+BeamSearchBatchConfig 
+  SpeculativeRequestManager::prepare_next_batch_for_speculation(BeamSearchBatchConfig const &old_bc, 
+                                                                InferenceResult const &result)
+{
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  // Step 1: use result to update requests
+  for (int i = 0; i < old_bc.num_tokens; i++) {
+    size_t guid =
+        old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
+    SpecRequest &request = running_request_queue[guid];
+    if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size() + bc.iterations) {
+      // This is a prompt token
+      continue;
+    } else {
+      assert(old_bc.tokensInfo[i].abs_depth_in_request + 1 ==
+             request.tokens.size());
+      // This is a decoding token
+      request.candidate_tokens.push_back(result.token_ids[i]);
+      request.candidate_parent_ids.push_back(result.parent_ids[i]);
+      request.candidate_cum_probs.push_back(result.cum_probs[i]);
+    }
+  }
+  
+  // Step 2: preparing the next batch for existing requests
+  BeamSearchBatchConfig new_bc;
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (old_bc.request_completed[i]) {
+      continue;
+    }
+    assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
+    SpecRequest &request =
+        running_request_queue[old_bc.requestsInfo[i].request_guid];
+    int processed_tokens = old_bc.requestsInfo[i].token_start_offset +
+                           old_bc.requestsInfo[i].num_tokens_in_batch;
+    // assert(processed_tokens < request.tokens.size());
+    if (old_bc.done()) { // Finalize the request for verification
+      log_req_mgr.print("[Done] guid(%zu) with spec_tree_depth(%d)",
+                        old_bc.requestsInfo[i].request_guid,
+                        bc.iterations);
+    } else {
+      // Update new bc's request info, each sub request take one spot
+      new_bc.request_completed[i] = false;
+      new_bc.requestsInfo[i].token_start_offset = processed_tokens;
+      new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
+      new_bc.requestsInfo[i].max_sequence_length =
+          old_bc.requestsInfo[i].max_sequence_length;
+      new_bc.iterations = old_bc.iterations + 1;
+
+      if (new_bc.requestsInfo[i].token_start_offset + 1 ==
+          request.tokens.size() + new_bc.iterations) {
+        // Incremental phase
+        new_bc.requestsInfo[i].num_tokens_in_batch = 1;
+      } else {
+        // Prompt phase (check this part later)
+        assert(new_bc.iterations == 0); // Prompt phase only happens in the first batch
+        new_bc.requestsInfo[i].num_tokens_in_batch =
+            std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
+                     (int)request.tokens.size() -
+                         new_bc.requestsInfo[i].token_start_offset);
+      }
+
+      // Update new bc's token info
+      for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
+        int depth = new_bc.requestsInfo[i].token_start_offset + j;
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+        assert(depth < request.tokens.size() + new_bc.iterations);
+        new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
+        new_bc.num_tokens++;
+      }
+    }
+  }
+
+  // Step 3: add new requests to the next batch (should not happens in beam searchspeculation phase)
+
+  if(old_bc.done()) { // check this logic later
+    return std::nullptr;
+  }
+
+  return new_bc;
+}
+
 }; // namespace FlexFlow
