@@ -497,7 +497,7 @@ void SpecIncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 FutureMap SpecIncMultiHeadSelfAttention::inference(
     FFModel const &ff,
-    BatchConfig const &bc,
+    BeamSearchBatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -509,12 +509,12 @@ FutureMap SpecIncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  printf("BatchConfig, num_tokens: %d, num_requests: %d\n",
+  printf("BeamSearchBatchConfig, num_tokens: %d, num_requests: %d\n",
          bc.num_tokens,
          bc.num_requests);
   IndexLauncher launcher(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(&bc, sizeof(BeamSearchBatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -554,7 +554,7 @@ void SpecIncMultiHeadSelfAttention::inference_task(
   assert(regions.size() == 3);
   assert(task->regions.size() == regions.size());
 
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
   SpecIncMultiHeadSelfAttentionMeta const *m =
       *((SpecIncMultiHeadSelfAttentionMeta **)task->local_args);
 

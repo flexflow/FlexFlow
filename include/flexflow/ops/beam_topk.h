@@ -13,6 +13,8 @@ public:
   BeamTopKMeta(FFHandler handle);
   bool sorted;
   int max_beam_width;
+  BeamSearchBatchConfig::BeamSearchPerTokenInfo *tokenInfos;
+  BeamSearchBatchConfig::BeamSearchPerRequestInfo *requestInfos;
 };
 
 class BeamTopK : public Op {
@@ -38,7 +40,7 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &,
+                              BeamSearchBatchConfig const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
@@ -71,7 +73,7 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   static void forward_kernel(BeamTopKMeta const *m,
-                             BatchConfig const *bc,
+                             BeamSearchBatchConfig const *bc,
                              float const *input_ptr,
                              float *output_ptr,
                              int *indices_ptr,
@@ -81,7 +83,7 @@ public:
                              bool sorted,
                              ffStream_t stream);
   static void forward_kernel_wrapper(BeamTopKMeta const *m,
-                                     BatchConfig const *bc,
+                                     BeamSearchBatchConfig const *bc,
                                      float const *input_ptr,
                                      float *output_ptr,
                                      int *indices_ptr,
@@ -94,6 +96,7 @@ public:
 public:
   bool sorted;
   int max_beam_width;
+
 };
 
 }; // namespace FlexFlow

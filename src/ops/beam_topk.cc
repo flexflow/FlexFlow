@@ -268,7 +268,7 @@ void BeamTopK::forward(FFModel const &ff) {
 }
 
 FutureMap BeamTopK::inference(FFModel const &ff,
-                              BatchConfig const &bc,
+                              BeamSearchBatchConfig const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
                               MachineView const *mv) {
@@ -282,7 +282,7 @@ FutureMap BeamTopK::inference(FFModel const &ff,
 
   IndexLauncher launcher(BEAM_TOPK_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(&bc, sizeof(BeamSearchBatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -322,7 +322,7 @@ InferenceResult
                              Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
   std::cout << "beam search topk inference: "
             << "\n";

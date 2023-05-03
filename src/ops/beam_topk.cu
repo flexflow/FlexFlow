@@ -251,13 +251,14 @@ __device__ void heapBeamTopK(T const *__restrict__ input,
   }
 
   // if(batch_index == 0){
-  //   printf("top elemmments: %d, value %.15f\n", start_index, heap.root().value);
+  //   printf("top elemmments: %d, value %.15f\n", start_index,
+  //   heap.root().value);
   // }
 }
 
 template <typename T>
 __device__ void mergeBeamShards(int num_shards,
-int batch_index,
+                                int batch_index,
                                 int k,
                                 int max_heap_size,
                                 int request_id,
@@ -284,10 +285,14 @@ int batch_index,
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
       // int beam = (slot % max_heap_size) / k;
-      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + ((slot % max_heap_size) / k)];
+      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS +
+                         ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
       if (batch_index == 0) {
-        printf("slot %d, value %.15f, prob %15f\n", slot, entries[slot].value, prob);
+        printf("slot %d, value %.15f, prob %15f\n",
+               slot,
+               entries[slot].value,
+               prob);
       }
     }
     min_heap.build(heap_size);
@@ -296,10 +301,15 @@ int batch_index,
     for (int shard = heap_size; shard < num_shards; shard++) {
       auto const entry = entries[shard];
       auto const root = min_heap.root();
-      
-      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + ((shard % max_heap_size) / k)];
+
+      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS +
+                         ((shard % max_heap_size) / k)];
       if (batch_index == 0) {
-        printf("shard %d, index %d, value %.15f, prob %.15f\n", shard, entry.index, entry.value, prob);
+        printf("shard %d, index %d, value %.15f, prob %.15f\n",
+               shard,
+               entry.index,
+               entry.value,
+               prob);
       }
       if (entry.value * prob < root.value) {
         continue;
@@ -331,18 +341,22 @@ int batch_index,
       top_k_values[rank] = max_element.value;
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
-      top_k_parents[rank] = parent_id[request_id * BatchConfig::MAX_NUM_BEAMS + ((shard_index % max_heap_size) / k)];
+      top_k_parents[rank] = parent_id[request_id * BatchConfig::MAX_NUM_BEAMS +
+                                      ((shard_index % max_heap_size) / k)];
       int next_shard_index = shard_index + num_shards;
 
-      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + ((next_shard_index % max_heap_size) / k)];
+      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS +
+                         ((next_shard_index % max_heap_size) / k)];
       if (batch_index == 0) {
         printf("next_shard_index %d, value %.15f\n, prob %.15f",
                next_shard_index,
-               entries[next_shard_index].value, prob);
+               entries[next_shard_index].value,
+               prob);
       }
-      
-      max_heap.replace_root({next_shard_index, entries[next_shard_index].value * prob},
-                            heap_size);
+
+      max_heap.replace_root(
+          {next_shard_index, entries[next_shard_index].value * prob},
+          heap_size);
     }
 
     // rank == last_k.
@@ -350,7 +364,8 @@ int batch_index,
     top_k_values[last_k] = max_element.value;
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
-    top_k_parents[last_k] = parent_id[request_id * BatchConfig::MAX_NUM_BEAMS + ((shard_index % max_heap_size) / k)];
+    top_k_parents[last_k] = parent_id[request_id * BatchConfig::MAX_NUM_BEAMS +
+                                      ((shard_index % max_heap_size) / k)];
   }
 }
 
@@ -464,7 +479,7 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
 
     // get parent/acc based on the sub request and main request
     mergeBeamShards(thread_count,
-    batch_index,
+                    batch_index,
                     k,
                     max_heap_size,
                     request_id,
@@ -480,7 +495,7 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
 
 /*static*/
 void BeamTopK::forward_kernel(BeamTopKMeta const *m,
-                              BatchConfig const *bc,
+                              BeamSearchBatchConfig const *bc,
                               float const *input_ptr,
                               float *output_ptr,
                               int *indices_ptr,
@@ -500,8 +515,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   // sub request
   int const *sub_requests = bc->sub_requests;
 
-  std::vector<BatchConfig::BeamSlot> beam_slots = bc->beam_slots;
-  assert(bc->beam_slots.size() > 0);
+  // std::vector<BatchConfig::BeamSlot> beam_slots = bc->beam_slots;
+  // assert(bc->beam_slots.size() > 0);
 
   int beam_num_blocks = 0;
   std::vector<int> beam_block_start_index;
@@ -509,11 +524,12 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   std::vector<int> tokens_per_request;
 
   int block_start_index = 0;
-  int depth = bc->beam_slots.at(0).current_depth;
+  int depth =
+      bc->beamRequestsInfo[bc->beamTokenInfo[0].request_index].current_depth;
 
   // a data structure for prob, parent_id,
   int max_total_requests =
-      BatchConfig::MAX_NUM_BEAMS * bc->num_active_requests();
+      BeamSearchBatchConfig::MAX_BEAM_WIDTH * bc->num_active_requests();
   int parent_ids[max_total_requests];
   float acc_probs[max_total_requests];
 
@@ -521,25 +537,28 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     if (bc->request_completed[i]) {
       continue;
     }
-    assert(beam_slots[i].beam_size > 0);
-    int num_new_tokens = bc->num_processing_tokens[i];
+    assert(bc->beamRequestsInfo[i].beam_size > 0);
+
+    // int num_new_tokens = bc->num_processing_tokens[i];
+    int num_new_tokens = bc->beamRequestsInfo[i].num_tokens_in_batch;
+
     // get beam size;
-    int beam_size = beam_slots[i].beam_size;
+    int beam_size = bc->beamRequestsInfo[i].beam_size;
 
     // initial request
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {
-      parent_ids[req_index * BatchConfig::MAX_NUM_BEAMS + j] = j;
-      //beam_slots[i].parent_id[j];
-      acc_probs[req_index * BatchConfig::MAX_NUM_BEAMS + j] =
-          beam_slots[i].probs[j];
-      std::cout << "probbbb req: " << i
-                  << ", sub req probability : " << beam_slots[i].probs[j]
-                  << ", sub request id " << j
-                  << ", parent id " << beam_slots[i].parent_id[j]
-                  << ", data inddd"
-                  << req_index * BatchConfig::MAX_NUM_BEAMS + j << "\n";
+      parent_ids[req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j] = j;
+      // beam_slots[i].parent_id[j];
+      acc_probs[req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j] =
+          bc->beamRequestsInfo[i].probs[j];
+      std::cout << "probbbb req: " << i << ", sub req probability : "
+                << bc->beamRequestsInfo[i].probs[j] << ", sub request id " << j
+                << ", parent id " << bc->beamRequestsInfo[i].parent_id[j]
+                << ", data inddd"
+                << req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j
+                << "\n";
     }
 
     // process tokens
@@ -551,9 +570,10 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       beam_num_blocks++;
     }
 
-    max_heap_size =
-        std::max(max_heap_size, beam_slots[i].beam_size * sub_requests[i]);
-    max_beam_width = std::max(max_beam_width, beam_slots[i].beam_size) ;  
+    max_heap_size = std::max(
+        max_heap_size, bc->beamRequestsInfo[i].beam_size * sub_requests[i]);
+    max_beam_width =
+        std::max(max_beam_width, bc->beamRequestsInfo[i].beam_size);
     req_index += 1;
     block_start_index += (sub_requests[i] - 1) * num_new_tokens * length;
   }
@@ -646,7 +666,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
 /*static*/
 void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
-                                      BatchConfig const *bc,
+                                      BeamSearchBatchConfig const *bc,
                                       float const *input_ptr,
                                       float *output_ptr,
                                       int *indices_ptr,
