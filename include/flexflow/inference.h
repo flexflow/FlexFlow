@@ -61,12 +61,17 @@ public:
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
+
+  BeamSearchBatchConfig prepare_next_batch_beam(BeamSearchBatchConfig const &bc,
+                                 BeamInferenceResult const &result);   
+
+  void RequestManager::update_beam_metadata(BeamSearchBatchConfig bc,
+                                     BeamInferenceResult const &result);                                                          
   static void
       load_tokens_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
-
 private:
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;
