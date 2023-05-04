@@ -42,10 +42,10 @@ void RequestManager::load_tokens_task(
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpyAsync(fb_ptr,
-                            dram_copy,
-                            sizeof(TokenId) * batch_config.num_tokens,
-                            hipMemcpyHostToDevice,
-                            stream));
+                           dram_copy,
+                           sizeof(TokenId) * batch_config.num_tokens,
+                           hipMemcpyHostToDevice,
+                           stream));
 }
 
 }; // namespace FlexFlow
