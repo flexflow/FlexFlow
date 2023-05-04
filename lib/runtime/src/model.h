@@ -24,7 +24,7 @@
 #include "layer.h"
 #include "legion.h"
 #include "loss_functions.h"
-#include "metrics_functions/metrics_functions.h"
+#include "metrics_functions.h"
 #include "optimizer.h"
 #include "parallel_tensor.h"
 #include "recompile.h"

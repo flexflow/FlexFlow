@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-struct FFHandler {
+struct PerDeviceFFHandle {
   ffHandle_t dnn;
   ffblasHandle_t blas;
 

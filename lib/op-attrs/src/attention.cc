@@ -1,6 +1,4 @@
 #include "op-attrs/ops/attention.h"
-#include "utils/hash-utils.h"
-#include <algorithm>
 
 namespace FlexFlow {
 

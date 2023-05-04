@@ -91,6 +91,16 @@ public:
   Legion::PrivilegeMode privileges;
 };
 
+template <typename T> 
+struct TypedFuture {
+  T get();
+};
+
+template <typename T> 
+struct TypedFutureMap {
+  T get(Legion::DomainPoint);
+};
+
 struct TaskSignature {
   TaskSignature() = default;
 
@@ -100,20 +110,26 @@ struct TaskSignature {
   void add_arg_slot(slot_id name) {
     static_assert(is_serializable<T>, "Argument type must be serializable");
 
-    this->task_arg_types.insert({ name, { typeid(T), ArgSlotType::STANDARD }});
+    this->task_arg_types.insert({ name, { typeid(T) }});
   }
 
-  template <typename T, typename F>
-  void add_index_arg_slot(slot_id name, F const &idx_to_arg) {
-    static_assert(is_serializable<T>, "Argument type must be serializable");
+  template <typename T>
+  void add_return_value();
 
-    this->task_arg_types.insert({ name, { typeid(T), ArgSlotType::INDEX }});
-  }
+  template <typename T>
+  void add_variadic_arg_slot(slot_id name);
+
+  /* template <typename T, typename F> */
+  /* void add_index_arg_slot(slot_id name, F const &idx_to_arg) { */
+  /*   static_assert(is_serializable<T>, "Argument type must be serializable"); */
+
+  /*   this->task_arg_types.insert({ name, { typeid(T), ArgSlotType::INDEX }}); */
+  /* } */
 
   bool operator==(TaskSignature const &) const;
   bool operator!=(TaskSignature const &) const;
 private:
-  std::unordered_map<slot_id, std::pair<std::type_index, ArgSlotType>> task_arg_types;
+  std::unordered_map<slot_id, std::type_index> task_arg_types;
   std::unordered_map<slot_id, ParallelTensorSlotSpec> tensor_slots;
 };
 
@@ -129,6 +145,14 @@ public:
     auto arg_spec = this->generate_arg_spec<T>(t);
     assert (!contains_key(this->arg_bindings, name));
     arg_bindings.insert({name, arg_spec});
+  }
+
+  template <typename T>
+  void bind_arg(slot_id name, TypedFuture<T> const &f) {
+  }
+
+  template <typename T>
+  void bind_arg(slot_id name, TypedFutureMap<T> const &f) {
   }
 
   template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
@@ -225,6 +249,12 @@ struct TaskArgumentAccessor {
     return ff_task_deserialize<T>(dez);
   }
 
+  template <typename T>
+  optional<T> get_optional_argument(slot_id);
+
+  template <typename T>
+  std::vector<T> get_variadic_argument(slot_id);
+
   template <Legion::PrivilegeMode PRIV>
   privilege_mode_to_accessor<PRIV> get_generic_accessor(ParallelTensorSpec const &tensor_spec, region_idx_t idx) {
     auto tensor_privs = get_privileges(this->args_fmt, tensor_spec);
@@ -294,12 +324,26 @@ public:
 /* std::unordered_map<Legion::DomainPoint, TaskArgumentFormat> compile_index_task_invocation(TaskSignature const &signature, */
 /*                                                                                           TaskBinding const &binding); */
 
-void execute_task(LegionConfig const &config, 
-                  TaskInvocation const &,
-                  RuntimeBacking const &backing);
+struct TaskReturnAccessor { 
+  template <typename T>
+  TypedFuture<T> get_returned_future();
+
+  template <typename T>
+  TypedFutureMap<T> get_returned_future_map();
+};
+
+TaskReturnAccessor execute_task(LegionConfig const &config, 
+                                TaskInvocation const &,
+                                RuntimeBacking const &backing);
 
 template <task_id_t> TaskSignature get_signature();
 TaskSignature get_signature(task_id_t);
+
+template <typename F>
+void register_task(task_id_t, std::string const &name, TaskSignature const &, F const &func);
+
+template <typename F>
+void register_task(task_id_t, std::string const &name, TaskSignature const &, F const &func, F const &cpu_func); 
 
 }
 

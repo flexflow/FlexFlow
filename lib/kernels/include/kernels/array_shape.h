@@ -31,6 +31,9 @@ public:
   std::size_t operator[](legion_dim_t) const;
   std::size_t at(legion_dim_t) const;
 
+  legion_dim_t last_idx() const;
+  legion_dim_t neg_idx(int) const;
+
   optional<std::size_t> at_maybe(std::size_t) const;
 
   ArrayShape reversed_dim_order() const;

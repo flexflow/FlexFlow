@@ -5,10 +5,13 @@
 #include "utils/visitable.h"
 #include "core.h"
 
+#define AGGREGATE_MAX_K 4
+#define AGGREGATE_MAX_BATCH_SIZE 64
+#define AGGREGATE_MAX_N 12
 
 namespace FlexFlow {
 
-struct AggregateAttrs {
+struct AggregateAttrs : public use_visitable_cmp<AggregateAttrs> {
   AggregateAttrs() = delete;
   AggregateAttrs(int n, float lambda_bal);
 public:
@@ -16,20 +19,24 @@ public:
   float lambda_bal;
 };
 
-bool operator==(AggregateAttrs const &, AggregateAttrs const &);
-bool operator!=(AggregateAttrs const &, AggregateAttrs const &);
-bool operator<(AggregateAttrs const &, AggregateAttrs const &);
+DataType get_datatype(AggregateAttrs const &);
+bool is_valid(AggregateAttrs const &,
+              ParallelTensorShape const &gate_preds,
+              ParallelTensorShape const &gate_assign,
+              ParallelTensorShape const &true_gate_assign,
+              ParallelTensorShape const &full_gate_gradients,
+              std::vector<ParallelTensorShape> const &exp_preds);
+ParallelTensorShape get_output_shape(AggregateAttrs const &,
+                                     ParallelTensorShape const &gate_preds,
+                                     ParallelTensorShape const &gate_asign,
+                                     ParallelTensorShape const &true_gate_assign,
+                                     ParallelTensorShape const &full_gate_gradients,
+                                     std::vector<ParallelTensorShape> const &exp_preds);
 
 }
 
 VISITABLE_STRUCT(::FlexFlow::AggregateAttrs, n, lambda_bal);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::AggregateAttrs> {
-  size_t operator()(::FlexFlow::AggregateAttrs const &) const;
-};
-}
+MAKE_VISIT_HASHABLE(::FlexFlow::AggregateAttrs);
 
 namespace FlexFlow {
 

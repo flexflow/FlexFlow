@@ -97,4 +97,55 @@ typedef miopenDataType_t ffCudnnDataType_t;
 
 }
 
+auto ffEventCreate(ffEvent_t *e)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  -> decltype(cudaEventCreate(e)) {
+  return cudaEventCreate(e);
+#elif defined(FF_USE_HIP_ROCM)
+  -> decltype(hipEventCreate(e)) {
+  return hipEventCreate(e);
+#endif
+}
+
+auto ffEventDestroy(ffEvent_t &e)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  -> decltype(cudaEventDestroy(e)) {
+  return cudaEventDestroy(e);
+#elif defined(FF_USE_HIP_ROCM)
+  -> decltype(hipEventDestroy(e)) {
+  return hipEventDestroy(e);
+#endif
+}
+
+auto ffEventRecord(ffEvent_t &e, ffStream_t stream)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  -> decltype(cudaEventRecord(e, stream)) {
+  return cudaEventRecord(e, stream);
+#elif defined(FF_USE_HIP_ROCM)
+  -> decltype(hipEventRecord(e, stream)) {
+  return hipEventRecord(e, stream);
+#endif
+}
+
+auto ffEventSynchronize(ffEvent_t &e)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  -> decltype(cudaEventSynchronize(e)) {
+  return cudaEventSynchronize(e);
+#elif defined(FF_USE_HIP_ROCM)
+  -> decltype(hipEventSynchronize(e)) {
+  return hipEventSynchronize(e);
+#endif
+}
+
+auto ffEventElapsedTime(float *elapsed, ffEvent_t &start, ffEvent_t &stop)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  -> decltype(cudaEventElapsedTime(elapsed, start, stop)) {
+  return cudaEventElapsedTime(elapsed, start, stop);
+#elif defined(FF_USE_HIP_ROCM)
+  -> decltype(hipEventElapsedTime(elapsed, start, stop)) {
+  return cudaEventElapsedTime(elapsed, start, stop);
+#endif
+}
+
+
 #endif 

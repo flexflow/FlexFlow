@@ -71,7 +71,6 @@ typename std::enable_if<(is_fmtable<T>::value)>::type
 as_dot(T const &t, RecordFormatter &r) {
   r << fmt::to_string(t);
 }
-
 void as_dot(int x, RecordFormatter &r) {
   r << std::to_string(x); 
 }
@@ -148,6 +147,26 @@ struct AsDot {
 template <typename ...Args>
 RecordFormatter as_dot(variant<Args...> const &o) {
   return mpark::visit(AsDot{}, o);
+}
+
+struct IsValidFunctor {
+  IsValidFunctor(std::vector<ParallelTensorShape> const &_input_shapes)
+    : input_shapes(_input_shapes) { }
+
+  std::vector<ParallelTensorShape> const &input_shapes;
+
+  bool operator()(AggregateAttrs const &attrs) {
+    return is_valid(attrs, input_shapes.at(0), input_shapes.at(1), input_shapes.at(2), input_shapes.at(3), subvec(input_shapes, 4, nullopt));
+  }
+
+  template <typename T>
+  bool operator()(T const &) {
+    return true; // TODO FIXME @lockshaw
+  }
+};
+
+bool is_valid(PCGOperatorAttrs const &attrs, std::vector<ParallelTensorShape> const &input_shapes) {
+  return visit(IsValidFunctor{input_shapes}, attrs);
 }
 
 /* int num_outputs(OperatorParameters const &o) { */

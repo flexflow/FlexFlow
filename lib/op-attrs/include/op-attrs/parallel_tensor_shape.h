@@ -45,7 +45,7 @@ struct ParallelTensorDims : public FFOrdered<ParallelDim> {
 /**
  * @brief Represent the shape of a ParallelTensor.
  */
-struct ParallelTensorShape {
+struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
 
   /**
    * @brief Default constructor.
@@ -67,10 +67,16 @@ struct ParallelTensorShape {
   ParallelTensorShape(TensorShape const &);
 
   size_t get_piece_size() const;
+  TensorShape get_piece_shape() const;
   bool is_valid() const;
 
   int get_num_replica_dims() const;
   int get_num_replicas() const;
+
+  int num_dims() const;
+  ParallelDim const &at(ff_dim_t const &) const;
+  ParallelDim const &operator[](ff_dim_t const &) const;
+
 
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;

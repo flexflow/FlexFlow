@@ -77,6 +77,9 @@ struct is_trivially_serializable_t<DimOrdered<Idx, T>> : is_trivially_serializab
 template <typename ...Ts>
 struct is_trivially_serializable_t<variant<Ts...>> : elements_satisfy<is_trivially_serializable_t, variant<Ts...>> { };
 
+template <typename T>
+struct is_trivially_serializable_t<optional<T>> : is_trivially_serializable_t<T> { };
+
 template <typename T> struct std_array_size_helper;
 
 template <typename T, std::size_t N> struct std_array_size_helper<std::array<T, N>> {

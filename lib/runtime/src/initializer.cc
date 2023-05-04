@@ -59,12 +59,6 @@ TaskInvocation apply_initializer(GlorotUniform const &initializer,
                                  parallel_tensor_guid_t const &guid, 
                                  ParallelTensor const &p,
                                  TensorDims const &tensor_dims) {
-  
-  TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
-  sig.add_arg_slot<GlorotUniform>(INITIALIZER);
-  sig.add_arg_slot<TensorDims>(TENSOR_DIMS);
-
   assert (tensor_dims.num_dims() >= 2);
 
   TaskBinding binding = { get_invocation_type(p.sync_type) };
@@ -78,9 +72,6 @@ TaskInvocation apply_initializer(GlorotUniform const &initializer,
 TaskInvocation apply_initializer(ZeroInitializer const &initializer, 
                                  parallel_tensor_guid_t const &guid, 
                                  ParallelTensor const &p) {
-  TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
-
   TaskBinding binding = { get_invocation_type(p.sync_type) };
   binding.bind(TENSOR, {guid});
 
@@ -90,10 +81,6 @@ TaskInvocation apply_initializer(ZeroInitializer const &initializer,
 TaskInvocation apply_initializer(UniformInitializer const &initializer,
                                  parallel_tensor_guid_t const &guid,
                                  ParallelTensor const &p) {
-  TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
-  sig.add_arg_slot<UniformInitializer>(INITIALIZER);
-
   TaskBinding binding = { get_invocation_type(p.sync_type) };
   binding.bind(TENSOR, {guid});
   binding.bind_arg<UniformInitializer>(INITIALIZER, initializer);
@@ -104,10 +91,6 @@ TaskInvocation apply_initializer(UniformInitializer const &initializer,
 TaskInvocation apply_initializer(NormInitializer const &initializer,
                                  parallel_tensor_guid_t const &guid,
                                  ParallelTensor const &p) {
-  TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
-  sig.add_arg_slot<NormInitializer>(INITIALIZER);
-
   TaskBinding binding = { get_invocation_type(p.sync_type) };
   binding.bind(TENSOR, {guid});
   binding.bind_arg<NormInitializer>(INITIALIZER, initializer);
@@ -118,10 +101,6 @@ TaskInvocation apply_initializer(NormInitializer const &initializer,
 TaskInvocation apply_initializer(ConstantInitializer const &initializer,
                                  parallel_tensor_guid_t const &guid,
                                  ParallelTensor const &p) {
-  TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
-  sig.add_arg_slot<ConstantInitializer>(INITIALIZER);
-
   TaskBinding binding = { get_invocation_type(p.sync_type) };
   binding.bind(TENSOR, {guid});
   binding.bind_arg<ConstantInitializer>(INITIALIZER, initializer);
@@ -265,8 +244,6 @@ void constant_init_task(Legion::Task const *task,
 
 
 
-
-
 // void UniformInitializer::init(LegionConfig const &config, ParallelTensor const &p, ParallelTensorLegionBacking const &backing) {
 //   Context ctx = config.lg_ctx;
 //   Runtime *runtime = config.lg_hlr;
@@ -369,5 +346,51 @@ void constant_init_task(Legion::Task const *task,
 //     throw mk_runtime_error("Unhandled sync_type {}", p.sync_type);
 //   }
 // }
+
+template <>
+void register_task<GLOROT_INIT_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_arg_slot<GlorotUniform>(INITIALIZER);
+  sig.add_arg_slot<TensorDims>(TENSOR_DIMS);
+
+  register_task(GLOROT_INIT_TASK_ID, "Glorot Init", sig, glorot_init_task);
+}
+
+template <>
+void register_task<ZERO_INIT_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+
+  register_task(ZERO_INIT_TASK_ID, "Zero Init", sig, zero_init_task, zero_init_task_cpu); // TODO FIXME @lockshaw enable cpu support
+}
+
+template <>
+void register_task<UNIFORM_INIT_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_arg_slot<UniformInitializer>(INITIALIZER);
+
+  register_task(UNIFORM_INIT_TASK_ID, "Uniform Distribution Init", sig, uniform_init_task);
+}
+
+template <>
+void register_task<NORMAL_INIT_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_arg_slot<NormInitializer>(INITIALIZER);
+
+  register_task(NORMAL_INIT_TASK_ID, "Normal Distribution Init", sig, norm_init_task);
+}
+
+template <>
+void register_task<CONSTANT_INIT_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_arg_slot<ConstantInitializer>(INITIALIZER);
+
+  register_task(CONSTANT_INIT_TASK_ID, "Constant Init", sig, constant_init_task, constant_init_task_cpu); // TODO FIXME @lockshaw enable cpu support
+}
+
 
 }

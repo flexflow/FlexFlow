@@ -828,13 +828,22 @@ void register_flexflow_internal_tasks() {
   }
 #endif
   // Initializer
-  {
-    TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID, "Zero Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ZeroInitializer::init_task_cpu>(
-        registrar, "Zero Init Task");
-  }
+  register_tasks<
+    GLOROT_INIT_TASK_ID,
+    ZERO_INIT_TASK_ID,
+    UNIFORM_INIT_TASK_ID,
+    NORMAL_INIT_TASK_ID,
+    CONSTANT_INIT_TASK_ID,
+    METRICS_COMP_TASK_ID,
+    UPDATE_METRICS_TASK_ID,
+    AGGREGATE_INIT_TASK_ID,
+    AGGREGATE_FWD_TASK_ID,
+    AGGREGATE_BWD_TASK_ID,
+    AGG_SPEC_INIT_TASK_ID,
+    AGG_SPEC_FWD_TASK_ID,
+    AGG_SPEC_BWD_TASK_ID
+  >();
+
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID, "Zero Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));

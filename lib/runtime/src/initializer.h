@@ -26,15 +26,22 @@ namespace FlexFlow {
 struct ParallelTensor;
 struct parallel_tensor_guid_t;
 
+template <> TaskSignature get_signature<GLOROT_INIT_TASK_ID>();
+template <> TaskSignature get_signature<ZERO_INIT_TASK_ID>();
+template <> TaskSignature get_signature<UNIFORM_INIT_TASK_ID>();
+template <> TaskSignature get_signature<NORMAL_INIT_TASK_ID>();
+template <> TaskSignature get_signature<CONSTANT_INIT_TASK_ID>();
+
+template <> void register_task<GLOROT_INIT_TASK_ID>();
+template <> void register_task<ZERO_INIT_TASK_ID>();
+template <> void register_task<UNIFORM_INIT_TASK_ID>();
+template <> void register_task<NORMAL_INIT_TASK_ID>();
+template <> void register_task<CONSTANT_INIT_TASK_ID>();
+
 class GlorotUniform : public use_visitable_cmp<GlorotUniform> {
 public:
   GlorotUniform() = delete;
   GlorotUniform(int seed);
-
-  static void init_task(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
 public:
   int seed;
   /* float scale; */
@@ -44,24 +51,11 @@ public:
 class ZeroInitializer : public use_visitable_cmp<ZeroInitializer> {
 public:
   ZeroInitializer() = default;
-
-  static void init_task(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
-  static void init_task_cpu(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
 };
 
 class UniformInitializer : public use_visitable_cmp<UniformInitializer> {
 public:
   UniformInitializer(int seed, float min, float max);
-  static void init_task(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
 public:
   int seed;
   float min_val, max_val;
@@ -70,10 +64,6 @@ public:
 class NormInitializer : public use_visitable_cmp<NormInitializer> {
 public:
   NormInitializer(int seed, float mean, float stddev);
-  static void init_task(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
 public:
   int seed;
   float mean, stddev;
@@ -82,14 +72,6 @@ public:
 class ConstantInitializer : public use_visitable_cmp<ConstantInitializer> {
 public:
   ConstantInitializer(DataTypeValue const &value);
-  static void init_task(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
-  static void init_task_cpu(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
 
 public:
   DataTypeValue value;

@@ -13,8 +13,6 @@ namespace FlexFlow {
 class ParallelComputationGraph {
 public:
   ParallelComputationGraph() = delete;
-  ParallelComputationGraph(ParallelComputationGraph const &) = default;
-  ParallelComputationGraph &operator=(ParallelComputationGraph const &) = default;
 
   optional<Operator> get_source(ParallelTensor const &) const;
 

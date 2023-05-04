@@ -16,6 +16,7 @@
 #include "kernels/loss_function_kernels.h"
 #include "loss_functions.h"
 #include "legion.h"
+#include "profiling.h"
 
 namespace FlexFlow {
 
@@ -113,9 +114,9 @@ static void loss_backward_task(Legion::Task const *task,
       sparse_categorical_crossentropy_loss_backward_kernel,
       enable_profiling,
       "[SparseCategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
-      logit_grad.get_float_ptr(),
-      logit.get_float_ptr(),
-      label.get_int32_ptr(),
+      get_float_ptr(logit_grad),
+      get_float_ptr(logit),
+      get_int32_ptr(label),
       logit.shape.get_volume(),
       logit_grad.shape.get_volume(),
       num_samples,
@@ -137,9 +138,9 @@ static void loss_backward_task(Legion::Task const *task,
           categorical_crossentropy_loss_backward_kernel,
           enable_profiling,
           "[CategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
-          logit_grad.get_float_ptr(),
-          logit.get_float_ptr(),
-          label.get_float_ptr(),
+          get_float_ptr(logit_grad),
+          get_float_ptr(logit),
+          get_float_ptr(label),
           logit.shape.get_volume(),
           logit_grad.shape.get_volume(),
           scale_factor);
@@ -151,9 +152,9 @@ static void loss_backward_task(Legion::Task const *task,
           mean_squared_error_avg_loss_backward_kernel,
           enable_profiling,
           "[MeanSquaredErrorAvgLoss] backward_time = %.2lfms\n",
-          logit_grad.get_float_ptr(),
-          logit.get_float_ptr(),
-          label.get_float_ptr(),
+          get_float_ptr(logit_grad),
+          get_float_ptr(logit),
+          get_float_ptr(label),
           logit.shape.get_volume(),
           logit_grad.shape.get_volume(),
           scale_factor);
@@ -165,8 +166,8 @@ static void loss_backward_task(Legion::Task const *task,
           identity_loss_backward_kernel,
           enable_profiling,
           "[IdentityLoss] backward_time = %.2lfms\n",
-          logit_grad.get_float_ptr(),
-          logit.get_float_ptr(),
+          get_float_ptr(logit_grad),
+          get_float_ptr(logit),
           logit.shape.get_volume(),
           logit_grad.shape.get_volume(),
           scale_factor);

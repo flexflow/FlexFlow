@@ -61,7 +61,6 @@
 #include <dirent.h>
 #include <queue>
 #include <unordered_set>
-#include "op_node.h"
 #include "utils/containers.h"
 #include "parallel_tensor_mapping.h"
 #include "make_operator.h"
@@ -1182,27 +1181,6 @@ std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
 
   return bwd_edge_map;
 };
-
-PerfMetrics
-    FFModel::update_metrics_task(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
-  Metrics *m = (Metrics *)task->args;
-  if (task->futures.size() == 0) {
-    // Create an empty future
-    PerfMetrics perf;
-    return perf;
-  }
-  assert(task->futures.size() > 1);
-  PerfMetrics all_metrics = task->futures[0].get_result<PerfMetrics>();
-  for (size_t i = 1; i < task->futures.size(); i++) {
-    PerfMetrics one_metrics = task->futures[i].get_result<PerfMetrics>();
-    all_metrics.update(one_metrics);
-  }
-  all_metrics.print(m);
-  return all_metrics;
-}
 
 void Op::prefetch(FFModel const &ff) {
   // TODO: perform prefetch for performance imporvement

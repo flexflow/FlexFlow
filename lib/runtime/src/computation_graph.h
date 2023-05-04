@@ -134,10 +134,14 @@ public:
                    score_f = {},
                char const *name = nullptr);
   // Add aggregate layer
-  Tensor aggregate(Tensor const *inputs,
+  Tensor aggregate(Tensor const &gate_preds,
+                   Tensor const &gate_assign,
+                   Tensor const &true_gate_assign,
+                   Tensor const &full_gate_gradients,
+                   std::vector<Tensor> const &exp_preds,
                    int n,
                    float lambda_bal,
-                   char const *name = nullptr);
+                   optional<std::string> const &maybe_name);
   // Add aggregate_spec layer
   Tensor aggregate_spec(Tensor const *inputs,
                         int n,

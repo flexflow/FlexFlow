@@ -15,6 +15,7 @@
 
 #include "aggregate_spec.h"
 #include "kernels/aggregate_spec_kernels.h"
+#include "op_task_spec.h"
 #include "task_spec.h"
 
 namespace FlexFlow {
@@ -27,192 +28,145 @@ enum Slots {
   TRUE_GATE_ASSIGN,
   GATE_GRADIENTS_FULL,
   ATTRS,
+  PER_DEVICE_STATE,
+  FF_HANDLE,
   PROFILING
 };
 
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
-
 using namespace FlexFlow::Kernels::AggregateSpec;
 
-Tensor FFModel::aggregate_spec(
-    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
-                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
-    int n,
-    float lambda_bal,
-    char const *name) {
-  Layer *li = new Layer(this,
-                        OP_AGG_SPEC,
-                        DT_FLOAT,
-                        name,
-                        n + 4 /*inputs*/,
-                        0 /*weights*/,
-                        1 /*outputs*/,
-                        inputs);
-  {
-    int num_dim = inputs[4]->num_dims;
-    // Set output shape
-    int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < num_dim - 1; i++) {
-      dims[i] = inputs[4]->dims[i];
-    }
-    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
-    li->outputs[0] = create_tensor_legion_ordering(
-        num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
-  }
-  li->add_int_property("n", n);
-  li->add_float_property("lambda_bal", lambda_bal);
-  layers.push_back(li);
-  return li->outputs[0];
-}
+// Tensor FFModel::aggregate_spec(
+//     Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
+//                              full_gate_pred, exp_pred_1, ... , exp_pred_n */
+//     int n,
+//     float lambda_bal,
+//     char const *name) {
+//   Layer *li = new Layer(this,
+//                         OP_AGG_SPEC,
+//                         DT_FLOAT,
+//                         name,
+//                         n + 4 /*inputs*/,
+//                         0 /*weights*/,
+//                         1 /*outputs*/,
+//                         inputs);
+//   {
+//     int num_dim = inputs[4]->num_dims;
+//     // Set output shape
+//     int dims[MAX_TENSOR_DIM];
+//     for (int i = 0; i < num_dim - 1; i++) {
+//       dims[i] = inputs[4]->dims[i];
+//     }
+//     dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
+//     li->outputs[0] = create_tensor_legion_ordering(
+//         num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+//   }
+//   li->add_int_property("n", n);
+//   li->add_float_property("lambda_bal", lambda_bal);
+//   layers.push_back(li);
+//   return li->outputs[0];
+// }
+// 
+// Op *AggregateSpec::create_operator_from_layer(
+//     FFModel &model,
+//     Layer const *layer,
+//     std::vector<ParallelTensor> const &inputs) {
+//   long long value1;
+//   layer->get_int_property("n", value1);
+//   int n = value1;
+//   float value2;
+//   layer->get_float_property("lambda_bal", value2);
+//   float lambda_bal = value2;
+//   return new AggregateSpec(model, inputs.data(), n, lambda_bal, layer->name);
+// }
+// 
+// AggregateSpec::AggregateSpec(FFModel &model,
+//                              ParallelTensor const *_inputs,
+//                              int _n,
+//                              float _lambda_bal,
+//                              char onst *name)
+//     : Op(model,
+//          OP_AGG_SPEC,
+//          DT_FLOAT,
+//          name,
+//          _n + 4 /*numInputs*/,
+//          0 /*numWeights*/,
+//          1 /*numOutputs*/,
+//          _inputs),
+//       attrs(_n, _lambda_bal) {
+//   // FIXME: For now, set upper limits Better: Do as follows, but memory is
+//   // assigned per block, so requires to check that
+//   // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
+//   assert(attrs.n <= AGGREGATE_SPEC_MAX_N &&
+//          "Increase AGGREGATE_SPEC_MAX_N in #define");
+//   assert(inputs[0]->dims[0].size <= AGGREGATE_SPEC_MAX_K &&
+//          "Increase AGGREGATE_SPEC_MAX_K in #define");
+//   assert(inputs[0]->dims[1].size <= AGGREGATE_SPEC_MAX_BATCH_SIZE &&
+//          "Increase AGGREGATE_SPEC_MAX_BATCH_SIZE in #define");
+// 
+//   assert(attrs.n + 4 == numInputs);
+//   assert(attrs.n > 0);
+//   assert(inputs[0]->num_dims == 2);
+//   assert(inputs[1]->num_dims == 2);
+//   assert(inputs[2]->num_dims == 2);
+//   assert(inputs[3]->num_dims == 2);
+// 
+//   for (int i = 0; i < inputs[0]->num_dims; i++) {
+//     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
+//     assert(inputs[0]->dims[i] == inputs[2]->dims[i]);
+//   }
+//   assert(inputs[0]->dims[1] == inputs[3]->dims[1]);
+//   assert(inputs[3]->dims[0].size == attrs.n);
+// 
+//   // expert inputs
+//   int num_dim = inputs[4]->num_dims;
+//   int out_dim = inputs[4]->dims[0].size;
+//   for (int i = 1; i < attrs.n; i++) {
+//     assert(inputs[i + 4]->num_dims == num_dim);
+//     assert(inputs[i + 4]->dims[0].size == out_dim);
+//   }
+//   // Set output shape
+//   ParallelDim dims[MAX_TENSOR_DIM];
+//   for (int i = 0; i < num_dim - 1; i++) {
+//     dims[i] = inputs[4]->dims[i];
+//   }
+//   dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
+//   numOutputs = 1;
+//   outputs[0] = model.create_parallel_tensor_legion_ordering(
+//       num_dim, dims, DT_FLOAT, this);
+// 
+//   numWeights = 0;
+// }
 
-Op *AggregateSpec::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
-    std::vector<ParallelTensor> const &inputs) {
-  long long value1;
-  layer->get_int_property("n", value1);
-  int n = value1;
-  float value2;
-  layer->get_float_property("lambda_bal", value2);
-  float lambda_bal = value2;
-  return new AggregateSpec(model, inputs.data(), n, lambda_bal, layer->name);
-}
 
-AggregateSpec::AggregateSpec(FFModel &model,
-                             ParallelTensor const *_inputs,
-                             int _n,
-                             float _lambda_bal,
-                             char const *name)
-    : Op(model,
-         OP_AGG_SPEC,
-         DT_FLOAT,
-         name,
-         _n + 4 /*numInputs*/,
-         0 /*numWeights*/,
-         1 /*numOutputs*/,
-         _inputs),
-      attrs(_n, _lambda_bal) {
-  // FIXME: For now, set upper limits Better: Do as follows, but memory is
-  // assigned per block, so requires to check that
-  // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
-  assert(attrs.n <= AGGREGATE_SPEC_MAX_N &&
-         "Increase AGGREGATE_SPEC_MAX_N in #define");
-  assert(inputs[0]->dims[0].size <= AGGREGATE_SPEC_MAX_K &&
-         "Increase AGGREGATE_SPEC_MAX_K in #define");
-  assert(inputs[0]->dims[1].size <= AGGREGATE_SPEC_MAX_BATCH_SIZE &&
-         "Increase AGGREGATE_SPEC_MAX_BATCH_SIZE in #define");
-
-  assert(attrs.n + 4 == numInputs);
-  assert(attrs.n > 0);
-  assert(inputs[0]->num_dims == 2);
-  assert(inputs[1]->num_dims == 2);
-  assert(inputs[2]->num_dims == 2);
-  assert(inputs[3]->num_dims == 2);
-
-  for (int i = 0; i < inputs[0]->num_dims; i++) {
-    assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
-    assert(inputs[0]->dims[i] == inputs[2]->dims[i]);
-  }
-  assert(inputs[0]->dims[1] == inputs[3]->dims[1]);
-  assert(inputs[3]->dims[0].size == attrs.n);
-
-  // expert inputs
-  int num_dim = inputs[4]->num_dims;
-  int out_dim = inputs[4]->dims[0].size;
-  for (int i = 1; i < attrs.n; i++) {
-    assert(inputs[i + 4]->num_dims == num_dim);
-    assert(inputs[i + 4]->dims[0].size == out_dim);
-  }
-  // Set output shape
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim - 1; i++) {
-    dims[i] = inputs[4]->dims[i];
-  }
-  dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
-  numOutputs = 1;
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      num_dim, dims, DT_FLOAT, this);
-
-  numWeights = 0;
-}
-static OpTaskSignature get_init_task_signature() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<AggregateSpecAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
-
-  return init;
-}
-
-static OpTaskSignature get_fwd_task_signature() {
-  OpTaskSignature fwd(OpTaskType::FWD);
-
-  fwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
-
-  fwd.add_input_slot(GATE_PREDS, READ_WRITE);
-  fwd.add_input_slot(GATE_ASSIGN, READ_WRITE);
-  fwd.add_input_slot(EXP_PREDS, SlotType::VARIADIC, READ_WRITE);
-  fwd.add_output_slot(OUTPUT);
-
-  return fwd;
-}
-
-static OpTaskSignature get_bwd_task_signature() {
-  OpTaskSignature bwd(OpTaskType::BWD);
-
-  bwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
-
-  bwd.add_input_slot(GATE_PREDS, READ_WRITE);
-  bwd.add_input_slot(GATE_ASSIGN);
-  bwd.add_input_slot(TRUE_GATE_ASSIGN);
-  bwd.add_input_grad_slot(GATE_GRADIENTS_FULL);
-  bwd.add_input_grad_slot(EXP_PREDS, SlotType::VARIADIC);
-  bwd.add_output_grad_slot(OUTPUT);
-
-  return bwd;
-}
-
-OpTaskBinding AggregateSpec::get_init_task_binding() const {
+OpTaskInvocation init(AggregateSpecAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(ATTRS, this->attrs);
-  binding.bind_arg(PROFILING, this->profiling);
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PROFILING, enable_profiling());
+  binding.bind_arg(FF_HANDLE, ff_handle());
 
-  return binding;
+  return { AGG_SPEC_INIT_TASK_ID, binding };
 }
 
-OpTaskBinding AggregateSpec::get_fwd_task_binding() const {
+OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(GATE_PREDS, input_tensor(0));
   binding.bind(GATE_ASSIGN, input_tensor(1));
 
-  for (int i = 0; i < this->attrs.n; i++) {
+  for (int i = 0; i < attrs.n; i++) {
     binding.bind(EXP_PREDS, input_tensor(i+4));
   }
 
   binding.bind(OUTPUT, output_tensor(0));
 
-  binding.bind_arg(ATTRS, this->attrs);
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
-  return binding;
+  return { AGG_SPEC_FWD_TASK_ID, binding };
 }
 
-OpTaskBinding AggregateSpec::get_bwd_task_binding() const {
+OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(GATE_PREDS, input_tensor(0));
@@ -226,13 +180,11 @@ OpTaskBinding AggregateSpec::get_bwd_task_binding() const {
 
   binding.bind_grad(OUTPUT, output_tensor(0).grad());
   
-  binding.bind_arg(ATTRS, this->attrs);
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
-  return binding;
+  return { AGG_SPEC_BWD_TASK_ID, binding };
 }
-
-void AggregateSpec::init(FFModel const &ff) {
-  this->execute_task(ff, AGG_SPEC_INIT_TASK_ID, get_init_task_signature());
 
   // assert(check_output_input_weight_same_parallel_is());
   // parallel_is = outputs[0]->parallel_is;
@@ -251,13 +203,12 @@ void AggregateSpec::init(FFModel const &ff) {
   // FutureMap fm = runtime->execute_index_space(ctx, launcher);
   // fm.wait_all_results();
   // set_opmeta_from_futuremap(ff, fm);
-}
 
-PerDeviceOpState *AggregateSpec::init_task(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+static PerDeviceOpState *init_task(Legion::Task const *task,
+                                   std::vector<Legion::PhysicalRegion> const &regions,
+                                   Legion::Context ctx,
+                                   Legion::Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
 
@@ -267,12 +218,6 @@ PerDeviceOpState *AggregateSpec::init_task(Task const *task,
   return m;
 }
 
-
-void AggregateSpec::forward(FFModel const &ff) {
-  this->execute_task(
-    ff, AGG_SPEC_FWD_TASK_ID, get_fwd_task_signature()
-  );
-  
   //ArgumentMap argmap;
   //Context ctx = ff.config.lg_ctx;
   //Runtime *runtime = ff.config.lg_hlr;
@@ -316,13 +261,12 @@ void AggregateSpec::forward(FFModel const &ff) {
   //                                                  outputs[0]->region));
   //launcher.add_field(n + 2, FID_DATA);
   //runtime->execute_index_space(ctx, launcher);
-}
 
-void AggregateSpec::forward_task(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+static void forward_task(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   int n = acc.get_argument<AggregateSpecAttrs>(ATTRS).n;
 
@@ -363,8 +307,6 @@ void AggregateSpec::forward_task(Task const *task,
     out_dim);
 }
 
-void AggregateSpec::backward(FFModel const &ff) {
-  this->execute_task(ff, AGG_SPEC_BWD_TASK_ID, get_bwd_task_signature());
   
   //ArgumentMap argmap;
   //Context ctx = ff.config.lg_ctx;
@@ -431,16 +373,14 @@ void AggregateSpec::backward(FFModel const &ff) {
   //launcher.add_field(n + 4, FID_DATA);
 
   //runtime->execute_index_space(ctx, launcher);
-}
 
-void AggregateSpec::backward_task(Task const *task,
-                                  std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+static void backward_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
-  
-  AggregateSpecPerDeviceState const *m = *((AggregateSpecPerDeviceState **)task->local_args);
+  auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
 
   int n = attrs.n;
   float lambda_bal = attrs.lambda_bal;
@@ -475,9 +415,9 @@ void AggregateSpec::backward_task(Task const *task,
 
   profile(
     backward_kernel,
-    m->profiling,
+    per_device_state.profiling,
     "[AggregateSpec] backward_time = %.2lfms\n",
-    m,
+    per_device_state,
     exp_grads.data(),
     gate_assign.get_int32_ptr(),
     true_gate_assign.get_int32_ptr(),
@@ -559,6 +499,50 @@ bool AggregateSpec::measure_operator_cost(Simulator *sim,
   cost_metrics.backward_time = 0.0f; // not implemented for backward
   delete m;
   return true;
+}
+
+template <>
+void register_task<AGG_SPEC_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_arg_slot<AggregateSpecAttrs>(ATTRS);
+  init.add_arg_slot<EnableProfiling>(PROFILING);
+  init.add_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
+  init.add_return_value<AggregateSpecPerDeviceState>();
+
+  register_task(AGG_SPEC_INIT_TASK_ID, "AggregateSpec Init", init, init_task);
+}
+
+template <>
+void register_task<AGG_SPEC_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
+  fwd.add_arg_slot<AggregatePerDeviceState>(PER_DEVICE_STATE);
+
+  fwd.add_input_slot(GATE_PREDS, READ_WRITE);
+  fwd.add_input_slot(GATE_ASSIGN, READ_WRITE);
+  fwd.add_input_slot(EXP_PREDS, SlotType::VARIADIC, READ_WRITE);
+  fwd.add_output_slot(OUTPUT);
+
+  register_task(AGG_SPEC_FWD_TASK_ID, "AggregateSpec Fwd", fwd, forward_task);
+}
+
+template <>
+void register_task() {
+  OpTaskSignature bwd(OpTaskType::BWD);
+
+  bwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
+  bwd.add_arg_slot<AggregatePerDeviceState>(PER_DEVICE_STATE);
+
+  bwd.add_input_slot(GATE_PREDS, READ_WRITE);
+  bwd.add_input_slot(GATE_ASSIGN);
+  bwd.add_input_slot(TRUE_GATE_ASSIGN);
+  bwd.add_input_grad_slot(GATE_GRADIENTS_FULL);
+  bwd.add_input_grad_slot(EXP_PREDS, SlotType::VARIADIC);
+  bwd.add_output_grad_slot(OUTPUT);
+
+  register_task(AGG_SPEC_BWD_TASK_ID, "AggregateSpec Bwd", bwd, backward_task);
 }
 
 }

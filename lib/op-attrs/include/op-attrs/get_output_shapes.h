@@ -74,7 +74,18 @@ template <typename Attrs> std::vector<TensorShape> get_output_shapes(Attrs const
 template <typename Attrs> std::vector<TensorShape> get_output_shapes(Attrs const &attrs, TensorShape const &, TensorShape const &);
 template <typename Attrs> std::vector<TensorShape> get_output_shapes(Attrs const &attrs, std::vector<TensorShape> const &);
 
-ParallelTensorShape get_output_shape(AggregateAttrs const &, std::vector<ParallelTensorShape> const &);
+TensorShape get_output_shape(AggregateAttrs const &,
+                             TensorShape const &, 
+                             TensorShape const &,
+                             TensorShape const &,
+                             TensorShape const &,
+                             std::vector<TensorShape> const &);
+ParallelTensorShape get_output_shape(AggregateAttrs const &, 
+                                     ParallelTensorShape const &gate_preds,
+                                     ParallelTensorShape const &gate_assign, 
+                                     ParallelTensorShape const &true_gate_assign,
+                                     ParallelTensorShape const &full_gate_gradients,
+                                     std::vector<ParallelTensorShape> const &exp_preds);
 ParallelTensorShape get_output_shape(AggregateSpecAttrs const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &, std::vector<ParallelTensorShape> const &);
 ParallelTensorShape get_output_shape(BatchMatmulAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
