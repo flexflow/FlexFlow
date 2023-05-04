@@ -8,13 +8,12 @@ set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
   llama.cc
   llama.h
-  dataloader.cc)
+  ../file_loader.cc)
 
-set(GPU_SRC
-dataloader.cu)
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
+target_include_directories(${project_target} PRIVATE ${CMAKE_SOURCE_DIR}/examples/cpp/spec_inference)
 target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive ${FLEXFLOW_EXT_LIBRARIES})
 
 set(BIN_DEST "bin")

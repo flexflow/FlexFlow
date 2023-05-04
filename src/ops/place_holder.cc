@@ -195,7 +195,7 @@ FutureMap
 
   IndexLauncher launcher(PLACE_HOLDER_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(&bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,

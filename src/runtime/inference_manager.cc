@@ -252,7 +252,7 @@ void InferenceManager::load_input_tokens_from_batch_config(
   ArgumentMap argmap;
   IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
                          input->parallel_is,
-                         TaskArgument(&bc, sizeof(BeamSearchBatchConfig)),
+                         TaskArgument(&bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,

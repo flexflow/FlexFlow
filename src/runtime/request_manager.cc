@@ -433,7 +433,7 @@ void RequestManager::update_beam_metadata(BeamSearchBatchConfig &new_bc,
   }
 }
 
-void PreOrder(
+bool PreOrder(
     BeamTree tree,
     int max_depth,
     int current_depth,
@@ -441,11 +441,16 @@ void PreOrder(
     int id,
     std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> &serializedTree) {
   //terminate
-  if (current_depth > max_depth) {
-    return;
+  if (current_depth >= max_depth) {
+    serializedTree.push_back(
+      std::make_pair(tree.treeLayers[current_depth].tokens[id], current_depth));
+      std::cout<<"last tokens: " << tree.treeLayers[current_depth].tokens[id] <<"\n";
+      std::cout<<"return true"<<"\n";
+    return true;
   }
 
   // add to tree;
+  // std::cout<<"node: " << current_depth << ", id: " <<
   serializedTree.push_back(
       std::make_pair(tree.treeLayers[current_depth].tokens[id], current_depth));
   std::cout<<"push something: " << tree.treeLayers[current_depth].tokens[id] << ", " << current_depth <<std::endl;
@@ -453,7 +458,6 @@ void PreOrder(
   int next_layers = current_depth + 1;
 
   bool flag = false;
-
   //recursion
   for (int i = 0; i < beam_width; i++) {
     int child_id = i;
@@ -461,16 +465,18 @@ void PreOrder(
 
     // for all childs, do preOrder
     if (child_parent == id) {
-      flag = true;
-      PreOrder(
-          tree, max_depth, current_depth + 1, beam_width, i, serializedTree);
+      std::cout<<"current depth: "<< current_depth << ", child_parent, "<<child_parent<< ", child_id, " << child_id << "\n";
+      bool res = PreOrder(
+          tree, max_depth, current_depth + 1, beam_width, child_id, serializedTree);
+      flag = flag || res;    
     }
   }
-  if (!flag && current_depth < max_depth) {
+  if (!flag) {
     // no child for this token, delete it
     std::cout<<"delete a node: " << tree.treeLayers[current_depth].tokens[id] << ", " << current_depth <<std::endl;  
     serializedTree.erase(serializedTree.begin() + index);
   }
+  return flag;
 }
 
 void RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc) {
@@ -478,6 +484,9 @@ void RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc) {
     if (old_bc.request_completed[i]) {
       continue;
     }
+    // if(i != 0){
+    //   continue;
+    // }
 
     int depth = old_bc.beamRequestsInfo[i].current_depth;
     int beam_width = old_bc.beamRequestsInfo[i].beam_size;
@@ -486,7 +495,7 @@ void RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc) {
     // token, index
     //todo make this one global for different stages
     std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> serializedTree;
-    PreOrder(tree, old_bc.beamRequestsInfo[i].max_depth, 0, old_bc.beamRequestsInfo[i].beam_size, 0, serializedTree);
+    PreOrder(tree, 3, 0, old_bc.beamRequestsInfo[i].beam_size, 0, serializedTree);
 
     // print it
     std::cout<<"print tree, " << i <<"\n";

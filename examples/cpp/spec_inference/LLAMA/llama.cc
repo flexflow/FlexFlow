@@ -234,42 +234,18 @@ void FlexFlow::top_level_task(Task const *task,
 
   FileDataLoader fileloader(llamaConfig.input_path,
                             llamaConfig.weight_file_path);
-  // BatchConfig::TokenId *tokens = fileloader.generate_requests(
-  //     llamaConfig.batchSize, llamaConfig.max_seq_len);
+  BatchConfig::TokenId *tokens = fileloader.generate_requests(
+      llamaConfig.batchSize, llamaConfig.max_seq_len);
 
-  // for (int i = 0; i < 40; i++) {
-  //   std::cout << tokens[i] << ", ";
-  // }
-  // std::cout << "-------"
-  //           << "\n";
+  for (int i = 0; i < 40; i++) {
+    std::cout << tokens[i] << ", ";
+  }
   for (int i = 0; i < llamaConfig.batchSize; i++) {
-    // std::vector<BatchConfig::TokenId> prompt(tokens + llamaConfig.max_seq_len
-    // * i, tokens + llamaConfig.max_seq_len * (i + 1)); for(int k = 0; k <
-    // prompt.size(); k++){
-    //   std::cout<< prompt.at(k) << ", ";
-    // }
     std::cout << "-------" << std::endl;
-    if (i == 0) {
-      std::vector<BatchConfig::TokenId> tokens{
-          1, 306, 4658, 278, 6593, 310, 2834, 338};
-      rm.register_new_request(tokens, llamaConfig.sentence_len);
-    } else if (i == 1) {
-      std::vector<BatchConfig::TokenId> tokens{
-          1, 3439, 17632, 1925, 29892, 278, 6368, 310};
-      rm.register_new_request(tokens, llamaConfig.sentence_len);
-    } else if (i == 2) {
-      std::vector<BatchConfig::TokenId> tokens{
-          1, 17166, 263, 4700, 508, 367, 2309, 297};
-      rm.register_new_request(tokens, llamaConfig.sentence_len);
-    } else if (i == 3) {
-      std::vector<BatchConfig::TokenId> tokens{
-          1, 323, 16668, 29901, 376, 29902, 26277, 372};
-      rm.register_new_request(tokens, llamaConfig.sentence_len);
-    } else if (i == 4) {
-      std::vector<BatchConfig::TokenId> tokens{
-          1, 4103, 9632, 4223, 304, 5176, 29901, 13};
-      rm.register_new_request(tokens, llamaConfig.sentence_len);
-    }
+    std::vector<BatchConfig::TokenId> prompt(
+        tokens + i * llamaConfig.max_seq_len,
+        tokens + (i + 1) * llamaConfig.max_seq_len);
+    rm.register_new_request(prompt, llamaConfig.sentence_len);
   }
 
   fileloader.load_weights(&ff, weights_layers);
@@ -292,6 +268,8 @@ void FlexFlow::top_level_task(Task const *task,
       BeamSearchBatchConfig bc;
       BeamInferenceResult ir;
       bc = rm.prepare_next_batch_beam(bc, ir);
+
+      std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
       FutureMap fm = im.inference(&ff, bid, bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       future_handlers[bid] = fm.get_future(0);
@@ -311,21 +289,20 @@ void FlexFlow::top_level_task(Task const *task,
       bc = rm.prepare_next_batch_beam(bc, ir);
 
       std::cout << "llama current depth: " << depth;
+      std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
       FutureMap fm = im.inference(&ff, bid, bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       future_handlers[bid] = fm.get_future(0);
       batch_configs[bid] = bc;
-      
-      //tranverse the tree in dfs order;
-      if(depth >= llamaConfig.max_beam_depth){
-          std::cout<<"tranverse the tree"<<"\n";
-          rm.tranverse_beam_tree(bc);
+
+      // tranverse the tree in dfs order;
+      if (depth >= llamaConfig.max_beam_depth) {
+        std::cout << "tranverse the tree"
+                  << "\n";
+        rm.tranverse_beam_tree(bc);
       }
     }
   }
-
-  
-  
 
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;

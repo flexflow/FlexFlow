@@ -546,6 +546,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     int beam_size = bc->beamRequestsInfo[i].beam_size;
 
     // initial request
+    std::cout<<"sub_requests: " << i << ", " <<sub_requests[i] <<"\n";
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {

@@ -511,7 +511,7 @@ FutureMap SpecIncMultiHeadSelfAttention::inference(
   int idx = 0;
   IndexLauncher launcher(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BeamSearchBatchConfig)),
+                         TaskArgument(&bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,

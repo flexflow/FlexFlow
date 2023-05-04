@@ -14,7 +14,7 @@
  */
 #pragma once
 
-#include "filedataloader.h"
+#include "file_loader.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -47,7 +47,8 @@ struct LLAMAConfig {
   }
   int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
       total_sentence, sentence_len, batchSize, total_requests, incremental_mode,
-      sequence_length, max_gen_length, max_seq_len, max_beam_width, max_beam_depth;
+      sequence_length, max_gen_length, max_seq_len, max_beam_width,
+      max_beam_depth;
   float norm_eps;
   std::string weight_file_path;
   std::string input_path;
@@ -88,8 +89,8 @@ struct LLAMAConfig {
 //   void store_outputs(BatchConfig *bc,
 //                      InferenceResult const &ir,
 //                      std::map<size_t, Prediction_result> &batch_predictions);
-//   void update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions);
-//   void update_beam_tree();                   
+//   void update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result>
+//   batch_predictions); void update_beam_tree();
 
 // public:
 //   int num_samples, next_index, next_token_idx, next_batch_index;
