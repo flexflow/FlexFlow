@@ -27,6 +27,7 @@
 namespace FlexFlow {
 
 class InferenceResult;
+class BeamInferenceResult;
 
 class BatchConfig {
 public:
@@ -49,8 +50,11 @@ public:
   int num_tokens;
 
   struct PerRequestInfo {
-    int token_start_offset; // input[token_start_offset * data_dim] is the first token
-    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim : (token_start_offset + num_token_in_batch) * data_dim]
+    int token_start_offset; // input[token_start_offset * data_dim] is the first
+                            // token
+    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim
+                             // : (token_start_offset + num_token_in_batch) *
+                             // data_dim]
     int max_sequence_length;
     RequestGuid request_guid;
   };
@@ -72,7 +76,7 @@ struct InferenceResult {
 };
 
 class BeamSearchBatchConfig : public BatchConfig {
-public:  
+public:
   BeamSearchBatchConfig();
   BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
 
@@ -80,34 +84,47 @@ public:
 
   void print() const;
   bool done() const;
-  
+
   size_t beam_width;
   size_t target_iterations;
-  static int const MAX_BEAM_WIDTH = 8;
+  static int const MAX_BEAM_WIDTH = 3;
   static int const MAX_BEAM_DEPTH = 8;
 
   struct BeamSearchPerRequestInfo {
-    int token_start_offset; // input[token_start_offset * data_dim] is the first token
-    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim : (token_start_offset + num_token_in_batch) * data_dim]
-    int max_sequence_length;
-    RequestGuid request_guid;
+    // int token_start_offset; // input[token_start_offset * data_dim] is the
+    // first token int num_tokens_in_batch; // tokens from
+    // input[token_start_offset * data_dim : (token_start_offset +
+    // num_token_in_batch) * data_dim] int max_sequence_length; RequestGuid
+    // request_guid;
     bool request_completed;
+    int beam_size; //
+    int current_depth = -1;
+    // int global_depth = -1;
+    int max_depth = MAX_BEAM_DEPTH;
+
+    
+    BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    int parent_id[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   };
 
-  struct BeamSearchPerTokenInfo : public PerTokenInfo {
-    int token_id;
-    int request_index;
-    int abs_depth_in_request; 
-    int parent_token_id; // parent token id in the previous iteration
-    float cum_log_prob;  // cumulative log probability so far
-    size_t num_out_beam; // number of beams take this token as output
+  struct BeamSearchPerTokenInfo {
+    int sub_request_index;
   };
 
   BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
-  BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS];
+  BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
+  int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
+  // BeamSlot beam_slots[MAX_NUM_REQUESTS];
 
 private:
   size_t current_iteration;
+};
+
+struct BeamInferenceResult : public InferenceResult {
+  BatchConfig::TokenId token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  int parent_id[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
 };
 
 }; // namespace FlexFlow

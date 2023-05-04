@@ -4573,10 +4573,10 @@ void register_flexflow_internal_tasks() {
         registrar, "BeamTopK Init Task");
   }
   {
-    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeammTopK Inference");
+    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeamTopK Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<InferenceResult, BeamTopK::inference_task>(
+    Runtime::preregister_task_variant<BeamInferenceResult, BeamTopK::inference_task>(
         registrar, "BeamTopK Inference Task");
   }
   // PlaceHolder task
@@ -4591,7 +4591,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(PLACE_HOLDER_INF_TASK_ID, "PlaceHolder Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<InferenceResult, PlaceHolder::inference_task>(
+    Runtime::preregister_task_variant<PlaceHolder::inference_task>(
         registrar, "PlaceHolder Inference Task");
   }
   // Transpose task

@@ -97,7 +97,7 @@ public:
 
   static void
       inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
-                               BatchConfig const *bc,
+                               BeamSearchBatchConfig const *bc,
                                float const *input_ptr,
                                float const *weight_ptr,
                                float *output_ptr);
@@ -142,7 +142,11 @@ public:
   float *attn_heads, *W_out_contiguous;
   // void *reserveSpace;
 
-  BatchConfig::token_idxs *dev_token2ids;
+  // BatchConfig::token_idxs *dev_token2ids;
+  BatchConfig::PerTokenInfo *tokenInfos;
+  BatchConfig::PerRequestInfo *requestInfos;
+  BeamSearchBatchConfig::BeamSearchPerTokenInfo * beamTokenInfos;
+  BeamSearchBatchConfig::BeamSearchPerRequestInfo * beamRequestInfos;
 };
 
 }; // namespace FlexFlow

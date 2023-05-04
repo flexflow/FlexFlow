@@ -12,10 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
-#include "flexflow/model.h"
-#define MAX_NUM_SAMPLES 65536
-#define MAX_TOKEN_LEN 32000
+#include "file_loader.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -38,6 +37,7 @@ struct LLAMAConfig {
     sequence_length = MAX_SEQ_LEN;
     max_seq_len = 8;
     max_beam_width = 3;
+    max_beam_depth = 3;
 
     // hidden dim
     hidden_dim = 4 * dim;
@@ -47,64 +47,65 @@ struct LLAMAConfig {
   }
   int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
       total_sentence, sentence_len, batchSize, total_requests, incremental_mode,
-      sequence_length, max_gen_length, max_seq_len, max_beam_width;
+      sequence_length, max_gen_length, max_seq_len, max_beam_width,
+      max_beam_depth;
   float norm_eps;
   std::string weight_file_path;
   std::string input_path;
 };
 
-struct Prediction_result{
-  long tokens[MAX_BEAM_SIZE];
-  float probs[MAX_BEAM_SIZE];
-  int parent_ids[MAX_BEAM_SIZE];
-};
+// struct Prediction_result{
+//   long tokens[MAX_];
+//   float probs[MAX_BEAM_SIZE];
+//   int parent_ids[MAX_BEAM_SIZE];
+// };
 
-class DataLoader {
-public:
-  DataLoader(FFModel &ff,
-             LLAMAConfig const *llamaconfig,
-             ParallelTensor const &input);
-  void next_batch(FFModel &ff,
-                  BatchConfig *bc,
-                  std::map<size_t, Prediction_result> &batch_predictions);
-  void reset();
-  static void load_entire_dataset(Task const *task,
-                                  std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime);
-  static void load_input(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime);
+// class DataLoader {
+// public:
+//   DataLoader(FFModel &ff,
+//              LLAMAConfig const *llamaconfig,
+//              ParallelTensor const &input);
+//   void next_batch(FFModel &ff,
+//                   BatchConfig *bc,
+//                   std::map<size_t, Prediction_result> &batch_predictions);
+//   void reset();
+//   static void load_entire_dataset(Task const *task,
+//                                   std::vector<PhysicalRegion> const &regions,
+//                                   Context ctx,
+//                                   Runtime *runtime);
+//   static void load_input(Task const *task,
+//                          std::vector<PhysicalRegion> const &regions,
+//                          Context ctx,
+//                          Runtime *runtime);
 
-  template <typename T>
-  static void load_from_file(T *ptr, size_t size, std::string filename);
+//   template <typename T>
+//   static void load_from_file(T *ptr, size_t size, std::string filename);
 
-  template <typename T>
-  static void load_attention_weights(T *ptr,
-                                     size_t size,
-                                     std::string layer_name,
-                                     std::string weight_path);
-  void store_outputs(BatchConfig *bc,
-                     InferenceResult const &ir,
-                     std::map<size_t, Prediction_result> &batch_predictions);
-  void update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions);
-  void update_beam_tree();                   
+//   template <typename T>
+//   static void load_attention_weights(T *ptr,
+//                                      size_t size,
+//                                      std::string layer_name,
+//                                      std::string weight_path);
+//   void store_outputs(BatchConfig *bc,
+//                      InferenceResult const &ir,
+//                      std::map<size_t, Prediction_result> &batch_predictions);
+//   void update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result>
+//   batch_predictions); void update_beam_tree();
 
-public:
-  int num_samples, next_index, next_token_idx, next_batch_index;
-  std::map<size_t, std::vector<int>> outputs;
-  FlexFlow::ParallelTensor full_input, batch_input;
-};
+// public:
+//   int num_samples, next_index, next_token_idx, next_batch_index;
+//   std::map<size_t, std::vector<int>> outputs;
+//   FlexFlow::ParallelTensor full_input, batch_input;
+// };
 
-struct SampleIdxs {
-  int num_samples;
-  int idxs[MAX_NUM_SAMPLES];
-  int token_idx;
-  int batch_idx;
-};
+// struct SampleIdxs {
+//   int num_samples;
+//   int idxs[MAX_NUM_SAMPLES];
+//   int token_idx;
+//   int batch_idx;
+// };
 
-struct DataLoaderNextBatchInput {
-  BatchConfig const &bc;
-  std::map<size_t, Prediction_result> const &prev_batch_preds;
-};
+// struct DataLoaderNextBatchInput {
+//   BatchConfig const &bc;
+//   std::map<size_t, Prediction_result> const &prev_batch_preds;
+// };

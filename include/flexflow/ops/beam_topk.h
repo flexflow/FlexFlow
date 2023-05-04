@@ -54,7 +54,7 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static InferenceResult
+  static BeamInferenceResult
       inference_task(Legion::Task const *task,
                      std::vector<Legion::PhysicalRegion> const &regions,
                      Legion::Context ctx,
@@ -71,7 +71,7 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   static void forward_kernel(BeamTopKMeta const *m,
-                             BatchConfig const *bc,
+                             BeamSearchBatchConfig const *bc,
                              float const *input_ptr,
                              float *output_ptr,
                              int *indices_ptr,
@@ -81,7 +81,7 @@ public:
                              bool sorted,
                              ffStream_t stream);
   static void forward_kernel_wrapper(BeamTopKMeta const *m,
-                                     BatchConfig const *bc,
+                                     BeamSearchBatchConfig const *bc,
                                      float const *input_ptr,
                                      float *output_ptr,
                                      int *indices_ptr,
@@ -94,6 +94,7 @@ public:
 public:
   bool sorted;
   int max_beam_width;
+
 };
 
 }; // namespace FlexFlow
