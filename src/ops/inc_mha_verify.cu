@@ -41,6 +41,80 @@ __global__ void mha_verify_build_w_out_tensor(float const *weight_ptr,
   }
 }
 
+__global__ void commit_tokens_kernel(
+    float const *devQKVProjArray,
+    float *cache_ptr,
+    TreeVerifyBatchConfig::CommittedTokensInfo const *committedTokenInfos,
+    int qProjSize,
+    int kProjSize,
+    int vProjSize,
+    int num_tokens,
+    int num_heads,
+    int max_seq_len,
+    bool k_cache) {
+
+  CUDA_KERNEL_LOOP(i,
+                   num_tokens * (k_cache ? kProjSize : vProjSize) * num_heads) {
+    int proj_size = k_cache ? kProjSize : vProjSize;
+    int data_idx = i % proj_size;
+    int head_idx = i / (num_tokens * proj_size);
+    int token_idx = (i - head_idx * (num_tokens * proj_size)) / proj_size;
+    token_idx = committedTokenInfos[token_idx].token_index;
+
+    int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
+    int current_head_block_size =
+        num_tokens * (k_cache ? qProjSize : qProjSize + kProjSize);
+    float val =
+        devQKVProjArray[head_idx * qkv_block_size + current_head_block_size +
+                        token_idx * proj_size + data_idx];
+    // int const req_id = id_map[token_idx].request_index;
+    // int const tok_id = id_map[token_idx].token_position;
+    int const req_id = committedTokenInfos[token_idx].request_index;
+    int const tok_id = committedTokenInfos[token_idx].token_depth;
+
+    cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
+              head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+              data_idx] = val;
+  }
+}
+
+void commit_tokens(IncMultiHeadSelfAttentionVerifyMeta const *m,
+                   TreeVerifyBatchConfig const *bc,
+                   cudaStream_t stream) {
+  int num_tokens_to_commit = bc->num_tokens_to_commit;
+  if (num_tokens_to_commit > 0) {
+    int parallelism = m->kProjSize * num_tokens_to_commit * m->num_heads;
+    commit_tokens_kernel<<<GET_BLOCKS(parallelism),
+                           min(CUDA_NUM_THREADS, parallelism),
+                           0,
+                           stream>>>(m->devQKVProjArray,
+                                     m->keyCache,
+                                     m->committed_token_infos,
+                                     m->qProjSize,
+                                     m->kProjSize,
+                                     m->vProjSize,
+                                     num_tokens_to_commit,
+                                     m->num_heads,
+                                     MAX_SEQ_LEN,
+                                     /* k_cache = */ true);
+
+    parallelism = m->vProjSize * num_tokens_to_commit * m->num_heads;
+    commit_tokens_kernel<<<GET_BLOCKS(parallelism),
+                           min(CUDA_NUM_THREADS, parallelism),
+                           0,
+                           stream>>>(m->devQKVProjArray,
+                                     m->valueCache,
+                                     m->committed_token_infos,
+                                     m->qProjSize,
+                                     m->kProjSize,
+                                     m->vProjSize,
+                                     num_tokens_to_commit,
+                                     m->num_heads,
+                                     MAX_SEQ_LEN,
+                                     /* k_cache = */ false);
+  }
+}
+
 __global__ void mha_verify_apply_rotary_embedding(
     float *input_ptr,
     cuFloatComplex *complex_input,
@@ -690,6 +764,14 @@ void IncMultiHeadSelfAttentionVerify::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
+  // copy committed tokens info to GPU for the commit_tokens kernel
+  cudaMemcpyAsync(m->committed_token_infos,
+                  &(bc->commited_tokens),
+                  bc->MAX_NUM_TOKENS *
+                      sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
   // reload the weight_o
 
   if (!(*m->has_load_weights)) {
@@ -787,6 +869,7 @@ IncMultiHeadSelfAttentionVerifyMeta::IncMultiHeadSelfAttentionVerifyMeta(
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size =
         TreeVerifyBatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
+    size_t committed_tokeninfo_size = TreeVerifyBatchConfig::MAX_NUM_TOKENS;
     size_t key_cache_size = num_heads * kProjSize *
                             TreeVerifyBatchConfig::MAX_NUM_REQUESTS *
                             MAX_SEQ_LEN;
@@ -804,9 +887,9 @@ IncMultiHeadSelfAttentionVerifyMeta::IncMultiHeadSelfAttentionVerifyMeta(
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
             sizeof(float) +
-        tokeninfo_size *
-            sizeof(TreeVerifyBatchConfig::PerTokenInfo); // more components will
-                                                         // be added here later
+        tokeninfo_size * sizeof(TreeVerifyBatchConfig::PerTokenInfo) +
+        committed_tokeninfo_size *
+            sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
@@ -820,7 +903,10 @@ IncMultiHeadSelfAttentionVerifyMeta::IncMultiHeadSelfAttentionVerifyMeta(
                                            Realm::ProfilingRequestSet())
         .wait();
     devQKVProjArray = (float *)reserveInst.pointer_untyped(0, sizeof(char));
-    keyCache = (float *)devQKVProjArray + qkv_max_proj_size;
+    committed_token_infos =
+        (TreeVerifyBatchConfig::CommittedTokensInfo *)(devQKVProjArray +
+                                                       qkv_max_proj_size);
+    keyCache = (float *)(committed_token_infos + committed_tokeninfo_size);
     valueCache = (float *)keyCache + key_cache_size;
     token_infos =
         (TreeVerifyBatchConfig::PerTokenInfo *)(valueCache + value_cache_size);
