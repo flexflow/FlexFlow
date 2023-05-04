@@ -67,14 +67,10 @@ public:
 
 class TreeVerifyBatchConfig : public BatchConfig {
 public:
-  struct PerRequestInfo : BatchConfig::PerRequestInfo {
-    int num_tree_branches;
-  };
   struct PerTokenInfo : BatchConfig::PerTokenInfo {
     int tree_branch_idx;
   };
-  void compute_tree_branches_sizes();
-  PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
+  void compute_tree_branch_indexes();
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 };
 

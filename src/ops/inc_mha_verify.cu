@@ -422,16 +422,17 @@ void inference_kernel3(IncMultiHeadSelfAttentionVerifyMeta const *m,
 
     int tokens_previous_tree_branches = 0;
 
-    for (int tree_branch_idx = 0;
-         tree_branch_idx < bc->requestsInfo[i].num_tree_branches;
-         tree_branch_idx++) {
+    while (tokens_previous_tree_branches <
+           bc->requestsInfo[i].num_tokens_in_batch) {
+      int tree_branch_idx = bc->tokensInfo[tokens_previous_requests +
+                                           tokens_previous_tree_branches]
+                                .tree_branch_idx;
       int num_new_tokens = 1;
       for (int j = tokens_previous_requests + tokens_previous_tree_branches + 1;
            j <
            tokens_previous_requests + bc->requestsInfo[i].num_tokens_in_batch;
            j++) {
-        if (bc->tokensInfo[j].tree_branch_idx !=
-            bc->tokensInfo[j - 1].tree_branch_idx) {
+        if (bc->tokensInfo[j].tree_branch_idx != tree_branch_idx) {
           break;
         } else {
           num_new_tokens++;

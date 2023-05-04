@@ -173,11 +173,8 @@ void BatchConfig::print() const {
   }
 }
 
-void TreeVerifyBatchConfig::compute_tree_branches_sizes() {
+void TreeVerifyBatchConfig::compute_tree_branch_indexes() {
   // Must be called only after setting num_tokens!
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    requestsInfo[i].num_tree_branches = 0;
-  }
   auto is_first_token_in_request = [&](int token_index) -> bool {
     if (token_index == 0) {
       return true; // First entry in tokensInfo is the first in a request.
@@ -187,10 +184,8 @@ void TreeVerifyBatchConfig::compute_tree_branches_sizes() {
   };
   for (int i = 0; i < num_tokens; i++) {
     if (is_first_token_in_request(i)) {
-      requestsInfo[tokensInfo[i].request_index].num_tree_branches = 1;
       tokensInfo[i].tree_branch_idx = 0;
     } else {
-      requestsInfo[tokensInfo[i].request_index].num_tree_branches++;
       tokensInfo[i].tree_branch_idx = tokensInfo[i - 1].tree_branch_idx + 1;
     }
   }
