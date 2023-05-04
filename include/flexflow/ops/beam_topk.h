@@ -13,8 +13,6 @@ public:
   BeamTopKMeta(FFHandler handle);
   bool sorted;
   int max_beam_width;
-  BeamSearchBatchConfig::BeamSearchPerTokenInfo *tokenInfos;
-  BeamSearchBatchConfig::BeamSearchPerRequestInfo *requestInfos;
 };
 
 class BeamTopK : public Op {
@@ -40,7 +38,7 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BeamSearchBatchConfig const &,
+                              BatchConfig const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
@@ -56,7 +54,7 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static InferenceResult
+  static BeamInferenceResult
       inference_task(Legion::Task const *task,
                      std::vector<Legion::PhysicalRegion> const &regions,
                      Legion::Context ctx,

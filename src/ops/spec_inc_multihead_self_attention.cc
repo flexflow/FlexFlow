@@ -497,7 +497,7 @@ void SpecIncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 FutureMap SpecIncMultiHeadSelfAttention::inference(
     FFModel const &ff,
-    BeamSearchBatchConfig const &bc,
+    BatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -509,9 +509,6 @@ FutureMap SpecIncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  printf("BeamSearchBatchConfig, num_tokens: %d, num_requests: %d\n",
-         bc.num_tokens,
-         bc.num_requests);
   IndexLauncher launcher(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(&bc, sizeof(BeamSearchBatchConfig)),
@@ -579,7 +576,6 @@ void SpecIncMultiHeadSelfAttention::inference_task(
   /* print_tensor<float>(input.get_float_ptr(),
                       input_domain.get_volume(),
                       "[Attention:forward:query]"); */
-
   SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
       m,
       bc,
@@ -587,6 +583,8 @@ void SpecIncMultiHeadSelfAttention::inference_task(
       weight.get_float_ptr(),
       output.get_float_ptr());
 
+// print_tensor<float>(input.get_float_ptr(), 20, "attention input");
+// print_tensor<float>(output.get_float_ptr(), 20, "attention output");
   // if(bc->beam_slots.at(0).current_depth == 1){
   //     print_beam_tensor<float>(input.get_float_ptr(), 50, 4096, 40, "mha topk
   //     input"); print_beam_tensor<float>(output.get_float_ptr(), 50, 4096, 40,

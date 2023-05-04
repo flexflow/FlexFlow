@@ -18,14 +18,16 @@ public:
   using Params = PlaceHolderParams;
   using Input = ParallelTensor;
   PlaceHolder(FFModel &model,
-           const ParallelTensor input,
-           LayerID const &_layer_guid,
-           char const *name);
-  PlaceHolder(FFModel &model, PlaceHolder const &other, const ParallelTensor input);
+              const ParallelTensor input,
+              LayerID const &_layer_guid,
+              char const *name);
   PlaceHolder(FFModel &model,
-           Params const &params,
-           Input const input,
-           char const *name = nullptr);
+              PlaceHolder const &other,
+              const ParallelTensor input);
+  PlaceHolder(FFModel &model,
+              Params const &params,
+              Input const input,
+              char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
@@ -50,11 +52,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static InferenceResult
-      inference_task(Legion::Task const *task,
-                     std::vector<Legion::PhysicalRegion> const &regions,
-                     Legion::Context ctx,
-                     Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,

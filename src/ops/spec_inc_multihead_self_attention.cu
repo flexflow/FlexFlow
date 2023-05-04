@@ -34,8 +34,7 @@ __global__ void spec_build_w_out_tensor(float const *weight_ptr,
     int v_idx = i % vProjSize;
     int o_idx = (i / vProjSize) % oProjSize;
     int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[o_idx * vProjSize * num_heads + head_idx * vProjSize +
-                          v_idx] =
+    contiguous_weight_ptr[i] =
         weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
                    qkv_weight_block_size + o_idx * vProjSize + v_idx];
   }
@@ -44,7 +43,7 @@ __global__ void spec_build_w_out_tensor(float const *weight_ptr,
 __global__ void
     spec_apply_rotary_embedding(float *input_ptr,
                                 cuFloatComplex *complex_input,
-                                BeamSearchBatchConfig::BeamSearchPerTokenInfo *tokenInfos,
+                                BatchConfig::PerTokenInfo *tokenInfos,
                                 int qProjSize,
                                 int kProjSize,
                                 int num_heads,
@@ -213,6 +212,7 @@ void inference_kernel1(SpecIncMultiHeadSelfAttentionMeta const *m,
   // apply rotary emmmbedding for k and v
   // step1 change the k, v to complex tensor
   int num_tokens = bc->num_active_tokens();
+
   int parallelism = m->kProjSize * num_tokens * m->num_heads;
   int q_block_size = m->qProjSize * num_tokens;
   int k_block_size = m->kProjSize * num_tokens;
@@ -220,6 +220,7 @@ void inference_kernel1(SpecIncMultiHeadSelfAttentionMeta const *m,
   cuFloatComplex *complex_input;
 
   // todo xinhao remember to set token index for each beam
+
   if (*m->apply_rotary_embedding) {
     checkCUDA(cudaMalloc(&complex_input,
                          num_tokens * m->qProjSize * m->num_heads *
@@ -255,21 +256,25 @@ void inference_kernel1(SpecIncMultiHeadSelfAttentionMeta const *m,
                                             v_block_size,
                                             false);
   }
+  checkCUDA(cudaDeviceSynchronize());
 }
 
-__global__ void spec_store_kv_cache(float const *devQKVProjArray,
-                                    float *cache_ptr,
-                                    BeamSearchBatchConfig::BeamSearchPerTokenInfo *tokenInfos,
-                                    BeamSearchBatchConfig::BeamSearchPerRequestInfo *requestInfos,
-                                    int qProjSize,
-                                    int kProjSize,
-                                    int vProjSize,
-                                    int num_tokens,
-                                    int num_heads,
-                                    int max_seq_len,
-                                    int max_beam_width,
-                                    bool k_cache,
-                                    bool is_root) {
+__global__ void spec_store_kv_cache(
+    float const *devQKVProjArray,
+    float *cache_ptr,
+    BatchConfig::PerTokenInfo *tokenInfos,
+    BatchConfig::PerRequestInfo *requestInfo,
+    BeamSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos,
+    BeamSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos,
+    int qProjSize,
+    int kProjSize,
+    int vProjSize,
+    int num_tokens,
+    int num_heads,
+    int max_seq_len,
+    int max_beam_width,
+    bool k_cache,
+    bool is_root) {
   CUDA_KERNEL_LOOP(i,
                    num_tokens * (k_cache ? kProjSize : vProjSize) * num_heads) {
     int proj_size = k_cache ? kProjSize : vProjSize;
@@ -294,11 +299,10 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
 
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
-    int const sub_req_id = tokenInfos[token_idx].sub_request_index;
-    int const parent_id = requestInfos[req_id].parent_id[sub_req_id];
-    int const beam_depth = requestInfos[req_id].current_depth;
-    int const beam_width = requestInfos[req_id].beam_size;
-
+    int const sub_req_id = beamTokenInfos[token_idx].sub_request_index;
+    int const parent_id = beamRequestInfos[req_id].parent_id[sub_req_id];
+    int const beam_depth = beamRequestInfos[req_id].current_depth;
+    int const beam_width = beamRequestInfos[req_id].beam_size;
 
     // new token
     int new_token_cache_idx = (req_id * max_beam_width + sub_req_id) *
@@ -308,7 +312,7 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
     cache_ptr[new_token_cache_idx] = val;
 
     // replica in the root iteration
-    if (beam_depth == 0) {
+    if (beam_depth == 1) {
       for (int i = 1; i < beam_width; i++) {
         cache_ptr[(req_id * max_beam_width + i) *
                       (num_heads * max_seq_len * proj_size) +
@@ -319,7 +323,8 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
 
     // if (head_idx == 0 && beam_depth == 0 && token_idx == 8 && k_cache) {
     //   // printf("token idx %d\n", token_idx);
-    //   printf("data idx: %d, tok_id %d, new_token_cache_idx %d, parent_id %d, "
+    //   printf("data idx: %d, tok_id %d, new_token_cache_idx %d, parent_id %d,
+    //   "
     //          "sub_req_id %d, num_tokens %d, kProjSize %d, num_heads %d, val "
     //          "%f, beam_width %d\n",
     //          data_idx,
@@ -336,10 +341,16 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
 
     // naive cache stealing
     if (sub_req_id != parent_id) {
-      if(data_idx == 0 && head_idx == 0 && k_cache){
-          printf("cache stealing!, depth %d req_id %d sub_req_id %d, parentid %d, tok_id %d\n", beam_depth, req_id, sub_req_id, parent_id, tok_id);
+      if (data_idx == 0 && head_idx == 0 && k_cache) {
+        printf("cache stealing!, depth %d req_id %d sub_req_id %d, parentid "
+               "%d, tok_id %d\n",
+               beam_depth,
+               req_id,
+               sub_req_id,
+               parent_id,
+               tok_id);
       }
-      
+
       for (int depth = 0; depth < beam_depth; depth++) {
         int steal_token_idx = tok_id - beam_depth + depth;
         int steal_from_idx = (req_id * max_beam_width + parent_id) *
@@ -352,9 +363,10 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
                            steal_token_idx * proj_size + data_idx;
         cache_ptr[steal_to_idx] = cache_ptr[steal_from_idx];
 
-      //   if(data_idx == 0 && head_idx == 0 && k_cache && req_id == 1){
-      //     printf("cache stealing kernel!, steal_token_idx %d\n", steal_token_idx);
-      // }
+        //   if(data_idx == 0 && head_idx == 0 && k_cache && req_id == 1){
+        //     printf("cache stealing kernel!, steal_token_idx %d\n",
+        //     steal_token_idx);
+        // }
       }
     }
 
@@ -378,12 +390,9 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                        BeamSearchBatchConfig const *bc,
                        cudaStream_t stream) {
   int num_tokens = bc->num_active_tokens();
-  // stop after 3 iterations
-  // int beam_depth = bc->token2ids.token_indexes[0].beam_depth;
-
-  int curr_depth = m->requestInfos[m->tokenInfos[0].request_index].current_depth;
+  int curr_depth = bc->beamRequestsInfo[0].current_depth;
   printf("curr depth: %d\n", curr_depth);
-  assert(curr_depth < 3);
+  // assert(curr_depth < 3);
   if (num_tokens > 0) {
     int parallelism = m->kProjSize * num_tokens * m->num_heads;
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
@@ -393,6 +402,8 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     m->keyCache,
                                     m->tokenInfos,
                                     m->requestInfos,
+                                    m->beamTokenInfos,
+                                    m->beamRequestInfos,
                                     m->qProjSize,
                                     m->kProjSize,
                                     m->vProjSize,
@@ -411,6 +422,8 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     m->valueCache,
                                     m->tokenInfos,
                                     m->requestInfos,
+                                    m->beamTokenInfos,
+                                    m->beamRequestInfos,
                                     m->qProjSize,
                                     m->kProjSize,
                                     m->vProjSize,
@@ -473,9 +486,9 @@ void inference_kernel3(SpecIncMultiHeadSelfAttentionMeta const *m,
       // int num_new_tokens = bc->num_processing_tokens[i];
       // int total_tokens = bc->token_last_available_idx[i] + 1;
 
-      int num_new_tokens = m->requestInfos[i].num_tokens_in_batch;
-      int total_tokens = m->requestInfos[i].token_start_offset +
-                       m->requestInfos[i].num_tokens_in_batch;
+      int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int total_tokens = bc->requestsInfo[i].token_start_offset +
+                         bc->requestsInfo[i].num_tokens_in_batch;
       // Compute (QK^T/sqrt(d_k))
       int m_ = num_new_tokens;
       int n = total_tokens;
@@ -701,19 +714,30 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->tokenInfos,
-                  &(bc->beamTokenInfo),
-                  bc->MAX_NUM_TOKENS * sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
+                  &(bc->tokensInfo),
+                  bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
+                      sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   cudaMemcpyAsync(m->requestInfos,
-                  &(bc->beamRequestsInfo),
-                  bc->MAX_NUM_TOKENS * sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
+                  &(bc->requestsInfo),
+                  bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
                   cudaMemcpyHostToDevice,
-                  stream);                
-
+                  stream);
+  cudaMemcpyAsync(m->beamTokenInfos,
+                  &(bc->beamTokenInfo),
+                  bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
+                      sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(m->beamRequestInfos,
+                  &(bc->beamRequestsInfo),
+                  bc->MAX_NUM_REQUESTS *
+                      sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
   // phase 1: Implement kernel to compute KQV for input tokens
   inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
-
   // phase 2: Update key/val cache
   inference_kernel2(m, bc, stream);
 
@@ -760,7 +784,6 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   oProjSize = attn->oProjSize;
 
   // print params;
-  std::cout << "print paramms:  oprojSize:" << oProjSize << "\n";
 
   num_heads = _num_heads;
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
@@ -788,18 +811,24 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     size_t qkv_max_proj_size =
         BeamSearchBatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
     size_t key_cache_size = num_heads * kProjSize *
-                            BeamSearchBatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN *
-                            BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    size_t value_cache_size = num_heads * vProjSize *
-                              BeamSearchBatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN *
-                              BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+                            BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+                            MAX_SEQ_LEN * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+    size_t value_cache_size =
+        num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+        MAX_SEQ_LEN * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
 
     // size_t token2ids_size = BatchConfig::MAX_NUM_TOKENS;
-    size_t tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    size_t requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+    size_t tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                            BeamSearchBatchConfig::MAX_BEAM_WIDTH;
 
-    size_t qk_prod_size =
-        BeamSearchBatchConfig::MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_NUM_TOKENS * num_heads;
+    size_t beam_tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                                 BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+
+    size_t requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+    size_t beam_requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+
+    size_t qk_prod_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                          BeamSearchBatchConfig::MAX_NUM_TOKENS * num_heads;
     size_t attn_heads_size =
         BeamSearchBatchConfig::MAX_NUM_TOKENS * num_heads * vProjSize;
     size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
@@ -808,10 +837,14 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
             sizeof(float) +
-        tokeninfo_size *
-            sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo) + 
-            requestinfo_size * sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo); // more components will
-                                             // be added here later
+        tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
+        requestinfo_size * sizeof(BatchConfig::PerRequestInfo) +
+        beam_tokeninfo_size *
+            sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo) +
+        beam_requestinfo_size *
+            sizeof(BeamSearchBatchConfig::
+                       BeamSearchPerRequestInfo); // more components will
+                                                  // be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
@@ -827,10 +860,20 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     devQKVProjArray = (float *)reserveInst.pointer_untyped(0, sizeof(char));
     keyCache = (float *)devQKVProjArray + qkv_max_proj_size;
     valueCache = (float *)keyCache + key_cache_size;
-    // dev_token2ids = (BatchConfig::token_idxs *)(valueCache + value_cache_size);
-    tokenInfos = (BeamSearchBatchConfig::BeamSearchPerTokenInfo *)(valueCache + value_cache_size);
-    requestInfos = (BeamSearchBatchConfig::BeamSearchPerRequestInfo *)(tokenInfos + tokeninfo_size);
-    qk_prods = (float *)(requestInfos + requestinfo_size);
+    // dev_token2ids = (BatchConfig::token_idxs *)(valueCache +
+    // value_cache_size);
+
+    tokenInfos = (BatchConfig::PerTokenInfo *)(valueCache + value_cache_size);
+    beamTokenInfos =
+        (BeamSearchBatchConfig::BeamSearchPerTokenInfo *)(tokenInfos +
+                                                          tokeninfo_size);
+    requestInfos =
+        (BatchConfig::PerRequestInfo *)(beamTokenInfos + beam_tokeninfo_size);
+    beamRequestInfos =
+        (BeamSearchBatchConfig::BeamSearchPerRequestInfo *)(requestInfos +
+                                                            requestinfo_size);
+
+    qk_prods = (float *)(beamRequestInfos + beam_requestinfo_size);
     qk_prods_softmax = (float *)(qk_prods + qk_prod_size);
     attn_heads = (float *)qk_prods_softmax + qk_prod_size;
     W_out_contiguous = (float *)attn_heads + attn_heads_size;

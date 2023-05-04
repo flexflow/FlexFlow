@@ -268,7 +268,7 @@ void BeamTopK::forward(FFModel const &ff) {
 }
 
 FutureMap BeamTopK::inference(FFModel const &ff,
-                              BeamSearchBatchConfig const &bc,
+                              BatchConfig const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
                               MachineView const *mv) {
@@ -288,6 +288,7 @@ FutureMap BeamTopK::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -312,16 +313,19 @@ FutureMap BeamTopK::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[2]->region));
   launcher.add_field(3, FID_DATA);
+
   return runtime->execute_index_space(ctx, launcher);
 }
 
-InferenceResult
+BeamInferenceResult
     BeamTopK::inference_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime)  {
+
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
+  
   BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
   std::cout << "beam search topk inference: "
@@ -384,8 +388,9 @@ InferenceResult
                                    length,
                                    m->sorted);
 
-  InferenceResult ir;
-  download_tensor<int>(index_ptr, ir.results, batch_size * m->max_beam_width);
+  BeamInferenceResult ir;
+
+  download_tensor<int>(index_ptr, ir.token_ids, batch_size * m->max_beam_width);
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
   download_tensor<int>(parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
   return ir;

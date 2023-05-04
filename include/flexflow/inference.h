@@ -22,6 +22,7 @@
 namespace FlexFlow {
 
 class FFModel;
+class BeamTree;
 
 class InferenceManager {
 public:
@@ -52,6 +53,17 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 };
 
+// store the result of beam search
+struct BeamTree {
+  struct treeLayer {
+    BeamSearchBatchConfig::TokenId
+        tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    int parent_ids[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  };
+  treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH];
+};
+
 class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
@@ -62,21 +74,29 @@ public:
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
 
-  BeamSearchBatchConfig prepare_next_batch_beam(BeamSearchBatchConfig const &bc,
-                                 BeamInferenceResult const &result);   
+  BeamSearchBatchConfig
+      prepare_next_batch_beam(BeamSearchBatchConfig const &bc,
+                              BeamInferenceResult const &result);
 
-  void RequestManager::update_beam_metadata(BeamSearchBatchConfig bc,
-                                     BeamInferenceResult const &result);                                                          
+  void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
+                           BeamInferenceResult const &result);
+  void update_beam_metadata(BeamSearchBatchConfig &new_bc,
+                            BeamTree &tree,
+                            int request_index);
+  void tranverse_beam_tree(BeamSearchBatchConfig const &old_bc);
+
   static void
       load_tokens_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
+
 private:
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
+  struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
 };
 
 } // namespace FlexFlow

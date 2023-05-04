@@ -47,7 +47,7 @@ using PCG::Node;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
-Tensor FFModel::place_holder(const Tensor input,char const *name) {
+Tensor FFModel::place_holder(const Tensor input, char const *name) {
   Layer *li = new Layer(this,
                         OP_PLACE_HOLDER,
                         input->data_type,
@@ -62,7 +62,7 @@ Tensor FFModel::place_holder(const Tensor input,char const *name) {
     dims[0] = 1;
 
     li->outputs[0] = create_tensor_legion_ordering(
-        numdims, dims, DT_INT32, li, 0, false /*create_grad*/); 
+        numdims, dims, DT_INT32, li, 0, false /*create_grad*/);
   }
   layers.push_back(li);
   return li->outputs[0];
@@ -72,7 +72,7 @@ Op *PlaceHolder::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-    return new PlaceHolder(model, inputs[0], layer->layer_guid, layer->name);
+  return new PlaceHolder(model, inputs[0], layer->layer_guid, layer->name);
 }
 
 PlaceHolderParams PlaceHolder::get_params() const {
@@ -90,9 +90,9 @@ bool operator==(PlaceHolderParams const &lhs, PlaceHolderParams const &rhs) {
 }
 
 PlaceHolder::PlaceHolder(FFModel &model,
-                   const ParallelTensor _input,
-                   LayerID const &_layer_guid,
-                   char const *name)
+                         const ParallelTensor _input,
+                         LayerID const &_layer_guid,
+                         char const *name)
     : Op(model,
          OP_PLACE_HOLDER,
          _input->data_type,
@@ -106,24 +106,25 @@ PlaceHolder::PlaceHolder(FFModel &model,
   assert(inputs[0]->dims[0].degree == 1);
   assert(inputs[0]->dims[0].parallel_idx == -1);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, inputs[0]->dims, DT_INT32, this, 0 /*owner_idx*/);   
+      numdim, inputs[0]->dims, DT_INT32, this, 0 /*owner_idx*/);
 }
 
 PlaceHolder::PlaceHolder(FFModel &model,
-                   PlaceHolder const &other,
-                   const ParallelTensor input)
+                         PlaceHolder const &other,
+                         const ParallelTensor input)
     : PlaceHolder(model, input, other.layer_guid, other.name) {}
 
 PlaceHolder::PlaceHolder(FFModel &model,
-                   PlaceHolderParams const &params,
-                   const ParallelTensor input,
-                   char const *name)
+                         PlaceHolderParams const &params,
+                         const ParallelTensor input,
+                         char const *name)
     : PlaceHolder(model, input, params.layer_guid, name) {}
 
-void PlaceHolder::init_inference(FFModel const &ff,
-                              std::vector<ParallelTensor> const &batch_inputs,
-                              std::vector<ParallelTensor> const &batch_outputs,
-                              MachineView const *mv) {
+void PlaceHolder::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -166,9 +167,9 @@ void PlaceHolder::init(FFModel const &ff) {
 }
 
 OpMeta *PlaceHolder::init_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   FFHandler handle = *((FFHandler *)task->local_args);
   PlaceHolderMeta *m = new PlaceHolderMeta(handle);
   return m;
@@ -178,11 +179,12 @@ void PlaceHolder::forward(FFModel const &ff) {
   assert(false);
 }
 
-FutureMap PlaceHolder::inference(FFModel const &ff,
-                              BatchConfig const &bc,
-                              std::vector<ParallelTensor> const &batch_inputs,
-                              std::vector<ParallelTensor> const &batch_outputs,
-                              MachineView const *mv) {
+FutureMap
+    PlaceHolder::inference(FFModel const &ff,
+                           BatchConfig const &bc,
+                           std::vector<ParallelTensor> const &batch_inputs,
+                           std::vector<ParallelTensor> const &batch_outputs,
+                           MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -199,17 +201,13 @@ FutureMap PlaceHolder::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-return runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
-InferenceResult
-    PlaceHolder::inference_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  InferenceResult ir;
-  return ir;
-}
+void PlaceHolder::inference_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {}
 
 void PlaceHolder::backward(FFModel const &ff) {
   assert(false);
@@ -220,9 +218,9 @@ void PlaceHolder::serialize(Legion::Serializer &sez) const {
 }
 
 Node PlaceHolder::deserialize(FFModel &ff,
-                           Legion::Deserializer &dez,
-                           ParallelTensor inputs[],
-                           int num_inputs) {
+                              Legion::Deserializer &dez,
+                              ParallelTensor inputs[],
+                              int num_inputs) {
   assert(num_inputs == 1);
   size_t id;
   dez.deserialize(id);
@@ -233,20 +231,19 @@ Node PlaceHolder::deserialize(FFModel &ff,
 }
 
 Op *PlaceHolder::materialize(FFModel &ff,
-                          ParallelTensor inputs[],
-                          int num_inputs) const {
+                             ParallelTensor inputs[],
+                             int num_inputs) const {
   PlaceHolderParams params = get_params();
   return new PlaceHolder(ff, params, inputs[0], this->name);
 }
 
 bool PlaceHolder::measure_operator_cost(Simulator *sim,
-                                     MachineView const &mv,
-                                     CostMetrics &cost_metrics) const {
+                                        MachineView const &mv,
+                                        CostMetrics &cost_metrics) const {
   return false;
 }
 
-PlaceHolderMeta::PlaceHolderMeta(FFHandler _handle)
-    : OpMeta(_handle) {}
+PlaceHolderMeta::PlaceHolderMeta(FFHandler _handle) : OpMeta(_handle) {}
 
 }; // namespace FlexFlow
 

@@ -205,7 +205,7 @@ FutureMap InferenceManager::inference(FFModel *model,
   bool found_input_operator = false;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
-    if (op->op_type == OP_WEIGHT) {
+    if (op->op_type == OP_WEIGHT || op->op_type == OP_PLACE_HOLDER) {
       continue;
     }
     if (op->op_type == OP_INPUT) {
@@ -252,7 +252,7 @@ void InferenceManager::load_input_tokens_from_batch_config(
   ArgumentMap argmap;
   IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
                          input->parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(&bc, sizeof(BeamSearchBatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
