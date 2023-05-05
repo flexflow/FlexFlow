@@ -143,7 +143,7 @@ void DataLoader::load_from_file(T *ptr, size_t size, std::string filename) {
   // std::cout << loaded_data_size << std::endl;
   // std::cout << in_get_size << std::endl;
   if (in_get_size != loaded_data_size) {
-    std::cout << "load data error";
+    std::cout << "load data error" << std::endl;
     return;
   }
 
