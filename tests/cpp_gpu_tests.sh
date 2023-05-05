@@ -7,7 +7,7 @@ cd "${BASH_SOURCE[0]%/*}"
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit 1; fi
 GPUS=$1
 BATCHSIZE=$((GPUS * 64))
-FSIZE=14048
+FSIZE=13800
 ZSIZE=12192
 
 remove_mnist() {
@@ -29,7 +29,7 @@ download_mnist() {
 # Python package (if it exists)
 if [[ -f "$FF_HOME/build/examples/cpp/AlexNet/alexnet" ]]; then
 	echo "Running C++ tests from folder: $FF_HOME/build/examples/cpp"
-	"$FF_HOME"/build/examples/cpp/AlexNet/alexnet -ll:gpu 1 -ll:fsize "$ZSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+	"$FF_HOME"/build/examples/cpp/AlexNet/alexnet -ll:gpu 1 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	# TODO: fix DLRM test
 	# "$FF_HOME"/build/examples/cpp/DLRM/dlrm -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	"$FF_HOME"/build/examples/cpp/InceptionV3/inception -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
@@ -57,7 +57,7 @@ else
 		if [[ -f "$path/alexnet" ]]; then
 			echo "Running C++ tests from folder: $path"
 			found=true
-			alexnet -ll:gpu 1 -ll:fsize "$ZSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+			alexnet -ll:gpu 1 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			# TODO: fix DLRM test
 			# dlrm -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			inception -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
