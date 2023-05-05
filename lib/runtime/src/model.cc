@@ -63,16 +63,11 @@
 #include <unordered_set>
 #include "utils/containers.h"
 #include "parallel_tensor_mapping.h"
-#include "make_operator.h"
 #include "op-attrs/ops/noop.h"
 
 using namespace Legion;
 
 namespace FlexFlow {
-
-LegionRuntime::Logger::Category log_model("Model");
-LegionRuntime::Logger::Category log_measure("measure");
-LegionRuntime::Logger::Category log_profile("profile");
 
 
 /* std::unordered_map<int, int> output_to_input_mapping( */

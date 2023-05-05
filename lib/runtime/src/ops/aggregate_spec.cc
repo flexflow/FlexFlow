@@ -142,7 +142,6 @@ OpTaskInvocation init(AggregateSpecAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(FF_HANDLE, ff_handle());
 
   return { AGG_SPEC_INIT_TASK_ID, binding };
@@ -153,6 +152,7 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
 
   binding.bind(GATE_PREDS, input_tensor(0));
   binding.bind(GATE_ASSIGN, input_tensor(1));
+  binding.bind_arg(PROFILING, enable_profiling());
 
   for (int i = 0; i < attrs.n; i++) {
     binding.bind(EXP_PREDS, input_tensor(i+4));
@@ -172,13 +172,14 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
   binding.bind(GATE_PREDS, input_tensor(0));
   binding.bind(GATE_ASSIGN, input_tensor(1));
   binding.bind(TRUE_GATE_ASSIGN, input_tensor(2));
-  binding.bind_grad(GATE_GRADIENTS_FULL, input_tensor(3).grad());
+  binding.bind_grad(GATE_GRADIENTS_FULL, input_tensor(3));
+  binding.bind_arg(PROFILING, enable_profiling());
 
   for (int i = 0; i < attrs.n; i++) {
-    binding.bind_grad(EXP_PREDS, input_tensor(i+4).grad());
+    binding.bind_grad(EXP_PREDS, input_tensor(i+4));
   }
 
-  binding.bind_grad(OUTPUT, output_tensor(0).grad());
+  binding.bind_grad(OUTPUT, output_tensor(0));
   
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
@@ -210,11 +211,9 @@ static PerDeviceOpState *init_task(Legion::Task const *task,
                                    Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
-  bool profiling = acc.get_argument<bool>(PROFILING);
+  auto handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
 
-  FFHandler handle = *((FFHandler *)task->local_args);
   AggregateSpecPerDeviceState *m = new AggregateSpecPerDeviceState(handle, attrs.n);
-  m->profiling = profiling;
   return m;
 }
 
@@ -381,6 +380,7 @@ static void backward_task(Legion::Task const *task,
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+  auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
 
   int n = attrs.n;
   float lambda_bal = attrs.lambda_bal;
@@ -394,36 +394,35 @@ static void backward_task(Legion::Task const *task,
   auto full_gate_grad = acc.get_tensor_grad<READ_WRITE>(GATE_GRADIENTS_FULL);
   auto output_grad = acc.get_tensor_grad<READ_ONLY>(OUTPUT);
 
-  coord_t batch_size = gate_pred.shape[1];
-  assert(batch_size == gate_assign.shape[1]);
+  size_t batch_size = gate_pred.shape[legion_dim_t(1)];
+  assert(batch_size == gate_assign.shape[legion_dim_t(1)]);
   assert(gate_assign.shape == true_gate_assign.shape);
-  assert(batch_size == full_gate_grad.shape[1]);
-  coord_t k = gate_assign.shape[0];
-  assert(k * batch_size == output_grad.shape[1]);
-  assert(gate_pred.shape[0] == k);
-  coord_t out_dim = output_grad.shape[0];
-  assert(n == full_gate_grad.shape[0]);
+  assert(batch_size == full_gate_grad.shape[legion_dim_t(1)]);
+  size_t k = gate_assign.shape[legion_dim_t(0)];
+  assert(k * batch_size == output_grad.shape[legion_dim_t(1)]);
+  assert(gate_pred.shape[legion_dim_t(0)] == k);
+  size_t out_dim = output_grad.shape[legion_dim_t(0)];
+  assert(n == full_gate_grad.shape[legion_dim_t(0)]);
 
   auto acc_exp_grads = acc.get_variadic_tensor_grad<READ_WRITE>(EXP_PREDS);
   
-  size_t rows = acc_exp_grads[0].shape[1];
-  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
-  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
+  size_t rows = acc_exp_grads[0].shape[legion_dim_t(1)];
+  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[legion_dim_t(1)] == rows; }));
+  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[legion_dim_t(0)] == out_dim; }));
 
-  std::vector<float *> exp_grads = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_grads);
-  assert (exp_grads.size() == n);
+  assert (acc_exp_grads.size() == n);
 
   profile(
     backward_kernel,
-    per_device_state.profiling,
+    enable_profiling,
     "[AggregateSpec] backward_time = %.2lfms\n",
-    per_device_state,
-    exp_grads.data(),
-    gate_assign.get_int32_ptr(),
-    true_gate_assign.get_int32_ptr(),
-    gate_pred.get_float_ptr(),
-    full_gate_grad.get_float_ptr(),
-    output_grad.get_float_ptr(),
+    &per_device_state,
+    get_float_ptrs(acc_exp_grads).data(),
+    get_int32_ptr(gate_assign),
+    get_int32_ptr(true_gate_assign),
+    get_float_ptr(gate_pred),
+    get_float_ptr(full_gate_grad),
+    get_float_ptr(output_grad),
     n,
     k,
     rows,
@@ -506,7 +505,6 @@ void register_task<AGG_SPEC_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<AggregateSpecAttrs>(ATTRS);
-  init.add_arg_slot<EnableProfiling>(PROFILING);
   init.add_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
   init.add_return_value<AggregateSpecPerDeviceState>();
 
@@ -519,6 +517,7 @@ void register_task<AGG_SPEC_FWD_TASK_ID>() {
 
   fwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
   fwd.add_arg_slot<AggregatePerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_arg_slot<EnableProfiling>(PROFILING);
 
   fwd.add_input_slot(GATE_PREDS, READ_WRITE);
   fwd.add_input_slot(GATE_ASSIGN, READ_WRITE);
@@ -534,6 +533,7 @@ void register_task() {
 
   bwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
   bwd.add_arg_slot<AggregatePerDeviceState>(PER_DEVICE_STATE);
+  bwd.add_arg_slot<EnableProfiling>(PROFILING);
 
   bwd.add_input_slot(GATE_PREDS, READ_WRITE);
   bwd.add_input_slot(GATE_ASSIGN);

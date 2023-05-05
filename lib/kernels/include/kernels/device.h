@@ -49,6 +49,7 @@ typedef cublasHandle_t ffblasHandle_t;
 typedef cudnnStatus_t ffStatus_t;
 typedef cudaDataType_t ffDataType_t ;
 typedef cudnnDataType_t ffCudnnDataType_t;
+typedef cudaError_t ffError_t;
 #elif defined(FF_USE_HIP_ROCM)
 typedef hipStream_t ffStream_t;
 hipError_t get_legion_stream(hipStream_t *stream);
@@ -72,6 +73,7 @@ typedef hipblasHandle_t ffblasHandle_t;
 typedef miopenStatus_t ffStatus_t;
 typedef hipblasDataType_t ffDataType_t ;
 typedef miopenDataType_t ffCudnnDataType_t;
+typedef hipError_t ffError_t;
 #else
 #error "Unknown device"
 #endif
@@ -95,57 +97,12 @@ typedef miopenDataType_t ffCudnnDataType_t;
     }                                                                          \
   } while (0)
 
-}
+ffError_t ffEventCreate(ffEvent_t *);
+ffError_t ffEventDestroy(ffEvent_t &);
+ffError_t ffEventRecord(ffEvent_t &, ffStream_t);
+ffError_t ffEventSynchronize(ffEvent_t &);
+ffError_t ffEventElapsedTime(float *elapsed, ffEvent_t &start, ffEvent_t &stop);
 
-auto ffEventCreate(ffEvent_t *e)
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  -> decltype(cudaEventCreate(e)) {
-  return cudaEventCreate(e);
-#elif defined(FF_USE_HIP_ROCM)
-  -> decltype(hipEventCreate(e)) {
-  return hipEventCreate(e);
-#endif
 }
-
-auto ffEventDestroy(ffEvent_t &e)
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  -> decltype(cudaEventDestroy(e)) {
-  return cudaEventDestroy(e);
-#elif defined(FF_USE_HIP_ROCM)
-  -> decltype(hipEventDestroy(e)) {
-  return hipEventDestroy(e);
-#endif
-}
-
-auto ffEventRecord(ffEvent_t &e, ffStream_t stream)
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  -> decltype(cudaEventRecord(e, stream)) {
-  return cudaEventRecord(e, stream);
-#elif defined(FF_USE_HIP_ROCM)
-  -> decltype(hipEventRecord(e, stream)) {
-  return hipEventRecord(e, stream);
-#endif
-}
-
-auto ffEventSynchronize(ffEvent_t &e)
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  -> decltype(cudaEventSynchronize(e)) {
-  return cudaEventSynchronize(e);
-#elif defined(FF_USE_HIP_ROCM)
-  -> decltype(hipEventSynchronize(e)) {
-  return hipEventSynchronize(e);
-#endif
-}
-
-auto ffEventElapsedTime(float *elapsed, ffEvent_t &start, ffEvent_t &stop)
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  -> decltype(cudaEventElapsedTime(elapsed, start, stop)) {
-  return cudaEventElapsedTime(elapsed, start, stop);
-#elif defined(FF_USE_HIP_ROCM)
-  -> decltype(hipEventElapsedTime(elapsed, start, stop)) {
-  return cudaEventElapsedTime(elapsed, start, stop);
-#endif
-}
-
 
 #endif 

@@ -8,16 +8,72 @@ namespace FlexFlow {
 /*   return is_valid; */
 /* } */
 
-int vProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.vdim;
-}
-
-int kProjSize(MultiHeadAttentionAttrs const &attrs) {
+int get_qProjSize(MultiHeadAttentionAttrs const &attrs) {
   return attrs.kdim;
 }
 
-int oProjSize(MultiHeadAttentionAttrs const &attrs) {
+int get_vProjSize(MultiHeadAttentionAttrs const &attrs) {
+  return attrs.vdim;
+}
+
+int get_kProjSize(MultiHeadAttentionAttrs const &attrs) {
+  return attrs.kdim;
+}
+
+int get_oProjSize(MultiHeadAttentionAttrs const &attrs) {
   return attrs.embed_dim;
+}
+
+int get_qSize(TensorShape const &query_shape) {
+  return query_shape.at(ff_dim_t(0));
+}
+
+int get_kSize(TensorShape const &key_shape) {
+  return key_shape.at(ff_dim_t(0));
+}
+
+int get_vSize(TensorShape const &value_shape) {
+  return value_shape.at(ff_dim_t(0));
+}
+
+TensorShape get_weights_shape(MultiHeadAttentionAttrs const &attrs,
+                              TensorShape const &query_shape,
+                              TensorShape const &key_shape,
+                              TensorShape const &value_shape) {
+  int qParas = get_qProjSize(attrs) * get_qSize(query_shape);  
+  int kParas = get_kProjSize(attrs) * get_kSize(key_shape);
+  int vParas = get_vProjSize(attrs) * get_vSize(value_shape);
+  TensorShape output_shape = get_output_shape(attrs, query_shape, key_shape, value_shape);
+  int oParas = get_oProjSize(attrs) * get_oSize(output_shape);
+
+  TensorDims dims = { qParas + kParas + vParas + oParas, attrs.embed_dim };
+
+  return { dims, DT_FLOAT };
+}
+
+ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
+                                     ParallelTensorShape const &query_shape,
+                                     ParallelTensorShape const &key_shape,
+                                     ParallelTensorShape const &value_shape) {
+  /* ParallelDim replica_dim = query_shape.at(ff_dim_t(query_shape.num_dims() - 2)); */
+  /* replica_dim.size = replica_dim.degree; */
+
+  /* ParallelDim */ 
+
+  ParallelTensorShape output_shape = query_shape;
+  output_shape.at(ff_dim_t(output_shape.num_dims() - 1)).size = attrs.embed_dim;
+  return output_shape;
+}
+
+TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
+                             TensorShape const &query_shape, 
+                             TensorShape const &key_shape,
+                             TensorShape const &value_shape) {
+  ParallelTensorShape parallel_shape = get_output_shape(attrs, 
+                                                        (ParallelTensorShape)query_shape, 
+                                                        (ParallelTensorShape)key_shape, 
+                                                        (ParallelTensorShape)value_shape);
+  return get_tensor_shape_unsafe(parallel_shape);
 }
 
 }

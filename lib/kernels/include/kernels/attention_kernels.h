@@ -3,59 +3,65 @@
 
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/ff_handler.h"
+#include "kernels/ff_handle.h"
 #include "kernels/allocation.h"
 #include <memory>
 #include "op-attrs/ops/attention.h"
 
 namespace FlexFlow {
 
-class MHAPerDeviceState : public PerDeviceOpState {
+class MHAPerDeviceState : public use_visitable_cmp<MHAPerDeviceState> {
 public:
-  MHAPerDeviceState(FFHandler handler,
-                    std::unique_ptr<IAllocator> allocator,
-                    int num_samples,
-                    int num_heads,
-                    int qSize,
-                    int kSize,
-                    int vSize,
-                    int qProjSize,
-                    int kProjSize,
-                    int vProjSize,
-                    int oProjSize,
-                    int qoSeqLength,
-                    int kvSeqLength,
-                    bool add_bias_kv);
-  MHAPerDeviceState(FFHandler handler, 
-                    std::unique_ptr<IAllocator> allocator,
-                    MultiHeadAttentionAttrs const &attrs);
-
+  MHAPerDeviceState() = delete;
+  MHAPerDeviceState(PerDeviceFFHandle const &,
+                    size_t weightSize,
+                    size_t reserveSpaceSize,
+                    ffAttnDescriptor_t attnDesc,
+                    ffSeqDataDescriptor_t qDesc,
+                    ffSeqDataDescriptor_t kDesc,
+                    ffSeqDataDescriptor_t vDesc,
+                    ffSeqDataDescriptor_t oDesc,
+                    int *devQoSeqArray,
+                    int *devKvSeqArray,
+                    int *loWinIdx,
+                    int *hiWinIdx,
+                    void *reserveSpace,
+                    Allocator const &allocator);
 public:
-  size_t weightSize, reserveSpaceSize;
+  PerDeviceFFHandle handle;
+  size_t weightSize;
+  size_t reserveSpaceSize;
   ffAttnDescriptor_t attnDesc;
-  ffSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
-  int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
+  ffSeqDataDescriptor_t qDesc;
+  ffSeqDataDescriptor_t kDesc;
+  ffSeqDataDescriptor_t vDesc;
+  ffSeqDataDescriptor_t oDesc;
+  int *devQoSeqArray;
+  int *devKvSeqArray;
+  int *loWinIdx;
+  int *hiWinIdx;
   void *reserveSpace;
-  std::unique_ptr<IAllocator> allocator;
+  Allocator allocator;
 };
 
 
 namespace Kernels {
 namespace MultiHeadAttention {
 
-void init_kernel(MHAPerDeviceState *m,
-                 int num_samples,
-                 int num_heads,
-                 int qSize,
-                 int kSize,
-                 int vSize,
-                 int qProjSize,
-                 int kProjSize,
-                 int vProjSize,
-                 int oProjSize,
-                 int qoSeqLength,
-                 int kvSeqLength,
-                 bool add_bias_kv);
+MHAPerDeviceState init_kernel(PerDeviceFFHandle const &,
+                              Allocator const &,
+                              int num_samples,
+                              int num_heads,
+                              int qSize,
+                              int kSize,
+                              int vSize,
+                              int qProjSize,
+                              int kProjSize,
+                              int vProjSize,
+                              int oProjSize,
+                              int qoSeqLength,
+                              int kvSeqLength,
+                              bool add_bias_kv);
 
 void forward_kernel(ffStream_t stream,
                     MHAPerDeviceState const &device_state,

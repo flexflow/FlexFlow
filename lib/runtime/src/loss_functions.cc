@@ -44,18 +44,6 @@ enum LossSlots {
   ENABLE_PROFILING
 };
 
-template <>
-TaskSignature get_signature<LOSS_BWD_TASK_ID>() {
-  TaskSignature sig;
-  sig.add_arg_slot<LossAttrs>(LOSS_ATTRS);
-  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
-  sig.add_slot(LOGIT, { SlotType::TENSOR, READ_ONLY });
-  sig.add_slot(LABEL, { SlotType::TENSOR, READ_ONLY });
-  sig.add_slot(LOGIT_GRAD, { SlotType::TENSOR, READ_WRITE });
-
-  return sig;
-}
-
 TaskInvocation backward_invocation(LossAttrs const &attrs, 
                                    EnableProfiling enable_profiling,
                                    parallel_tensor_guid_t logit,
@@ -181,7 +169,14 @@ static void loss_backward_task(Legion::Task const *task,
 
 template <>
 void register_task<LOSS_BWD_TASK_ID>() {
-  register_task(LOSS_BWD_TASK_ID, "Loss Backward", loss_backward_task);
+  TaskSignature sig;
+  sig.add_arg_slot<LossAttrs>(LOSS_ATTRS);
+  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
+  sig.add_slot(LOGIT, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(LABEL, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(LOGIT_GRAD, { SlotType::TENSOR, READ_WRITE });
+
+  register_task(LOSS_BWD_TASK_ID, "Loss Backward", sig, loss_backward_task);
 }
 
 }

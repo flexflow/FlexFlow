@@ -78,6 +78,9 @@ struct elements_satisfy_impl<Cond, void, variant<>> : std::true_type { };
 template <class Variant1, class Variant2>
 using variant_join = typename variant_join_helper<Variant1, Variant2>::type;
 
+template <class Variant1, typename ...T>
+using variant_add = variant_join<Variant1, variant<T...>>;
+
 static_assert(std::is_same<variant_join<variant<int, float>, variant<float, double>>, variant<int, float, double>>::value, "");
 static_assert(std::is_same<variant_join<variant<int>, variant<float, double>>, variant<int, float, double>>::value, "");
 static_assert(std::is_same<variant_join<variant<int>, variant<int>>, variant<int>>::value, "");

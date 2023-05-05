@@ -22,8 +22,6 @@
 
 namespace FlexFlow {
 
-extern LegionRuntime::Logger::Category log_metrics;
-
 class Metrics {
 public:
   Metrics() = delete;
@@ -41,22 +39,12 @@ public:
 TaskInvocation compute_metrics(Metrics const &,
                                parallel_tensor_guid_t const &logit,
                                parallel_tensor_guid_t const &label);
-
 TaskInvocation update_metrics(Metrics const &,
                               parallel_tensor_guid_t const &logit,
                               parallel_tensor_guid_t const &label);
 
 template <> void register_task<METRICS_COMP_TASK_ID>();
 template <> void register_task<UPDATE_METRICS_TASK_ID>();
-
-PerfMetrics compute_metrics_task(Legion::Task const *,
-                                 std::vector<Legion::PhysicalRegion> const &,
-                                 Legion::Context, 
-                                 Legion::Runtime *);
-PerfMetrics update_metrics_task(Legion::Task const *,
-                                std::vector<Legion::PhysicalRegion> const &,
-                                Legion::Context, 
-                                Legion::Runtime *);
 
 }
 

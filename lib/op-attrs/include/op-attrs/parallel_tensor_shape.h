@@ -75,8 +75,9 @@ struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
 
   int num_dims() const;
   ParallelDim const &at(ff_dim_t const &) const;
+  ParallelDim &at(ff_dim_t const &);
   ParallelDim const &operator[](ff_dim_t const &) const;
-
+  ParallelDim &operator[](ff_dim_t const &);
 
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
@@ -87,6 +88,9 @@ public:
   ParallelTensorDims dims;
   DataType data_type;
 };
+
+TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &);
+std::vector<TensorShape> get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
 
 }
 

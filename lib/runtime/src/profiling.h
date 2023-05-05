@@ -3,10 +3,9 @@
 
 #include "legion.h"
 #include "kernels/profiling.h"
+#include "loggers.h"
 
 namespace FlexFlow {
-
-extern LegionRuntime::Logger::Category log_profile;
 
 enum class EnableProfiling {
   YES,

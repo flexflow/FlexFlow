@@ -109,7 +109,7 @@ TaskInvocation apply_initializer(ConstantInitializer const &initializer,
 }
 
 
-void glorot_init_task(Legion::Task const *task,
+static void glorot_init_task(Legion::Task const *task,
                       std::vector<Legion::PhysicalRegion> const &regions,
                       Legion::Context ctx,
                       Legion::Runtime *runtime) {
@@ -162,14 +162,29 @@ void glorot_init_task(Legion::Task const *task,
   /* } */
 /* } */
 
-void zero_init_task(Legion::Task const *task,
-                    std::vector<Legion::PhysicalRegion> const &regions,
-                    Legion::Context ctx, 
-                    Legion::Runtime *runtime) {
+static void zero_init_task_impl(Legion::Task const *task,
+                                std::vector<Legion::PhysicalRegion> const &regions,
+                                Legion::Context ctx, 
+                                Legion::Runtime *runtime, 
+                                TaskLocation const &loc) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
 
-  zero_init_kernel(tensor);
+  zero_init_kernel(loc, tensor);
+}
+
+static void zero_init_task_cpu(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime) {
+  return zero_init_task_impl(task, regions, ctx, runtime, TaskLocation::CPU);
+}
+
+static void zero_init_task(Legion::Task const *task,
+                    std::vector<Legion::PhysicalRegion> const &regions,
+                    Legion::Context ctx,
+                    Legion::Runtime *runtime) {
+  return zero_init_task_impl(task, regions, ctx, runtime, TaskLocation::GPU);
 }
 
 // void ZeroInitializer::init(LegionConfig const &config, ParallelTensor const &p) {
@@ -209,7 +224,7 @@ void zero_init_task(Legion::Task const *task,
 // }
 
 
-void uniform_init_task(Legion::Task const *task,
+static void uniform_init_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions, 
                        Legion::Context ctx,
                        Legion::Runtime *runtime) {
@@ -220,7 +235,7 @@ void uniform_init_task(Legion::Task const *task,
   uniform_init_kernel(tensor, initializer.seed, initializer.min_val, initializer.max_val);
 }
 
-void norm_init_task(Legion::Task const *task, 
+static void norm_init_task(Legion::Task const *task, 
                     std::vector<Legion::PhysicalRegion> const &regions, 
                     Legion::Context ctx,
                     Legion::Runtime *runtime) {
@@ -231,17 +246,32 @@ void norm_init_task(Legion::Task const *task,
   norm_init_kernel(tensor, initializer.seed, initializer.mean, initializer.stddev);
 }
 
-void constant_init_task(Legion::Task const *task, 
-                        std::vector<Legion::PhysicalRegion> const &regions, 
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime) {
+static void constant_init_task_impl(Legion::Task const *task, 
+                                    std::vector<Legion::PhysicalRegion> const &regions,
+                                    Legion::Context ctx,
+                                    Legion::Runtime *runtime,
+                                    TaskLocation const &loc) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
   auto initializer = acc.get_argument<ConstantInitializer>(INITIALIZER);
 
-  constant_init_kernel(tensor, initializer.value);
+  constant_init_kernel(loc, tensor, initializer.value);
+
 }
 
+static void constant_init_task(Legion::Task const *task, 
+                        std::vector<Legion::PhysicalRegion> const &regions, 
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime) {
+  return constant_init_task_impl(task, regions, ctx, runtime, TaskLocation::GPU);
+}
+
+static void constant_init_task_cpu(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime) {
+  return constant_init_task_impl(task, regions, ctx, runtime, TaskLocation::CPU);
+}
 
 
 // void UniformInitializer::init(LegionConfig const &config, ParallelTensor const &p, ParallelTensorLegionBacking const &backing) {

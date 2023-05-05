@@ -22,24 +22,7 @@
 #include <random>
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::InlineLauncher;
-using Legion::Machine;
-using Legion::Memory;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
+
 void UniformInitializer::init_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,

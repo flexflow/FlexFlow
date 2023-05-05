@@ -37,7 +37,7 @@
 #include "compiler/compiler.h"
 #include "op-attrs/ffconst.h"
 #include "layer_id.h"
-#include "kernels/ff_handler.h"
+#include "kernels/ff_handle.h"
 #include "op-attrs/tensor_shape.h"
 #include "legion_parallel_tensor_shape.h"
 #include "index_space_manager.h"
@@ -148,7 +148,7 @@ public:
   std::unordered_map<parallel_tensor_guid_t, ParallelTensorLegionBacking> legion_backing;
 
   std::vector<ParallelTensor> parameters;
-  std::vector<FFHandler> handlers;
+  std::vector<PerDeviceFFHandle> handles;
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   /* std::unordered_map<PCGOperatorAttrs, Op*> cached_ops; */

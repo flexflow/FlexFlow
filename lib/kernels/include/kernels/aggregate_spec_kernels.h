@@ -3,7 +3,7 @@
 
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/ff_handler.h"
+#include "kernels/ff_handle.h"
 
 namespace FlexFlow {
 
@@ -13,7 +13,7 @@ namespace FlexFlow {
 
 class AggregateSpecPerDeviceState : public PerDeviceOpState {
 public:
-  AggregateSpecPerDeviceState(FFHandler handle, int n);
+  AggregateSpecPerDeviceState(PerDeviceFFHandle handle, int n);
   ~AggregateSpecPerDeviceState();
   float **dev_region_ptrs;
 };

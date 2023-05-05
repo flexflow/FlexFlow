@@ -11,13 +11,16 @@ namespace FlexFlow {
 
 using TensorDims = FFOrdered<size_t>;
 
-struct TensorShape : use_visitable_cmp<TensorShape>, TensorDims {
+struct TensorShape : use_visitable_cmp<TensorShape> {
   TensorShape() = delete;
 
   template <typename Dims>
   TensorShape(Dims const &dims, DataType data_type)
     : dims(dims), data_type(data_type)
   { }
+
+  size_t at(ff_dim_t) const;
+  size_t operator[](ff_dim_t) const;
 public:
   TensorDims dims;
   DataType data_type;

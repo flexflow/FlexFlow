@@ -15,7 +15,7 @@ OpTaskInvocation init(AggregateAttrs const &);
 OpTaskInvocation forward(AggregateAttrs const &);
 OpTaskInvocation backward(AggregateAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvironment const &sim,
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   AggregateAttrs const &attrs,
                                   ParallelTensorShape const &gate_preds_shape,
                                   ParallelTensorShape const &gate_assign_shape,

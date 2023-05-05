@@ -18,8 +18,6 @@
 
 namespace FlexFlow {
 
-extern LegionRuntime::Logger::Category log_measure;
-
 /* class Simulator; */
 /* class CostMetrics; */
 /* class FFModel; */
@@ -118,6 +116,8 @@ public:
   Operator() = delete;
   Operator(std::string const &name,
            PCGOperatorAttrs const &attrs);
+
+  operator PCGOperatorAttrs() const;
 public:
   stack_string<MAX_OPNAME> name;
   PCGOperatorAttrs attrs;

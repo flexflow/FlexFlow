@@ -64,30 +64,6 @@ enum Slots {
   ENABLE_PROFILING
 };
 
-template <>
-void register_task<METRICS_COMP_TASK_ID>() {
-  TaskSignature sig;
-  sig.add_slot(LOGIT, { SlotType::TENSOR, READ_ONLY });
-  sig.add_slot(LABEL, { SlotType::TENSOR, READ_ONLY });
-  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
-  sig.add_arg_slot<Metrics>(METRICS_STRUCT);
-  sig.add_return_value<PerfMetrics>();
-
-  register_task(METRICS_COMP_TASK_ID, "Metrics Compute", compute_metrics_task, sig);
-}
-
-template <>
-void register_task<UPDATE_METRICS_TASK_ID>() {
-  TaskSignature sig;
-  sig.add_arg_slot<Metrics>(METRICS_STRUCT);
-  sig.add_arg_slot<PerfMetrics>(ALL_METRICS);
-  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
-  sig.add_variadic_arg_slot<PerfMetrics>(ONE_METRICS);
-  sig.add_return_value<PerfMetrics>();
-
-  register_task(UPDATE_METRICS_TASK_ID, "Update Metrics", update_metrics_task, sig);
-}
-
 TaskInvocation compute_metrics(Metrics const &metrics,
                       parallel_tensor_guid_t const &logit,
                       parallel_tensor_guid_t const &label,
@@ -158,7 +134,7 @@ static PerfMetrics make_empty_metrics() {
   return { static_cast<double>(Realm::Clock::current_time_in_microseconds()) };
 }
 
-PerfMetrics compute_metrics_task(Legion::Task const *task,
+static PerfMetrics compute_metrics_task(Legion::Task const *task,
                               std::vector<Legion::PhysicalRegion> const &regions,
                               Legion::Context ctx,
                               Legion::Runtime *runtime) {
@@ -223,7 +199,7 @@ PerfMetrics compute_metrics_task(Legion::Task const *task,
   return perf_zc;
 }
 
-PerfMetrics update_metrics_task(Legion::Task const *task,
+static PerfMetrics update_metrics_task(Legion::Task const *task,
                                  std::vector<Legion::PhysicalRegion> const &regions,
                                  Legion::Context ctx,
                                  Legion::Runtime *runtime) {
@@ -245,6 +221,30 @@ PerfMetrics update_metrics_task(Legion::Task const *task,
   }
   log_metrics.print() << fmt::to_string(all_metrics);
   return all_metrics;
+}
+
+template <>
+void register_task<METRICS_COMP_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(LOGIT, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(LABEL, { SlotType::TENSOR, READ_ONLY });
+  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
+  sig.add_arg_slot<Metrics>(METRICS_STRUCT);
+  sig.add_return_value<PerfMetrics>();
+
+  register_task(METRICS_COMP_TASK_ID, "Metrics Compute", sig, compute_metrics_task);
+}
+
+template <>
+void register_task<UPDATE_METRICS_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_arg_slot<Metrics>(METRICS_STRUCT);
+  sig.add_arg_slot<PerfMetrics>(ALL_METRICS);
+  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
+  sig.add_variadic_arg_slot<PerfMetrics>(ONE_METRICS);
+  sig.add_return_value<PerfMetrics>();
+
+  register_task(UPDATE_METRICS_TASK_ID, "Update Metrics", sig, update_metrics_task);
 }
 
 

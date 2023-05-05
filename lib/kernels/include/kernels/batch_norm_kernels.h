@@ -2,7 +2,7 @@
 #define _FLEXFLOW_KERNELS_BATCH_NORM_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/ff_handler.h"
+#include "kernels/ff_handle.h"
 #include "kernels/per_device_op_state.h"
 #include "kernels/allocation.h"
 #include <memory>

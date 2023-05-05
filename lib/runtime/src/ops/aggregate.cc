@@ -43,7 +43,7 @@ DataDependencies get_data_dependencies(AggregateAttrs const &attrs, TaskSignatur
                                    {OUTPUT});
 }
 
-CostMetrics measure_operator_cost(Simulator const &sim,
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   AggregateAttrs const &attrs,
                                   ParallelTensorShape const &gate_preds_shape,
                                   ParallelTensorShape const &gate_assign_shape,
@@ -59,11 +59,11 @@ CostMetrics measure_operator_cost(Simulator const &sim,
   auto gate_assign = allocate_input(env, gate_assign_shape);
   auto true_gate_assign = allocate_input(env, true_gate_assign_shape);
   auto full_gate_gradients = allocate_input(env, full_gate_gradients_shape);
-  auto exp_preds = allocate(env, exp_preds_shapes);
-  auto exp_grads = allocate(env, exp_preds_shapes);
+  auto exp_preds = allocate_input(env, exp_preds_shapes);
+  auto exp_grads = allocate_input(env, exp_preds_shapes);
   ParallelTensorShape output_shape = get_output_shape(attrs, gate_preds_shape, gate_assign_shape, true_gate_assign_shape, full_gate_gradients_shape, exp_preds_shapes);
-  auto output = allocate(env, output_shape);
-  auto output_grad = allocate(env, output_shape);
+  auto output = allocate_output(env, output_shape);
+  auto output_grad = allocate_output(env, output_shape);
 
   int k = gate_assign.shape[legion_dim_t(0)];
   int rows = exp_preds[0].shape[legion_dim_t(1)];
@@ -149,7 +149,7 @@ OpTaskInvocation backward(AggregateAttrs const &attrs) {
   return { AGGREGATE_BWD_TASK_ID, binding };
 }
 
-static PerDeviceOpState *init_task(Legion::Task const *task,
+static AggregatePerDeviceState init_task(Legion::Task const *task,
                                    std::vector<Legion::PhysicalRegion> const &regions,
                                    Legion::Context ctx,
                                    Legion::Runtime *runtime) {

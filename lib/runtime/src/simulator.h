@@ -26,27 +26,15 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-#include "kernels/ff_handler.h"
+#include "kernels/ff_handle.h"
+#include "cost_metrics.h"
 
 namespace FlexFlow {
 
 #define MOD(a, b) ((a) % (b)) < 0 ? ((a) % (b)) + (b) : ((a) % (b))
 
-class Conv2DMeta;
-class LinearMeta;
-class Pool2DMeta;
-class ElementUnaryMeta;
-class ElementBinaryMeta;
-// class EmbeddingMeta;
-// class SoftmaxMeta;
-class BatchMatmulMeta;
-// class BatchNormMeta;
-class ConcatMeta;
-// class DropoutMeta;
-class TransposeMeta;
 class Op;
 class FFModel;
-
 
 class Device {
 public:
@@ -653,7 +641,7 @@ class Simulator {
 public:
   static constexpr float MAXIMUM_TASK_RUN_TIME = 1e7;
   Simulator(FFModel const *model,
-            FFHandler handler,
+            PerDeviceFFHandle const &handle,
             Legion::Memory memory,
             MachineModel *machine);
   ~Simulator(void);
@@ -688,31 +676,27 @@ public:
   Realm::RegionInstance simulatorInst;
   MachineModel *machine;
   Legion::Memory memory;
-  FFHandler handler;
+  PerDeviceFFHandle handle;
   char *base_ptr;
   size_t capacity;
   off_t offset;
   int warmup_times, repeat_times;
   TaskManager *task_manager;
   CompMode computationMode;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudaEvent_t start_event, end_event;
-#else
-  hipEvent_t start_event, end_event;
-#endif
+  ffEvent_t start_event, end_event;
   std::unordered_map<size_t, CostMetrics> hash_to_operator_cost;
   std::unordered_map<ProfilingRecordKey, CostMetrics>
       strict_hash_to_operator_cost;
 
 public:
-  Conv2DMeta *conv2d_meta;
-  LinearMeta *linear_meta;
-  Pool2DMeta *pool2d_meta;
-  ElementUnaryMeta *ele_unary_meta;
-  ElementBinaryMeta *ele_binary_meta;
-  BatchMatmulMeta *batch_matmul_meta;
-  ConcatMeta *concat_meta;
-  TransposeMeta *transpose_meta;
+  /* Conv2DMeta *conv2d_meta; */
+  /* LinearMeta *linear_meta; */
+  /* Pool2DMeta *pool2d_meta; */
+  /* ElementUnaryMeta *ele_unary_meta; */
+  /* ElementBinaryMeta *ele_binary_meta; */
+  /* BatchMatmulMeta *batch_matmul_meta; */
+  /* ConcatMeta *concat_meta; */
+  /* TransposeMeta *transpose_meta; */
   int segment_size;
   int max_num_segments; // simulation could be slow if the number of segments
                         // are too large
