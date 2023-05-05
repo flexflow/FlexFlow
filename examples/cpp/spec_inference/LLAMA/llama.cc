@@ -176,9 +176,6 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor softmax = ff.softmax(dense, -1);
   Tensor output = ff.beam_top_k(softmax, llamaConfig.max_beam_width, false);
 
-  // place holder
-  // output = ff.place_holder(output);
-
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
   InferenceManager im(&ff, llamaConfig.batchSize, 1);

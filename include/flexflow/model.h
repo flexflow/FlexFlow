@@ -147,8 +147,6 @@ enum TaskIDs {
   BEAM_TOPK_INF_TASK_ID,
   SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-  PLACE_HOLDER_INIT_TASK_ID,
-  PLACE_HOLDER_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
@@ -306,7 +304,6 @@ class ArgTopK;
 class Transpose;
 class RMSNorm;
 class BeamTopK;
-class PlaceHolder;
 class SpecIncMultiHeadSelfAttention;
 class Combine;
 class Repartition;
@@ -527,9 +524,6 @@ public:
                     int max_beam_size,
                     bool sorted,
                     char const *name = NULL);
-
-  // add a placeholder layer
-  Tensor place_holder(const Tensor input, char const *name = NULL);
 
   // Add a dense layer
   Tensor dense(const Tensor input,
@@ -1019,8 +1013,6 @@ public:
       std::unordered_map<
           std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
           SpecIncMultiHeadSelfAttention *>,
-      std::unordered_map<std::pair<ParallelTensorShape, PlaceHolderParams>,
-                         PlaceHolder *>,
       std::unordered_map<
           std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionVerifyParams>,
           IncMultiHeadSelfAttentionVerify *>,

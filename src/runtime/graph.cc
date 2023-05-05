@@ -36,7 +36,6 @@
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
-#include "flexflow/ops/place_holder.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
@@ -2775,10 +2774,6 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_BEAM_TOPK: {
         node = BeamTopK::deserialize(*this, dez, inputs, num_inputs);
-        break;
-      }
-      case OP_PLACE_HOLDER: {
-        node = PlaceHolder::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_GROUP_BY: {

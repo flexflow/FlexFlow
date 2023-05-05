@@ -47,7 +47,6 @@
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
-#include "flexflow/ops/place_holder.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
@@ -2913,11 +2912,6 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
-    case OP_PLACE_HOLDER: {
-      Op *op = PlaceHolder::create_operator_from_layer(*this, layer, inputs);
-      operators.push_back(op);
-      return op;
-    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -4586,23 +4580,6 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<BeamInferenceResult,
                                       BeamTopK::inference_task>(
         registrar, "BeamTopK Inference Task");
-  }
-  // PlaceHolder task
-  {
-    TaskVariantRegistrar registrar(PLACE_HOLDER_INIT_TASK_ID,
-                                   "PlaceHolder Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, PlaceHolder::init_task>(
-        registrar, "PlaceHolder Init Task");
-  }
-  {
-    TaskVariantRegistrar registrar(PLACE_HOLDER_INF_TASK_ID,
-                                   "PlaceHolder Inference");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<PlaceHolder::inference_task>(
-        registrar, "PlaceHolder Inference Task");
   }
   // Transpose task
   {
