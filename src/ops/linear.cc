@@ -100,7 +100,7 @@ Op *Linear::create_operator_from_layer(
   layer->get_int_property("activation", value);
   ActiMode activation = (ActiMode)value;
   layer->get_int_property("kernel_reg_type", value);
-  RegularizerMode kernel_reg_type = (RegularizerMode) value;
+  RegularizerMode kernel_reg_type = (RegularizerMode)value;
   float kernel_reg_lambda;
   layer->get_float_property("kernel_reg_lambda", kernel_reg_lambda);
   return new Linear(model,
@@ -919,7 +919,7 @@ bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid &&
          lhs.out_channels == rhs.out_channels && lhs.use_bias == rhs.use_bias &&
          lhs.data_type == rhs.data_type && lhs.activation == rhs.activation &&
-         lhs.kernel_reg_type == rhs.kernel_reg_type && 
+         lhs.kernel_reg_type == rhs.kernel_reg_type &&
          lhs.kernel_reg_lambda == rhs.kernel_reg_lambda;
 }
 

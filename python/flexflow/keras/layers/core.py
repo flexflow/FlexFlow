@@ -35,8 +35,8 @@ class Dense(Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    if kernel_regularizer != None:
-      assert 0, "kernel_regularizer is not supported"
+    # if kernel_regularizer != None:
+    #   assert 0, "kernel_regularizer is not supported"
     if bias_regularizer != None:
       assert 0, "bias_regularizer is not supported"
     if activity_regularizer != None:
@@ -61,7 +61,12 @@ class Dense(Layer):
       self.bias_initializer = bias_initializer
     else:
       assert 0, "[Dense]: unknown bias_initializer"
-    
+
+    if isinstance(kernel_regularizer, Regularizer):
+      self.kernel_regularizer = kernel_regularizer
+    else:
+      assert 0, "[Dense]: unknown kernel_regularizer"
+
     self.in_channels = 0
     self.out_channels = units
     self.use_bias = use_bias
