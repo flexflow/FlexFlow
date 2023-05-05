@@ -9,6 +9,11 @@ class ActiMode(Enum):
   AC_MODE_TANH = 13
   AC_MODE_GELU = 14
 
+class RegularizerMode(Enum):
+  REG_MODE_NONE = 17
+  REG_MODE_L1 = 18
+  REG_MODE_L2 = 19
+
 class AggrMode(Enum):
   AGGR_MODE_NONE = 20
   AGGR_MODE_SUM = 21
