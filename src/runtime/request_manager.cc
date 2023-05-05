@@ -177,11 +177,10 @@ BeamSearchBatchConfig
         // || ir.results[t] == 0 TODO: replace this with <EOS>
         // std::cout<<"aaaaaaa"<<"\n";
     ) {
-      log_req_mgr.print(
-          "[Done] guid(%zu) final_length(%zu) request_length(%zu)",
-          old_bc.requestsInfo[i].request_guid,
-          processed_tokens,
-          request.tokens.size());
+      log_req_mgr.print("[Done] guid(%zu) final_length(%i) request_length(%zu)",
+                        old_bc.requestsInfo[i].request_guid,
+                        processed_tokens,
+                        request.tokens.size());
     } else {
 
       std::cout << "num tokens: " << old_bc.num_tokens << ", "
@@ -197,7 +196,7 @@ BeamSearchBatchConfig
       new_bc.sub_requests[i] = old_bc.beamRequestsInfo[i].beam_size;
       // update the parentid, accumalated_probs, depth, and token_ids
       new_bc.beamRequestsInfo[i].current_depth =
-          old_bc.beamRequestsInfo[i].current_depth + 1;   
+          old_bc.beamRequestsInfo[i].current_depth + 1;
       new_bc.beamRequestsInfo[i].beam_size =
           old_bc.beamRequestsInfo[i].beam_size;
 
@@ -316,14 +315,18 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       int beam_size = old_bc.beamRequestsInfo[index].beam_size;
       int depth = old_bc.beamRequestsInfo[index].current_depth;
 
-      if(depth == 1){
-        //store the last input into the tree;
-        std::cout<<"try to store the input"<<"\n";
-        Request &request = running_request_queue[old_bc.requestsInfo[index].request_guid];
-        beam_trees[index].treeLayers[depth - 1].tokens[0] = request.tokens.at(request.tokens.size() - 1);
+      if (depth == 1) {
+        // store the last input into the tree;
+        std::cout << "try to store the input"
+                  << "\n";
+        Request &request =
+            running_request_queue[old_bc.requestsInfo[index].request_guid];
+        beam_trees[index].treeLayers[depth - 1].tokens[0] =
+            request.tokens.at(request.tokens.size() - 1);
         beam_trees[index].treeLayers[depth - 1].probs[0] = 1;
         beam_trees[index].treeLayers[depth - 1].parent_ids[0] = -1;
-        std::cout<<"store the previous last token to the tree root" << request.tokens.at(request.tokens.size() - 1) <<"\n";
+        std::cout << "store the previous last token to the tree root"
+                  << request.tokens.at(request.tokens.size() - 1) << "\n";
       }
 
       for (int beam_id = 0; beam_id < beam_width; beam_id++) {
@@ -433,19 +436,21 @@ void RequestManager::update_beam_metadata(BeamSearchBatchConfig &new_bc,
   }
 }
 
-bool PreOrder(
-    BeamTree tree,
-    int max_depth,
-    int current_depth,
-    int beam_width,
-    int id,
-    std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> &serializedTree) {
-  //terminate
+bool PreOrder(BeamTree tree,
+              int max_depth,
+              int current_depth,
+              int beam_width,
+              int id,
+              std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>>
+                  &serializedTree) {
+  // terminate
   if (current_depth >= max_depth) {
-    serializedTree.push_back(
-      std::make_pair(tree.treeLayers[current_depth].tokens[id], current_depth));
-      std::cout<<"last tokens: " << tree.treeLayers[current_depth].tokens[id] <<"\n";
-      std::cout<<"return true"<<"\n";
+    serializedTree.push_back(std::make_pair(
+        tree.treeLayers[current_depth].tokens[id], current_depth));
+    std::cout << "last tokens: " << tree.treeLayers[current_depth].tokens[id]
+              << "\n";
+    std::cout << "return true"
+              << "\n";
     return true;
   }
 
@@ -453,27 +458,34 @@ bool PreOrder(
   // std::cout<<"node: " << current_depth << ", id: " <<
   serializedTree.push_back(
       std::make_pair(tree.treeLayers[current_depth].tokens[id], current_depth));
-  std::cout<<"push something: " << tree.treeLayers[current_depth].tokens[id] << ", " << current_depth <<std::endl;
+  std::cout << "push something: " << tree.treeLayers[current_depth].tokens[id]
+            << ", " << current_depth << std::endl;
   int index = serializedTree.size() - 1;
   int next_layers = current_depth + 1;
 
   bool flag = false;
-  //recursion
+  // recursion
   for (int i = 0; i < beam_width; i++) {
     int child_id = i;
     int child_parent = tree.treeLayers[next_layers].parent_ids[i];
 
     // for all childs, do preOrder
     if (child_parent == id) {
-      std::cout<<"current depth: "<< current_depth << ", child_parent, "<<child_parent<< ", child_id, " << child_id << "\n";
-      bool res = PreOrder(
-          tree, max_depth, current_depth + 1, beam_width, child_id, serializedTree);
-      flag = flag || res;    
+      std::cout << "current depth: " << current_depth << ", child_parent, "
+                << child_parent << ", child_id, " << child_id << "\n";
+      bool res = PreOrder(tree,
+                          max_depth,
+                          current_depth + 1,
+                          beam_width,
+                          child_id,
+                          serializedTree);
+      flag = flag || res;
     }
   }
   if (!flag) {
     // no child for this token, delete it
-    std::cout<<"delete a node: " << tree.treeLayers[current_depth].tokens[id] << ", " << current_depth <<std::endl;  
+    std::cout << "delete a node: " << tree.treeLayers[current_depth].tokens[id]
+              << ", " << current_depth << std::endl;
     serializedTree.erase(serializedTree.begin() + index);
   }
   return flag;
@@ -493,18 +505,18 @@ void RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc) {
     BeamTree tree = beam_trees[i];
 
     // token, index
-    //todo make this one global for different stages
+    // todo make this one global for different stages
     std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> serializedTree;
-    PreOrder(tree, 3, 0, old_bc.beamRequestsInfo[i].beam_size, 0, serializedTree);
+    PreOrder(
+        tree, 3, 0, old_bc.beamRequestsInfo[i].beam_size, 0, serializedTree);
 
     // print it
-    std::cout<<"print tree, " << i <<"\n";
+    std::cout << "print tree, " << i << "\n";
     for (int k = 0; k < serializedTree.size(); k++) {
       std::cout << "token id: " << serializedTree.at(k).first
                 << ", depth: " << serializedTree.at(k).second << "\n";
     }
   }
 }
-
 
 }; // namespace FlexFlow

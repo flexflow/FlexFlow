@@ -509,14 +509,16 @@ FutureMap SpecIncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  IndexLauncher launcher(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-                         parallel_is,
-                         TaskArgument(&bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
+  IndexLauncher launcher(
+      SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+      parallel_is,
+      TaskArgument(
+          &bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -583,8 +585,8 @@ void SpecIncMultiHeadSelfAttention::inference_task(
       weight.get_float_ptr(),
       output.get_float_ptr());
 
-// print_tensor<float>(input.get_float_ptr(), 20, "attention input");
-// print_tensor<float>(output.get_float_ptr(), 20, "attention output");
+  // print_tensor<float>(input.get_float_ptr(), 20, "attention input");
+  // print_tensor<float>(output.get_float_ptr(), 20, "attention output");
   // if(bc->beam_slots.at(0).current_depth == 1){
   //     print_beam_tensor<float>(input.get_float_ptr(), 50, 4096, 40, "mha topk
   //     input"); print_beam_tensor<float>(output.get_float_ptr(), 50, 4096, 40,

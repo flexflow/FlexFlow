@@ -250,14 +250,16 @@ void InferenceManager::load_input_tokens_from_batch_config(
   Runtime *runtime = model->config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
   ArgumentMap argmap;
-  IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
-                         input->parallel_is,
-                         TaskArgument(&bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
+  IndexLauncher launcher(
+      RM_LOAD_TOKENS_TASK_ID,
+      input->parallel_is,
+      TaskArgument(
+          &bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(
       input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, input->region));
   launcher.add_field(0, FID_DATA);

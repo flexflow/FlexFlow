@@ -193,21 +193,23 @@ FutureMap
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(PLACE_HOLDER_INF_TASK_ID,
-                         parallel_is,
-                         TaskArgument(&bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
+  IndexLauncher launcher(
+      PLACE_HOLDER_INF_TASK_ID,
+      parallel_is,
+      TaskArgument(
+          &bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
   return runtime->execute_index_space(ctx, launcher);
 }
 
 void PlaceHolder::inference_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {}
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime) {}
 
 void PlaceHolder::backward(FFModel const &ff) {
   assert(false);

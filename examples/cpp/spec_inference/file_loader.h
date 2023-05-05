@@ -18,7 +18,6 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
 
-
 using namespace std;
 using namespace FlexFlow;
 
@@ -27,8 +26,9 @@ public:
   FileDataLoader(std::string _input_path, std::string _weight_file_path);
 
   BatchConfig::TokenId *generate_requests(int num, int length);
-  
-  void load_weights(FFModel *ff, std::unordered_map<std::string, Layer *> weights_layers);
+
+  void load_weights(FFModel *ff,
+                    std::unordered_map<std::string, Layer *> weights_layers);
 
 private:
   std::string input_path;

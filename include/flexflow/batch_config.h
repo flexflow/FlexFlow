@@ -120,7 +120,6 @@ public:
     // int global_depth = -1;
     int max_depth = MAX_BEAM_DEPTH;
 
-    
     BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
     float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
     int parent_id[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
@@ -140,7 +139,8 @@ private:
 };
 
 struct BeamInferenceResult : public InferenceResult {
-  BatchConfig::TokenId token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  BatchConfig::TokenId
+      token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   int parent_id[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
 };

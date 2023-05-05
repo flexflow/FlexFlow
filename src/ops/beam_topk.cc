@@ -47,7 +47,10 @@ using PCG::Node;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
-Tensor FFModel::beam_top_k(const Tensor input, int max_beam_width, bool sorted, char const *name) {
+Tensor FFModel::beam_top_k(const Tensor input,
+                           int max_beam_width,
+                           bool sorted,
+                           char const *name) {
   Layer *li = new Layer(this,
                         OP_BEAM_TOPK,
                         input->data_type,
@@ -65,8 +68,7 @@ Tensor FFModel::beam_top_k(const Tensor input, int max_beam_width, bool sorted, 
     }
     dims[0] = max_beam_width;
 
-    std::cout << "beam input dimen:"
-              << numdims <<"\n";
+    std::cout << "beam input dimen:" << numdims << "\n";
     for (int i = 0; i < numdims; i++) {
       std::cout << input->dims[i] << ", ";
     }
@@ -77,7 +79,7 @@ Tensor FFModel::beam_top_k(const Tensor input, int max_beam_width, bool sorted, 
     li->outputs[1] = create_tensor_legion_ordering(
         numdims, dims, DT_FLOAT, li, 1, false /*create_grad*/);
     li->outputs[3] = create_tensor_legion_ordering(
-        numdims, dims, DT_INT32, li, 1, false /*create_grad*/);    
+        numdims, dims, DT_INT32, li, 1, false /*create_grad*/);
   }
   li->add_int_property("sorted", sorted);
   li->add_int_property("max_beam_width", max_beam_width);
@@ -96,7 +98,8 @@ Op *BeamTopK::create_operator_from_layer(
   bool sorted = (bool)value;
   layer->get_int_property("max_beam_width", value);
   int max_beam_width = value;
-  return new BeamTopK(model, inputs[0], layer->layer_guid, max_beam_width, sorted, layer->name);
+  return new BeamTopK(
+      model, inputs[0], layer->layer_guid, max_beam_width, sorted, layer->name);
 }
 
 BeamTopKParams BeamTopK::get_params() const {
@@ -113,7 +116,8 @@ bool BeamTopKParams::is_valid(ParallelTensorShape const &) const {
 }
 
 bool operator==(BeamTopKParams const &lhs, BeamTopKParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid && lhs.sorted == rhs.sorted && lhs.max_beam_width == rhs.max_beam_width;
+  return lhs.layer_guid == rhs.layer_guid && lhs.sorted == rhs.sorted &&
+         lhs.max_beam_width == rhs.max_beam_width;
 }
 
 BeamTopK::BeamTopK(FFModel &model,
@@ -143,19 +147,29 @@ BeamTopK::BeamTopK(FFModel &model,
   outputs[1] = model.create_parallel_tensor_legion_ordering(
       numdim, inputs[0]->dims, _input->data_type, this, 1 /*owner_idx*/);
   outputs[2] = model.create_parallel_tensor_legion_ordering(
-      numdim, inputs[0]->dims, DT_INT32, this, 2 /*owner_idx*/);    
+      numdim, inputs[0]->dims, DT_INT32, this, 2 /*owner_idx*/);
 }
 
 BeamTopK::BeamTopK(FFModel &model,
                    BeamTopK const &other,
                    const ParallelTensor input)
-    : BeamTopK(model, input, other.layer_guid, other.max_beam_width, other.sorted, other.name) {}
+    : BeamTopK(model,
+               input,
+               other.layer_guid,
+               other.max_beam_width,
+               other.sorted,
+               other.name) {}
 
 BeamTopK::BeamTopK(FFModel &model,
                    BeamTopKParams const &params,
                    const ParallelTensor input,
                    char const *name)
-    : BeamTopK(model, input, params.layer_guid, params.max_beam_width,  params.sorted, name) {}
+    : BeamTopK(model,
+               input,
+               params.layer_guid,
+               params.max_beam_width,
+               params.sorted,
+               name) {}
 
 void BeamTopK::init_inference(FFModel const &ff,
                               std::vector<ParallelTensor> const &batch_inputs,
@@ -280,14 +294,16 @@ FutureMap BeamTopK::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(BEAM_TOPK_INF_TASK_ID,
-                         parallel_is,
-                         TaskArgument(&bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
+  IndexLauncher launcher(
+      BEAM_TOPK_INF_TASK_ID,
+      parallel_is,
+      TaskArgument(
+          &bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
 
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
@@ -319,13 +335,13 @@ FutureMap BeamTopK::inference(FFModel const &ff,
 
 BeamInferenceResult
     BeamTopK::inference_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime)  {
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
 
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  
+
   BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
   std::cout << "beam search topk inference: "
@@ -392,7 +408,8 @@ BeamInferenceResult
 
   download_tensor<int>(index_ptr, ir.token_ids, batch_size * m->max_beam_width);
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
-  download_tensor<int>(parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
+  download_tensor<int>(
+      parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
   return ir;
 }
 

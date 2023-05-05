@@ -523,11 +523,13 @@ public:
   Tensor
       rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
   // Add a beam search top k layer
-  Tensor beam_top_k(const Tensor input, int max_beam_size, bool sorted, char const *name = NULL);
+  Tensor beam_top_k(const Tensor input,
+                    int max_beam_size,
+                    bool sorted,
+                    char const *name = NULL);
 
-  //add a placeholder layer
+  // add a placeholder layer
   Tensor place_holder(const Tensor input, char const *name = NULL);
-
 
   // Add a dense layer
   Tensor dense(const Tensor input,
@@ -623,18 +625,19 @@ public:
                                       Initializer *kernel_initializer = NULL,
                                       bool apply_rotary_embedding = false,
                                       char const *name = NULL);
-Tensor spec_inc_multihead_self_attention(const Tensor input,
-                                  int embed_dim,
-                                  int num_heads,
-                                  int kdim = 0,
-                                  int vdim = 0,
-                                  float dropout = 0.0f,
-                                  bool bias = true,
-                                  bool add_bias_kv = false,
-                                  bool add_zero_attn = false,
-                                  Initializer *kernel_initializer = NULL,
-                                  bool apply_rotary_embedding = false,
-                                  char const *name = NULL);
+  Tensor
+      spec_inc_multihead_self_attention(const Tensor input,
+                                        int embed_dim,
+                                        int num_heads,
+                                        int kdim = 0,
+                                        int vdim = 0,
+                                        float dropout = 0.0f,
+                                        bool bias = true,
+                                        bool add_bias_kv = false,
+                                        bool add_zero_attn = false,
+                                        Initializer *kernel_initializer = NULL,
+                                        bool apply_rotary_embedding = false,
+                                        char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
       const Tensor input,
       int embed_dim,
@@ -1015,10 +1018,9 @@ public:
                          BeamTopK *>,
       std::unordered_map<
           std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
-          SpecIncMultiHeadSelfAttention *>, 
-      std::unordered_map<
-          std::pair<ParallelTensorShape, PlaceHolderParams>,
-          PlaceHolder *>,
+          SpecIncMultiHeadSelfAttention *>,
+      std::unordered_map<std::pair<ParallelTensorShape, PlaceHolderParams>,
+                         PlaceHolder *>,
       std::unordered_map<
           std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionVerifyParams>,
           IncMultiHeadSelfAttentionVerify *>,

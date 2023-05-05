@@ -41,8 +41,8 @@ BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
 
 BeamSearchBatchConfig::~BeamSearchBatchConfig() {}
 
-bool BeamSearchBatchConfig::done() const{
-  assert (current_iteration <= target_iterations);
+bool BeamSearchBatchConfig::done() const {
+  assert(current_iteration <= target_iterations);
   return current_iteration == target_iterations;
 }
 
@@ -79,8 +79,8 @@ void BeamSearchBatchConfig::print() const {
     std::cout << "    Request index: " << tokensInfo[i].request_index
               << std::endl;
     std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
-    // std::cout << "    Parent token id: " << tokensInfo[i].parent_token_id << std::endl;
-    // std::cout << "    Accumulated log prob: "
+    // std::cout << "    Parent token id: " << tokensInfo[i].parent_token_id <<
+    // std::endl; std::cout << "    Accumulated log prob: "
     //           << tokensInfo[i].cum_log_prob << std::endl;
   }
 }

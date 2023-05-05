@@ -25,10 +25,10 @@
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
-#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
@@ -44,17 +44,17 @@
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
-#include "flexflow/ops/spec_inc_multihead_self_attention.h"
-#include "flexflow/ops/place_holder.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
+#include "flexflow/ops/place_holder.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
@@ -4583,19 +4583,22 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeamTopK Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BeamInferenceResult, BeamTopK::inference_task>(
+    Runtime::preregister_task_variant<BeamInferenceResult,
+                                      BeamTopK::inference_task>(
         registrar, "BeamTopK Inference Task");
   }
   // PlaceHolder task
   {
-    TaskVariantRegistrar registrar(PLACE_HOLDER_INIT_TASK_ID, "PlaceHolder Init");
+    TaskVariantRegistrar registrar(PLACE_HOLDER_INIT_TASK_ID,
+                                   "PlaceHolder Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta *, PlaceHolder::init_task>(
         registrar, "PlaceHolder Init Task");
   }
   {
-    TaskVariantRegistrar registrar(PLACE_HOLDER_INF_TASK_ID, "PlaceHolder Inference");
+    TaskVariantRegistrar registrar(PLACE_HOLDER_INF_TASK_ID,
+                                   "PlaceHolder Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<PlaceHolder::inference_task>(
@@ -4667,10 +4670,11 @@ void register_flexflow_internal_tasks() {
         IncMultiHeadSelfAttention::inference_task>(
         registrar, "IncMultiHeadSelfAttention Inference Task");
   }
-  //speculative MultiHeadAttention task
+  // speculative MultiHeadAttention task
   {
-    TaskVariantRegistrar registrar(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-                                   "Speculative IncMultiHeadSelfAttention Init");
+    TaskVariantRegistrar registrar(
+        SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+        "Speculative IncMultiHeadSelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta *,
@@ -4678,13 +4682,15 @@ void register_flexflow_internal_tasks() {
         registrar, "Speculative IncMultiHeadSelfAttention Init Task");
   }
   {
-    TaskVariantRegistrar registrar(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-                                   "Speculative IncMultiHeadSelfAttention Inference");
+    TaskVariantRegistrar registrar(
+        SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+        "Speculative IncMultiHeadSelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<
         SpecIncMultiHeadSelfAttention::inference_task>(
         registrar, "Speculative IncMultiHeadSelfAttention Inference Task");
+  }
   {
     TaskVariantRegistrar registrar(
         INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,

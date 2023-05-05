@@ -66,7 +66,7 @@ void FlexFlow::top_level_task(Task const *task,
   // parse_input_args(argv, argc, llamaConfig);
 
   std::cout << "print llama config: " << llamaConfig.input_path << "-->"
-            << llamaConfig.batchSize;
+            << llamaConfig.batchSize << std::endl;
 
   //------------------------------ build the model --------------------------
   Tensor input;

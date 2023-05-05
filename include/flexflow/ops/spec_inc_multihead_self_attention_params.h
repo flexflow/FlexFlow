@@ -23,7 +23,8 @@ bool operator==(SpecIncMultiHeadSelfAttentionParams const &,
 namespace std {
 template <>
 struct hash<FlexFlow::SpecIncMultiHeadSelfAttentionParams> {
-  size_t operator()(FlexFlow::SpecIncMultiHeadSelfAttentionParams const &) const;
+  size_t
+      operator()(FlexFlow::SpecIncMultiHeadSelfAttentionParams const &) const;
 };
 } // namespace std
 

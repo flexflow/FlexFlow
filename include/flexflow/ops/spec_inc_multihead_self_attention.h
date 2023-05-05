@@ -90,7 +90,7 @@ public:
                              Legion::Runtime *runtime);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
-                  int num_inputs) const override;                           
+                  int num_inputs) const override;
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
@@ -145,8 +145,8 @@ public:
   // BatchConfig::token_idxs *dev_token2ids;
   BatchConfig::PerTokenInfo *tokenInfos;
   BatchConfig::PerRequestInfo *requestInfos;
-  BeamSearchBatchConfig::BeamSearchPerTokenInfo * beamTokenInfos;
-  BeamSearchBatchConfig::BeamSearchPerRequestInfo * beamRequestInfos;
+  BeamSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos;
+  BeamSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos;
 };
 
 }; // namespace FlexFlow

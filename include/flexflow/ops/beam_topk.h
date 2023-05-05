@@ -94,7 +94,6 @@ public:
 public:
   bool sorted;
   int max_beam_width;
-
 };
 
 }; // namespace FlexFlow

@@ -204,18 +204,18 @@ __device__ IndexedHeap<heapType, preferIndices, Data, T>
   return IndexedHeap<heapType, preferIndices, Data, T>{Data<T>{data}};
 }
 
-// heapBeamTopK walks over [input, input+length) with `step_size` stride starting
-// at `start_index`. It builds a top-`k` heap that is stored in `heap_entries`
-// using `Accessor` to access elements in `heap_entries`. If sorted=true, the
-// elements will be sorted at the end.
+// heapBeamTopK walks over [input, input+length) with `step_size` stride
+// starting at `start_index`. It builds a top-`k` heap that is stored in
+// `heap_entries` using `Accessor` to access elements in `heap_entries`. If
+// sorted=true, the elements will be sorted at the end.
 template <typename T, template <typename> class Data = LinearData>
 __device__ void heapBeamTopK(T const *__restrict__ input,
-                            int length,
-                            int k,
-                            Entry<T> *__restrict__ heap_entries,
-                            bool sorted = false,
-                            int start_index = 0,
-                            int step_size = 1) {
+                             int length,
+                             int k,
+                             Entry<T> *__restrict__ heap_entries,
+                             bool sorted = false,
+                             int start_index = 0,
+                             int step_size = 1) {
   assert(k <= length);
 
   auto heap =
@@ -365,14 +365,14 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
 
 /*static*/
 void BeamTopK::forward_kernel(BeamTopKMeta const *m,
-                             float const *input_ptr,
-                             // float *output_ptr,
-                             int *indices_ptr,
-                             size_t batch_size,
-                             int length,
-                             int k,
-                             bool sorted,
-                             hipStream_t stream) {
+                              float const *input_ptr,
+                              // float *output_ptr,
+                              int *indices_ptr,
+                              size_t batch_size,
+                              int length,
+                              int k,
+                              bool sorted,
+                              hipStream_t stream) {
   // Adopted from TensorFlow's BeamTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
@@ -408,13 +408,13 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
 /*static*/
 void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
-                                     float const *input_ptr,
-                                     // float *output_ptr,
-                                     int *indices_ptr,
-                                     size_t batch_size,
-                                     int length,
-                                     int k,
-                                     bool sorted) {
+                                      float const *input_ptr,
+                                      // float *output_ptr,
+                                      int *indices_ptr,
+                                      size_t batch_size,
+                                      int length,
+                                      int k,
+                                      bool sorted) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -426,14 +426,14 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   }
 
   BeamTopK::forward_kernel(m,
-                          input_ptr,
-                          // output_ptr,
-                          indices_ptr,
-                          batch_size,
-                          length,
-                          k,
-                          sorted,
-                          stream);
+                           input_ptr,
+                           // output_ptr,
+                           indices_ptr,
+                           batch_size,
+                           length,
+                           k,
+                           sorted,
+                           stream);
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);

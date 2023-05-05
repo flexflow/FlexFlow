@@ -65,7 +65,7 @@ void FlexFlow::top_level_task(Task const *task,
   parse_input_args(argv, argc, llamaConfig);
 
   std::cout << "print llama config: " << llamaConfig.input_path << "-->"
-            << llamaConfig.batchSize;
+            << llamaConfig.batchSize << std::endl;
 
   //------------------------------ build the model --------------------------
   Tensor input;
@@ -288,7 +288,7 @@ void FlexFlow::top_level_task(Task const *task,
       depth = bc.beamRequestsInfo[0].current_depth;
       bc = rm.prepare_next_batch_beam(bc, ir);
 
-      std::cout << "llama current depth: " << depth;
+      std::cout << "llama current depth: " << depth << std::endl;
       std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
       FutureMap fm = im.inference(&ff, bid, bc);
       assert(fm.get_future_map_domain().get_volume() == 1);

@@ -21,11 +21,12 @@ using namespace std;
 
 FileDataLoader::FileDataLoader(std::string _input_path,
                                std::string _weight_file_path)
-    : input_path(_input_path), weight_file_path(_weight_file_path) {};
+    : input_path(_input_path), weight_file_path(_weight_file_path){};
 
 BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
-  BatchConfig::TokenId *prompts = (BatchConfig::TokenId *)malloc(sizeof(BatchConfig::TokenId) * 40);
+  BatchConfig::TokenId *prompts =
+      (BatchConfig::TokenId *)malloc(sizeof(BatchConfig::TokenId) * 40);
   std::cout << "load input from file: " << input_path << std::endl;
   std::ifstream in(input_path, std::ios::in | std::ios::binary);
   int size = num * length;
@@ -51,10 +52,10 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
   int data_index = 0;
 
   std::cout << "loaded_data_size: " << loaded_data_size << std::endl;
-  std::cout<<host_array.size()<<"\n";
+  std::cout << host_array.size() << "\n";
   for (auto v : host_array) {
     prompts[data_index++] = v;
-    std::cout<<data_index<<", " << (int) v <<"\n";
+    std::cout << data_index << ", " << (int)v << "\n";
   }
   in.close();
   return prompts;
@@ -145,8 +146,8 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   in.close();
 }
 
-void FileDataLoader::load_weights(FFModel *ff, 
-    std::unordered_map<std::string, Layer *> weights_layers) {
+void FileDataLoader::load_weights(
+    FFModel *ff, std::unordered_map<std::string, Layer *> weights_layers) {
 
   for (auto &v : weights_layers) {
     Tensor weight = v.second->weights[0];

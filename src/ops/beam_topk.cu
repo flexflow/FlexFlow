@@ -341,14 +341,15 @@ __device__ void mergeBeamShards(int num_shards,
       top_k_values[rank] = max_element.value;
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
-      top_k_parents[rank] = parent_id[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                                      ((shard_index % max_heap_size) / k)];
+      top_k_parents[rank] =
+          parent_id[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                    ((shard_index % max_heap_size) / k)];
       int next_shard_index = shard_index + num_shards;
 
       float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                          ((next_shard_index % max_heap_size) / k)];
       if (batch_index == 0) {
-        printf("next_shard_index %d, value %.15f\n, prob %.15f",
+        printf("next_shard_index %d, value %.15f, prob %.15f\n",
                next_shard_index,
                entries[next_shard_index].value,
                prob);
@@ -364,8 +365,9 @@ __device__ void mergeBeamShards(int num_shards,
     top_k_values[last_k] = max_element.value;
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
-    top_k_parents[last_k] = parent_id[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                                      ((shard_index % max_heap_size) / k)];
+    top_k_parents[last_k] =
+        parent_id[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                  ((shard_index % max_heap_size) / k)];
   }
 }
 
@@ -407,7 +409,8 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
 
   int sub_request_id = thread_index / k;
   // if (is_print) {
-  //   printf("beam kernel: batch_index: %d, thread_index %d, sub_request_id %d, "
+  //   printf("beam kernel: batch_index: %d, thread_index %d, sub_request_id %d,
+  //   "
   //          "request_id %d, token_nums %d\n",
   //          batch_index,
   //          thread_index,
@@ -428,7 +431,8 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                (sub_request_id * token_nums * length),
            batch_input,
            request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id,
-           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id],
+           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     sub_request_id],
            thread_count,
            request_id);
   }
@@ -464,7 +468,8 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
     printf("merge heaps, batch index: %d, sub_request_id %d, value %f\n",
            batch_index,
            sub_request_id,
-           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id]);
+           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     sub_request_id]);
     int const offset = batch_index * k;
     auto batch_output = output + offset;
     auto batch_indices = indices + offset;
@@ -546,7 +551,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     int beam_size = bc->beamRequestsInfo[i].beam_size;
 
     // initial request
-    std::cout<<"sub_requests: " << i << ", " <<sub_requests[i] <<"\n";
+    std::cout << "sub_requests: " << i << ", " << sub_requests[i] << "\n";
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {
@@ -571,10 +576,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       beam_num_blocks++;
     }
 
-    max_heap_size = std::max(
-        max_heap_size, beam_size * sub_requests[i]);
-    max_beam_width =
-        std::max(max_beam_width, beam_size);
+    max_heap_size = std::max(max_heap_size, beam_size * sub_requests[i]);
+    max_beam_width = std::max(max_beam_width, beam_size);
     req_index += 1;
     block_start_index += (sub_requests[i] - 1) * num_new_tokens * length;
   }
