@@ -509,7 +509,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                               size_t batch_size,
                               int length,
                               bool sorted,
-                              cudaStream_t stream) {
+                              hipStream_t stream) {
   // Adopted from TensorFlow's BeamTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
 
@@ -618,31 +618,31 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   int *gpu_request_id;
   int *gpu_tokens_per_request;
 
-  checkCUDA(cudaMalloc(&gpu_parents, sizeof(int) * max_total_requests));
-  checkCUDA(cudaMalloc(&gpu_probs, sizeof(float) * max_total_requests));
-  checkCUDA(cudaMalloc(&gpu_block_start_index, sizeof(int) * beam_num_blocks));
-  checkCUDA(cudaMalloc(&gpu_request_id, sizeof(int) * beam_num_blocks));
-  checkCUDA(cudaMalloc(&gpu_tokens_per_request, sizeof(int) * beam_num_blocks));
-  checkCUDA(cudaMemcpy(gpu_parents,
-                       parent_ids,
-                       sizeof(int) * max_total_requests,
-                       cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_probs,
-                       acc_probs,
-                       sizeof(float) * max_total_requests,
-                       cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_block_start_index,
-                       beam_block_start_index.data(),
-                       sizeof(int) * beam_num_blocks,
-                       cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_request_id,
-                       request_id.data(),
-                       sizeof(int) * beam_num_blocks,
-                       cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_tokens_per_request,
-                       tokens_per_request.data(),
-                       sizeof(int) * beam_num_blocks,
-                       cudaMemcpyHostToDevice));
+  checkCUDA(hipMalloc(&gpu_parents, sizeof(int) * max_total_requests));
+  checkCUDA(hipMalloc(&gpu_probs, sizeof(float) * max_total_requests));
+  checkCUDA(hipMalloc(&gpu_block_start_index, sizeof(int) * beam_num_blocks));
+  checkCUDA(hipMalloc(&gpu_request_id, sizeof(int) * beam_num_blocks));
+  checkCUDA(hipMalloc(&gpu_tokens_per_request, sizeof(int) * beam_num_blocks));
+  checkCUDA(hipMemcpy(gpu_parents,
+                      parent_ids,
+                      sizeof(int) * max_total_requests,
+                      hipMemcpyHostToDevice));
+  checkCUDA(hipMemcpy(gpu_probs,
+                      acc_probs,
+                      sizeof(float) * max_total_requests,
+                      hipMemcpyHostToDevice));
+  checkCUDA(hipMemcpy(gpu_block_start_index,
+                      beam_block_start_index.data(),
+                      sizeof(int) * beam_num_blocks,
+                      hipMemcpyHostToDevice));
+  checkCUDA(hipMemcpy(gpu_request_id,
+                      request_id.data(),
+                      sizeof(int) * beam_num_blocks,
+                      hipMemcpyHostToDevice));
+  checkCUDA(hipMemcpy(gpu_tokens_per_request,
+                      tokens_per_request.data(),
+                      sizeof(int) * beam_num_blocks,
+                      hipMemcpyHostToDevice));
 
   beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
@@ -674,14 +674,14 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
                                       size_t batch_size,
                                       int length,
                                       bool sorted) {
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  cudaEvent_t t_start, t_end;
+  hipEvent_t t_start, t_end;
   if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
+    hipEventCreate(&t_start);
+    hipEventCreate(&t_end);
+    hipEventRecord(t_start, stream);
   }
 
   BeamTopK::forward_kernel(m,
@@ -696,12 +696,12 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
                            stream);
 
   if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
+    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
+    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
+    hipEventDestroy(t_start);
+    hipEventDestroy(t_end);
     printf("[BeamTopK] forward time = %.2lfms\n", elapsed);
   }
   // if(bc->beam_slots.at(0).current_depth == 1){
