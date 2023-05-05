@@ -78,7 +78,7 @@ Tensor FFModel::beam_top_k(const Tensor input,
         numdims, dims, DT_INT32, li, 0, false /*create_grad*/);
     li->outputs[1] = create_tensor_legion_ordering(
         numdims, dims, DT_FLOAT, li, 1, false /*create_grad*/);
-    li->outputs[3] = create_tensor_legion_ordering(
+    li->outputs[2] = create_tensor_legion_ordering(
         numdims, dims, DT_INT32, li, 1, false /*create_grad*/);
   }
   li->add_int_property("sorted", sorted);
