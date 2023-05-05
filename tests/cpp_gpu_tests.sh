@@ -8,7 +8,7 @@ cd "${BASH_SOURCE[0]%/*}"
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit 1; fi
 GPUS=$1
 BATCHSIZE=$((GPUS * 64))
-FSIZE=14048
+FSIZE=13800
 ZSIZE=12192
 
 GPU_AVAILABLE=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)

@@ -9,7 +9,9 @@ on:
       - "include/**"
       - "src/**"
       - ".github/workflows/gpu-ci.yml"
+      - "tests/cpp_gpu_tests.sh"
       - "tests/multi_gpu_tests.sh"
+      - "tests/python_interface_test.sh"
   push:
     branches:
       - "master"
@@ -21,7 +23,9 @@ on:
       - "include/**"
       - "src/**"
       - ".github/workflows/gpu-ci.yml"
+      - "tests/cpp_gpu_tests.sh"
       - "tests/multi_gpu_tests.sh"
+      - "tests/python_interface_test.sh"
   workflow_dispatch:
 
 concurrency:
