@@ -597,8 +597,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       num_shards = CUDA_NUM_THREADS;
     }
     std::cout << "maxheap size:  " << max_heap_size << "\n";
-    std::cout << "maxhbeam width:  " << max_beam_width << "heap size, "
-              << heap_size << "\n";
+    std::cout << "maxbeam width:  " << max_beam_width
+              << ", heap size: " << heap_size << "\n";
   }
   // We are limited by the amount of shared memory we have per block.
   size_t shared_memory_size =

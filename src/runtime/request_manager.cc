@@ -155,7 +155,7 @@ BeamSearchBatchConfig
   // Step 2: preparing the next batch for existing requests
 
   // store results
-  std::cout << "depthhhhhhh" << old_bc.beamRequestsInfo[0].current_depth
+  std::cout << "depthhhhhhh: " << old_bc.beamRequestsInfo[0].current_depth
             << "\n";
   store_beam_metadata(old_bc, result);
 

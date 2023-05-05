@@ -177,7 +177,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor output = ff.beam_top_k(softmax, llamaConfig.max_beam_width, false);
 
   // place holder
-  output = ff.place_holder(output);
+  // output = ff.place_holder(output);
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
