@@ -79,6 +79,10 @@ public:
     return *(OpArgRef<T> const *)ptr.get();
   }
 
+  OpArgRefType const &get_ref_type() const {
+    return ((OpArgRef<void> const *)ptr.get())->ref_type;
+  }
+
   template <typename T>
   static OpArgRefSpec create(OpArgRef<T> const &r) {
     static_assert(is_serializable<T>, "Type must be serializable");
@@ -92,10 +96,12 @@ private:
   std::shared_ptr<void const *> ptr;
 };
 
+using OpArgSpec = variant<ConcreteArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
+
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
-  using ArgSpec = variant<ConcreteArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
+  using ArgSpec = OpArgSpec;
 
   static_assert(is_subeq_variant<TaskBinding::ArgSpec, ArgSpec>, "");
 

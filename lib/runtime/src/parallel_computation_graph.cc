@@ -68,8 +68,85 @@ OpTaskInvocation backward(ParallelComputationGraph const &pcg, operator_guid_t o
   return backward(pcg.at(op_guid));
 }
 
-TaskInvocation resolve_op_task_spec(ParallelComputationGraph const &pcg, OpTaskInvocation const &invocation) {
+ConcreteArgSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t op_guid, OpArgRefSpec const &ref_spec) {
+  OpArgRefType ref_type = ref_spec.get_ref_type();
+  switch (ref_type) {
+    case OpArgRefType::ENABLE_PROFILING:
+      return ConcreteArgSpec::create();
+      break;
+    case OpArgRefType::FF_HANDLE:
+      break;
+    case OpArgRefType::PER_DEVICE_OP_STATE:
+      break;
+    default:
+      throw mk_runtime_error("Unknown OpArgRefType {}", ref_type);
+  }
+}
 
+struct ResolveOpArgSpec {
+  ResolveOpArgSpec() = delete;
+  ResolveOpArgSpec(ParallelComputationGraph const &pcg, operator_guid_t op_guid)
+    : pcg(pcg), op_guid(op_guid)
+  { }
+
+  ParallelComputationGraph const &pcg;
+  operator_guid_t const op_guid;
+
+  ArgSpec operator()(OpArgSpec const &s) const {
+    return resolve(pcg, op_guid, s);
+  }
+
+  template <typename T>
+  ArgSpec operator()(T const &t) const {
+    return t;
+  }
+};
+
+ArgSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t op_guid, OpArgSpec const &op_arg_spec) {
+  return visit(ResolveOpArgSpec{pcg, op_guid}, op_arg_spec);
+}
+
+ParallelTensorSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t op_guid, OpTensorSpec const &op_tensor_spec, IsGrad const &is_grad) {
+  optional<parallel_tensor_guid_t> pt_guid;
+  switch (op_tensor_spec.role) {
+    case TensorRole::INPUT:
+      pt_guid = get_input_edges_by_idx(pcg.graph, op_guid).at(op_tensor_spec.idx);
+      break;
+    case TensorRole::WEIGHT:
+      pt_guid = get_weight_edges_by_idx(pcg.graph, op_guid).at(op_tensor_spec.idx);
+      break;
+    case TensorRole::OUTPUT:
+      pt_guid = get_output_edges_by_idx(pcg.graph, op_guid).at(op_tensor_spec.idx);
+      break;
+    default:
+      throw mk_runtime_error("Unknown tensor role {}", op_tensor_spec.role);
+  }
+
+  return { pt_guid.value(), is_grad };
+}
+
+TaskBinding resolve(ParallelComputationGraph const &pcg, operator_guid_t, OpTaskBinding const &op_binding) {
+  TaskBinding binding(InvocationType::INDEX);
+
+  for (auto const &kv : op_binding.get_tensor_bindings()) {
+    slot_id slot = kv.first.first;
+    IsGrad is_grad = kv.first.second;
+    OpTensorSpec op_tensor_spec = kv.second;
+
+    ParallelTensorSpec tensor_spec = resolve(pcg, op_tensor_spec, is_grad);
+
+    binding.bind(slot, tensor_spec);
+  }
+
+  for (auto const &kv : op_binding.get_arg_bindings()) {
+    slot_id slot = kv.first;
+    OpArgSpec op_arg_spec = kv.second;
+  }
+
+}
+
+TaskInvocation resolve(ParallelComputationGraph const &pcg, operator_guid_t, OpTaskInvocation const &op_invocation) {
+  return { op_invocation.task_id, resolve(pcg, op_invocation.binding) };
 }
 
 }

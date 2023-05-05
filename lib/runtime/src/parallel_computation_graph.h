@@ -7,7 +7,7 @@
 #include "legion_parallel_tensor_shape.h"
 #include "utils/strong_typedef.h"
 #include "operator_guid_t.h"
-#include "op_task_spec.h"
+#include "op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -38,7 +38,11 @@ OpTaskInvocation backward(PCGOperatorAttrs const &);
 OpTaskInvocation forward(ParallelComputationGraph const &, operator_guid_t);
 OpTaskInvocation backward(ParallelComputationGraph const &, operator_guid_t);
 
-TaskInvocation resolve_op_task_spec(ParallelComputationGraph const &, OpTaskInvocation const &);
+ConcreteArgSpec resolve(ParallelComputationGraph const &, operator_guid_t, OpArgRefSpec const &);
+ArgSpec resolve(ParallelComputationGraph const &, operator_guid_t, OpArgSpec const &);
+ParallelTensorSpec resolve(ParallelComputationGraph const &, operator_guid_t, OpTensorSpec const &, IsGrad const &);
+TaskBinding resolve(ParallelComputationGraph const &, operator_guid_t, OpTaskBinding const &);
+TaskInvocation resolve(ParallelComputationGraph const &, operator_guid_t, OpTaskInvocation const &);
 
 
 static_assert(std::is_copy_constructible<ParallelComputationGraph>::value, "");

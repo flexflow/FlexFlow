@@ -77,12 +77,12 @@ namespace FlexFlow {
 struct ParallelTensorSpec : public use_visitable_cmp<ParallelTensorSpec> {
 public:
   ParallelTensorSpec() = delete;
-  explicit ParallelTensorSpec(parallel_tensor_guid_t);
+  explicit ParallelTensorSpec(parallel_tensor_guid_t, IsGrad is_grad = IsGrad::NO);
 
   ParallelTensorSpec grad() const;
 public:
   parallel_tensor_guid_t parallel_tensor_guid; 
-  IsGrad is_grad = IsGrad::NO;
+  IsGrad is_grad;
 };
 
 template <typename T> 
@@ -157,12 +157,12 @@ public:
   Legion::FutureMap future_map;
 };
 
+using ArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
+
 struct TaskBinding {
 public:
   explicit TaskBinding(optional<Legion::Domain const &> = nullopt);
   explicit TaskBinding(InvocationType);
-
-  using ArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
 
   void bind(slot_id, ParallelTensorSpec const &);
 
@@ -198,7 +198,6 @@ private:
   }
 
 private:
-  Legion::Serializer serializer;
   optional<Legion::Domain> domain;
   std::unordered_map<slot_id, ArgSpec> arg_bindings;
   std::map<Legion::DomainPoint, Legion::Serializer> idx_serializers;
