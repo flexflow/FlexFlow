@@ -147,6 +147,10 @@ enum TaskIDs {
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_FWD_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_BWD_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INF_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
@@ -285,6 +289,7 @@ class LayerNorm;
 class Linear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
+class IncMultiHeadSelfAttentionVerify;
 class Pool2D;
 class Reduce;
 class Reshape;
@@ -602,6 +607,19 @@ public:
                                       Initializer *kernel_initializer = NULL,
                                       bool apply_rotary_embedding = false,
                                       char const *name = NULL);
+  Tensor inc_multihead_self_attention_verify(
+      const Tensor input,
+      int embed_dim,
+      int num_heads,
+      int kdim = 0,
+      int vdim = 0,
+      float dropout = 0.0f,
+      bool bias = true,
+      bool add_bias_kv = false,
+      bool add_zero_attn = false,
+      Initializer *kernel_initializer = NULL,
+      bool apply_rotary_embedding = false,
+      char const *name = NULL);
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
                                        DataType data_type,
@@ -964,6 +982,9 @@ public:
       std::unordered_map<
           std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionParams>,
           IncMultiHeadSelfAttention *>,
+      std::unordered_map<
+          std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionVerifyParams>,
+          IncMultiHeadSelfAttentionVerify *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
                          Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,

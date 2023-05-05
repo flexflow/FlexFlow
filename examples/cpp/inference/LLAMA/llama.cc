@@ -244,7 +244,7 @@ void FlexFlow::top_level_task(Task const *task,
       BatchConfig bc;
       InferenceResult ir;
       bc = rm.prepare_next_batch(bc, ir);
-      std::cout << "new tokens: " << bc.num_tokens;
+      std::cout << "new tokens: " << bc.num_tokens << std::endl;
       FutureMap fm = im.inference(&ff, bid, bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       future_handlers[bid] = fm.get_future(0);
@@ -262,7 +262,7 @@ void FlexFlow::top_level_task(Task const *task,
       BatchConfig bc = batch_configs[bid];
       processed_requests += bc.num_tokens;
       bc = rm.prepare_next_batch(bc, ir);
-      std::cout << "new tokens: " << bc.num_tokens;
+      std::cout << "new tokens: " << bc.num_tokens << std::endl;
       FutureMap fm = im.inference(&ff, bid, bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       future_handlers[bid] = fm.get_future(0);

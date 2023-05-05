@@ -41,6 +41,7 @@
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -2768,6 +2769,12 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
+      Op *op = IncMultiHeadSelfAttentionVerify::create_operator_from_layer(
+          *this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_BATCHMATMUL: {
       Op *op = BatchMatmul::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -4609,6 +4616,27 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<
         IncMultiHeadSelfAttention::inference_task>(
         registrar, "IncMultiHeadSelfAttention Inference Task");
+  }
+  {
+    TaskVariantRegistrar registrar(
+        INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,
+        "IncMultiHeadSelfAttentionVerify Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<
+        OpMeta *,
+        IncMultiHeadSelfAttentionVerify::init_task>(
+        registrar, "IncMultiHeadSelfAttentionVerify Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(
+        INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INF_TASK_ID,
+        "IncMultiHeadSelfAttentionVerify Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<
+        IncMultiHeadSelfAttentionVerify::inference_task>(
+        registrar, "IncMultiHeadSelfAttentionVerify Inference Task");
   }
   // NoOp
   {
