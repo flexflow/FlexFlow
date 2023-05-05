@@ -21,10 +21,11 @@ from .base_layer import Layer
 from .input_layer import Input
 from flexflow.keras.models.tensor import Tensor
 from flexflow.keras.initializers import Zeros, GlorotUniform, RandomUniform, RandomNormal, DefaultInitializer, Initializer
+from flexflow.keras.regularizers import Regularizer
 
 class Dense(Layer):
   __slots__ = ['in_channels', 'out_channels', 'activation', 'use_bias', \
-               'kernel_initializer', 'bias_initializer']
+               'kernel_initializer', 'bias_initializer', 'kernel_regularizer']
   def __init__(self, units, input_shape=None, 
                activation=None, use_bias=True,
                kernel_initializer="glorot_uniform",
@@ -62,7 +63,9 @@ class Dense(Layer):
     else:
       assert 0, "[Dense]: unknown bias_initializer"
 
-    if isinstance(kernel_regularizer, Regularizer):
+    if kernel_regularizer is None:
+      self.kernel_regularizer = None
+    elif isinstance(kernel_regularizer, Regularizer):
       self.kernel_regularizer = kernel_regularizer
     else:
       assert 0, "[Dense]: unknown kernel_regularizer"
