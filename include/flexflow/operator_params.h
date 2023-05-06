@@ -6,6 +6,7 @@
 #include "flexflow/ops/arg_topk_params.h"
 #include "flexflow/ops/attention_params.h"
 #include "flexflow/ops/batch_matmul_params.h"
+#include "flexflow/ops/beam_topk_params.h"
 #include "flexflow/ops/cast_params.h"
 #include "flexflow/ops/concat_params.h"
 #include "flexflow/ops/conv_2d_params.h"
@@ -26,6 +27,7 @@
 #include "flexflow/ops/reshape_params.h"
 #include "flexflow/ops/rms_norm_params.h"
 #include "flexflow/ops/softmax_params.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "flexflow/ops/split_params.h"
 #include "flexflow/ops/topk_params.h"
 #include "flexflow/ops/transpose_params.h"
@@ -57,6 +59,8 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
                                        IncMultiHeadSelfAttentionParams,
+                                       BeamTopKParams,
+                                       SpecIncMultiHeadSelfAttentionParams,
                                        IncMultiHeadSelfAttentionVerifyParams,
                                        RMSNormParams,
                                        Pool2DParams,

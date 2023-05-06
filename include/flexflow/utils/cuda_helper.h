@@ -138,6 +138,12 @@ __host__ void updateGAS(float *para_ptr,
 
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
+template <typename T>
+void print_beam_tensor(T const *ptr,
+                       size_t num_elements,
+                       int skip,
+                       int channel,
+                       char const *prefix);
 
 template <typename T>
 void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
@@ -150,6 +156,10 @@ bool download_tensor(T const *ptr, T *dst, size_t num_elements);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
+
+cudnnStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
+                                               Legion::Domain domain);
 
 cudaDataType_t ff_to_cuda_datatype(DataType type);
 cudnnDataType_t ff_to_cudnn_datatype(DataType type);

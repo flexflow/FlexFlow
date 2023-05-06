@@ -224,11 +224,42 @@ __host__ void
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
     printf(" %.20lf", (float)host_ptr[idx]);
-    if (idx >= 50) {
+    if (idx >= 100) {
       break;
     }
   }
   printf("\n");
+  checkCUDA(cudaFreeHost(host_ptr));
+}
+
+template <typename T>
+__host__ void print_beam_tensor(T const *ptr,
+                                size_t num_elements,
+                                int skip,
+                                int channel,
+                                char const *prefix) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(cudaDeviceSynchronize());
+  T *host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr,
+                          sizeof(T) * channel * skip,
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(T) * channel * skip, cudaMemcpyDeviceToHost));
+  // checkCUDA(cudaDeviceSynchronize());
+  int idx = 0;
+  printf("%s", prefix);
+
+  for (int i = 0; i < channel; i += 1) {
+    for (idx = 0; idx < num_elements; idx++) {
+      printf(" %.20lf", (float)host_ptr[idx + i * skip]);
+      if (idx >= 100) {
+        break;
+      }
+    }
+    printf("\n-----***********------\n");
+  }
+
   checkCUDA(cudaFreeHost(host_ptr));
 }
 
@@ -278,6 +309,56 @@ __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
       cudaMemcpy(dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
   // checkCUDA(cudaDeviceSynchronize());
   return true;
+}
+cudnnStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
+                                               Domain domain) {
+  int dims[MAX_TENSOR_DIM];
+  switch (domain.get_dim()) {
+    case 1: {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return cudnnSetTensor4dDescriptor(
+          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[0], 1, 1, 1);
+    }
+    case 2: {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return cudnnSetTensor4dDescriptor(
+          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[1], dims[0], 1, 1);
+    }
+    case 3: {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        dims[2] * dims[1],
+                                        dims[0],
+                                        1,
+                                        1);
+    }
+    case 4: {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        dims[3] * dims[2] * dims[1],
+                                        dims[0],
+                                        1,
+                                        1);
+    }
+    default:
+      assert(false && "Unsupported dim number");
+  }
+  return CUDNN_STATUS_BAD_PARAM;
 }
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
@@ -463,6 +544,22 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+
+template __host__ void print_beam_tensor<float>(float const *ptr,
+                                                size_t num_elements,
+                                                int skip,
+                                                int channel,
+                                                char const *prefix);
+template __host__ void print_beam_tensor<int32_t>(int32_t const *ptr,
+                                                  size_t num_elements,
+                                                  int skip,
+                                                  int channel,
+                                                  char const *prefix);
+template __host__ void print_beam_tensor<int64_t>(int64_t const *ptr,
+                                                  size_t num_elements,
+                                                  int skip,
+                                                  int channel,
+                                                  char const *prefix);
 
 template __host__ void
     save_tensor<float>(float const *ptr, size_t rect, char const *file_name);

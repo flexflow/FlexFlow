@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdlib>
 
 // #define MAX_SEQ_LEN 1024
@@ -26,6 +27,7 @@
 namespace FlexFlow {
 
 class InferenceResult;
+class BeamInferenceResult;
 
 class BatchConfig {
 public:
@@ -48,8 +50,11 @@ public:
   int num_tokens;
 
   struct PerRequestInfo {
-    int token_start_offset;
-    int num_tokens_in_batch;
+    int token_start_offset; // input[token_start_offset * data_dim] is the first
+                            // token
+    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim
+                             // : (token_start_offset + num_token_in_batch) *
+                             // data_dim]
     int max_sequence_length;
     RequestGuid request_guid;
   };
@@ -86,6 +91,58 @@ public:
 struct InferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
+};
+
+class BeamSearchBatchConfig : public BatchConfig {
+public:
+  BeamSearchBatchConfig();
+  BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
+
+  ~BeamSearchBatchConfig();
+
+  void print() const;
+  bool done() const;
+
+  size_t beam_width;
+  size_t target_iterations;
+  static int const MAX_BEAM_WIDTH = 3;
+  static int const MAX_BEAM_DEPTH = 8;
+
+  struct BeamSearchPerRequestInfo {
+    // int token_start_offset; // input[token_start_offset * data_dim] is the
+    // first token int num_tokens_in_batch; // tokens from
+    // input[token_start_offset * data_dim : (token_start_offset +
+    // num_token_in_batch) * data_dim] int max_sequence_length; RequestGuid
+    // request_guid;
+    bool request_completed;
+    int beam_size; //
+    int current_depth = -1;
+    // int global_depth = -1;
+    int max_depth = MAX_BEAM_DEPTH;
+
+    BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    int parent_id[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  };
+
+  struct BeamSearchPerTokenInfo {
+    int sub_request_index;
+  };
+
+  BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
+  BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
+  int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
+  // BeamSlot beam_slots[MAX_NUM_REQUESTS];
+
+private:
+  size_t current_iteration;
+};
+
+struct BeamInferenceResult : public InferenceResult {
+  BatchConfig::TokenId
+      token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  int parent_id[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
 };
 
 }; // namespace FlexFlow
