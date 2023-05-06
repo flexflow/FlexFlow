@@ -44,13 +44,12 @@ option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if ava
 option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 
 # option for using Python
-option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
 set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
 
-if ((FF_USE_GASNET STREQUAL "ON" AND FF_GASNET_CONDUIT STREQUAL "ucx") OR FF_LEGION_NETWORKS STREQUAL "ucx")
+if ((FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx") OR FF_LEGION_NETWORKS STREQUAL "ucx")
     if("${FF_UCX_URL}" STREQUAL "")
         set(UCX_URL "https://github.com/openucx/ucx/releases/download/v1.14.0-rc1/ucx-1.14.0.tar.gz")
     else()
@@ -129,7 +128,7 @@ if ((FF_USE_GASNET STREQUAL "ON" AND FF_GASNET_CONDUIT STREQUAL "ucx") OR FF_LEG
         file(WRITE ${UCX_CONFIG_FILE} "${UCX_URL}")
     endif()
 
-    if (FF_USE_GASNET STREQUAL "ON" AND FF_GASNET_CONDUIT STREQUAL "ucx")
+    if (FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx")
         set(ENV{UCX_HOME} "${UCX_DIR}/install")
     endif()
 
