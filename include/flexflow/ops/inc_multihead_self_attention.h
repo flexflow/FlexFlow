@@ -128,17 +128,10 @@ public:
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif
-  /*#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-    cudnnAttnDescriptor_t attnDesc;
-    cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
-  #endif*/
-  // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   float *devQKVProjArray, *keyCache, *valueCache;
   float *qk_prods, *qk_prods_softmax;
   float *attn_heads, *W_out_contiguous;
-  // void *reserveSpace;
-
-  BatchConfig::token_idxs *dev_token2ids;
+  BatchConfig::PerTokenInfo *token_infos;
 };
 
 }; // namespace FlexFlow

@@ -31,26 +31,28 @@ __global__ void build_w_out_tensor(float const *weight_ptr,
                                    int num_heads,
                                    int qkv_weight_block_size) {
   CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
-    int row_idx = i % vProjSize;
-    int col_idx = (i / vProjSize) % oProjSize;
+    int v_idx = i % vProjSize;
+    int o_idx = (i / vProjSize) % oProjSize;
     int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[i] =
+    contiguous_weight_ptr[o_idx * vProjSize * num_heads + head_idx * vProjSize +
+                          v_idx] =
         weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
-                   qkv_weight_block_size + col_idx * vProjSize + row_idx];
+                   qkv_weight_block_size + o_idx * vProjSize + v_idx];
   }
 }
 
-__global__ void apply_rotary_embedding(float *input_ptr,
-                                       cuFloatComplex *complex_input,
-                                       BatchConfig::token_idxs const *id_map,
-                                       int qProjSize,
-                                       int kProjSize,
-                                       int num_heads,
-                                       int num_tokens,
-                                       int q_block_size,
-                                       int k_block_size,
-                                       int v_block_size,
-                                       bool q_tensor) {
+__global__ void
+    apply_rotary_embedding(float *input_ptr,
+                           cuFloatComplex *complex_input,
+                           BatchConfig::PerTokenInfo const *tokenInfos,
+                           int qProjSize,
+                           int kProjSize,
+                           int num_heads,
+                           int num_tokens,
+                           int q_block_size,
+                           int k_block_size,
+                           int v_block_size,
+                           bool q_tensor) {
   int proj_size = q_tensor ? qProjSize : kProjSize;
   CUDA_KERNEL_LOOP(i, num_tokens * proj_size * num_heads / 2) {
     // create complex number
@@ -72,7 +74,8 @@ __global__ void apply_rotary_embedding(float *input_ptr,
     //  int head_idx = i / (num_tokens * proj_size);
     int token_idx =
         (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-    size_t pos = id_map[token_idx].token_position;
+    // size_t pos = id_map[token_idx].token_position;
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
     // float before_real = complex_input[i].x, before_complex =
     // complex_input[i].y;
@@ -225,7 +228,7 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
                              0,
                              stream>>>(output_ptr,
                                        complex_input,
-                                       m->dev_token2ids,
+                                       m->token_infos,
                                        m->qProjSize,
                                        m->kProjSize,
                                        m->num_heads,
@@ -240,7 +243,7 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
                              0,
                              stream>>>(output_ptr,
                                        complex_input,
-                                       m->dev_token2ids,
+                                       m->token_infos,
                                        m->qProjSize,
                                        m->kProjSize,
                                        m->num_heads,
@@ -254,7 +257,7 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
 
 __global__ void store_kv_cache(float const *devQKVProjArray,
                                float *cache_ptr,
-                               BatchConfig::token_idxs const *id_map,
+                               BatchConfig::PerTokenInfo const *tokenInfos,
                                int qProjSize,
                                int kProjSize,
                                int vProjSize,
@@ -275,8 +278,10 @@ __global__ void store_kv_cache(float const *devQKVProjArray,
     float val =
         devQKVProjArray[head_idx * qkv_block_size + current_head_block_size +
                         token_idx * proj_size + data_idx];
-    int const req_id = id_map[token_idx].request_index;
-    int const tok_id = id_map[token_idx].token_position;
+    // int const req_id = id_map[token_idx].request_index;
+    // int const tok_id = id_map[token_idx].token_position;
+    int const req_id = tokenInfos[token_idx].request_index;
+    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
 
     cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
               head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
@@ -295,7 +300,7 @@ void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
                      0,
                      stream>>>(m->devQKVProjArray,
                                m->keyCache,
-                               m->dev_token2ids,
+                               m->token_infos,
                                m->qProjSize,
                                m->kProjSize,
                                m->vProjSize,
@@ -310,7 +315,7 @@ void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
                      0,
                      stream>>>(m->devQKVProjArray,
                                m->valueCache,
-                               m->dev_token2ids,
+                               m->token_infos,
                                m->qProjSize,
                                m->kProjSize,
                                m->vProjSize,
@@ -366,8 +371,10 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     if (bc->request_completed[i]) {
       continue;
     }
-    int num_new_tokens = bc->num_processing_tokens[i];
-    int total_tokens = bc->token_last_available_idx[i] + 1;
+    int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int total_tokens = bc->requestsInfo[i].token_start_offset +
+                       bc->requestsInfo[i].num_tokens_in_batch;
+    // bc->token_last_available_idx[i] + 1;
     // Compute (QK^T/sqrt(d_k))
     int m_ = num_new_tokens;
     int n = total_tokens;
@@ -579,16 +586,16 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                                     m->vSize * m->vProjSize));
     *m->has_load_weights = true;
   }
+  // here because we need postion info in infernece 1
+  cudaMemcpyAsync(m->token_infos,
+                  &(bc->tokensInfo),
+                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
   // phase 1: Implement kernel to compute KQV for input tokens
   inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
   // phase 2: Update key/val cache
-  cudaMemcpyAsync(m->dev_token2ids,
-                  &(bc->token2ids.token_indexes),
-                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::token_idxs),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
   inference_kernel2(m, bc, stream);
 
   // phase 3: Compute attention score
@@ -662,7 +669,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         num_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
     size_t value_cache_size =
         num_heads * vProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
-    size_t token2ids_size = BatchConfig::MAX_NUM_TOKENS;
+    size_t tokeninfo_size = BatchConfig::MAX_NUM_TOKENS;
     size_t qk_prod_size =
         BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads;
     size_t attn_heads_size =
@@ -673,9 +680,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
             sizeof(float) +
-        token2ids_size *
-            sizeof(BatchConfig::token_idxs); // more components will
-                                             // be added here later
+        tokeninfo_size *
+            sizeof(BatchConfig::PerTokenInfo); // more components will
+                                               // be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
@@ -691,8 +698,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     devQKVProjArray = (float *)reserveInst.pointer_untyped(0, sizeof(char));
     keyCache = (float *)devQKVProjArray + qkv_max_proj_size;
     valueCache = (float *)keyCache + key_cache_size;
-    dev_token2ids = (BatchConfig::token_idxs *)(valueCache + value_cache_size);
-    qk_prods = (float *)(dev_token2ids + token2ids_size);
+    token_infos = (BatchConfig::PerTokenInfo *)(valueCache + value_cache_size);
+    qk_prods = (float *)(token_infos + tokeninfo_size);
     qk_prods_softmax = (float *)(qk_prods + qk_prod_size);
     attn_heads = (float *)qk_prods_softmax + qk_prod_size;
     W_out_contiguous = (float *)attn_heads + attn_heads_size;

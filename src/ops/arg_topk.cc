@@ -331,7 +331,7 @@ InferenceResult
       m, in_ptr, index_ptr, batch_size, length, k, m->sorted);
 
   InferenceResult ir;
-  download_tensor<int>(index_ptr, ir.results, batch_size);
+  download_tensor<BatchConfig::TokenId>(index_ptr, ir.token_ids, batch_size);
   return ir;
 }
 

@@ -6,7 +6,7 @@ set -e
 GPUS=${1:-1} # number of GPUS per node
 NUM_NODES=${2:-1} # number of nodes
 BATCHSIZE=$(( NUM_NODES * GPUS * 64))
-FSIZE=14048
+FSIZE=13800
 ZSIZE=12192
 
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
 #define MAX_TOKEN_LEN 32000
@@ -40,7 +41,7 @@ struct LLAMAConfig {
 
     // todo from args
     weight_file_path =
-        "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/weights/";
+        "/home/ubuntu/FlexFlow_Inference/examples/cpp/inference/LLAMA/weights/";
     input_path = "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/tokens/"
                  "llama_demo_tokens";
 
@@ -102,6 +103,7 @@ struct SampleIdxs {
 };
 
 struct DataLoaderNextBatchInput {
-  BatchConfig::SampleIdxs const &meta;
+  // BatchConfig::SampleIdxs const &meta;
+  BatchConfig *bc;
   std::map<size_t, long> const &prev_batch_preds;
 };

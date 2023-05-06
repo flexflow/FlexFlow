@@ -115,6 +115,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "TopK";
     case OP_ARG_TOPK:
       return "ArgTopK";
+    case OP_BEAM_TOPK:
+      return "BeamTopK";
     case OP_WHERE:
       return "Where";
     case OP_CEIL:
@@ -147,6 +149,10 @@ std::string get_operator_type_name(OperatorType type) {
       return "MultiHeadAttention";
     case OP_INC_MULTIHEAD_SELF_ATTENTION:
       return "IncMultiHeadSelfAttention";
+    case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION:
+      return "SpeculativeIncMultiHeadSelfAttention";
+    case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY:
+      return "IncMultiHeadSelfAttentionVerify";
     case OP_INPUT:
       return "Input";
     case OP_WEIGHT:

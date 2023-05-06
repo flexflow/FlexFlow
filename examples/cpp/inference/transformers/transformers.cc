@@ -117,8 +117,9 @@ void FlexFlow::top_level_task(Task const *task,
   InferenceManager im(&ff,
                       transformerConfig.batch_size,
                       transformerConfig.num_inflight_batches);
-  im.compile_model_and_allocate_buffer();
-  im.init_operators_inference();
+  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
+  im.compile_model_and_allocate_buffer(&ff, mapping);
+  im.init_operators_inference(&ff);
 
   //------------ Initialize the data loader and data generator ------------
   /* size_t min_input_tokens = 32, max_input_tokens = 512,
@@ -161,7 +162,7 @@ void FlexFlow::top_level_task(Task const *task,
   BatchConfig *bc = nullptr;
   std::map<size_t, int> batch_predictions[im.max_num_inflight_batches];
 
-  assert(im.max_num_requests_per_batch == transformerConfig.batch_size);
+  assert(im.max_num_tokens_per_batch == transformerConfig.batch_size);
   // assert(transformerConfig.batch_size <= BatchConfig::MAX_NUM_REQUESTS);
 
   // simulation loop. For deployment, we will use a while(true)
@@ -171,7 +172,7 @@ void FlexFlow::top_level_task(Task const *task,
       if (future_handlers.find(bid) == future_handlers.end()) {
         max_reqs = transformerConfig.incremental_mode
                        ? bc->MAX_NUM_REQUESTS
-                       : im.max_num_requests_per_batch;
+                       : im.max_num_tokens_per_batch;
         max_tkns =
             transformerConfig.sequence_length * transformerConfig.batch_size;
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
@@ -184,10 +185,10 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         data_loader.store_outputs(bc, ir, batch_predictions[bid]);
-        processed_requests += bc->update_results(ir);
+        processed_requests += bc->update_results(&ir);
         max_reqs = transformerConfig.incremental_mode
                        ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
-                       : im.max_num_requests_per_batch;
+                       : im.max_num_tokens_per_batch;
         max_tkns =
             transformerConfig.sequence_length * transformerConfig.batch_size -
             (transformerConfig.incremental_mode ? bc->num_active_tokens() : 0);
@@ -212,7 +213,7 @@ void FlexFlow::top_level_task(Task const *task,
 
       // runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
       data_loader.next_batch(ff, bid, bc, batch_predictions[bid], view);
-      FutureMap fm = im.inference(bid, *bc);
+      FutureMap fm = im.inference(&ff, bid, *bc);
       // runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
 
       assert(fm.get_future_map_domain().get_volume() == 1);

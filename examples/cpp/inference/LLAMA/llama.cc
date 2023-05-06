@@ -44,6 +44,20 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   LLAMAConfig llamaConfig;
   FFModel ff(ffconfig);
+  //------------------------------compute machine views ------------------
+  int num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
+  std::vector<MachineView> machine_views;
+  for (int i = 0; i < num_devices; i++) {
+    MachineView view;
+    view.device_type = MachineView::GPU;
+    view.ndims = 1;
+    view.dim[0] = 1;
+    view.stride[0] = 0;
+    view.start_device_id = i;
+    machine_views.push_back(view);
+  }
+
+  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
 
   // InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -52,14 +66,15 @@ void FlexFlow::top_level_task(Task const *task,
   // parse_input_args(argv, argc, llamaConfig);
 
   std::cout << "print llama config: " << llamaConfig.input_path << "-->"
-            << llamaConfig.batchSize;
+            << llamaConfig.batchSize << std::endl;
 
   //------------------------------ build the model --------------------------
   Tensor input;
   {
     int const token_dims[] = {llamaConfig.batchSize, llamaConfig.max_seq_len};
-    input = ff.create_tensor<2>(token_dims, DT_INT64);
+    input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
+  mapping[input].push_back(machine_views[0]);
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
   Tensor token = ff.embedding(input,
@@ -79,11 +94,19 @@ void FlexFlow::top_level_task(Task const *task,
   // }
 
   // n transformer blocks impl
-  for (int i = 0; i < 1; i++) {
+  int num_transformer_layers_per_gpu = (32 + num_devices - 1) / num_devices;
+  for (int i = 0; i < 32; i++) {
     // step 1: attention
     std::vector<int> axes = {2};
     Tensor att_norm = ff.rms_norm(token, llamaConfig.norm_eps, llamaConfig.dim);
     Layer *attention_norm = ff.layers.back();
+    if (i % num_transformer_layers_per_gpu == 0) {
+      // Map att_norm to the next GPU
+      // since the size of att_norm is minimum across
+      // all tensors
+      mapping[att_norm].push_back(
+          machine_views[i / num_transformer_layers_per_gpu]);
+    }
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
                            attention_norm);
@@ -144,11 +167,8 @@ void FlexFlow::top_level_task(Task const *task,
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
   InferenceManager im(&ff, llamaConfig.batchSize, 1);
-  im.compile_model_and_allocate_buffer();
-
-  std::cout << "------init ops----------" << std::endl;
-  im.init_operators_inference();
-  std::cout << "------model compiled and init ----------" << std::endl;
+  im.compile_model_and_allocate_buffer(&ff, mapping);
+  RequestManager rm;
 
   //------------------------------ load inputs --------------------------
   std::cout << "------create dataloaders ----------" << std::endl;
@@ -197,24 +217,38 @@ void FlexFlow::top_level_task(Task const *task,
     ParallelTensor weight_pt;
     ff.get_parallel_tensor_from_tensor(weight, weight_pt);
     weight_pt->set_tensor<float>(&ff, dims_vec, data);
+    delete data;
   }
   std::cout << "------load wieght finished----------" << std::endl;
+  //------------------------------ init operators ------------------------
+  std::cout << "------init ops----------" << std::endl;
+  im.init_operators_inference(&ff);
+  std::cout << "------model compiled and init ----------" << std::endl;
 
   //------------------------------ do inference---------------------------
   int processed_requests = 0;
   std::map<int, Future> future_handlers;
-  std::map<int, BatchConfig *> batch_configs;
-  BatchConfig *bc = nullptr;
+  std::map<int, BatchConfig> batch_configs;
   std::map<size_t, long> batch_predictions[1];
   loader.reset();
 
-  bool new_req = true;
+  for (int i = 0; i < llamaConfig.batchSize; i++) {
+    std::vector<BatchConfig::TokenId> tokens{0, 0, 0, 0, 0, 0, 0, 0};
+    rm.register_new_request(tokens, 347);
+  }
 
   while (processed_requests < llamaConfig.sentence_len) {
     int bid = 0;
     size_t max_reqs, max_tkns;
     if (future_handlers.find(bid) == future_handlers.end()) {
-      bc = new BatchConfig();
+      BatchConfig bc;
+      InferenceResult ir;
+      bc = rm.prepare_next_batch(bc, ir);
+      std::cout << "new tokens: " << bc.num_tokens << std::endl;
+      FutureMap fm = im.inference(&ff, bid, bc);
+      assert(fm.get_future_map_domain().get_volume() == 1);
+      future_handlers[bid] = fm.get_future(0);
+      batch_configs[bid] = bc;
     } else {
       // have luanched this bid
       Future future = future_handlers[bid];
@@ -225,33 +259,15 @@ void FlexFlow::top_level_task(Task const *task,
       }
       // process end
       InferenceResult ir = future.get_result<InferenceResult>();
-      bc = batch_configs[bid];
-
-      std::cout << "store outputs start...." << std::endl;
-      loader.store_outputs(bc, ir, batch_predictions[bid]);
-      processed_requests += bc->update_results(ir);
-
-      if (!new_req) {
-        break;
-      }
-      new_req = false;
+      BatchConfig bc = batch_configs[bid];
+      processed_requests += bc.num_tokens;
+      bc = rm.prepare_next_batch(bc, ir);
+      std::cout << "new tokens: " << bc.num_tokens << std::endl;
+      FutureMap fm = im.inference(&ff, bid, bc);
+      assert(fm.get_future_map_domain().get_volume() == 1);
+      future_handlers[bid] = fm.get_future(0);
+      batch_configs[bid] = bc;
     }
-    // batch cofig register 5 reqs
-    // init length relate to the min_prompt_size for llama
-    if (new_req) {
-      for (int i = 0; i < llamaConfig.batchSize; i++) {
-        assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347));
-      }
-    }
-
-    bc->prepare_next_batch();
-    std::cout << "new tokens: " << bc->num_active_tokens();
-    loader.next_batch(ff, bc, batch_predictions[bid]);
-
-    FutureMap fm = im.inference(bid, *bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    future_handlers[bid] = fm.get_future(0);
-    batch_configs[bid] = bc;
   }
 
   // float* data

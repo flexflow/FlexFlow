@@ -23,78 +23,62 @@ namespace FlexFlow {
 LegionRuntime::Logger::Category log_bc("BatchConfig");
 
 BatchConfig::BatchConfig() {
-  cached_results = false;
+  num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    token_start_idx[i] = 0;
-    token_last_available_idx[i] = -1;
+    requestsInfo[i].token_start_offset = 0;
+    requestsInfo[i].num_tokens_in_batch = 0;
     request_completed[i] = true;
-    num_processing_tokens[i] = 0;
-    max_sequence_length[i] = 0;
-    initial_length[i] = 0;
   }
-  token2ids.num_samples = 0;
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    token2ids.guids[i] = SIZE_MAX;
-    token2ids.token_indexes[i].request_index = SIZE_MAX;
-    token2ids.token_indexes[i].token_position = SIZE_MAX;
-    token2ids.token_indexes[i].initial_length = SIZE_MAX;
+    tokensInfo[i].abs_depth_in_request = 0;
+    tokensInfo[i].request_index = 0;
+    tokensInfo[i].token_id = 0;
   }
-  update_num_active_requests_tokens();
 }
 
-int BatchConfig::update_results(InferenceResult const &ir) {
-  cached_results = false;
-  // int tokens_processed = 0;
+// Deprecated API; should use RequestManager::update_batch
+int BatchConfig::update_results(InferenceResult const *ir) {
+  assert(false);
   int completed = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       continue;
     }
-    assert(num_processing_tokens[i] > 0);
-    // if (num_processing_tokens[i] == 0) {
-    //   continue;
-    // }
-    // tokens_processed += num_processing_tokens[i];
-    token_start_idx[i] += num_processing_tokens[i];
-    if (token_start_idx[i] >= max_sequence_length[i]
+    assert(requestsInfo[i].num_tokens_in_batch > 0);
+    int processed_tokens = requestsInfo[i].token_start_offset +
+                           requestsInfo[i].num_tokens_in_batch;
+    if (processed_tokens >= requestsInfo[i].max_sequence_length
         // || ir.results[t] == 0 TODO: replace this with <EOS>
     ) {
       log_bc.print("[Done] guid(%zu) final_length(%d)",
-                   request_guid[i],
-                   token_start_idx[i]);
+                   requestsInfo[i].request_guid,
+                   processed_tokens);
       request_completed[i] = true;
-      token_start_idx[i] = 0;
-      token_last_available_idx[i] = -1;
-      num_processing_tokens[i] = 0;
+      requestsInfo[i].num_tokens_in_batch = 0;
+      requestsInfo[i].token_start_offset = 0;
       completed++;
     } else {
-      if (token_start_idx[i] == token_last_available_idx[i] + 1) {
-        token_last_available_idx[i]++;
-        num_processing_tokens[i] = 1; // incremental phase
-      } else {
-        assert(false);
-      }
-      assert(token_start_idx[i] <= token_last_available_idx[i]);
+      requestsInfo[i].token_start_offset += requestsInfo[i].num_tokens_in_batch;
+      requestsInfo[i].num_tokens_in_batch = 1;
     }
   }
-  update_num_active_requests_tokens();
   return completed;
 }
 
+// Deprecated API; RequestManager::new_batch and RequestManager::update_batch
+// automatically register new requests.
 bool BatchConfig::register_new_request(size_t guid,
                                        int initial_len,
                                        int tokens_to_generate) {
-  cached_results = false;
+  assert(false);
   assert(initial_len > 0 && tokens_to_generate > 0);
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, initial_len);
-      token_start_idx[i] = 0;
-      token_last_available_idx[i] = initial_len - 1;
-      max_sequence_length[i] = initial_len + tokens_to_generate;
-      initial_length[i] = initial_len;
-      request_guid[i] = guid;
-      num_processing_tokens[i] = 0;
+      requestsInfo[i].token_start_offset = 0;
+      requestsInfo[i].num_tokens_in_batch = initial_len;
+      requestsInfo[i].request_guid = guid;
+      requestsInfo[i].max_sequence_length = initial_len + tokens_to_generate;
       request_completed[i] = false;
       update_num_active_requests_tokens();
       return true;
@@ -104,135 +88,107 @@ bool BatchConfig::register_new_request(size_t guid,
   return false;
 }
 
+// Deprecated API
 void BatchConfig::prepare_next_batch() {
-  cached_results = false;
-  int count = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (request_completed[i]) {
-      continue;
-    }
-    if (num_tokens + token_last_available_idx[i] - token_start_idx[i] + 1 <=
-        MAX_NUM_TOKENS) {
-      num_processing_tokens[i] =
-          token_last_available_idx[i] - token_start_idx[i] + 1;
-    } else {
-      num_processing_tokens[i] = MAX_NUM_TOKENS - num_tokens;
-    }
-    count += num_processing_tokens[i];
-  }
-  update_num_active_requests_tokens();
-  log_bc.print("[NextBatch] num_tokens(%d)", count);
+  assert(false);
+  assert(num_tokens > 0);
+  log_bc.print("[NextBatch] num_tokens(%d)", num_tokens);
 }
 
+// Deprecated API; cannot use this since we need to
+// add token_id, which is missing in this API
 void BatchConfig::update_num_active_requests_tokens() {
-  num_requests = 0;
+  assert(false);
   num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
-      num_requests++;
-      for (int j = 0; j < num_processing_tokens[i]; j++) {
-        token2ids.guids[num_tokens] = request_guid[i];
-        token2ids.token_indexes[num_tokens].token_position =
-            token_start_idx[i] + j;
-        token2ids.token_indexes[num_tokens].request_index = i;
-        token2ids.token_indexes[num_tokens].initial_length = initial_length[i];
+      int start_idx = requestsInfo[i].token_start_offset;
+      for (int j = 0; j < requestsInfo[i].num_tokens_in_batch; j++) {
+        tokensInfo[num_tokens].abs_depth_in_request = start_idx + j;
+        tokensInfo[num_tokens].request_index = i;
         num_tokens++;
       }
     }
   }
-  token2ids.num_samples = num_tokens;
-  cached_results = true;
 }
 
 int BatchConfig::num_active_requests() const {
-  if (cached_results) {
-    return num_requests;
-  } else {
-    assert(false &&
-           "some BatchConfig functions updated requests but didn't call "
-           "update_num_active_requests_tokens() before exit");
+  int num_requests = 0;
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i]) {
+      num_requests++;
+    }
   }
+  return num_requests;
+  // if (cached_results) {
+  //   return num_requests;
+  // } else {
+  //   assert(false &&
+  //          "some BatchConfig functions updated requests but didn't call "
+  //          "() before exit");
+  // }
 }
 
 int BatchConfig::num_active_tokens() const {
-  if (cached_results) {
-    return num_tokens;
-  } else {
-    assert(false &&
-           "some BatchConfig functions updated requests but didn't call "
-           "update_num_active_requests_tokens() before exit");
-  }
+  // if (cached_results) {
+  return num_tokens;
+  //} else {
+  //  assert(false &&
+  //         "some BatchConfig functions updated requests but didn't call "
+  //         "update_num_active_requests_tokens() before exit");
+  //}
 }
 
 void BatchConfig::print() const {
-  printf("--------------------------BatchConfig--------------------------\n");
-  printf("num_tokens: %i, num_requests: %i, cached_results: %i\n",
-         num_tokens,
-         num_requests,
-         cached_results);
+  std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
+  std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
+  std::cout << "Number of tokens: " << num_tokens << std::endl;
+  std::cout << "Number of requests: " << num_active_requests() << std::endl;
+  // std::cout << "Cached results: " << cached_results << std::endl;
 
-  printf("requests_completed: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", request_completed[i]);
+  std::cout << "Per-request info:\n";
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i]) {
+      std::cout << "  Request " << i << ":\n";
+      std::cout << "    Token start offset: "
+                << requestsInfo[i].token_start_offset << std::endl;
+      std::cout << "    Number of tokens in batch: "
+                << requestsInfo[i].num_tokens_in_batch << std::endl;
+      std::cout << "    GUID: " << requestsInfo[i].request_guid << std::endl;
+      std::cout << "    Max sequence length: "
+                << requestsInfo[i].max_sequence_length << std::endl;
+      std::cout << "    Request completed: " << request_completed[i]
+                << std::endl;
+    }
   }
-  printf("\n");
 
-  printf("token_start_idx: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", token_start_idx[i]);
-  }
-  printf("\n");
-
-  printf("token_last_available_idx: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", token_last_available_idx[i]);
-  }
-  printf("\n");
-
-  printf("num_processing_tokens: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%i ", num_processing_tokens[i]);
-  }
-  printf("\n");
-
-  printf("max_sequence_length: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%lu ", max_sequence_length[i]);
-  }
-  printf("\n");
-
-  printf("request_guid: ");
-  for (int i = 0; i < num_requests; i++) {
-    printf("%lu ", request_guid[i]);
-  }
-  printf("\n");
-
-  printf("token2ids.num_samples:%lu\n", token2ids.num_samples);
-
-  printf("token2ids.guids: ");
+  std::cout << "Per-token info:\n";
   for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.guids[i]);
+    std::cout << "  Token " << i << ":\n";
+    std::cout << "    Absolute depth in request: "
+              << tokensInfo[i].abs_depth_in_request << std::endl;
+    std::cout << "    Request index: " << tokensInfo[i].request_index
+              << std::endl;
+    std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
   }
-  printf("\n");
+}
 
-  printf("token2ids.token_indexes[i].request_index: ");
+void TreeVerifyBatchConfig::compute_tree_branch_indexes() {
+  // Must be called only after setting num_tokens!
+  auto is_first_token_in_request = [&](int token_index) -> bool {
+    if (token_index == 0) {
+      return true; // First entry in tokensInfo is the first in a request.
+    }
+    return tokensInfo[token_index].request_index !=
+           tokensInfo[token_index - 1].request_index;
+  };
   for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.token_indexes[i].request_index);
+    if (is_first_token_in_request(i)) {
+      tokensInfo[i].tree_branch_idx = 0;
+    } else {
+      tokensInfo[i].tree_branch_idx = tokensInfo[i - 1].tree_branch_idx + 1;
+    }
   }
-  printf("\n");
-
-  printf("token2ids.token_indexes[i].token_position: ");
-  for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.token_indexes[i].token_position);
-  }
-
-  printf("token2ids.token_indexes[i].initial_length: ");
-  for (int i = 0; i < num_tokens; i++) {
-    printf("%lu ", token2ids.token_indexes[i].initial_length);
-  }
-  printf("\n");
-  printf("---------------------------------------------------------------------"
-         "---------\n");
 }
 
 }; // namespace FlexFlow

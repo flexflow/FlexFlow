@@ -1,9 +1,11 @@
 #include "flexflow/operator_params.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
+#include "flexflow/ops/arg_topk.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
@@ -15,6 +17,7 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -26,6 +29,7 @@
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
@@ -82,6 +86,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((MultiHeadAttention *)op)->get_params();
     case OP_INC_MULTIHEAD_SELF_ATTENTION:
       return ((IncMultiHeadSelfAttention *)op)->get_params();
+    case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY:
+      return ((IncMultiHeadSelfAttentionVerify *)op)->get_params();
     case OP_LAYERNORM:
       return ((LayerNorm *)op)->get_params();
     case OP_REDUCE_SUM:
@@ -116,6 +122,10 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((AggregateSpec *)op)->get_params();
     case OP_RMS_NORM:
       return ((RMSNorm *)op)->get_params();
+    case OP_ARG_TOPK:
+      return ((ArgTopK *)op)->get_params();
+    case OP_BEAM_TOPK:
+      return ((BeamTopK *)op)->get_params();
 
       // TODO: implement the get_params() function for the operators below and
       // uncomment the lines below

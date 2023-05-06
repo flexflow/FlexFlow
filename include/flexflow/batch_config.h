@@ -15,69 +15,134 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdlib>
 
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
 #define MAX_SEQ_LEN 20
-#define BATCH_SIZE 16
-#define MAX_REQUESTS 256
+// #define BATCH_SIZE 16
+// #define MAX_REQUESTS 256
 
 namespace FlexFlow {
 
-struct InferenceResult {
-  static int const MAX_NUM_TOKENS = MAX_SEQ_LEN * BATCH_SIZE;
-  int results[MAX_NUM_TOKENS];
-};
+class InferenceResult;
+class BeamInferenceResult;
 
 class BatchConfig {
 public:
+  using RequestGuid = size_t;
+  using TokenId = int;
   BatchConfig();
   bool register_new_request(size_t guid,
                             int initial_len,
                             int tokens_to_generate);
   void prepare_next_batch();
-  int update_results(InferenceResult const &ir);
+  int update_results(InferenceResult const *ir);
   void update_num_active_requests_tokens();
   int num_active_requests() const;
   int num_active_tokens() const;
   void print() const;
-  static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
-  static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
-  // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
+  static int const MAX_NUM_REQUESTS = 8;
+  static int const MAX_NUM_TOKENS = 64;
+
   //  These are set by update
-  int num_tokens, num_requests;
-  bool cached_results;
-  int token_start_idx[MAX_NUM_REQUESTS]; // index of first token in a request
-                                         // that should be processed in the
-                                         // current batch/iteration
-  int token_last_available_idx
-      [MAX_NUM_REQUESTS]; // last valid token index in a request. This includes
-                          // both the prompt and generated tokens
-  int num_processing_tokens[MAX_NUM_REQUESTS]; // a request's number of tokens
-                                               // being processed in the current
-                                               // batch/iteration
-  size_t initial_length[MAX_NUM_REQUESTS];
-  size_t max_sequence_length[MAX_NUM_REQUESTS];
+  int num_tokens;
 
-  struct token_idxs {
-    size_t request_index;  // the index within the BatchConfig of the request
-                           // that the token belongs to
-    size_t token_position; // the index indicating the position of each token
-                           // within its request
-    size_t initial_length;
+  struct PerRequestInfo {
+    int token_start_offset; // input[token_start_offset * data_dim] is the first
+                            // token
+    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim
+                             // : (token_start_offset + num_token_in_batch) *
+                             // data_dim]
+    int max_sequence_length;
+    RequestGuid request_guid;
   };
-
-  struct SampleIdxs {
-    size_t num_samples;
-    size_t guids[InferenceResult::MAX_NUM_TOKENS]; // the guid of the request
-                                                   // each token belongs to
-    token_idxs token_indexes[InferenceResult::MAX_NUM_TOKENS];
+  struct PerTokenInfo {
+    int abs_depth_in_request;
+    int request_index;
+    TokenId token_id;
   };
+  PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
+  PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
-  SampleIdxs token2ids;
-  size_t request_guid[MAX_NUM_REQUESTS];
+  // size_t max_sequence_length[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
+};
+
+class TreeVerifyBatchConfig : public BatchConfig {
+public:
+  struct PerTokenInfo : BatchConfig::PerTokenInfo {
+    int tree_branch_idx;
+  };
+  struct CommittedTokensInfo {
+    int token_index;   // the index of the token in the previous batch
+    int request_index; // request index in the batch
+    int token_depth;   // position of the token in the request's sequence
+  };
+
+  void compute_tree_branch_indexes();
+
+  int num_tokens_to_commit;
+  CommittedTokensInfo commited_tokens[MAX_NUM_TOKENS];
+  PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
+};
+
+struct InferenceResult {
+  static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
+  BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
+};
+
+class BeamSearchBatchConfig : public BatchConfig {
+public:
+  BeamSearchBatchConfig();
+  BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
+
+  ~BeamSearchBatchConfig();
+
+  void print() const;
+  bool done() const;
+
+  size_t beam_width;
+  size_t target_iterations;
+  static int const MAX_BEAM_WIDTH = 3;
+  static int const MAX_BEAM_DEPTH = 8;
+
+  struct BeamSearchPerRequestInfo {
+    // int token_start_offset; // input[token_start_offset * data_dim] is the
+    // first token int num_tokens_in_batch; // tokens from
+    // input[token_start_offset * data_dim : (token_start_offset +
+    // num_token_in_batch) * data_dim] int max_sequence_length; RequestGuid
+    // request_guid;
+    bool request_completed;
+    int beam_size; //
+    int current_depth = -1;
+    // int global_depth = -1;
+    int max_depth = MAX_BEAM_DEPTH;
+
+    BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    int parent_id[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  };
+
+  struct BeamSearchPerTokenInfo {
+    int sub_request_index;
+  };
+
+  BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
+  BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
+  int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
+  // BeamSlot beam_slots[MAX_NUM_REQUESTS];
+
+private:
+  size_t current_iteration;
+};
+
+struct BeamInferenceResult : public InferenceResult {
+  BatchConfig::TokenId
+      token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+  int parent_id[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
 };
 
 }; // namespace FlexFlow
