@@ -46,17 +46,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-
-  void serialize(Legion::Serializer &) const override;
-  /* static PCG::Node deserialize(FFModel &ff, */
-  /*                              Legion::Deserializer &d, */
-  /*                              ParallelTensor inputs[], */
-  /*                              int num_inputs); */
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
-  /* static void */
-  /*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &); */
 };
 
 }

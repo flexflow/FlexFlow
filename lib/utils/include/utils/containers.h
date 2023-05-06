@@ -15,6 +15,7 @@
 #include "bidict.h"
 #include "stack_map.h"
 #include <map>
+#include <numeric>
 
 namespace FlexFlow {
 
@@ -67,6 +68,12 @@ Element product(Container const &container) {
     result *= element;
   }
   return result;
+}
+
+template <typename It>
+typename It::value_type product(It begin, It end) {
+  using Element = typename It::value_type;
+  return std::accumulate(begin, end, 1, [](Element const &lhs, Element const &rhs) { return lhs * rhs; });
 }
 
 template <typename Container>
@@ -316,6 +323,30 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
   }
 
   return result;
+}
+
+template <typename T>
+std::vector<T> subvec(std::vector<T> const &v, optional<int> const &maybe_start, optional<int> const &maybe_end) {
+  auto begin_iter = v.cbegin();
+  auto end_iter = v.cend();
+
+  auto resolve_loc = [&](int idx) -> typename std::vector<T>::iterator::difference_type {
+    if (idx < 0) { 
+      return v.size() - idx;
+    } else {
+      return idx;
+    }
+  };
+
+  if (maybe_start.has_value()) {
+    begin_iter += resolve_loc(maybe_start.value());
+  }
+  if (maybe_end.has_value()) {
+    end_iter = v.cbegin() + resolve_loc(maybe_start.value());
+  }
+
+  std::vector<T> output(begin_iter, end_iter);
+  return output;
 }
 
 }

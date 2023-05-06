@@ -18,10 +18,49 @@ public:
   bool bias, add_bias_kv, add_zero_attn;
 };
 
-int qProjSize(MultiHeadAttentionAttrs const &attrs);
-int vProjSize(MultiHeadAttentionAttrs const &attrs);
-int kProjSize(MultiHeadAttentionAttrs const &attrs);
-int oProjSize(MultiHeadAttentionAttrs const &attrs);
+template <typename TensorType>
+struct MultiHeadAttentionInputs : public use_visitable_cmp<MultiHeadAttentionInputs<TensorType>> {
+public:
+  MultiHeadAttentionInputs() = delete;
+  
+  MultiHeadAttentionInputs(TensorType const &query, TensorType const &key, TensorType const &value)
+    : query(query), key(key), value(value)
+  { }
+
+  template <typename SubTensorType>
+  MultiHeadAttentionInputs(MultiHeadAttentionInputs<SubTensorType> const &sub) 
+    : query(sub.query), key(sub.key), value(sub.value)
+  { }
+public:
+  TensorType query; 
+  TensorType key;
+  TensorType value;
+};
+
+int get_qProjSize(MultiHeadAttentionAttrs const &);
+int get_vProjSize(MultiHeadAttentionAttrs const &);
+int get_kProjSize(MultiHeadAttentionAttrs const &);
+int get_oProjSize(MultiHeadAttentionAttrs const &);
+
+int get_qSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_kSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_vSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_oSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+
+int get_qoSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_kvSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+
+int get_num_samples(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+
+TensorShape get_weights_shape(MultiHeadAttentionAttrs const &, 
+                              MultiHeadAttentionInputs<TensorShape> const &);
+ParallelTensorShape get_weights_shape(MultiHeadAttentionAttrs const &,
+                                      MultiHeadAttentionInputs<ParallelTensorShape> const &);
+
+ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &,
+                                     MultiHeadAttentionInputs<ParallelTensorShape> const &);
+TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
+                             MultiHeadAttentionInputs<TensorShape> const &);
 
 }
 

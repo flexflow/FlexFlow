@@ -69,7 +69,7 @@ public:
 
   template <bool IS_CONST>
   struct Iterator {
-    using Iterator_category = std::random_access_iterator_tag;   
+    using iterator_category = std::random_access_iterator_tag;   
     using difference_type = std::ptrdiff_t;
     using value_type = T;
     using reference = typename std::conditional<IS_CONST, T const &, T &>::type;
@@ -144,6 +144,8 @@ public:
 
   using iterator = Iterator<false>;
   using const_iterator = Iterator<true>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   using value_type = T;
   using reference = T&;
@@ -173,6 +175,30 @@ public:
 
   const_iterator cend() const {
     return this->cbegin() + this->m_size;
+  }
+
+  reverse_iterator rbegin() {
+    return std::reverse_iterator<iterator>(this->end()); 
+  }
+
+  const_reverse_iterator rbegin() const {
+    return this->crbegin();
+  }
+
+  const_reverse_iterator crbegin() const {
+    return std::reverse_iterator<const_iterator>(this->cend());
+  }
+
+  reverse_iterator rend() {
+    return std::reverse_iterator<iterator>(this->begin());
+  }
+
+  const_reverse_iterator rend() const {
+    return this->crend();
+  }
+
+  const_reverse_iterator crend() const {
+    return std::reverse_iterator<const_iterator>(this->cbegin());
   }
 
   bool operator==(stack_vector<T, MAXSIZE> const &other) const {

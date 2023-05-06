@@ -3,27 +3,14 @@
 
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/ff_handler.h"
-
-#define AGGREGATE_MAX_K 4
-#define AGGREGATE_MAX_BATCH_SIZE 64
-#define AGGREGATE_MAX_N 12
+#include "kernels/ff_handle.h"
 
 namespace FlexFlow {
-
-class AggregatePerDeviceState : public PerDeviceOpState {
-public:
-  AggregatePerDeviceState(FFHandler handle, int n);
-  ~AggregatePerDeviceState(); 
-  float **dev_exp_preds;
-  float **dev_exp_grads;
-};
 
 namespace Kernels {
 namespace Aggregate {
 
 void forward_kernel(ffStream_t stream,
-                    AggregatePerDeviceState const *m,
                     float **exp_preds,
                     int const *acc_gate_assign_ptr,
                     float const *acc_gate_pred_ptr,
@@ -35,7 +22,6 @@ void forward_kernel(ffStream_t stream,
                     int out_dim);
 
 void backward_kernel(ffStream_t stream,
-                     AggregatePerDeviceState const *m,
                      float **exp_preds,
                      float **exp_grads,
                      int const *acc_gate_assign_ptr,

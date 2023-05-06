@@ -18,6 +18,7 @@
 #include "kernels/aggregate_kernels.h"
 #include "tasks.h"
 #include "kernels/profiling.h"
+#include "get_data_dependencies.h"
 
 namespace FlexFlow {
 
@@ -30,208 +31,107 @@ enum Slots {
   OUTPUT,
   ATTRS,
   PROFILING,
+  PER_DEVICE_STATE,
 };
-
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Aggregate;
 
-Tensor FFModel::aggregate(
-    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
-                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
-    int n,
-    float lambda_bal,
-    char const *name) {
-  Layer *li = new Layer(this,
-                        OP_AGGREGATE,
-                        DT_FLOAT,
-                        name,
-                        n + 4 /*inputs*/,
-                        0 /*weights*/,
-                        1 /*outputs*/,
-                        inputs);
-  {
-    int num_dim = inputs[4]->num_dims;
-    // Set output shape
-    int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < num_dim - 1; i++) {
-      dims[i] = inputs[4]->dims[i];
-    }
-    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
-    li->outputs[0] = create_tensor_legion_ordering(
-        num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
-  }
-  li->add_int_property("n", n);
-  li->add_float_property("lambda_bal", lambda_bal);
-  layers.push_back(li);
-  return li->outputs[0];
+DataDependencies get_data_dependencies(AggregateAttrs const &attrs, TaskSignature const &sig) {
+  DataDependencies deps;
+  return pointwise_data_dependence({GATE_PREDS, GATE_ASSIGN, TRUE_GATE_ASSIGN, FULL_GATE_GRADIENTS, EXP_PREDS},
+                                   {},
+                                   {OUTPUT});
 }
 
-
-
-Op *Aggregate::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
-    std::vector<ParallelTensor> const &inputs) {
-  long long value1;
-  layer->get_int_property("n", value1);
-  int n = value1;
-  float value2;
-  layer->get_float_property("lambda_bal", value2);
-  float lambda_bal = value2;
-  return new Aggregate(model, inputs.data(), n, lambda_bal, layer->name);
-}
-
-Aggregate::Aggregate(FFModel &model,
-                     ParallelTensor const *_inputs,
-                     int _n,
-                     float _lambda_bal,
-                     char const *name)
-    : Op(model,
-         OP_AGGREGATE,
-         DT_FLOAT,
-         name,
-         _n + 4 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         _inputs),
-      attrs(_n, _lambda_bal)
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
+                                  AggregateAttrs const &attrs,
+                                  ParallelTensorShape const &gate_preds_shape,
+                                  ParallelTensorShape const &gate_assign_shape,
+                                  ParallelTensorShape const &true_gate_assign_shape,
+                                  ParallelTensorShape const &full_gate_gradients_shape,
+                                  std::vector<ParallelTensorShape> const &exp_preds_shapes,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &mv) 
 {
-  // FIXME: For now, set upper limits Better: Do as follows, but memory is
-  // assigned per block, so requires to check that
-  // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
-  assert(attrs.n <= AGGREGATE_MAX_N && "Increase AGGREGATE_MAX_N in #define");
-  assert(inputs[0]->dims[0].size <= AGGREGATE_MAX_K &&
-         "Increase AGGREGATE_MAX_K in #define");
-  assert(inputs[0]->dims[1].size <= AGGREGATE_MAX_BATCH_SIZE &&
-         "Increase AGGREGATE_MAX_BATCH_SIZE in #define");
+  auto env = sim.new_environment();
 
-  assert(attrs.n + 4 == numInputs);
-  assert(attrs.n > 0);
-  assert(inputs[0]->num_dims == 2 + 1);
-  assert(inputs[1]->num_dims == 2 + 1);
-  assert(inputs[2]->num_dims == 2 + 1);
-  assert(inputs[3]->num_dims == 2 + 1);
+  auto gate_preds = allocate_input(env, gate_preds_shape);
+  auto gate_assign = allocate_input(env, gate_assign_shape);
+  auto true_gate_assign = allocate_input(env, true_gate_assign_shape);
+  auto full_gate_gradients = allocate_input(env, full_gate_gradients_shape);
+  auto exp_preds = allocate_input(env, exp_preds_shapes);
+  auto exp_grads = allocate_input(env, exp_preds_shapes);
+  ParallelTensorShape output_shape = get_output_shape(attrs, gate_preds_shape, gate_assign_shape, true_gate_assign_shape, full_gate_gradients_shape, exp_preds_shapes);
+  auto output = allocate_output(env, output_shape);
+  auto output_grad = allocate_output(env, output_shape);
 
-  for (int i = 0; i < inputs[0]->num_dims; i++) {
-    assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
-    assert(inputs[0]->dims[i] == inputs[2]->dims[i]);
-  }
-  assert(inputs[0]->dims[1] == inputs[3]->dims[1]);
-  assert(inputs[3]->dims[0].size == attrs.n);
+  int k = gate_assign.shape[legion_dim_t(0)];
+  int rows = exp_preds[0].shape[legion_dim_t(1)];
+  int batch_size = gate_preds.shape[legion_dim_t(1)];
+  int out_dim = output.shape[legion_dim_t(1)];
 
-  // expert inputs
-  int num_dim = inputs[4]->num_dims;
-  int out_dim = inputs[4]->dims[0].size;
-  for (int i = 1; i < attrs.n; i++) {
-    assert(inputs[i + 4]->num_dims == num_dim);
-    assert(inputs[i + 4]->dims[0].size == out_dim);
-  }
-  // Set output shape
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim - 1; i++) {
-    dims[i] = inputs[4]->dims[i];
-  }
-  dims[num_dim - 2] = inputs[0]->dims[num_dim - 2];
-  dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
-  numOutputs = 1;
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      num_dim, dims, DT_FLOAT, this);
+  float forward_time = profiling_wrapper(
+    forward_kernel,
+    settings,
+    get_float_ptrs(exp_preds),
+    get_int32_ptr(gate_assign),
+    get_float_ptr(gate_preds),
+    get_float_ptr(output),
+    attrs.n,
+    k,
+    rows,
+    batch_size,
+    out_dim
+  ).value();
 
-  numWeights = 0;
+  float backward_time = profiling_wrapper(
+    backward_kernel,
+    settings,
+    get_float_ptrs(exp_preds),
+    get_float_ptrs(exp_grads),
+    get_int32_ptr(gate_assign),
+    get_int32_ptr(true_gate_assign),
+    get_float_ptr(gate_preds),
+    get_float_ptr(full_gate_gradients),
+    get_float_ptr(output_grad),
+    attrs.n,
+    k,
+    rows,
+    attrs.lambda_bal,
+    batch_size,
+    out_dim
+  ).value();
+
+  float sync_time = default_estimate_sync_time(env);
+
+  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-Aggregate::Aggregate(FFModel &model,
-                     Aggregate const &other,
-                     std::vector<ParallelTensor> const &inputs)
-    : Aggregate(model, inputs.data(), other.attrs, other.name) {}
 
-static OpTaskSignature get_init_task_signature() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<AggregateAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
-
-  return init;
-}
-
-static OpTaskSignature get_fwd_task_signature() {
-  OpTaskSignature fwd(OpTaskType::FWD);
-
-  fwd.add_input_slot(GATE_PREDS, READ_WRITE);
-  fwd.add_input_slot(GATE_ASSIGN, READ_WRITE);
-  fwd.add_input_slot(EXP_PREDS, SlotType::VARIADIC);
-  fwd.add_output_slot(OUTPUT);
-
-  return fwd;
-}
-
-static OpTaskSignature get_bwd_task_signature() {
-  OpTaskSignature bwd(OpTaskType::BWD);
-
-  bwd.add_input_slot(GATE_PREDS, READ_WRITE);
-  bwd.add_input_slot(GATE_ASSIGN);
-  bwd.add_input_slot(TRUE_GATE_ASSIGN);
-  bwd.add_input_grad_slot(FULL_GATE_GRADIENTS);
-  bwd.add_input_slot(EXP_PREDS, SlotType::VARIADIC, READ_WRITE);
-  bwd.add_input_grad_slot(EXP_PREDS, SlotType::VARIADIC);
-  bwd.add_output_grad_slot(OUTPUT);
-
-  bwd.add_arg_slot<AggregateAttrs>(ATTRS);
-
-  return bwd;
-}
-
-TaskID Aggregate::get_init_task_id() const {
-  return AGGREGATE_INIT_TASK_ID;
-}
-
-TaskID Aggregate::get_fwd_task_id() const {
-  return AGGREGATE_FWD_TASK_ID;
-}
-
-TaskID Aggregate::get_bwd_task_id() const {
-  return AGGREGATE_BWD_TASK_ID;
-}
-
-OpTaskBinding Aggregate::get_init_task_binding() const {
+OpTaskInvocation init(AggregateAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(ATTRS, attrs);
 
-  return binding;
+  return { AGGREGATE_INIT_TASK_ID, binding };
 }
 
-OpTaskBinding Aggregate::get_fwd_task_binding() const {
+OpTaskInvocation foward(AggregateAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(GATE_PREDS, input_tensor(0));
   binding.bind(GATE_ASSIGN, input_tensor(1));
   
-  for (int i = 0; i < this->attrs.n; i++) {
+  for (int i = 0; i < attrs.n; i++) {
     binding.bind(EXP_PREDS, input_tensor(i+4));
   }
 
   binding.bind(OUTPUT, output_tensor(0));
 
-  return binding;
+  return { AGGREGATE_FWD_TASK_ID, binding };
 }
 
-OpTaskBinding Aggregate::get_bwd_task_binding() const {
+OpTaskInvocation backward(AggregateAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(GATE_PREDS, input_tensor(0));
@@ -239,25 +139,21 @@ OpTaskBinding Aggregate::get_bwd_task_binding() const {
   binding.bind(TRUE_GATE_ASSIGN, input_tensor(2));
   binding.bind_grad(FULL_GATE_GRADIENTS, input_tensor(3).grad());
   
-  for (int i = 0; i < this->attrs.n; i++) {
+  for (int i = 0; i < attrs.n; i++) {
     binding.bind(EXP_PREDS, input_tensor(i+4));
     binding.bind_grad(EXP_PREDS, input_tensor(i+4).grad());
   }
 
   binding.bind_grad(OUTPUT, output_tensor(0).grad());
 
-  return binding;
+  return { AGGREGATE_BWD_TASK_ID, binding };
 }
 
-void Aggregate::init(FFModel const &ff) {
-  this->execute_task(ff, AGG_SPEC_INIT_TASK_ID, get_init_task_signature());
-}
-
-PerDeviceOpState *Aggregate::init_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+static AggregatePerDeviceState init_task(Legion::Task const *task,
+                                   std::vector<Legion::PhysicalRegion> const &regions,
+                                   Legion::Context ctx,
+                                   Legion::Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   AggregateAttrs const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -269,16 +165,11 @@ PerDeviceOpState *Aggregate::init_task(Task const *task,
   return m;
 }
 
-
-void Aggregate::forward(FFModel const &ff) {
-  this->execute_task(ff, AGGREGATE_FWD_TASK_ID, get_fwd_task_signature());
-}
-
-void Aggregate::forward_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+static void forward_task(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   AggregateAttrs const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
   int n = attrs.n;
@@ -289,46 +180,26 @@ void Aggregate::forward_task(Task const *task,
   AggregatePerDeviceState const *m = *((AggregatePerDeviceState **)task->local_args);
 
   // get gate_pred, gate_assign, output
-  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorWO<float, 3> const acc_output(regions[n + 2], FID_DATA);
+  auto gate_pred = acc.get_tensor<READ_WRITE>(GATE_PREDS);
+  auto gate_assign = acc.get_tensor<READ_WRITE>(GATE_ASSIGN);
+  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_output = runtime->get_index_space_domain(
-      ctx, task->regions[n + 2].region.get_index_space());
-
-  coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
-  assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
-  assert(rect_gate_pred.hi[0] - rect_gate_pred.lo[0] ==
-         rect_gate_assign.hi[0] - rect_gate_assign.lo[0]);
-  assert(batch_size == rect_output.hi[1] - rect_output.lo[1] + 1);
-  coord_t out_dim = rect_output.hi[0] - rect_output.lo[0] + 1;
+  coord_t batch_size = gate_pred.shape[1];
+  assert(batch_size == gate_assign.shape[1]);
+  assert(gate_pred.shape[0] == gate_assign.shape[0]);
+  assert(batch_size == output.shape[1]);
+  coord_t out_dim = output.shape[0];
 
   // get exp_preds
-  std::vector<float *> exp_preds(n);
+  auto acc_exp_preds = acc.get_variadic_tensor<READ_WRITE>(EXP_PREDS);
+  coord_t rows = acc_exp_preds[0].shape[1];
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
+  
+  std::vector<float *> exp_preds = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_preds);
   assert (exp_preds.size() == n);
-  // get first exp_pred and row and out_dim
-  Domain exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  exp_preds[0] = helperGetTensorPointerWO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
-  assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
 
-  for (int i = 1; i < n; i++) {
-    exp_domain = runtime->get_index_space_domain(
-        ctx, task->regions[i + 2].region.get_index_space());
-    exp_preds[i] = helperGetTensorPointerWO<float>(
-        regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
-
-    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
-    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-  }
-
-  int k = (int)(rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
+  int k = (int)(gate_assign.shape[0]);
 
   profile(
     forward_kernel, 
@@ -336,9 +207,9 @@ void Aggregate::forward_task(Task const *task,
     "[Aggregate] forward_time = %.2lfms\n",
     m,
     exp_preds.data(),
-    acc_gate_assign.ptr(rect_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred),
-    acc_output.ptr(rect_output),
+    gate_assign.get_float_ptr(),
+    gate_pred.get_float_ptr(),
+    output.get_float_ptr(),
     n,
     k,
     rows,
@@ -347,8 +218,77 @@ void Aggregate::forward_task(Task const *task,
   );
 }
 
-void Aggregate::backward(FFModel const &ff) {
-  this->execute_task(ff, AGGREGATE_BWD_TASK_ID, get_bwd_task_signature());
+static void backward_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+
+  auto attrs = acc.get_argument<AggregateAttrs>(ATTRS);
+  auto per_device_state = acc.get_argument<AggregatePerDeviceState>(PER_DEVICE_STATE);
+
+  int n = attrs.n;
+  float lambda_bal = attrs.lambda_bal;
+
+  assert((int)regions.size() == 2 * n + 5);
+  assert((int)task->regions.size() == 2 * n + 5);
+
+  // get gate_pred, gate_grad, gate_assign, output_grad
+  auto gate_pred = acc.get_tensor<READ_ONLY>(GATE_PREDS);
+  auto gate_assign = acc.get_tensor<READ_ONLY>(GATE_ASSIGN);
+  auto true_gate_assign = acc.get_tensor<READ_ONLY>(TRUE_GATE_ASSIGN);
+  auto full_gate_grad = acc.get_tensor_grad<READ_WRITE>(GATE_GRADIENTS_FULL);
+  auto output_grad = acc.get_tensor_grad<READ_ONLY>(OUTPUT);
+
+  coord_t batch_size = gate_pred.shape[1];
+  assert(batch_size == gate_assign.shape[1]);
+  assert(gate_assign.shape == true_gate_assign.shape);
+  assert(batch_size == full_gate_grad.shape[1]);
+  coord_t k = gate_assign.shape[0];
+  assert(k * batch_size == output_grad.shape[1]);
+  assert(gate_pred.shape[0] == k);
+  coord_t out_dim = output_grad.shape[0];
+  assert(n == full_gate_grad.shape[0]);
+
+  // get exp_preds
+  auto acc_exp_preds = acc.get_variadic_tensor<READ_WRITE>(EXP_PREDS);
+  coord_t rows = acc_exp_preds[0].shape[1];
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
+  
+  std::vector<float *> exp_preds = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_preds);
+  assert (exp_preds.size() == n);
+
+  // get chosen_exp_grads
+  auto acc_exp_grads = acc.get_variadic_tensor_grad<READ_WRITE>(EXP_PREDS);
+  
+  size_t rows = acc_exp_grads[0].shape[1];
+  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
+  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
+
+  std::vector<float *> exp_grads = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_grads);
+  assert (exp_grads.size() == n);
+
+  profile(
+    backward_kernel,
+    per_device_state.profiling,
+    "[Aggregate] backward_time = %.2lfms\n",
+    m,
+    exp_preds.data(), 
+    exp_grads.data(),
+    gate_assign.get_float_ptr(),
+    true_gate_assign.get_float_ptr(),
+    gate_pred.get_float_ptr(),
+    full_gate_grad.get_float_ptr(),
+    output_grad.get_float_ptr(),
+    n,
+    k,
+    rows,
+    lambda_bal,
+    batch_size,
+    out_dim
+  );
+}
 
   // ArgumentMap argmap;
   // Context ctx = ff.config.lg_ctx;
@@ -422,196 +362,133 @@ void Aggregate::backward(FFModel const &ff) {
 }
 
 
-void Aggregate::backward_task(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
-
-  AggregatePerDeviceState const *m = *((AggregatePerDeviceState **)task->local_args);
-  
-  auto const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
-
-  int n = attrs.n;
-  float lambda_bal = attrs.lambda_bal;
-
-  assert((int)regions.size() == 2 * n + 5);
-  assert((int)task->regions.size() == 2 * n + 5);
-
-  // get gate_pred, gate_grad, gate_assign, output_grad
-  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorRO<int, 3> const acc_true_gate_assign(regions[2], FID_DATA);
-  AccessorWO<float, 3> const full_acc_gate_grad(regions[3], FID_DATA);
-  AccessorRO<float, 3> const acc_output_grad(regions[2 * n + 4], FID_DATA);
-
-  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_true_gate_assign = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  Rect<3> rect_full_gate_grad = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
-  Rect<3> rect_out_grad = runtime->get_index_space_domain(
-      ctx, task->regions[2 * n + 4].region.get_index_space());
-
-  coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
-  assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
-  assert(rect_gate_assign == rect_true_gate_assign);
-  assert(batch_size == rect_out_grad.hi[1] - rect_out_grad.lo[1] + 1);
-  assert(batch_size ==
-         rect_full_gate_grad.hi[1] - rect_full_gate_grad.lo[1] + 1);
-  coord_t k = rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1;
-  assert(rect_gate_pred.hi[0] - rect_gate_pred.lo[0] + 1 == k);
-  coord_t out_dim = rect_out_grad.hi[0] - rect_out_grad.lo[0] + 1;
-  assert(n == rect_full_gate_grad.hi[0] - rect_full_gate_grad.lo[0] + 1);
-
-  // get exp_preds
-  std::vector<float *> exp_preds(n);
-  assert (exp_preds.size() == n);
-
-  // get first exp_pred and row
-  Domain exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[4].region.get_index_space());
-  exp_preds[0] = helperGetTensorPointerRW<float>(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
-  assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-
-  for (int i = 1; i < n; i++) {
-    exp_domain = runtime->get_index_space_domain(
-        ctx, task->regions[i + 4].region.get_index_space());
-    exp_preds[i] = helperGetTensorPointerRW<float>(
-        regions[i + 4], task->regions[i + 4], FID_DATA, ctx, runtime);
-    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
-    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-  }
-
-  // get chosen_exp_grads
-  std::vector<float *> exp_grads(n);
-  assert (exp_grads.size() == n);
-
-  for (int i = 0; i < n; i++) {
-    exp_domain = runtime->get_index_space_domain(
-        ctx, task->regions[n + i + 4].region.get_index_space());
-    exp_grads[i] = helperGetTensorPointerRW<float>(
-        regions[n + i + 4], task->regions[n + i + 4], FID_DATA, ctx, runtime);
-    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
-    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-  }
-
-  /* profiling_wrapper() */
-
-  profile(
-    backward_kernel,
-    m->profiling,
-    "[Aggregate] backward_time = %.2lfms\n",
-    m,
-    exp_preds.data(), 
-    exp_grads.data(),
-    acc_gate_assign.ptr(rect_gate_assign),
-    acc_true_gate_assign.ptr(rect_true_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred),
-    full_acc_gate_grad.ptr(rect_full_gate_grad),
-    acc_output_grad.ptr(rect_out_grad),
-    n,
-    k,
-    rows,
-    lambda_bal,
-    batch_size,
-    out_dim
-  );
-}
 
 /* void Aggregate::serialize(Legion::Serializer &sez) const { */
 /*   sez.serialize(this->n); */
 /*   sez.serialize(this->lambda_bal); */
 /* } */
 
-bool Aggregate::measure_operator_cost(Simulator *sim,
-                                      MachineView const &mv,
-                                      CostMetrics &cost_metrics) const {
-  assert(numInputs <= MAX_NUM_INPUTS);
-  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_pred, sub_assign,
-      sub_output;
+// bool Aggregate::measure_operator_cost(Simulator *sim,
+//                                       MachineView const &mv,
+//                                       CostMetrics &cost_metrics) const {
+//   assert(numInputs <= MAX_NUM_INPUTS);
+//   ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_pred, sub_assign,
+//       sub_output;
+// 
+//   for (int i = 0; i < numInputs; ++i) {
+//     if (!inputs[i + 4]->get_sub_tensor(mv, sub_inputs[i])) {
+//       return false;
+//     }
+//   }
+//   if (!inputs[0]->get_sub_tensor(mv, sub_pred)) {
+//     return false;
+//   }
+//   if (!inputs[1]->get_sub_tensor(mv, sub_assign)) {
+//     return false;
+//   }
+// 
+//   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+//     return false;
+//   }
+// 
+//   AggregatePerDeviceState *m = new AggregatePerDeviceState(sim->handler, attrs.n);
+// 
+//   // allocate
+//   sim->free_all();
+//   float *input_ptrs[MAX_NUM_INPUTS];
+//   bool out_of_memory = false;
+//   for (int i = 0; i < numInputs; ++i) {
+//     input_ptrs[i] =
+//         (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+//     out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
+//   }
+//   int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
+//   out_of_memory = out_of_memory || (assign_ptr == NULL);
+//   float *pred_ptr = (float *)sim->allocate(sub_pred.get_volume(), DT_FLOAT);
+//   out_of_memory = out_of_memory || (pred_ptr == NULL);
+//   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+// 
+//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+//   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   out_of_memory = out_of_memory || (output_ptr == NULL);
+// 
+//   if (out_of_memory) {
+//     cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+//     cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+//     return true;
+//   }
+// 
+//   assert(m->profiling == false);
+// 
+//   // compute
+//   std::function<void(ffStream_t)> forward, backward;
+//   Domain assign_domain = sub_assign.get_domain();
+//   Domain exp_domain = sub_inputs[0].get_domain();
+// 
+//   int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
+//   int batch_size = assign_domain.hi()[1] - assign_domain.lo()[1] + 1;
+//   int rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+//   int out_dim = exp_domain.hi()[0] - exp_domain.lo()[0] + 1;
+// 
+//   forward = [&](ffStream_t stream) {
+//     forward_kernel(stream, m,
+//                            input_ptrs,
+//                            assign_ptr,
+//                            pred_ptr,
+//                            output_ptr,
+//                            attrs.n,
+//                            k,
+//                            rows,
+//                            batch_size,
+//                            out_dim);
+//   };
+// 
+//   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+//   log_measure.debug("[Measure Aggregate] name(%s) forward_time(%.4lf)\n",
+//                     name,
+//                     cost_metrics.forward_time);
+// 
+//   cost_metrics.backward_time = 0.0f; // not implemented for backward
+//   delete m;
+//   return true;
+// }
 
-  for (int i = 0; i < numInputs; ++i) {
-    if (!inputs[i + 4]->get_sub_tensor(mv, sub_inputs[i])) {
-      return false;
-    }
-  }
-  if (!inputs[0]->get_sub_tensor(mv, sub_pred)) {
-    return false;
-  }
-  if (!inputs[1]->get_sub_tensor(mv, sub_assign)) {
-    return false;
-  }
+template <>
+void register_task<AGGREGATE_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
 
-  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-    return false;
-  }
+  init.add_arg_slot<AggregateAttrs>(ATTRS);
+  init.add_arg_slot<bool>(PROFILING);
 
-  AggregatePerDeviceState *m = new AggregatePerDeviceState(sim->handler, attrs.n);
+  register_task(AGGREGATE_INIT_TASK_ID, "Aggregate Init", init, aggregate_init_task);
+}
 
-  // allocate
-  sim->free_all();
-  float *input_ptrs[MAX_NUM_INPUTS];
-  bool out_of_memory = false;
-  for (int i = 0; i < numInputs; ++i) {
-    input_ptrs[i] =
-        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
-    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
-  }
-  int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
-  out_of_memory = out_of_memory || (assign_ptr == NULL);
-  float *pred_ptr = (float *)sim->allocate(sub_pred.get_volume(), DT_FLOAT);
-  out_of_memory = out_of_memory || (pred_ptr == NULL);
-  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+template <>
+void register_task<AGGREGATE_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
 
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  out_of_memory = out_of_memory || (output_ptr == NULL);
+  fwd.add_input_slot(GATE_PREDS);
+  fwd.add_input_slot(GATE_ASSIGN);
+  fwd.add_input_slot(EXP_PREDS, SlotType::VARIADIC);
+  fwd.add_output_slot(OUTPUT);
 
-  if (out_of_memory) {
-    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-    return true;
-  }
+  register_task(AGGREGATE_FWD_TASK_ID, "Aggregate Fwd", fwd, aggregate_forward_task);
+}
 
-  assert(m->profiling == false);
+template <>
+void register_task<AGGREGATE_BWD_TASK_ID>() {
+  OpTaskSignature bwd(OpTaskType::BWD);
 
-  // compute
-  std::function<void(ffStream_t)> forward, backward;
-  Domain assign_domain = sub_assign.get_domain();
-  Domain exp_domain = sub_inputs[0].get_domain();
+  bwd.add_input_slot(GATE_PREDS);
+  bwd.add_input_slot(GATE_ASSIGN);
+  bwd.add_input_slot(TRUE_GATE_ASSIGN);
+  bwd.add_input_slot(FULL_GATE_GRADIENTS);
+  bwd.add_input_slot(EXP_PREDS, SlotType::VARIADIC);
+  bwd.add_output_slot(OUTPUT);
 
-  int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
-  int batch_size = assign_domain.hi()[1] - assign_domain.lo()[1] + 1;
-  int rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
-  int out_dim = exp_domain.hi()[0] - exp_domain.lo()[0] + 1;
+  bwd.add_arg_slot<AggregateAttrs>(ATTRS);
 
-  forward = [&](ffStream_t stream) {
-    forward_kernel(stream, m,
-                           input_ptrs,
-                           assign_ptr,
-                           pred_ptr,
-                           output_ptr,
-                           attrs.n,
-                           k,
-                           rows,
-                           batch_size,
-                           out_dim);
-  };
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  log_measure.debug("[Measure Aggregate] name(%s) forward_time(%.4lf)\n",
-                    name,
-                    cost_metrics.forward_time);
-
-  cost_metrics.backward_time = 0.0f; // not implemented for backward
-  delete m;
-  return true;
+  register_task(AGGREGATE_BWD_TASK_ID, "Aggregate Bwd", bwd, aggregate_backward_task);
 }
 
 }

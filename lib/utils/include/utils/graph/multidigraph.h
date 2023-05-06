@@ -6,6 +6,7 @@
 #include "node.h"
 #include "utils/visitable.h"
 #include "utils/unique.h"
+#include "utils/maybe_owned_ref.h"
 
 namespace FlexFlow {
 
@@ -57,6 +58,22 @@ struct IMultiDiGraphView : public IGraphView {
   virtual ~IMultiDiGraphView();
 };
 
+template <typename T>
+struct dep_tracked_ref {
+  dep_tracked_ref() = delete;
+  dep_tracked_ref(dep_tracked_ref const &);
+
+  constexpr operator T& () const noexcept { return *_ptr; }
+  constexpr T& get() const noexcept { return *_ptr; }
+private:
+  explicit dep_tracked_ref(T &ref)
+    : _ptr(&ref) 
+  { }
+
+  friend struct DependencyOwner;
+  T *_ptr;
+};
+
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value, RC_COPY_VIRTUAL_MSG);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
@@ -68,6 +85,43 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraph>::value, RC_COPY_VIRTUAL_MSG);
 
+struct MultiDiGraphView {
+public:
+  using Edge = MultiDiEdge;
+  using EdgeQuery = MultiDiEdgeQuery;
+
+  operator GraphView() const;
+
+  friend void swap(MultiDiGraphView &, MultiDiGraphView &);
+
+  operator maybe_owned_ref<IMultiDiGraphView const>() const {
+    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
+  }
+
+  IMultiDiGraphView const *unsafe() const {
+    return this->ptr.get(); 
+  }
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
+
+  template <typename T, typename ...Args>
+  static 
+  typename std::enable_if<std::is_base_of<IMultiDiGraphView, T>::value, MultiDiGraphView>::type 
+  create(Args &&... args) { 
+    return MultiDiGraphView(std::make_shared<T const>(std::forward<Args>(args)...));
+  }
+private:
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
+
+  friend struct MultiDiGraph;
+  friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
+private:
+  std::shared_ptr<IMultiDiGraphView const> ptr;
+};
+
+MultiDiGraphView unsafe(IMultiDiGraphView const &);
+
 struct MultiDiGraph {
 public:
   using Edge = MultiDiEdge;
@@ -75,6 +129,8 @@ public:
 
   MultiDiGraph() = delete;
   MultiDiGraph(MultiDiGraph const &);
+
+  operator MultiDiGraphView() const;
 
   MultiDiGraph &operator=(MultiDiGraph);
 
@@ -87,6 +143,7 @@ public:
   void add_edge(Edge const &e);
   void remove_edge(Edge const &e);
 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
@@ -97,9 +154,12 @@ public:
   }
 private:
   MultiDiGraph(std::unique_ptr<IMultiDiGraph>);
+
 private:
   std::unique_ptr<IMultiDiGraph> ptr;
+  std::shared_ptr<IMultiDiGraph const> ro_ptr;
 };
+
 
 static_assert(std::is_copy_constructible<MultiDiGraph>::value, "");
 static_assert(std::is_move_constructible<MultiDiGraph>::value, "");

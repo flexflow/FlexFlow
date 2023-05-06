@@ -7,17 +7,13 @@
 
 namespace FlexFlow {
 
-struct BatchMatmulAttrs {
+struct BatchMatmulAttrs : use_visitable_cmp<BatchMatmulAttrs> {
 public:
   BatchMatmulAttrs() = delete;
   BatchMatmulAttrs(int a_seq_length_dim, int b_seq_length_dim);
 public:
   int a_seq_length_dim, b_seq_length_dim;
 };
-
-bool operator==(BatchMatmulAttrs const &, BatchMatmulAttrs const &);
-bool operator!=(BatchMatmulAttrs const &, BatchMatmulAttrs const &);
-bool operator<(BatchMatmulAttrs const &, BatchMatmulAttrs const &);
 
 }
 

@@ -2,7 +2,7 @@
 #define _FF_ACCESSOR_H_
 
 #include "legion.h"
-#include "kernels/ff_handler.h"
+#include "kernels/ff_handle.h"
 #include "kernels/accessor.h"
 #include "op-attrs/ffconst.h"
 #include "mappers/mapping_utilities.h"

@@ -11,6 +11,10 @@ set(FF_MAX_NUM_WEIGHTS "64" CACHE STRING "Maximum number of weights (per operato
 set(FF_MAX_NUM_FUSED_OPERATORS "64" CACHE STRING "Maximum number of fused tensors")
 set(FF_MAX_NUM_FUSED_TENSORS "64" CACHE STRING "Maximum number of input and output tensors per fused op")
 set(FF_MAX_NUM_WORKERS "1024" CACHE STRING "Maximum number of GPUs")
+set(FF_MAX_NUM_TASK_REGIONS "20" CACHE STRING 
+  "Maximum number of regions that can be passed to a task through the TaskSpec interface")
+set(FF_MAX_NUM_TASK_ARGUMENTS "5" CACHE STRING
+  "Maximum number of arguments that can be declared in a TaskSignature")
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
 
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
@@ -27,6 +31,8 @@ function(define_ff_vars target)
     MAX_NUM_WORKERS=${FF_MAX_NUM_WORKERS}
     FF_USE_NCCL=${FF_USE_NCCL}
     MAX_TENSOR_DIM=${FF_MAX_DIM}
+    MAX_NUM_TASK_REGIONS=${FF_MAX_NUM_TASK_REGIONS}
+    MAX_NUM_TASK_ARGUMENTS=${FF_MAX_NUM_TASK_ARGUMENTS}
     )
 
   if (FF_GPU_BACKEND STREQUAL "cuda")

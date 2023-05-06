@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct TransposeAttrs {
+struct TransposeAttrs : use_visitable_cmp<TransposeAttrs> {
 public:
   TransposeAttrs() = delete;
   explicit TransposeAttrs(stack_vector<ff_dim_t, MAX_TENSOR_DIM> const &perm);

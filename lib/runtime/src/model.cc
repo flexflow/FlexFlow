@@ -61,19 +61,13 @@
 #include <dirent.h>
 #include <queue>
 #include <unordered_set>
-#include "op_node.h"
 #include "utils/containers.h"
 #include "parallel_tensor_mapping.h"
-#include "make_operator.h"
 #include "op-attrs/ops/noop.h"
 
 using namespace Legion;
 
 namespace FlexFlow {
-
-LegionRuntime::Logger::Category log_model("Model");
-LegionRuntime::Logger::Category log_measure("measure");
-LegionRuntime::Logger::Category log_profile("profile");
 
 
 /* std::unordered_map<int, int> output_to_input_mapping( */
@@ -189,32 +183,31 @@ OpNode FFModel::new_node(Op const *op) {
 //   }
 // }
 
-ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
-                                               bool create_grad,
-                                               size_t input_tensor_guid) {
-  switch (shape.num_dims()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM:                                                                    \
-    return create_parallel_tensor<DIM>(                                        \
-        shape, create_grad, input_tensor_guid);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false && "Unsupported dim!");
-  }
-}
+/* ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape, */ /*                                                bool create_grad, */
+/*                                                size_t input_tensor_guid) { */
+/*   switch (shape.num_dims()) { */
+/* #define DIMFUNC(DIM)                                                           \ */
+/*   case DIM:                                                                    \ */
+/*     return create_parallel_tensor<DIM>(                                        \ */
+/*         shape, create_grad, input_tensor_guid); */
+/*     LEGION_FOREACH_N(DIMFUNC) */
+/* #undef DIMFUNC */
+/*     default: */
+/*       assert(false && "Unsupported dim!"); */
+/*   } */
+/* } */
 
 /* Tensor FFModel::create_tensor(LegionTensorShape const &shape, */
 /*                                               bool create_grad) { */
 /*   return create_tensor(static_cast<TensorShape>(shape), create_grad); */
 /* } */
 
-ParallelTensor
-    FFModel::create_parallel_tensor(LegionParallelTensorShape const &shape,
-                                                    bool create_grad,
-                                                    size_t input_tensor_guid) {
-  return this->create_parallel_tensor(static_cast<ParallelTensorShape>(shape), create_grad, input_tensor_guid);
-}
+/* ParallelTensor */
+/*     FFModel::create_parallel_tensor(LegionParallelTensorShape const &shape, */
+/*                                                     bool create_grad, */
+/*                                                     size_t input_tensor_guid) { */
+/*   return this->create_parallel_tensor(static_cast<ParallelTensorShape>(shape), create_grad, input_tensor_guid); */
+/* } */
 
 /* template <int NDIM> */
 /* Tensor FFModel::create_tensor(TensorShape const &shape, */
@@ -396,7 +389,7 @@ void FFModel::recompile_on_condition(RecompileState &r) {
 }
 
 void FFModel::compute_metrics() {
-  Op const *final_operator = get_final_operator();
+  Operator final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor.value());
 }
@@ -1184,27 +1177,6 @@ std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
   return bwd_edge_map;
 };
 
-PerfMetrics
-    FFModel::update_metrics_task(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
-  Metrics *m = (Metrics *)task->args;
-  if (task->futures.size() == 0) {
-    // Create an empty future
-    PerfMetrics perf;
-    return perf;
-  }
-  assert(task->futures.size() > 1);
-  PerfMetrics all_metrics = task->futures[0].get_result<PerfMetrics>();
-  for (size_t i = 1; i < task->futures.size(); i++) {
-    PerfMetrics one_metrics = task->futures[i].get_result<PerfMetrics>();
-    all_metrics.update(one_metrics);
-  }
-  all_metrics.print(m);
-  return all_metrics;
-}
-
 void Op::prefetch(FFModel const &ff) {
   // TODO: perform prefetch for performance imporvement
 }
@@ -1219,34 +1191,5 @@ FFIterationConfig::FFIterationConfig() {
 void FFIterationConfig::reset() {
   seq_length = -1;
 }
-
-
-
-// template instantiations
-#define DIMFUNC(DIM)                                                           \
-  template Tensor FFModel::create_tensor<DIM>(int const dims[],                \
-                                              DataType data_type,              \
-                                              Layer const *owner_op,           \
-                                              int owner_idx,                   \
-                                              bool create_grad);               \
-  template ParallelTensor FFModel::create_parallel_tensor<DIM>(                \
-      const ParallelDim dims[],                                                \
-      DataType data_type,                                                      \
-      Op const *owner_op,                                                      \
-      int owner_idx,                                                           \
-      bool create_grad,                                                        \
-      size_t input_tensor_guid);                                               \
-  template ParallelParameter FFModel::create_parallel_weight<DIM>(             \
-      const ParallelDim dims[],                                                \
-      DataType data_type,                                                      \
-      bool create_grad,                                                        \
-      Initializer *initializer,                                                \
-      ParameterSyncType sync_type);                                            \
-  template void FFModel::map_tensor_with_dim<DIM>(ParallelTensor tensor,       \
-                                                  Op const *parallel_op);      \
-  template Tensor FFModel::create_constant<DIM>(                               \
-      int const *dims, float value, DataType data_type);                       \
-LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
 
 };

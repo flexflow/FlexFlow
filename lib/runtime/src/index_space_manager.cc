@@ -67,9 +67,9 @@ static MachineView singleton_view() {
   };
 }
 
-static int get_index_space_dimension(ParallelTensorShape const &shape) {
+static int get_index_space_dimension(ParallelTensorDims const &dims) {
   std::vector<int> parallel_idxs;
-  for (ParallelDim const &dim : shape) {
+  for (ParallelDim const &dim : dims) {
     if (dim.parallel_idx >= 0) {
       parallel_idxs.push_back(dim.parallel_idx);
     }
@@ -83,15 +83,15 @@ static int get_index_space_dimension(ParallelTensorShape const &shape) {
 }
 
 
-IndexSpace IndexSpaceManager::get_or_create_task_is(ParallelTensorShape const &shape) {
-  int index_space_dimension = get_index_space_dimension(shape);
+IndexSpace IndexSpaceManager::get_or_create_task_is(ParallelTensorDims const &dims) {
+  int index_space_dimension = get_index_space_dimension(dims);
   if (index_space_dimension == 0) {
     return get_or_create_task_is(singleton_view());
   }
 
   std::vector<optional<StridedRectangleSide>> sides(index_space_dimension, nullopt);
 
-  for (ParallelDim const &dim : shape) {
+  for (ParallelDim const &dim : dims) {
     if (dim.parallel_idx >= 0) {
       sides.at(dim.parallel_idx) = {dim.degree, 1};
     }
@@ -106,15 +106,15 @@ IndexSpace IndexSpaceManager::get_task_is(MachineView const &view) const {
   return all_task_is.at(view);
 }
 
-IndexSpace IndexSpaceManager::get_task_is(ParallelTensorShape const &shape) const {
-  int index_space_dimension = get_index_space_dimension(shape);
+IndexSpace IndexSpaceManager::get_task_is(ParallelTensorDims const &dims) const {
+  int index_space_dimension = get_index_space_dimension(dims);
   if (index_space_dimension == 0) {
     return get_task_is(singleton_view());
   }
 
   std::vector<optional<StridedRectangleSide>> sides(index_space_dimension, nullopt);
 
-  for (ParallelDim const &dim : shape) {
+  for (ParallelDim const &dim : dims) {
     if (dim.parallel_idx >= 0) {
       sides.at(dim.parallel_idx) = {dim.degree, 1};
     }

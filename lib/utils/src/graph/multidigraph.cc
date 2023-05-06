@@ -66,6 +66,12 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
   return MultiDiEdgeQuery{};
 }
 
+void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
+  using std::swap;
+
+  swap(lhs.ptr, rhs.ptr);
+}
+
 MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) 
   : ptr(other.ptr->clone())
 { }
@@ -104,9 +110,5 @@ void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
 std::unordered_set<MultiDiEdge> MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
-
-MultiDiGraph::MultiDiGraph(std::unique_ptr<IMultiDiGraph> _ptr)
-  : ptr(std::move(_ptr))
-{ }
 
 }

@@ -7,107 +7,135 @@
 #include "open_graphs.h"
 #include "utils/unique.h"
 #include "utils/exception.h"
+#include "labelled_graph_interfaces.h"
 
 namespace FlexFlow {
 
 template <typename NodeLabel>
 struct NodeLabelledMultiDiGraph {
+private:
+  using Interface = INodeLabelledMultiDiGraph<NodeLabel>;
 public:
   NodeLabelledMultiDiGraph() = delete;
-  NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &) = default;
-  NodeLabelledMultiDiGraph &operator=(NodeLabelledMultiDiGraph const &) = default;
-
-  operator MultiDiGraph const &() const {
-    return this->base_graph;
+  NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &other)
+    : ptr(other.ptr->clone())
+  { }
+  NodeLabelledMultiDiGraph &operator=(NodeLabelledMultiDiGraph other) {
+    swap(*this, other);
+    return *this;
   }
 
-  Node add_node(NodeLabel const &label) {
-    Node n = this->base_graph.add_node();
-    node_map.insert({ n, label });
-    return n;
+  friend void swap(NodeLabelledMultiDiGraph &lhs, NodeLabelledMultiDiGraph &rhs) {
+    using std::swap;
+
+    swap(lhs.ptr, rhs.ptr);
   }
 
-  NodeLabel &at(Node const &n) {
-    return this->node_map.at(n);
-  }
+  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
+  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
+  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
 
-  NodeLabel const &at(Node const &n) const {
-    return this->node_map.at(n);
+  void add_edge(MultiDiEdge const &e) { return this->ptr->add_edge(e); }
+  
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const { return this->ptr->query_nodes(q); }
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const { return this->ptr->query_edges(q); }
+
+  template <typename BaseImpl>
+  static 
+  typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value, NodeLabelledMultiDiGraph>::type
+  create() {
+    return NodeLabelledMultiDiGraph(make_unique<BaseImpl>());
   }
-protected:
-  MultiDiGraph base_graph;
 private:
-  std::unordered_map<Node, NodeLabel> node_map;
+  NodeLabelledMultiDiGraph(std::unique_ptr<Interface> ptr) 
+    : ptr(std::move(ptr)) 
+  { }
+private:
+  std::unique_ptr<Interface> ptr; 
 };
 
 template <typename NodeLabel, typename EdgeLabel>
-struct LabelledMultiDiGraph : public NodeLabelledMultiDiGraph<NodeLabel> {
-  void add_edge(MultiDiEdge const &e, EdgeLabel const &label) {
-    this->base_graph.add_edge(e);
-    edge_map.insert({ e, label });
-    return label;
+struct LabelledMultiDiGraph {
+private:
+  using Interface = ILabelledMultiDiGraph<NodeLabel, EdgeLabel>;
+public:
+  LabelledMultiDiGraph() = delete;
+  LabelledMultiDiGraph(LabelledMultiDiGraph const &other)
+    : ptr(other.ptr->clone())
+  { }
+  LabelledMultiDiGraph &operator=(LabelledMultiDiGraph other) {
+    swap(*this, other);
+    return *this;
   }
 
-  EdgeLabel &at(MultiDiEdge const &n) {
-    return this->edge_map.at(n);
+  friend void swap(LabelledMultiDiGraph &lhs, LabelledMultiDiGraph &rhs) {
+    using std::swap;
+
+    swap(lhs.ptr, rhs.ptr);
   }
 
-  EdgeLabel const &at(MultiDiEdge const &n) const {
-    return this->edge_map.at(n);
+  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
+  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
+  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+
+  void add_edge(MultiDiEdge const &e, EdgeLabel const &l) { return this->ptr->add_edge(e, l); }
+  EdgeLabel &at(MultiDiEdge const &e) { return this->ptr->at(e); }
+  EdgeLabel const &at(MultiDiEdge const &e) const { return this->ptr->at(e); }
+  
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const { return this->ptr->query_nodes(q); }
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const { return this->ptr->query_edges(q); }
+
+  template <typename BaseImpl>
+  static 
+  typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value, LabelledMultiDiGraph>::type
+  create() {
+    return LabelledMultiDiGraph(make_unique<BaseImpl>());
   }
 private:
-  std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
+  LabelledMultiDiGraph(std::unique_ptr<Interface> ptr)
+    : ptr(std::move(ptr))
+  { }
+private:
+  std::unique_ptr<Interface> ptr;
 };
-
-struct MultiDiOutput {
-  MultiDiOutput(Node const &, size_t);
-
-  Node node;
-  size_t idx;
-};
-
-bool operator==(MultiDiOutput const &, MultiDiOutput const &);
-bool operator!=(MultiDiOutput const &, MultiDiOutput const &);
-bool operator<(MultiDiOutput const &, MultiDiOutput const &);
-
-struct MultiDiInput {
-  MultiDiInput(Node const &, size_t);
-
-  Node node;
-  size_t idx;
-};
-
-MultiDiOutput get_output(MultiDiEdge const &);
-MultiDiInput get_input(MultiDiEdge const &);
 
 template <typename NodeLabel, typename OutputLabel>
-struct OutputLabelledMultiDiGraph : public NodeLabelledMultiDiGraph<NodeLabel> {
-public:
-  void add_output(MultiDiOutput const &output, OutputLabel const &label) {
-    this->output_map.insert({ output, label });
-  }
-
-  void add_edge(MultiDiEdge const &e) {
-    MultiDiOutput output = get_output(e);
-    if (!contains_key(this->output_map, output)) {
-      throw mk_runtime_error("Could not find output {}", output);
-    }
-    this->base_graph.add_edge(e);
-  }
-
-  void add_edge(MultiDiOutput const &output, MultiDiInput const &input) {
-    this->add_edge(MultiDiEdge{output.node, input.node, output.idx, input.idx});
-  }
-
-  OutputLabel &at(MultiDiOutput const &output) {
-    return this->output_map->at(output);
-  }
-
-  OutputLabel const &at(MultiDiOutput const &output) const {
-    return this->output_map->at(output);
-  }
+struct OutputLabelledMultiDiGraph {
 private:
-  std::unordered_map<MultiDiOutput, OutputLabel> output_map;
+  using Interface = IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>;
+public:
+  OutputLabelledMultiDiGraph() = delete;
+  OutputLabelledMultiDiGraph(OutputLabelledMultiDiGraph const &other)
+    : ptr(other.ptr->clone()) { }
+  OutputLabelledMultiDiGraph &operator=(OutputLabelledMultiDiGraph other) {
+    swap(*this, other);
+    return *this;
+  }
+
+  friend void swap(OutputLabelledMultiDiGraph &lhs, OutputLabelledMultiDiGraph &rhs) { 
+    using std::swap;
+
+    swap(lhs.ptr, rhs.ptr);
+  }
+
+  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
+  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
+  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+
+  void add_output(MultiDiOutput const &o, OutputLabel const &l) { return this->ptr->add_output(o, l); };
+  void add_edge(MultiDiOutput const &o, MultiDiInput const &i) { return this->ptr->add_edge(o, i); };
+
+  OutputLabel &at(MultiDiOutput const &o) { return this->ptr->at(o); }
+  OutputLabel const &at(MultiDiOutput const &o) const { return this->ptr->at(o); }
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const { return this->ptr->query_nodes(q); }
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const { return this->ptr->query_edges(q); }
+private:
+  OutputLabelledMultiDiGraph(std::unique_ptr<IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>> ptr)
+    : ptr(std::move(ptr))
+  { }
+private:
+  std::unique_ptr<Interface> ptr;
 };
 
 template<typename NodeLabel, 
@@ -115,144 +143,75 @@ template<typename NodeLabel,
          typename InputLabel = EdgeLabel, 
          typename OutputLabel = InputLabel>
 struct LabelledOpenMultiDiGraph {
+private:
+  using Interface = ILabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>;
 public:
   LabelledOpenMultiDiGraph() = delete;
-  LabelledOpenMultiDiGraph(LabelledOpenMultiDiGraph const &) = default;
-  LabelledOpenMultiDiGraph& operator=(LabelledOpenMultiDiGraph const &) = default;
+  LabelledOpenMultiDiGraph(LabelledOpenMultiDiGraph const &other)
+    : ptr(other.ptr->clone()) { }
 
-  operator OpenMultiDiGraph const &() const {
-    return this->base_graph;
-  }
-
-  Node add_node(NodeLabel const &t) {
-    Node n = this->base_graph.add_node();
-    node_map.insert({ n, t });
-    return n;
-  }
-
-  void add_edge(InputMultiDiEdge const &e, InputLabel const &label) {
-    this->base_graph.add_edge(e);
-    this->input_map.insert({e, label});
-  }
-
-  void add_edge(MultiDiEdge const &e, EdgeLabel const &label) {
-    this->base_graph.add_edge(e);
-    this->edge_map.insert({e, label});
-  }
-
-  void add_edge(OutputMultiDiEdge const &e, OutputLabel const &label) {
-    this->base_graph.add_edge(e);
-    this->output_map.insert({e, label});
-  }
-
-  NodeLabel const &at(Node const &n) const {
-    return this->node_map.at(n);
-  }
-
-  NodeLabel &at(Node const &n) {
-    return this->node_map.at(n);
-  }
-
-  EdgeLabel const &at(MultiDiEdge const &e) const {
-    return this->edge_map.at(e);
-  }
-
-  EdgeLabel &at(MultiDiEdge const &e) {
-    return this->edge_map.at(e);
-  }
-
-  InputLabel const &at(InputMultiDiEdge const &e) const {
-    return this->input_map.at(e);
-  }
-
-  InputLabel &at(InputMultiDiEdge const &e) {
-    return this->input_map.at(e);
-  }
-
-  OutputLabel const &at(OutputMultiDiEdge const &e) const {
-    return this->output_map.at(e);
-  }
-
-  OutputLabel &at(OutputOpenMultiDiEdge const &e) {
-    return this->output_map.at(e);
-  }
-
-  template <typename BaseImpl>
-  static 
-  typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, BaseImpl>::value, LabelledOpenMultiDiGraph>::type
-  create() {
-    return LabelledOpenMultiDiGraph(OpenMultiDiGraph::create<BaseImpl>());
+  LabelledOpenMultiDiGraph& operator=(LabelledOpenMultiDiGraph const &other) {
+    swap(*this, other);
+    return *this;
   }
 
   friend void swap(LabelledOpenMultiDiGraph &lhs, LabelledOpenMultiDiGraph &rhs) {
     using std::swap;
 
-    swap(lhs.base_graph, rhs.base_graph);
-    swap(lhs.node_map, rhs.node_map);
-    swap(lhs.edge_map, rhs.edge_map);
-    swap(lhs.input_map, rhs.input_map);
-    swap(lhs.output_map, rhs.output_map);
+    swap(lhs.ptr, rhs.ptr);
+  }
+
+  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
+  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
+  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const { return this->ptr->query_nodes(q); }
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const { return this->ptr->query_edges(q); }
+
+  void add_edge(MultiDiEdge const &e, EdgeLabel const &l) { return this->ptr->add_edge(e, l); }
+  EdgeLabel &at(MultiDiEdge const &e) { return this->ptr->at(e); }
+  EdgeLabel const &at(MultiDiEdge const &e) const { return this->ptr->at(e); }
+
+  void add_edge(InputMultiDiEdge const &e, InputLabel const &l) { return this->ptr->add_edge(e, l); }
+  InputLabel &at(InputMultiDiEdge const &e) { return this->ptr->at(e); }
+  InputLabel const &at(InputMultiDiEdge const &e) const { return this->ptr->at(e); }
+  
+  void add_edge(OutputMultiDiEdge const &, OutputLabel const &);
+  OutputLabel &at(OutputMultiDiEdge const &);
+  OutputLabel const &at(OutputMultiDiEdge const &) const;
+
+  template <typename BaseImpl>
+  static 
+  typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value, LabelledOpenMultiDiGraph>::type
+  create() {
+    return LabelledOpenMultiDiGraph(make_unique<BaseImpl>());
   }
 private:
-  LabelledOpenMultiDiGraph(OpenMultiDiGraph base)
-    : base_graph(std::move(base))
+  LabelledOpenMultiDiGraph(std::unique_ptr<Interface> ptr)
+    : ptr(std::move(ptr))
   { }
 private:
-  OpenMultiDiGraph base_graph;
-  std::unordered_map<Node, NodeLabel> node_map;
-  std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
-  std::unordered_map<InputMultiDiEdge, InputLabel> input_map;
-  std::unordered_map<OutputMultiDiEdge, OutputLabel> output_map;
+  std::unique_ptr<Interface> ptr;
 };
+static_assert(std::is_copy_constructible<NodeLabelledMultiDiGraph<int>>::value, "");
+static_assert(std::is_move_constructible<NodeLabelledMultiDiGraph<int>>::value, "");
+static_assert(std::is_copy_assignable<NodeLabelledMultiDiGraph<int>>::value, "");
+static_assert(std::is_move_assignable<NodeLabelledMultiDiGraph<int>>::value, "");
 
-}
+static_assert(std::is_copy_constructible<LabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_constructible<LabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_copy_assignable<LabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_assignable<LabelledMultiDiGraph<int, int>>::value, "");
 
-namespace std {
+static_assert(std::is_copy_constructible<OutputLabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_constructible<OutputLabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_copy_assignable<OutputLabelledMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_assignable<OutputLabelledMultiDiGraph<int, int>>::value, "");
 
-template <>
-struct hash<::FlexFlow::MultiDiOutput> {
-  size_t operator()(::FlexFlow::MultiDiOutput const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::MultiDiInput> {
-  size_t operator()(::FlexFlow::MultiDiInput const &) const;
-};
-
-}
-
-namespace fmt {
-
-template <>
-struct formatter<::FlexFlow::MultiDiOutput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiOutput const &x, FormatContext &ctx) const -> decltype(ctx.out()) {
-    return formatter<std::string>::format(fmt::format("MultiDiOutput({}, {})", x.node, x.idx), ctx);
-  }
-};
-
-template <>
-struct formatter<::FlexFlow::MultiDiInput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiInput const &x, FormatContext &ctx) const -> decltype(ctx.out()) {
-    return formatter<std::string>::format(fmt::format("MultiDiInput({}, {})", x.node, x.idx), ctx);
-  }
-};
-
-}
-
-VISITABLE_STRUCT(::FlexFlow::MultiDiOutput, node, idx);
-VISITABLE_STRUCT(::FlexFlow::MultiDiInput, node, idx);
-
-namespace FlexFlow {
-
-static_assert(is_hashable<MultiDiOutput>::value, "MultiDiOutput must be hashable");
-static_assert(is_equal_comparable<MultiDiOutput>::value, "MultiDiOutput must support ==");
-static_assert(is_neq_comparable<MultiDiOutput>::value, "MultiDiOutput must support !=");
-static_assert(is_lt_comparable<MultiDiOutput>::value, "MultiDiOutput must support <");
-static_assert(!is_default_constructible<MultiDiOutput>::value, "MultiDiOutput must not be default constructible");
-static_assert(is_copy_constructible<MultiDiOutput>::value, "MultiDiOutput must be copy constructible");
-static_assert(is_fmtable<MultiDiOutput>::value, "MultiDiOutput must support fmt");
+static_assert(std::is_copy_constructible<LabelledOpenMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_constructible<LabelledOpenMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_copy_assignable<LabelledOpenMultiDiGraph<int, int>>::value, "");
+static_assert(std::is_move_assignable<LabelledOpenMultiDiGraph<int, int>>::value, "");
 
 }
 

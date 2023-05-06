@@ -11,19 +11,24 @@
 
 namespace FlexFlow {
 
-struct ParallelDim {
+struct ParallelDim : public use_visitable_cmp<ParallelDim> {
+public:
   ParallelDim() = delete;
-  ParallelDim(int size, int degree, int parallel_idx, bool is_replica_dim = false);
+  ParallelDim(size_t size, int degree, int parallel_idx, bool is_replica_dim = false);
 
-  bool operator==(ParallelDim const &) const;
-  bool operator!=(ParallelDim const &) const;
-  bool operator<(ParallelDim const &) const;
-
-  int size;
+public:
+  size_t size;
   int degree;
   int parallel_idx;
   bool is_replica_dim;
 };
+
+}
+
+VISITABLE_STRUCT(::FlexFlow::ParallelDim, size, degree, parallel_idx, is_replica_dim);
+MAKE_VISIT_HASHABLE(::FlexFlow::ParallelDim);
+
+namespace FlexFlow {
 
 static_assert(is_equal_comparable<ParallelDim>::value, "ParallelDim must support ==");
 static_assert(is_neq_comparable<ParallelDim>::value, "ParallelDim must support !=");
@@ -31,15 +36,21 @@ static_assert(is_lt_comparable<ParallelDim>::value, "ParallelDim must support <"
 static_assert(!is_default_constructible<ParallelDim>::value, "ParallelDim must not be default constructible");
 static_assert(is_copy_constructible<ParallelDim>::value, "ParallelDim must be copy constructible");
 
+struct ParallelTensorDims : public FFOrdered<ParallelDim> {
+  explicit ParallelTensorDims(TensorDims const &);
+
+  size_t get_volume() const; 
+};
+
 /**
  * @brief Represent the shape of a ParallelTensor.
  */
-struct ParallelTensorShape {
+struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
 
   /**
    * @brief Default constructor.
    */
-  ParallelTensorShape() = default;
+  ParallelTensorShape() = delete;
 
   /**
    * @brief Construct a new ParallelTensorShape object.
@@ -47,61 +58,44 @@ struct ParallelTensorShape {
    * @param dims Details of each dimension
    * @param data_type The data type
    */
-  ParallelTensorShape(std::vector<ParallelDim> const &dims,
-                      DataType data_type);
+  template <typename Dims>
+  ParallelTensorShape(Dims const &dims,
+                      DataType data_type)
+    : dims(dims), data_type(data_type)
+  { }
 
   ParallelTensorShape(TensorShape const &);
 
-  bool operator==(ParallelTensorShape const &other) const;
-  bool operator!=(ParallelTensorShape const &other) const;
-
-  RecordFormatter as_dot() const;
-
   size_t get_piece_size() const;
+  TensorShape get_piece_shape() const;
   bool is_valid() const;
 
   int get_num_replica_dims() const;
   int get_num_replicas() const;
 
+  int num_dims() const;
+  ParallelDim const &at(ff_dim_t const &) const;
+  ParallelDim &at(ff_dim_t const &);
+  ParallelDim const &operator[](ff_dim_t const &) const;
+  ParallelDim &operator[](ff_dim_t const &);
+
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
 
-  ParallelDim const &at(int index) const;
-  ParallelDim &at(int index);
-
-  size_t size() const;
-  size_t num_dims() const;
-
-  using iterator = stack_vector<ParallelDim, MAX_TENSOR_DIM>::iterator;
-  using const_iterator = stack_vector<ParallelDim, MAX_TENSOR_DIM>::const_iterator;
-
-  iterator begin();
-  const_iterator begin() const;
-  const_iterator cbegin() const;
-  iterator end();
-  const_iterator end() const;
-  const_iterator cend() const;
-
+private:
+  friend std::string to_string(ParallelTensorShape const &);
 public:
-  DataType data_type;               ///< Data type
-  stack_vector<ParallelDim, MAX_TENSOR_DIM> dims;
+  ParallelTensorDims dims;
+  DataType data_type;
 };
 
-std::ostream &operator<<(std::ostream &, ParallelTensorShape const &);
+TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &);
+std::vector<TensorShape> get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
+
 }
 
-namespace std {
-template <>
-struct hash<::FlexFlow::ParallelDim> {
-  size_t operator()(::FlexFlow::ParallelDim const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::ParallelTensorShape> {
-  size_t operator()(::FlexFlow::ParallelTensorShape const &) const;
-};
-} 
-
+VISITABLE_STRUCT(::FlexFlow::ParallelTensorShape, data_type, dims);
+MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensorShape);
 
 #endif 
 

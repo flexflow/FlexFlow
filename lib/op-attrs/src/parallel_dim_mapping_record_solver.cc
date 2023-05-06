@@ -276,43 +276,43 @@ void construct_output_parallel_dims(
 
 
 
-ParallelDimMappingSolution solve_parallel_dim_mappings(
-    std::vector<ParallelDimMappingRecord> const &mappings,
-    std::vector<ParallelTensorShape> const &inputs,
-    int numWeights, int numOutputs) {
+/* ParallelDimMappingSolution solve_parallel_dim_mappings( */
+/*     std::vector<ParallelDimMappingRecord> const &mappings, */
+/*     std::vector<ParallelTensorShape> const &inputs, */
+/*     int numWeights, int numOutputs) { */
 
-  ParallelDimMappingSolution solution = [&]() -> ParallelDimMappingSolution {
-    std::vector<ParallelTensorShape> weight_shapes(numWeights);
-    std::vector<ParallelTensorShape> output_shapes(numOutputs);
-    return { weight_shapes, output_shapes };
-  }();
+/*   ParallelDimMappingSolution solution = [&]() -> ParallelDimMappingSolution { */
+/*     std::vector<ParallelTensorShape> weight_shapes(numWeights); */
+/*     std::vector<ParallelTensorShape> output_shapes(numOutputs); */
+/*     return { weight_shapes, output_shapes }; */
+/*   }(); */
 
-  for (ParallelDimMappingRecord const &record : mappings) {
-    ParallelDim const &input_dim = inputs.at(record.input_idx).at(record.input_dim);
+/*   for (ParallelDimMappingRecord const &record : mappings) { */
+/*     ParallelDim const &input_dim = inputs.at(record.input_idx).at(record.input_dim); */
 
-    switch (record.get_type()) {
-      case MappingRecordType::INPUT_OUTPUT: {
-        ParallelDim &output_dim = solution.output_shapes.at(record.output_idx).at(record.output_dim);
-        output_dim.degree = input_dim.degree;
-        output_dim.parallel_idx = input_dim.parallel_idx;
+/*     switch (record.get_type()) { */
+/*       case MappingRecordType::INPUT_OUTPUT: { */
+/*         ParallelDim &output_dim = solution.output_shapes.at(record.output_idx).at(record.output_dim); */
+/*         output_dim.degree = input_dim.degree; */
+/*         output_dim.parallel_idx = input_dim.parallel_idx; */
 
-        if (output_dim.is_replica_dim) {
-          output_dim.size = input_dim.degree;
-        }
-      } break;
-      case MappingRecordType::INPUT_WEIGHT: {
-        ParallelDim &weight_dim = solution.weight_shapes.at(record.weight_idx).at(record.weight_dim);
-        weight_dim.degree = input_dim.degree;
-        weight_dim.parallel_idx = input_dim.parallel_idx;
+/*         if (output_dim.is_replica_dim) { */
+/*           output_dim.size = input_dim.degree; */
+/*         } */
+/*       } break; */
+/*       case MappingRecordType::INPUT_WEIGHT: { */
+/*         ParallelDim &weight_dim = solution.weight_shapes.at(record.weight_idx).at(record.weight_dim); */
+/*         weight_dim.degree = input_dim.degree; */
+/*         weight_dim.parallel_idx = input_dim.parallel_idx; */
 
-        if (weight_dim.is_replica_dim) {
-          weight_dim.size = input_dim.degree;
-        }
-      } break;
-    }
-  }
+/*         if (weight_dim.is_replica_dim) { */
+/*           weight_dim.size = input_dim.degree; */
+/*         } */
+/*       } break; */
+/*     } */
+/*   } */
 
-  return solution;
-}
+/*   return solution; */
+/* } */
 
 }

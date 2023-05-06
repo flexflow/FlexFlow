@@ -25,27 +25,39 @@ private:
   IDiGraphView const &g;
 };
 
+struct UndirectedSubgraphView : public IUndirectedGraphView {
+public:
+  UndirectedSubgraphView() = delete;
+  UndirectedSubgraphView(maybe_owned_ref<IUndirectedGraphView const>, std::unordered_set<Node> const &);
+
+  std::unordered_set<UndirectedEdge> query_edges(UndirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  maybe_owned_ref<IUndirectedGraphView const> g;
+  std::unordered_set<Node> subgraph_nodes;
+};
+
 struct DiSubgraphView : public IDiGraphView {
 public:
   DiSubgraphView() = delete;
-  explicit DiSubgraphView(IDiGraphView const &, std::unordered_set<Node> const &);
+  DiSubgraphView(maybe_owned_ref<IDiGraphView const>, std::unordered_set<Node> const &);
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IDiGraphView const &g;
+  maybe_owned_ref<IDiGraphView const> g;
   std::unordered_set<Node> subgraph_nodes;
 };
 
 struct MultiDiSubgraphView : public IMultiDiGraphView {
 public: 
   MultiDiSubgraphView() = delete;
-  explicit MultiDiSubgraphView(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+  explicit MultiDiSubgraphView(maybe_owned_ref<IMultiDiGraphView const>, std::unordered_set<Node> const &);
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IMultiDiGraphView const &g;
+  maybe_owned_ref<IMultiDiGraphView const> g;
   std::unordered_set<Node> subgraph_nodes;
 };
 
@@ -102,7 +114,7 @@ private:
 struct JoinedUndirectedGraphView : public IUndirectedGraphView {
 public:
   JoinedUndirectedGraphView() = delete;
-  explicit JoinedUndirectedGraphView(IUndirectedGraphView const &lhs, IUndirectedGraphView const &rhs);
+  explicit JoinedUndirectedGraphView(maybe_owned_ref<IUndirectedGraphView const> lhs, maybe_owned_ref<IUndirectedGraphView const> rhs);
 
   std::unordered_set<UndirectedEdge> query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
@@ -110,15 +122,15 @@ private:
   UndirectedEdge fix_lhs_edge(UndirectedEdge const &) const;
   UndirectedEdge fix_rhs_edge(UndirectedEdge const &) const;
 private:
-  IUndirectedGraphView const &lhs;
-  IUndirectedGraphView const &rhs;
+  maybe_owned_ref<IUndirectedGraphView const> lhs;
+  maybe_owned_ref<IUndirectedGraphView const> rhs;
   JoinedNodeView joined_nodes;
 };
 
 struct JoinedDigraphView : public IDiGraphView {
 public:
   JoinedDigraphView() = delete;
-  explicit JoinedDigraphView(IDiGraphView const &lhs, IDiGraphView const &rhs);
+  explicit JoinedDigraphView(maybe_owned_ref<IDiGraphView const> lhs, maybe_owned_ref<IDiGraphView const> rhs);
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
@@ -128,15 +140,15 @@ private:
   DirectedEdge fix_lhs_edge(DirectedEdge const &) const;
   DirectedEdge fix_rhs_edge(DirectedEdge const &) const;
 private:
-  IDiGraphView const &lhs;
-  IDiGraphView const &rhs;
+  maybe_owned_ref<IDiGraphView const> lhs;
+  maybe_owned_ref<IDiGraphView const> rhs;
   JoinedNodeView joined_nodes;
 };
 
 struct JoinedMultiDigraphView : public IMultiDiGraphView {
 public:
   JoinedMultiDigraphView() = delete;
-  explicit JoinedMultiDigraphView(IMultiDiGraphView const &lhs, IMultiDiGraphView const &rhs);
+  JoinedMultiDigraphView(maybe_owned_ref<IMultiDiGraphView const> lhs, maybe_owned_ref<IMultiDiGraphView const> rhs);
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
@@ -146,32 +158,37 @@ private:
   MultiDiEdge fix_lhs_edge(MultiDiEdge const &) const;
   MultiDiEdge fix_rhs_edge(MultiDiEdge const &) const;
 private:
-  IMultiDiGraphView const &lhs;
-  IMultiDiGraphView const &rhs;
+  maybe_owned_ref<IMultiDiGraphView const> lhs;
+  maybe_owned_ref<IMultiDiGraphView const> rhs;
   JoinedNodeView joined_nodes;
 };
 
 struct AddDirectedEdgesView : public IDiGraphView {
 public:
   AddDirectedEdgesView() = delete;
-  explicit AddDirectedEdgesView(IDiGraphView const &g, std::unordered_set<DirectedEdge> const &edges);
+
+  explicit AddDirectedEdgesView(maybe_owned_ref<IDiGraphView const> g, std::unordered_set<DirectedEdge> const &edges);
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IDiGraphView const &g;
+  maybe_owned_ref<IDiGraphView const> g;
   std::unordered_set<DirectedEdge> edges;
 };
 
 struct SingleSourceNodeView : public IDiGraphView {
 public:
   SingleSourceNodeView() = delete;
-  explicit SingleSourceNodeView(IDiGraphView const &);
+
+  template <template <typename> class Ptr>
+  explicit SingleSourceNodeView(Ptr<IDiGraphView const> g) 
+    : g(g)
+  { }
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IDiGraphView const &g;
+  maybe_owned_ref<DiGraphView const> g;
   tl::optional<AdjacencyDiGraph> singleton_src;
   tl::optional<JoinedDigraphView> joined_view;
   std::unique_ptr<AddDirectedEdgesView> added_edges_view;
@@ -215,35 +232,39 @@ private:
 
 DirectedEdge flipped(DirectedEdge const &);
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_flipped(IDiGraphView const &);
-std::unique_ptr<IDiGraphView> view_as_flipped(std::shared_ptr<IDiGraphView const>);
 
-std::unique_ptr<IDiGraphView> unsafe_view_subgraph(IDiGraphView const &, std::unordered_set<Node> const &);
-std::unique_ptr<IDiGraphView> view_subgraph(std::shared_ptr<IDiGraphView const>, std::unordered_set<Node> const &);
+DiGraphView unsafe_view_as_flipped(DiGraphView const &);
+DiGraphView view_as_flipped(DiGraphView const &);
 
-std::unique_ptr<IMultiDiGraphView> unsafe_view_subgraph(IMultiDiGraphView const &, std::unordered_set<Node> const &);
-std::unique_ptr<IMultiDiGraphView> view_subgraph(std::shared_ptr<IMultiDiGraphView const>, std::unordered_set<Node> const &);
+UndirectedGraphView unsafe_view_subgraph(UndirectedGraphView const &, std::unordered_set<Node> const &);
+UndirectedGraphView view_subgraph(UndirectedGraphView const &, std::unordered_set<Node> const &);
 
-std::unique_ptr<IOpenMultiDiGraphView> unsafe_view_as_subgraph(IOpenMultiDiGraphView const &, std::unordered_set<Node> const &);
-std::unique_ptr<IOpenMultiDiGraphView> view_subgraph(std::shared_ptr<IOpenMultiDiGraphView const>, std::unordered_set<Node> const &);
+DiGraphView unsafe_view_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
+DiGraphView view_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
 
-std::unique_ptr<IUndirectedGraphView> unsafe_view_as_joined(IUndirectedGraphView const &, IUndirectedGraphView const &);
-std::unique_ptr<IUndirectedGraphView> view_as_joined(std::shared_ptr<IUndirectedGraphView const>, std::shared_ptr<IUndirectedGraphView const>);
+MultiDiGraphView unsafe_view_subgraph(MultiDiGraphView const &, std::unordered_set<Node> const &);
+MultiDiGraphView view_subgraph(MultiDiGraphView const &, std::unordered_set<Node> const &);
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_joined(IDiGraphView const &, IDiGraphView const &);
-std::unique_ptr<IDiGraphView> view_as_joined(std::shared_ptr<IDiGraphView const>, std::shared_ptr<IDiGraphView const>);
+OpenMultiDiGraphView unsafe_view_as_subgraph(OpenMultiDiGraphView const &, std::unordered_set<Node> const &);
+OpenMultiDiGraphView view_subgraph(OpenMultiDiGraphView const &, std::unordered_set<Node> const &);
 
-std::unique_ptr<IMultiDiGraphView> unsafe_view_as_joined(IMultiDiGraphView const &, IMultiDiGraphView const &);
-std::unique_ptr<IMultiDiGraphView> view_as_joined(std::shared_ptr<IMultiDiGraphView const>, std::shared_ptr<IDiGraphView const>);
+UndirectedGraphView unsafe_view_as_joined(UndirectedGraphView const &, UndirectedGraphView const &);
+UndirectedGraphView view_as_joined(UndirectedGraphView const &, UndirectedGraphView const &);
 
-std::unique_ptr<IDiGraphView> unsafe_view_with_added_edges(IDiGraphView const &, std::unordered_set<DirectedEdge> const &);
-std::unique_ptr<IDiGraphView> view_with_added_edges(std::shared_ptr<IDiGraphView const>, std::unordered_set<DirectedEdge> const &);
+DiGraphView unsafe_view_as_joined(DiGraphView const &, DiGraphView const &);
+DiGraphView view_as_joined(DiGraphView const &, DiGraphView const &);
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, Node const &from, Node const &into);
-std::unique_ptr<IDiGraphView> view_as_contracted(std::shared_ptr<IDiGraphView const>, Node const &from, Node const &into);
+MultiDiGraphView unsafe_view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);
+MultiDiGraphView view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, std::unordered_map<Node, Node> const &);
-std::unique_ptr<IDiGraphView> view_as_contracted(std::shared_ptr<IDiGraphView const>, std::unordered_map<Node, Node> const &);
+DiGraphView unsafe_view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);
+DiGraphView view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);
+
+DiGraphView unsafe_view_as_contracted(DiGraphView const &, Node const &from, Node const &into);
+DiGraphView view_as_contracted(DiGraphView const &, Node const &from, Node const &into);
+
+DiGraphView unsafe_view_as_contracted(DiGraphView const &, std::unordered_map<Node, Node> const &);
+DiGraphView view_as_contracted(DiGraphView const &, std::unordered_map<Node, Node> const &);
 
 std::unordered_map<Node, Node> flatten_contraction(std::unordered_map<Node, Node> const &);
 

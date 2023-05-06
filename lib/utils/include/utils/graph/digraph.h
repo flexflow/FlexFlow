@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include "utils/visitable.h"
 #include "utils/unique.h"
+#include "utils/maybe_owned_ref.h"
 
 namespace FlexFlow {
 
@@ -35,6 +36,7 @@ struct DirectedEdgeQuery {
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &, DirectedEdgeQuery const &);
 
 struct IDiGraphView : public IGraphView {
+public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
@@ -48,6 +50,47 @@ protected:
 };
 
 static_assert(is_rc_copy_virtual_compliant<IDiGraphView>::value, RC_COPY_VIRTUAL_MSG);
+
+struct DiGraphView {
+public:
+  using Edge = DirectedEdge;
+  using EdgeQuery = DirectedEdgeQuery;
+
+  DiGraphView() = delete;
+
+  operator GraphView() const;
+
+  friend void swap(DiGraphView &, DiGraphView &);
+
+  bool operator==(DiGraphView const &) const;
+  bool operator!=(DiGraphView const &) const;
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
+
+  operator maybe_owned_ref<IDiGraphView const>() const {
+    return maybe_owned_ref<IDiGraphView const>(this->ptr);
+  }
+
+  IDiGraphView const *unsafe() const {
+    return this->ptr.get(); 
+  }
+
+  template <typename T, typename ...Args>
+  static
+  typename std::enable_if<std::is_base_of<IDiGraphView, T>::value, DiGraphView>::type
+  create(Args &&... args) {
+    return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+  }
+private:
+  DiGraphView(std::shared_ptr<IDiGraphView const>);
+
+  friend DiGraphView unsafe(IDiGraphView const &);
+private:
+  std::shared_ptr<IDiGraphView const> ptr;
+};
+
+DiGraphView unsafe(IDiGraphView const &);
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
@@ -67,6 +110,8 @@ public:
 
   DiGraph &operator=(DiGraph);
 
+  operator DiGraphView() const;
+
   friend void swap(DiGraph &, DiGraph &);
 
   Node add_node();
@@ -76,6 +121,7 @@ public:
   void add_edge(Edge const &);
   void remove_edge(Edge const &);
 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>

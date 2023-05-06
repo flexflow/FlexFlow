@@ -54,10 +54,6 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
-
 private:
   bool inplace;
 

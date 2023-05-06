@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct ReductionAttrs : public use_visitable_eq<ReductionAttrs> {
+struct ReductionAttrs : public use_visitable_cmp<ReductionAttrs> {
 public:
   ReductionAttrs(ff_dim_t reduction_dim, int reduction_degree);
 public:

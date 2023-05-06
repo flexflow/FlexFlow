@@ -43,6 +43,10 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
+  OpTaskBinding get_init_task_binding() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
+
 public:
   int legion_axis;
 };

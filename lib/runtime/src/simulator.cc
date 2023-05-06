@@ -30,16 +30,16 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_sim("sim");
-LegionRuntime::Logger::Category log_ps_sim("ps_sim");
-LegionRuntime::Logger::Category log_xfer_sim("xfer_sim");
-LegionRuntime::Logger::Category log_xfer_est("xfer_est");
-
 // template class std::map<const Op*, ParallelConfig>; // for debugging in gdb
 // template class std::map<const Op*, MachineView>; // for debugging in gdb
 
 size_t CostMetrics::total_memory() const {
   return inputs_memory + outputs_memory + weights_memory;
+}
+
+float CostMetrics::total_memory_in_mb() const {
+  float mem_mb = (float)((total_memory()) / 1e4) / 1e2;
+  return mem_mb;
 }
 
 size_t CostMetrics::total_mem_diff_from(off_t sim_offset) const {
@@ -537,7 +537,7 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
     ProfilingRecordKey key{params, mv};
     if (this->strict_hash_to_operator_cost.find(key) ==
         this->strict_hash_to_operator_cost.end()) {
-      CostMetrics cost_metrics;
+      CostMetrics cost_metrics{};
       bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
       if (!is_implemented) {
         handle_measure_operator_cost_unimplemented(op);
@@ -558,7 +558,7 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
       hash_to_operator_cost.find(hash);
 
   if (iter == hash_to_operator_cost.end()) {
-    CostMetrics cost_metrics;
+    CostMetrics cost_metrics{};
     bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
     if (!is_implemented) {
       handle_measure_operator_cost_unimplemented(op);

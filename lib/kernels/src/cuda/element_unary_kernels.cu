@@ -78,7 +78,7 @@ void init_kernel(ElementUnaryPerDeviceState *m,
 
 template <DataType T>
 struct ForwardKernel {
-  void operator()(ffStream_t stream, ElementUnaryPerDeviceState const *m, GenericTensorAccessorR const &input, GenericTensorAccessorW const &output) {
+  void operator()(ffStream_t stream, ElementUnaryPerDeviceState const *m, GenericTensorAccessorR const &input, GenericTensorAccessorW const &output) const {
     checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
     if (use_cudnn(m->op_type)) {
       float alpha = 1.0f, beta = 0.0f;

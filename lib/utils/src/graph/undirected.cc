@@ -1,4 +1,6 @@
 #include "utils/graph/undirected.h"
+#include <cassert>
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
@@ -6,9 +8,20 @@ UndirectedEdge::UndirectedEdge(Node src, Node dst)
   : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger))
 { }
 
-UndirectedEdgeQuery::UndirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &nodes) 
+UndirectedEdgeQuery::UndirectedEdgeQuery(optional<std::unordered_set<Node>> const &nodes) 
   : nodes(nodes)
 { }
+
+UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs, UndirectedEdgeQuery const &rhs) {
+  if (!lhs.nodes.has_value()) {
+    return rhs;
+  } else if (!rhs.nodes.has_value()) {
+    return lhs;
+  } else {
+    assert (lhs.nodes.has_value() && rhs.nodes.has_value());
+    return { intersection(*lhs.nodes, *rhs.nodes) };
+  }
+}
 
 UndirectedGraph::UndirectedGraph(UndirectedGraph const &other)
   : ptr(other.ptr->clone())

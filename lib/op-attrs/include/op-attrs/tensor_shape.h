@@ -3,24 +3,32 @@
 
 #include "utils/stack_vector.h"
 #include "ffconst.h"
+#include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
+#include "op-attrs/dim_ordered.h"
 
 namespace FlexFlow {
 
-struct TensorShape {
-  TensorShape() = delete;
-  TensorShape(std::vector<size_t> const &dims, DataType data_type);
+using TensorDims = FFOrdered<size_t>;
 
-  template <size_t MAXSIZE>
-  TensorShape(stack_vector<size_t, MAXSIZE> const &dims, DataType data_type)
-    : dims(dims.start(), dims.end()), data_type(data_type)
+struct TensorShape : use_visitable_cmp<TensorShape> {
+  TensorShape() = delete;
+
+  template <typename Dims>
+  TensorShape(Dims const &dims, DataType data_type)
+    : dims(dims), data_type(data_type)
   { }
 
-  int num_dims() const;
+  size_t at(ff_dim_t) const;
+  size_t operator[](ff_dim_t) const;
 public:
+  TensorDims dims;
   DataType data_type;
-  stack_vector<size_t, MAX_TENSOR_DIM> dims;
 };
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::TensorShape, dims, data_type);
+MAKE_VISIT_HASHABLE(::FlexFlow::TensorShape);
 
 #endif

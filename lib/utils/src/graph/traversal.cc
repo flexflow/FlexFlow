@@ -9,12 +9,12 @@ using udi = unchecked_dfs_iterator;
 using bfi = bfs_iterator;
 /* using bdi = BoundaryDFSView::boundary_dfs_iterator; */
 
-udi::unchecked_dfs_iterator(IDiGraphView const &g, std::vector<Node> const &stack)
-  : stack(stack), graph(&g)
+udi::unchecked_dfs_iterator(DiGraphView const &g, std::vector<Node> const &stack)
+  : stack(stack), graph(g)
 { }
 
-udi::unchecked_dfs_iterator(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) 
-  : graph(&g)
+udi::unchecked_dfs_iterator(DiGraphView const &g, std::unordered_set<Node> const &starting_points) 
+  : graph(g)
 {
   for (Node const &n : starting_points) {
     this->stack.push_back(n);
@@ -29,7 +29,7 @@ udi& udi::operator++() {
   Node const last = this->operator*();
   this->stack.pop_back();
 
-  std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(*graph, {last});
+  std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(graph, {last});
   for (DirectedEdge const &e : outgoing) {
     stack.push_back(e.dst);
   }
@@ -54,11 +54,11 @@ bool udi::operator!=(udi const &other) const {
  return this->stack != other.stack; 
 }
 
-cdi::checked_dfs_iterator(IDiGraphView const &g, std::vector<Node> const &stack, std::unordered_set<Node> const &seen) 
+cdi::checked_dfs_iterator(DiGraphView const &g, std::vector<Node> const &stack, std::unordered_set<Node> const &seen) 
   : iter(g, stack), seen(seen)
 { }
 
-cdi::checked_dfs_iterator(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) 
+cdi::checked_dfs_iterator(DiGraphView const &g, std::unordered_set<Node> const &starting_points) 
   : iter(g, starting_points), seen{}
 { }
 
@@ -88,12 +88,12 @@ bool cdi::operator!=(cdi const &other) const {
  return this->iter != other.iter && this->seen != other.seen; 
 }
 
-bfi::bfs_iterator(IDiGraphView const &g, std::queue<Node> const &q, std::unordered_set<Node> const &seen) 
-  : graph(&g), q(q), seen(seen)
+bfi::bfs_iterator(DiGraphView const &g, std::queue<Node> const &q, std::unordered_set<Node> const &seen) 
+  : graph(g), q(q), seen(seen)
 { }
 
-bfi::bfs_iterator(IDiGraphView const &g, std::unordered_set<Node> const &starting_points)
-  : graph(&g)
+bfi::bfs_iterator(DiGraphView const &g, std::unordered_set<Node> const &starting_points)
+  : graph(g)
 { 
   for (Node const &n : starting_points) {
     this->q.push(n);
@@ -109,7 +109,7 @@ bfi& bfi::operator++() {
   this->seen.insert(current);
   this->q.pop();
 
-  std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(*graph, {current});
+  std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(graph, {current});
   for (DirectedEdge const &e : outgoing) {
     if (!contains(this->seen, e.dst)) {
       this->q.push(e.dst);
@@ -137,16 +137,16 @@ bool bfi::operator!=(bfi const &other) const {
   return this->q != other.q || this->seen != other.seen && this->graph != other.graph;
 }
 
-CheckedDFSView::CheckedDFSView(IDiGraphView const *g, std::unordered_set<Node> const &starting_points) 
+CheckedDFSView::CheckedDFSView(DiGraphView const &g, std::unordered_set<Node> const &starting_points) 
   : graph(g), starting_points(starting_points)
 { }
 
 checked_dfs_iterator CheckedDFSView::cbegin() const {
-  return checked_dfs_iterator(*this->graph, this->starting_points);
+  return checked_dfs_iterator(this->graph, this->starting_points);
 }
 
 checked_dfs_iterator CheckedDFSView::cend() const {
-  return checked_dfs_iterator(*this->graph, {}, get_nodes(*this->graph));
+  return checked_dfs_iterator(this->graph, {}, get_nodes(this->graph));
 }
 
 checked_dfs_iterator CheckedDFSView::begin() const {
@@ -157,20 +157,20 @@ checked_dfs_iterator CheckedDFSView::end() const {
   return this->cend();
 }
 
-CheckedDFSView dfs(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
-  return CheckedDFSView(&g, starting_points);
+CheckedDFSView dfs(DiGraphView const &g, std::unordered_set<Node> const &starting_points) {
+  return CheckedDFSView(g, starting_points);
 }
 
-UncheckedDFSView::UncheckedDFSView(IDiGraphView const *g, std::unordered_set<Node> const &starting_points) 
+UncheckedDFSView::UncheckedDFSView(DiGraphView const &g, std::unordered_set<Node> const &starting_points) 
   : graph(g), starting_points(starting_points)
 { }
 
 unchecked_dfs_iterator UncheckedDFSView::cbegin() const {
-  return unchecked_dfs_iterator(*this->graph, this->starting_points);
+  return unchecked_dfs_iterator(this->graph, this->starting_points);
 }
 
 unchecked_dfs_iterator UncheckedDFSView::cend() const {
-  return unchecked_dfs_iterator(*this->graph, std::vector<Node>{});
+  return unchecked_dfs_iterator(this->graph, std::vector<Node>{});
 }
 
 unchecked_dfs_iterator UncheckedDFSView::begin() const {
@@ -181,20 +181,20 @@ unchecked_dfs_iterator UncheckedDFSView::end() const {
   return this->cend();
 }
 
-UncheckedDFSView unchecked_dfs(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
-  return UncheckedDFSView(&g, starting_points);
+UncheckedDFSView unchecked_dfs(DiGraphView const &g, std::unordered_set<Node> const &starting_points) {
+  return UncheckedDFSView(g, starting_points);
 }
 
-BFSView::BFSView(IDiGraphView const &g, std::unordered_set<Node> const &starting_points)
-  : graph(&g), starting_points(starting_points)
+BFSView::BFSView(DiGraphView const &g, std::unordered_set<Node> const &starting_points)
+  : graph(g), starting_points(starting_points)
 { }
 
 bfs_iterator BFSView::cbegin() const {
-  return bfs_iterator(*this->graph, this->starting_points);
+  return bfs_iterator(this->graph, this->starting_points);
 }
 
 bfs_iterator BFSView::cend() const {
-  return bfs_iterator(*this->graph, std::queue<Node>{}, get_nodes(*this->graph));
+  return bfs_iterator(this->graph, std::queue<Node>{}, get_nodes(this->graph));
 }
 
 bfs_iterator BFSView::begin() const {
@@ -205,7 +205,7 @@ bfs_iterator BFSView::end() const {
   return this->cend();
 }
 
-BFSView bfs(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
+BFSView bfs(DiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   return BFSView(g, starting_points);
 }
 

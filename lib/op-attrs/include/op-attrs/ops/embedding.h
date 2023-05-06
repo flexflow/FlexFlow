@@ -27,7 +27,6 @@ VISITABLE_STRUCT(::FlexFlow::EmbeddingAttrs, num_entries, out_channels, aggr, da
 MAKE_VISIT_HASHABLE(::FlexFlow::EmbeddingAttrs);
 
 namespace FlexFlow {
-static_assert(is_valid_opattr<EmbeddingAttrs>::value, "EmbeddingAttrs must be a valid opattr (see core.h)");
-}
+static_assert(is_valid_opattr<EmbeddingAttrs>::value, "EmbeddingAttrs must be a valid opattr (see core.h)"); }
 
 #endif 

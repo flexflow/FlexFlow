@@ -57,7 +57,6 @@ public:
   /* bool is_valid_parallel_config(FFModel const &ff, */
   /*                               ParallelConfig const &pc) const override; */
 
-  void serialize(Legion::Serializer &) const override;
   /* static PCG::Node deserialize(FFModel &ff, */
   /*                              Legion::Deserializer &d, */
   /*                              ParallelTensor inputs[], */
@@ -100,7 +99,6 @@ public:
   int in_channels, out_channels;
   ActiMode activation;
   bool use_bias;
-  ParallelTensor replica;
 };
 
 }

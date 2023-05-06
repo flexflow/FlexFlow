@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct ReshapeAttrs : public use_visitable_eq<ReshapeAttrs> {
+struct ReshapeAttrs : public use_visitable_cmp<ReshapeAttrs> {
 public:
   ReshapeAttrs() = delete;
   explicit ReshapeAttrs(TensorShape const &shape);

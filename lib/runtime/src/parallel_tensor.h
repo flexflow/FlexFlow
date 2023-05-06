@@ -28,17 +28,13 @@
 #include <ostream>
 #include <unordered_map>
 #include "utils/strong_typedef.h"
-#include "tensor.h"
+#include "create_grad.h"
+#include "initializer.h"
+#include "parallel_tensor_guid_t.h"
 
 namespace FlexFlow {
 
 class FFModel;
-class Initializer;
-
-struct parallel_tensor_guid_t : strong_typedef<parallel_tensor_guid_t, size_t> {
-  using strong_typedef::strong_typedef;
-};
-
 class FFConfig;
 
 /**
@@ -47,15 +43,14 @@ class FFConfig;
  * @details Parallel tensor is the fundamental component to support the
  * representation and exploration of parallelization strategies.
  */
-struct ParallelTensorBase {
-  ParallelTensorBase() = delete;
-  ParallelTensorBase(ParallelTensorBase const &rhs);
+struct ParallelTensor {
+  ParallelTensor() = delete;
+  ParallelTensor(ParallelTensor const &rhs);
 
-  ParallelTensorBase(parallel_tensor_guid_t guid,
-                     ParallelTensorShape const &,
-                     bool create_gradients,
-                     optional<ParameterSyncType> sync_type = nullopt,
-                     Initializer *initializer = nullptr);
+  ParallelTensor(ParallelTensorShape const &,
+                 CreateGrad create_gradients,
+                 optional<ParameterSyncType> sync_type = nullopt,
+                 Initializer *initializer = nullptr);
 
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
@@ -64,12 +59,12 @@ struct ParallelTensorBase {
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
   bool get_input_sub_tensor(MachineView const &,
-                            ParallelTensorBase &tensor,
+                            ParallelTensor &tensor,
                             OperatorType type);
   bool get_sub_tensor(MachineView const &mv,
-                      ParallelTensorBase &subtensor) const;
+                      ParallelTensor &subtensor) const;
   bool get_output_sub_tensor(MachineView const &,
-                             ParallelTensorBase &tensor,
+                             ParallelTensor &tensor,
                              OperatorType type);
   size_t get_owner_independent_hash() const;
   size_t get_volume() const;
@@ -92,72 +87,23 @@ struct ParallelTensorBase {
 private:
   template <typename T>
   bool get_input_sub_tensor_via_mappings(MachineView const &,
-                                         ParallelTensorBase &tensor) const;
+                                         ParallelTensor &tensor) const;
 
 public:
-  parallel_tensor_guid_t guid;
-  int num_dims = 0;
-  stack_vector<ParallelDim, MAX_TENSOR_DIM> dims;
-  DataType data_type = DT_NONE;
+  ParallelTensorDims dims;
+  DataType data_type;
   ParameterSyncType sync_type = ParameterSyncType::NONE;
-  Initializer *initializer = nullptr;
-
+  optional<Initializer> initializer = nullopt;
   bool create_gradients = false;
-
-  // The following fields are initialized after model.compile
-  tl::optional<MachineView> machine_view = tl::nullopt;
-  Legion::IndexSpace parallel_is = Legion::IndexSpace::NO_SPACE;
-  Legion::LogicalRegion region = Legion::LogicalRegion::NO_REGION,
-                        region_grad = Legion::LogicalRegion::NO_REGION;
-  Legion::LogicalPartition part = Legion::LogicalPartition::NO_PART,
-                           part_grad = Legion::LogicalPartition::NO_PART;
-  Legion::PhysicalRegion physical_region;
 };
-
-struct ParallelTensor {
-public:
-  ParallelTensor() = delete;
-  
-  ParallelTensor(parallel_tensor_guid_t guid,
-                     ParallelTensorShape const &,
-                     CreateGrad create_gradients,
-                     optional<ParameterSyncType> sync_type = nullopt,
-                     Initializer *initializer = nullptr);
-  ParallelTensor(std::shared_ptr<ParallelTensorBase> ptr) 
-    : ptr(ptr) 
-  { }
-
-  /* template <typename ...Args> */
-  /* ParallelTensor(Args&&...args) */
-  /*   : ParallelTensor(std::make_shared<ParallelTensorBase>(std::forward<Args>(args)...)) */
-  /* { } */
-
-  /* ParallelTensorBase *operator->(); */
-  ParallelTensorBase const *operator->() const;
-private:
-  std::shared_ptr<ParallelTensorBase const> ptr;
-};
-
 using ParallelParameter = ParallelTensor;
 
-struct ParallelTensorManager {
-  ParallelTensor create(ParallelTensorShape const &shape,
-                        CreateGrad create_grad,
-                        optional<ParameterSyncType> sync_type = nullopt,
-                        Initializer *initializer = nullptr) {
-    return ParallelTensor(this->next_id(), shape, create_grad, sync_type, initializer);
-  }
+}
 
-  ParallelTensor at(parallel_tensor_guid_t) const;
-private:
-  parallel_tensor_guid_t next_id() {
-    return parallel_tensor_guid_t(this->parallel_tensor_global_guid++);
-  }
+VISITABLE_STRUCT(::FlexFlow::ParallelTensor, dims, data_type, sync_type, initializer, create_gradients);
 
-  size_t parallel_tensor_global_guid = PARALLEL_TENSOR_GUID_FIRST_VALID;
-};
-
-
+namespace FlexFlow {
+static_assert(std::is_copy_constructible<ParallelTensor>::value, "");
 }
 
 #endif

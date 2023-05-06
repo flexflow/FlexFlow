@@ -1,9 +1,12 @@
 #ifndef _FLEXFLOW_TASKS_H
 #define _FLEXFLOW_TASKS_H
 
+#include <string>
+#include "utils/optional.h"
+
 namespace FlexFlow {
 
-enum TaskID {
+enum task_id_t {
   TOP_LEVEL_TASK_ID,
   FF_INIT_TASK_ID,
   IMAGE_INIT_TASK_ID,
@@ -56,10 +59,8 @@ enum TaskID {
   LAYERNORM_FWD_TASK_ID,
   LAYERNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
-  LINEAR_INIT_PARA_TASK_ID,
   LINEAR_FWD_TASK_ID,
   LINEAR_BWD_TASK_ID,
-  LINEAR_BWD2_TASK_ID,
   LINEAR_UPD_TASK_ID,
   FLAT_INIT_TASK_ID,
   FLAT_FWD_TASK_ID,
@@ -177,6 +178,19 @@ enum TaskID {
 };
 
 void register_flexflow_internal_tasks();
+
+template <typename F>
+void register_task(task_id_t, std::string const &name, F const &func, optional<F const &> cpu_func = nullopt);
+
+template <task_id_t> void register_task();
+
+void register_tasks();
+
+template <task_id_t id, task_id_t ...ids> 
+void register_tasks() {
+  register_task<id>();
+  register_tasks<ids...>();
+}
 
 }
 

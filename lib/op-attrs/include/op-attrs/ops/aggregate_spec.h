@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct AggregateSpecAttrs {
+struct AggregateSpecAttrs : public use_visitable_cmp<AggregateSpecAttrs> {
 public:
   AggregateSpecAttrs() = delete;
   AggregateSpecAttrs(int n, float lambda_bal);
@@ -15,19 +15,18 @@ public:
   int n;
   float lambda_bal;
 };
-bool operator==(AggregateSpecAttrs const &, AggregateSpecAttrs const &);
-bool operator!=(AggregateSpecAttrs const &, AggregateSpecAttrs const &);
-bool operator<(AggregateSpecAttrs const &, AggregateSpecAttrs const &);
+
+ParallelTensorShape get_output_shape(AggregateSpecAttrs const &,
+                                     ParallelTensorShape const &gate_preds,
+                                     ParallelTensorShape const &gate_assign,
+                                     ParallelTensorShape const &true_gate_assign,
+                                     ParallelTensorShape const &gate_gradients_full,
+                                     std::vector<ParallelTensorShape> const &exp_preds);
+
 }
 
 VISITABLE_STRUCT(::FlexFlow::AggregateSpecAttrs, n, lambda_bal);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::AggregateSpecAttrs> {
-  size_t operator()(::FlexFlow::AggregateSpecAttrs const &) const;
-};
-}
+MAKE_VISIT_HASHABLE(::FlexFlow::AggregateSpecAttrs);
 
 namespace FlexFlow {
 

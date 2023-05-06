@@ -1,28 +1,30 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/hash-utils.h"
-#include "utils/visitable_funcs.h"
 #include "utils/containers.h"
-
-VISITABLE_STRUCT(::FlexFlow::ParallelDim, size, degree, parallel_idx, is_replica_dim);
-VISITABLE_STRUCT(::FlexFlow::ParallelTensorShape, dims, data_type);
 
 namespace FlexFlow {
 
-ParallelDim::ParallelDim(int size, int degree, int parallel_idx, bool is_replica_dim) 
+ParallelDim::ParallelDim(size_t size, int degree, int parallel_idx, bool is_replica_dim) 
   : size(size), degree(degree), parallel_idx(parallel_idx), is_replica_dim(is_replica_dim)
 { }
 
-bool ParallelDim::operator==(ParallelDim const &other) const {
-  return visit_eq(*this, other);
+static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
+  std::vector<ParallelDim> lifted_dims;
+  for (size_t dim_size : dims) {
+    lifted_dims.push_back({dim_size, 1, -1, false});
+  }
+  lifted_dims.push_back({1, 1, -1, true});
+  return lifted_dims;
 }
 
-bool ParallelDim::operator!=(ParallelDim const &other) const {
-  return visit_neq(*this, other);
-}
+ParallelTensorDims::ParallelTensorDims(TensorDims const &dims) 
+  : FFOrdered<ParallelDim>(lift_dims(dims))
+{ }
+  
 
-ParallelTensorShape::ParallelTensorShape(std::vector<ParallelDim> const &dims,
-                                         DataType data_type)
-    : dims(dims.cbegin(), dims.cend()), data_type(data_type) { }
+ParallelTensorShape::ParallelTensorShape(TensorShape const &tensor_shape)
+  : dims(tensor_shape.dims), data_type(tensor_shape.data_type)
+{ }
 
 int ParallelTensorShape::get_num_replica_dims() const {
   int num_replica_dims = 0;
@@ -46,57 +48,4 @@ int ParallelTensorShape::get_num_replicas() const {
   return num_replicas;
 }
 
-std::ostream &operator<<(std::ostream &s, ParallelTensorShape const &shape) {
-  s << "[ ";
-  for (ParallelDim const &dim : shape) {
-    s << dim.size << "/" << dim.degree << " ";
-  };
-  s << "]";
-
-  return s;
-}
-
-ParallelDim const &ParallelTensorShape::at(int index) const {
-  return this->dims.at(index);
-}
-
-ParallelDim &ParallelTensorShape::at(int index) {
-  return this->dims.at(index);
-}
-
-size_t ParallelTensorShape::size() const {
-  return this->dims.size();
-}
-
-size_t ParallelTensorShape::num_dims() const {
-  return this->dims.size();
-}
-
-ParallelTensorShape::iterator ParallelTensorShape::begin() { return this->dims.begin(); };
-ParallelTensorShape::const_iterator ParallelTensorShape::begin() const { return this->cbegin(); };
-ParallelTensorShape::const_iterator ParallelTensorShape::cbegin() const { return this->dims.cbegin(); };
-
-ParallelTensorShape::iterator ParallelTensorShape::end() { return this->dims.end(); };
-ParallelTensorShape::const_iterator ParallelTensorShape::end() const { return this->cend(); };
-ParallelTensorShape::const_iterator ParallelTensorShape::cend() const { return this->dims.cend(); };
-
-}
-
-namespace std {
-using ::FlexFlow::ParallelDim;
-using ::FlexFlow::ParallelTensorShape;
-
-size_t hash<ParallelDim>::operator()(ParallelDim const &dim) const {
-  return visit_hash(dim);
-}
-
-size_t hash<ParallelTensorShape>::operator()(
-    ParallelTensorShape const &shape) const {
-  size_t key = 0;
-  hash_combine(key, shape.size());
-  for (ParallelDim const &dim : shape) {
-    hash_combine(key, dim);
-  }
-  return key;
-}
 }

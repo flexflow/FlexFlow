@@ -49,6 +49,7 @@ typedef cublasHandle_t ffblasHandle_t;
 typedef cudnnStatus_t ffStatus_t;
 typedef cudaDataType_t ffDataType_t ;
 typedef cudnnDataType_t ffCudnnDataType_t;
+typedef cudaError_t ffError_t;
 #elif defined(FF_USE_HIP_ROCM)
 typedef hipStream_t ffStream_t;
 hipError_t get_legion_stream(hipStream_t *stream);
@@ -72,6 +73,7 @@ typedef hipblasHandle_t ffblasHandle_t;
 typedef miopenStatus_t ffStatus_t;
 typedef hipblasDataType_t ffDataType_t ;
 typedef miopenDataType_t ffCudnnDataType_t;
+typedef hipError_t ffError_t;
 #else
 #error "Unknown device"
 #endif
@@ -94,6 +96,12 @@ typedef miopenDataType_t ffCudnnDataType_t;
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
+
+ffError_t ffEventCreate(ffEvent_t *);
+ffError_t ffEventDestroy(ffEvent_t &);
+ffError_t ffEventRecord(ffEvent_t &, ffStream_t);
+ffError_t ffEventSynchronize(ffEvent_t &);
+ffError_t ffEventElapsedTime(float *elapsed, ffEvent_t &start, ffEvent_t &stop);
 
 }
 

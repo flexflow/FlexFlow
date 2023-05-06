@@ -24,7 +24,7 @@
 #include "layer.h"
 #include "legion.h"
 #include "loss_functions.h"
-#include "metrics_functions/metrics_functions.h"
+#include "metrics_functions.h"
 #include "optimizer.h"
 #include "parallel_tensor.h"
 #include "recompile.h"
@@ -37,9 +37,8 @@
 #include "compiler/compiler.h"
 #include "op-attrs/ffconst.h"
 #include "layer_id.h"
-#include "kernels/ff_handler.h"
-#include "op_node.h"
-#include "tensor_shape.h"
+#include "kernels/ff_handle.h"
+#include "op-attrs/tensor_shape.h"
 #include "legion_parallel_tensor_shape.h"
 #include "index_space_manager.h"
 #include "parallel_tensor_uses.h"
@@ -47,6 +46,7 @@
 #include "parallel_computation_graph.h"
 #include "tensor_mapping.h"
 #include "operator.h"
+#include "parallel_tensor_legion_backing.h"
 
 namespace FlexFlow {
 
@@ -129,11 +129,10 @@ private:
   std::vector<Op *> get_operators();
   std::vector<Op const *> get_operators() const;
 public:
-  size_t op_global_guid = OP_GUID_FIRST_VALID;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer = nullptr;
-  optional<Loss> loss_op = nullopt;
+  optional<LossAttrs> loss_op = nullopt;
   optional<Metrics> metrics_op = nullopt;
   std::unique_ptr<Simulator> simulator = nullptr;
   int metrics_input;
@@ -141,15 +140,15 @@ public:
   optional<Tensor> label_tensor;
 
   IndexSpaceManager index_space_mgr;
-  ParallelTensorManager parallel_tensor_mgr;
-  OpNodeManager op_node_mgr;
   ComputationGraph computation_graph;
   ParallelComputationGraph pcg;
   ParallelTensorUses uses;
   TensorMapping tensor_map;
 
+  std::unordered_map<parallel_tensor_guid_t, ParallelTensorLegionBacking> legion_backing;
+
   std::vector<ParallelTensor> parameters;
-  std::vector<FFHandler> handlers;
+  std::vector<PerDeviceFFHandle> handles;
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   /* std::unordered_map<PCGOperatorAttrs, Op*> cached_ops; */
@@ -174,7 +173,6 @@ private:
                float scalar = 0.0);
   ElementUnary *
       unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
-  OpNode new_node(Op const *);
 };
 
 

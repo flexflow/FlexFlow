@@ -68,15 +68,18 @@ struct variant_join_helper<variant<>, variant<Args2...>> {
 };
 
 template <template <typename, typename = void> typename Cond, typename Head, typename ...Ts>
-struct elements_satisfy<Cond, variant<Head, Ts...>>
+struct elements_satisfy_impl<Cond, void, variant<Head, Ts...>>
   : conjunction<Cond<Head>, elements_satisfy<Cond, variant<Ts...>>> { };
 
 template <template <typename, typename = void> typename Cond>
-struct elements_satisfy<Cond, variant<>> : std::true_type { };
+struct elements_satisfy_impl<Cond, void, variant<>> : std::true_type { };
 
 
 template <class Variant1, class Variant2>
 using variant_join = typename variant_join_helper<Variant1, Variant2>::type;
+
+template <class Variant1, typename ...T>
+using variant_add = variant_join<Variant1, variant<T...>>;
 
 static_assert(std::is_same<variant_join<variant<int, float>, variant<float, double>>, variant<int, float, double>>::value, "");
 static_assert(std::is_same<variant_join<variant<int>, variant<float, double>>, variant<int, float, double>>::value, "");

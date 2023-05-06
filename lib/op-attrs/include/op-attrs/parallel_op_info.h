@@ -5,28 +5,23 @@
 #include <tuple>
 #include <functional>
 #include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
-struct ParallelOpInfo {
+struct ParallelOpInfo : use_visitable_cmp<ParallelOpInfo> {
+public:
+  ParallelOpInfo() = delete;
+  ParallelOpInfo(OperatorType op_type, ff_dim_t parallel_dim, int parallel_degree); 
+public:
   OperatorType op_type;
-  int parallel_dim;
+  ff_dim_t parallel_dim;
   int parallel_degree;
 };
-
-bool operator==(ParallelOpInfo const &, ParallelOpInfo const &);
-bool operator!=(ParallelOpInfo const &, ParallelOpInfo const &);
-bool operator<(ParallelOpInfo const &, ParallelOpInfo const &);
 
 }
 
 VISITABLE_STRUCT(::FlexFlow::ParallelOpInfo, op_type, parallel_dim, parallel_degree);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::ParallelOpInfo> {
-  size_t operator()(::FlexFlow::ParallelOpInfo const &) const;
-};
-}
+MAKE_VISIT_HASHABLE(::FlexFlow::ParallelOpInfo);
 
 #endif

@@ -7,6 +7,7 @@
 #include "utils/optional.h"
 #include <type_traits>
 #include "utils/visitable.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
 
@@ -61,11 +62,23 @@ struct is_trivially_serializable_t<T, typename std::enable_if<visit_trivially_se
 template <typename T>
 struct is_trivially_serializable_t<T, typename std::enable_if<std::is_integral<T>::value>::type> : std::true_type { };
 
+template <>
+struct is_trivially_serializable_t<half> : std::true_type { };
+
 template <typename T>
 struct is_trivially_serializable_t<T, typename std::enable_if<std::is_enum<T>::value>::type> : std::true_type { };
 
 template <typename T>
 struct is_trivially_serializable_t<T, typename std::enable_if<std::is_floating_point<T>::value>::type> : std::true_type { };
+
+template <typename Idx, typename T>
+struct is_trivially_serializable_t<DimOrdered<Idx, T>> : is_trivially_serializable_t<T>{ };
+
+template <typename ...Ts>
+struct is_trivially_serializable_t<variant<Ts...>> : elements_satisfy<is_trivially_serializable_t, variant<Ts...>> { };
+
+template <typename T>
+struct is_trivially_serializable_t<optional<T>> : is_trivially_serializable_t<T> { };
 
 template <typename T> struct std_array_size_helper;
 
@@ -90,6 +103,13 @@ constexpr bool is_serializable = is_serializable_t<T>::value;
 template <typename T>
 constexpr bool is_trivially_serializable = is_trivially_serializable_t<T>::value;
 
+static_assert(is_trivially_serializable<float>, "");
+static_assert(is_trivially_serializable<double>, "");
+static_assert(is_trivially_serializable<int32_t>, "");
+static_assert(is_trivially_serializable<int64_t>, "");
+static_assert(is_trivially_serializable<half>, "");
+static_assert(is_trivially_serializable<bool>, "");
+static_assert(is_trivially_serializable<variant<float, double>>, "");
 static_assert(std::is_same<visit_as_tuple<InternalTestType>, std::tuple<int, float>>::value, "");
 static_assert(visit_trivially_serializable<InternalTestType>::value, "");
 static_assert(is_trivially_serializable<InternalTestType>, "");

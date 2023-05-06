@@ -1,6 +1,5 @@
 #include "op-attrs/ops/layer_norm.h"
 #include "utils/hash-utils.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 

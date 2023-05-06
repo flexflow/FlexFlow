@@ -39,7 +39,6 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  void serialize(Legion::Serializer &s) const override;
   /* static PCG::Node deserialize(FFModel &ff, */
   /*                              Legion::Deserializer &d, */
   /*                              ParallelTensor inputs[], */
