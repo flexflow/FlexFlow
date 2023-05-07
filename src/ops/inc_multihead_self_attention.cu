@@ -358,7 +358,6 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
-  int tokens_prev_requests_squares = 0;
   int qkv_block_size =
       (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
   int kt_block_size = m->kProjSize * MAX_SEQ_LEN;
@@ -392,8 +391,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     // padding)
     void const *B = (void const *)(m->keyCache + i * kt_req_block_size);
     // To get C, skip over QK^T products from previous requests
-    void *C =
-        (void *)(m->qk_prods + m->num_heads * tokens_prev_requests_squares);
+    void *C = (void *)(m->qk_prods);
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_T,
@@ -458,8 +456,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                           h_param,
                                           w_param));
     alpha = 1.0f, beta = 0.0f;
-    void *C_softmax = (void *)(m->qk_prods_softmax +
-                               m->num_heads * tokens_prev_requests_squares);
+    void *C_softmax = (void *)(m->qk_prods_softmax);
     // The softmax operation below is executed according to the
     // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
     // softmax operation is computed per spatial location (H,W) per image (N)
@@ -546,7 +543,6 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     tokens_previous_requests += num_new_tokens;
-    tokens_prev_requests_squares += num_new_tokens * total_tokens;
   }
 
   assert(tokens_previous_requests == num_tokens);
@@ -670,8 +666,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t value_cache_size =
         num_heads * vProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
     size_t tokeninfo_size = BatchConfig::MAX_NUM_TOKENS;
-    size_t qk_prod_size =
-        BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads;
+    size_t qk_prod_size = BatchConfig::MAX_NUM_TOKENS * MAX_SEQ_LEN * num_heads;
     size_t attn_heads_size =
         BatchConfig::MAX_NUM_TOKENS * num_heads * vProjSize;
     size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
