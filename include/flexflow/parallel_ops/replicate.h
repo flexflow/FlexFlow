@@ -39,6 +39,20 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
+
+  template <typename T>
+  static void
+      forward_task_with_type(Legion::Task const *task, 
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
+
+  template <typename T>
+  static void backward_task_with_type(Legion::Task const *task, 
+                                      std::vector<Legion::PhysicalRegion> const &regions,
+                                      Legion::Context ctx, 
+                                      Legion::Runtime *runtime);
+
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
