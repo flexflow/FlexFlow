@@ -40,7 +40,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     hipEventRecord(t_start, stream);
   }
 
-  handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY);
+  handle_unimplemented_hip_kernel(OP_TREE_INC_MULTIHEAD_SELF_ATTENTION);
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);
