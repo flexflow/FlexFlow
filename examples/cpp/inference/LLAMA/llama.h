@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/inference.h"
 #include "flexflow/batch_config.h"
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
 #define MAX_TOKEN_LEN 32000

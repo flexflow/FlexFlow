@@ -810,9 +810,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size =
         BeamSearchBatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
-    size_t key_cache_size = num_heads * kProjSize *
-                            BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-                            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+    size_t key_cache_size =
+        num_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+        BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
     size_t value_cache_size =
         num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
         BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;

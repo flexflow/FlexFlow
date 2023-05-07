@@ -42,7 +42,6 @@
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
-#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -57,6 +56,7 @@
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -4674,9 +4674,8 @@ void register_flexflow_internal_tasks() {
         "TreeIncMultiHeadSelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        OpMeta *,
-        TreeIncMultiHeadSelfAttention::init_task>(
+    Runtime::preregister_task_variant<OpMeta *,
+                                      TreeIncMultiHeadSelfAttention::init_task>(
         registrar, "TreeIncMultiHeadSelfAttention Init Task");
   }
   {

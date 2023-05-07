@@ -102,13 +102,12 @@ __global__ void
   }
 }
 
-void compute_qkv_kernel(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    float const *input_ptr,
-    float const *weight_ptr,
-    float *output_ptr,
-    cudaStream_t stream) {
+void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        float const *input_ptr,
+                        float const *weight_ptr,
+                        float *output_ptr,
+                        cudaStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -327,13 +326,12 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-__global__ void fill_entries_above_diagonal(
-    float *matrix,
-    size_t num_rows,
-    size_t num_cols,
-    size_t num_heads,
-    size_t entries_above_diagonal,
-    float value) {
+__global__ void fill_entries_above_diagonal(float *matrix,
+                                            size_t num_rows,
+                                            size_t num_cols,
+                                            size_t num_heads,
+                                            size_t entries_above_diagonal,
+                                            float value) {
   CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_heads) {
     size_t head_idx = i / entries_above_diagonal;
     size_t entry_idx = i % entries_above_diagonal;
@@ -344,11 +342,10 @@ __global__ void fill_entries_above_diagonal(
   }
 }
 
-void compute_attention_kernel(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    float *output_ptr,
-    cudaStream_t stream) {
+void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                              BatchConfig const *bc,
+                              float *output_ptr,
+                              cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(DT_FLOAT);
@@ -394,8 +391,7 @@ void compute_attention_kernel(
     // padding)
     void const *B = (void const *)(m->keyCache + i * kt_req_block_size);
     // To get C, skip over QK^T products from previous requests
-    void *C =
-        (void *)(m->qk_prods);
+    void *C = (void *)(m->qk_prods);
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_T,
@@ -665,10 +661,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size =
         BatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
-    size_t key_cache_size =
-        num_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS * BatchConfig::MAX_SEQ_LENGTH;
-    size_t value_cache_size =
-        num_heads * vProjSize * BatchConfig::MAX_NUM_REQUESTS * BatchConfig::MAX_SEQ_LENGTH;
+    size_t key_cache_size = num_heads * kProjSize *
+                            BatchConfig::MAX_NUM_REQUESTS *
+                            BatchConfig::MAX_SEQ_LENGTH;
+    size_t value_cache_size = num_heads * vProjSize *
+                              BatchConfig::MAX_NUM_REQUESTS *
+                              BatchConfig::MAX_SEQ_LENGTH;
     size_t tokeninfo_size = BatchConfig::MAX_NUM_TOKENS;
     size_t qk_prod_size =
         BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_SEQ_LENGTH * num_heads;

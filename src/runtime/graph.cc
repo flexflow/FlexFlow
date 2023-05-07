@@ -31,7 +31,6 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
-#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -45,6 +44,7 @@
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -2761,7 +2761,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
         node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
-                                                                   params);
+                                                                 params);
         break;
       }
       case OP_TOPK: {

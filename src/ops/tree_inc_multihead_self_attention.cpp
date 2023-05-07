@@ -69,7 +69,6 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
-TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(
-    void) {}
+TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {}
 
 }; // namespace FlexFlow

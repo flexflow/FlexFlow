@@ -98,6 +98,7 @@ public:
                                        float const *weight_ptr,
                                        float *output_ptr);
   Params get_params() const;
+
 public:
   int num_heads;
   float dropout;

@@ -142,19 +142,19 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
   layer->get_int_property("apply_rotary_embedding", value);
   bool apply_rotary_embedding = (bool)value;
   return new TreeIncMultiHeadSelfAttention(model,
-                                             layer->layer_guid,
-                                             inputs[0],
-                                             embed_dim,
-                                             num_heads,
-                                             kdim,
-                                             vdim,
-                                             dropout,
-                                             bias,
-                                             add_bias_kv,
-                                             add_zero_attn,
-                                             apply_rotary_embedding,
-                                             false /*allocate_weights*/,
-                                             layer->name);
+                                           layer->layer_guid,
+                                           inputs[0],
+                                           embed_dim,
+                                           num_heads,
+                                           kdim,
+                                           vdim,
+                                           dropout,
+                                           bias,
+                                           add_bias_kv,
+                                           add_zero_attn,
+                                           apply_rotary_embedding,
+                                           false /*allocate_weights*/,
+                                           layer->name);
 }
 
 TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
@@ -331,19 +331,19 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     const ParallelTensor input,
     bool allocate_weights)
     : TreeIncMultiHeadSelfAttention(model,
-                                      other.layer_guid,
-                                      input,
-                                      other.oProjSize,
-                                      other.num_heads,
-                                      other.qProjSize,
-                                      other.vProjSize,
-                                      other.dropout,
-                                      other.bias,
-                                      other.add_bias_kv,
-                                      other.add_zero_attn,
-                                      other.apply_rotary_embedding,
-                                      allocate_weights,
-                                      other.name) {}
+                                    other.layer_guid,
+                                    input,
+                                    other.oProjSize,
+                                    other.num_heads,
+                                    other.qProjSize,
+                                    other.vProjSize,
+                                    other.dropout,
+                                    other.bias,
+                                    other.add_bias_kv,
+                                    other.add_zero_attn,
+                                    other.apply_rotary_embedding,
+                                    allocate_weights,
+                                    other.name) {}
 
 TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
@@ -352,19 +352,19 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     bool allocate_weights,
     char const *name)
     : TreeIncMultiHeadSelfAttention(model,
-                                      params.layer_guid,
-                                      input,
-                                      params.embed_dim,
-                                      params.num_heads,
-                                      params.kdim,
-                                      params.vdim,
-                                      params.dropout,
-                                      params.bias,
-                                      params.add_bias_kv,
-                                      params.add_zero_attn,
-                                      params.apply_rotary_embedding,
-                                      allocate_weights,
-                                      name) {}
+                                    params.layer_guid,
+                                    input,
+                                    params.embed_dim,
+                                    params.num_heads,
+                                    params.kdim,
+                                    params.vdim,
+                                    params.dropout,
+                                    params.bias,
+                                    params.add_bias_kv,
+                                    params.add_zero_attn,
+                                    params.apply_rotary_embedding,
+                                    allocate_weights,
+                                    name) {}
 
 void TreeIncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
@@ -481,13 +481,8 @@ OpMeta *TreeIncMultiHeadSelfAttention::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  TreeIncMultiHeadSelfAttentionMeta *m =
-      new TreeIncMultiHeadSelfAttentionMeta(handle,
-                                              attn,
-                                              weight.get_float_ptr(),
-                                              gpu_mem,
-                                              num_samples,
-                                              num_heads);
+  TreeIncMultiHeadSelfAttentionMeta *m = new TreeIncMultiHeadSelfAttentionMeta(
+      handle, attn, weight.get_float_ptr(), gpu_mem, num_samples, num_heads);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
   return m;
@@ -1377,7 +1372,7 @@ void TreeIncMultiHeadSelfAttention::backward(FFModel const &ff) {
 }
 
 bool TreeIncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
-                                                        int *value) const {
+                                                      int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
       *value = num_heads;
