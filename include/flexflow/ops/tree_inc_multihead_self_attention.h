@@ -15,50 +15,50 @@
 
 namespace FlexFlow {
 
-class IncMultiHeadSelfAttentionVerifyMeta;
+class TreeIncMultiHeadSelfAttentionMeta;
 
-class IncMultiHeadSelfAttentionVerify : public Op {
+class TreeIncMultiHeadSelfAttention : public Op {
 public:
-  using Params = IncMultiHeadSelfAttentionVerifyParams;
+  using Params = TreeIncMultiHeadSelfAttentionParams;
   using Input = ParallelTensor;
 
-  IncMultiHeadSelfAttentionVerify(FFModel &model,
-                                  LayerID const &layer_guid,
-                                  const ParallelTensor _input,
-                                  int _embed_dim,
-                                  int _num_heads,
-                                  int _kdim,
-                                  int _vdim,
-                                  float _dropout,
-                                  bool _bias,
-                                  bool _add_bias_kv,
-                                  bool _add_zero_attn,
-                                  bool _apply_rotary_embedding,
-                                  bool allocate_weights,
-                                  char const *name);
-  IncMultiHeadSelfAttentionVerify(FFModel &model,
-                                  const ParallelTensor _input,
-                                  const ParallelTensor _weight,
-                                  int _embed_dim,
-                                  int _num_heads,
-                                  int _kdim,
-                                  int _vdim,
-                                  float _dropout,
-                                  bool _bias,
-                                  bool _add_bias_kv,
-                                  bool _add_zero_attn,
-                                  bool _apply_rotary_embedding,
-                                  bool allocate_weights,
-                                  char const *name);
-  IncMultiHeadSelfAttentionVerify(FFModel &model,
-                                  IncMultiHeadSelfAttentionVerify const &other,
-                                  const ParallelTensor input,
-                                  bool allocate_weights);
-  IncMultiHeadSelfAttentionVerify(FFModel &model,
-                                  Params const &params,
-                                  Input const &inputs,
-                                  bool allocate_weights = false,
-                                  char const *name = nullptr);
+  TreeIncMultiHeadSelfAttention(FFModel &model,
+                                LayerID const &layer_guid,
+                                const ParallelTensor _input,
+                                int _embed_dim,
+                                int _num_heads,
+                                int _kdim,
+                                int _vdim,
+                                float _dropout,
+                                bool _bias,
+                                bool _add_bias_kv,
+                                bool _add_zero_attn,
+                                bool _apply_rotary_embedding,
+                                bool allocate_weights,
+                                char const *name);
+  TreeIncMultiHeadSelfAttention(FFModel &model,
+                                const ParallelTensor _input,
+                                const ParallelTensor _weight,
+                                int _embed_dim,
+                                int _num_heads,
+                                int _kdim,
+                                int _vdim,
+                                float _dropout,
+                                bool _bias,
+                                bool _add_bias_kv,
+                                bool _add_zero_attn,
+                                bool _apply_rotary_embedding,
+                                bool allocate_weights,
+                                char const *name);
+  TreeIncMultiHeadSelfAttention(FFModel &model,
+                                TreeIncMultiHeadSelfAttention const &other,
+                                const ParallelTensor input,
+                                bool allocate_weights);
+  TreeIncMultiHeadSelfAttention(FFModel &model,
+                                Params const &params,
+                                Input const &inputs,
+                                bool allocate_weights = false,
+                                char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -93,7 +93,7 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   static void
-      inference_kernel_wrapper(IncMultiHeadSelfAttentionVerifyMeta const *m,
+      inference_kernel_wrapper(TreeIncMultiHeadSelfAttentionMeta const *m,
                                TreeVerifyBatchConfig const *bc,
                                float const *input_ptr,
                                float const *weight_ptr,
@@ -109,16 +109,15 @@ public:
   int qoSeqLength, kvSeqLength;
 };
 
-class IncMultiHeadSelfAttentionVerifyMeta : public OpMeta {
+class TreeIncMultiHeadSelfAttentionMeta : public OpMeta {
 public:
-  IncMultiHeadSelfAttentionVerifyMeta(
-      FFHandler handler,
-      IncMultiHeadSelfAttentionVerify const *attn,
-      float const *weight_ptr,
-      Legion::Memory gpu_mem,
-      int num_samples,
-      int _num_heads);
-  ~IncMultiHeadSelfAttentionVerifyMeta(void);
+  TreeIncMultiHeadSelfAttentionMeta(FFHandler handler,
+                                    TreeIncMultiHeadSelfAttention const *attn,
+                                    float const *weight_ptr,
+                                    Legion::Memory gpu_mem,
+                                    int num_samples,
+                                    int _num_heads);
+  ~TreeIncMultiHeadSelfAttentionMeta(void);
 
 public:
   Realm::RegionInstance reserveInst;

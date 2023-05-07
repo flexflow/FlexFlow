@@ -15,6 +15,7 @@
 #pragma once
 
 #include "file_loader.h"
+#include "flexflow/batch_config.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -34,7 +35,7 @@ struct LLAMAConfig {
     batchSize = 5;
     total_requests = 2560;
     incremental_mode = true;
-    sequence_length = MAX_SEQ_LEN;
+    sequence_length = BatchConfig::MAX_SEQ_LENGTH;
     max_seq_len = 8;
     max_beam_width = 3;
     max_beam_depth = 3;

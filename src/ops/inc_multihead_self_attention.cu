@@ -102,12 +102,12 @@ __global__ void
   }
 }
 
-void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
-                       BatchConfig const *bc,
-                       float const *input_ptr,
-                       float const *weight_ptr,
-                       float *output_ptr,
-                       cudaStream_t stream) {
+void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        float const *input_ptr,
+                        float const *weight_ptr,
+                        float *output_ptr,
+                        cudaStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -289,9 +289,9 @@ __global__ void store_kv_cache(float const *devQKVProjArray,
   }
 }
 
-void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
-                       BatchConfig const *bc,
-                       cudaStream_t stream) {
+void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                            BatchConfig const *bc,
+                            cudaStream_t stream) {
   int num_tokens = bc->num_active_tokens();
   if (num_tokens > 0) {
     int parallelism = m->kProjSize * num_tokens * m->num_heads;
@@ -306,7 +306,7 @@ void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
                                m->vProjSize,
                                num_tokens,
                                m->num_heads,
-                               MAX_SEQ_LEN,
+                               BatchConfig::MAX_SEQ_LENGTH,
                                /* k_cache = */ true);
 
     parallelism = m->vProjSize * num_tokens * m->num_heads;
@@ -321,7 +321,7 @@ void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
                                m->vProjSize,
                                num_tokens,
                                m->num_heads,
-                               MAX_SEQ_LEN,
+                               BatchConfig::MAX_SEQ_LENGTH,
                                /* k_cache = */ false);
   }
 }
@@ -342,10 +342,10 @@ __global__ void fill_entries_above_diagonal(float *matrix,
   }
 }
 
-void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
-                       BatchConfig const *bc,
-                       float *output_ptr,
-                       cudaStream_t stream) {
+void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                              BatchConfig const *bc,
+                              float *output_ptr,
+                              cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(DT_FLOAT);
@@ -358,12 +358,11 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
-  int tokens_prev_requests_squares = 0;
   int qkv_block_size =
       (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
-  int kt_block_size = m->kProjSize * MAX_SEQ_LEN;
+  int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
   int kt_req_block_size = kt_block_size * m->num_heads;
-  int vt_block_size = m->vProjSize * MAX_SEQ_LEN;
+  int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
   int vt_req_block_size = vt_block_size * m->num_heads;
   assert(m->qProjSize == m->kProjSize);
 
@@ -392,8 +391,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     // padding)
     void const *B = (void const *)(m->keyCache + i * kt_req_block_size);
     // To get C, skip over QK^T products from previous requests
-    void *C =
-        (void *)(m->qk_prods + m->num_heads * tokens_prev_requests_squares);
+    void *C = (void *)(m->qk_prods);
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_T,
@@ -458,8 +456,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                           h_param,
                                           w_param));
     alpha = 1.0f, beta = 0.0f;
-    void *C_softmax = (void *)(m->qk_prods_softmax +
-                               m->num_heads * tokens_prev_requests_squares);
+    void *C_softmax = (void *)(m->qk_prods_softmax);
     // The softmax operation below is executed according to the
     // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
     // softmax operation is computed per spatial location (H,W) per image (N)
@@ -546,7 +543,6 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     tokens_previous_requests += num_new_tokens;
-    tokens_prev_requests_squares += num_new_tokens * total_tokens;
   }
 
   assert(tokens_previous_requests == num_tokens);
@@ -593,14 +589,14 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                   cudaMemcpyHostToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
-  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
+  compute_qkv_kernel(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
   // phase 2: Update key/val cache
-  inference_kernel2(m, bc, stream);
+  update_kv_cache_kernel(m, bc, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  inference_kernel3(m, bc, output_ptr, stream);
+  compute_attention_kernel(m, bc, output_ptr, stream);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -652,10 +648,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   assert(!attn->add_bias_kv);
 
 #ifdef INFERENCE_TESTS
-  kcache = (float *)calloc(kProjSize * MAX_SEQ_LEN * num_heads *
+  kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
                                BatchConfig::MAX_NUM_REQUESTS,
                            sizeof(float));
-  vcache = (float *)calloc(vProjSize * MAX_SEQ_LEN * num_heads *
+  vcache = (float *)calloc(vProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
                                BatchConfig::MAX_NUM_REQUESTS,
                            sizeof(float));
 #endif
@@ -665,13 +661,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size =
         BatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
-    size_t key_cache_size =
-        num_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
-    size_t value_cache_size =
-        num_heads * vProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
+    size_t key_cache_size = num_heads * kProjSize *
+                            BatchConfig::MAX_NUM_REQUESTS *
+                            BatchConfig::MAX_SEQ_LENGTH;
+    size_t value_cache_size = num_heads * vProjSize *
+                              BatchConfig::MAX_NUM_REQUESTS *
+                              BatchConfig::MAX_SEQ_LENGTH;
     size_t tokeninfo_size = BatchConfig::MAX_NUM_TOKENS;
     size_t qk_prod_size =
-        BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads;
+        BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_SEQ_LENGTH * num_heads;
     size_t attn_heads_size =
         BatchConfig::MAX_NUM_TOKENS * num_heads * vProjSize;
     size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);

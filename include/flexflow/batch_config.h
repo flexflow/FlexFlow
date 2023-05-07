@@ -20,7 +20,6 @@
 
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
-#define MAX_SEQ_LEN 20
 // #define BATCH_SIZE 16
 // #define MAX_REQUESTS 256
 
@@ -45,6 +44,7 @@ public:
   void print() const;
   static int const MAX_NUM_REQUESTS = 8;
   static int const MAX_NUM_TOKENS = 64;
+  static int const MAX_SEQ_LENGTH = 512;
 
   //  These are set by update
   int num_tokens;

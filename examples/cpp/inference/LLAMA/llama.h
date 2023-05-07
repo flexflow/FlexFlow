@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
@@ -36,7 +37,7 @@ struct LLAMAConfig {
     batchSize = 5;
     total_requests = 2560;
     incremental_mode = true;
-    sequence_length = MAX_SEQ_LEN;
+    sequence_length = BatchConfig::MAX_SEQ_LENGTH;
     max_seq_len = 8;
 
     // todo from args

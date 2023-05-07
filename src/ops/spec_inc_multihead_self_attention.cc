@@ -69,7 +69,7 @@ Tensor
                                                char const *name) {
   // Currently assume that
   Layer *li = new Layer(this,
-                        OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION,
+                        OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
                         DT_FLOAT,
                         name,
                         1 /*inputs*/,
@@ -176,7 +176,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION,
+         OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
          DT_FLOAT,
          name,
          1 /*inputs*/,
@@ -260,7 +260,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION,
+         OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
          DT_FLOAT,
          name,
          1 /*inputs*/,
@@ -382,7 +382,7 @@ void SpecIncMultiHeadSelfAttention::init_inference(
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(
-      SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+      SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
       parallel_is,
       TaskArgument(this, sizeof(SpecIncMultiHeadSelfAttention)),
       argmap,
@@ -421,7 +421,7 @@ void SpecIncMultiHeadSelfAttention::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(
-      SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+      SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
       parallel_is,
       TaskArgument(this, sizeof(SpecIncMultiHeadSelfAttention)),
       argmap,
@@ -510,7 +510,7 @@ FutureMap SpecIncMultiHeadSelfAttention::inference(
   size_t machine_view_hash = view->hash();
   int idx = 0;
   IndexLauncher launcher(
-      SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+      SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
       parallel_is,
       TaskArgument(
           &bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
