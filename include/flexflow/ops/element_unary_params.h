@@ -10,6 +10,7 @@ struct ElementUnaryParams {
   OperatorType op_type;
   bool inplace;
   float scalar = 0.0;
+  LayerID layer_guid;
 
   bool is_valid(ParallelTensorShape const &) const;
 };
