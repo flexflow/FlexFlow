@@ -96,7 +96,7 @@ void FlexFlow::top_level_task(Task const *task,
   // n transformer blocks impl
   int num_transformer_layers_per_gpu = (32 + num_devices - 1) / num_devices;
 
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 32; i++) {
     // step 1: attention
     std::vector<int> axes = {2};
     Tensor att_norm = ff.rms_norm(token, llamaConfig.norm_eps, llamaConfig.dim);

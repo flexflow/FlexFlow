@@ -15,9 +15,9 @@
 #pragma once
 
 #include <string>
-
+#include "flexflow/batch_config.h"
 // #define MAX_SEQ_LEN 1024
-#define MAX_SEQ_LEN 20
+static const int MAX_SEQ_LEN = FlexFlow::BatchConfig::MAX_SEQ_LENGTH;
 #define BATCH_SIZE 16
 #define MNIST_DIMS 28 * 28
 #define DATA_DIM MNIST_DIMS

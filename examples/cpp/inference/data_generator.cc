@@ -19,6 +19,7 @@
 #include <iostream>
 #include <vector>
 using namespace std;
+using namespace FlexFlow;
 
 DataGenerator::DataGenerator(size_t _num_requests,
                              size_t _vocab_size,
@@ -35,7 +36,7 @@ DataGenerator::DataGenerator(size_t _num_requests,
       poisson_distr(_poisson_distr), lambda(_lambda), timer_started(false) {
   assert(max_input_tokens >= min_input_tokens);
   assert(max_tokens_to_generate >= min_tokens_to_generate);
-  assert(max_input_tokens + max_tokens_to_generate <= MAX_SEQ_LEN);
+  assert(max_input_tokens + max_tokens_to_generate <= BatchConfig::MAX_SEQ_LENGTH);
   generate_requests_meta();
 };
 
