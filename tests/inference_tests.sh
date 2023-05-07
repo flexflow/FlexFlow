@@ -7,9 +7,8 @@ cd "${BASH_SOURCE[0]%/*}"
 
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit 1; fi
 GPUS=$1
-BATCHSIZE=$((GPUS * 64))
 FSIZE=13800
-ZSIZE=12192
+ZSIZE=30000
 
 GPU_AVAILABLE=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
 if [ $(( GPUS )) -gt $(( GPU_AVAILABLE )) ]; then echo "The test requires $GPUS GPUs, but only $GPU_AVAILABLE are available. Try reducing the number of nodes, or the number of gpus/node." ; exit; fi
@@ -21,7 +20,7 @@ if [[ -f "$FF_HOME/build/examples/cpp/inference/LLAMA/LLAMA" ]]; then
 	echo "Running C++ tests from folder: $FF_HOME/build/examples/cpp"
 	# Inference examples
 	if [ $(( GPU_AVAILABLE )) -lt $(( 4 )) ]; then echo "Skipping LLAMA test because it requires 4 GPUs, but only $GPU_AVAILABLE are available. " ; exit 1; fi
-	"$FF_HOME"/build/examples/cpp/inference/LLAMA/LLAMA -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize 30000 --only-data-parallel
+	"$FF_HOME"/build/examples/cpp/inference/LLAMA/LLAMA -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 	#"$FF_HOME"/build/examples/cpp/inference/mixture_of_experts/inference_moe -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 	#"$FF_HOME"/build/examples/cpp/inference/transformers/inference_transformers -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 else
@@ -38,7 +37,7 @@ else
 			found=true
 			# Inference examples
 			if [ $(( GPU_AVAILABLE )) -lt $(( 4 )) ]; then echo "Skipping LLAMA test because it requires 4 GPUs, but only $GPU_AVAILABLE are available. " ; exit 1; fi
-			LLAMA -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize 30000 --only-data-parallel
+			LLAMA -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 			#inference_moe -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 			#inference_transformers -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 		fi
