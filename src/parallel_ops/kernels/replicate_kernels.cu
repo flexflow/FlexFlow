@@ -68,6 +68,42 @@ template void backward_kernel<float>(float const *output_grad_ptr,
                                      float *input_grad_ptr,
                                      size_t num_elements,
                                      size_t num_replicas);
+template void forward_kernel<double>(double const *input_ptr,
+                                    double *output_ptr,
+                                    size_t num_elements);
+template __global__ void
+    replicate_backward_kernel<double>(double const *input_ptr,
+                                     double *output_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
+template void backward_kernel<double>(double const *output_grad_ptr,
+                                     double *input_grad_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
+template void forward_kernel<int32_t>(float const *input_ptr,
+                                    int32_t *output_ptr,
+                                    size_t num_elements);
+template __global__ void
+    replicate_backward_kernel<int32_t>(float const *input_ptr,
+                                     int32_t *output_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
+template void backward_kernel<int32_t>(float const *output_grad_ptr,
+                                     int32_t *input_grad_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
+template void forward_kernel<double>(double const *input_ptr,
+                                    double *output_ptr,
+                                    size_t num_elements);
+template __global__ void
+    replicate_backward_kernel<double>(double const *input_ptr,
+                                     double *output_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
+template void backward_kernel<double>(double const *output_grad_ptr,
+                                     double *input_grad_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
 
 } // namespace Replicate
 } // namespace Kernels
