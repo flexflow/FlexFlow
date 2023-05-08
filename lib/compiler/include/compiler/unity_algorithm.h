@@ -28,12 +28,14 @@ struct ICostEstimator {
                               MachineView const &dst) = 0;
 };
 
-std::unordered_set<Node> get_closed_sources(IOpenMultiDiGraphView const &g);
-std::unordered_set<Node> get_closed_sinks(IOpenMultiDiGraphView const &g);
-std::unordered_set<Node> get_open_sources(IOpenMultiDiGraphView const &g);
-std::unordered_set<Node> get_open_sinks(IOpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
 
-std::unordered_set<MultiDiEdge> get_cut(IOpenMultiDiGraphView const &g, GraphSplit const &split);
+std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g, GraphSplit const &split);
+
+using SubParallelComputationGraph = LabelledOpenMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape, MachineView>;
 
 SubParallelComputationGraph get_subgraph(SubParallelComputationGraph const &g,
                                         std::unordered_set<Node> const &nodes,
@@ -51,7 +53,7 @@ enum class OutputSettings {
 };
 
 struct ParallelComputationGraph {
-  IMultiDiGraphView const &graph() const;
+  MultiDiGraphView const &graph() const;
   PCGOperatorAttrs const &at(Node const &) const;
 };
 

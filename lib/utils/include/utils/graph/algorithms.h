@@ -136,6 +136,7 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 UndirectedGraphView get_subgraph(UndirectedGraphView const &g, std::unordered_set<Node> const &nodes);
 DiGraphView get_subgraph(DiGraphView const &g, std::unordered_set<Node> const &nodes);
 MultiDiGraphView get_subgraph(MultiDiGraphView const &g, std::unordered_set<Node> const &nodes);
+OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes);
 MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);
 UndirectedGraphView join(UndirectedGraphView const &lhs, UndirectedGraphView const &rhs);

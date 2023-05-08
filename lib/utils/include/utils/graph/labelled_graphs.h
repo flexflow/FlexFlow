@@ -155,6 +155,8 @@ public:
     return *this;
   }
 
+  operator OpenMultiDiGraph() const;
+
   friend void swap(LabelledOpenMultiDiGraph &lhs, LabelledOpenMultiDiGraph &rhs) {
     using std::swap;
 

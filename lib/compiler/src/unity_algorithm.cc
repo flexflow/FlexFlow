@@ -3,7 +3,7 @@
 namespace FlexFlow {
 
 SerialParallelDecomposition get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
-  return get_serial_parallel_decomposition(*unsafe_view_as_digraph(pcg.graph()));
+  return get_serial_parallel_decomposition(unsafe_view_as_digraph(pcg.graph()));
 }
 
 std::vector<MultiDiEdge> get_sorted_node_input_edges(ParallelComputationGraph const &pcg, Node const &n) {
@@ -91,8 +91,6 @@ void minimize(T &t, T const &v) {
   t = std::min(t, v);
 }
 
-using SubParallelComputationGraph = LabelledOpenMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape, MachineView>;
-
 SubParallelComputationGraph get_subgraph(
   SubParallelComputationGraph const &g,
   std::unordered_set<Node> const &nodes,
@@ -100,31 +98,21 @@ SubParallelComputationGraph get_subgraph(
   OutputSettings output_settings) {
   
   OpenMultiDiGraph const &base_graph(g);
-  // I need to access the view of an OpenMultiDiGraph
-  OpenMultiDiGraph base_subgraph = get_subgraph(base_graph, nodes);
+  OpenMultiDiGraphView base_subgraph = get_subgraph(OpenMultiDiGraphView(base_graph), nodes);
 
-  if (input_settings == InputSettings::EXCLUDE_INPUTS) {
-    for (auto input_edge : get_sources(base_subgraph)) {
-      base_subgraph.remove_edge(input_edge);
-    }
-  }
-
-  if (output_settings == OutputSettings::EXCLUDE_OUTPUTS) {
-    for (auto output_edge : get_sinks(base_subgraph)) {
-      base_subgraph.remove_edge(output_edge);
-    }
-  }
-
-  auto subgraph = SubParallelComputationGraph::create<OpenMultiDiGraph>();
-  // Can I create without manually adding each node and edge?
-  for (Node node : get_nodes(base_subgraph)) {
+  auto subgraph = SubParallelComputationGraph::create<UnorderedLabelledOpenMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape, MachineView>>();
+  for (Node node : base_subgraph.query_nodes({})) {
     subgraph.add_node(g.at(node));
   }
   for (OpenMultiDiEdge edge : get_edges(base_subgraph)) {
     if (holds_alternative<InputMultiDiEdge>(edge)) {
-      subgraph.add_edge(get<InputMultiDiEdge>(edge), g.at(get<InputMultiDiEdge>(edge)));
+      if (input_settings == InputSettings::INCLUDE_INPUTS) {
+        subgraph.add_edge(get<InputMultiDiEdge>(edge), g.at(get<InputMultiDiEdge>(edge)));
+      }
     } else if (holds_alternative<OutputMultiDiEdge>(edge)) {
-      subgraph.add_edge(get<OutputMultiDiEdge>(edge), g.at(get<OutputMultiDiEdge>(edge)));
+      if (output_settings == OutputSettings::INCLUDE_OUTPUTS) {
+        subgraph.add_edge(get<OutputMultiDiEdge>(edge), g.at(get<OutputMultiDiEdge>(edge)));
+      }
     } else {
       subgraph.add_edge(get<MultiDiEdge>(edge), g.at(get<MultiDiEdge>(edge)));
     }
@@ -198,13 +186,12 @@ std::pair<
   SubParallelComputationGraph,
   SubParallelComputationGraph
 > apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
-  // Need the access to the graph view
-  auto g1 = unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.first);
-  auto g2 = unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.second);
+  OpenMultiDiGraphView g1 = unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.first);
+  OpenMultiDiGraphView g2 = unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.second);
 
   if (get_cut(OpenMultiDiGraph(g), split).size() > 0) {
     // Sequential split
-    if (get_open_sinks(*g1).size() <= get_open_sources(*g2).size()) {
+    if (get_open_sinks(g1).size() <= get_open_sources(g2).size()) {
       // get_open_sinks(*g1).size() should be 1 in perfect sp graphs
       return { get_subgraph(g, split.first, InputSettings::INCLUDE_INPUTS, OutputSettings::EXCLUDE_OUTPUTS),
               get_subgraph(g, split.second, InputSettings::INCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS) };

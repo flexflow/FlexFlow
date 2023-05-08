@@ -11,6 +11,7 @@
 #include "graph/node.h"
 #include "graph/traversal.h"
 #include "graph/undirected.h"
+#include "graph/unordered_labelled_graphs.h"
 #include "graph/views.h"
 #include "graph/serialparallel.h"
 #include "graph/labelled_graphs.h"

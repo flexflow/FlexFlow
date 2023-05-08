@@ -54,6 +54,8 @@ public:
 
   friend void swap(OpenMultiDiGraph &, OpenMultiDiGraph &);
 
+  operator OpenMultiDiGraphView() const;
+
   Node add_node();
   void add_node_unsafe(Node const &);
   void remove_node_unsafe(Node const &);
