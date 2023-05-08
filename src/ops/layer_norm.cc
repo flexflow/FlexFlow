@@ -214,6 +214,7 @@ LayerNorm::LayerNorm(FFModel &model,
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
+    std::cout<<"creates weights in init"<<"\n";
     weights[0] =
         model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,
@@ -265,20 +266,21 @@ void LayerNorm::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  if (elementwise_affine) {
-    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[0]->region));
-    launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
-    launcher.add_field(3, FID_DATA);
-  }
+  // if (elementwise_affine) {
+  //   std::cout<<"add weights field"<<"\n";
+  //   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+  //                                                     0 /*projection id*/,
+  //                                                     READ_ONLY,
+  //                                                     EXCLUSIVE,
+  //                                                     weights[0]->region));
+  //   launcher.add_field(2, FID_DATA);
+  //   launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+  //                                                     0 /*projection id*/,
+  //                                                     READ_ONLY,
+  //                                                     EXCLUSIVE,
+  //                                                     weights[1]->region));
+  //   launcher.add_field(3, FID_DATA);
+  // }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);

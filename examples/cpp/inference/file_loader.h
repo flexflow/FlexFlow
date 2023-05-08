@@ -17,6 +17,7 @@
 
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
+#include "flexflow/inference.h"
 
 using namespace std;
 using namespace FlexFlow;
@@ -30,6 +31,9 @@ public:
   void load_weights(FFModel *ff,
                     std::unordered_map<std::string, Layer *> weights_layers);
 
+  void load_positions(FFModel *ff, Tensor pt, ParallelTensor position_pt, int max_seq_length, int offset);
+
+  void load_positions_gpu(InferenceManager im, ParallelTensor const position_input, int offset);
 private:
   std::string input_path;
   std::string weight_file_path;

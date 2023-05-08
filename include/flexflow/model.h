@@ -217,6 +217,7 @@ enum TaskIDs {
   FUSED_PARALLELOP_BWD_TASK_ID,
   // InferenceManager & RequestManager
   RM_LOAD_TOKENS_TASK_ID,
+  RM_LOAD_POSITION_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,

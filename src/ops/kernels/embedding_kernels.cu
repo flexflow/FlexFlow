@@ -118,6 +118,9 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
     // print_tensor<float>(output_ptr, output_domain.get_volume(),
     // "[Embedding:forward:output]");
   }
+  // print_tensor<int>(input.get_int32_ptr(), 9, "embedding input");
+  // print_tensor<float>(weight.get_float_ptr(), 10, "embedding weight");
+  // print_tensor<float>(output.get_float_ptr(), 50, "embedding output");
 }
 
 /*static*/

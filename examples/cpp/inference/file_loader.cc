@@ -19,6 +19,8 @@
 #include <vector>
 using namespace std;
 
+using namespace Legion;
+
 FileDataLoader::FileDataLoader(std::string _input_path,
                                std::string _weight_file_path)
     : input_path(_input_path), weight_file_path(_weight_file_path){};
@@ -131,7 +133,7 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   // std::cout << loaded_data_size << std::endl;
   // std::cout << in_get_size << std::endl;
   if (in_get_size != loaded_data_size) {
-    std::cout << "load data error";
+    std::cout << "load weight data error " << in_get_size<< ", " << loaded_data_size<< ", " << sizeof(float) << std::endl;
     return;
   }
 
@@ -146,10 +148,58 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   in.close();
 }
 
+void FileDataLoader::load_positions(FFModel *ff, Tensor pt,  ParallelTensor position_pt, int max_seq_length, int offset){
+  std::cout<<"load positions" <<std::endl;
+  size_t volume = 1;
+  std::vector<int> dims_vec;
+  for (int i = 0; i < pt->num_dims; i++) {
+      // std::cout<< pt->dims[i] << "\n";
+      volume *= pt->dims[i];
+      dims_vec.push_back(pt->dims[i]);
+      std::cout<<dims_vec.at(dims_vec.size() - 1) << ", ";
+    }
+
+  //load data;
+  int *data = (int *)malloc(sizeof(int) * volume);
+  for(int i = 0; i < volume; i++){
+      data[i] = i % max_seq_length + offset;
+      std::cout<< data[i] <<", ";
+  }
+  //set tensor
+
+  // ParallelTensor position_pt;
+  
+  // ff->get_parallel_tensor_from_tensor(pt, position_pt);
+  position_pt->set_tensor<int>(ff, dims_vec, data);
+}
+
+void FileDataLoader::load_positions_gpu(InferenceManager im, ParallelTensor position_input, int offset) {
+  Context ctx = im.model->config.lg_ctx;
+  Runtime *runtime = im.model->config.lg_hlr;
+  size_t machine_view_hash = position_input->machine_view.hash();
+  ArgumentMap argmap;
+  IndexLauncher launcher(
+      RM_LOAD_POSITION_TASK_ID,
+      position_input->parallel_is,
+      TaskArgument(
+          &offset, sizeof(int)),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(
+      position_input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, position_input->region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
 void FileDataLoader::load_weights(
     FFModel *ff, std::unordered_map<std::string, Layer *> weights_layers) {
 
   for (auto &v : weights_layers) {
+
+    int weights_num = v.second->numWeights;
     Tensor weight = v.second->weights[0];
     std::cout << "weights layer: " << v.first << "\n";
 
@@ -164,6 +214,7 @@ void FileDataLoader::load_weights(
       dims_vec.push_back(weight->dims[i]);
       volume *= weight->dims[i];
     }
+    std::cout << "load weights volume: "<< volume << std::endl;
 
     assert(weight->data_type == DT_FLOAT);
     float *data = (float *)malloc(sizeof(float) * volume);

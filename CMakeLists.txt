@@ -548,6 +548,10 @@ if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/inference/SPEC_LLAMA)
 endif()
 
+if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/inference/opt)
+endif()
+
 # installation
 set(INCLUDE_DEST "include")
 set(LIB_DEST "lib")
