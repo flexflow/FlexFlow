@@ -41,7 +41,7 @@ public:
       max_seq_len = 8;
       max_beam_width = 1;
       max_beam_depth = 8;
-  
+
       // hidden dim
       hidden_dim = 4 * dim;
       hidden_dim = int(2 * hidden_dim / 3);
@@ -49,19 +49,19 @@ public:
           multiple_of * int((hidden_dim + multiple_of - 1) / multiple_of);
     }
     int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
-      total_sentence, sentence_len, batchSize, total_requests, incremental_mode,
-      sequence_length, max_gen_length, max_seq_len, max_beam_width,
-      max_beam_depth;
+        total_sentence, sentence_len, batchSize, total_requests,
+        incremental_mode, sequence_length, max_gen_length, max_seq_len,
+        max_beam_width, max_beam_depth;
     float norm_eps;
     std::string weight_file_path;
     std::string input_path;
   };
 
   static void create_llama_model(FFModel &ff,
-                                InferenceManager &im,
-                                Config const &llama_config,
-                                int num_pipeline_stages,
-                                InferenceMode mode);
+                                 InferenceManager &im,
+                                 Config const &llama_config,
+                                 int num_pipeline_stages,
+                                 InferenceMode mode);
 };
 
 }; // namespace FlexFlow

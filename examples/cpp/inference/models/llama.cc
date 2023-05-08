@@ -61,12 +61,14 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  int num_transformer_layers_per_stage = (32 + num_pipeline_stages - 1) / num_pipeline_stages;
+  int num_transformer_layers_per_stage =
+      (32 + num_pipeline_stages - 1) / num_pipeline_stages;
 
   for (int i = 0; i < 1; i++) {
     // step 1: attention
     std::vector<int> axes = {2};
-    Tensor att_norm = ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
+    Tensor att_norm =
+        ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
     Layer *attention_norm = ff.layers.back();
 
     if (i % num_transformer_layers_per_stage == 0) {
@@ -90,49 +92,49 @@ void LLAMA::create_llama_model(FFModel &ff,
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multihead_self_attention(
-          att_norm,
-          llama_config.dim,
-          llama_config.n_heads,
-          llama_config.dim / llama_config.n_heads,
-          llama_config.dim / llama_config.n_heads,
-          0.0f,
-          true,
-          false,
-          false,
-          NULL,
-          true);
+            att_norm,
+            llama_config.dim,
+            llama_config.n_heads,
+            llama_config.dim / llama_config.n_heads,
+            llama_config.dim / llama_config.n_heads,
+            0.0f,
+            true,
+            false,
+            false,
+            NULL,
+            true);
         break;
       }
       case TREE_VERIFY_MODE: {
         mha = ff.inc_multihead_self_attention_verify(
-          att_norm,
-          llama_config.dim,
-          llama_config.n_heads,
-          llama_config.dim / llama_config.n_heads,
-          llama_config.dim / llama_config.n_heads,
-          0.0f, /*dropout*/
-          true, /*bias*/
-          false, /*add_bias_kv*/
-          false, /*add_zero_attn*/
-          nullptr, /*kernel_initializer*/
-          true /*apply_rotary_embedding*/
-          );
+            att_norm,
+            llama_config.dim,
+            llama_config.n_heads,
+            llama_config.dim / llama_config.n_heads,
+            llama_config.dim / llama_config.n_heads,
+            0.0f,    /*dropout*/
+            true,    /*bias*/
+            false,   /*add_bias_kv*/
+            false,   /*add_zero_attn*/
+            nullptr, /*kernel_initializer*/
+            true     /*apply_rotary_embedding*/
+        );
         break;
       }
       case INC_DECODING_MODE: {
         mha = ff.inc_multihead_self_attention(
-          att_norm,
-          llama_config.dim,
-          llama_config.n_heads,
-          llama_config.dim / llama_config.n_heads,
-          llama_config.dim / llama_config.n_heads,
-          0.0f, /*dropout*/
-          true, /*bias*/
-          false, /*add_bias_kv*/
-          false, /*add_zero_attn*/
-          nullptr, /*kernel_initializer*/
-          true /*apply_rotary_embedding*/
-          );
+            att_norm,
+            llama_config.dim,
+            llama_config.n_heads,
+            llama_config.dim / llama_config.n_heads,
+            llama_config.dim / llama_config.n_heads,
+            0.0f,    /*dropout*/
+            true,    /*bias*/
+            false,   /*add_bias_kv*/
+            false,   /*add_zero_attn*/
+            nullptr, /*kernel_initializer*/
+            true     /*apply_rotary_embedding*/
+        );
         break;
       }
       default: {
@@ -145,7 +147,8 @@ void LLAMA::create_llama_model(FFModel &ff,
     token = ff.add(token, mha);
 
     // step 2: SILU activaion
-    Tensor ff_norm = ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
+    Tensor ff_norm =
+        ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
     Layer *ffn_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_ffn_norm_weight",
                            ffn_layer);
@@ -191,7 +194,8 @@ void LLAMA::create_llama_model(FFModel &ff,
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff, mapping);
-  FileDataLoader fileloader(llama_config.input_path, llama_config.weight_file_path);
+  FileDataLoader fileloader(llama_config.input_path,
+                            llama_config.weight_file_path);
   fileloader.load_weights(&ff, weights_layers);
   std::cout << "------load wieght finished----------" << std::endl;
 
@@ -199,4 +203,4 @@ void LLAMA::create_llama_model(FFModel &ff,
   im.init_operators_inference(&ff);
 }
 
-}; // namespace SpecInfer
+}; // namespace FlexFlow
