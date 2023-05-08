@@ -97,7 +97,7 @@ public:
                             int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>>
-      tranverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
+      traverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
                           int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>> 
@@ -121,6 +121,7 @@ private:
          dfs_tree_inputs;
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
+  // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth, Commited Tokens
 };
 
 } // namespace FlexFlow

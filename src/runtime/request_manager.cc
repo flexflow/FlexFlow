@@ -253,7 +253,7 @@ BeamSearchBatchConfig
     // TODO: get verified tokens from result
     //
     //
-    //
+    // std::vector<std::pair<BatchConfig::TokenId, int>> tree_outputs = ;
 
     std::vector<std::pair<BatchConfig::TokenId, int>> 
       &verified_tokens = traverse_verify_tree(dfs_tree_inputs.at(guid), tree_outputs);
@@ -268,7 +268,8 @@ BeamSearchBatchConfig
             request.guid, request.tokens.size());
 
       new_bc.request_completed[i] = true;
-      new_bc.beam_trees[i] = BeamTree{};
+
+      beam_trees[i] = BeamTree{};
       dfs_tree_inputs.erase(request.guid); // delete the old input tree from cache
       continue;
     }
@@ -649,11 +650,11 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 }
 
 std::vector<std::pair<BatchConfig::TokenId, int>>
-  RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
+  RequestManager::traverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
                                       int request_index) {
 
-  int depth = old_bc.beamRequestsInfo[request_index].current_depth;
-  int beam_width = old_bc.beamRequestsInfo[request_index].beam_size;
+  // int depth = old_bc.beamRequestsInfo[request_index].current_depth;
+  // int beam_width = old_bc.beamRequestsInfo[request_index].beam_size;
   BeamTree tree = beam_trees[request_index];
 
   // token, index
@@ -669,7 +670,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
               << ", depth: " << serializedTree.at(k).second << "\n";
   }
 
-  dfs_tree_inputs[old_bc.requestsInfo[request_index].guid] = serializedTree;
+  dfs_tree_inputs[old_bc.requestsInfo[request_index].request_guid] = serializedTree;
 
   return serializedTree;
   // }
