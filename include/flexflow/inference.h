@@ -64,6 +64,12 @@ struct BeamTree {
   treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH];
 };
 
+// struct BeamTree_v2 {
+//   std::vector<BatchConfig::TokenId> tokens;
+//   std::vector<int> parent_ids;
+//   std::vector<float> probs; 
+// };
+
 class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
@@ -73,24 +79,30 @@ public:
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
-
-  BeamSearchBatchConfig
-      prepare_next_batch_init(TreeVerifyBatchConfig const &bc,
-                              BeamInferenceResult const &result);
-
   BeamSearchBatchConfig
       prepare_next_batch_beam(BeamSearchBatchConfig const &bc,
                               BeamInferenceResult const &result);
 
-  TreeVerifyBatchConfig
-      prepare_next_batch_verify(TreeVerifyBatchConfig const &bc);
+  BeamSearchBatchConfig
+      prepare_next_batch_init(TreeVerifyBatchConfig const &bc,
+                              InferenceResult const &result);
+
+  // TreeVerifyBatchConfig
+  //     prepare_next_batch_verify(TreeVerifyBatchConfig const &bc);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
   void update_beam_metadata(BeamSearchBatchConfig &new_bc,
                             BeamTree &tree,
                             int request_index);
-  void tranverse_beam_tree(BeamSearchBatchConfig const &old_bc);
+
+  std::vector<std::pair<BatchConfig::TokenId, int>>
+    RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
+                                        int request_index);
+
+  std::vector<std::pair<BatchConfig::TokenId, int>> 
+      traverse_verify_tree(std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
+                          std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
 
   static void
       load_tokens_task(Legion::Task const *task,
@@ -103,7 +115,12 @@ private:
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
+
   struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
+  std::unordered_map<RequestGuid, std::vector<std::pair<BatchConfig::TokenId, int>>>
+         dfs_tree_inputs;
+
+  // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
 };
 
 } // namespace FlexFlow
