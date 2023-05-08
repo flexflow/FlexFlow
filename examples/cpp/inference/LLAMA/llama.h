@@ -83,7 +83,6 @@ public:
 
   template <typename T>
   static void load_attention_weights(T *dst_ptr,
-                                     size_t total_weights_size,
                                      int num_heads,
                                      size_t hidden_dim,
                                      size_t qkv_inner_dim,
