@@ -114,7 +114,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor output = ff.arg_top_k(t, /*k=*/1, false);
 
   //------------------- Initialize the inference manager ------------------
-  InferenceManager im(&ff,
+  InferenceManager im(ff.config,
                       transformerConfig.batch_size,
                       transformerConfig.num_inflight_batches);
   std::unordered_map<Tensor, std::vector<MachineView>> mapping;

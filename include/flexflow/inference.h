@@ -26,7 +26,7 @@ class BeamTree;
 
 class InferenceManager {
 public:
-  InferenceManager(FFModel *_model,
+  InferenceManager(FFConfig const &config,
                    int max_num_tokens_per_batch,
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(
@@ -39,8 +39,8 @@ public:
                                            ParallelTensor const input);
 
 public:
+  FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
-  FFModel *model;
   int max_num_tokens_per_batch;
   int max_num_inflight_batches;
   int num_devices;
@@ -69,6 +69,7 @@ public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
   RequestManager();
+  size_t get_num_processed_requests();
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
@@ -84,7 +85,8 @@ public:
                             BeamTree &tree,
                             int request_index);
   void tranverse_beam_tree(BeamSearchBatchConfig const &old_bc);
-
+  TreeVerifyBatchConfig
+      convert_beam_to_tree_batch_config(BeamSearchBatchConfig const &beam_bc);
   static void
       load_tokens_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
@@ -97,6 +99,7 @@ private:
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
   struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
+  size_t num_processed_requests;
 };
 
 } // namespace FlexFlow
