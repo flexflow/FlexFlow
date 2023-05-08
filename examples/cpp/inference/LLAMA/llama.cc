@@ -200,8 +200,13 @@ void FlexFlow::top_level_task(Task const *task,
     float *data = (float *)malloc(sizeof(float) * volume);
 
     if (v.first.find("attention_w") != std::string::npos) {
-      loader.load_attention_weights(
-          data, volume, v.first, llamaConfig.weight_file_path);
+      loader.load_attention_weights(data,
+                                    volume,
+                                    llamaConfig.n_heads,
+                                    llamaConfig.dim,
+                                    llamaConfig.dim / llamaConfig.n_heads,
+                                    v.first,
+                                    llamaConfig.weight_file_path);
 
     } else {
       loader.load_from_file(

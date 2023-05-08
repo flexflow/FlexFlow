@@ -21,9 +21,12 @@ using namespace std;
 
 FileDataLoader::FileDataLoader(std::string _input_path,
                                std::string _weight_file_path,
-                               int _num_heads)
+                               int _num_heads,
+                               size_t _hidden_dim,
+                               size_t _qkv_inner_dim)
     : input_path(_input_path), weight_file_path(_weight_file_path),
-      num_heads(_num_heads){};
+      num_heads(_num_heads), hidden_dim(_hidden_dim),
+      qkv_inner_dim(_qkv_inner_dim){};
 
 BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
@@ -44,7 +47,7 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
   size_t in_get_size = in.gcount();
   if (in_get_size != loaded_data_size) {
-    std::cout << "load data error";
+    std::cout << "load data error" << std::endl;
     return prompts;
   }
 
@@ -66,6 +69,8 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 void load_attention_weights(float *dst_ptr,
                             size_t total_weights_size,
                             int num_heads,
+                            size_t hidden_dim,
+                            size_t qkv_inner_dim,
                             std::string layer_name,
                             std::string weight_path) {
   std::string q_file = weight_path +
@@ -98,13 +103,11 @@ void load_attention_weights(float *dst_ptr,
     size_t in_get_size = in.gcount();
 
     if (in_get_size != loaded_data_size) {
-      std::cout << "load data error";
+      std::cout << "load data error" << std::endl;
       return;
     }
     assert(partial_size == host_array.size());
 
-    size_t hidden_dim = 4096;
-    size_t qkv_inner_dim = 128;
     size_t single_proj_size =
         hidden_dim *
         qkv_inner_dim; // size of each of Q,K,V,O weights for a single head
@@ -152,11 +155,11 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   // std::cout << loaded_data_size << std::endl;
   // std::cout << in_get_size << std::endl;
   if (in_get_size != loaded_data_size) {
-    std::cout << "load data error";
+    std::cout << "load data error" << std::endl;
     return;
   }
 
-  // std::cout << "finish loading input";
+  // std::cout << "finish loading input" << std::endl;
   assert(size == host_array.size());
 
   // normal
@@ -190,8 +193,13 @@ void FileDataLoader::load_weights(
     float *data = (float *)malloc(sizeof(float) * volume);
 
     if (v.first.find("attention_w") != std::string::npos) {
-      load_attention_weights(
-          data, volume, num_heads, v.first, weight_file_path);
+      load_attention_weights(data,
+                             volume,
+                             num_heads,
+                             hidden_dim,
+                             qkv_inner_dim,
+                             v.first,
+                             weight_file_path);
 
     } else {
       load_from_file(data, volume, weight_file_path + v.first);

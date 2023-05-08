@@ -195,7 +195,10 @@ void LLAMA::create_llama_model(FFModel &ff,
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff, mapping);
   FileDataLoader fileloader(llama_config.input_path,
-                            llama_config.weight_file_path);
+                            llama_config.weight_file_path,
+                            llama_config.n_heads,
+                            llama_config.dim,
+                            llama_config.dim / llama_config.n_heads);
   fileloader.load_weights(&ff, weights_layers);
   std::cout << "------load wieght finished----------" << std::endl;
 
