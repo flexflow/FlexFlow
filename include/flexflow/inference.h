@@ -75,8 +75,15 @@ public:
                                  InferenceResult const &result);
 
   BeamSearchBatchConfig
+      prepare_next_batch_init(TreeVerifyBatchConfig const &bc,
+                              BeamInferenceResult const &result);
+
+  BeamSearchBatchConfig
       prepare_next_batch_beam(BeamSearchBatchConfig const &bc,
                               BeamInferenceResult const &result);
+
+  TreeVerifyBatchConfig
+      prepare_next_batch_verify(TreeVerifyBatchConfig const &bc);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);

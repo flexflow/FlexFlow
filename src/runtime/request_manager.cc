@@ -138,13 +138,14 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   return new_bc;
 }
 
-//-------beam search specific functions
+/* ----- Speculative Inference Specific functions ----- */
 
 // update beam search metadata
 BeamSearchBatchConfig
     RequestManager::prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                                             BeamInferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
+
   std::cout << "print all results"
             << "\n";
   for (int i = 0; i < 40; i++) {
@@ -155,8 +156,10 @@ BeamSearchBatchConfig
   // Step 2: preparing the next batch for existing requests
 
   // store results
-  std::cout << "depthhhhhhh: " << old_bc.beamRequestsInfo[0].current_depth
+  std::cout << "Current Beam Depth: " << old_bc.beamRequestsInfo[0].current_depth
             << "\n";
+
+  // Store result to the beam tree struct
   store_beam_metadata(old_bc, result);
 
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
@@ -234,6 +237,8 @@ BeamSearchBatchConfig
     }
   }
 
+
+  // Should in initial phase instead
   for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_request_queue.empty() &&
@@ -291,25 +296,26 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
   }
   auto guid =
       old_bc.requestsInfo[old_bc.tokensInfo[0].request_index].request_guid;
-  auto start_idx = old_bc.tokensInfo[0].abs_depth_in_request;
+  auto start_depth = old_bc.tokensInfo[0].abs_depth_in_request;
   int result_index = 0;
-  std::cout << "store num tokens" << old_bc.num_tokens << "\n";
+  
+  std::cout << "Store total of " << old_bc.num_tokens << " tokens in the current batch.\n";
+  
   for (int i = 0; i <= old_bc.num_tokens; i++) {
     int request_index = old_bc.tokensInfo[i].request_index;
+
+    // End of the request
     if (i == old_bc.num_tokens ||
         old_bc.requestsInfo[request_index].request_guid != guid) {
-      // see how many tokens has been put to model in this req
-      // to get the index of the final token
-      // every token will get (beam_width) results
-      int beam_width =
-          old_bc.beamRequestsInfo[old_bc.tokensInfo[i].request_index].beam_size;
 
-      result_index +=
-          (old_bc.tokensInfo[i - 1].abs_depth_in_request - start_idx) *
-          beam_width;
+      // Each token yields (beam_width) results
+      int beam_width = old_bc.beamRequestsInfo[request_index].beam_size;
+
+      // Count tokens sent to model in this request to find the final token's index
+      result_index += (old_bc.tokensInfo[i - 1].abs_depth_in_request - start_depth) * beam_width;
 
       std::cout << "i = " << i << ", result index = " << result_index
-                << ",value: " << result.token_ids[result_index] << "\n";
+                << ", value: " << result.token_ids[result_index] << "\n";
 
       int index = old_bc.tokensInfo[i - 1].request_index;
       int beam_size = old_bc.beamRequestsInfo[index].beam_size;
@@ -321,12 +327,11 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                   << "\n";
         Request &request =
             running_request_queue[old_bc.requestsInfo[index].request_guid];
-        beam_trees[index].treeLayers[depth - 1].tokens[0] =
-            request.tokens.at(request.tokens.size() - 1);
-        beam_trees[index].treeLayers[depth - 1].probs[0] = 1;
-        beam_trees[index].treeLayers[depth - 1].parent_ids[0] = -1;
-        std::cout << "store the previous last token to the tree root"
-                  << request.tokens.at(request.tokens.size() - 1) << "\n";
+        beam_trees[index].treeLayers[0].tokens[0] = request.tokens.back();
+        beam_trees[index].treeLayers[0].probs[0] = 1;
+        beam_trees[index].treeLayers[0].parent_ids[0] = -1;
+        std::cout << "Store the previous last token to the tree root: "
+                  << request.tokens.back() << "\n";
       }
 
       for (int beam_id = 0; beam_id < beam_width; beam_id++) {
@@ -343,9 +348,10 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
         result_index += 1;
       }
 
+      // update the guid and start_depth for current request
       if (i < old_bc.num_tokens) {
         guid = old_bc.requestsInfo[request_index].request_guid;
-        start_idx = old_bc.tokensInfo[i].abs_depth_in_request;
+        start_depth = old_bc.tokensInfo[i].abs_depth_in_request;
       }
     }
   }
