@@ -34,7 +34,8 @@ __global__ void spec_build_w_out_tensor(float const *weight_ptr,
     int v_idx = i % vProjSize;
     int o_idx = (i / vProjSize) % oProjSize;
     int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[i] =
+    contiguous_weight_ptr[o_idx * vProjSize * num_heads + head_idx * vProjSize +
+                          v_idx] =
         weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
                    qkv_weight_block_size + o_idx * vProjSize + v_idx];
   }
