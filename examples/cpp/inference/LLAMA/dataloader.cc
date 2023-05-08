@@ -208,6 +208,12 @@ void DataLoader::load_attention_weights(T *dst_ptr,
         single_proj_size * 4; // size of Q+K+V+O weights for a single head
     size_t checkpoint_idx, flexflow_idx;
 
+    assert(total_weights_size == one_head_size);
+    assert(partial_size == single_proj_size);
+
+    std::cout << "host_array.size(): " << host_array.size() << std::endl;
+    std::cout << "single_proj_size: " << single_proj_size << std::endl;
+
     for (int i = 0; i < num_heads * single_proj_size; i++) {
       int checkpoint_row_idx = i % hidden_dim;
       int checkpoint_column_idx = (i / hidden_dim) % qkv_inner_dim;
