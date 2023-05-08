@@ -4450,7 +4450,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Replicate::forward_task>(
+    Runtime::preregister_task_variant<Replicate::init_task>(
         registrar, "Replicate Init Task");
   }
   {
