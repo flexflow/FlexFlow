@@ -80,15 +80,15 @@ public:
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BeamSearchBatchConfig
-      prepare_next_batch_beam(BeamSearchBatchConfig const &bc,
+      prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
 
   BeamSearchBatchConfig
-      prepare_next_batch_init(TreeVerifyBatchConfig const &bc,
+      prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result);
 
-  // TreeVerifyBatchConfig
-  //     prepare_next_batch_verify(TreeVerifyBatchConfig const &bc);
+  TreeVerifyBatchConfig
+      prepare_next_batch_verify(BeamSearchBatchConfig const &old_bc);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
@@ -97,12 +97,12 @@ public:
                             int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>>
-    RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
-                                        int request_index);
+      tranverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
+                          int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>> 
       traverse_verify_tree(std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
-                          std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
+                           std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
 
   static void
       load_tokens_task(Legion::Task const *task,

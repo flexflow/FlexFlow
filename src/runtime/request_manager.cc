@@ -258,6 +258,21 @@ BeamSearchBatchConfig
     std::vector<std::pair<BatchConfig::TokenId, int>> 
       &verified_tokens = traverse_verify_tree(dfs_tree_inputs.at(guid), tree_outputs);
     
+    
+    // check if the request is finished
+    if (verified_tokens.size() + request.tokens.size() >= request.max_sequence_length) {
+      for (int j = 0; j < verified_tokens.size(); j++) {
+        request.tokens.push_back(verified_tokens[j].first);
+      }
+      log_req_mgr.print("[Done] guid(%zu) with final length(%d)",
+            request.guid, request.tokens.size());
+
+      new_bc.request_completed[i] = true;
+      new_bc.beam_trees[i] = BeamTree{};
+      dfs_tree_inputs.erase(request.guid); // delete the old input tree from cache
+      continue;
+    }
+    
     // Normal Reuqest Info
     new_bc.requestsInfo[i].token_start_offset = verified_tokens.front().second;
     new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
@@ -274,7 +289,10 @@ BeamSearchBatchConfig
       new_bc.beamRequestsInfo[i].parent_id[j] = 0;
       new_bc.beamRequestsInfo[i].probs[j] = 1;
     }
+
     new_bc.sub_requests[i] = 1;
+
+    // Token Info
     for (int j = 0; j < verified_tokens.size(); j++) {
       auto token = verified_tokens.at(j);
 
@@ -286,9 +304,13 @@ BeamSearchBatchConfig
       // Beam Token Info
       new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = 0;
       new_bc.num_tokens++;
-    }
-    if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
-      break;
+
+      // Add verified token to request's token list
+      request.tokens.push_back(token.first);
+    
+      if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
+        break;
+      }
     }
   }
   
@@ -340,6 +362,55 @@ BeamSearchBatchConfig
       }
     }
   }
+  return new_bc;
+}
+
+TreeVerifyBatchConfig
+  RequestManager::prepare_next_batch_verify(BeamSearchBatchConfig const &old_bc) {
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+
+  TreeVerifyBatchConfig new_bc;
+  new_bc.num_tokens = 0;
+
+  for (int i = 0; i < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (old_bc.request_completed[i]) {
+      continue;
+    }
+    size_t guid = old_bc.requestsInfo[i].request_guid;
+    Request &request = running_request_queue[guid];
+
+    // Get the dfs tree
+    std::vector<std::pair<BatchConfig::TokenId, int>> 
+      &dfs_tree_inputs = traverse_beam_tree(old_bc, i);
+    
+    // Normal Request Info
+    new_bc.requestsInfo[i].token_start_offset = dfs_tree_inputs.front().second;
+    new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
+    new_bc.requestsInfo[i].max_sequence_length =
+        old_bc.requestsInfo[i].max_sequence_length;
+    // TODO: Check this
+    new_bc.requestsInfo[i].num_tokens_in_batch = verified_tokens.size();
+
+
+    // Token Info
+    for (int j = 0; j < dfs_tree_inputs.size(); j++) {
+      auto token = dfs_tree_inputs.at(j);
+
+      // Normal Token Info
+      new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+      new_bc.tokensInfo[new_bc.num_tokens].token_id = token.first;
+      new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = token.second;
+
+      // TODO: Add committed token info
+
+      new_bc.num_tokens++;
+      
+      if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
+        break;
+      }
+    }
+  }
+
   return new_bc;
 }
 
