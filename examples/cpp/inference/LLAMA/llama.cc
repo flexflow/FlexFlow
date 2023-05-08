@@ -166,7 +166,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
-  InferenceManager im(&ff, llamaConfig.batchSize, 1);
+  InferenceManager im(ff.config, llamaConfig.batchSize, 1);
   im.compile_model_and_allocate_buffer(&ff, mapping);
   RequestManager rm;
 

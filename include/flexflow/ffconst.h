@@ -58,6 +58,12 @@ enum MetricsType {
   METRICS_MEAN_ABSOLUTE_ERROR = 1032,
 };
 
+enum InferenceMode {
+  INC_DECODING_MODE = 2001,
+  BEAM_SEARCH_MODE = 2002,
+  TREE_VERIFY_MODE = 2003,
+};
+
 // This is consistent with TASO's OpType
 // https://github.com/jiazhihao/TASO/blob/master/include/taso/ops.h#L75-L138
 enum OperatorType {

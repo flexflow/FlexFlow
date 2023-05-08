@@ -414,7 +414,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
         processed_tokens_in_batch + bc->requestsInfo[i].num_tokens_in_batch - 1;
     while (processed_tokens_in_batch <= last_token_idx_of_the_request) {
       int num_new_tokens = 1;
-      int j = num_new_tokens + processed_tokens_in_batch;
+      int j = processed_tokens_in_batch;
       while ((j + 1 <= last_token_idx_of_the_request) &&
              (bc->tokensInfo[j].abs_depth_in_request + 1 ==
               bc->tokensInfo[j + 1].abs_depth_in_request)) {
@@ -506,6 +506,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                            m->num_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
       // Fill all elements above diagonal in qk prods with -inf to force
       // causal attention.
       assert(num_new_tokens <= total_tokens_in_request);

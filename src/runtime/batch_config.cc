@@ -173,6 +173,7 @@ void BatchConfig::print() const {
   }
 }
 
+#ifdef DEADCODE
 void TreeVerifyBatchConfig::compute_tree_branch_indexes() {
   // Must be called only after setting num_tokens!
   auto is_first_token_in_request = [&](int token_index) -> bool {
@@ -190,5 +191,6 @@ void TreeVerifyBatchConfig::compute_tree_branch_indexes() {
     }
   }
 }
+#endif
 
 }; // namespace FlexFlow

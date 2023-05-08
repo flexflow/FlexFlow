@@ -22,7 +22,8 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
-RequestManager::RequestManager() : next_available_guid(1000000) {}
+RequestManager::RequestManager()
+    : next_available_guid(1000000), num_processed_requests(0) {}
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
@@ -39,6 +40,10 @@ RequestManager::RequestGuid
 
   std::cout << "new req: " << request.tokens.size() << std::endl;
   return request.guid;
+}
+
+size_t RequestManager::get_num_processed_requests() {
+  return num_processed_requests;
 }
 
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
@@ -436,7 +441,7 @@ void RequestManager::update_beam_metadata(BeamSearchBatchConfig &new_bc,
   }
 }
 
-bool PreOrder(BeamTree tree,
+bool PreOrder(BeamTree const &tree,
               int max_depth,
               int current_depth,
               int beam_width,
@@ -491,6 +496,43 @@ bool PreOrder(BeamTree tree,
   return flag;
 }
 
+TreeVerifyBatchConfig RequestManager::convert_beam_to_tree_batch_config(
+    BeamSearchBatchConfig const &beam_bc) {
+  TreeVerifyBatchConfig tree_bc;
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (beam_bc.request_completed[i]) {
+      continue;
+    }
+    // We don't modify requests during the conversion
+    tree_bc.request_completed[i] = beam_bc.request_completed[i];
+    BeamTree const &tree = beam_trees[i];
+    // token, index
+    // todo make this one global for different stages
+    std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> serializedTree;
+    PreOrder(tree,
+             beam_bc.beamRequestsInfo[i].max_depth,
+             0,
+             beam_bc.beamRequestsInfo[i].beam_size,
+             0,
+             serializedTree);
+    tree_bc.requestsInfo[i].request_guid = beam_bc.requestsInfo[i].request_guid;
+    tree_bc.requestsInfo[i].max_sequence_length =
+        beam_bc.requestsInfo[i].max_sequence_length;
+    tree_bc.requestsInfo[i].token_start_offset = serializedTree[0].second;
+    tree_bc.requestsInfo[i].num_tokens_in_batch = 0;
+    for (int k = 0; k < serializedTree.size(); k++) {
+      assert(tree_bc.num_tokens < BatchConfig::MAX_NUM_TOKENS);
+      tree_bc.tokensInfo[tree_bc.num_tokens].request_index = i;
+      tree_bc.tokensInfo[tree_bc.num_tokens].abs_depth_in_request =
+          serializedTree[k].second;
+      tree_bc.tokensInfo[tree_bc.num_tokens].token_id = serializedTree[k].first;
+      tree_bc.num_tokens++;
+      tree_bc.requestsInfo[i].num_tokens_in_batch++;
+    }
+  }
+  return tree_bc;
+}
+
 void RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc) {
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (old_bc.request_completed[i]) {
@@ -502,7 +544,7 @@ void RequestManager::tranverse_beam_tree(BeamSearchBatchConfig const &old_bc) {
 
     int depth = old_bc.beamRequestsInfo[i].current_depth;
     int beam_width = old_bc.beamRequestsInfo[i].beam_size;
-    BeamTree tree = beam_trees[i];
+    BeamTree const &tree = beam_trees[i];
 
     // token, index
     // todo make this one global for different stages
