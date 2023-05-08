@@ -115,7 +115,7 @@ void Replicate::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(REPLICATE_FWD_TASK_ID,
+  IndexLauncher launcher(REPLICATE_INIT_TASK_ID,
                          outputs[0]->parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -141,6 +141,7 @@ void Replicate::forward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  DataType data_type = inputs[0]->data_type;
   IndexLauncher launcher(REPLICATE_FWD_TASK_ID,
                          outputs[0]->parallel_is,
                          TaskArgument(&data_type, sizeof(DataType)),
@@ -220,6 +221,12 @@ bool Replicate::append_parallel_op_info(
   ret.parallel_degree = replicate_degree;
   parallel_ops.push_back(ret);
   return true;
+}
+
+void Replicate::init_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx, 
+                          Runtime *runtime) {
 }
 
 /*static*/

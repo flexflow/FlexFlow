@@ -31,6 +31,10 @@ public:
   bool get_int_parameter(PMParameter, int *) const override;
   bool append_parallel_op_info(
       std::vector<ParallelOpInfo> &parallel_ops) const override;
+  static void init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime);
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
