@@ -16,6 +16,7 @@ public:
   using Params = ReshapeParams;
   using Input = ParallelTensor;
   Reshape(FFModel &model,
+          LayerID const &layer_guid,
           const ParallelTensor input,
           std::vector<int> const &shape,
           char const *name);
