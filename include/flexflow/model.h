@@ -492,6 +492,8 @@ public:
                Layer const *shared_op = NULL,
                Initializer *kernel_initializer = NULL,
                Initializer *bias_initializer = NULL,
+               RegularizerMode regularizer_type = REG_MODE_NONE,
+               float regularizer_lambda = 0.0,
                char const *name = NULL);
   // Add a cast layer
   Tensor cast(const Tensor input, DataType dtype, char const *name = nullptr);

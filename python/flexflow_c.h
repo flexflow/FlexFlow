@@ -237,17 +237,19 @@ flexflow_tensor_t
                                     int a_seq_length_dim /* -1 */,
                                     int b_seq_length_dim /* -1 */);
 
-flexflow_tensor_t
-    flexflow_model_add_dense(flexflow_model_t handle,
-                             const flexflow_tensor_t input,
-                             int out_dim,
-                             enum ActiMode activation /* AC_MODE_NONE */,
-                             bool use_bias /* true */,
-                             enum DataType data_type /*DT_FLOAT*/,
-                             flexflow_op_t shared_op,
-                             flexflow_initializer_t kernel_initializer,
-                             flexflow_initializer_t bias_initializer,
-                             char const *name);
+flexflow_tensor_t flexflow_model_add_dense(
+    flexflow_model_t handle,
+    const flexflow_tensor_t input,
+    int out_dim,
+    enum ActiMode activation /* AC_MODE_NONE */,
+    bool use_bias /* true */,
+    enum DataType data_type /*DT_FLOAT*/,
+    flexflow_op_t shared_op,
+    flexflow_initializer_t kernel_initializer,
+    flexflow_initializer_t bias_initializer,
+    enum RegularizerMode kernel_reg_type /* REG_MODE_NONE */,
+    float kernel_reg_lambda,
+    char const *name);
 
 flexflow_tensor_t flexflow_model_add_concat(flexflow_model_t handle,
                                             int n,
