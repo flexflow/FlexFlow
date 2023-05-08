@@ -15,6 +15,7 @@
 
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
+#include <new>
 #include <stdexcept>
 
 namespace FlexFlow {
@@ -238,7 +239,10 @@ BeamSearchBatchConfig
     RequestManager::prepare_next_batch_init(TreeVerifyBatchConfig const &bc,
                                             InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
+
   // Step 1: use result to update requests
+  BeamSearchBatchConfig new_bc;
+  new_bc.num_tokens = 0;
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (bc.request_completed[i]) {
       continue;
@@ -246,16 +250,50 @@ BeamSearchBatchConfig
     size_t guid = old_bc.requestsInfo[i].request_guid;
     Request &request = running_request_queue[guid];
 
-    // TODO: verify the result
-    std::vector<int> &verified_tokens = tranverse_verify_tree(bc, i);
+    // TODO: get verified tokens from result
+    //
+    //
+    //
+
+    std::vector<std::pair<BatchConfig::TokenId, int>> 
+      &verified_tokens = traverse_verify_tree(dfs_tree_inputs.at(guid), tree_outputs);
+    
+    // Normal Reuqest Info
+    new_bc.requestsInfo[i].token_start_offset = verified_tokens.front().second;
+    new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
+    new_bc.requestsInfo[i].max_sequence_length =
+        old_bc.requestsInfo[i].max_sequence_length;
+    new_bc.requestsInfo[i].num_tokens_in_batch = verified_tokens.size();
+
+    // TODO: Beam Request Info, missing from VerifyTreeBatchConfig
+    new_bc.beamRequestsInfo[i].current_depth = 1;
+    new_bc.beamRequestsInfo[i].beam_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+    // new_bc.beamRequestsInfo[i].max_depth = verified_tokens.size();
+    new_bc.beamRequestsInfo[i].request_completed = false;
+    for (int j = 0; j < BeamSearchBatchConfig::MAX_BEAM_WIDTH; j++) {
+      new_bc.beamRequestsInfo[i].parent_id[j] = 0;
+      new_bc.beamRequestsInfo[i].probs[j] = 1;
+    }
+    new_bc.sub_requests[i] = 1;
+    for (int j = 0; j < verified_tokens.size(); j++) {
+      auto token = verified_tokens.at(j);
+
+      // Normal Token Info
+      new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+      new_bc.tokensInfo[new_bc.num_tokens].token_id = token.first;
+      new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = token.second;
+
+      // Beam Token Info
+      new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = 0;
+      new_bc.num_tokens++;
+    }
+    if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
+      break;
+    }
   }
   
 
-  // Step 1: Initialize new speculation cycle
-  BeamSearchBatchConfig new_bc;
-
-
-  // Initialize new request
+  // Step 2: Initialize new request
   for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_request_queue.empty() &&
