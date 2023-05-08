@@ -188,8 +188,8 @@ void DataLoader::load_attention_weights(T *dst_ptr,
               << "\n";
     size_t partial_size = total_weights_size / 4;
     std::ifstream in(file, std::ios::in | std::ios::binary);
-    std::vector<float> host_array(partial_size);
-    size_t loaded_data_size = sizeof(float) * partial_size;
+    std::vector<T> host_array(partial_size);
+    size_t loaded_data_size = sizeof(T) * partial_size;
     in.seekg(0, in.end);
     in.seekg(0, in.beg);
     in.read((char *)host_array.data(), loaded_data_size);
