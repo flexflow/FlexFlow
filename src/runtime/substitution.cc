@@ -28,7 +28,6 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
-#include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -36,6 +35,7 @@
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -3715,12 +3715,12 @@ bool FFModel::convert_graph_to_operators(
         new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
         break;
       }
-      case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(inList.size() == 1);
-        IncMultiHeadSelfAttentionVerify *attn =
-            (IncMultiHeadSelfAttentionVerify *)node.ptr;
+        TreeIncMultiHeadSelfAttention *attn =
+            (TreeIncMultiHeadSelfAttention *)node.ptr;
         new_op =
-            new IncMultiHeadSelfAttentionVerify(*this, *attn, inputs[0], true);
+            new TreeIncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
         break;
       }
       case OP_RMS_NORM: {

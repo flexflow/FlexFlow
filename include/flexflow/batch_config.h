@@ -20,7 +20,6 @@
 
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
-#define MAX_SEQ_LEN 20
 // #define BATCH_SIZE 16
 // #define MAX_REQUESTS 256
 
@@ -45,6 +44,7 @@ public:
   void print() const;
   static int const MAX_NUM_REQUESTS = 8;
   static int const MAX_NUM_TOKENS = 64;
+  static int const MAX_SEQ_LENGTH = 512;
 
   //  These are set by update
   int num_tokens;
@@ -72,20 +72,19 @@ public:
 
 class TreeVerifyBatchConfig : public BatchConfig {
 public:
-  struct PerTokenInfo : BatchConfig::PerTokenInfo {
-    int tree_branch_idx;
-  };
+  // struct PerTokenInfo : BatchConfig::PerTokenInfo {
+  //   int tree_branch_idx;
+  // };
   struct CommittedTokensInfo {
     int token_index;   // the index of the token in the previous batch
     int request_index; // request index in the batch
     int token_depth;   // position of the token in the request's sequence
   };
 
-  void compute_tree_branch_indexes();
+  // void compute_tree_branch_indexes();
 
   int num_tokens_to_commit;
   CommittedTokensInfo commited_tokens[MAX_NUM_TOKENS];
-  PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 };
 
 struct InferenceResult {
@@ -105,7 +104,7 @@ public:
 
   size_t beam_width;
   size_t target_iterations;
-  static int const MAX_BEAM_WIDTH = 3;
+  static int const MAX_BEAM_WIDTH = 1;
   static int const MAX_BEAM_DEPTH = 8;
 
   struct BeamSearchPerRequestInfo {

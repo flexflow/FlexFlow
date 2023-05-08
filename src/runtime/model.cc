@@ -42,7 +42,6 @@
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
-#include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -57,6 +56,7 @@
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -1317,11 +1317,11 @@ FFModel::FFModel(FFConfig &_config)
   metrics_input = -1;
   // Load strategy file
   // Create field space
-  {
-    FieldAllocator allocator =
-        runtime->create_field_allocator(ctx, config.field_space);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
+  //{
+  //  FieldAllocator allocator =
+  //      runtime->create_field_allocator(ctx, config.field_space);
+  //  allocator.allocate_field(sizeof(float), FID_DATA);
+  //}
   // Build training dataset
   // if (config.datasetPath.length() == 0) {
   //  dataLoader = NULL;
@@ -2765,7 +2765,7 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
-    case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
+    case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
       Op *op = SpecIncMultiHeadSelfAttention::create_operator_from_layer(
           *this, layer, inputs);
       operators.push_back(op);
@@ -2777,8 +2777,8 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
-    case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
-      Op *op = IncMultiHeadSelfAttentionVerify::create_operator_from_layer(
+    case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = TreeIncMultiHeadSelfAttention::create_operator_from_layer(
           *this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -3712,7 +3712,7 @@ FFConfig::FFConfig() {
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
   lg_ctx = Runtime::get_context();
-  field_space = runtime->create_field_space(lg_ctx);
+  // field_space = runtime->create_field_space(lg_ctx);
 }
 
 void FFConfig::parse_args(char **argv, int argc) {
@@ -4659,7 +4659,7 @@ void register_flexflow_internal_tasks() {
   // speculative MultiHeadAttention task
   {
     TaskVariantRegistrar registrar(
-        SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+        SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
         "Speculative IncMultiHeadSelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -4669,7 +4669,7 @@ void register_flexflow_internal_tasks() {
   }
   {
     TaskVariantRegistrar registrar(
-        SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+        SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
         "Speculative IncMultiHeadSelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -4679,24 +4679,23 @@ void register_flexflow_internal_tasks() {
   }
   {
     TaskVariantRegistrar registrar(
-        INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,
-        "IncMultiHeadSelfAttentionVerify Init");
+        TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+        "TreeIncMultiHeadSelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        OpMeta *,
-        IncMultiHeadSelfAttentionVerify::init_task>(
-        registrar, "IncMultiHeadSelfAttentionVerify Init Task");
+    Runtime::preregister_task_variant<OpMeta *,
+                                      TreeIncMultiHeadSelfAttention::init_task>(
+        registrar, "TreeIncMultiHeadSelfAttention Init Task");
   }
   {
     TaskVariantRegistrar registrar(
-        INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INF_TASK_ID,
-        "IncMultiHeadSelfAttentionVerify Inference");
+        TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+        "TreeIncMultiHeadSelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<
-        IncMultiHeadSelfAttentionVerify::inference_task>(
-        registrar, "IncMultiHeadSelfAttentionVerify Inference Task");
+        TreeIncMultiHeadSelfAttention::inference_task>(
+        registrar, "TreeIncMultiHeadSelfAttention Inference Task");
   }
   // NoOp
   {

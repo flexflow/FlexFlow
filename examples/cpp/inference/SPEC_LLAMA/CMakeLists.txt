@@ -7,8 +7,8 @@ set(project_target SPEC_LLAMA)
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
   llama.cc
-  llama.h
-  ../file_loader.cc)
+  ../file_loader.cc
+  ../models/llama.cc)
 
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
