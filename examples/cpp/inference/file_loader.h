@@ -23,7 +23,9 @@ using namespace FlexFlow;
 
 class FileDataLoader {
 public:
-  FileDataLoader(std::string _input_path, std::string _weight_file_path);
+  FileDataLoader(std::string _input_path,
+                 std::string _weight_file_path,
+                 int _num_heads = 32);
 
   BatchConfig::TokenId *generate_requests(int num, int length);
 
@@ -31,6 +33,7 @@ public:
                     std::unordered_map<std::string, Layer *> weights_layers);
 
 private:
+  int num_heads;
   std::string input_path;
   std::string weight_file_path;
 };

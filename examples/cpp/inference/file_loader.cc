@@ -20,8 +20,10 @@
 using namespace std;
 
 FileDataLoader::FileDataLoader(std::string _input_path,
-                               std::string _weight_file_path)
-    : input_path(_input_path), weight_file_path(_weight_file_path){};
+                               std::string _weight_file_path,
+                               int _num_heads)
+    : input_path(_input_path), weight_file_path(_weight_file_path),
+      num_heads(_num_heads){};
 
 BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
@@ -61,8 +63,9 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
   return prompts;
 };
 
-void load_attention_weights(float *ptr,
-                            size_t size,
+void load_attention_weights(float *dst_ptr,
+                            size_t total_weights_size,
+                            int num_heads,
                             std::string layer_name,
                             std::string weight_path) {
   std::string q_file = weight_path +
@@ -80,12 +83,12 @@ void load_attention_weights(float *ptr,
   std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
   size_t index = 0;
-  int file_index = 0;
+  int weight_index = 0; // {q, k, v, o} -> {0, 1, 2, 3}
 
-  // q, k, v, o -> 0, 1, 2, 3
   for (auto file : weight_files) {
-    std::cout << "file name and index: " << file << "->" << file_index << "\n";
-    size_t partial_size = size / 4;
+    std::cout << "file name and index: " << file << "->" << weight_index
+              << "\n";
+    size_t partial_size = total_weights_size / 4;
     std::ifstream in(file, std::ios::in | std::ios::binary);
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
@@ -100,17 +103,35 @@ void load_attention_weights(float *ptr,
     }
     assert(partial_size == host_array.size());
 
-    size_t one_head_size = 4096 * 128;
-    size_t data_index = 0;
+    size_t hidden_dim = 4096;
+    size_t qkv_inner_dim = 128;
+    size_t single_proj_size =
+        hidden_dim *
+        qkv_inner_dim; // size of each of Q,K,V,O weights for a single head
+    size_t one_head_size =
+        single_proj_size * 4; // size of Q+K+V+O weights for a single head
+    size_t checkpoint_idx, flexflow_idx;
 
-    for (int i = 0; i < 32; i++) {
-      size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
-      for (size_t j = start_index; j < start_index + one_head_size; j++) {
-        ptr[j] = host_array.at(data_index);
-        data_index += 1;
+    for (int i = 0; i < num_heads * single_proj_size; i++) {
+      int checkpoint_row_idx = i % hidden_dim;
+      int checkpoint_column_idx = (i / hidden_dim) % qkv_inner_dim;
+      int head_idx = i / single_proj_size;
+      checkpoint_idx = head_idx * one_head_size +
+                       weight_index * single_proj_size +
+                       checkpoint_column_idx * hidden_dim + checkpoint_row_idx;
+      if (weight_index < 3) {
+        // if this is the Q,K or V weight
+        flexflow_idx = checkpoint_idx;
+      } else {
+        // if this is the output projection weight
+        flexflow_idx =
+            head_idx * one_head_size + weight_index * single_proj_size +
+            checkpoint_row_idx * qkv_inner_dim + checkpoint_column_idx;
       }
+      dst_ptr[flexflow_idx] = host_array.at(checkpoint_idx);
     }
-    file_index++;
+
+    weight_index++;
 
     in.close();
     index++;
@@ -169,7 +190,8 @@ void FileDataLoader::load_weights(
     float *data = (float *)malloc(sizeof(float) * volume);
 
     if (v.first.find("attention_w") != std::string::npos) {
-      load_attention_weights(data, volume, v.first, weight_file_path);
+      load_attention_weights(
+          data, volume, num_heads, v.first, weight_file_path);
 
     } else {
       load_from_file(data, volume, weight_file_path + v.first);
