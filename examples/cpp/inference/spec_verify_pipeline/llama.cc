@@ -106,83 +106,116 @@ void FlexFlow::top_level_task(Task const *task,
         // std::cout << "tranverse the tree"
         //           << "\n";
         // rm.tranverse_beam_tree(bc);
+
+        printf("\n\n final beam search bc\n");
+        printf("bc.num_tokens: %d\n", bc.num_tokens);
+        for (int i = 0; i < bc.num_tokens; i++) {
+          printf("bc.tokensInfo[%d].token_id: %d\n", i, bc.tokensInfo[i].token_id);
+          printf("bc.tokensInfo[%d].abs_depth_in_request: %d\n", i, bc.tokensInfo[i].abs_depth_in_request);
+          printf("bc.tokensInfo[%d].request_index: %d\n", i, bc.tokensInfo[i].request_index);
+        }
+
+        printf("\n\n prepare tree_bc from final beam search bc\n");
+
         tree_bc = rm.prepare_next_batch_verify(bc);
+
+        printf("\n\n\n tree bc for verification\n\n");
+        // should have the same content as the hardcoded verification block below
+        // right now, it only contains the prompt
+        // need to add in the beam search result
+
+        printf("treebc.num_tokens: %d\n", tree_bc.num_tokens);
+
+        for (int i = 0; i < tree_bc.num_tokens; i++) {
+          printf("treebc.tokensInfo[%d].token_id: %d\n", i, tree_bc.tokensInfo[i].token_id);
+          printf("treebc.tokensInfo[%d].abs_depth_in_request: %d\n", i, tree_bc.tokensInfo[i].abs_depth_in_request);
+          printf("treebc.tokensInfo[%d].request_index: %d\n", i, tree_bc.tokensInfo[i].request_index);
+        }
+
+        FutureMap fm = im.inference(&tree_model, 0, tree_bc);
+        assert(fm.get_future_map_domain().get_volume() == 1);
+        Future future = fm.get_future(0);
+        InferenceResult ir = future.get_result<InferenceResult>();
+        for (int i = 0; i < tree_bc.num_tokens; i++) {
+          printf("verify_tokens[%d] = %d\n", i, ir.token_ids[i]);
+        }
+
       }
     }
   }
 
-  // original
-  {
-    std::vector<BatchConfig::TokenId> tokens{1,
-                                             306,
-                                             4658,
-                                             278,
-                                             6593,
-                                             310,
-                                             2834,
-                                             338,
-                                             593,
-                                             595,
-                                             17252,
-                                             5031,
-                                             993,
-                                             616,
-                                             368,
-                                             2302};
-    BatchConfig bc;
-    bc.num_tokens = 16;
-    bc.requestsInfo[0].num_tokens_in_batch = bc.num_tokens;
-    bc.requestsInfo[0].token_start_offset = 0;
-    bc.requestsInfo[0].max_sequence_length = 347;
-    bc.requestsInfo[0].request_guid = 1000000;
-    bc.request_completed[0] = false;
-    for (int i = 0; i < bc.num_tokens; i++) {
-      bc.tokensInfo[i].token_id = tokens[i];
-      bc.tokensInfo[i].abs_depth_in_request = i;
-      bc.tokensInfo[i].request_index = 0;
-    }
-    FutureMap fm = im.inference(&inc_model, 0, bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    Future future = fm.get_future(0);
-    InferenceResult ir = future.get_result<InferenceResult>();
-    for (int i = 0; i < bc.num_tokens; i++) {
-      printf("decoding_tokens[%d] = %d\n", i, ir.token_ids[i]);
-    }
-  }
+  // // original
+  // {
+  //   std::vector<BatchConfig::TokenId> tokens{1,
+  //                                            306,
+  //                                            4658,
+  //                                            278,
+  //                                            6593,
+  //                                            310,
+  //                                            2834,
+  //                                            338,
+  //                                            593,
+  //                                            595,
+  //                                            17252,
+  //                                            5031,
+  //                                            993,
+  //                                            616,
+  //                                            368,
+  //                                            2302};
+  //   BatchConfig bc;
+  //   bc.num_tokens = 16;
+  //   bc.requestsInfo[0].num_tokens_in_batch = bc.num_tokens;
+  //   bc.requestsInfo[0].token_start_offset = 0;
+  //   bc.requestsInfo[0].max_sequence_length = 347;
+  //   bc.requestsInfo[0].request_guid = 1000000;
+  //   bc.request_completed[0] = false;
+  //   for (int i = 0; i < bc.num_tokens; i++) {
+  //     bc.tokensInfo[i].token_id = tokens[i];
+  //     bc.tokensInfo[i].abs_depth_in_request = i;
+  //     bc.tokensInfo[i].request_index = 0;
+  //   }
+  //   FutureMap fm = im.inference(&inc_model, 0, bc);
+  //   assert(fm.get_future_map_domain().get_volume() == 1);
+  //   Future future = fm.get_future(0);
+  //   InferenceResult ir = future.get_result<InferenceResult>();
+  //   for (int i = 0; i < bc.num_tokens; i++) {
+  //     printf("decoding_tokens[%d] = %d\n", i, ir.token_ids[i]);
+  //   }
+  // }
 
-  // verification
-  {
-    std::vector<BatchConfig::TokenId> tokens{1,
-                                             306,
-                                             4658,
-                                             278,
-                                             6593,
-                                             310,
-                                             2834,
-                                             338,
-                                             593,
-                                             595,
-                                             17252,
-                                             5031,
-                                             993,
-                                             616,
-                                             368,
-                                             2302};
-    tree_bc.num_tokens = 16;
-    tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
-    for (int i = 0; i < tree_bc.num_tokens; i++) {
-      tree_bc.tokensInfo[i].token_id = tokens[i];
-      tree_bc.tokensInfo[i].abs_depth_in_request = i;
-      tree_bc.tokensInfo[i].request_index = 0;
-    }
-    FutureMap fm = im.inference(&tree_model, 0, tree_bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    Future future = fm.get_future(0);
-    InferenceResult ir = future.get_result<InferenceResult>();
-    for (int i = 0; i < tree_bc.num_tokens; i++) {
-      printf("verify_tokens[%d] = %d\n", i, ir.token_ids[i]);
-    }
-  }
+  // // verification
+  // {
+  //   std::vector<BatchConfig::TokenId> tokens{1,
+  //                                            306,
+  //                                            4658,
+  //                                            278,
+  //                                            6593,
+  //                                            310,
+  //                                            2834,
+  //                                            338,
+  //                                            593,
+  //                                            595,
+  //                                            17252,
+  //                                            5031,
+  //                                            993,
+  //                                            616,
+  //                                            368,
+  //                                            2302};
+  //   tree_bc.num_tokens = 16;
+  //   tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
+  //   for (int i = 0; i < tree_bc.num_tokens; i++) {
+  //     tree_bc.tokensInfo[i].token_id = tokens[i];
+  //     tree_bc.tokensInfo[i].abs_depth_in_request = i;
+  //     tree_bc.tokensInfo[i].request_index = 0;
+  //   }
+  //   FutureMap fm = im.inference(&tree_model, 0, tree_bc);
+  //   assert(fm.get_future_map_domain().get_volume() == 1);
+  //   Future future = fm.get_future(0);
+  //   InferenceResult ir = future.get_result<InferenceResult>();
+  //   for (int i = 0; i < tree_bc.num_tokens; i++) {
+  //     printf("verify_tokens[%d] = %d\n", i, ir.token_ids[i]);
+  //   }
+  // }
 
   // Execution fence
   {
