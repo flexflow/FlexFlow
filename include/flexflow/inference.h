@@ -101,7 +101,8 @@ public:
                           int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>> 
-      traverse_verify_tree(std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
+      traverse_verify_tree(size_t guid,
+                           std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
                            std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
 
   static void
@@ -122,6 +123,7 @@ private:
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
   // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth, Commited Tokens
+  std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>> committed_tokens;
 };
 
 } // namespace FlexFlow
