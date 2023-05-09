@@ -62,7 +62,7 @@ struct BeamTree {
     int parent_ids[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
     float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   };
-  treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH];
+  treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
 
 // struct BeamTree_v2 {
