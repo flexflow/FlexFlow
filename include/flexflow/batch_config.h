@@ -129,7 +129,8 @@ private:
   size_t current_iteration;
 };
 
-struct BeamInferenceResult : public InferenceResult {
+struct BeamInferenceResult {
+  static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId
       token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
