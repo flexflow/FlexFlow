@@ -103,8 +103,8 @@ public:
 
   std::vector<std::pair<BatchConfig::TokenId, int>> 
       traverse_verify_tree(size_t guid,
-                           std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
-                           std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
+                           const std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
+                           const std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
 
   TreeVerifyBatchConfig
       convert_beam_to_tree_batch_config(BeamSearchBatchConfig const &beam_bc);

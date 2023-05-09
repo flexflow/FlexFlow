@@ -250,7 +250,7 @@ BeamSearchBatchConfig
   new_bc.num_tokens = 0;
   int result_index = 0;
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if (bc.request_completed[i]) {
+    if (old_bc.request_completed[i]) {
       continue;
     }
     size_t guid = old_bc.requestsInfo[i].request_guid;
@@ -266,7 +266,7 @@ BeamSearchBatchConfig
       int root_abs_depth = request.tokens.size();
       if (old_bc.tokensInfo[result_index].abs_depth_in_request >= root_abs_depth) {
         tree_outputs.push_back(
-            std::make_pair(result[result_index],
+            std::make_pair(result.token_ids[result_index],
                            old_bc.tokensInfo[result_index].abs_depth_in_request + 1));
         committed_tokens.at(guid).push_back(
             std::make_pair(old_bc.tokensInfo[result_index].abs_depth_in_request, result_index));
@@ -275,7 +275,7 @@ BeamSearchBatchConfig
     }
 
     std::vector<std::pair<BatchConfig::TokenId, int>> 
-      &verified_tokens = traverse_verify_tree(dfs_tree_inputs.at(guid), tree_outputs);
+      verified_tokens = traverse_verify_tree(guid, dfs_tree_inputs.at(guid), tree_outputs);
     
     
     // check if the request is finished
@@ -285,7 +285,7 @@ BeamSearchBatchConfig
         request.tokens.push_back(verified_tokens[j].first);
       }
 
-      log_req_mgr.print("[Done] guid(%zu) with final length(%d)",
+      log_req_mgr.print("[Done] guid(%zu) with final length(%zu)",
             request.guid, request.tokens.size());
 
       new_bc.request_completed[i] = true;
@@ -305,7 +305,7 @@ BeamSearchBatchConfig
     // TODO: Beam Request Info, missing from VerifyTreeBatchConfig
     new_bc.beamRequestsInfo[i].current_depth = 1;
     new_bc.beamRequestsInfo[i].beam_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    new_bc.beamRequestsInfo[i].max_depth = BeamSearchBatchConfig::MAX_DEPTH;
+    new_bc.beamRequestsInfo[i].max_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
     new_bc.beamRequestsInfo[i].request_completed = false;
     for (int j = 0; j < BeamSearchBatchConfig::MAX_BEAM_WIDTH; j++) {
       new_bc.beamRequestsInfo[i].parent_id[j] = 0;
@@ -403,7 +403,7 @@ TreeVerifyBatchConfig
 
     // Get the dfs tree
     std::vector<std::pair<BatchConfig::TokenId, int>> 
-      &dfs_tree_inputs = traverse_beam_tree(old_bc, i);
+      dfs_tree_inputs = traverse_beam_tree(old_bc, i);
     
     // Normal Request Info
     new_bc.requestsInfo[i].token_start_offset = dfs_tree_inputs.front().second;
@@ -411,7 +411,7 @@ TreeVerifyBatchConfig
     new_bc.requestsInfo[i].max_sequence_length =
         old_bc.requestsInfo[i].max_sequence_length;
     // TODO: Check this
-    new_bc.requestsInfo[i].num_tokens_in_batch = verified_tokens.size();
+    new_bc.requestsInfo[i].num_tokens_in_batch = dfs_tree_inputs.size();
 
 
     // Token Info
@@ -425,9 +425,9 @@ TreeVerifyBatchConfig
 
       // TODO: Add committed token info
       auto committed_token = committed_tokens.at(guid).at(j);
-      new_bc.commitedTokensInfo[new_bc.num_tokens].token_index = committed_token.second;
-      new_bc.commitedTokensInfo[new_bc.num_tokens].token_id = i;
-      new_bc.commitedTokensInfo[new_bc.num_tokens].abs_depth_in_request = committed_token.first;
+      new_bc.commited_tokens[new_bc.num_tokens].token_index = committed_token.second;
+      new_bc.commited_tokens[new_bc.num_tokens].request_index = i;
+      new_bc.commited_tokens[new_bc.num_tokens].token_depth = committed_token.first;
 
 
       new_bc.num_tokens++;
@@ -690,11 +690,11 @@ TreeVerifyBatchConfig RequestManager::convert_beam_to_tree_batch_config(
 
 std::vector<std::pair<BatchConfig::TokenId, int>>
   RequestManager::traverse_verify_tree(size_t guid,
-                                       std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
-                                       std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree) {
+                                       const std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
+                                       const std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree) {
   std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> verifiedTree;
   verifiedTree.push_back(inputSerializedTree.at(0));
-  new_committed_tokens = std::vector<std::pair<int, int>> ();
+  std::vector<std::pair<int, int>> new_committed_tokens = std::vector<std::pair<int, int>> ();
 
   for (int i = 0; i < inputSerializedTree.size(); i++) {
     auto input = inputSerializedTree.at(i);
