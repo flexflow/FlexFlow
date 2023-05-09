@@ -26,7 +26,7 @@ class BeamTree;
 
 class InferenceManager {
 public:
-  InferenceManager(FFModel *_model,
+  InferenceManager(FFConfig const &config,
                    int max_num_tokens_per_batch,
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(
@@ -39,8 +39,8 @@ public:
                                            ParallelTensor const input);
 
 public:
+  FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
-  FFModel *model;
   int max_num_tokens_per_batch;
   int max_num_inflight_batches;
   int num_devices;
@@ -75,6 +75,7 @@ public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
   RequestManager();
+  size_t get_num_processed_requests();
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
@@ -105,6 +106,9 @@ public:
                            std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
                            std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
 
+  TreeVerifyBatchConfig
+      convert_beam_to_tree_batch_config(BeamSearchBatchConfig const &beam_bc);
+
   static void
       load_tokens_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
@@ -118,12 +122,14 @@ private:
   RequestGuid next_available_guid;
 
   struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
+
   std::unordered_map<RequestGuid, std::vector<std::pair<BatchConfig::TokenId, int>>>
          dfs_tree_inputs;
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
   // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth, Commited Tokens
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>> committed_tokens;
+  size_t num_processed_requests;
 };
 
 } // namespace FlexFlow

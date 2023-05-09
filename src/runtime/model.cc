@@ -1317,11 +1317,11 @@ FFModel::FFModel(FFConfig &_config)
   metrics_input = -1;
   // Load strategy file
   // Create field space
-  {
-    FieldAllocator allocator =
-        runtime->create_field_allocator(ctx, config.field_space);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
+  //{
+  //  FieldAllocator allocator =
+  //      runtime->create_field_allocator(ctx, config.field_space);
+  //  allocator.allocate_field(sizeof(float), FID_DATA);
+  //}
   // Build training dataset
   // if (config.datasetPath.length() == 0) {
   //  dataLoader = NULL;
@@ -3712,7 +3712,7 @@ FFConfig::FFConfig() {
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
   lg_ctx = Runtime::get_context();
-  field_space = runtime->create_field_space(lg_ctx);
+  // field_space = runtime->create_field_space(lg_ctx);
 }
 
 void FFConfig::parse_args(char **argv, int argc) {
