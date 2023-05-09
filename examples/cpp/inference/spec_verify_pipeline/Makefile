@@ -23,7 +23,7 @@ USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 # Put the binary file name here
-OUTFILE		?= spec_llama
+OUTFILE		?= spec_verify_pipeline
 # List all the application source files here
 GEN_SRC		= llama.cc dataloader.cc 
 GEN_GPU_SRC	= dataloader.cu 

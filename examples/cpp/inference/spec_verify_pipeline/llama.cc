@@ -72,8 +72,8 @@ void FlexFlow::top_level_task(Task const *task,
     int bid = 0;
     if (beam_future_handlers.find(bid) == beam_future_handlers.end()) {
       BeamSearchBatchConfig bc;
-      BeamInferenceResult ir;
-      bc = rm.prepare_next_batch_beam(bc, ir);
+      InferenceResult ir;
+      bc = rm.prepare_next_batch_init(tree_bc, ir);
 
       std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
       FutureMap fm = im.inference(&beam_model, bid, bc);
@@ -106,7 +106,7 @@ void FlexFlow::top_level_task(Task const *task,
         // std::cout << "tranverse the tree"
         //           << "\n";
         // rm.tranverse_beam_tree(bc);
-        tree_bc = rm.convert_beam_to_tree_batch_config(bc);
+        tree_bc = rm.prepare_next_batch_verify(bc);
       }
     }
   }
