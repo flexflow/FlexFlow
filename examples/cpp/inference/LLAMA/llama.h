@@ -84,6 +84,8 @@ public:
   template <typename T>
   static void load_attention_weights(T *ptr,
                                      size_t size,
+                                     int hidden_dim,
+                                     int num_heads,
                                      std::string layer_name,
                                      std::string weight_path);
   void store_outputs(BatchConfig *bc,

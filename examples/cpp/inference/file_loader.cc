@@ -68,6 +68,8 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
 void load_attention_weights(float *ptr,
                             size_t size,
+                            int hidden_dim,
+                            int num_heads,
                             std::string layer_name,
                             std::string weight_path) {
 
@@ -105,10 +107,10 @@ void load_attention_weights(float *ptr,
     }
     assert(partial_size == host_array.size());
 
-    size_t one_head_size = 4096 * 128;
+    size_t one_head_size = hidden_dim * (hidden_dim / num_heads);
     size_t data_index = 0;
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < num_heads; i++) {
       size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
         ptr[j] = host_array.at(data_index);
@@ -176,7 +178,8 @@ void FileDataLoader::load_weights(
       assert(dims_vec[0] = hidden_dim * qkv_inner_dim * 4);
       assert(dims_vec[1] = num_heads);
       assert(volume == dims_vec[0] * dims_vec[1]);
-      load_attention_weights(data, volume, v.first, weight_file_path);
+      load_attention_weights(
+          data, volume, hidden_dim, num_heads, v.first, weight_file_path);
 
     } else {
       load_from_file(data, volume, weight_file_path + v.first);
