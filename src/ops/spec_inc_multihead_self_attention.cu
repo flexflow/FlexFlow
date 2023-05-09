@@ -31,14 +31,12 @@ __global__ void spec_build_w_out_tensor(float const *weight_ptr,
                                         int num_heads,
                                         int qkv_weight_block_size) {
   CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
-    // vProjSize = 128, oProjSize = 4096
-    int v_idx = i % vProjSize;
-    int o_idx = (i / vProjSize) % oProjSize;
+    int row_idx = i % vProjSize;
+    int col_idx = (i / vProjSize) % oProjSize;
     int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[head_idx * vProjSize * oProjSize + v_idx * oProjSize +
-                          o_idx] =
+    contiguous_weight_ptr[i] =
         weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
-                   qkv_weight_block_size + o_idx * vProjSize + v_idx];
+                   qkv_weight_block_size + col_idx * vProjSize + row_idx];
   }
 }
 

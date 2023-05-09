@@ -204,12 +204,8 @@ void FlexFlow::top_level_task(Task const *task,
                  llamaConfig.dim * (llamaConfig.dim / llamaConfig.n_heads) * 4);
       assert(dims_vec[1] = llamaConfig.n_heads);
       assert(volume == dims_vec[0] * dims_vec[1]);
-      loader.load_attention_weights(data,
-                                    llamaConfig.n_heads,
-                                    llamaConfig.dim,
-                                    llamaConfig.dim / llamaConfig.n_heads,
-                                    v.first,
-                                    llamaConfig.weight_file_path);
+      loader.load_attention_weights(
+          data, volume, v.first, llamaConfig.weight_file_path);
 
     } else {
       loader.load_from_file(

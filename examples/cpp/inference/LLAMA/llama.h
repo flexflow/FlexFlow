@@ -82,10 +82,8 @@ public:
   static void load_from_file(T *ptr, size_t size, std::string filename);
 
   template <typename T>
-  static void load_attention_weights(T *dst_ptr,
-                                     int num_heads,
-                                     size_t hidden_dim,
-                                     size_t qkv_inner_dim,
+  static void load_attention_weights(T *ptr,
+                                     size_t size,
                                      std::string layer_name,
                                      std::string weight_path);
   void store_outputs(BatchConfig *bc,
