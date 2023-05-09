@@ -121,7 +121,7 @@ void load_attention_weights(float *dst_ptr,
         // if this is the Q,K or V weight
         flexflow_idx =
             head_idx * one_head_size + weight_index * single_proj_size +
-            checkpoint_column_idx * qkv_inner_dim + checkpoint_row_idx;
+            checkpoint_column_idx * hidden_dim + checkpoint_row_idx;
       } else {
         // if this is the output projection weight
         flexflow_idx =
