@@ -153,6 +153,9 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                        T *beta_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  print_tensor<float>((float *)in_ptr, 20, "layernorm input");
+  print_tensor<float>((float *) gamma_ptr, 20, "layernorm weight");
+  print_tensor<float>((float *) beta_ptr, 20, "layernorm bias");
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -173,6 +176,7 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
     print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
     print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
   }
+  print_tensor<float>((float *) out_ptr, 20, "layernorm output");
 }
 
 template <typename T>

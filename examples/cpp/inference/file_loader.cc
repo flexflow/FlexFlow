@@ -63,22 +63,25 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
   return prompts;
 };
 
-void load_attention_weights(float *ptr,
-                            size_t size,
-                            std::string layer_name,
-                            std::string weight_path) {
-  std::string q_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wq_weight";
-  std::string k_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wk_weight";
-  std::string v_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wv_weight";
-  std::string o_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wo_weight";
+void load_attention_weights_bias(float *ptr,
+                                 size_t size,
+                                 std::string layer_name,
+                                 std::string weight_path,
+                                 bool is_weights) {
+  // layers_0_attention_wq_weight
+  // layers_0_self_attn_q_proj_weight
+  std::string q_file =
+      weight_path + layer_name.substr(0, layer_name.find("attention")) +
+      (is_weights ? "attention_wq_weight" : "attention_wq_bias");
+  std::string k_file =
+      weight_path + layer_name.substr(0, layer_name.find("attention")) +
+      (is_weights ? "attention_wk_weight" : "attention_wk_bias");
+  std::string v_file =
+      weight_path + layer_name.substr(0, layer_name.find("attention")) +
+      (is_weights ? "attention_wv_weight" : "attention_wv_bias");
+  std::string o_file =
+      weight_path + layer_name.substr(0, layer_name.find("attention")) +
+      (is_weights ? "attention_wo_weight" : "attention_wo_bias");
   std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
   size_t index = 0;
@@ -133,7 +136,8 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   // std::cout << loaded_data_size << std::endl;
   // std::cout << in_get_size << std::endl;
   if (in_get_size != loaded_data_size) {
-    std::cout << "load weight data error " << in_get_size<< ", " << loaded_data_size<< ", " << sizeof(float) << std::endl;
+    std::cout << "load weight data error " << in_get_size << ", "
+              << loaded_data_size << ", " << sizeof(float) << std::endl;
     return;
   }
 
@@ -148,51 +152,58 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   in.close();
 }
 
-void FileDataLoader::load_positions(FFModel *ff, Tensor pt,  ParallelTensor position_pt, int max_seq_length, int offset){
-  std::cout<<"load positions" <<std::endl;
+void FileDataLoader::load_positions(FFModel *ff,
+                                    Tensor pt,
+                                    ParallelTensor position_pt,
+                                    int max_seq_length,
+                                    int offset) {
+  std::cout << "load positions" << std::endl;
   size_t volume = 1;
   std::vector<int> dims_vec;
   for (int i = 0; i < pt->num_dims; i++) {
-      // std::cout<< pt->dims[i] << "\n";
-      volume *= pt->dims[i];
-      dims_vec.push_back(pt->dims[i]);
-      std::cout<<dims_vec.at(dims_vec.size() - 1) << ", ";
-    }
-
-  //load data;
-  int *data = (int *)malloc(sizeof(int) * volume);
-  for(int i = 0; i < volume; i++){
-      data[i] = i % max_seq_length + offset;
-      std::cout<< data[i] <<", ";
+    // std::cout<< pt->dims[i] << "\n";
+    volume *= pt->dims[i];
+    dims_vec.push_back(pt->dims[i]);
+    std::cout << dims_vec.at(dims_vec.size() - 1) << ", ";
   }
-  //set tensor
+
+  // load data;
+  int *data = (int *)malloc(sizeof(int) * volume);
+  for (int i = 0; i < volume; i++) {
+    data[i] = i % max_seq_length + offset;
+    std::cout << data[i] << ", ";
+  }
+  // set tensor
 
   // ParallelTensor position_pt;
-  
+
   // ff->get_parallel_tensor_from_tensor(pt, position_pt);
   position_pt->set_tensor<int>(ff, dims_vec, data);
 }
 
-void FileDataLoader::load_positions_gpu(InferenceManager im, ParallelTensor position_input, int offset) {
-  Context ctx = im.model->config.lg_ctx;
-  Runtime *runtime = im.model->config.lg_hlr;
-  size_t machine_view_hash = position_input->machine_view.hash();
-  ArgumentMap argmap;
-  IndexLauncher launcher(
-      RM_LOAD_POSITION_TASK_ID,
-      position_input->parallel_is,
-      TaskArgument(
-          &offset, sizeof(int)),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      machine_view_hash);
-  launcher.add_region_requirement(RegionRequirement(
-      position_input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, position_input->region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
-}
+// void FileDataLoader::load_positions_gpu(InferenceManager im,
+//                                         ParallelTensor position_input,
+//                                         int offset) {
+//   Context ctx = im.model->config.lg_ctx;
+//   Runtime *runtime = im.model->config.lg_hlr;
+//   size_t machine_view_hash = position_input->machine_view.hash();
+//   ArgumentMap argmap;
+//   IndexLauncher launcher(RM_LOAD_POSITION_TASK_ID,
+//                          position_input->parallel_is,
+//                          TaskArgument(&offset, sizeof(int)),
+//                          argmap,
+//                          Predicate::TRUE_PRED,
+//                          false /*must*/,
+//                          0 /*mapper_id*/,
+//                          machine_view_hash);
+//   launcher.add_region_requirement(RegionRequirement(position_input->part,
+//                                                     0 /*projection id*/,
+//                                                     WRITE_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     position_input->region));
+//   launcher.add_field(0, FID_DATA);
+//   runtime->execute_index_space(ctx, launcher);
+// }
 
 void FileDataLoader::load_weights(
     FFModel *ff, std::unordered_map<std::string, Layer *> weights_layers) {
@@ -200,34 +211,44 @@ void FileDataLoader::load_weights(
   for (auto &v : weights_layers) {
 
     int weights_num = v.second->numWeights;
-    Tensor weight = v.second->weights[0];
-    std::cout << "weights layer: " << v.first << "\n";
+    std::cout << "weight layer: " << v.first << ", num" << weights_num << "\n";
 
-    if (weight == NULL) {
-      std::cout << "op no weights : " << v.first << "\n";
-      continue;
+    for (int i = 0; i < weights_num; i++) {
+      Tensor weight = v.second->weights[i];
+      if (weight == NULL) {
+        std::cout << "op no weights : " << v.first << "\n";
+        continue;
+      }
+
+      size_t volume = 1;
+      std::vector<int> dims_vec;
+      for (int i = 0; i < weight->num_dims; i++) {
+        dims_vec.push_back(weight->dims[i]);
+        volume *= weight->dims[i];
+      }
+      std::cout << "load weights volume: " << volume << std::endl;
+
+      assert(weight->data_type == DT_FLOAT);
+      float *data = (float *)malloc(sizeof(float) * volume);
+
+      if (v.first.find("attention_w") != std::string::npos) {
+        std::cout<<"load weights bias: "<< volume <<"\n";
+        load_attention_weights_bias(
+            data, volume, v.first, weight_file_path, i == 0);
+
+      } else {
+        std::string file_path = v.first;
+        if (i > 0) {
+          int index = v.first.find("_weight");
+          assert(index != std::string::npos);
+          file_path = v.first.substr(0, index) + "_bias";
+        }
+        load_from_file(data, volume, weight_file_path + file_path);
+      }
+
+      ParallelTensor weight_pt;
+      ff->get_parallel_tensor_from_tensor(weight, weight_pt);
+      weight_pt->set_tensor<float>(ff, dims_vec, data);
     }
-
-    size_t volume = 1;
-    std::vector<int> dims_vec;
-    for (int i = 0; i < weight->num_dims; i++) {
-      dims_vec.push_back(weight->dims[i]);
-      volume *= weight->dims[i];
-    }
-    std::cout << "load weights volume: "<< volume << std::endl;
-
-    assert(weight->data_type == DT_FLOAT);
-    float *data = (float *)malloc(sizeof(float) * volume);
-
-    if (v.first.find("attention_w") != std::string::npos) {
-      load_attention_weights(data, volume, v.first, weight_file_path);
-
-    } else {
-      load_from_file(data, volume, weight_file_path + v.first);
-    }
-
-    ParallelTensor weight_pt;
-    ff->get_parallel_tensor_from_tensor(weight, weight_pt);
-    weight_pt->set_tensor<float>(ff, dims_vec, data);
   }
 }

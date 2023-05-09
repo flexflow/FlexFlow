@@ -612,7 +612,7 @@ public:
                                       int kdim = 0,
                                       int vdim = 0,
                                       float dropout = 0.0f,
-                                      bool bias = true,
+                                      bool bias = false,
                                       bool add_bias_kv = false,
                                       bool add_zero_attn = false,
                                       Initializer *kernel_initializer = NULL,

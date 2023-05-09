@@ -87,14 +87,33 @@ void FlexFlow::top_level_task(Task const *task,
     //https://github.com/huggingface/transformers/blob/main/src/transformers/models/opt/modeling_opt.py#LL324C1-L325C1
     //for spec_inference system now do not use 350m, so simplify it.
     std::vector<int> axes = {0};
-    Tensor hidden_states = ff.layer_norm(residual, axes, optConfig.layer_norm_elementwise_affine, 0.0);
+    Tensor hidden_states = ff.layer_norm(residual, axes, optConfig.layer_norm_elementwise_affine, 1e-05);
+    
+    if (i % num_transformer_layers_per_gpu == 0) {
+      mapping[hidden_states].push_back(
+          machine_views[i / num_transformer_layers_per_gpu]);
+    }
     Layer *self_attn_layer_norm = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_self_attn_layer_norm", self_attn_layer_norm);
+    weights_layers.emplace("layers_" + std::to_string(i) + "_self_attn_layer_norm_weight", self_attn_layer_norm);
+
+
+    Tensor mha =
+        ff.inc_multihead_self_attention(hidden_states,
+                                        optConfig.hidden_size,
+                                        optConfig.num_attention_heads,
+                                        optConfig.hidden_size / optConfig.num_attention_heads,
+                                        optConfig.hidden_size / optConfig.num_attention_heads,
+                                        0.0f,
+                                        true,
+                                        false,
+                                        false,
+                                        NULL,
+                                        true);
   }
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
-  InferenceManager im(&ff, 1, 1);
+  InferenceManager im(ffconfig, 1, 1);
   im.compile_model_and_allocate_buffer(&ff, mapping);
   RequestManager rm;
 
@@ -115,7 +134,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm.register_new_request(prompt, 10);
   fileloader.load_weights(&ff, weights_layers);
 //   fileloader.load_positions(&ff, position_input, im.tensor_buffer[pos_pt][0], 9, 2);
-  fileloader.load_positions_gpu(im, im.tensor_buffer[pos_pt][0], 2);
+  // fileloader.load_positions_gpu(im, im.tensor_buffer[pos_pt][0], 2);
   std::cout<<"print ptensor: " <<  im.tensor_buffer[pos_pt][0] << std::endl;
 
 

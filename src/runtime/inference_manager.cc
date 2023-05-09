@@ -284,8 +284,8 @@ void InferenceManager::load_input_tokens_from_batch_config(
 
 void InferenceManager::load_positions_gpu(ParallelTensor position_input,
                                           int offset) {
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
+  Context ctx = ff_config.lg_ctx;
+  Runtime *runtime = ff_config.lg_hlr;
   size_t machine_view_hash = position_input->machine_view.hash();
   ArgumentMap argmap;
   IndexLauncher launcher(RM_LOAD_POSITION_TASK_ID,
