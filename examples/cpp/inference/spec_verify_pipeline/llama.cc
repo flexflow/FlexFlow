@@ -115,8 +115,19 @@ void FlexFlow::top_level_task(Task const *task,
           printf("bc.tokensInfo[%d].request_index: %d\n", i, bc.tokensInfo[i].request_index);
         }
 
-        printf("\n\n prepare tree_bc from final beam search bc\n");
+        // printf("\n\n prepare tree_bc from final beam search bc\n");
 
+        // bc = rm.prepare_next_batch_beam(bc, ir);
+        
+        // printf("\n\n final beam search bc\n");
+        // printf("bc.num_tokens: %d\n", bc.num_tokens);
+        // for (int i = 0; i < bc.num_tokens; i++) {
+        //   printf("bc.tokensInfo[%d].token_id: %d\n", i, bc.tokensInfo[i].token_id);
+        //   printf("bc.tokensInfo[%d].abs_depth_in_request: %d\n", i, bc.tokensInfo[i].abs_depth_in_request);
+        //   printf("bc.tokensInfo[%d].request_index: %d\n", i, bc.tokensInfo[i].request_index);
+        // }
+
+        printf("\n\n prepare tree_bc from final beam search bc\n");
         tree_bc = rm.prepare_next_batch_verify(bc);
 
         printf("\n\n\n tree bc for verification\n\n");
@@ -125,6 +136,7 @@ void FlexFlow::top_level_task(Task const *task,
         // need to add in the beam search result
 
         printf("treebc.num_tokens: %d\n", tree_bc.num_tokens);
+        printf("treebc.num_tokens_in_batch: %d\n", tree_bc.requestsInfo[0].num_tokens_in_batch);
 
         for (int i = 0; i < tree_bc.num_tokens; i++) {
           printf("treebc.tokensInfo[%d].token_id: %d\n", i, tree_bc.tokensInfo[i].token_id);

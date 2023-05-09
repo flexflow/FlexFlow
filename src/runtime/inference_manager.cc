@@ -197,6 +197,11 @@ MachineView *InferenceManager::get_machine_view(int mv_id) {
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfig const &bc) {
+  std::cout << "InferenceManager::inference" << index << std::endl;
+  std::cout << "num_active_tokens = " << bc.num_active_tokens()
+            << ", num_active_requests = " << bc.num_active_requests()
+            << std::endl;
+  
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
