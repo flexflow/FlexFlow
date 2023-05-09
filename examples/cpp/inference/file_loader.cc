@@ -20,8 +20,13 @@
 using namespace std;
 
 FileDataLoader::FileDataLoader(std::string _input_path,
-                               std::string _weight_file_path)
-    : input_path(_input_path), weight_file_path(_weight_file_path){};
+                               std::string _weight_file_path,
+                               int _num_heads,
+                               size_t _hidden_dim,
+                               size_t _qkv_inner_dim)
+    : input_path(_input_path), weight_file_path(_weight_file_path),
+      num_heads(_num_heads), hidden_dim(_hidden_dim),
+      qkv_inner_dim(_qkv_inner_dim){};
 
 BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
@@ -42,7 +47,7 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
   size_t in_get_size = in.gcount();
   if (in_get_size != loaded_data_size) {
-    std::cout << "load data error";
+    std::cout << "load data error" << std::endl;
     return prompts;
   }
 
@@ -63,8 +68,11 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
 void load_attention_weights(float *ptr,
                             size_t size,
+                            int hidden_dim,
+                            int num_heads,
                             std::string layer_name,
                             std::string weight_path) {
+
   std::string q_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
                        "attention_wq_weight";
@@ -79,7 +87,6 @@ void load_attention_weights(float *ptr,
                        "attention_wo_weight";
   std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
-  size_t index = 0;
   int file_index = 0;
 
   // q, k, v, o -> 0, 1, 2, 3
@@ -100,10 +107,10 @@ void load_attention_weights(float *ptr,
     }
     assert(partial_size == host_array.size());
 
-    size_t one_head_size = 4096 * 128;
+    size_t one_head_size = hidden_dim * (hidden_dim / num_heads);
     size_t data_index = 0;
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < num_heads; i++) {
       size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
         ptr[j] = host_array.at(data_index);
@@ -113,7 +120,6 @@ void load_attention_weights(float *ptr,
     file_index++;
 
     in.close();
-    index++;
   }
 }
 
@@ -131,11 +137,11 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   // std::cout << loaded_data_size << std::endl;
   // std::cout << in_get_size << std::endl;
   if (in_get_size != loaded_data_size) {
-    std::cout << "load data error";
+    std::cout << "load data error" << std::endl;
     return;
   }
 
-  // std::cout << "finish loading input";
+  // std::cout << "finish loading input" << std::endl;
   assert(size == host_array.size());
 
   // normal
@@ -169,7 +175,11 @@ void FileDataLoader::load_weights(
     float *data = (float *)malloc(sizeof(float) * volume);
 
     if (v.first.find("attention_w") != std::string::npos) {
-      load_attention_weights(data, volume, v.first, weight_file_path);
+      assert(dims_vec[0] = hidden_dim * qkv_inner_dim * 4);
+      assert(dims_vec[1] = num_heads);
+      assert(volume == dims_vec[0] * dims_vec[1]);
+      load_attention_weights(
+          data, volume, hidden_dim, num_heads, v.first, weight_file_path);
 
     } else {
       load_from_file(data, volume, weight_file_path + v.first);
