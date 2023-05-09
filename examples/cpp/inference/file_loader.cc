@@ -89,7 +89,7 @@ void load_attention_weights(float *dst_ptr,
   int weight_index = 0; // {q, k, v, o} -> {0, 1, 2, 3}
   size_t single_proj_size =
       hidden_dim *
-      qkv_inner_dim; // size of each of Q,K,V,O weights for a single head
+      qkv_inner_dim;        // size of each of Q,K,V,O weights for a single head
   size_t one_head_size =
       single_proj_size * 4; // size of Q+K+V+O weights for a single head
   size_t one_weight_file_size =
@@ -119,9 +119,9 @@ void load_attention_weights(float *dst_ptr,
       int head_idx = i / single_proj_size;
       if (weight_index < 3) {
         // if this is the Q,K or V weight
-        flexflow_idx =
-            head_idx * one_head_size + weight_index * single_proj_size +
-            checkpoint_column_idx * hidden_dim + checkpoint_row_idx;
+        flexflow_idx = head_idx * one_head_size +
+                       weight_index * single_proj_size +
+                       checkpoint_column_idx * hidden_dim + checkpoint_row_idx;
       } else {
         // if this is the output projection weight
         flexflow_idx =
