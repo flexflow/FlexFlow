@@ -36,6 +36,7 @@ RequestManager::RequestGuid
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
+  request.initial_len = prompt.size();
   request.tokens = prompt;
 
   pending_request_queue.push(request);
@@ -411,7 +412,25 @@ TreeVerifyBatchConfig
     new_bc.requestsInfo[i].max_sequence_length =
         old_bc.requestsInfo[i].max_sequence_length;
     // TODO: Check this
-    new_bc.requestsInfo[i].num_tokens_in_batch = dfs_tree_inputs.size();
+    new_bc.requestsInfo[i].num_tokens_in_batch = 0;
+
+    // TODO: Add prompt token first in first verify iteration
+    if (request.tokens.size() == request.initial_len) {
+      for (int j = 0; j < request.initial_len; j++) {
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+        new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[j];
+        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = j;
+
+        new_bc.num_tokens++;
+        new_bc.requestsInfo[i].num_tokens_in_batch ++;
+      }
+      if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
+        assert(false);
+        break;
+      }
+
+      new_bc.requestsInfo[i].token_start_offset = 1;
+    }
 
 
     // Token Info
@@ -429,9 +448,9 @@ TreeVerifyBatchConfig
       new_bc.commited_tokens[new_bc.num_tokens].request_index = i;
       new_bc.commited_tokens[new_bc.num_tokens].token_depth = committed_token.first;
 
-
       new_bc.num_tokens++;
-      
+      new_bc.requestsInfo[i].num_tokens_in_batch ++;
+
       if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
         break;
       }

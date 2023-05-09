@@ -50,6 +50,7 @@ public:
 struct Request {
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
+  int initial_len;
   std::vector<BatchConfig::TokenId> tokens;
 };
 
