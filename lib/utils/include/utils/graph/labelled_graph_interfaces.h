@@ -102,6 +102,17 @@ static_assert(is_rc_copy_virtual_compliant<ILabelledOpenMultiDiGraph<int, int, i
 
 }
 
+template<typename NodeLabel,
+         typename EdgeLabel,
+         typename InputLabel = EdgeLabel,
+         typename OutputLabel = InputLabel>
+struct ILabelledOpenMultiDiGraphView : public IOpenMultiDiGraphView {
+public:
+  virtual InputLabel const &at(InputMultiDiEdge const &e) const = 0;
+  virtual OutputLabel const &at(OutputMultiDiEdge const &e) const = 0;
+  virtual EdgeLabel const &at(MultiDiEdge const &e) const = 0;
+};
+
 namespace fmt {
 
 template <>

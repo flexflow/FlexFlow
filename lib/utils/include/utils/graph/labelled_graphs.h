@@ -167,8 +167,10 @@ public:
   NodeLabel &at(Node const &n) { return this->ptr->at(n); }
   NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
 
+  void add_node_unsafe(Node const &n, NodeLabel const &l);
+
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const { return this->ptr->query_nodes(q); }
-  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const { return this->ptr->query_edges(q); }
+  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &q) const { return this->ptr->query_edges(q); }
 
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l) { return this->ptr->add_edge(e, l); }
   EdgeLabel &at(MultiDiEdge const &e) { return this->ptr->at(e); }

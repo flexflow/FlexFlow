@@ -11,6 +11,7 @@
 #include <vector>
 #include "tl/optional.hpp"
 #include "open_graphs.h"
+#include "labelled_graphs.h"
 
 namespace FlexFlow {
 
@@ -229,6 +230,81 @@ public:
 private:
   IOpenMultiDiGraphView const &g;
 };
+
+template <typename NodeLabel,
+          typename EdgeLabel>
+struct LabelledMultiDiSubgraphView {
+public:
+  LabelledMultiDiSubgraphView() = delete;
+  template<typename InputLabel, typename OutputLabel>
+  explicit LabelledMultiDiSubgraphView(
+    ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &,
+    std::unordered_set<Node> const &);
+};
+
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel>
+struct LabelledUpwardMultiDiSubgraphView {
+public:
+  LabelledUpwardMultiDiSubgraphView() = delete;
+  template<typename OutputLabel>
+  explicit LabelledDownwardMultiDiSubgraphView(
+    ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &,
+    std::unordered_set<Node> const &);
+};
+
+template<typename NodeLabel,
+         typename EdgeLabel,
+         typename OutputLabel = EdgeLabel>
+struct LabelledDownwardMultiDiSubgraphView {
+public:
+  LabelledDownwardMultiDiSubgraphView() = delete;
+  template<typename InputLabel>
+  explicit LabelledDownwardMultiDiSubgraphView(
+    ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &,
+    std::unordered_set<Node> const &);
+};
+
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel,
+          typename OutputLabel = InputLabel>
+struct LabelledOpenMultiDiSubgraphView : public ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> {
+public:
+  LabelledOpenMultiDiSubgraphView() = delete;
+  explicit LabelledOpenMultiDiSubgraphView(
+    ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &,
+    std::unordered_set<Node> const &);
+
+  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &) const override; 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  virtual InputLabel const &at(InputMultiDiEdge const &e) const override;
+  virtual OutputLabel const &at(OutputMultiDiEdge const &e) const override;
+  virtual EdgeLabel const &at(MultiDiEdge const &e) const override;
+};
+
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel,
+          typename OutputLabel = InputLabel>
+LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
+    view_as_labelled_open_multidisubgraph(LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> const &);
+
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel,
+          typename OutputLabel = InputLabel>
+LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
+    view_as_labelled_open_multidisubgraph(LabelledUpwardMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel> const &);
+
+template<typename NodeLabel,
+         typename EdgeLabel,
+         typename InputLabel = EdgeLabel,
+         typename OutputLabel = InputLabel>
+LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
+    view_as_labelled_open_multidisubgraph(LabelledDownwardMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel> const &);
 
 DirectedEdge flipped(DirectedEdge const &);
 
