@@ -57,7 +57,7 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel beam_model(ffconfig), tree_model(ffconfig), inc_model(ffconfig);
   LLAMA::create_llama_model(beam_model, im, llama_config, 1, BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model, im, llama_config, 1, TREE_VERIFY_MODE);
-  // LLAMA::create_llama_model(inc_model, im, llama_config, 1, INC_DECODING_MODE);
+  LLAMA::create_llama_model(inc_model, im, llama_config, 1, INC_DECODING_MODE);
 
   // entry---------------------------
   int depth = 0;
@@ -118,7 +118,7 @@ void FlexFlow::top_level_task(Task const *task,
         // printf("\n\n prepare tree_bc from final beam search bc\n");
         tree_bc = rm.prepare_next_batch_verify(bc);
 
-        printf("\n\n\n t------Tree Verify Batch-------\n");
+        printf("\n\n\n ------Tree Verify Batch-------\n");
         // should have the same content as the hardcoded verification block below
         // right now, it only contains the prompt
         // need to add in the beam search result
@@ -131,6 +131,13 @@ void FlexFlow::top_level_task(Task const *task,
           std::cout << "[Token] Request Index: " << tree_bc.tokensInfo[i].request_index <<  
                         ", Abs Depth: " << tree_bc.tokensInfo[i].abs_depth_in_request << 
                         ", Token Id: " << tree_bc.tokensInfo[i].token_id << "\n";
+        }
+
+        printf("\n\n ------Commit Verified Tokens-------\n");
+        for (int i = 0; i< tree_bc.num_tokens_to_commit; i++) {
+          std::cout << "[Commit] Request Index: " << tree_bc.commited_tokens[i].request_index <<  
+                        ", Abs Depth: " << tree_bc.commited_tokens[i].token_depth << 
+                        ", Token Index in batch: " << tree_bc.commited_tokens[i].token_index << "\n";
         }
 
         FutureMap fm = im.inference(&tree_model, 0, tree_bc);
@@ -156,7 +163,7 @@ void FlexFlow::top_level_task(Task const *task,
 
         iteration++;
 
-        if (iteration <= 2) {
+        if (iteration < 4) {
           std::cout << "\n\n~~~~~~~~~~teration " << iteration << "~~~~~~~~~~\n";
           depth = bc.beamRequestsInfo[0].current_depth;
           fm = im.inference(&beam_model, bid, bc);
@@ -188,9 +195,18 @@ void FlexFlow::top_level_task(Task const *task,
   //                                            993,
   //                                            616,
   //                                            368,
-  //                                            2302};
+  //                                            2302,
+  //                                            3204,
+  //                                            29131,
+  //                                            2976,
+  //                                            11285,
+  //                                            8930,
+  //                                            635,
+  //                                            8519,
+  //                                            593,
+  //                                            595};
   //   BatchConfig bc;
-  //   bc.num_tokens = 16;
+  //   bc.num_tokens = 25;
   //   bc.requestsInfo[0].num_tokens_in_batch = bc.num_tokens;
   //   bc.requestsInfo[0].token_start_offset = 0;
   //   bc.requestsInfo[0].max_sequence_length = 347;
@@ -227,8 +243,17 @@ void FlexFlow::top_level_task(Task const *task,
   //                                            993,
   //                                            616,
   //                                            368,
-  //                                            2302};
-  //   tree_bc.num_tokens = 16;
+  //                                            2302,
+  //                                            3204,
+  //                                            29131,
+  //                                            2976,
+  //                                            11285,
+  //                                            8930,
+  //                                            635,
+  //                                            8519,
+  //                                            593,
+  //                                            595};
+  //   tree_bc.num_tokens = 25;
   //   tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
   //   for (int i = 0; i < tree_bc.num_tokens; i++) {
   //     tree_bc.tokensInfo[i].token_id = tokens[i];

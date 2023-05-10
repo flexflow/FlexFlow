@@ -431,6 +431,7 @@ TreeVerifyBatchConfig
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
   TreeVerifyBatchConfig new_bc;
+  new_bc.num_tokens_to_commit = 0;
   new_bc.num_tokens = 0;
 
   for (int i = 0; i < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; i++) {
@@ -475,7 +476,7 @@ TreeVerifyBatchConfig
         break;
       }
 
-      new_bc.requestsInfo[i].token_start_offset = 1;
+      new_bc.requestsInfo[i].token_start_offset = 0;
     } else {
       // Only add the last committed token
       new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
@@ -497,6 +498,35 @@ TreeVerifyBatchConfig
     std::cout << "dfs_tree_inputs.size(): " << dfs_tree_inputs.size() << std::endl;
 
 
+    // add prompt to the dfs tree
+    if (committed_tokens.find(guid) != committed_tokens.end()) {
+      // std::cout << "committed_tokens.size(): " << committed_tokens.at(guid).size() << std::endl;
+      // std::cout << "dfs_tree_inputs.at(0).second: " << dfs_tree_inputs.at(0).second << std::endl;
+      // std::cout << "request.initial_len: " << request.initial_len << std::endl;
+      if (dfs_tree_inputs.at(0).second == request.initial_len + committed_tokens.at(guid).size() - 1) {
+        for (int j = 0; j < request.initial_len; j++) {
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_index = j;
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].request_index = i;
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_depth = j;
+          std:: cout << new_bc.num_tokens_to_commit << "- committed_token.token_depth: " << j << 
+            ", token_index: " << j << std::endl;
+          new_bc.num_tokens_to_commit++;
+        }
+      } else {
+        // only add the root token
+          auto committed_token = committed_tokens.at(guid).at(0);
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_index = committed_token.second;
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].request_index = i;
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_depth = committed_token.first;
+          std:: cout << new_bc.num_tokens_to_commit << "- committed_token.token_depth: " << committed_token.first << 
+            ", token_index: " << committed_token.second << std::endl;
+          new_bc.num_tokens_to_commit++;
+      }
+
+      std::cout << "new_bc.num_tokens_to_commit: " << new_bc.num_tokens_to_commit << std::endl;
+    }
+
+
 
     // Token Info
     for (int j = 1; j < dfs_tree_inputs.size(); j++) {
@@ -510,20 +540,29 @@ TreeVerifyBatchConfig
       new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = token.second;
 
       // TODO: Add committed token info
+      std::cout << "committed_tokens.size(): " << new_bc.num_tokens_to_commit << std::endl;
+
       if (committed_tokens.find(guid) != committed_tokens.end()) {
+        // if (j == 1) {
+        //   auto committed_token = committed_tokens.at(guid).at(0);
+        //   new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_index = committed_token.second;
+        //   new_bc.commited_tokens[new_bc.num_tokens_to_commit].request_index = i;
+        //   new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_depth = committed_token.first;
+        //   std:: cout << new_bc.num_tokens_to_commit << "- committed_token.token_depth: " << committed_token.first << 
+        //     ", token_index: " << committed_token.second << std::endl;
+        //   new_bc.num_tokens_to_commit++;
+        // }
         if (j < committed_tokens.at(guid).size()) {
           auto committed_token = committed_tokens.at(guid).at(j);
-          new_bc.commited_tokens[new_bc.num_tokens].token_index = committed_token.second;
-          new_bc.commited_tokens[new_bc.num_tokens].request_index = i;
-          new_bc.commited_tokens[new_bc.num_tokens].token_depth = committed_token.first;
-          // std:: cout << "committed_token.token_depth: " << committed_token.first << std::endl;
-          // std:: cout << "committed_token.token_index: " << committed_token.second << std::endl;
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_index = committed_token.second;
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].request_index = i;
+          new_bc.commited_tokens[new_bc.num_tokens_to_commit].token_depth = committed_token.first;
+          std:: cout << new_bc.num_tokens_to_commit << "- committed_token.token_depth: " << committed_token.first << 
+            ", token_index: " << committed_token.second << std::endl;
+          new_bc.num_tokens_to_commit++;
         }
       }
-      // auto committed_token = committed_tokens.at(guid).at(j);
-      // new_bc.commited_tokens[new_bc.num_tokens].token_index = committed_token.second;
-      // new_bc.commited_tokens[new_bc.num_tokens].request_index = i;
-      // new_bc.commited_tokens[new_bc.num_tokens].token_depth = committed_token.first;
+      std::cout << "new_bc.num_tokens_to_commit: " << new_bc.num_tokens_to_commit << std::endl;
 
       new_bc.num_tokens++;
       new_bc.requestsInfo[i].num_tokens_in_batch ++;
