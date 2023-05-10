@@ -266,6 +266,8 @@ BeamSearchBatchConfig
     size_t guid = old_bc.requestsInfo[i].request_guid;
     Request &request = running_request_queue[guid];
 
+    printf("req %d\n", i);
+
     // Verify this: get verified tokens from result
     std::vector<std::pair<BatchConfig::TokenId, int>> tree_outputs =
         std::vector<std::pair<BatchConfig::TokenId, int>>();
@@ -458,8 +460,6 @@ TreeVerifyBatchConfig
 
     new_bc.request_completed[i] = false;
 
-    std::cout << "22222" << std::endl;
-
     // TODO: Add prompt token first in first verify iteration
     if (request.tokens.size() == request.initial_len) {
       for (int j = 0; j < request.initial_len; j++) {
@@ -493,7 +493,7 @@ TreeVerifyBatchConfig
       new_bc.requestsInfo[i].token_start_offset = request.tokens.size() - 1;
     }
 
-    std::cout << "33333" << std::endl;
+
     std::cout << "dfs_tree_inputs.size(): " << dfs_tree_inputs.size() << std::endl;
 
 
@@ -532,7 +532,6 @@ TreeVerifyBatchConfig
         break;
       }
     }
-    std::cout << "44444" << std::endl;
   }
 
   return new_bc;
