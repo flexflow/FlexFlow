@@ -683,9 +683,6 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
 
-  /* print_tensor<float>(input.get_float_ptr(),
-                      input_domain.get_volume(),
-                      "[Attention:forward:query]"); */
   IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
                                                       bc,
                                                       input.get_float_ptr(),

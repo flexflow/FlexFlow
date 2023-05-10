@@ -726,7 +726,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   *bias = attn->bias;
   scaling_query = (bool *)calloc(1, sizeof(bool));
   *scaling_query = attn->scaling_query;
-  scaling_query = (bool *)calloc(1, sizeof(bool));
   scaling_factor = attn->scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
   *qk_prod_scaling = attn->qk_prod_scaling;

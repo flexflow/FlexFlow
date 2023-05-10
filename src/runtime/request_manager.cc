@@ -83,6 +83,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
+      std::cout << "print results: " << std::endl;
+      for (int i = 0; i < request.tokens.size(); i++) {
+        std::cout << request.tokens.at(i) << ", ";
+      }
     } else {
       new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].token_start_offset = processed_tokens;

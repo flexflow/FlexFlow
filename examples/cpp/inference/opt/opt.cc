@@ -85,8 +85,8 @@ void FlexFlow::top_level_task(Task const *task,
   int num_transformer_layers_per_gpu = (32 + num_devices - 1) / num_devices;
 
   for (int i = 0; i < optConfig.num_hidden_layers; i++) {
-    // 125m, 1.7B, ..., 175B applies layer norm BEFORE attention, 350m applies
-    // layer norm AFTER attention
+    // 125m, 1.7B, ..., 175B applies layer norm BEFORE attention,
+    // 350m applies layer norm AFTER attention
     // https://github.com/huggingface/transformers/blob/main/src/transformers/models/opt/modeling_opt.py#LL324C1-L325C1
     // this version is before normalization
 
@@ -117,10 +117,10 @@ void FlexFlow::top_level_task(Task const *task,
         false,
         NULL,
         false,
-        true,      /*scaling query*/
-        pow((optConfig.hidden_size / optConfig.num_attention_heads),
-            -0.5), /*sacling factor*/
-        false /*qk_prod_scaling*/);
+        /*scaling query*/ true,
+        /*sacling factor*/
+        pow((optConfig.hidden_size / optConfig.num_attention_heads), -0.5),
+        /*qk_prod_scaling*/ false);
 
     Layer *attention_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
@@ -213,12 +213,6 @@ void FlexFlow::top_level_task(Task const *task,
       }
       // process end
       InferenceResult ir = future.get_result<InferenceResult>();
-      std::cout << "print new tolens"
-                << "\n";
-      for (int i = 0; i < 9; i++) {
-        std::cout << ir.token_ids[i] << ", "
-                  << "\n";
-      }
       BatchConfig bc = batch_configs[bid];
       bc = rm.prepare_next_batch(bc, ir);
       sentence_length += bc.num_tokens;
