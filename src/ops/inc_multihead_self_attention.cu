@@ -40,56 +40,46 @@ __global__ void build_w_out_tensor(float const *weight_ptr,
   }
 }
 
-__global__ void apply_proj_bias_w(float *input_ptr, float const *bias_ptr, int num_tokens, int oProjSize){
-    CUDA_KERNEL_LOOP(i, num_tokens * oProjSize){
-      int bias_idx = 3 * oProjSize + i % oProjSize;
-      input_ptr[i] += bias_ptr[bias_idx];
-    }
+__global__ void apply_proj_bias_w(float *input_ptr,
+                                  float const *bias_ptr,
+                                  int num_tokens,
+                                  int oProjSize) {
+  CUDA_KERNEL_LOOP(i, num_tokens * oProjSize) {
+    int bias_idx = 3 * oProjSize + i % oProjSize;
+    input_ptr[i] += bias_ptr[bias_idx];
+  }
 }
 
 __global__ void apply_proj_bias_qkv(float *input_ptr,
-                                float const *bias_ptr,
-                                int num_tokens,
-                                int qProjSize,
-                                int kProjSize,
-                                int vProjSize,
-                                int num_heads,
-                                bool scaling_query,
-                                float scaling_factor) {
-  CUDA_KERNEL_LOOP(i, num_tokens * (qProjSize + kProjSize + vProjSize) * num_heads) {
-      //for simplicity, assume q, k, v is in same shape
-      //0->q, 1->k, 2->v
-      int qkv_index = i / (num_tokens * qProjSize) % 3;
+                                    float const *bias_ptr,
+                                    int num_tokens,
+                                    int qProjSize,
+                                    int kProjSize,
+                                    int vProjSize,
+                                    int num_heads,
+                                    bool scaling_query,
+                                    float scaling_factor) {
+  CUDA_KERNEL_LOOP(
+      i, num_tokens * (qProjSize + kProjSize + vProjSize) * num_heads) {
+    // for simplicity, assume q, k, v is in same shape
+    // 0->q, 1->k, 2->v
+    int qkv_index = i / (num_tokens * qProjSize) % 3;
 
-      int head_idx = i / (num_tokens * (qProjSize + kProjSize + vProjSize));
-      int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
-      int q_block_size = qProjSize * num_tokens;
+    int head_idx = i / (num_tokens * (qProjSize + kProjSize + vProjSize));
+    int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
+    int q_block_size = qProjSize * num_tokens;
 
-      int idx = i % (num_tokens * (qProjSize));
+    int idx = i % (num_tokens * (qProjSize));
 
-      // if(i == 0){
-      //   // printf("print info in bias: qProjSize %d kProjSize %d vProjSize %d num_tokens %d qkv_block_size %d q_block_size%d",
-      //    qProjSize, kProjSize, vProjSize, num_tokens, qkv_block_size,q_block_size);
-      // }
+    int real_part_index =
+        head_idx * qkv_block_size + qkv_index * q_block_size + idx;
+    int bias_idx = qkv_index * qProjSize * num_heads + head_idx * qProjSize +
+                   (idx % qProjSize);
+    input_ptr[real_part_index] += bias_ptr[bias_idx];
 
-      int real_part_index = head_idx  * qkv_block_size + qkv_index * q_block_size + idx;
-      int bias_idx = qkv_index * qProjSize * num_heads + head_idx * qProjSize + (idx % qProjSize);
-      input_ptr[real_part_index] += bias_ptr[bias_idx];
-
-      // if(i <= 64 * 9){
-      //   printf("print info in q:%d, %.10f %d", real_part_index, input_ptr[real_part_index], bias_idx);
-      // }
-      // if(i == 64 * 9){
-      //   printf("print info in k:%d, %.10f %d", real_part_index, input_ptr[real_part_index], bias_idx);
-      // }
-      // if(i == 64 * 9 * 2){
-      //   printf("print info in v:%d, %.10f %d", real_part_index, input_ptr[real_part_index], bias_idx);
-      // }
-
-      if(scaling_query && qkv_index == 0){
-        input_ptr[real_part_index] *= scaling_factor;
-      }
-
+    if (scaling_query && qkv_index == 0) {
+      input_ptr[real_part_index] *= scaling_factor;
+    }
   }
 }
 
@@ -273,28 +263,20 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   cuFloatComplex *complex_input;
 
   // apply bias for q, k, v
-  printf("print oprojection size: %d", m->oProjSize);
   if (*m->bias) {
     apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
-                      min(CUDA_NUM_THREADS, parallelism),
-                      0,
-                      stream>>>(output_ptr,
-                                bias_ptr,
-                                num_tokens,
-                                m->qProjSize,
-                                m->kProjSize,
-                                m->vProjSize,
-                                m->num_heads,
-                                *m->scaling_query,
-                                m->scaling_factor);
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(output_ptr,
+                                    bias_ptr,
+                                    num_tokens,
+                                    m->qProjSize,
+                                    m->kProjSize,
+                                    m->vProjSize,
+                                    m->num_heads,
+                                    *m->scaling_query,
+                                    m->scaling_factor);
   }
-  // print_tensor<float>(output_ptr, 20, "q after proj and bias\n");
-  // print_tensor<float>(output_ptr + 64 * 9, 20, "k after proj and bias\n");
-  // print_tensor<float>(output_ptr + 64 * 9 * 2, 20, "v after proj and bias\n");
-
-  save_tensor<float>(output_ptr, 6912 * 3, "/home/ubuntu/FlexFlow/examples/cpp/inference/opt/output/attention_input.txt");
-
-  
 
   if (*m->apply_rotary_embedding) {
     checkCUDA(cudaMalloc(&complex_input,
@@ -423,7 +405,7 @@ __global__ void fill_entries_above_diagonal(float *matrix,
 void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                               BatchConfig const *bc,
                               float *output_ptr,
-                              float const* bias_ptr,
+                              float const *bias_ptr,
                               cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -462,10 +444,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     int strideB = kt_block_size;
     int strideC = num_new_tokens * total_tokens;
 
-    //a flag of using this scaling alpha
+    // a flag of using this scaling alpha
     float alpha = 1.0f, beta = 0.0f;
-    if(*m->qk_prod_scaling){
-        alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
+    if (*m->qk_prod_scaling) {
+      alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
     }
     // To get A, skip over Q entries from previous requests (same head)
     void const *A = (void const *)(m->devQKVProjArray +
@@ -499,7 +481,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                          m->num_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-   save_tensor<float>((float *)C, 12 * 9 * 9, "/home/ubuntu/FlexFlow/examples/cpp/inference/opt/output/qkprod.txt");
 
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
@@ -607,9 +588,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     A = (void const *)m->W_out_contiguous;
     B = (void const *)C;
     C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
-   
-   printf("m->oProjSize %d, m->num_heads %d, m->vProjSize %d, n %d\n",m->oProjSize, m->num_heads, m->vProjSize, n);
-
 
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
@@ -630,17 +608,18 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            ldc,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-                   
+
     tokens_previous_requests += num_new_tokens;
   }
 
-  if(*m->bias){
-      int parallelism = m->oProjSize * num_tokens;
-      apply_proj_bias_w<<<GET_BLOCKS(parallelism),
-                         min(CUDA_NUM_THREADS, parallelism),
-                         0,
-                         stream>>>(output_ptr, bias_ptr, num_tokens, m->oProjSize);
-  }  
+  if (*m->bias) {
+    int parallelism = m->oProjSize * num_tokens;
+    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>(
+        output_ptr, bias_ptr, num_tokens, m->oProjSize);
+  }
 
   assert(tokens_previous_requests == num_tokens);
 }
@@ -655,8 +634,6 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     float const *bias_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
-  // print_tensor<float>(bias_ptr, 20, "attention bias tensor");
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -711,7 +688,6 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
-  save_tensor<float>(output_ptr, 768 * 9, "/home/ubuntu/FlexFlow/examples/cpp/inference/opt/output/att_f_output.txt");
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(

@@ -15,8 +15,8 @@
 
 #pragma once
 
-#include "inference_config.h"
 #include "file_loader.h"
+#include "inference_config.h"
 // # OPTConfig {
 // #   "_remove_final_layer_norm": false,
 // #   "activation_function": "relu",
@@ -43,9 +43,7 @@
 // # }
 struct OptConfig : InferenceConfig {
   OptConfig(void) : InferenceConfig() {
-    vocab_size = 50272,
-    word_embed_proj_dim = 768,
-    hidden_size = 768;
+    vocab_size = 50272, word_embed_proj_dim = 768, hidden_size = 768;
     max_position_embeddings = 2048;
     layer_norm_elementwise_affine = true;
     num_attention_heads = 12;
@@ -53,7 +51,8 @@ struct OptConfig : InferenceConfig {
     seed = 3;
     ffn_dim = 3072;
     num_hidden_layers = 12;
-    weight_file_path = "/home/ubuntu/FlexFlow/examples/cpp/inference/opt/weights/";
+    weight_file_path =
+        "/home/ubuntu/FlexFlow/examples/cpp/inference/opt/weights/";
   }
   int word_embed_proj_dim;
   std::string input_path;

@@ -113,7 +113,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.dim / llama_config.n_heads,
             llama_config.dim / llama_config.n_heads,
             0.0f,    /*dropout*/
-            false,    /*bias*/
+            false,   /*bias*/
             false,   /*add_bias_kv*/
             false,   /*add_zero_attn*/
             nullptr, /*kernel_initializer*/
@@ -129,7 +129,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.dim / llama_config.n_heads,
             llama_config.dim / llama_config.n_heads,
             0.0f,    /*dropout*/
-            false,    /*bias*/
+            false,   /*bias*/
             false,   /*add_bias_kv*/
             false,   /*add_zero_attn*/
             nullptr, /*kernel_initializer*/

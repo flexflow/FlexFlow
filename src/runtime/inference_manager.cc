@@ -164,7 +164,6 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         assert(op->inputs[i] != nullptr);
         assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
         assert(tensor_buffer[op->inputs[i]].size() > batch_index);
-
         inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
         assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
       }
@@ -183,12 +182,6 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         ((ParallelOp *)op)
             ->create_input_partition_inference(*model, inputs, outputs);
       }
-
-      // if (inputs.size() > 0) {
-      //   std::cout << "op init inference: " << op->name << ", " <<
-      //   inputs.at(0)
-      //             << std::endl;
-      // }
       op->init_inference(*model, inputs, outputs);
     }
   }
@@ -217,9 +210,6 @@ FutureMap InferenceManager::inference(FFModel *model,
     }
     if (op->op_type == OP_INPUT) {
       // FIXME: this is a hack, should be replace with an input ParallelTensor
-      std::cout << "print op: " << op->name << ", "
-                << tensor_buffer[op->outputs[0]][batch_index] << std::endl;
-
       if (found_input_operator) {
         // there is another input for position embedding;
         assert(op->numOutputs == 1);

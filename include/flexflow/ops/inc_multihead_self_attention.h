@@ -110,7 +110,8 @@ public:
   int num_heads;
   float dropout, scaling_factor;
   bool bias;
-  bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query, qk_prod_scaling;
+  bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
+      qk_prod_scaling;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
 };

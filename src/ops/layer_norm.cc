@@ -214,7 +214,6 @@ LayerNorm::LayerNorm(FFModel &model,
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    std::cout<<"creates weights in init"<<"\n";
     weights[0] =
         model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,

@@ -166,7 +166,6 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   layer->get_int_property("qk_prod_scaling", value);
   bool qk_prod_scaling = (bool)value;
 
-
   return new IncMultiHeadSelfAttention(model,
                                        layer->layer_guid,
                                        inputs[0],
@@ -220,7 +219,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
-      scaling_query(_scaling_query), scaling_factor(_scaling_factor), qk_prod_scaling(_qk_prod_scaling){
+      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
+      qk_prod_scaling(_qk_prod_scaling) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -329,7 +329,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
-      scaling_query(_scaling_query), scaling_factor(_scaling_factor), qk_prod_scaling(_qk_prod_scaling)
+      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
+      qk_prod_scaling(_qk_prod_scaling)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -540,12 +541,8 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
     Context ctx,
     Runtime *runtime) {
 
-  std::cout << "attention init task"
-            << "\n";
-
   IncMultiHeadSelfAttention const *attn =
       (IncMultiHeadSelfAttention *)task->args;
-  std::cout << attn->bias << "\n";
   FFHandler handle = *((FFHandler const *)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -555,8 +552,6 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
-  std::cout << "get all tensors"
-            << "\n";
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
   assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
@@ -567,14 +562,9 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  std::cout << "before meta"
-            << "\n";
-  std::cout<<attn->scaling_factor << ", " << attn->scaling_query;         
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
       handle, attn, weight.get_float_ptr(), gpu_mem, num_samples, num_heads);
 
-  std::cout << "after meta"
-            << "\n";
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
   return m;

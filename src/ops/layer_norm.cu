@@ -153,7 +153,6 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                        T *beta_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -170,11 +169,10 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    // printf("[LayerNorm] forward time (CF) = %.2fms\n", elapsed);
-    // print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
-    // print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
+    printf("[LayerNorm] forward time (CF) = %.2fms\n", elapsed);
+    print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
+    print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
   }
-  // print_tensor<float>((float *) out_ptr, 20, "layernorm output");
 }
 
 template <typename T>

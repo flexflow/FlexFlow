@@ -1123,6 +1123,6 @@ void register_flexflow_internal_tasks();
 
 void register_custom_tasks();
 
-}; // namespace FlexFlow
+};     // namespace FlexFlow
 
 #endif //_FLEXFLOW_MODEL_H_

@@ -17,7 +17,6 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/kernels/embedding_kernels.h"
 #include "flexflow/utils/hash_utils.h"
-#include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
@@ -404,13 +403,6 @@ void Embedding::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
   launcher.add_field(1, FID_DATA);
-
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
-  launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -425,10 +417,6 @@ OpMeta *Embedding::init_task(Task const *task,
   EmbeddingMeta *m = new EmbeddingMeta(handle, embed);
   m->profiling = embed->profiling;
   m->aggr = embed->aggr;
-
-  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  
   return m;
 }
 

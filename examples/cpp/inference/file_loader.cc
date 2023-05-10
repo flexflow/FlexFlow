@@ -69,25 +69,31 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 };
 
 void load_attention_bias(float *ptr,
-                                 int num_heads,
-                                 size_t hidden_dim,
-                                 size_t qkv_inner_dim,
-                                 std::string layer_name,
-                                 std::string weight_path){
-  std::string q_file = weight_path + layer_name.substr(0, layer_name.find("attention")) + "attention_wq_bias";
-  std::string k_file =
-      weight_path + layer_name.substr(0, layer_name.find("attention")) + "attention_wk_bias";
-  std::string v_file =
-      weight_path + layer_name.substr(0, layer_name.find("attention")) + "attention_wv_bias";
-  std::string o_file =
-      weight_path + layer_name.substr(0, layer_name.find("attention")) + "attention_wo_bias";
+                         int num_heads,
+                         size_t hidden_dim,
+                         size_t qkv_inner_dim,
+                         std::string layer_name,
+                         std::string weight_path) {
+  std::string q_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wq_bias";
+  std::string k_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wk_bias";
+  std::string v_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wv_bias";
+  std::string o_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wo_bias";
   std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
 
   int file_index = 0;
 
   for (auto file : bias_files) {
-      size_t partial_size = hidden_dim;
-    std::cout<<"partial_size in bias" << partial_size << ", file: " << file <<"\n";
+    size_t partial_size = hidden_dim;
+    std::cout << "partial_size in bias" << partial_size << ", file: " << file
+              << "\n";
     std::ifstream in(file, std::ios::in | std::ios::binary);
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
@@ -102,10 +108,9 @@ void load_attention_bias(float *ptr,
     }
     assert(partial_size == host_array.size());
 
-
     size_t data_index = 0;
 
-    for(int i = 0; i < hidden_dim; i++){
+    for (int i = 0; i < hidden_dim; i++) {
       ptr[file_index * hidden_dim + i] = host_array.at(data_index);
       data_index++;
     }
@@ -117,26 +122,30 @@ void load_attention_bias(float *ptr,
 }
 
 void load_attention_weights(float *ptr,
-                                 int num_heads,
-                                 size_t hidden_dim,
-                                 size_t qkv_inner_dim,
-                                 std::string layer_name,
-                                 std::string weight_path,
-                                 size_t volume) {
+                            int num_heads,
+                            size_t hidden_dim,
+                            size_t qkv_inner_dim,
+                            std::string layer_name,
+                            std::string weight_path,
+                            size_t volume) {
   // layers_0_attention_wq_weight
   // layers_0_self_attn_q_proj_weight
-  std::string q_file =
-      weight_path + layer_name.substr(0, layer_name.find("attention")) + "attention_wq_weight"; 
-      // : "attention_wq_bias");
-  std::string k_file =
-      weight_path + layer_name.substr(0, layer_name.find("attention")) + "attention_wk_weight";
-      // : "attention_wk_bias");
-  std::string v_file =
-      weight_path + layer_name.substr(0, layer_name.find("attention")) +  "attention_wv_weight";
-      // : "attention_wv_bias");
-  std::string o_file =
-      weight_path + layer_name.substr(0, layer_name.find("attention")) + "attention_wo_weight";
-      // : "attention_wo_bias");
+  std::string q_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wq_weight";
+  // : "attention_wq_bias");
+  std::string k_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wk_weight";
+  // : "attention_wk_bias");
+  std::string v_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wv_weight";
+  // : "attention_wv_bias");
+  std::string o_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wo_weight";
+  // : "attention_wo_bias");
   std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
   size_t index = 0;
@@ -144,7 +153,7 @@ void load_attention_weights(float *ptr,
 
   size_t single_proj_size =
       hidden_dim *
-      qkv_inner_dim;        // size of each of Q,K,V,O weights for a single head
+      qkv_inner_dim; // size of each of Q,K,V,O weights for a single head
   size_t one_weight_file_size =
       num_heads * single_proj_size; // size of each of Q/K/V/O for all heads
 
@@ -153,7 +162,9 @@ void load_attention_weights(float *ptr,
     std::cout << "file name and index: " << file << "->" << file_index << "\n";
     size_t partial_size = one_weight_file_size;
 
-    std::cout << "partial_size weight " << partial_size << ", " << volume << ", "<< hidden_dim << ", " << qkv_inner_dim << ", " << num_heads << "\n";
+    std::cout << "partial_size weight " << partial_size << ", " << volume
+              << ", " << hidden_dim << ", " << qkv_inner_dim << ", "
+              << num_heads << "\n";
     std::ifstream in(file, std::ios::in | std::ios::binary);
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
@@ -244,30 +255,6 @@ void FileDataLoader::load_positions(FFModel *ff,
   position_pt->set_tensor<int>(ff, dims_vec, data);
 }
 
-// void FileDataLoader::load_positions_gpu(InferenceManager im,
-//                                         ParallelTensor position_input,
-//                                         int offset) {
-//   Context ctx = im.model->config.lg_ctx;
-//   Runtime *runtime = im.model->config.lg_hlr;
-//   size_t machine_view_hash = position_input->machine_view.hash();
-//   ArgumentMap argmap;
-//   IndexLauncher launcher(RM_LOAD_POSITION_TASK_ID,
-//                          position_input->parallel_is,
-//                          TaskArgument(&offset, sizeof(int)),
-//                          argmap,
-//                          Predicate::TRUE_PRED,
-//                          false /*must*/,
-//                          0 /*mapper_id*/,
-//                          machine_view_hash);
-//   launcher.add_region_requirement(RegionRequirement(position_input->part,
-//                                                     0 /*projection id*/,
-//                                                     WRITE_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     position_input->region));
-//   launcher.add_field(0, FID_DATA);
-//   runtime->execute_index_space(ctx, launcher);
-// }
-
 void FileDataLoader::load_weights(
     FFModel *ff, std::unordered_map<std::string, Layer *> weights_layers) {
 
@@ -296,23 +283,22 @@ void FileDataLoader::load_weights(
 
       if (v.first.find("attention_w") != std::string::npos) {
         std::cout << "load weights bias: " << volume << "\n";
-        if(i == 0){
-            load_attention_weights(data,
-                                    num_heads,
-                                    hidden_dim,
-                                    qkv_inner_dim,
-                                    v.first,
-                                    weight_file_path,
-                                    volume);
-        }else{
+        if (i == 0) {
+          load_attention_weights(data,
+                                 num_heads,
+                                 hidden_dim,
+                                 qkv_inner_dim,
+                                 v.first,
+                                 weight_file_path,
+                                 volume);
+        } else {
           load_attention_bias(data,
-                                    num_heads,
-                                    hidden_dim,
-                                    qkv_inner_dim,
-                                    v.first,
-                                    weight_file_path);
+                              num_heads,
+                              hidden_dim,
+                              qkv_inner_dim,
+                              v.first,
+                              weight_file_path);
         }
-        
 
       } else {
         std::string file_path = v.first;
