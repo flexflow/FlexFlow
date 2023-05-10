@@ -263,14 +263,20 @@ BeamSearchBatchConfig
     size_t guid = old_bc.requestsInfo[i].request_guid;
     Request &request = running_request_queue[guid];
 
+    printf("req %d\n", i);
+
     // Verify this: get verified tokens from result
     std::vector<std::pair<BatchConfig::TokenId, int>> tree_outputs;
     assert(old_bc.num_tokens > 0);
     int start_depth = old_bc.tokensInfo[result_index].abs_depth_in_request;
-    committed_tokens.at(guid).clear();
+    printf("start depth %d\n", start_depth);
+    printf("BUGGING AT prepare_next_batch_init() COMMITTED TOKENS\n");
+    committed_tokens.at(guid).clear(); //INDEX OUT OF RANGE
+    printf("clear commit tokens\n");
     while (result_index < old_bc.num_tokens &&
              old_bc.tokensInfo[result_index].request_index == i) {
       int root_abs_depth = request.tokens.size();
+      printf("res index %d\n", result_index);
       if (old_bc.tokensInfo[result_index].abs_depth_in_request >= root_abs_depth) {
         tree_outputs.push_back(
             std::make_pair(result.token_ids[result_index],
@@ -411,8 +417,6 @@ TreeVerifyBatchConfig
     // Get the dfs tree
     std::vector<std::pair<BatchConfig::TokenId, int>> 
       dfs_tree_inputs = traverse_beam_tree(old_bc, i);
-
-    std::cout << "11111" << std::endl;
     
     // Normal Request Info
     new_bc.requestsInfo[i].token_start_offset = dfs_tree_inputs.front().second;
@@ -423,8 +427,6 @@ TreeVerifyBatchConfig
     new_bc.requestsInfo[i].num_tokens_in_batch = 0;
 
     new_bc.request_completed[i] = false;
-
-    std::cout << "22222" << std::endl;
 
     // TODO: Add prompt token first in first verify iteration
     if (request.tokens.size() == request.initial_len) {
@@ -444,19 +446,14 @@ TreeVerifyBatchConfig
       new_bc.requestsInfo[i].token_start_offset = 1;
     }
 
-    std::cout << "33333" << std::endl;
     std::cout << "dfs_tree_inputs.size(): " << dfs_tree_inputs.size() << std::endl;
 
 
 
     // Token Info
     for (int j = 1; j < dfs_tree_inputs.size(); j++) {
-      std::cout << "j: " << j << std::endl;
       
       auto token = dfs_tree_inputs.at(j);
-
-      std::cout << token.first << std::endl;
-      std::cout << token.second << std::endl;
 
       // Normal Token Info
       new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
@@ -482,7 +479,6 @@ TreeVerifyBatchConfig
         break;
       }
     }
-    std::cout << "44444" << std::endl;
   }
 
   return new_bc;
