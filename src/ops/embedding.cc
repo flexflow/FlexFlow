@@ -429,7 +429,6 @@ OpMeta *Embedding::init_task(Task const *task,
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   
-  // print_tensor<int>(input.get_int32_ptr(), 9, "inputtttttt");
   return m;
 }
 

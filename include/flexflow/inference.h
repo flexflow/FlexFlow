@@ -37,7 +37,7 @@ public:
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   void load_input_tokens_from_batch_config(BatchConfig const &bc,
                                            ParallelTensor const input);
-  void load_positions_gpu(ParallelTensor position_input, int offset);                                         
+  void load_positions(BatchConfig const &bc, ParallelTensor position_input);                                         
 
 public:
   FFConfig ff_config;

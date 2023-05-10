@@ -24,7 +24,11 @@ using namespace FlexFlow;
 
 class FileDataLoader {
 public:
-  FileDataLoader(std::string _input_path, std::string _weight_file_path);
+  FileDataLoader(std::string _input_path,
+                 std::string _weight_file_path,
+                 int _num_heads,
+                 size_t _hidden_dim,
+                 size_t _qkv_inner_dim);
 
   BatchConfig::TokenId *generate_requests(int num, int length);
 
@@ -35,6 +39,8 @@ public:
 
   void load_positions_gpu(InferenceManager im, ParallelTensor const position_input, int offset);
 private:
+  int num_heads;
+  size_t hidden_dim, qkv_inner_dim;
   std::string input_path;
   std::string weight_file_path;
 };

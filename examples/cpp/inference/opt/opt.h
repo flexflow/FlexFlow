@@ -48,6 +48,11 @@ struct OptConfig : InferenceConfig {
     hidden_size = 768;
     max_position_embeddings = 2048;
     layer_norm_elementwise_affine = true;
+    num_attention_heads = 12;
+    dropout = 0.1;
+    seed = 3;
+    ffn_dim = 3072;
+    num_hidden_layers = 12;
     weight_file_path = "/home/ubuntu/FlexFlow/examples/cpp/inference/opt/weights/";
   }
   int word_embed_proj_dim;
@@ -55,4 +60,8 @@ struct OptConfig : InferenceConfig {
   std::string weight_file_path;
   int max_position_embeddings;
   bool layer_norm_elementwise_affine;
+  float dropout;
+  unsigned long long seed;
+  int ffn_dim;
+  int num_hidden_layers;
 };

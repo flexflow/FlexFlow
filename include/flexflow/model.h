@@ -617,6 +617,9 @@ public:
                                       bool add_zero_attn = false,
                                       Initializer *kernel_initializer = NULL,
                                       bool apply_rotary_embedding = false,
+                                      bool scaling_query = false,
+                                      float scaling_factor = 1.0f,
+                                      bool qk_prod_scaling = true,
                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(const Tensor input,

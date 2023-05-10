@@ -155,7 +155,6 @@ void InferenceManager::init_operators_inference(FFModel *model) {
     int device_index = batch_index % num_devices;
     for (size_t o = 0; o < model->operators.size(); o++) {
       Op *op = model->operators[o];
-      std::cout << "op name init has: " << op->name << "\n";
       if (op->op_type == OP_WEIGHT) {
         continue;
       }
@@ -166,8 +165,6 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
         assert(tensor_buffer[op->inputs[i]].size() > batch_index);
 
-        // std::cout<<"op name init: " << op->name << ", " <<
-        // tensor_buffer[op->inputs[i]][batch_index] << "\n";
         inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
         assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
       }
@@ -188,7 +185,8 @@ void InferenceManager::init_operators_inference(FFModel *model) {
       }
 
       // if (inputs.size() > 0) {
-      //   std::cout << "op init inference: " << op->name << ", " << inputs.at(0)
+      //   std::cout << "op init inference: " << op->name << ", " <<
+      //   inputs.at(0)
       //             << std::endl;
       // }
       op->init_inference(*model, inputs, outputs);
@@ -223,10 +221,10 @@ FutureMap InferenceManager::inference(FFModel *model,
                 << tensor_buffer[op->outputs[0]][batch_index] << std::endl;
 
       if (found_input_operator) {
-        // continue;
+        // there is another input for position embedding;
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-        load_positions_gpu(pt, 2);
+        load_positions(bc, pt);
       } else {
         found_input_operator = true;
         assert(op->numOutputs == 1);
@@ -282,20 +280,22 @@ void InferenceManager::load_input_tokens_from_batch_config(
   runtime->execute_index_space(ctx, launcher);
 }
 
-void InferenceManager::load_positions_gpu(ParallelTensor position_input,
-                                          int offset) {
+void InferenceManager::load_positions(BatchConfig const &bc,
+                                      ParallelTensor position_input) {
   Context ctx = ff_config.lg_ctx;
   Runtime *runtime = ff_config.lg_hlr;
   size_t machine_view_hash = position_input->machine_view.hash();
   ArgumentMap argmap;
-  IndexLauncher launcher(RM_LOAD_POSITION_TASK_ID,
-                         position_input->parallel_is,
-                         TaskArgument(&offset, sizeof(int)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
+  IndexLauncher launcher(
+      RM_LOAD_POSITION_TASK_ID,
+      position_input->parallel_is,
+      TaskArgument(
+          &bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(position_input->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,

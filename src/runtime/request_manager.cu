@@ -55,31 +55,37 @@ void RequestManager::load_positions_task(
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
 
-  int const offset = *((int *)task->args);
+  // int const offset = *((int *)task->args);
+
+  BatchConfig const batch_config = *((BatchConfig *)task->args);
+  int offset = 2;
   int *pos_ptr = helperGetTensorPointerWO<int>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  int max_seq_length = domain.hi()[0] - domain.lo()[0] + 1;
-  int batch_size = domain.hi()[1] - domain.lo()[1] + 1;
-  
-  int volume = max_seq_length * batch_size;
-  int* data = (int *)malloc(sizeof(int) * volume);
-  int* back_data = (int *)malloc(sizeof(int) * volume);
-  // printf("max_seq laneght %d, x %d", max_seq_length, batch_size);
-  for(int i = 0; i < volume; i++){
-    data[i] = i % max_seq_length + offset;
-    // printf("data %d, value %d", i,  i % max_seq_length + offset);
+  int dram_copy[BatchConfig::MAX_NUM_TOKENS];
+
+  for (int i = 0; i < batch_config.num_tokens; i++) {
+    dram_copy[i] = batch_config.tokensInfo[i].abs_depth_in_request + offset;
   }
+  // int max_seq_length = domain.hi()[0] - domain.lo()[0] + 1;
+  // int batch_size = domain.hi()[1] - domain.lo()[1] + 1;
+  // int volume = max_seq_length * batch_size;
+  // int* data = (int *)malloc(sizeof(int) * volume);
+  // int* back_data = (int *)malloc(sizeof(int) * volume);
+  // // printf("max_seq laneght %d, x %d", max_seq_length, batch_size);
+  // for(int i = 0; i < volume; i++){
+  //   data[i] = i % max_seq_length + offset;
+  //   printf("data %d, value %d", i,  i % max_seq_length + offset);
+  // }
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(cudaMemcpyAsync(pos_ptr,
-                            data,
-                            sizeof(int) * volume,
+                            dram_copy,
+                            sizeof(int) * batch_config.num_tokens,
                             cudaMemcpyHostToDevice,
                             stream));
-  // print_tensor<int>(pos_ptr, 9, "pos embedding input");                                            
 }
 
 }; // namespace FlexFlow
