@@ -2,35 +2,35 @@
 
 namespace FlexFlow {
 
-Operator const &ParallelComputationGraph::at(operator_guid_t guid) const {
+Operator const &ParallelComputationGraph::at(operator_guid_t const &guid) const {
   return this->graph.at(guid.value());
 }
 
-Operator &ParallelComputationGraph::at(operator_guid_t guid) {
+Operator &ParallelComputationGraph::at(operator_guid_t const &guid) {
   return this->graph.at(guid.value());
 }
 
-Operator const &ParallelComputationGraph::operator[](operator_guid_t guid) const {
+Operator const &ParallelComputationGraph::operator[](operator_guid_t const &guid) const {
   return this->graph.at(guid.value());
 }
 
-Operator &ParallelComputationGraph::at(operator_guid_t guid) {
+Operator &ParallelComputationGraph::at(operator_guid_t const &guid) {
   return this->graph.at(guid.value());
 }
 
-ParallelTensor const &ParallelComputationGraph::at(parallel_tensor_guid_t guid) const {
+ParallelTensor const &ParallelComputationGraph::at(parallel_tensor_guid_t const &guid) const {
   return this->graph.at(guid.value());
 }
 
-ParallelTensor &ParallelComputationGraph::at(parallel_tensor_guid_t guid) {
+ParallelTensor &ParallelComputationGraph::at(parallel_tensor_guid_t const &guid) {
   return this->graph.at(guid.value());
 }
 
-ParallelTensor const &ParallelComputationGraph::operator[](parallel_tensor_guid_t guid) const {
+ParallelTensor const &ParallelComputationGraph::operator[](parallel_tensor_guid_t const &guid) const {
   return this->graph.at(guid.value());
 }
 
-ParallelTensor &ParallelCompuationGraph::operator[](parallel_tensor_guid_t guid) const {
+ParallelTensor &ParallelCompuationGraph::operator[](parallel_tensor_guid_t const &guid) const {
   return this->graph.at(guid.value());
 }
 
@@ -60,24 +60,17 @@ OpTaskInvocation backward(PCGOperatorAttrs const &attrs) {
   return visit(Backward{}, attrs);
 }
 
-OpTaskInvocation forward(ParallelComputationGraph const &pcg, operator_guid_t op_guid) {
+OpTaskInvocation forward(ParallelComputationGraph const &pcg, operator_guid_t const &op_guid) {
   return forward(pcg.at(op_guid));
 }
 
-OpTaskInvocation backward(ParallelComputationGraph const &pcg, operator_guid_t op_guid) {
+OpTaskInvocation backward(ParallelComputationGraph const &pcg, operator_guid_t const &op_guid) {
   return backward(pcg.at(op_guid));
 }
 
-ConcreteArgSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t op_guid, OpArgRefSpec const &ref_spec) {
+ArgSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t const &op_guid, OpArgRefSpec const &ref_spec) {
   OpArgRefType ref_type = ref_spec.get_ref_type();
   switch (ref_type) {
-    case OpArgRefType::ENABLE_PROFILING:
-      return ConcreteArgSpec::create();
-      break;
-    case OpArgRefType::FF_HANDLE:
-      break;
-    case OpArgRefType::PER_DEVICE_OP_STATE:
-      break;
     default:
       throw mk_runtime_error("Unknown OpArgRefType {}", ref_type);
   }
@@ -85,12 +78,12 @@ ConcreteArgSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t op_
 
 struct ResolveOpArgSpec {
   ResolveOpArgSpec() = delete;
-  ResolveOpArgSpec(ParallelComputationGraph const &pcg, operator_guid_t op_guid)
+  ResolveOpArgSpec(ParallelComputationGraph const &pcg, operator_guid_t const &op_guid)
     : pcg(pcg), op_guid(op_guid)
   { }
 
   ParallelComputationGraph const &pcg;
-  operator_guid_t const op_guid;
+  operator_guid_t const &op_guid;
 
   ArgSpec operator()(OpArgSpec const &s) const {
     return resolve(pcg, op_guid, s);
@@ -106,17 +99,17 @@ ArgSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t op_guid, Op
   return visit(ResolveOpArgSpec{pcg, op_guid}, op_arg_spec);
 }
 
-ParallelTensorSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t op_guid, OpTensorSpec const &op_tensor_spec, IsGrad const &is_grad) {
+ParallelTensorSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t const &op_guid, OpTensorSpec const &op_tensor_spec, IsGrad const &is_grad) {
   optional<parallel_tensor_guid_t> pt_guid;
   switch (op_tensor_spec.role) {
     case TensorRole::INPUT:
-      pt_guid = get_input_edges_by_idx(pcg.graph, op_guid).at(op_tensor_spec.idx);
+      pt_guid = get_input_ptensors_by_idx(pcg, op_guid).at(op_tensor_spec.idx);
       break;
     case TensorRole::WEIGHT:
-      pt_guid = get_weight_edges_by_idx(pcg.graph, op_guid).at(op_tensor_spec.idx);
+      pt_guid = get_weight_ptensors_by_idx(pcg, op_guid).at(op_tensor_spec.idx);
       break;
     case TensorRole::OUTPUT:
-      pt_guid = get_output_edges_by_idx(pcg.graph, op_guid).at(op_tensor_spec.idx);
+      pt_guid = get_output_ptensors_by_idx(pcg, op_guid).at(op_tensor_spec.idx);
       break;
     default:
       throw mk_runtime_error("Unknown tensor role {}", op_tensor_spec.role);
@@ -125,7 +118,7 @@ ParallelTensorSpec resolve(ParallelComputationGraph const &pcg, operator_guid_t 
   return { pt_guid.value(), is_grad };
 }
 
-TaskBinding resolve(ParallelComputationGraph const &pcg, operator_guid_t, OpTaskBinding const &op_binding) {
+TaskBinding resolve(ParallelComputationGraph const &pcg, operator_guid_t const &op_guid, OpTaskBinding const &op_binding) {
   TaskBinding binding(InvocationType::INDEX);
 
   for (auto const &kv : op_binding.get_tensor_bindings()) {
@@ -133,7 +126,7 @@ TaskBinding resolve(ParallelComputationGraph const &pcg, operator_guid_t, OpTask
     IsGrad is_grad = kv.first.second;
     OpTensorSpec op_tensor_spec = kv.second;
 
-    ParallelTensorSpec tensor_spec = resolve(pcg, op_tensor_spec, is_grad);
+    ParallelTensorSpec tensor_spec = resolve(pcg, op_guid, op_tensor_spec, is_grad);
 
     binding.bind(slot, tensor_spec);
   }

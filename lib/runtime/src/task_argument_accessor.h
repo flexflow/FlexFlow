@@ -27,9 +27,17 @@ bool is_variadic(TensorArgumentFormat const &);
 VariadicFormat get_variadic_format(TensorArgumentFormat const &);
 NonvariadicFormat get_nonvariadic_format(TensorArgumentFormat const &);
 
-struct TaskArgumentFormat : use_visitable_eq<TaskArgumentFormat> {
+struct TaskArgumentFormat : public use_visitable_cmp<TaskArgumentFormat> {
+  std::type_index type;
+  size_t start;
+  size_t end;
+
+  size_t size() const;
+};
+
+struct TaskArgumentsFormat : public use_visitable_eq<TaskArgumentsFormat> {
   stack_map<slot_id, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
-  stack_map<slot_id, ArgSpec, MAX_NUM_TASK_ARGUMENTS> argument_offsets;
+  stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> args;
   stack_map<region_idx_t, Legion::PrivilegeMode, MAX_NUM_TASK_REGIONS> regions;
   stack_map<ParallelTensorSpec, DataType, MAX_NUM_TASK_REGIONS> data_types;
   ArgSpec self_offset;
@@ -48,17 +56,16 @@ struct TaskArgumentAccessor {
 
   template <typename T>
   T const &get_argument(slot_id slot) {
-    ArgSpec arg_spec = this->args_fmt.argument_offsets.at(slot);
-
+    TaskArgumentFormat arg_fmt = this->args_fmt.args.at(slot);
+    std::type_index actual_type = arg_fmt.type;
     std::type_index requested_type = {typeid(T)};
-    if (arg_spec.type != requested_type) {
-      std::ostringstream oss;
-      oss << "Type mismatch in argument access: \"" << arg_spec.type.name() << "\" != \"" << requested_type.name() << "\"";
-      throw std::runtime_error(oss.str());
+
+    if (actual_type != requested_type) {
+      throw mk_runtime_error("Type mismatch in argument access (\"{}\" != \"{}\")", actual_type.name(), requested_type.name());
     }
 
-    void *start_ptr = &((std::uint8_t*)this->task->args)[arg_spec.start];
-    Legion::Deserializer dez(start_ptr, arg_spec.size);
+    void *start_ptr = &((std::uint8_t*)this->task->args)[arg_fmt.start];
+    Legion::Deserializer dez(start_ptr, arg_fmt.size());
 
     return ff_task_deserialize<T>(dez);
   }
@@ -119,17 +126,8 @@ private:
   std::vector<Legion::PhysicalRegion> const &regions;
   Legion::Context ctx;
   Legion::Runtime *runtime;
-  TaskArgumentFormat const &args_fmt;
+  TaskArgumentsFormat const &args_fmt;
 };
-
-struct TaskReturnAccessor { 
-  template <typename T>
-  TypedFuture<T> get_returned_future();
-
-  template <typename T>
-  TypedFutureMap<T> get_returned_future_map();
-};
-
 
 }
 

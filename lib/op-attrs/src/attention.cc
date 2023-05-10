@@ -37,16 +37,14 @@ int get_vSize(TensorShape const &value_shape) {
 }
 
 TensorShape get_weights_shape(MultiHeadAttentionAttrs const &attrs,
-                              TensorShape const &query_shape,
-                              TensorShape const &key_shape,
-                              TensorShape const &value_shape) {
-  int qParas = get_qProjSize(attrs) * get_qSize(query_shape);  
-  int kParas = get_kProjSize(attrs) * get_kSize(key_shape);
-  int vParas = get_vProjSize(attrs) * get_vSize(value_shape);
-  TensorShape output_shape = get_output_shape(attrs, query_shape, key_shape, value_shape);
-  int oParas = get_oProjSize(attrs) * get_oSize(output_shape);
+                              MultiHeadAttentionInputs<TensorShape> const &inputs) {
+  size_t qParas = get_qProjSize(attrs) * get_qSize(inputs);  
+  size_t kParas = get_kProjSize(attrs) * get_kSize(inputs);
+  size_t vParas = get_vProjSize(attrs) * get_vSize(inputs);
+  TensorShape output_shape = get_output_shape(attrs, inputs);
+  size_t oParas = get_oProjSize(attrs) * get_oSize(output_shape);
 
-  TensorDims dims = { qParas + kParas + vParas + oParas, attrs.embed_dim };
+  TensorDims dims = { qParas + kParas + vParas + oParas, static_cast<size_t>(attrs.embed_dim) };
 
   return { dims, DT_FLOAT };
 }

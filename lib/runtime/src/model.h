@@ -46,7 +46,7 @@
 #include "parallel_computation_graph.h"
 #include "tensor_mapping.h"
 #include "operator.h"
-#include "parallel_tensor_legion_backing.h"
+#include "legion_backing.h"
 
 namespace FlexFlow {
 
@@ -101,7 +101,7 @@ public:
   void compile(LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
-  void compile(Optimizer *optimizer,
+  void compile(Optimizer const &optimizer,
                LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
@@ -131,7 +131,7 @@ private:
 public:
   FFConfig config;
   FFIterationConfig iter_config;
-  Optimizer *optimizer = nullptr;
+  Optimizer optimizer;
   optional<LossAttrs> loss_op = nullopt;
   optional<Metrics> metrics_op = nullopt;
   std::unique_ptr<Simulator> simulator = nullptr;

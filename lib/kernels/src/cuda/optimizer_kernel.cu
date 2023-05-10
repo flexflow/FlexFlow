@@ -13,14 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/accessor.h"
-#include "flexflow/model.h"
-#include "flexflow/optimizer.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/optimizer_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
-
-LegionRuntime::Logger::Category log_optimizer("optimizer");
 
 __global__ void sgd_update(size_t count,
                            float lr,

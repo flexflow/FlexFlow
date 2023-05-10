@@ -19,18 +19,13 @@
 #include "legion.h"
 #include "runtime/config.h"
 #include "kernels/accessor.h"
-#include "task_spec.h"
+#include "task_signature.h"
+#include "task_invocation.h"
 
 namespace FlexFlow {
 
 struct ParallelTensor;
 struct parallel_tensor_guid_t;
-
-template <> TaskSignature get_signature<GLOROT_INIT_TASK_ID>();
-template <> TaskSignature get_signature<ZERO_INIT_TASK_ID>();
-template <> TaskSignature get_signature<UNIFORM_INIT_TASK_ID>();
-template <> TaskSignature get_signature<NORMAL_INIT_TASK_ID>();
-template <> TaskSignature get_signature<CONSTANT_INIT_TASK_ID>();
 
 template <> void register_task<GLOROT_INIT_TASK_ID>();
 template <> void register_task<ZERO_INIT_TASK_ID>();

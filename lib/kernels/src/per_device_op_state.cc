@@ -1,10 +1,10 @@
-#include "kernels/per_device_op_state.h"
+/* #include "kernels/per_device_op_state.h" */
 
-namespace FlexFlow {
+/* namespace FlexFlow { */
 
-PerDeviceOpState::PerDeviceOpState(PerDeviceFFHandle const &_handle)
-  : handle(_handle)
-{ }
+/* PerDeviceOpState::PerDeviceOpState(PerDeviceFFHandle const &_handle) */
+/*   : handle(_handle) */
+/* { } */
 
 
-}
+/* } */

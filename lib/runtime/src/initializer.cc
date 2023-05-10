@@ -17,9 +17,10 @@
 #include "tasks.h"
 #include <cmath>
 #include "accessor.h"
-#include "task_spec.h"
+#include "task_invocation.h"
 #include "kernels/initializer_kernels.h"
 #include "parallel_tensor.h"
+#include "task_argument_accessor.h"
 
 namespace FlexFlow {
 
@@ -45,7 +46,7 @@ enum GlorotSlots {
   INITIALIZER
 };
 
-static InvocationType get_invocation_type(ParameterSyncType sync_type) {
+InvocationType get_invocation_type(ParameterSyncType sync_type) {
   if (sync_type == ParameterSyncType::PS) {
     return InvocationType::STANDARD;
   } else if (sync_type == ParameterSyncType::NCCL) {
@@ -61,7 +62,7 @@ TaskInvocation apply_initializer(GlorotUniform const &initializer,
                                  TensorDims const &tensor_dims) {
   assert (tensor_dims.num_dims() >= 2);
 
-  TaskBinding binding = { get_invocation_type(p.sync_type) };
+  TaskBinding binding(get_invocation_type(p.sync_type));
   binding.bind(TENSOR, {guid});
   binding.bind_arg(INITIALIZER, initializer);
   binding.bind_arg(TENSOR_DIMS, tensor_dims);
@@ -72,7 +73,7 @@ TaskInvocation apply_initializer(GlorotUniform const &initializer,
 TaskInvocation apply_initializer(ZeroInitializer const &initializer, 
                                  parallel_tensor_guid_t const &guid, 
                                  ParallelTensor const &p) {
-  TaskBinding binding = { get_invocation_type(p.sync_type) };
+  TaskBinding binding(get_invocation_type(p.sync_type));
   binding.bind(TENSOR, {guid});
 
   return { ZERO_INIT_TASK_ID, binding };
@@ -81,7 +82,7 @@ TaskInvocation apply_initializer(ZeroInitializer const &initializer,
 TaskInvocation apply_initializer(UniformInitializer const &initializer,
                                  parallel_tensor_guid_t const &guid,
                                  ParallelTensor const &p) {
-  TaskBinding binding = { get_invocation_type(p.sync_type) };
+  TaskBinding binding(get_invocation_type(p.sync_type));
   binding.bind(TENSOR, {guid});
   binding.bind_arg<UniformInitializer>(INITIALIZER, initializer);
 
@@ -91,7 +92,7 @@ TaskInvocation apply_initializer(UniformInitializer const &initializer,
 TaskInvocation apply_initializer(NormInitializer const &initializer,
                                  parallel_tensor_guid_t const &guid,
                                  ParallelTensor const &p) {
-  TaskBinding binding = { get_invocation_type(p.sync_type) };
+  TaskBinding binding(get_invocation_type(p.sync_type));
   binding.bind(TENSOR, {guid});
   binding.bind_arg<NormInitializer>(INITIALIZER, initializer);
 
@@ -101,7 +102,7 @@ TaskInvocation apply_initializer(NormInitializer const &initializer,
 TaskInvocation apply_initializer(ConstantInitializer const &initializer,
                                  parallel_tensor_guid_t const &guid,
                                  ParallelTensor const &p) {
-  TaskBinding binding = { get_invocation_type(p.sync_type) };
+  TaskBinding binding(get_invocation_type(p.sync_type));
   binding.bind(TENSOR, {guid});
   binding.bind_arg<ConstantInitializer>(INITIALIZER, initializer);
 

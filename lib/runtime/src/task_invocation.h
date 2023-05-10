@@ -10,6 +10,8 @@
 #include "parallel_tensor_guid_t.h"
 #include "tasks.h"
 #include "task_signature.h"
+#include "profiling.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
@@ -54,6 +56,33 @@ private:
   std::shared_ptr<void const *> ptr;
 };
 
+
+struct IndexArgSpec {
+public:
+  template <typename T>
+  T get(Legion::DomainPoint const &p) {
+    assert (std::type_index(typeid(T)) == this->return_type);
+
+    return *(T const *)(f(p).get());
+  }
+
+  template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
+  static IndexArgSpec create(F const &ff) {
+    static_assert(is_serializable<T>, "Type must be serializable");
+
+    std::function<std::shared_ptr<void>(Legion::DomainPoint const &)> wrapped = [=](Legion::DomainPoint const &p) {
+      return std::make_shared<T>(ff(p));
+    };
+
+    return IndexArgSpec(std::type_index(typeid(T)), wrapped);
+  }
+private:
+  IndexArgSpec(std::type_index, std::function<std::shared_ptr<void>(Legion::DomainPoint const &)> const &);
+
+  std::type_index return_type;
+  std::function<std::shared_ptr<void>(Legion::DomainPoint const &)> f;
+};
+
 // struct ArgSpec : public use_visitable_cmp<ArgSpec> {
 // public:
 //   ArgSpec() = delete;
@@ -70,20 +99,46 @@ private:
 
 /* }; */
 
-}
-
-namespace FlexFlow {
-
 struct ParallelTensorSpec : public use_visitable_cmp<ParallelTensorSpec> {
 public:
   ParallelTensorSpec() = delete;
-  explicit ParallelTensorSpec(parallel_tensor_guid_t, IsGrad is_grad = IsGrad::NO);
+  ParallelTensorSpec(parallel_tensor_guid_t, IsGrad is_grad = IsGrad::NO);
 
   ParallelTensorSpec grad() const;
 public:
   parallel_tensor_guid_t parallel_tensor_guid; 
   IsGrad is_grad;
 };
+
+enum class ArgRefType {
+  ENABLE_PROFILING,
+  FF_HANDLE,
+  PER_DEVICE_OP_STATE
+};
+
+template <typename T>
+struct ArgRef : public use_visitable_cmp<ArgRef<T>> {
+public:
+  ArgRef() = delete;
+  ArgRef(ArgRefType ref_type)
+    : ref_type(ref_type)
+  { }
+
+public:
+  ArgRefType ref_type;
+};
+
+struct ArgRefSpec {
+};
+
+
+ArgRef<EnableProfiling> enable_profiling();
+ArgRef<PerDeviceFFHandle> ff_handle();
+
+template <typename T>
+ArgRef<T> per_device_op_state() {
+  return ArgRef<T>(ArgRefType::PER_DEVICE_OP_STATE);
+}
 
 template <typename T> 
 struct TypedFuture {
@@ -157,11 +212,12 @@ public:
   Legion::FutureMap future_map;
 };
 
-using ArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
+using ArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
+
+std::type_index get_type_index(ArgSpec);
 
 struct TaskBinding {
 public:
-  explicit TaskBinding(optional<Legion::Domain const &> = nullopt);
   explicit TaskBinding(InvocationType);
 
   void bind(slot_id, ParallelTensorSpec const &);
@@ -183,13 +239,7 @@ public:
 
   template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
   void bind_index_arg(slot_id name, F const &f) {
-    assert (this->domain.has_value());
-    Legion::Domain d = this->domain.value();
-    assert (!contains_key(this->arg_bindings, name));
-    for (Legion::Domain::DomainPointIterator it(d); it; it++) {
-      auto arg_spec = this->generate_idx_arg_spec<T>(f(*it), *it);
-      arg_bindings.insert({{*it, name}, arg_spec});
-    }
+    this->insert_arg_spec(name, IndexArgSpec::create(f));
   }
 private:
   void insert_arg_spec(slot_id name, ArgSpec const &arg_spec) {
@@ -198,10 +248,7 @@ private:
   }
 
 private:
-  optional<Legion::Domain> domain;
   std::unordered_map<slot_id, ArgSpec> arg_bindings;
-  std::map<Legion::DomainPoint, Legion::Serializer> idx_serializers;
-  std::unordered_map<std::pair<slot_id, Legion::DomainPoint>, ArgSpec> index_arg_bindings;
   std::unordered_map<slot_id, ParallelTensorSpec> bindings;
 };
 
@@ -220,6 +267,15 @@ public:
 
 /* std::unordered_map<Legion::DomainPoint, TaskArgumentFormat> compile_index_task_invocation(TaskSignature const &signature, */
 /*                                                                                           TaskBinding const &binding); */
+
+struct TaskReturnAccessor { 
+  template <typename T>
+  TypedFuture<T> get_returned_future();
+
+  template <typename T>
+  TypedFutureMap<T> get_returned_future_map();
+};
+
 
 TaskReturnAccessor execute_task(LegionConfig const &config, 
                                 TaskInvocation const &,

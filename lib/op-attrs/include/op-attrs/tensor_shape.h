@@ -11,7 +11,7 @@ namespace FlexFlow {
 
 using TensorDims = FFOrdered<size_t>;
 
-struct TensorShape : use_visitable_cmp<TensorShape> {
+struct TensorShape : public use_visitable_cmp<TensorShape> {
   TensorShape() = delete;
 
   template <typename Dims>

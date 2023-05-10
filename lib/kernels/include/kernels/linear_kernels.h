@@ -9,18 +9,14 @@ namespace FlexFlow {
 class LinearPerDeviceState : public PerDeviceOpState {
 public:
   LinearPerDeviceState(FFHandler handle, int batch_size);
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-#else
-  miopenTensorDescriptor_t outputTensor;
-  miopenActivationDescriptor_t actiDesc;
-#endif
+  ffTensorDescriptor_t outputTensor;
+  ffActivationDescriptor_t actiDesc;
+
+public:
   float const *one_ptr;
   ActiMode activation;
   bool use_bias;
   DataType input_type, weight_type, output_type;
-  char op_name[MAX_OPNAME];
 };
 
 namespace Kernels {
