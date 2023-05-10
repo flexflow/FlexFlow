@@ -50,8 +50,8 @@ public:
   int num_tokens;
 
   struct PerRequestInfo {
-    int token_start_offset; 
-    int num_tokens_in_batch; 
+    int token_start_offset;
+    int num_tokens_in_batch;
     int max_sequence_length;
     RequestGuid request_guid;
   };

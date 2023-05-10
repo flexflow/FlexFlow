@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "models/llama.h"
 #include "flexflow/inference.h"
+#include "models/llama.h"
 
 using namespace Legion;
 
@@ -57,7 +57,8 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel beam_model(ffconfig), tree_model(ffconfig), inc_model(ffconfig);
   LLAMA::create_llama_model(beam_model, im, llama_config, 1, BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model, im, llama_config, 1, TREE_VERIFY_MODE);
-  // LLAMA::create_llama_model(inc_model, im, llama_config, 1, INC_DECODING_MODE);
+  // LLAMA::create_llama_model(inc_model, im, llama_config, 1,
+  // INC_DECODING_MODE);
 
   // entry---------------------------
   int abs_depth = 0;
@@ -70,7 +71,7 @@ void FlexFlow::top_level_task(Task const *task,
   InferenceResult ir;
   int num_iterations = 2;
 
-  for (int itr=0; itr < num_iterations; itr++) {
+  for (int itr = 0; itr < num_iterations; itr++) {
     printf("\n\n ITERATION %d \n\n", itr);
 
     // first iteration of beam search, calling prepare_next_batch_init
@@ -83,8 +84,12 @@ void FlexFlow::top_level_task(Task const *task,
     printf("bc.num_tokens: %d\n", bc.num_tokens);
     for (int i = 0; i < bc.num_tokens; i++) {
       printf("bc.tokensInfo[%d].token_id: %d\n", i, bc.tokensInfo[i].token_id);
-      printf("bc.tokensInfo[%d].abs_depth_in_request: %d\n", i, bc.tokensInfo[i].abs_depth_in_request);
-      printf("bc.tokensInfo[%d].request_index: %d\n", i, bc.tokensInfo[i].request_index);
+      printf("bc.tokensInfo[%d].abs_depth_in_request: %d\n",
+             i,
+             bc.tokensInfo[i].abs_depth_in_request);
+      printf("bc.tokensInfo[%d].request_index: %d\n",
+             i,
+             bc.tokensInfo[i].request_index);
     }
 
     std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
@@ -96,34 +101,34 @@ void FlexFlow::top_level_task(Task const *task,
     // subsequent iterations of beam search
     while (beam_search_depth < llama_config.max_beam_depth) {
       // have luanched this bid
-        Future future = beam_future_handlers[bid];
-        if (!future.is_ready(true /*subscribe*/)) {
-          continue;
-        } else {
-          std::cout << "future is ready...." << std::endl;
-        }
-        // process end
-        BeamInferenceResult ir_beam = future.get_result<BeamInferenceResult>();
-        BeamSearchBatchConfig bc = beam_batch_configs[bid];
-        abs_depth = bc.beamRequestsInfo[0].current_depth;
-        bc = rm.prepare_next_batch_beam(bc, ir_beam);
+      Future future = beam_future_handlers[bid];
+      if (!future.is_ready(true /*subscribe*/)) {
+        continue;
+      } else {
+        std::cout << "future is ready...." << std::endl;
+      }
+      // process end
+      BeamInferenceResult ir_beam = future.get_result<BeamInferenceResult>();
+      BeamSearchBatchConfig bc = beam_batch_configs[bid];
+      abs_depth = bc.beamRequestsInfo[0].current_depth;
+      bc = rm.prepare_next_batch_beam(bc, ir_beam);
 
-        std::cout << "llama current depth: " << abs_depth << std::endl;
-        std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
-        FutureMap fm = im.inference(&beam_model, bid, bc);
-        assert(fm.get_future_map_domain().get_volume() == 1);
-        beam_future_handlers[bid] = fm.get_future(0);
-        beam_batch_configs[bid] = bc;
-        beam_search_depth++;
+      std::cout << "llama current depth: " << abs_depth << std::endl;
+      std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
+      FutureMap fm = im.inference(&beam_model, bid, bc);
+      assert(fm.get_future_map_domain().get_volume() == 1);
+      beam_future_handlers[bid] = fm.get_future(0);
+      beam_batch_configs[bid] = bc;
+      beam_search_depth++;
     }
 
-    //verify
+    // verify
     printf("\n\n ------Final Beam Search Batch------\n");
     printf("[Beam] num_tokens: %d\n", bc.num_tokens);
     for (int i = 0; i < bc.num_tokens; i++) {
-      std::cout << "[Token] Request Index: " << bc.tokensInfo[i].request_index << 
-                    ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request << 
-                    ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
+      std::cout << "[Token] Request Index: " << bc.tokensInfo[i].request_index
+                << ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request
+                << ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
     }
 
     printf("\n\n prepare tree_bc from final beam search bc\n");
@@ -135,13 +140,15 @@ void FlexFlow::top_level_task(Task const *task,
     // need to add in the beam search result
 
     printf("[Verify] num_tokens : %d\n", tree_bc.num_tokens);
-    printf("[Verify] num_tokens_in_batch: %d\n", tree_bc.requestsInfo[0].num_tokens_in_batch);
+    printf("[Verify] num_tokens_in_batch: %d\n",
+           tree_bc.requestsInfo[0].num_tokens_in_batch);
     printf("------------------------------\n");
 
     for (int i = 0; i < tree_bc.num_tokens; i++) {
-      std::cout << "[Token] Request Index: " << tree_bc.tokensInfo[i].request_index <<  
-                    ", Abs Depth: " << tree_bc.tokensInfo[i].abs_depth_in_request << 
-                    ", Token Id: " << tree_bc.tokensInfo[i].token_id << "\n";
+      std::cout << "[Token] Request Index: "
+                << tree_bc.tokensInfo[i].request_index
+                << ", Abs Depth: " << tree_bc.tokensInfo[i].abs_depth_in_request
+                << ", Token Id: " << tree_bc.tokensInfo[i].token_id << "\n";
     }
 
     fm = im.inference(&tree_model, 0, tree_bc);
@@ -151,7 +158,6 @@ void FlexFlow::top_level_task(Task const *task,
     for (int i = 0; i < tree_bc.num_tokens; i++) {
       printf("verify_tokens[%d] = %d\n", i, ir.token_ids[i]);
     }
-
   }
 
   // // original

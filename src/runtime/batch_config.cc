@@ -117,10 +117,9 @@ int BatchConfig::num_active_requests() const {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
-    // } else {
-    //   std::cout << "request " << i << " is completed" << std::endl;
+      // } else {
+      //   std::cout << "request " << i << " is completed" << std::endl;
     }
-    
   }
   return num_requests;
   // if (cached_results) {

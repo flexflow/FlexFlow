@@ -68,7 +68,7 @@ struct BeamTree {
 // struct BeamTree_v2 {
 //   std::vector<BatchConfig::TokenId> tokens;
 //   std::vector<int> parent_ids;
-//   std::vector<float> probs; 
+//   std::vector<float> probs;
 // };
 
 class RequestManager {
@@ -99,14 +99,16 @@ public:
                             int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>>
-      traverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
-                          int request_index, 
-                          int token_start_offset);
+      traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
+                         int request_index,
+                         int token_start_offset);
 
-  std::vector<std::pair<BatchConfig::TokenId, int>> 
-      traverse_verify_tree(size_t guid,
-                           const std::vector<std::pair<BatchConfig::TokenId, int>> &inputSerializedTree,
-                           const std::vector<std::pair<BatchConfig::TokenId, int>> &outputSerializedTree);
+  std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
+      size_t guid,
+      std::vector<std::pair<BatchConfig::TokenId, int>> const
+          &inputSerializedTree,
+      std::vector<std::pair<BatchConfig::TokenId, int>> const
+          &outputSerializedTree);
 
   TreeVerifyBatchConfig
       convert_beam_to_tree_batch_config(BeamSearchBatchConfig const &beam_bc);
@@ -125,12 +127,15 @@ private:
 
   struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
 
-  std::unordered_map<RequestGuid, std::vector<std::pair<BatchConfig::TokenId, int>>>
-         dfs_tree_inputs;
+  std::unordered_map<RequestGuid,
+                     std::vector<std::pair<BatchConfig::TokenId, int>>>
+      dfs_tree_inputs;
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
-  // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth, Commited Tokens
-  std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>> committed_tokens;
+  // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
+  // Commited Tokens
+  std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
+      committed_tokens;
   size_t num_processed_requests;
 };
 

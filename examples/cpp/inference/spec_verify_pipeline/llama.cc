@@ -106,38 +106,42 @@ void FlexFlow::top_level_task(Task const *task,
       // tranverse the tree in dfs order;
       if (depth >= llama_config.max_beam_depth) {
 
-
         printf("\n\n ------Final Beam Search Batch------\n");
         printf("[Beam] num_tokens: %d\n", bc.num_tokens);
         for (int i = 0; i < bc.num_tokens; i++) {
-          std::cout << "[Token] Request Index: " << bc.tokensInfo[i].request_index << 
-                        ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request << 
-                        ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
+          std::cout << "[Token] Request Index: "
+                    << bc.tokensInfo[i].request_index
+                    << ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request
+                    << ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
         }
 
         // printf("\n\n prepare tree_bc from final beam search bc\n");
         tree_bc = rm.prepare_next_batch_verify(bc);
 
         printf("\n\n\n ------Tree Verify Batch-------\n");
-        // should have the same content as the hardcoded verification block below
-        // right now, it only contains the prompt
-        // need to add in the beam search result
+        // should have the same content as the hardcoded verification block
+        // below right now, it only contains the prompt need to add in the beam
+        // search result
 
         printf("[Verify] num_tokens : %d\n", tree_bc.num_tokens);
-        printf("[Verify] num_tokens_in_batch: %d\n", tree_bc.requestsInfo[0].num_tokens_in_batch);
+        printf("[Verify] num_tokens_in_batch: %d\n",
+               tree_bc.requestsInfo[0].num_tokens_in_batch);
         printf("------------------------------\n");
 
         for (int i = 0; i < tree_bc.num_tokens; i++) {
-          std::cout << "[Token] Request Index: " << tree_bc.tokensInfo[i].request_index <<  
-                        ", Abs Depth: " << tree_bc.tokensInfo[i].abs_depth_in_request << 
-                        ", Token Id: " << tree_bc.tokensInfo[i].token_id << "\n";
+          std::cout << "[Token] Request Index: "
+                    << tree_bc.tokensInfo[i].request_index << ", Abs Depth: "
+                    << tree_bc.tokensInfo[i].abs_depth_in_request
+                    << ", Token Id: " << tree_bc.tokensInfo[i].token_id << "\n";
         }
 
         printf("\n\n ------Commit Verified Tokens-------\n");
-        for (int i = 0; i< tree_bc.num_tokens_to_commit; i++) {
-          std::cout << "[Commit] Request Index: " << tree_bc.commited_tokens[i].request_index <<  
-                        ", Abs Depth: " << tree_bc.commited_tokens[i].token_depth << 
-                        ", Token Index in batch: " << tree_bc.commited_tokens[i].token_index << "\n";
+        for (int i = 0; i < tree_bc.num_tokens_to_commit; i++) {
+          std::cout << "[Commit] Request Index: "
+                    << tree_bc.commited_tokens[i].request_index
+                    << ", Abs Depth: " << tree_bc.commited_tokens[i].token_depth
+                    << ", Token Index in batch: "
+                    << tree_bc.commited_tokens[i].token_index << "\n";
         }
 
         FutureMap fm = im.inference(&tree_model, 0, tree_bc);
@@ -155,11 +159,13 @@ void FlexFlow::top_level_task(Task const *task,
         bc = rm.prepare_next_batch_init(tree_bc, ir);
         std::cout << "[Init] num_tokens: " << bc.num_tokens << "\n";
         for (int i = 0; i < bc.num_tokens; i++) {
-          std::cout << "[Token] Request Index: " << bc.tokensInfo[i].request_index << 
-                        ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request << 
-                        ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
+          std::cout << "[Token] Request Index: "
+                    << bc.tokensInfo[i].request_index
+                    << ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request
+                    << ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
         }
-        std::cout << "Batch Depth: " << bc.beamRequestsInfo[0].current_depth << "\n";
+        std::cout << "Batch Depth: " << bc.beamRequestsInfo[0].current_depth
+                  << "\n";
 
         iteration++;
 
@@ -173,7 +179,6 @@ void FlexFlow::top_level_task(Task const *task,
         } else {
           break;
         }
-
       }
     }
   }
