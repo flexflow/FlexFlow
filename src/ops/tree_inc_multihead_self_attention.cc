@@ -553,7 +553,7 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   assert(task->regions.size() == regions.size());
 
   TreeVerifyBatchConfig const *bc = (TreeVerifyBatchConfig *)task->args;
-  TreeIncMultiHeadSelfAttentionMeta const *m =
+  TreeIncMultiHeadSelfAttentionMeta *m =
       *((TreeIncMultiHeadSelfAttentionMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
