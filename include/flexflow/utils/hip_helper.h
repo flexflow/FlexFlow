@@ -19,7 +19,7 @@
   do {                                                                         \
     std::stringstream _error;                                                  \
     if (status != miopenStatusSuccess) {                                       \
-      _error << "CUDNN failure: " << status;                                   \
+      _error << "CUDNN failure: " << miopenGetErrorString(status);             \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
