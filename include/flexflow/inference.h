@@ -100,7 +100,8 @@ public:
 
   std::vector<std::pair<BatchConfig::TokenId, int>>
       traverse_beam_tree(BeamSearchBatchConfig const &old_bc, 
-                          int request_index);
+                          int request_index, 
+                          int token_start_offset);
 
   std::vector<std::pair<BatchConfig::TokenId, int>> 
       traverse_verify_tree(size_t guid,
