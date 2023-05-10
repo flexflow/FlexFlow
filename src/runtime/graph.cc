@@ -31,7 +31,6 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
-#include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -45,6 +44,7 @@
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -2277,7 +2277,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->apply_rotary_embedding);
         break;
       }
-      case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
+      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
         SpecIncMultiHeadSelfAttention *attn =
             (SpecIncMultiHeadSelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
@@ -2292,9 +2292,9 @@ GraphOptimalViewSerialized
         sez.serialize(attn->apply_rotary_embedding);
         break;
       }
-      case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
-        IncMultiHeadSelfAttentionVerify *attn =
-            (IncMultiHeadSelfAttentionVerify *)op;
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+        TreeIncMultiHeadSelfAttention *attn =
+            (TreeIncMultiHeadSelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_heads);
@@ -2698,7 +2698,7 @@ void FFModel::deserialize_graph_optimal_view(
         node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }
-      case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
+      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
@@ -2731,7 +2731,7 @@ void FFModel::deserialize_graph_optimal_view(
                                                                  params);
         break;
       }
-      case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
@@ -2749,7 +2749,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(add_zero_attn);
         dez.deserialize(apply_rotary_embedding);
 
-        IncMultiHeadSelfAttentionVerifyParams params;
+        TreeIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
         params.num_heads = num_heads;
         params.kdim = k_dim;
@@ -2760,8 +2760,8 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
-        node = get_or_create_node<IncMultiHeadSelfAttentionVerify>(inputs[0],
-                                                                   params);
+        node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
+                                                                 params);
         break;
       }
       case OP_TOPK: {

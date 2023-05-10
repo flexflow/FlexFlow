@@ -145,16 +145,14 @@ enum TaskIDs {
   RMSNROM_FWD_TASK_ID,
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
-  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_FWD_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_BWD_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INF_TASK_ID,
+  SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+  TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
@@ -293,7 +291,7 @@ class LayerNorm;
 class Linear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
-class IncMultiHeadSelfAttentionVerify;
+class TreeIncMultiHeadSelfAttention;
 class Pool2D;
 class Reduce;
 class Reshape;
@@ -1014,8 +1012,8 @@ public:
           std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
           SpecIncMultiHeadSelfAttention *>,
       std::unordered_map<
-          std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionVerifyParams>,
-          IncMultiHeadSelfAttentionVerify *>,
+          std::pair<ParallelTensorShape, TreeIncMultiHeadSelfAttentionParams>,
+          TreeIncMultiHeadSelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
                          Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,

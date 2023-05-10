@@ -25,13 +25,13 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-InferenceManager::InferenceManager(FFModel *_model,
+InferenceManager::InferenceManager(FFConfig const &_config,
                                    int _max_num_tokens_per_batch,
                                    int _max_num_inflight_batches)
-    : model(_model), max_num_tokens_per_batch(_max_num_tokens_per_batch),
+    : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch),
       max_num_inflight_batches(_max_num_inflight_batches) {
   // populate array of valid single-device machine views
-  num_devices = model->config.workersPerNode * model->config.numNodes;
+  num_devices = ff_config.workersPerNode * ff_config.numNodes;
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
     view.device_type = MachineView::GPU;
@@ -197,6 +197,11 @@ MachineView *InferenceManager::get_machine_view(int mv_id) {
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfig const &bc) {
+  std::cout << "InferenceManager::inference" << index << std::endl;
+  std::cout << "num_active_tokens = " << bc.num_active_tokens()
+            << ", num_active_requests = " << bc.num_active_requests()
+            << std::endl;
+
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
@@ -246,8 +251,8 @@ FutureMap InferenceManager::inference(FFModel *model,
 
 void InferenceManager::load_input_tokens_from_batch_config(
     BatchConfig const &bc, ParallelTensor const input) {
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
+  Context ctx = ff_config.lg_ctx;
+  Runtime *runtime = ff_config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
   ArgumentMap argmap;
   IndexLauncher launcher(

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/inc_mha_verify.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -24,8 +24,8 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void IncMultiHeadSelfAttentionVerify::inference_kernel_wrapper(
-    IncMultiHeadSelfAttentionVerifyMeta const *m,
+void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
+    TreeIncMultiHeadSelfAttentionMeta const *m,
     TreeVerifyBatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
@@ -40,7 +40,7 @@ void IncMultiHeadSelfAttentionVerify::inference_kernel_wrapper(
     hipEventRecord(t_start, stream);
   }
 
-  handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY);
+  handle_unimplemented_hip_kernel(OP_TREE_INC_MULTIHEAD_SELF_ATTENTION);
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);
@@ -49,16 +49,16 @@ void IncMultiHeadSelfAttentionVerify::inference_kernel_wrapper(
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
-    printf("IncMultiHeadSelfAttentionVerify forward time = %.2fms\n", elapsed);
+    printf("TreeIncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
-IncMultiHeadSelfAttentionVerifyMeta::IncMultiHeadSelfAttentionVerifyMeta(
+TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
-    IncMultiHeadSelfAttentionVerify const *attn,
+    TreeIncMultiHeadSelfAttention const *attn,
     float const *weight_ptr,
     Memory gpu_mem,
     int num_samples,
@@ -69,7 +69,6 @@ IncMultiHeadSelfAttentionVerifyMeta::IncMultiHeadSelfAttentionVerifyMeta(
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
-IncMultiHeadSelfAttentionVerifyMeta::~IncMultiHeadSelfAttentionVerifyMeta(
-    void) {}
+TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {}
 
 }; // namespace FlexFlow

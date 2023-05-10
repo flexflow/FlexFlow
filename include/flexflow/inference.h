@@ -26,7 +26,7 @@ class BeamTree;
 
 class InferenceManager {
 public:
-  InferenceManager(FFModel *_model,
+  InferenceManager(FFConfig const &config,
                    int max_num_tokens_per_batch,
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(
@@ -39,8 +39,8 @@ public:
                                            ParallelTensor const input);
 
 public:
+  FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
-  FFModel *model;
   int max_num_tokens_per_batch;
   int max_num_inflight_batches;
   int num_devices;
@@ -50,6 +50,7 @@ public:
 struct Request {
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
+  int initial_len;
   std::vector<BatchConfig::TokenId> tokens;
 };
 
@@ -61,29 +62,56 @@ struct BeamTree {
     int parent_ids[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
     float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   };
-  treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH];
+  treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
+
+// struct BeamTree_v2 {
+//   std::vector<BatchConfig::TokenId> tokens;
+//   std::vector<int> parent_ids;
+//   std::vector<float> probs;
+// };
 
 class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
   RequestManager();
+  size_t get_num_processed_requests();
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
+  BeamSearchBatchConfig
+      prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
+                              BeamInferenceResult const &result);
 
   BeamSearchBatchConfig
-      prepare_next_batch_beam(BeamSearchBatchConfig const &bc,
-                              BeamInferenceResult const &result);
+      prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
+                              InferenceResult const &result);
+
+  TreeVerifyBatchConfig
+      prepare_next_batch_verify(BeamSearchBatchConfig const &old_bc);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
   void update_beam_metadata(BeamSearchBatchConfig &new_bc,
                             BeamTree &tree,
                             int request_index);
-  void tranverse_beam_tree(BeamSearchBatchConfig const &old_bc);
+
+  std::vector<std::pair<BatchConfig::TokenId, int>>
+      traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
+                         int request_index,
+                         int token_start_offset);
+
+  std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
+      size_t guid,
+      std::vector<std::pair<BatchConfig::TokenId, int>> const
+          &inputSerializedTree,
+      std::vector<std::pair<BatchConfig::TokenId, int>> const
+          &outputSerializedTree);
+
+  TreeVerifyBatchConfig
+      convert_beam_to_tree_batch_config(BeamSearchBatchConfig const &beam_bc);
 
   static void
       load_tokens_task(Legion::Task const *task,
@@ -96,7 +124,19 @@ private:
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
+
   struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
+
+  std::unordered_map<RequestGuid,
+                     std::vector<std::pair<BatchConfig::TokenId, int>>>
+      dfs_tree_inputs;
+
+  // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
+  // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
+  // Commited Tokens
+  std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
+      committed_tokens;
+  size_t num_processed_requests;
 };
 
 } // namespace FlexFlow

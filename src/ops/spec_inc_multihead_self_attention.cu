@@ -31,12 +31,12 @@ __global__ void spec_build_w_out_tensor(float const *weight_ptr,
                                         int num_heads,
                                         int qkv_weight_block_size) {
   CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
-    int v_idx = i % vProjSize;
-    int o_idx = (i / vProjSize) % oProjSize;
+    int row_idx = i % vProjSize;
+    int col_idx = (i / vProjSize) % oProjSize;
     int head_idx = i / (vProjSize * oProjSize);
     contiguous_weight_ptr[i] =
         weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
-                   qkv_weight_block_size + o_idx * vProjSize + v_idx];
+                   qkv_weight_block_size + col_idx * vProjSize + row_idx];
   }
 }
 
@@ -409,7 +409,7 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     m->vProjSize,
                                     num_tokens,
                                     m->num_heads,
-                                    MAX_SEQ_LEN,
+                                    BatchConfig::MAX_SEQ_LENGTH,
                                     BeamSearchBatchConfig::MAX_BEAM_WIDTH,
                                     /* k_cache = */ true,
                                     /*root*/ curr_depth == 0);
@@ -429,7 +429,7 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     m->vProjSize,
                                     num_tokens,
                                     m->num_heads,
-                                    MAX_SEQ_LEN,
+                                    BatchConfig::MAX_SEQ_LENGTH,
                                     BeamSearchBatchConfig::MAX_BEAM_WIDTH,
                                     /* k_cache = */ false,
                                     /*root*/ curr_depth == 0);
@@ -471,9 +471,9 @@ void inference_kernel3(SpecIncMultiHeadSelfAttentionMeta const *m,
   int tokens_prev_requests_squares = 0;
   int qkv_block_size =
       (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
-  int kt_block_size = m->kProjSize * MAX_SEQ_LEN;
+  int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
   int kt_req_block_size = kt_block_size * m->num_heads;
-  int vt_block_size = m->vProjSize * MAX_SEQ_LEN;
+  int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
   int vt_req_block_size = vt_block_size * m->num_heads;
   assert(m->qProjSize == m->kProjSize);
 
@@ -797,10 +797,10 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   assert(!attn->add_bias_kv);
 
 #ifdef INFERENCE_TESTS
-  kcache = (float *)calloc(kProjSize * MAX_SEQ_LEN * num_heads *
+  kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
                                BeamSearchBatchConfig::MAX_NUM_REQUESTS,
                            sizeof(float));
-  vcache = (float *)calloc(vProjSize * MAX_SEQ_LEN * num_heads *
+  vcache = (float *)calloc(vProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
                                BeamSearchBatchConfig::MAX_NUM_REQUESTS,
                            sizeof(float));
 #endif
@@ -810,12 +810,12 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size =
         BeamSearchBatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
-    size_t key_cache_size = num_heads * kProjSize *
-                            BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-                            MAX_SEQ_LEN * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+    size_t key_cache_size =
+        num_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+        BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
     size_t value_cache_size =
         num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-        MAX_SEQ_LEN * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
 
     // size_t token2ids_size = BatchConfig::MAX_NUM_TOKENS;
     size_t tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *

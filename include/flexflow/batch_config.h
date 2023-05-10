@@ -20,7 +20,6 @@
 
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
-#define MAX_SEQ_LEN 20
 // #define BATCH_SIZE 16
 // #define MAX_REQUESTS 256
 
@@ -45,16 +44,14 @@ public:
   void print() const;
   static int const MAX_NUM_REQUESTS = 8;
   static int const MAX_NUM_TOKENS = 64;
+  static int const MAX_SEQ_LENGTH = 512;
 
   //  These are set by update
   int num_tokens;
 
   struct PerRequestInfo {
-    int token_start_offset; // input[token_start_offset * data_dim] is the first
-                            // token
-    int num_tokens_in_batch; // tokens from input[token_start_offset * data_dim
-                             // : (token_start_offset + num_token_in_batch) *
-                             // data_dim]
+    int token_start_offset;
+    int num_tokens_in_batch;
     int max_sequence_length;
     RequestGuid request_guid;
   };
@@ -72,20 +69,19 @@ public:
 
 class TreeVerifyBatchConfig : public BatchConfig {
 public:
-  struct PerTokenInfo : BatchConfig::PerTokenInfo {
-    int tree_branch_idx;
-  };
+  // struct PerTokenInfo : BatchConfig::PerTokenInfo {
+  //   int tree_branch_idx;
+  // };
   struct CommittedTokensInfo {
     int token_index;   // the index of the token in the previous batch
     int request_index; // request index in the batch
     int token_depth;   // position of the token in the request's sequence
   };
 
-  void compute_tree_branch_indexes();
+  // void compute_tree_branch_indexes();
 
   int num_tokens_to_commit;
   CommittedTokensInfo commited_tokens[MAX_NUM_TOKENS];
-  PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 };
 
 struct InferenceResult {
@@ -105,19 +101,13 @@ public:
 
   size_t beam_width;
   size_t target_iterations;
-  static int const MAX_BEAM_WIDTH = 3;
+  static int const MAX_BEAM_WIDTH = 1;
   static int const MAX_BEAM_DEPTH = 8;
 
   struct BeamSearchPerRequestInfo {
-    // int token_start_offset; // input[token_start_offset * data_dim] is the
-    // first token int num_tokens_in_batch; // tokens from
-    // input[token_start_offset * data_dim : (token_start_offset +
-    // num_token_in_batch) * data_dim] int max_sequence_length; RequestGuid
-    // request_guid;
     bool request_completed;
-    int beam_size; //
+    int beam_size;
     int current_depth = -1;
-    // int global_depth = -1;
     int max_depth = MAX_BEAM_DEPTH;
 
     BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
@@ -131,6 +121,7 @@ public:
 
   BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
   BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
+  // why is this == MAX_NUM_REQUESTS * MAX_BEAM_WIDTH?
   int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
   // BeamSlot beam_slots[MAX_NUM_REQUESTS];
 
@@ -138,7 +129,8 @@ private:
   size_t current_iteration;
 };
 
-struct BeamInferenceResult : public InferenceResult {
+struct BeamInferenceResult {
+  static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId
       token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
