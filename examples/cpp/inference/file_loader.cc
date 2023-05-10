@@ -49,7 +49,7 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
   size_t in_get_size = in.gcount();
   if (in_get_size != loaded_data_size) {
-    std::cout << "load data error";
+    std::cout << "load data error" << std::endl;
     return prompts;
   }
 
@@ -133,22 +133,17 @@ void load_attention_weights(float *ptr,
   std::string q_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
                        "attention_wq_weight";
-  // : "attention_wq_bias");
   std::string k_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
                        "attention_wk_weight";
-  // : "attention_wk_bias");
   std::string v_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
                        "attention_wv_weight";
-  // : "attention_wv_bias");
   std::string o_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
                        "attention_wo_weight";
-  // : "attention_wo_bias");
   std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
-  size_t index = 0;
   int file_index = 0;
 
   size_t single_proj_size =
@@ -192,7 +187,6 @@ void load_attention_weights(float *ptr,
     file_index++;
 
     in.close();
-    index++;
   }
 }
 
@@ -215,7 +209,7 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
     return;
   }
 
-  // std::cout << "finish loading input";
+  // std::cout << "finish loading input" << std::endl;
   assert(size == host_array.size());
 
   // normal
