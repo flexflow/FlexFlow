@@ -68,16 +68,6 @@ void RequestManager::load_positions_task(
   for (int i = 0; i < batch_config.num_tokens; i++) {
     dram_copy[i] = batch_config.tokensInfo[i].abs_depth_in_request + offset;
   }
-  // int max_seq_length = domain.hi()[0] - domain.lo()[0] + 1;
-  // int batch_size = domain.hi()[1] - domain.lo()[1] + 1;
-  // int volume = max_seq_length * batch_size;
-  // int* data = (int *)malloc(sizeof(int) * volume);
-  // int* back_data = (int *)malloc(sizeof(int) * volume);
-  // // printf("max_seq laneght %d, x %d", max_seq_length, batch_size);
-  // for(int i = 0; i < volume; i++){
-  //   data[i] = i % max_seq_length + offset;
-  //   printf("data %d, value %d", i,  i % max_seq_length + offset);
-  // }
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));

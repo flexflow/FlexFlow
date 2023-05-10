@@ -101,10 +101,6 @@ void FlexFlow::top_level_task(Task const *task,
           machine_views[i / num_transformer_layers_per_gpu]);
     }
 
-    std::cout << "value: "
-              << pow((optConfig.hidden_size / optConfig.num_attention_heads),
-                     -0.5)
-              << "\n";
     Tensor mha = ff.inc_multihead_self_attention(
         hidden_states,
         optConfig.hidden_size,
@@ -170,14 +166,11 @@ void FlexFlow::top_level_task(Task const *task,
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
-  std::cout << im.tensor_buffer[input_pt].size() << std::endl;
 
   ParallelTensor pos_pt;
   ff.get_parallel_tensor_from_tensor(position_input, pos_pt);
   assert(im.tensor_buffer.find(pos_pt) != im.tensor_buffer.end());
 
-  std::cout << "print optconfig" << optConfig.num_attention_heads << ", "
-            << optConfig.hidden_size;
   //-------------------load weights and inputs------------------
   FileDataLoader fileloader(optConfig.input_path,
                             optConfig.weight_file_path,
@@ -185,6 +178,7 @@ void FlexFlow::top_level_task(Task const *task,
                             optConfig.hidden_size,
                             optConfig.hidden_size /
                                 optConfig.num_attention_heads);
+  //"Today is a beautiful day and I want"
   std::vector<int> prompt = {2, 5625, 16, 10, 2721, 183, 8, 38, 236};
   rm.register_new_request(prompt, 20);
   fileloader.load_weights(&ff, weights_layers);
@@ -216,7 +210,6 @@ void FlexFlow::top_level_task(Task const *task,
       BatchConfig bc = batch_configs[bid];
       bc = rm.prepare_next_batch(bc, ir);
       sentence_length += bc.num_tokens;
-      std::cout << "new tokens: " << bc.num_tokens << std::endl;
       FutureMap fm = im.inference(&ff, bid, bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       future_handlers[bid] = fm.get_future(0);

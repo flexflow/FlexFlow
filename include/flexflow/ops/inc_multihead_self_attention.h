@@ -146,6 +146,6 @@ public:
   BatchConfig::PerTokenInfo *token_infos;
 };
 
-};     // namespace FlexFlow
+}; // namespace FlexFlow
 
 #endif // _FLEXFLOW_ATTENTION_H
