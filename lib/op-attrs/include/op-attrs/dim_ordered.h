@@ -10,10 +10,16 @@ template <typename Idx, typename T>
 struct DimOrdered {
   DimOrdered() = delete;
 
+  DimOrdered(std::initializer_list<T> const &l) 
+    : contents(l.begin(), l.end())
+  { }
+
+  /* template <typename I, typename std::enable_if<std::is_convertible<I, T>::value>::type> */
   DimOrdered(std::vector<T> const &contents)
     : contents(contents.begin(), contents.end())
   { }
 
+  /* template <typename It, typename std::enable_if<std::is_convertible<typename It::value_type, T>::value>::type> */
   template <typename It>
   DimOrdered(It begin, It end)
     : contents(begin, end)

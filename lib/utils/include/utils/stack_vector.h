@@ -20,7 +20,7 @@ public:
     assert (end - start >= 0);
     assert (end - start <= MAXSIZE);
     for (; start < end; start++) {
-      this->push_back(*start);
+      this->push_back(static_cast<T>(*start));
     }
   }
 

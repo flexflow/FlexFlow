@@ -22,99 +22,102 @@
 
 namespace FlexFlow {
 
-class FFModel;
+template <> void register_task<PS_PREFETCH_TASK_ID>();
+template <> void register_task<SGD_UPD_PS_TASK_ID>();
+template <> void register_task<SGD_UPD_NCCL_TASK_ID>();
+template <> void register_task<ADAM_UPD_PS_TASK_ID>();
+template <> void register_task<ADAM_UPD_NCCL_TASK_ID>();
 
-class Optimizer {
-public:
-  Optimizer(FFModel const *_model);
-  virtual void init(void) = 0;
-  virtual void next(void) = 0;
-  virtual void update(const ParallelTensor p) = 0;
-  FFModel const *model;
-};
+/* class Optimizer { */
+/* public: */
+/*   Optimizer(FFModel const *_model); */
+/*   virtual void init(void) = 0; */
+/*   virtual void next(void) = 0; */
+/*   virtual void update(const ParallelTensor p) = 0; */
+/*   FFModel const *model; */
+/* }; */
 
-class SGDOptimizer : public Optimizer {
+struct SGDOptimizer : public use_visitable_cmp<SGDOptimizer> {
 public:
-  SGDOptimizer(FFModel const *_model,
-               double lr = 0.01f,
-               double momentum = 0.0f,
-               bool nesterov = false,
-               double weight_decay = 0.0f);
-  void init(void);
-  void next(void);
-  void update(const ParallelTensor p);
-  void set_weight_decay(double _weight_decay);
-  static void ps_update_task(Legion::Task const *task,
-                             std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx,
-                             Legion::Runtime *runtime);
-  static void ps_update_task_gpu(SGDOptimizer const *op,
-                                 float const *w_grad_ptr,
-                                 size_t size,
-                                 int num_replicas,
-                                 float *w_ptr,
-                                 float *v_ptr);
-#ifdef FF_USE_NCCL
-  static void
-      nccl_update_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
-  static void nccl_update_task_gpu(SGDOptimizer const *op,
-                                   PerDeviceOpState const *meta,
-                                   float const *w_grad_ptr,
-                                   size_t size,
-                                   float *w_ptr,
-                                   float *v_ptr);
-#endif
-  double lr, momentum;
+  SGDOptimizer() = delete;
+  SGDOptimizer(double lr, double momentum, bool nesterov, double weight_decay);
+
+public:
+  double lr;
+  double momentum;
   bool nesterov;
   double weight_decay;
-  ParameterSyncType comm_type;
-  std::map<Legion::LogicalRegion, ParallelTensor> v_values;
 };
 
-class AdamOptimizer : public Optimizer {
+TaskInvocation init(SGDOptimizer const &);
+std::vector<TaskInvocation> update(SGDOptimizer const &, 
+                                   parallel_tensor_guid_t const &, 
+                                   ParallelTensor const &, 
+                                   parallel_tensor_guid_t const &sgd_v);
+
+struct AdamOptimizer : public use_visitable_cmp<AdamOptimizer> {
 public:
-  AdamOptimizer(FFModel const *_model,
-                double _alpha = 0.001f,
-                double _beta1 = 0.9f,
-                double _beta2 = 0.999f,
-                double _weight_decay = 0.0f,
-                double _epsilon = 1e-8);
-  void init(void);
-  void next(void);
-  void update(const ParallelTensor p);
-  void set_weight_decay(double _weight_decay);
-  static void ps_update_task(Legion::Task const *task,
-                             std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx,
-                             Legion::Runtime *runtime);
-  static void ps_update_task_gpu(AdamOptimizer const *op,
-                                 float const *w_grad_ptr,
-                                 size_t size,
-                                 int num_replicas,
-                                 float *w_ptr,
-                                 float *v_ptr,
-                                 float *m_ptr);
-#ifdef FF_USE_NCCL
-  static void
-      nccl_update_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
-  static void nccl_update_task_gpu(AdamOptimizer const *op,
-                                   PerDeviceOpState const *meta,
-                                   float const *w_grad_ptr,
-                                   size_t size,
-                                   float *w_ptr,
-                                   float *v_ptr,
-                                   float *m_ptr);
-#endif
-  double alpha, beta1, beta2, weight_decay, epsilon;
-  double alpha_t, beta1_t, beta2_t;
-  std::map<Legion::LogicalRegion, ParallelTensor> v_values, m_values;
+  AdamOptimizer() = delete;
+  AdamOptimizer(double alpha,
+                double beta1, 
+                double beta2,
+                double weight_decay,
+                double epsilon, 
+                double alpha_t,
+                double beta_t,
+                double beta2_t);
+
+public:
+  double alpha;
+  double beta1;
+  double beta2;
+  double weight_decay;
+  double epsilon;
+  double alpha_t;
+  double beta_t;
+  double beta2_t;
 };
 
-}; // namespace FlexFlow
+std::vector<TaskInvocation> update(AdamOptimizer const &, 
+                                   parallel_tensor_guid_t const &, 
+                                   ParallelTensor const &, 
+                                   parallel_tensor_guid_t const &adam_m, 
+                                   parallel_tensor_guid_t const &adam_w);
+AdamOptimizer next(AdamOptimizer const &);
+
+using Optimizer = variant<SGDOptimizer, AdamOptimizer>;
+
+/* class SGDOptimizerBacking : public Optimizer { */
+/* public: */
+/*   SGDOptimizer(FFModel const *_model, */
+/*                double lr = 0.01f, */
+/*                double momentum = 0.0f, */
+/*                bool nesterov = false, */
+/*                double weight_decay = 0.0f); */
+/*   void init(void); */
+/*   void next(void); */
+/*   void update(const ParallelTensor p); */
+/*   void set_weight_decay(double _weight_decay); */
+
+/*   ParameterSyncType comm_type; */
+/*   std::map<Legion::LogicalRegion, ParallelTensor> v_values; */
+/* }; */
+
+/* class AdamOptimizerBacking : public Optimizer { */
+/* public: */
+/*   AdamOptimizer(FFModel const *_model, */
+/*                 double _alpha = 0.001f, */
+/*                 double _beta1 = 0.9f, */
+/*                 double _beta2 = 0.999f, */
+/*                 double _weight_decay = 0.0f, */
+/*                 double _epsilon = 1e-8); */
+/*   void init(void); */
+/*   void next(void); */
+/*   void update(const ParallelTensor p); */
+
+/* public: */
+/*   std::map<Legion::LogicalRegion, ParallelTensor> v_values, m_values; */
+/* }; */
+
+}
 #endif

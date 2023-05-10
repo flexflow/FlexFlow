@@ -2,6 +2,7 @@
 #define _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
 
 #include "utils/visitable.h"
+#include "task_signature.h"
 
 namespace FlexFlow {
 
@@ -9,6 +10,12 @@ enum class TensorRole {
   INPUT,
   WEIGHT,
   OUTPUT,
+};
+
+enum class OpTaskType {
+  INIT,
+  FWD,
+  BWD
 };
 
 struct OpTensorSlotSpec : public use_visitable_cmp<OpTensorSlotSpec> {
@@ -24,7 +31,7 @@ public:
 
 struct OpTaskSignature {
   OpTaskSignature() = delete;
-  OpTaskSignature(OpTaskType);
+  explicit OpTaskSignature(OpTaskType);
 
   OpTaskType get_task_type() const;
 

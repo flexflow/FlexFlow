@@ -14,9 +14,20 @@
  */
 
 #include "optimizer.h"
-#include "model.h"
+#include "task_signature.h"
+#include "kernels/optimizer_kernels.h"
 
 namespace FlexFlow {
+
+enum Slots {
+  TENSOR,
+  GRADIENT,
+  MOMENTUM_V,
+  OPTIMIZER,
+  HANDLE,
+  ADAM_M,
+  ADAM_W
+};
 
 using namespace Legion;
 
@@ -85,7 +96,69 @@ void SGDOptimizer::init(void) {
   delete initializer;
 }
 
-void SGDOptimizer::next(void) {}
+TaskInvocation ps_prefetch_tensor(parallel_tensor_guid_t const &guid) {
+  TaskBinding b(InvocationType::INDEX);
+  b.bind(TENSOR, {guid});
+  return { PS_PREFETCH_TASK_ID, b };
+}
+
+std::vector<TaskInvocation> update(SGDOptimizer const &sgd, 
+                                   parallel_tensor_guid_t const &guid, 
+                                   ParallelTensor const &p, 
+                                   parallel_tensor_guid_t const &sgd_v) {
+  TaskBinding b(get_invocation_type(p.sync_type));
+  b.bind(TENSOR, {guid});
+  b.bind(GRADIENT, {guid, IsGrad::YES});
+  if (sgd.momentum > 0.0f) {
+    b.bind(MOMENTUM_V, {sgd_v});
+  }
+  b.bind_arg(OPTIMIZER, sgd);
+  switch (p.sync_type) {
+    case ParameterSyncType::PS:
+      return {
+        { SGD_UPD_PS_TASK_ID, b },
+        ps_prefetch_tensor(guid)
+      };
+    case ParameterSyncType::NCCL:
+      b.bind_arg(HANDLE, ff_handle());
+      return { { SGD_UPD_NCCL_TASK_ID, b } };
+    default:
+      throw mk_runtime_error("Unknown ParameterSyncType {}", p.sync_type);
+  } 
+}
+
+TaskInvocation update(AdamOptimizer const &adam, 
+                      parallel_tensor_guid_t const &guid, 
+                      ParallelTensor const &p, 
+                      parallel_tensor_guid_t const &adam_m, 
+                      parallel_tensor_guid_t const &adam_w) {
+  TaskBinding b(get_invocation_type(p.sync_type));
+  b.bind(TENSOR, {guid});
+  b.bind(GRADIENT, {guid, IsGrad::YES});
+  b.bind(ADAM_M, {adam_m});
+  b.bind(ADAM_W, {adam_w});
+  b.bind_arg(OPTIMIZER, adam);
+  switch (p.sync_type) {
+    case ParameterSyncType::PS:
+      return {
+        { ADAM_UPD_PS_TASK_ID, b },
+        ps_prefetch_tensor(guid)
+      };
+    case ParameterSyncType::NCCL:
+      b.bind_arg(HANDLE, ff_handle());
+      return { { ADAM_UPD_NCCL_TASK_ID, b } };
+    default:
+      throw mk_runtime_error("Unknown ParameterSyncType {}", p.sync_type);
+  }
+}
+
+AdamOptimizer next(AdamOptimizer const &old) {
+  AdamOptimizer ret = old;
+  ret.beta1_t *= ret.beta1;
+  ret.beta2_t *= ret.beta2;
+  ret.alpha_t = ret.alpha * sqrt(1 - ret.beta2_t) / (1 - ret.beta1_t);
+  return ret;
+}
 
 void SGDOptimizer::update(const ParallelTensor p) {
   Context ctx = model->config.lg_ctx;
@@ -195,7 +268,7 @@ void SGDOptimizer::update(const ParallelTensor p) {
   }
 }
 
-void SGDOptimizer::ps_update_task(Task const *task,
+static void sgd_ps_update_task(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
@@ -252,11 +325,11 @@ void SGDOptimizer::ps_update_task(Task const *task,
     }
   }
 
-  ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr);
+  sgd_ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr);
 }
 
 #ifdef FF_USE_NCCL
-void SGDOptimizer::nccl_update_task(Task const *task,
+static void sgd_nccl_update_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
@@ -361,17 +434,6 @@ void AdamOptimizer::init(void) {
     }
   }
   delete initializer;
-}
-
-void AdamOptimizer::set_weight_decay(double _weight_decay) {
-  weight_decay = _weight_decay;
-}
-
-void AdamOptimizer::next(void) {
-  beta1_t *= beta1;
-  beta2_t *= beta2;
-  alpha_t = alpha * sqrt(1 - beta2_t) / (1 - beta1_t);
-  // fprintf(stderr, "lr = %.4lf alpha_t = %.4lf\n", alpha, alpha_t);
 }
 
 void AdamOptimizer::update(const ParallelTensor p) {
@@ -490,12 +552,17 @@ void AdamOptimizer::update(const ParallelTensor p) {
   }
 }
 
-void AdamOptimizer::ps_update_task(Task const *task,
+static void adam_ps_update_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
+  
+  ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr, m_ptr);
+
   AdamOptimizer const *op = (AdamOptimizer *)task->args;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
@@ -546,10 +613,10 @@ void AdamOptimizer::ps_update_task(Task const *task,
 }
 
 #ifdef FF_USE_NCCL
-void AdamOptimizer::nccl_update_task(Task const *task,
-                                     std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+static void adam_nccl_update_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   AdamOptimizer const *op = (AdamOptimizer *)task->args;
@@ -605,4 +672,60 @@ void AdamOptimizer::nccl_update_task(Task const *task,
 }
 #endif
 
-}; // namespace FlexFlow
+template <>
+void register_task<PS_PREFETCH_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_ONLY });
+
+  register_task(PS_PREFETCH_TASK_ID, "Weights Prefetch", sig, UtilityTasks::dummy_task);
+}
+
+template <>
+void register_task<SGD_UPD_PS_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(GRADIENT, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(MOMENTUM_V, { SlotType::TENSOR, READ_WRITE }); 
+  sig.add_arg_slot<SGDOptimizer>(OPTIMIZER);
+
+  register_task(SGD_UPD_PS_TASK_ID, "SGD Parameter Server Update Task", sig, sgd_ps_update_task);
+}
+
+template <>
+void register_task<SGD_UPD_NCCL_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(GRADIENT, { SlotType::TENSOR< READ_ONLY });
+  sig.add_slot(MOMENTUM_V, { SlotType::TENSOR, READ_WRITE });
+  sig.add_arg_slot<SGDOptimizer>(OPTIMIZER);
+  sig.add_arg_slot<PerDeviceFFHandle>(HANDLE);
+
+  register_task(SGD_UPD_NCCL_TASK_ID, "SGD NCCL Update Task", sig, sgd_nccl_update_task);
+}
+
+template <>
+void register_task<ADAM_UPD_PS_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(GRADIENT, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(ADAM_W, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(ADAM_M, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot<AdamOptimizer>(OPTIMIZER);
+
+  register_task(ADAM_UPD_PS_TASK_ID, "Adam Parameter Server Update Task", sig, adam_ps_update_task);
+}
+
+template <>
+void register_task<ADAM_UPD_NCCL_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(GRADIENT, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(ADAM_W, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(ADAM_M, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot<AdamOptimizer>(OPTIMIZER);
+  sig.add_slot<PerDeviceFFHandle>(HANDLE);
+
+  register_task(ADAM_UPD_NCCL_TASK_ID, "Adam NCCL Update Task", sig, adam_nccl_update_task);
+}
+
+}

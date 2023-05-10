@@ -45,7 +45,7 @@ int get_oProjSize(MultiHeadAttentionAttrs const &);
 int get_qSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
 int get_kSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
 int get_vSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
-int get_oSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_oSize(ParallelTensorShape const &);
 
 int get_qoSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);
 int get_kvSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);

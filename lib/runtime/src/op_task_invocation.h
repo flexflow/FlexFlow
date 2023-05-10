@@ -24,12 +24,6 @@ enum class IsTrainable {
   NO
 };
 
-enum class OpTaskType {
-  INIT,
-  FWD,
-  BWD
-};
-
 struct OpTensorSpec : public use_visitable_cmp<OpTensorSpec> {
 public:
   OpTensorSpec() = delete;
@@ -43,11 +37,7 @@ OpTensorSpec input_tensor(int);
 OpTensorSpec output_tensor(int);
 OpTensorSpec weight_tensor(int);
 
-enum class OpArgRefType {
-  ENABLE_PROFILING,
-  FF_HANDLE,
-  PER_DEVICE_OP_STATE
-};
+enum class OpArgRefType { };
 
 template <typename T>
 struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
@@ -59,14 +49,6 @@ public:
 public:
   OpArgRefType ref_type;
 };
-
-OpArgRef<EnableProfiling> enable_profiling();
-OpArgRef<PerDeviceFFHandle> ff_handle();
-
-template <typename T>
-OpArgRef<T> per_device_op_state() {
-  return OpArgRef<T>(OpArgRefType::PER_DEVICE_OP_STATE);
-}
 
 struct OpArgRefSpec {
 public:
@@ -96,14 +78,14 @@ private:
   std::shared_ptr<void const *> ptr;
 };
 
-using OpArgSpec = variant<ConcreteArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
+using OpArgSpec = variant<ConcreteArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
   using ArgSpec = OpArgSpec;
 
-  static_assert(is_subeq_variant<TaskBinding::ArgSpec, ArgSpec>, "");
+  static_assert(is_subeq_variant<OpArgSpec, ArgSpec>::value, "");
 
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);
@@ -169,9 +151,9 @@ public:
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
 
-std::unordered_map<int, OpTensorSpec> get_regions_idxs(TaskArgumentFormat const &);
+/* std::unordered_map<int, OpTensorSpec> get_regions_idxs(TaskArgumentFormat const &); */
 
-TaskArgumentFormat compile_task_invocation(OpTaskSignature const &, OpTaskBinding const &);
+/* TaskArgumentFormat compile_task_invocation(OpTaskSignature const &, OpTaskBinding const &); */
 
 
 }

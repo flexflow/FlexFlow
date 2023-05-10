@@ -9,7 +9,7 @@
 namespace FlexFlow {
 
 struct OperatorLegionBacking {
-  stack_vector<PerDeviceOpState, MAX_NUM_WORKERS> meta;
+  /* stack_vector<PerDeviceOpState, MAX_NUM_WORKERS> meta; */
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif
