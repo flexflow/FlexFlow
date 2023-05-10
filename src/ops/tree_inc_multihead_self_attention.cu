@@ -662,7 +662,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // copy committed tokens info to GPU for the commit_tokens kernel
   cudaMemcpyAsync(m->committed_token_infos,
-                  &(bc->commited_tokens),
+                  &(bc->committed_tokens),
                   bc->MAX_NUM_TOKENS *
                       sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
                   cudaMemcpyHostToDevice,

@@ -184,6 +184,77 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
+  // check committing of tokens
+  {
+    std::vector<BatchConfig::TokenId> tokens_first_batch{
+        1, 306, 4658, 278, 6593, 310, 2834, 338, 593, 595, 17252, 5031};
+    std::vector<BatchConfig::TokenId> tokens_second_batch{993, 616, 368, 2302};
+
+    tree_bc.num_tokens = 12;
+    tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
+    std::vector<int> first_batch_depth{0, 1, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7};
+    for (int i = 0; i < tree_bc.num_tokens; i++) {
+      tree_bc.tokensInfo[i].token_id = tokens_first_batch[i];
+      tree_bc.tokensInfo[i].abs_depth_in_request = first_batch_depth[i];
+      tree_bc.tokensInfo[i].request_index = 0;
+    }
+    assert(tree_bc.num_tokens_to_commit == 0);
+    FutureMap fm = im.inference(&tree_model, 0, tree_bc);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    Future future = fm.get_future(0);
+    InferenceResult ir = future.get_result<InferenceResult>();
+    for (int i = 0; i < tree_bc.num_tokens; i++) {
+      printf("committed_tokens_b1[%d] = %d\n", i, ir.token_ids[i]);
+    }
+
+    // set committed tokens (first 8)
+    assert(tree_bc.num_tokens_to_commit == 0);
+    tree_bc.num_tokens_to_commit = 8;
+    for (int i = 0; i < 8; i++) {
+      tree_bc.committed_tokens[i].token_index = i;
+      tree_bc.committed_tokens[i].request_index = 0;
+      tree_bc.committed_tokens[i].token_depth = i;
+    }
+
+    tree_bc.num_tokens = 4;
+    tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
+    std::vector<int> second_batch_depth{8, 9, 10, 11};
+    for (int i = 0; i < tree_bc.num_tokens; i++) {
+      tree_bc.tokensInfo[i].token_id = tokens_second_batch[i];
+      tree_bc.tokensInfo[i].abs_depth_in_request = second_batch_depth[i];
+      tree_bc.tokensInfo[i].request_index = 0;
+    }
+    fm = im.inference(&tree_model, 0, tree_bc);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    future = fm.get_future(0);
+    ir = future.get_result<InferenceResult>();
+    for (int i = 0; i < tree_bc.num_tokens; i++) {
+      printf("committed_tokens_b2[%d] = %d\n", i, ir.token_ids[i]);
+    }
+
+    // check result by running first branch only
+    tree_bc.num_tokens_to_commit = 0;
+    tree_bc.num_tokens = 12;
+    tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
+    for (int i = 0; i < 8; i++) {
+      tree_bc.tokensInfo[i].token_id = tokens_first_batch[i];
+      tree_bc.tokensInfo[i].abs_depth_in_request = first_batch_depth[i];
+      tree_bc.tokensInfo[i].request_index = 0;
+    }
+    for (int i = 8; i < tree_bc.num_tokens; i++) {
+      tree_bc.tokensInfo[i].token_id = tokens_second_batch[i - 8];
+      tree_bc.tokensInfo[i].abs_depth_in_request = second_batch_depth[i - 8];
+      tree_bc.tokensInfo[i].request_index = 0;
+    }
+    fm = im.inference(&tree_model, 0, tree_bc);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    future = fm.get_future(0);
+    ir = future.get_result<InferenceResult>();
+    for (int i = 0; i < tree_bc.num_tokens; i++) {
+      printf("checking_committed_tokens[%d] = %d\n", i, ir.token_ids[i]);
+    }
+  }
+
   // Execution fence
   {
     Future future = runtime->issue_execution_fence(ctx);
