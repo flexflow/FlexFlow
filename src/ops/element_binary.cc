@@ -381,7 +381,7 @@ void ElementBinary::forward(FFModel const &ff) {
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(this, sizeof(ElementBinary)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -448,7 +448,7 @@ __host__ void
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
-  // const ElementBinary* ele = (const ElementBinary*) task->args;
+  const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
