@@ -189,7 +189,7 @@ void FlexFlow::top_level_task(Task const *task,
     std::vector<BatchConfig::TokenId> tokens_first_batch{
         1, 306, 4658, 278, 6593, 310, 2834, 338, 593, 595, 17252, 5031};
     std::vector<BatchConfig::TokenId> tokens_second_batch{993, 616, 368, 2302};
-
+    std::cout << "num_tokens_to_commit: " << tree_bc.num_tokens_to_commit << std::endl;
     tree_bc.num_tokens = 12;
     tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
     std::vector<int> first_batch_depth{0, 1, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7};
@@ -208,6 +208,7 @@ void FlexFlow::top_level_task(Task const *task,
     }
 
     // set committed tokens (first 8)
+    std::cout << "num_tokens_to_commit: " << tree_bc.num_tokens_to_commit << std::endl;
     assert(tree_bc.num_tokens_to_commit == 0);
     tree_bc.num_tokens_to_commit = 8;
     for (int i = 0; i < 8; i++) {

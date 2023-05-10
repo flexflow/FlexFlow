@@ -72,6 +72,9 @@ public:
 
 class TreeVerifyBatchConfig : public BatchConfig {
 public:
+  TreeVerifyBatchConfig() : BatchConfig() {
+    num_tokens_to_commit = 0;
+  }
   // struct PerTokenInfo : BatchConfig::PerTokenInfo {
   //   int tree_branch_idx;
   // };
