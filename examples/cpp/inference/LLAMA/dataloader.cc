@@ -37,7 +37,8 @@ DataLoader::DataLoader(FFModel &ff,
   }
 
   // size_t llamaconfig_size = sizeof(llamaconfig);
-  // std::cout << "llama config dataloader: " << llamaconfig->input_path;
+  // std::cout << "llama config dataloader: " << llamaconfig->input_path <<
+  // std::endl;
 
   // // Load entire dataset
   // TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
@@ -66,7 +67,7 @@ void DataLoader::load_entire_dataset(Task const *task,
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
 
   long *input_ptr = acc_input.ptr(rect_input.lo);
-  std::cout << "load entire dataset" << rect_input.volume();
+  std::cout << "load entire dataset" << rect_input.volume() << std::endl;
 
   // load from file
   load_from_file(input_ptr,
@@ -129,7 +130,6 @@ void DataLoader::reset() {
 
 template <typename T>
 void DataLoader::load_from_file(T *ptr, size_t size, std::string filename) {
-
   std::cout << "load from file: " << filename << std::endl;
   std::ifstream in(filename, std::ios::in | std::ios::binary);
   std::vector<T> host_array(size);
@@ -161,6 +161,8 @@ void DataLoader::load_from_file(T *ptr, size_t size, std::string filename) {
 template <typename T>
 void DataLoader::load_attention_weights(T *ptr,
                                         size_t size,
+                                        int hidden_dim,
+                                        int num_heads,
                                         std::string layer_name,
                                         std::string weight_path) {
 
@@ -178,7 +180,6 @@ void DataLoader::load_attention_weights(T *ptr,
                        "attention_wo_weight";
   std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
-  size_t index = 0;
   int file_index = 0;
 
   // q, k, v, o -> 0, 1, 2, 3
@@ -199,10 +200,10 @@ void DataLoader::load_attention_weights(T *ptr,
     }
     assert(partial_size == host_array.size());
 
-    size_t one_head_size = 4096 * 128;
+    size_t one_head_size = hidden_dim * (hidden_dim / num_heads);
     size_t data_index = 0;
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < num_heads; i++) {
       size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
         ptr[j] = host_array.at(data_index);
@@ -212,7 +213,6 @@ void DataLoader::load_attention_weights(T *ptr,
     file_index++;
 
     in.close();
-    index++;
   }
 }
 
@@ -251,8 +251,13 @@ void DataLoader::store_outputs(BatchConfig *bc,
   assert(batch_predictions.size() == bc->num_active_requests());
 }
 
-template void DataLoader::load_attention_weights<float>(
-    float *ptr, size_t size, std::string layer_name, std::string weight_path);
+template void
+    DataLoader::load_attention_weights<float>(float *ptr,
+                                              size_t size,
+                                              int hidden_dim,
+                                              int num_heads,
+                                              std::string layer_name,
+                                              std::string weight_path);
 template void DataLoader::load_from_file<long>(long *ptr,
                                                size_t size,
                                                std::string filename);
