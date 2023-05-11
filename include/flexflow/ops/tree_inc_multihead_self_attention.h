@@ -92,12 +92,11 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void
-      inference_kernel_wrapper(TreeIncMultiHeadSelfAttentionMeta const *m,
-                               TreeVerifyBatchConfig const *bc,
-                               float const *input_ptr,
-                               float const *weight_ptr,
-                               float *output_ptr);
+  static void inference_kernel_wrapper(TreeIncMultiHeadSelfAttentionMeta *m,
+                                       TreeVerifyBatchConfig const *bc,
+                                       float const *input_ptr,
+                                       float const *weight_ptr,
+                                       float *output_ptr);
   Params get_params() const;
 
 public:
@@ -124,6 +123,7 @@ public:
   size_t weights_params, weightSize, reserveSpaceSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
+  int num_active_tokens;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
 #ifdef INFERENCE_TESTS

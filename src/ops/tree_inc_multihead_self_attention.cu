@@ -47,29 +47,33 @@ __global__ void commit_tokens_kernel(
     int qProjSize,
     int kProjSize,
     int vProjSize,
-    int num_tokens,
+    int num_tokens_to_commit,
+    int num_active_tokens_in_last_batch,
     int num_heads,
     int max_seq_len,
     bool k_cache) {
 
-  CUDA_KERNEL_LOOP(i,
-                   num_tokens * (k_cache ? kProjSize : vProjSize) * num_heads) {
+  CUDA_KERNEL_LOOP(
+      i, num_tokens_to_commit * (k_cache ? kProjSize : vProjSize) * num_heads) {
     int proj_size = k_cache ? kProjSize : vProjSize;
     int data_idx = i % proj_size;
-    int head_idx = i / (num_tokens * proj_size);
-    int token_idx = (i - head_idx * (num_tokens * proj_size)) / proj_size;
-    token_idx = committedTokenInfos[token_idx].token_index;
+    int head_idx = i / (num_tokens_to_commit * proj_size);
+    int token_pos =
+        (i - head_idx * (num_tokens_to_commit * proj_size)) / proj_size;
+    int token_idx_in_last_batch = committedTokenInfos[token_pos].token_index;
+    assert(token_idx_in_last_batch < num_active_tokens_in_last_batch);
 
-    int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
-    int current_head_block_size =
-        num_tokens * (k_cache ? qProjSize : qProjSize + kProjSize);
+    int qkv_block_size =
+        (qProjSize + kProjSize + vProjSize) * num_active_tokens_in_last_batch;
+    int current_head_block_size = num_active_tokens_in_last_batch *
+                                  (k_cache ? qProjSize : qProjSize + kProjSize);
     float val =
         devQKVProjArray[head_idx * qkv_block_size + current_head_block_size +
-                        token_idx * proj_size + data_idx];
+                        token_idx_in_last_batch * proj_size + data_idx];
     // int const req_id = id_map[token_idx].request_index;
     // int const tok_id = id_map[token_idx].token_position;
-    int const req_id = committedTokenInfos[token_idx].request_index;
-    int const tok_id = committedTokenInfos[token_idx].token_depth;
+    int const req_id = committedTokenInfos[token_pos].request_index;
+    int const tok_id = committedTokenInfos[token_pos].token_depth;
 
     cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
               head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
@@ -86,31 +90,35 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
     commit_tokens_kernel<<<GET_BLOCKS(parallelism),
                            min(CUDA_NUM_THREADS, parallelism),
                            0,
-                           stream>>>(m->devQKVProjArray,
-                                     m->keyCache,
-                                     m->committed_token_infos,
-                                     m->qProjSize,
-                                     m->kProjSize,
-                                     m->vProjSize,
-                                     num_tokens_to_commit,
-                                     m->num_heads,
-                                     BatchConfig::MAX_SEQ_LENGTH,
-                                     /* k_cache = */ true);
+                           stream>>>(
+        m->devQKVProjArray,
+        m->keyCache,
+        m->committed_token_infos,
+        m->qProjSize,
+        m->kProjSize,
+        m->vProjSize,
+        num_tokens_to_commit,
+        m->num_active_tokens, // number of active tokens in previous batch
+        m->num_heads,
+        BatchConfig::MAX_SEQ_LENGTH,
+        /* k_cache = */ true);
 
     parallelism = m->vProjSize * num_tokens_to_commit * m->num_heads;
     commit_tokens_kernel<<<GET_BLOCKS(parallelism),
                            min(CUDA_NUM_THREADS, parallelism),
                            0,
-                           stream>>>(m->devQKVProjArray,
-                                     m->valueCache,
-                                     m->committed_token_infos,
-                                     m->qProjSize,
-                                     m->kProjSize,
-                                     m->vProjSize,
-                                     num_tokens_to_commit,
-                                     m->num_heads,
-                                     BatchConfig::MAX_SEQ_LENGTH,
-                                     /* k_cache = */ false);
+                           stream>>>(
+        m->devQKVProjArray,
+        m->valueCache,
+        m->committed_token_infos,
+        m->qProjSize,
+        m->kProjSize,
+        m->vProjSize,
+        num_tokens_to_commit,
+        m->num_active_tokens, // number of active tokens in previous batch
+        m->num_heads,
+        BatchConfig::MAX_SEQ_LENGTH,
+        /* k_cache = */ false);
   }
 }
 
@@ -438,7 +446,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->vProjSize,
             num_new_tokens,            // num_tokens_in_branch
             processed_tokens_in_batch, // num_processed_tokens_in_batch
-            bc->requestsInfo[i].num_tokens_in_batch, // total_tokens_in_batch
+            m->num_active_tokens,      // total_tokens_in_batch
             m->num_heads,
             BatchConfig::MAX_SEQ_LENGTH,
             /* k_cache = */ true);
@@ -456,7 +464,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->vProjSize,
             num_new_tokens,            // num_tokens_in_branch
             processed_tokens_in_batch, // num_processed_tokens_in_batch
-            bc->requestsInfo[i].num_tokens_in_batch, // total_tokens_in_batch
+            m->num_active_tokens,      // total_tokens_in_batch
             m->num_heads,
             BatchConfig::MAX_SEQ_LENGTH,
             /* k_cache = */ false);
@@ -645,7 +653,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 
 /*static*/
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
-    TreeIncMultiHeadSelfAttentionMeta const *m,
+    TreeIncMultiHeadSelfAttentionMeta *m,
     TreeVerifyBatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
@@ -661,15 +669,22 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
   }
 
   // copy committed tokens info to GPU for the commit_tokens kernel
+  // Note that m->num_active_tokens stores the number of active
+  // tokens in the previous batch, which is needed for committing
+  // keys/values to the key-value cache
   cudaMemcpyAsync(m->committed_token_infos,
                   &(bc->commited_tokens),
                   bc->MAX_NUM_TOKENS *
                       sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
                   cudaMemcpyHostToDevice,
                   stream);
+  commit_tokens(m, bc, stream);
+
+  // After commit we update m->num_active_tokens to be the number of active
+  // tokens for the current batch
+  m->num_active_tokens = bc->num_active_tokens();
 
   // reload the weight_o
-
   if (!(*m->has_load_weights)) {
     int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
     tree_build_w_out_tensor<<<GET_BLOCKS(parallelism),
@@ -724,7 +739,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
-    : OpMeta(handler, attn) {
+    : OpMeta(handler, attn), num_active_tokens(0) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
