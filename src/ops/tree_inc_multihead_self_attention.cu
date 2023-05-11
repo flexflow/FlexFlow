@@ -375,18 +375,17 @@ __global__ void update_tree_branch_kv_cache(
 }
 
 __global__ void tree_fill_entries_above_diagonal(float *matrix,
-                                                 size_t num_rows,
-                                                 size_t num_cols,
+                                                 size_t new_tokens,
+                                                 size_t total_tokens_in_request,
                                                  size_t num_heads,
-                                                 size_t entries_above_diagonal,
                                                  float value) {
-  CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_heads) {
-    size_t head_idx = i / entries_above_diagonal;
-    size_t entry_idx = i % entries_above_diagonal;
-    size_t y = (-1 + sqrt(8 * (float)entry_idx + 1)) / 2;
-    size_t x = entry_idx - y * (y + 1) / 2;
-    y += (num_cols - num_rows) + 1;
-    matrix[head_idx * num_rows * num_cols + num_cols * y + x] = value;
+  CUDA_KERNEL_LOOP(i, new_tokens * total_tokens_in_request * num_heads) {
+    //size_t head_idx = i / (new_tokens * total_tokens_in_request);
+    size_t src_idx = (i / new_tokens) % total_tokens_in_request;
+    size_t dst_idx = i % new_tokens + total_tokens_in_request - new_tokens;
+    // Casual Mask
+    if (src_idx > dst_idx)
+      matrix[i] = value;
   }
 }
 
@@ -517,9 +516,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       // Fill all elements above diagonal in qk prods with -inf to force
       // causal attention.
       assert(num_new_tokens <= total_tokens_in_request);
-      size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
-      if (entries_above_diagonal > 0) {
-        size_t parallelism = m->num_heads * entries_above_diagonal;
+      if (num_new_tokens > 1) {
+        size_t parallelism = m->num_heads * num_new_tokens * total_tokens_in_request;
         tree_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
                                            min((size_t)CUDA_NUM_THREADS,
                                                parallelism),
@@ -528,7 +526,6 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                                      num_new_tokens,
                                                      total_tokens_in_request,
                                                      m->num_heads,
-                                                     entries_above_diagonal,
                                                      -INFINITY);
       }
       // Compute Softmax(QK^T/sqrt(d_k))
