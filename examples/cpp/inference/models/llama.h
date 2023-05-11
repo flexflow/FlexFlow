@@ -47,9 +47,8 @@ public:
           multiple_of * int((hidden_dim + multiple_of - 1) / multiple_of);
     }
     int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
-        sentence_len, batchSize, total_requests,
-        incremental_mode, sequence_length, max_seq_len,
-        max_beam_width, max_beam_depth;
+        sentence_len, batchSize, total_requests, incremental_mode,
+        sequence_length, max_seq_len, max_beam_width, max_beam_depth;
     float norm_eps;
     std::string weight_file_path;
     std::string input_path;
