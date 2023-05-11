@@ -57,7 +57,8 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel beam_model(ffconfig), tree_model(ffconfig);
   LLAMA::create_llama_model(beam_model, im, llama_config, 1, BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model, im, llama_config, 1, TREE_VERIFY_MODE);
-  //LLAMA::create_llama_model(inc_model, im, llama_config, 1, INC_DECODING_MODE);
+  // LLAMA::create_llama_model(inc_model, im, llama_config, 1,
+  // INC_DECODING_MODE);
 
   // entry---------------------------
   int depth = 0;
