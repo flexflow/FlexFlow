@@ -183,6 +183,42 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
+#ifdef DEADCODE
+  {
+    std::vector<BatchConfig::TokenId> prompt{
+      1, 306, 4658, 278, 6593, 310, 2834, 338, 593, 595, 17252, 5031, 993, 616};
+    BatchConfig bc;
+    bc.request_completed[0] = false;
+    bc.num_tokens = prompt.size();
+    bc.requestsInfo[0].token_start_offset = 0;
+    bc.requestsInfo[0].num_tokens_in_batch = prompt.size();
+    bc.requestsInfo[0].max_sequence_length = 347;
+    bc.requestsInfo[0].request_guid = 1234;
+    for (size_t i = 0; i < prompt.size(); i++) {
+      bc.tokensInfo[i].abs_depth_in_request = i;
+      bc.tokensInfo[i].request_index = 0;
+      bc.tokensInfo[i].token_id = prompt[i];
+    }
+    FutureMap fm = im.inference(&inc_model, 0, bc);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    Future future = fm.get_future(0);
+    InferenceResult ir = future.get_result<InferenceResult>();
+    for (int i = 0; i < bc.num_tokens; i++) {
+      printf("decoding_tokens[%d] = %d\n", i, ir.token_ids[i]);
+    }
+    bc.num_tokens = 1;
+    bc.requestsInfo[0].token_start_offset = prompt.size();
+    bc.requestsInfo[0].num_tokens_in_batch = 1;
+    bc.tokensInfo[0].abs_depth_in_request = prompt.size();
+    bc.tokensInfo[0].request_index = 0;
+    bc.tokensInfo[0].token_id = ir.token_ids[prompt.size() - 1];
+    fm = im.inference(&inc_model, 0, bc);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    future = fm.get_future(0);
+    ir = future.get_result<InferenceResult>();
+    printf("decoding_tokens[%d] = %d\n", bc.tokensInfo[0].abs_depth_in_request, ir.token_ids[0]);
+  }
+#endif
   // Execution fence
   {
     Future future = runtime->issue_execution_fence(ctx);
