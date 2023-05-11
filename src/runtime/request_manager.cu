@@ -30,6 +30,7 @@ void RequestManager::load_tokens_task(
 
   BatchConfig const batch_config = *((BatchConfig *)task->args);
   BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
+  assert(batch_config.num_tokens <= BatchConfig::MAX_NUM_TOKENS);
   for (int i = 0; i < batch_config.num_tokens; i++) {
     dram_copy[i] = batch_config.tokensInfo[i].token_id;
   }

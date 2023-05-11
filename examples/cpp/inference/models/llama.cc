@@ -45,7 +45,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   Tensor input;
   {
-    int const token_dims[] = {llama_config.batchSize, llama_config.max_seq_len};
+    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
   mapping[input].push_back(machine_views[0]);
