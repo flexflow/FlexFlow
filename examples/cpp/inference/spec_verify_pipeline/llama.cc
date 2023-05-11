@@ -14,6 +14,7 @@
  */
 
 #include "models/llama.h"
+#include "tokenizers.h"
 #include "flexflow/inference.h"
 
 using namespace Legion;
@@ -40,6 +41,7 @@ void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
+  SentencePieceTokenizer tokenizer("");
   FFConfig ffconfig;
   LLAMA::Config llama_config;
 
