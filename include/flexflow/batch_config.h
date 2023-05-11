@@ -102,7 +102,7 @@ public:
   size_t beam_width;
   size_t target_iterations;
   static int const MAX_BEAM_WIDTH = 1;
-  static int const MAX_BEAM_DEPTH = 8;
+  static int const MAX_BEAM_DEPTH = 4;
 
   struct BeamSearchPerRequestInfo {
     bool request_completed;
