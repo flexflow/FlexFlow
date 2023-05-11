@@ -217,6 +217,8 @@ FutureMap InferenceManager::inference(FFModel *model,
       // FIXME: this is a hack, should be replace with an input ParallelTensor
       if (found_input_operator) {
         // there is another input for position embedding;
+        // now only used in opt model, this input should be init after token
+        // input.
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
         load_positions(bc, pt);

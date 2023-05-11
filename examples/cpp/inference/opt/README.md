@@ -10,6 +10,11 @@ tar -zxvf opt_125m_native.tar.gz
 3. run *OPT* with `--weights` `--dataset` `--only-data-parallel`
 4. run examples/cpp/inference/opt/opt_baseline.py
 5. if get same result, it should be fine
+
+## code structure: 
+1. use two inputs, token & position, the position input should be after the token input
+2. for the attention model, set scaling_query = true, scaling_factor = 0.125 and qk_prod_scaling = false,
+all other models should set scaling_query = false and qk_prod_scaling = true
 ## opt default configuration from huggingface opt-125m
 ```python
 OPTConfig {

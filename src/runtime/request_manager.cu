@@ -55,8 +55,6 @@ void RequestManager::load_positions_task(
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
 
-  // int const offset = *((int *)task->args);
-
   BatchConfig const batch_config = *((BatchConfig *)task->args);
   int offset = 2;
   int *pos_ptr = helperGetTensorPointerWO<int>(
