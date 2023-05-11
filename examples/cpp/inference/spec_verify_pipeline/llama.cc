@@ -14,8 +14,8 @@
  */
 
 #include "models/llama.h"
-#include "tokenizers.h"
 #include "flexflow/inference.h"
+#include "tokenizers.h"
 
 using namespace Legion;
 
@@ -188,8 +188,20 @@ void FlexFlow::top_level_task(Task const *task,
 
 #ifdef DEADCODE
   {
-    std::vector<BatchConfig::TokenId> prompt{
-      1, 306, 4658, 278, 6593, 310, 2834, 338, 593, 595, 17252, 5031, 993, 616};
+    std::vector<BatchConfig::TokenId> prompt{1,
+                                             306,
+                                             4658,
+                                             278,
+                                             6593,
+                                             310,
+                                             2834,
+                                             338,
+                                             593,
+                                             595,
+                                             17252,
+                                             5031,
+                                             993,
+                                             616};
     BatchConfig bc;
     bc.request_completed[0] = false;
     bc.num_tokens = prompt.size();
@@ -219,7 +231,9 @@ void FlexFlow::top_level_task(Task const *task,
     assert(fm.get_future_map_domain().get_volume() == 1);
     future = fm.get_future(0);
     ir = future.get_result<InferenceResult>();
-    printf("decoding_tokens[%d] = %d\n", bc.tokensInfo[0].abs_depth_in_request, ir.token_ids[0]);
+    printf("decoding_tokens[%d] = %d\n",
+           bc.tokensInfo[0].abs_depth_in_request,
+           ir.token_ids[0]);
   }
 #endif
   // Execution fence

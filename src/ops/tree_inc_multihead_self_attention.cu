@@ -380,12 +380,13 @@ __global__ void tree_fill_entries_above_diagonal(float *matrix,
                                                  size_t num_heads,
                                                  float value) {
   CUDA_KERNEL_LOOP(i, new_tokens * total_tokens_in_request * num_heads) {
-    //size_t head_idx = i / (new_tokens * total_tokens_in_request);
+    // size_t head_idx = i / (new_tokens * total_tokens_in_request);
     size_t src_idx = (i / new_tokens) % total_tokens_in_request;
     size_t dst_idx = i % new_tokens + total_tokens_in_request - new_tokens;
     // Casual Mask
-    if (src_idx > dst_idx)
+    if (src_idx > dst_idx) {
       matrix[i] = value;
+    }
   }
 }
 
@@ -517,7 +518,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       // causal attention.
       assert(num_new_tokens <= total_tokens_in_request);
       if (num_new_tokens > 1) {
-        size_t parallelism = m->num_heads * num_new_tokens * total_tokens_in_request;
+        size_t parallelism =
+            m->num_heads * num_new_tokens * total_tokens_in_request;
         tree_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
                                            min((size_t)CUDA_NUM_THREADS,
                                                parallelism),

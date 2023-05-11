@@ -24,39 +24,42 @@ namespace FlexFlow {
  */
 
 class Tokenizer {
- public:
+public:
   // bos token
   int32_t bos_token_id{1};
   // eos token id
   int32_t eos_token_id{2};
 
   virtual ~Tokenizer() {}
-  virtual std::vector<int32_t> Encode(const std::string& text) = 0;
-  virtual std::string Decode(const std::vector<int32_t>& ids) = 0;
+  virtual std::vector<int32_t> Encode(std::string const &text) = 0;
+  virtual std::string Decode(std::vector<int32_t> const &ids) = 0;
 
-  //static std::unique_ptr<Tokenizer> FromFile(const std::string& path);
-  //static std::unique_ptr<Tokenizer> ByteLevelBPEFromFile(const std::string& path);
+  // static std::unique_ptr<Tokenizer> FromFile(const std::string& path);
+  // static std::unique_ptr<Tokenizer> ByteLevelBPEFromFile(const std::string&
+  // path);
 };
 
 class SentencePieceTokenizer : public Tokenizer {
- public:
-  SentencePieceTokenizer(const std::string& path) { sentence_piece_.Load(path); }
+public:
+  SentencePieceTokenizer(std::string const &path) {
+    sentence_piece_.Load(path);
+  }
 
-  std::vector<int32_t> Encode(const std::string& text) final {
+  std::vector<int32_t> Encode(std::string const &text) final {
     std::vector<int32_t> tokens;
     sentence_piece_.Encode(text, &tokens).IgnoreError();
     return tokens;
   }
 
-  std::string Decode(const std::vector<int32_t>& ids) final {
+  std::string Decode(std::vector<int32_t> const &ids) final {
     std::string text;
     sentence_piece_.Decode(ids, &text).IgnoreError();
     return text;
   }
 
- private:
+private:
   // the tokenizer
   sentencepiece::SentencePieceProcessor sentence_piece_;
 };
 
-}; //namespace FlexFlow
+}; // namespace FlexFlow

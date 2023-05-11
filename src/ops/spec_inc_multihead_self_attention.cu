@@ -442,12 +442,13 @@ __global__ void spec_fill_entries_above_diagonal(float *matrix,
                                                  size_t num_heads,
                                                  float value) {
   CUDA_KERNEL_LOOP(i, new_tokens * total_tokens_in_request * num_heads) {
-    //size_t head_idx = i / (new_tokens * total_tokens_in_request);
+    // size_t head_idx = i / (new_tokens * total_tokens_in_request);
     size_t src_idx = (i / new_tokens) % total_tokens_in_request;
     size_t dst_idx = i % new_tokens + total_tokens_in_request - new_tokens;
     // Casual Mask
-    if (src_idx > dst_idx)
+    if (src_idx > dst_idx) {
       matrix[i] = value;
+    }
   }
 }
 
@@ -548,11 +549,8 @@ void inference_kernel3(SpecIncMultiHeadSelfAttentionMeta const *m,
                                            min((size_t)CUDA_NUM_THREADS,
                                                parallelism),
                                            0,
-                                           stream>>>((float *)C,
-                                                     num_new_tokens,
-                                                     total_tokens,
-                                                     m->num_heads,
-                                                     -INFINITY);
+                                           stream>>>(
+            (float *)C, num_new_tokens, total_tokens, m->num_heads, -INFINITY);
       }
       // Compute Softmax(QK^T/sqrt(d_k))
       cudnnTensorDescriptor_t qk_tensor;
