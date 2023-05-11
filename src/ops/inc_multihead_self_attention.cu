@@ -40,6 +40,49 @@ __global__ void build_w_out_tensor(float const *weight_ptr,
   }
 }
 
+__global__ void apply_proj_bias_w(float *input_ptr,
+                                  float const *bias_ptr,
+                                  int num_tokens,
+                                  int oProjSize) {
+  CUDA_KERNEL_LOOP(i, num_tokens * oProjSize) {
+    int bias_idx = 3 * oProjSize + i % oProjSize;
+    input_ptr[i] += bias_ptr[bias_idx];
+  }
+}
+
+__global__ void apply_proj_bias_qkv(float *input_ptr,
+                                    float const *bias_ptr,
+                                    int num_tokens,
+                                    int qProjSize,
+                                    int kProjSize,
+                                    int vProjSize,
+                                    int num_heads,
+                                    bool scaling_query,
+                                    float scaling_factor) {
+  CUDA_KERNEL_LOOP(
+      i, num_tokens * (qProjSize + kProjSize + vProjSize) * num_heads) {
+    // for simplicity, assume q, k, v is in same shape
+    // 0->q, 1->k, 2->v
+    int qkv_index = i / (num_tokens * qProjSize) % 3;
+
+    int head_idx = i / (num_tokens * (qProjSize + kProjSize + vProjSize));
+    int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
+    int q_block_size = qProjSize * num_tokens;
+
+    int idx = i % (num_tokens * (qProjSize));
+
+    int real_part_index =
+        head_idx * qkv_block_size + qkv_index * q_block_size + idx;
+    int bias_idx = qkv_index * qProjSize * num_heads + head_idx * qProjSize +
+                   (idx % qProjSize);
+    input_ptr[real_part_index] += bias_ptr[bias_idx];
+
+    if (scaling_query && qkv_index == 0) {
+      input_ptr[real_part_index] *= scaling_factor;
+    }
+  }
+}
+
 __global__ void
     apply_rotary_embedding(float *input_ptr,
                            cuFloatComplex *complex_input,
@@ -106,6 +149,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         float const *input_ptr,
                         float const *weight_ptr,
                         float *output_ptr,
+                        float const *bias_ptr,
                         cudaStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
@@ -217,6 +261,23 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int k_block_size = m->kProjSize * num_tokens;
   int v_block_size = m->vProjSize * num_tokens;
   cuFloatComplex *complex_input;
+
+  // apply bias for q, k, v
+  if (*m->bias) {
+    apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(output_ptr,
+                                    bias_ptr,
+                                    num_tokens,
+                                    m->qProjSize,
+                                    m->kProjSize,
+                                    m->vProjSize,
+                                    m->num_heads,
+                                    *m->scaling_query,
+                                    m->scaling_factor);
+  }
+
   if (*m->apply_rotary_embedding) {
     checkCUDA(cudaMalloc(&complex_input,
                          num_tokens * m->qProjSize * m->num_heads *
@@ -344,6 +405,7 @@ __global__ void fill_entries_above_diagonal(float *matrix,
 void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                               BatchConfig const *bc,
                               float *output_ptr,
+                              float const *bias_ptr,
                               cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -382,7 +444,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     int strideB = kt_block_size;
     int strideC = num_new_tokens * total_tokens;
 
-    float alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
+    // a flag of using this scaling alpha
+    float alpha = 1.0f, beta = 0.0f;
+    if (*m->qk_prod_scaling) {
+      alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
+    }
     // To get A, skip over Q entries from previous requests (same head)
     void const *A = (void const *)(m->devQKVProjArray +
                                    tokens_previous_requests * m->qProjSize);
@@ -415,6 +481,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                          m->num_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
     assert(num_new_tokens <= total_tokens);
@@ -541,7 +608,17 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            ldc,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
     tokens_previous_requests += num_new_tokens;
+  }
+
+  if (*m->bias) {
+    int parallelism = m->oProjSize * num_tokens;
+    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>(
+        output_ptr, bias_ptr, num_tokens, m->oProjSize);
   }
 
   assert(tokens_previous_requests == num_tokens);
@@ -553,7 +630,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     BatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
-    float *output_ptr) {
+    float *output_ptr,
+    float const *bias_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -588,14 +666,15 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                   cudaMemcpyHostToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
+  compute_qkv_kernel(
+      m, bc, input_ptr, weight_ptr, m->devQKVProjArray, bias_ptr, stream);
 
   // phase 2: Update key/val cache
   update_kv_cache_kernel(m, bc, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  compute_attention_kernel(m, bc, output_ptr, stream);
+  compute_attention_kernel(m, bc, output_ptr, bias_ptr, stream);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -643,6 +722,13 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   *has_load_weights = false;
   apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));
   *apply_rotary_embedding = attn->apply_rotary_embedding;
+  bias = (bool *)calloc(1, sizeof(bool));
+  *bias = attn->bias;
+  scaling_query = (bool *)calloc(1, sizeof(bool));
+  *scaling_query = attn->scaling_query;
+  scaling_factor = attn->scaling_factor;
+  qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
+  *qk_prod_scaling = attn->qk_prod_scaling;
   // Currently do not support adding bias to key/value projection
   assert(!attn->add_bias_kv);
 

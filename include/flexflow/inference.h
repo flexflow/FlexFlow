@@ -37,6 +37,7 @@ public:
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   void load_input_tokens_from_batch_config(BatchConfig const &bc,
                                            ParallelTensor const input);
+  void load_positions(BatchConfig const &bc, ParallelTensor position_input);
 
 public:
   FFConfig ff_config;
@@ -118,6 +119,11 @@ public:
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
+  static void
+      load_positions_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 
 private:
   std::queue<Request> pending_request_queue;

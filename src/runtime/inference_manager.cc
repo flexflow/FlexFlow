@@ -216,12 +216,18 @@ FutureMap InferenceManager::inference(FFModel *model,
     if (op->op_type == OP_INPUT) {
       // FIXME: this is a hack, should be replace with an input ParallelTensor
       if (found_input_operator) {
-        continue;
+        // there is another input for position embedding;
+        // now only used in opt model, this input should be init after token
+        // input.
+        assert(op->numOutputs == 1);
+        ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
+        load_positions(bc, pt);
+      } else {
+        found_input_operator = true;
+        assert(op->numOutputs == 1);
+        ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
+        load_input_tokens_from_batch_config(bc, pt);
       }
-      found_input_operator = true;
-      assert(op->numOutputs == 1);
-      ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-      load_input_tokens_from_batch_config(bc, pt);
     }
 
     std::vector<ParallelTensor> inputs(op->numInputs);
@@ -267,6 +273,31 @@ void InferenceManager::load_input_tokens_from_batch_config(
       machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(
       input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, input->region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void InferenceManager::load_positions(BatchConfig const &bc,
+                                      ParallelTensor position_input) {
+  Context ctx = ff_config.lg_ctx;
+  Runtime *runtime = ff_config.lg_hlr;
+  size_t machine_view_hash = position_input->machine_view.hash();
+  ArgumentMap argmap;
+  IndexLauncher launcher(
+      RM_LOAD_POSITION_TASK_ID,
+      position_input->parallel_is,
+      TaskArgument(
+          &bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(position_input->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    position_input->region));
   launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

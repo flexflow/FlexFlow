@@ -16,6 +16,7 @@
 #pragma once
 
 #include "flexflow/batch_config.h"
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
 
 using namespace std;
@@ -33,6 +34,12 @@ public:
 
   void load_weights(FFModel *ff,
                     std::unordered_map<std::string, Layer *> weights_layers);
+
+  void load_positions(FFModel *ff,
+                      Tensor pt,
+                      ParallelTensor position_pt,
+                      int max_seq_length,
+                      int offset);
 
 private:
   int num_heads;

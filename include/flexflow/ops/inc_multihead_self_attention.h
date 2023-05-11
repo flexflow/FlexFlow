@@ -34,6 +34,9 @@ public:
                             bool _add_bias_kv,
                             bool _add_zero_attn,
                             bool _apply_rotary_embedding,
+                            bool _scaling_query,
+                            float _scaling_factor,
+                            bool _qk_prod_scaling,
                             bool allocate_weights,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -48,6 +51,9 @@ public:
                             bool _add_bias_kv,
                             bool _add_zero_attn,
                             bool _apply_rotary_embedding,
+                            bool _scaling_query,
+                            float _scaling_factor,
+                            bool _qk_prod_scaling,
                             bool allocate_weights,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -96,14 +102,16 @@ public:
                                        BatchConfig const *bc,
                                        float const *input_ptr,
                                        float const *weight_ptr,
-                                       float *output_ptr);
+                                       float *output_ptr,
+                                       float const *bias_ptr);
   Params get_params() const;
 
 public:
   int num_heads;
-  float dropout;
+  float dropout, scaling_factor;
   bool bias;
-  bool add_bias_kv, add_zero_attn, apply_rotary_embedding;
+  bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
+      qk_prod_scaling;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
 };
@@ -125,6 +133,10 @@ public:
   int num_heads;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
+  bool *bias;
+  bool *scaling_query;
+  bool *qk_prod_scaling;
+  float scaling_factor;
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif

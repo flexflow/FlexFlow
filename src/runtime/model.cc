@@ -3899,6 +3899,15 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
         registrar, "RequestManager Load Tokens Task");
   }
+  // RequestManager load position tokens
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_POSITION_TASK_ID,
+                                   "RequestManager Load Position tokens");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RequestManager::load_positions_task>(
+        registrar, "RequestManager Load Position Tokens Task");
+  }
   // ElementUnary task
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID,

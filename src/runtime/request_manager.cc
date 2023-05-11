@@ -64,6 +64,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       assert(old_bc.tokensInfo[i].abs_depth_in_request + 1 ==
              request.tokens.size());
       // This is a decoding token
+      std::cout << "token is: " << result.token_ids[i];
       request.tokens.push_back(result.token_ids[i]);
     }
   }
@@ -85,6 +86,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
+      std::cout << "print results: " << std::endl;
+      for (int i = 0; i < request.tokens.size(); i++) {
+        std::cout << request.tokens.at(i) << ", ";
+      }
     } else {
       new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].token_start_offset = processed_tokens;
@@ -839,6 +844,7 @@ TreeVerifyBatchConfig RequestManager::convert_beam_to_tree_batch_config(
         beam_bc.requestsInfo[i].max_sequence_length;
     tree_bc.requestsInfo[i].token_start_offset = serializedTree[0].second;
     tree_bc.requestsInfo[i].num_tokens_in_batch = 0;
+
     for (int k = 0; k < serializedTree.size(); k++) {
       assert(tree_bc.num_tokens < BatchConfig::MAX_NUM_TOKENS);
       tree_bc.tokensInfo[tree_bc.num_tokens].request_index = i;
