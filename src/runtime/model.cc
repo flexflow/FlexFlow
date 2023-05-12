@@ -2630,17 +2630,17 @@ Op *FFModel::create_operator_from_layer(
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel) {
-          if (pt->dims[num_dims-1].size == 1) {
-        Replicate *repl = new Replicate(
-            *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
-	repl->outputs[0]->dims[num_dims-1].is_replica_dim = true;
-	operators.push_back(repl);
-      } else {
-        Repartition *part = new Repartition(
-            *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
-        operators.push_back(part);
-      }
+      if (config.only_data_parallel && config.numNodes * config.workersPerNode > 1) {
+        if (pt->dims[num_dims-1].size == 1) {
+          Replicate *repl = new Replicate(
+              *this, pt, num_dims, config.numNodes * config.workersPerNode);
+          repl->outputs[0]->dims[num_dims].is_replica_dim = true; 
+          operators.push_back(repl);
+        } else {
+          Repartition *part = new Repartition(
+              *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
+          operators.push_back(part);
+        }
       }
       return operators[operators.size() - 1];
     }

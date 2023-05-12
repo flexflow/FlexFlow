@@ -2353,6 +2353,9 @@ class AttributeNode(Node):
 
     def attr_to_ff_tensor(self, ffmodel):
         torch_tensor = self.attr
+        assert (torch_tensor.shape[0] == 1)
+        batch_size = ffmodel._ffconfig.batch_size
+        torch_tensor = np.repeat(torch_tensor, batch_size, axis=0)
         ff_dtype = Node.torch_to_ff_dtype(torch_tensor.dtype)
 
         requires_grad = torch_tensor.requires_grad
@@ -2367,6 +2370,8 @@ class AttributeNode(Node):
             ff_dtype = DataType.DT_FLOAT
             np_tensor = np_tensor.astype(np.float32)
 
+        print('attr: ', torch_tensor.shape)
+        assert (torch_tensor.shape[0] == batch_size)
         ff_tensor = ffmodel.create_tensor(
             torch_tensor.shape, ff_dtype, requires_grad,
         )

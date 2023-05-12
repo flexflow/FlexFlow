@@ -83,7 +83,7 @@ class ParallelTensorBasePrinter:
             else:
                 tok += 'r=f'
             tok += ']'
-            toks.append()
+            toks.append(tok)
         return f'ParallelTensorBase<{" ".join(toks)}>'
 
 class ParallelDimPrinter: 
