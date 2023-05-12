@@ -1602,6 +1602,7 @@ GraphOptimalViewSerialized
         graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
       }
     }
+    graph->print_dot();
     best_graph = std::unique_ptr<Graph>(graph);
     MachineView data_parallel_view;
     data_parallel_view.device_type = MachineView::GPU;
