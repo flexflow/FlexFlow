@@ -83,11 +83,6 @@ void LLAMA::create_llama_model(FFModel &ff,
                                "_attention_norm_weight",
                            attention_norm);
 
-    // std::cout << "------before att shape";
-    // std::cout << att_norm->num_dims << "------\n";
-    // for (int i = 0; i < att_norm->num_dims; i++) {
-    //   std::cout << att_norm->dims[i] << "------\n";
-    // }
     Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {

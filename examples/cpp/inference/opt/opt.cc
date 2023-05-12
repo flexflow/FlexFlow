@@ -21,6 +21,16 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("opt");
 
+void parse_input_args(char **argv, int argc, OptConfig &config) {
+  for (int i = 1; i < argc; i++) {
+    // weights
+    if (!strcmp(argv[i], "--weights")) {
+      config.weight_file_path = std::string(argv[++i]);
+      continue;
+    }
+  }
+}
+
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
@@ -28,6 +38,12 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   OptConfig optConfig;
   FFModel ff(ffconfig);
+
+  InputArgs const &command_args = HighLevelRuntime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
+  parse_input_args(argv, argc, optConfig);
+
   //------------------------------compute machine views ------------------
   int num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
   std::vector<MachineView> machine_views;
@@ -48,7 +64,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor input;
   Tensor position_input;
   {
-    int const token_dims[] = {1, 9};
+    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
@@ -180,7 +196,7 @@ void FlexFlow::top_level_task(Task const *task,
                                 optConfig.num_attention_heads);
   //"Today is a beautiful day and I want"
   std::vector<int> prompt = {2, 5625, 16, 10, 2721, 183, 8, 38, 236};
-  rm.register_new_request(prompt, 20);
+  rm.register_new_request(prompt, 30); 
   fileloader.load_weights(&ff, weights_layers);
 
   im.init_operators_inference(&ff);
