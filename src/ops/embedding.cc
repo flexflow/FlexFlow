@@ -148,33 +148,23 @@ int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   int const OUT_CHANNELS = Output::OUT_CHANNELS;
   if (aggr == AGGR_MODE_NONE) {
     int num_dims = input->num_dims + 1;
-    for (int i = 1; i < num_dims - 1; i++) {
+    for (int i = 1; i < num_dims; i++) {
       output_dims[i] = input->dims[i - 1];
     }
     assert(OUT_CHANNELS == 0);
     output_dims[OUT_CHANNELS].size = this->out_channels;
     output_dims[OUT_CHANNELS].degree = 1;
     output_dims[OUT_CHANNELS].parallel_idx = -1;
-    // Currently do not support parallelizing over the replica dim
-    output_dims[num_dims - 1].size = 1;
-    output_dims[num_dims - 1].degree = 1;
-    output_dims[num_dims - 1].parallel_idx = -1;
-    output_dims[num_dims - 1].is_replica_dim = true;
     return num_dims;
   } else {
     int num_dims = input->num_dims;
-    for (int i = 1; i < num_dims - 1; i++) {
+    for (int i = 1; i < num_dims; i++) {
       output_dims[i] = input->dims[i];
     }
     assert(OUT_CHANNELS == 0);
     output_dims[OUT_CHANNELS].size = this->out_channels;
     output_dims[OUT_CHANNELS].degree = 1;
     output_dims[OUT_CHANNELS].parallel_idx = -1;
-    // Currently do not support parallelizing over the replica dim
-    output_dims[num_dims - 1].size = 1;
-    output_dims[num_dims - 1].degree = 1;
-    output_dims[num_dims - 1].parallel_idx = -1;
-    output_dims[num_dims - 1].is_replica_dim = true;
     return num_dims;
   }
   // const int REPLICA = this->output_vocab_size_replica_dim();
