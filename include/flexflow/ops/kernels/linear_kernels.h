@@ -19,6 +19,8 @@ public:
 #endif
   float const *one_ptr;
   ActiMode activation;
+  RegularizerMode kernel_reg_type;
+  float kernel_reg_lambda;
   bool use_bias;
   DataType input_type, weight_type, output_type;
   char op_name[MAX_OPNAME];

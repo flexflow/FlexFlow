@@ -43,6 +43,7 @@ $EXE "$FF_HOME"/examples/python/keras/identity_loss.py -ll:py 1 -ll:gpu "$GPUS" 
 $EXE "$FF_HOME"/examples/python/keras/elementwise_max_min.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel 
 $EXE "$FF_HOME"/examples/python/keras/rsqrt.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/gather.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+$EXE "$FF_HOME"/examples/python/keras/regularizer.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 
 #Functional API
 $EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
