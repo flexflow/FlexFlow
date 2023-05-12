@@ -77,7 +77,13 @@ class ParallelTensorBasePrinter:
             size = dim['size']
             degree = dim['degree']
             parallel_idx = dim['parallel_idx']
-            toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx}]')
+            tok = f'{i}=[s={size} d={degree} pi={parallel_idx} '
+            if dim['is_replica_dim']:
+                tok += 'r=t'
+            else:
+                tok += 'r=f'
+            tok += ']'
+            toks.append()
         return f'ParallelTensorBase<{" ".join(toks)}>'
 
 class ParallelDimPrinter: 
@@ -88,7 +94,12 @@ class ParallelDimPrinter:
         size = self.val['size']
         degree = self.val['degree']
         parallel_idx = self.val['parallel_idx']
-        return f'ParallelDim<s={size} d={degree} pi={parallel_idx}>'
+        tok = f's={size} d={degree} pi={parallel_idx} '
+        if dim['is_replica_dim']:
+            tok += 'r=t'
+        else:
+            tok += 'r=f'
+        return f'ParallelDim<{tok}>'
         
 
 def build_pretty_printer():
