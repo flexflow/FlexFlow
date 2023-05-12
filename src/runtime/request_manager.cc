@@ -99,8 +99,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       assert(old_bc.tokensInfo[i].abs_depth_in_request + 1 ==
              request.tokens.size());
       // This is a decoding token
-      std::cout << "token is: " << result.token_ids[i];
+      log_req_mgr.print("Output token is: %d", result.token_ids[i]);
       request.tokens.push_back(result.token_ids[i]);
+      std::string output = tokenizer->Decode(request.tokens);
+      log_req_mgr.print("Output: %s", output.c_str());
     }
   }
   // Step 2: preparing the next batch for existing requests

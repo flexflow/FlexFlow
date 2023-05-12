@@ -48,6 +48,8 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
+LegionRuntime::Logger::Category log_inc_mha("IncrementalMHA");
+
 bool IncMultiHeadSelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {
   bool is_valid = input.is_valid();
@@ -589,9 +591,9 @@ FutureMap IncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  printf("BatchConfig, num_tokens: %d, num_requests: %d\n",
-         bc.num_tokens,
-         bc.num_active_requests());
+  log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
+                    bc.num_tokens,
+                    bc.num_active_requests());
   IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(&bc, sizeof(BatchConfig)),

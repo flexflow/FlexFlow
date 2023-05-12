@@ -590,7 +590,7 @@ FutureMap TreeIncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  log_tree_verify.print(
+  log_tree_verify.debug(
       "TreeVerifyBatchConfig, num_tokens: %d, num_requests: %d",
       bc.num_tokens,
       bc.num_active_requests());

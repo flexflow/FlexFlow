@@ -59,7 +59,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  int num_transformer_layers = 1;
+  int num_transformer_layers = 32;
   int num_transformer_layers_per_stage =
       (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
 

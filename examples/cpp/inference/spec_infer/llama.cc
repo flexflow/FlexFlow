@@ -35,7 +35,7 @@ void parse_input_args(char **argv, int argc, LLAMA::Config &config) {
       continue;
     }
 
-    // weights
+    // tokenizer
     if (!strcmp(argv[i], "--tokenizer")) {
       config.tokenizer_file_path = std::string(argv[++i]);
       continue;
@@ -68,7 +68,6 @@ void FlexFlow::top_level_task(Task const *task,
                             ffconfig.workersPerNode * ffconfig.numNodes,
                             TREE_VERIFY_MODE);
 
-  bool new_req = true;
   TreeVerifyBatchConfig tree_bc;
   BeamSearchBatchConfig beam_bc;
   InferenceResult tree_ir;
