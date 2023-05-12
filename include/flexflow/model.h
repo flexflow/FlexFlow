@@ -628,11 +628,14 @@ public:
                                         int kdim = 0,
                                         int vdim = 0,
                                         float dropout = 0.0f,
-                                        bool bias = true,
+                                        bool bias = false,
                                         bool add_bias_kv = false,
                                         bool add_zero_attn = false,
                                         Initializer *kernel_initializer = NULL,
                                         bool apply_rotary_embedding = false,
+                                        bool scaling_query = false,
+                                        float scaling_factor = 1.0f,
+                                        bool qk_prod_scaling = true,
                                         char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
       const Tensor input,
@@ -641,11 +644,14 @@ public:
       int kdim = 0,
       int vdim = 0,
       float dropout = 0.0f,
-      bool bias = true,
+      bool bias = false,
       bool add_bias_kv = false,
       bool add_zero_attn = false,
       Initializer *kernel_initializer = NULL,
       bool apply_rotary_embedding = false,
+      bool scaling_query = false,
+      float scaling_factor = 1.0f,
+      bool qk_prod_scaling = true,
       char const *name = NULL);
 
   Tensor create_tensor_legion_ordering(int num_dim,
