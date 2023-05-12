@@ -344,8 +344,8 @@ BeamInferenceResult
 
   BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
-  std::cout << "beam search topk inference: "
-            << "\n";
+  // std::cout << "beam search topk inference: "
+  //           << "\n";
 
   BeamTopKMeta const *m = *((BeamTopKMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
@@ -378,8 +378,8 @@ BeamInferenceResult
   size_t tokens_per_request = in1_domain.hi()[1] - in1_domain.lo()[1] + 1;
   size_t batch_size = in1_domain.get_volume() / length;
 
-  std::cout << "beam search topk params: " << length << ", " << k << ", "
-            << batch_size << "\n";
+  // std::cout << "beam search topk params: " << length << ", " << k << ", "
+  //           << batch_size << "\n";
   assert(out2_domain.get_volume() / k == batch_size);
 
   // std::vector<int> beam_width;

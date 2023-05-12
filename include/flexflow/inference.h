@@ -78,7 +78,7 @@ class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
-  RequestManager(Tokenizer *tokenizer);
+  RequestManager(Tokenizer *tokenizer, bool verbose = false);
   RequestManager();
   size_t get_num_processed_requests();
   RequestGuid register_new_request(std::string const &prompt,
@@ -116,8 +116,9 @@ public:
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
 
-  TreeVerifyBatchConfig
-      convert_beam_to_tree_batch_config(BeamSearchBatchConfig const &beam_bc);
+  // TreeVerifyBatchConfig
+  //     convert_beam_to_tree_batch_config(BeamSearchBatchConfig const
+  //     &beam_bc);
 
   static void
       load_tokens_task(Legion::Task const *task,

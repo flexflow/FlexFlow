@@ -22,8 +22,7 @@ namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_bc("BatchConfig");
 
-BatchConfig::BatchConfig() {
-  num_tokens = 0;
+BatchConfig::BatchConfig() : num_tokens(0) {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     requestsInfo[i].token_start_offset = 0;
     requestsInfo[i].num_tokens_in_batch = 0;
@@ -34,6 +33,10 @@ BatchConfig::BatchConfig() {
     tokensInfo[i].request_index = 0;
     tokensInfo[i].token_id = 0;
   }
+}
+
+BatchConfig::Mode BatchConfig::get_mode() const {
+  return INC_DECODING_MODE;
 }
 
 // Deprecated API; should use RequestManager::update_batch

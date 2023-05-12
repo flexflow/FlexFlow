@@ -30,6 +30,11 @@ class BeamInferenceResult;
 
 class BatchConfig {
 public:
+  enum Mode {
+    INC_DECODING_MODE = 0,
+    BEAM_SEARCH_MODE = 1,
+    TREE_VERIFY_MODE = 2
+  };
   using RequestGuid = size_t;
   using TokenId = int;
   BatchConfig();
@@ -42,6 +47,7 @@ public:
   int num_active_requests() const;
   int num_active_tokens() const;
   void print() const;
+  virtual Mode get_mode() const;
   static int const MAX_NUM_REQUESTS = 8;
   static int const MAX_NUM_TOKENS = 64;
   static int const MAX_SEQ_LENGTH = 512;
@@ -69,6 +75,9 @@ public:
 
 class TreeVerifyBatchConfig : public BatchConfig {
 public:
+  TreeVerifyBatchConfig();
+  ~TreeVerifyBatchConfig();
+  Mode get_mode() const;
   // struct PerTokenInfo : BatchConfig::PerTokenInfo {
   //   int tree_branch_idx;
   // };
@@ -93,6 +102,7 @@ class BeamSearchBatchConfig : public BatchConfig {
 public:
   BeamSearchBatchConfig();
   BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
+  Mode get_mode() const;
 
   ~BeamSearchBatchConfig();
 
