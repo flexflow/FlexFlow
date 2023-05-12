@@ -75,7 +75,7 @@ Replicate::Replicate(FFModel &model,
   dims[replicate_dim].degree *= replicate_degree;
   ParallelTensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
+      numdim, dims, _input->data_type, this);
   // inputs[0]->print("Replicate::input");
   // outputs[0]->print("Replicate::output");
 }
