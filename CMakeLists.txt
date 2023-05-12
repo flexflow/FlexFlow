@@ -560,7 +560,11 @@ if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
 endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/spec_verify_pipeline)
+  add_subdirectory(examples/cpp/inference/llama_spec_pipeline)
+endif()
+
+if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/inference/opt_spec_pipeline)
 endif()
 
 # installation
