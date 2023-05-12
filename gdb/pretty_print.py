@@ -80,6 +80,17 @@ class ParallelTensorBasePrinter:
             toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx}]')
         return f'ParallelTensorBase<{" ".join(toks)}>'
 
+class ParallelDimPrinter: 
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        size = self.val['size']
+        degree = self.val['degree']
+        parallel_idx = self.val['parallel_idx']
+        return f'ParallelDim<s={size} d={degree} pi={parallel_idx}>'
+        
+
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter(
         "flexflow")
@@ -89,6 +100,7 @@ def build_pretty_printer():
     pp.add_printer('Domain', '^Legion::Domain$', DomainPrinter)
     pp.add_printer('ParallelTensorShape', '^FlexFlow::ParallelTensorShape$', TensorShapePrinter)
     pp.add_printer('ParallelTensorBase', '^FlexFlow::ParallelTensorBase$', ParallelTensorBasePrinter)
+    pp.add_printer('ParallelDim', '^FlexFlow::ParallelDim$', ParallelDimPrinter)
     return pp
 
 gdb.printing.register_pretty_printer(
