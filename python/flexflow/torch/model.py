@@ -1410,6 +1410,9 @@ class GetItemNode(FunctionNode):
     @staticmethod
     def slice_tensor(ffmodel, tensor, slices, name):
 
+        print('slices', slices)
+        old_shape = tensor.dims
+        print('old_shape', tensor.dims)
         """Returns a reshaped tensor based on the given slices."""
         def is_colon(slice_elem):
             """Returns if the slice is equivalent to `:`."""
@@ -1430,12 +1433,15 @@ class GetItemNode(FunctionNode):
             return isinstance(slice_elem, int)
 
         def is_exact(slice_elem, old_size):
+            if slice_elem is None:
+                return False
             start = 0 if slice_elem.start == None else slice_elem.start
             stop = old_size if slice_elem.stop == None else slice_elem.stop
             new_size = stop - start
             return new_size == old_size
 
         shape = tensor.dims
+        print('input dims', tensor.dims)
 
         # Fewer slices than input dimensions
         diff = len(shape) - len(slices)
@@ -1452,9 +1458,14 @@ class GetItemNode(FunctionNode):
         curr_tensor = copy.copy(tensor)
 
         for slice_elem in reversed(slices):
-            if is_colon(slice_elem):
+            print('slice_elem', slice_elem)
+            if is_colon(slice_elem) or is_exact(slice_elem, shape[j]):
+                print('shape', shape)
                 assert j >= 0
+                print('j', j)
+                print('new_shape_bef', new_shape)
                 new_shape.append(shape[j])
+                print('new_shape_aft', new_shape)
                 j -= 1
             elif is_unsqueeze(slice_elem):
                 new_shape.append(1)
@@ -1465,7 +1476,7 @@ class GetItemNode(FunctionNode):
                 new_shape.append(1)
                 j -= 1
             elif is_exact(slice_elem, shape[j]):
-                pass
+                print('exact')
             elif is_truncate(slice_elem, shape[j]):
                 assert j >= 0
                 start = 0 if slice_elem.start == None else slice_elem.start
@@ -1494,6 +1505,9 @@ class GetItemNode(FunctionNode):
         if len(new_shape) == 0:
             return curr_tensor
         else:
+            print('new_shape', new_shape)
+            if old_shape == new_shape:
+                return curr_tensor
             return ffmodel.reshape(input=curr_tensor, shape=new_shape, name=name,)
         
         

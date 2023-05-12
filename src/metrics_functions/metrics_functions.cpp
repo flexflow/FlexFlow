@@ -30,7 +30,7 @@ __global__ void update_metrics_sparse_label_kernel(float const *logits,
   CUDA_KERNEL_LOOP(b, num_samples) {
     if (metrics.measure_accuracy) {
       float max_val = -1.0f;
-      int my_label = -1;
+      int my_label = 0;
       for (int i = 0; i < num_classes; i++) {
         float my_logit = logits[b * num_classes + i];
         if (my_logit > max_val) {
