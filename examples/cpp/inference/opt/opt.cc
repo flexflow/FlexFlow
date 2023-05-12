@@ -196,7 +196,7 @@ void FlexFlow::top_level_task(Task const *task,
                                 optConfig.num_attention_heads);
   //"Today is a beautiful day and I want"
   std::vector<int> prompt = {2, 5625, 16, 10, 2721, 183, 8, 38, 236};
-  rm.register_new_request(prompt, 30); 
+  rm.register_new_request(prompt, 30);
   fileloader.load_weights(&ff, weights_layers);
 
   im.init_operators_inference(&ff);
