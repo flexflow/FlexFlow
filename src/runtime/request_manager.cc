@@ -15,6 +15,7 @@
 
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
+#include "flexflow/tokenizers.h"
 #include <new>
 #include <stdexcept>
 
@@ -25,7 +26,12 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
 RequestManager::RequestManager()
-    : next_available_guid(1000000), num_processed_requests(0) {}
+    : tokenizer(nullptr), verbose(false), next_available_guid(1000000),
+      num_processed_requests(0) {}
+
+RequestManager::RequestManager(Tokenizer *_tokenizer)
+    : tokenizer(_tokenizer), verbose(false), next_available_guid(1000000),
+      num_processed_requests(0) {}
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
@@ -38,6 +44,29 @@ RequestManager::RequestGuid
   request.max_sequence_length = max_sequence_length;
   request.initial_len = prompt.size();
   request.tokens = prompt;
+
+  pending_request_queue.push(request);
+
+  std::cout << "new req: " << request.tokens.size() << std::endl;
+  for (int i = 0; i < request.tokens.size(); i++) {
+    std::cout << i << " : " << request.tokens[i] << std::endl;
+  }
+  return request.guid;
+}
+
+RequestManager::RequestGuid
+    RequestManager::register_new_request(std::string const &prompt,
+                                         int max_sequence_length) {
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+
+  // Add a new request
+  Request request;
+  request.guid = next_available_guid++;
+  request.max_sequence_length = max_sequence_length;
+  request.tokens.push_back(tokenizer->bos_token_id);
+  std::vector<int32_t> tokens = tokenizer->Encode(prompt);
+  request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
+  request.initial_len = request.tokens.size();
 
   pending_request_queue.push(request);
 

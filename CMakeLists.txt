@@ -476,7 +476,7 @@ if(FF_BUILD_VISUALIZATION_TOOL)
 endif()
 
 if(FF_BUILD_SENTENCEPIECE)
-  add_subdirectory(deps/sentencepiece)
+  add_subdirectory(deps/sentencepiece sentencepiece EXCLUDE_FROM_ALL)
   target_include_directories(flexflow PUBLIC deps/sentencepiece/src)
   target_link_libraries(flexflow sentencepiece)
 endif()
@@ -561,6 +561,7 @@ endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/inference/llama_spec_pipeline)
+  add_subdirectory(examples/cpp/inference/spec_infer)
 endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)

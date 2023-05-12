@@ -40,12 +40,10 @@ void LLAMA::create_llama_model(FFModel &ff,
   std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
 
-  std::cout << "print llama config: " << llama_config.input_path << "-->"
-            << llama_config.batchSize << std::endl;
-
   Tensor input;
   {
-    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
+    assert(llama_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
+    int const token_dims[] = {llama_config.max_num_tokens, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
   mapping[input].push_back(machine_views[0]);
@@ -61,10 +59,11 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
+  int num_transformer_layers = 1;
   int num_transformer_layers_per_stage =
-      (32 + num_pipeline_stages - 1) / num_pipeline_stages;
+      (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
 
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < num_transformer_layers; i++) {
     // step 1: attention
     std::vector<int> axes = {2};
     Tensor att_norm =

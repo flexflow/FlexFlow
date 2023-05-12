@@ -47,12 +47,12 @@ void FlexFlow::top_level_task(Task const *task,
   char **argv = command_args.argv;
   int argc = command_args.argc;
   parse_input_args(argv, argc, llama_config);
-  InferenceManager im(ffconfig, llama_config.batchSize, 1);
+  InferenceManager im(ffconfig, llama_config.max_num_tokens, 1);
   RequestManager rm;
   // Add a single request
   std::vector<BatchConfig::TokenId> prompt{
       1, 306, 4658, 278, 6593, 310, 2834, 338};
-  rm.register_new_request(prompt, llama_config.sentence_len);
+  rm.register_new_request(prompt, llama_config.max_seq_len);
 
   FFModel beam_model(ffconfig), tree_model(ffconfig), inc_model(ffconfig);
   LLAMA::create_llama_model(beam_model, im, llama_config, 1, BEAM_SEARCH_MODE);

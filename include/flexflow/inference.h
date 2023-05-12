@@ -72,12 +72,17 @@ struct BeamTree {
 //   std::vector<float> probs;
 // };
 
+class Tokenizer;
+
 class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
+  RequestManager(Tokenizer *tokenizer);
   RequestManager();
   size_t get_num_processed_requests();
+  RequestGuid register_new_request(std::string const &prompt,
+                                   int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
@@ -126,6 +131,8 @@ public:
                           Legion::Runtime *runtime);
 
 private:
+  Tokenizer *tokenizer;
+  bool verbose;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;

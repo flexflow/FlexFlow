@@ -15,7 +15,7 @@
 
 #include "models/llama.h"
 #include "flexflow/inference.h"
-#include "tokenizers.h"
+#include "flexflow/tokenizers.h"
 
 using namespace Legion;
 
@@ -34,6 +34,12 @@ void parse_input_args(char **argv, int argc, LLAMA::Config &config) {
       config.weight_file_path = std::string(argv[++i]);
       continue;
     }
+
+    // weights
+    if (!strcmp(argv[i], "--tokenizer")) {
+      config.tokenizer_file_path = std::string(argv[++i]);
+      continue;
+    }
   }
 }
 
@@ -41,7 +47,6 @@ void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  SentencePieceTokenizer tokenizer("");
   FFConfig ffconfig;
   LLAMA::Config llama_config;
 
@@ -49,12 +54,14 @@ void FlexFlow::top_level_task(Task const *task,
   char **argv = command_args.argv;
   int argc = command_args.argc;
   parse_input_args(argv, argc, llama_config);
-  InferenceManager im(ffconfig, llama_config.batchSize, 1);
-  RequestManager rm;
+  SentencePieceTokenizer tokenizer(llama_config.tokenizer_file_path);
+  InferenceManager im(ffconfig, llama_config.max_num_tokens, 1);
+  RequestManager rm(&tokenizer);
   // Add a single request
-  std::vector<BatchConfig::TokenId> prompt{
-      1, 306, 4658, 278, 6593, 310, 2834, 338};
-  rm.register_new_request(prompt, llama_config.sentence_len);
+  // std::vector<BatchConfig::TokenId> prompt{
+  //    1, 306, 4658, 278, 6593, 310, 2834, 338};
+  std::string text2 = "I believe the meaning of life is";
+  rm.register_new_request(text2, llama_config.max_seq_len);
 
   FFModel beam_model(ffconfig), tree_model(ffconfig);
   LLAMA::create_llama_model(beam_model, im, llama_config, 1, BEAM_SEARCH_MODE);
