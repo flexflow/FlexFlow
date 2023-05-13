@@ -50,7 +50,7 @@ public:
     return ConcreteArgSpec(std::type_index(typeid(T)), std::make_shared<T>(t));
   }
 private:
-  ConcreteArgSpec(std::type_index, std::shared_ptr<void const *>);
+  ConcreteArgSpec(std::type_index, std::shared_ptr<void const>);
 
   std::type_index type;
   std::shared_ptr<void const *> ptr;
@@ -113,7 +113,6 @@ public:
 enum class ArgRefType {
   ENABLE_PROFILING,
   FF_HANDLE,
-  PER_DEVICE_OP_STATE
 };
 
 template <typename T>
@@ -134,11 +133,6 @@ struct ArgRefSpec {
 
 ArgRef<EnableProfiling> enable_profiling();
 ArgRef<PerDeviceFFHandle> ff_handle();
-
-template <typename T>
-ArgRef<T> per_device_op_state() {
-  return ArgRef<T>(ArgRefType::PER_DEVICE_OP_STATE);
-}
 
 template <typename T> 
 struct TypedFuture {
@@ -167,7 +161,7 @@ public:
   template <typename T>
   static 
   CheckedTypedFuture create(TypedFuture<T> const &f) {
-    return CheckedTypedFuture(std::type_index(typeid(T)), f);
+    return CheckedTypedFuture(std::type_index(typeid(T)), f.future);
   }
 private:
   CheckedTypedFuture(std::type_index, Legion::Future const &);
@@ -203,7 +197,7 @@ public:
   template <typename T>
   static 
   CheckedTypedFutureMap create(TypedFutureMap<T> const &fm) {
-    return CheckedTypedFuturemap(std::type_index(typeid(T)), fm);
+    return CheckedTypedFutureMap(std::type_index(typeid(T)), fm.future_map);
   }
 public:
   CheckedTypedFutureMap(std::type_index, Legion::FutureMap const &);
@@ -249,7 +243,7 @@ private:
 
 private:
   std::unordered_map<slot_id, ArgSpec> arg_bindings;
-  std::unordered_map<slot_id, ParallelTensorSpec> bindings;
+  std::unordered_map<slot_id, parallel_tensor_guid_t> bindings;
 };
 
 struct TaskInvocation : public use_visitable_cmp<TaskInvocation> {
@@ -267,19 +261,6 @@ public:
 
 /* std::unordered_map<Legion::DomainPoint, TaskArgumentFormat> compile_index_task_invocation(TaskSignature const &signature, */
 /*                                                                                           TaskBinding const &binding); */
-
-struct TaskReturnAccessor { 
-  template <typename T>
-  TypedFuture<T> get_returned_future();
-
-  template <typename T>
-  TypedFutureMap<T> get_returned_future_map();
-};
-
-
-TaskReturnAccessor execute_task(LegionConfig const &config, 
-                                TaskInvocation const &,
-                                RuntimeBacking const &backing);
 
 
 }

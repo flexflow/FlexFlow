@@ -37,7 +37,7 @@ OpTensorSpec input_tensor(int);
 OpTensorSpec output_tensor(int);
 OpTensorSpec weight_tensor(int);
 
-enum class OpArgRefType { };
+enum class OpArgRefType { PER_DEVICE_OP_STATE };
 
 template <typename T>
 struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
@@ -49,6 +49,11 @@ public:
 public:
   OpArgRefType ref_type;
 };
+
+template <typename T>
+OpArgRef<T> per_device_op_state() {
+  return OpArgRef<T>(OpArgRefType::PER_DEVICE_OP_STATE);
+}
 
 struct OpArgRefSpec {
 public:
@@ -78,14 +83,12 @@ private:
   std::shared_ptr<void const *> ptr;
 };
 
-using OpArgSpec = variant<ConcreteArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
+using OpArgSpec = variant<ConcreteArgSpec, IndexArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
-  using ArgSpec = OpArgSpec;
-
-  static_assert(is_subeq_variant<OpArgSpec, ArgSpec>::value, "");
+  static_assert(is_subeq_variant<ArgSpec, OpArgSpec>::value, "");
 
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);

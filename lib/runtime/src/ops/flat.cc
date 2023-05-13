@@ -1,5 +1,4 @@
 #include "flat.h"
-#include "model.h"
 
 namespace FlexFlow {
 

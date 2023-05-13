@@ -7,13 +7,10 @@
 
 namespace FlexFlow {
 
-struct ReplicateAttrs {
+struct ReplicateAttrs : public use_visitable_cmp<ReplicateAttrs> {
 public:
   ReplicateAttrs() = delete;
   ReplicateAttrs(ff_dim_t dim, int degree);
-/* public: */
-/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
-/*   OperatorType op_type() const override; */
 public:
   ff_dim_t replicate_dim;
   int replicate_degree;

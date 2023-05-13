@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_AGGREGATE_SPEC_H_
 #define _FLEXFLOW_AGGREGATE_SPEC_H_
 
-#include "op_task_spec.h"
+#include "op_task_signature.h"
 #include "sim_environment.h"
 #include "op-attrs/ops/aggregate_spec.h"
 

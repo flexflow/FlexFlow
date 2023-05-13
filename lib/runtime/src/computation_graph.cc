@@ -278,6 +278,20 @@ Tensor ComputationGraph::aggregate(Tensor const &gate_preds,
   return this->add_layer(layer, inputs, {}, output_shape);
 }
 
+Tensor ComputationGraph::batch_norm(Tensor const &input, 
+                                    bool relu, 
+                                    optional<std::string> const &maybe_name) {
+  BatchNormAttrs attrs = BatchNormAttrs{ relu };
+  std::string name = maybe_name.value_or(get_default_name(attrs));
+
+  Layer layer = { attrs, name };
+
+  TensorShape output_shape = get_output_shape(attrs, get_shape(input));
+
+  return this->add_layer(layer, {input}, {}, output_shape);
+}
+
+
 void swap(ComputationGraph &lhs, ComputationGraph &rhs) {
   using std::swap;
 

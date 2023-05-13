@@ -23,18 +23,10 @@ bool operator<(CastAttrs const &, CastAttrs const &);
 }
 
 VISITABLE_STRUCT(::FlexFlow::CastAttrs, dtype);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::CastAttrs> {
-  size_t operator()(::FlexFlow::CastAttrs const &) const;
-};
-} 
+MAKE_VISIT_HASHABLE(::FlexFlow::CastAttrs);
 
 namespace FlexFlow {
-
 static_assert(is_valid_opattr<CastAttrs>::value, "CastAttrs must be a valid opattr (see core.h)");
-
 }
 
 #endif 

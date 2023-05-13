@@ -5,6 +5,7 @@ namespace FlexFlow {
 OperatorType get_op_type(AggregateAttrs const &) { return OP_AGGREGATE; }
 OperatorType get_op_type(AggregateSpecAttrs const &) { return OP_AGG_SPEC; }
 OperatorType get_op_type(BatchMatmulAttrs const &) { return OP_BATCHMATMUL; }
+OperatorType get_op_type(BatchNormAttrs const &) { return OP_BATCHNORM; }
 OperatorType get_op_type(BroadcastAttrs const &) { return OP_BROADCAST; }
 OperatorType get_op_type(CastAttrs const &) { return OP_CAST; }
 OperatorType get_op_type(ConcatAttrs const &) { return OP_CONCAT; }
@@ -32,6 +33,5 @@ OperatorType get_op_type(CombineAttrs const &) { return OP_COMBINE; }
 OperatorType get_op_type(ReductionAttrs const &) { return OP_REDUCTION; }
 OperatorType get_op_type(RepartitionAttrs const &) { return OP_REPARTITION; }
 OperatorType get_op_type(ReplicateAttrs const &) { return OP_REPLICATE; }
-OperatorType get_op_type(FusedParallelOpAttrs const &) { return OP_FUSED_PARALLEL; }
 
 }

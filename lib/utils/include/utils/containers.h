@@ -61,11 +61,34 @@ Element sum(Container const &container) {
   return result;
 }
 
+template <typename Container, typename ConditionF, typename Element = typename Container::value_type>
+Element sum(Container const &container, ConditionF const &condition) {
+  Element result = 0;
+  for (Element const &element : container) {
+    if (condition(element)) {
+      result += element;
+    }
+  }
+  return result;
+}
+
+
 template <typename Container, typename Element = typename Container::value_type>
 Element product(Container const &container) {
   Element result = 1;
   for (Element const &element : container) {
     result *= element;
+  }
+  return result;
+}
+
+template <typename Container, typename ConditionF, typename Element = typename Container::value_type>
+Element product_where(Container const &container, ConditionF const &condition) {
+  Element result = 1;
+  for (Element const &element : container) {
+    if (condition(element)) {
+      result *= element;
+    }
   }
   return result;
 }
@@ -262,6 +285,17 @@ bool all_of(C const &c, F const &f) {
   return true;
 }
 
+template <typename C, typename F>
+int count(C const &c, F const &f) {
+  int result = 0;
+  for (auto const &v : c) {
+    if (f(v)) {
+      result++;
+    }
+  }
+  return result;
+}
+
 template <typename C>
 bool are_all_same(C const &c) {
   auto const &first = *c.cbegin();
@@ -277,6 +311,18 @@ template <typename F, typename In, typename Out = decltype(std::declval<F>()(std
 std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
+  return result;
+}
+
+template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::vector<Out> transform(F const &f, std::vector<In> const &v) {
+  return vector_transform(f, v);
+}
+
+template <typename F, typename Elem>
+std::vector<Elem> filter(std::vector<Elem> const &v, F const &f) {
+  std::vector<Elem> result = v;
+  inplace_filter(result, f);
   return result;
 }
 

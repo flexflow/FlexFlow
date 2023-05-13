@@ -14,7 +14,6 @@
  */
 
 #include "parallel_ops/reduction.h"
-#include "model.h"
 #include "kernels/reduction_kernels.h"
 #include "utils/hash-utils.h"
 

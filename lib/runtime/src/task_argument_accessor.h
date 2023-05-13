@@ -43,10 +43,10 @@ struct TaskArgumentsFormat : public use_visitable_eq<TaskArgumentsFormat> {
   ArgSpec self_offset;
 };
 
-Legion::PrivilegeMode get_privileges(TaskArgumentFormat const &, region_idx_t);
-Legion::PrivilegeMode get_privileges(TaskArgumentFormat const &, ParallelTensorSpec const &);
-region_idx_t get_region_idx(TaskArgumentFormat const &, ParallelTensorSpec const &);
-DataType get_datatype(TaskArgumentFormat const &, ParallelTensorSpec const &);
+Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, region_idx_t);
+Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, ParallelTensorSpec const &);
+region_idx_t get_region_idx(TaskArgumentsFormat const &, ParallelTensorSpec const &);
+DataType get_datatype(TaskArgumentsFormat const &, ParallelTensorSpec const &);
 
 struct TaskArgumentAccessor {
   TaskArgumentAccessor(Legion::Task const *task, 

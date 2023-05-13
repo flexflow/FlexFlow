@@ -1,4 +1,4 @@
-#include "op-attrs/parallel_op_info.h"
+#include "parallel_op_info.h"
 
 namespace FlexFlow {
 

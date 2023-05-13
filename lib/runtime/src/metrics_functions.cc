@@ -14,10 +14,10 @@
  */
 
 #include "metrics_functions.h"
-#include "model.h"
 #include "tasks.h"
 #include "kernels/metrics_kernels.h"
 #include "profiling.h"
+#include "task_argument_accessor.h"
 
 namespace FlexFlow {
 
@@ -86,6 +86,14 @@ TaskInvocation update_metrics(Metrics const &metrics,
   binding.bind_arg(ALL_METRICS, all_metrics);
   binding.bind_arg(ONE_METRICS, one_metrics);
   binding.bind_arg(ENABLE_PROFILING, enable_profiling);
+
+  return { UPDATE_METRICS_TASK_ID, binding };
+}
+
+TaskInvocation reset_metrics(Metrics const &metrics) {
+  TaskBinding binding(InvocationType::STANDARD);
+
+  binding.bind_arg(METRICS_STRUCT, metrics);
 
   return { UPDATE_METRICS_TASK_ID, binding };
 }

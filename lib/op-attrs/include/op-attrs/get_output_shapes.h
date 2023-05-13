@@ -98,7 +98,6 @@ ParallelTensorShape get_output_shape(ElementBinaryAttrs const &, ParallelTensorS
 ParallelTensorShape get_output_shape(ElementUnaryAttrs const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(EmbeddingAttrs const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &, ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(FusedParallelOpAttrs const &, ParallelTensorShape const &);
 std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(Group_byAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(LayerNormAttrs const &, ParallelTensorShape const &);
@@ -147,7 +146,7 @@ bool is_valid(T const &t, std::vector<ParallelTensorShape> const &shapes) {
   }
 
   for (ParallelTensorShape const &shape : shapes) {
-    if (!shape.is_valid()) {
+    if (!is_valid(shape)) {
       return false;
     }
   }
@@ -179,7 +178,6 @@ bool is_valid_internal(ElementBinaryAttrs const &, ParallelTensorShape const &, 
 bool is_valid_internal(ElementUnaryAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(EmbeddingAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(FlatAttrs const &, ParallelTensorShape const &);
-bool is_valid_internal(FusedParallelOpAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(GatherAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
 bool is_valid_internal(Group_byAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
 bool is_valid_internal(LayerNormAttrs const &, ParallelTensorShape const &);

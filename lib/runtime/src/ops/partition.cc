@@ -14,7 +14,6 @@
  */
 
 #include "parallel_ops/partition.h"
-#include "model.h"
 #include "kernels/partition_kernels.h"
 #include "utils/hash-utils.h"
 

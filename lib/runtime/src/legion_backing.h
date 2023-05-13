@@ -8,6 +8,9 @@
 
 namespace FlexFlow {
 
+template <> void register_task<NCCL_GETUNIQUEID_TASK_ID>();
+template <> void register_task<NCCL_INIT_COMMS_TASK_ID>();
+
 struct OperatorLegionBacking {
   /* stack_vector<PerDeviceOpState, MAX_NUM_WORKERS> meta; */
 #ifdef FF_USE_NCCL
@@ -48,7 +51,24 @@ public:
   std::unordered_map<operator_guid_t, OperatorLegionBacking> op_backing;
   std::unordered_map<parallel_tensor_guid_t, ParallelTensorLegionBacking> parallel_tensor_backing;
 };
+
+struct NcclCommunicators {
+#ifdef FF_USE_NCCL
+  std::unordered_map<MachineView, ncclComm_t *> view_to_comms;
+#endif
+};
+
+std::vector<MachineView> get_all_machine_view(int num_nodes,
+                                              int gpus_per_node,
+                                              int cpus_per_node);
+RuntimeBacking initializer_runtime();
+NcclCommunicators initialize_nccl_communicators(LegionConfig const &);
+ncclComm_t *find_nccl_comms(MachineView const &);
+
+
 }
+
+                          
 
 VISITABLE_STRUCT(::FlexFlow::ParallelTensorLegionBacking, parallel_is, region, region_grad, part, part_grad, physical_region);
 

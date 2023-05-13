@@ -42,6 +42,7 @@ TaskInvocation compute_metrics(Metrics const &,
 TaskInvocation update_metrics(Metrics const &,
                               parallel_tensor_guid_t const &logit,
                               parallel_tensor_guid_t const &label);
+TaskInvocation reset_metrics(Metrics const &);
 
 template <> void register_task<METRICS_COMP_TASK_ID>();
 template <> void register_task<UPDATE_METRICS_TASK_ID>();

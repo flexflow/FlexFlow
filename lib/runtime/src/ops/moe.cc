@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include "model.h"
-
 using namespace FlexFlow;
 
 Tensor FFModel::moe(const Tensor input,

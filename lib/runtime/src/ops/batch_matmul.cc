@@ -21,23 +21,6 @@
 
 namespace FlexFlow {
 
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
-using PCG::Node;
-
 using namespace FlexFlow::Kernels::BatchMatmul;
 
 enum Slots {
@@ -49,6 +32,32 @@ enum Slots {
   OUTPUT_GRAD,
   ATTRS,
   PROFILING
+};
+
+OpTaskInvocation init(BatchMatmulAttrs const &attrs) {
+  OpTaskBinding b;
+
+  b.bind_arg(ATTRS, attrs);
+  b.bind_arg(PROFILING, enable_profiling());
+
+  return { BATCHMATMUL_INIT_TASK_ID, b };
+
+}
+
+OpTaskInvocation forward(BatchMatmulAttrs const &attrs) {
+  OpTaskBinding b;
+
+  b.bind(A_INPUT, input_tensor(0));
+  b.bind(B_INPUT, input_tensor(1));
+  b.bind(OUTPUT, output_tensor(0));
+
+  return { BATCHMATMUL_FWD_TASK_ID, b };
+}
+
+OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
+  OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
+
+  return { BATCHMATMUL_BWD_TASK_ID, b };
 }
 
 
@@ -203,11 +212,14 @@ Op *BatchMatmul::materialize(FFModel &ff,
   return new BatchMatmul(ff, params, {inputs[0], inputs[1]}, this->name);
 }
 
-static OpTaskSignature get_init_task_signature() {
-  OpTaskSignature init(OpTaskType::INIT);
+template <>
+void register_task<BATCHMATMUL_INIT_TASK_ID>() {
+  OpTaskSignature sig(OpTaskType::INIT);
 
-  init.add_arg_slot<BatchMatmulAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
+  sig.add_arg_slot<BatchMatmulAttrs>(ATTRS);
+  sig.add_arg_slot<bool>(PROFILING);
+
+  register_task(BATCHMATMUL_INIT_TASK_ID, "BatchMatmul Init", sig, init_task);
 }
 
 static OpTaskSignature get_fwd_task_signature() {

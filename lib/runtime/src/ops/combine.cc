@@ -14,7 +14,6 @@
  */
 
 #include "parallel_ops/combine.h"
-#include "model.h"
 #include "kernels/combine_kernels.h"
 #include "utils/hash-utils.h"
 

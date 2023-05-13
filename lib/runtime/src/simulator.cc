@@ -14,7 +14,6 @@
  */
 
 #include "simulator.h"
-#include "model.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/reduction.h"

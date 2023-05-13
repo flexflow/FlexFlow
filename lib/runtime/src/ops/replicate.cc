@@ -14,7 +14,6 @@
  */
 
 #include "parallel_ops/replicate.h"
-#include "model.h"
 #include "kernels/replicate_kernels.h"
 #include "utils/hash-utils.h"
 

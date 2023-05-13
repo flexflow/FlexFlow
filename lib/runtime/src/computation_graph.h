@@ -158,22 +158,17 @@ public:
                 PoolType type = POOL_MAX,
                 ActiMode activation = AC_MODE_NONE,
                 char const *name = nullptr);
-  // Add a batch_norm layer
   Tensor layer_norm(Tensor const &input,
                     std::vector<int> const &axes,
                     bool elementwise_affine,
                     float eps,
                     char const *name = nullptr);
-  // Add a batch_norm layer
-  Tensor
-      batch_norm(Tensor const &input, bool relu = true, char const *name = nullptr);
-  // Add a batch_matmul layer
+  Tensor batch_norm(Tensor const &input, bool relu = true, optional<std::string> const &name = nullopt);
   Tensor batch_matmul(Tensor const &A,
                       Tensor const &B,
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
-  // Add a dense layer
   Tensor dense(Tensor const &input,
                int outDim,
                ActiMode activation = AC_MODE_NONE,

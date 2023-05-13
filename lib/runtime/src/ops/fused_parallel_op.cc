@@ -14,7 +14,6 @@
  */
 
 #include "parallel_ops/fused_parallel_op.h"
-#include "model.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {

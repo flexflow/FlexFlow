@@ -17,6 +17,7 @@
 #include "loss_functions.h"
 #include "legion.h"
 #include "profiling.h"
+#include "task_argument_accessor.h"
 
 namespace FlexFlow {
 
@@ -48,7 +49,7 @@ TaskInvocation backward_invocation(LossAttrs const &attrs,
                                    EnableProfiling enable_profiling,
                                    parallel_tensor_guid_t logit,
                                    parallel_tensor_guid_t label) {
-  TaskBinding binding = { InvocationType::INDEX };
+  TaskBinding binding(InvocationType::INDEX);
   binding.bind_arg(LOSS_ATTRS, attrs);
   ParallelTensorSpec logit_spec = { logit };
   binding.bind(LOGIT, logit_spec);

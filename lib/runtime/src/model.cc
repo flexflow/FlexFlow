@@ -50,11 +50,11 @@
 #include "ops/split.h"
 #include "ops/topk.h"
 #include "ops/transpose.h"
-#include "parallel_ops/combine.h"
-#include "parallel_ops/fused_parallel_op.h"
-#include "parallel_ops/partition.h"
-#include "parallel_ops/reduction.h"
-#include "parallel_ops/replicate.h"
+#include "ops/combine.h"
+#include "ops/fused_parallel_op.h"
+#include "ops/repartition.h"
+#include "ops/reduction.h"
+#include "ops/replicate.h"
 #include "utils/random_utils.h"
 #include "test_utils.h"
 #include "legion/legion_utilities.h"
@@ -94,12 +94,15 @@ namespace FlexFlow {
 /*   return dim_mapping; */
 /* } */
 
-FFModel::FFModel(FFConfig const &_config, ComputationGraph const &cg, ParallelComputationGraph const &pcg)
-    : op_global_guid(OP_GUID_FIRST_VALID),
-      config(_config), 
+FFModel::FFModel(FFConfig const &_config, 
+                 ComputationGraph const &cg, 
+                 ParallelComputationGraph const &pcg, 
+                 Optimizer const &_optimizer)
+    : config(_config), 
       index_space_mgr(_config.legion_config), 
       computation_graph(cg),
-      pcg(pcg) {
+      pcg(pcg),
+      optimizer(_optimizer) {
 
   Runtime *runtime = config.legion_config.lg_hlr;
   Context ctx = config.legion_config.lg_ctx;
@@ -145,230 +148,6 @@ FFModel::FFModel(FFConfig const &_config, ComputationGraph const &cg, ParallelCo
   }
 }
 
-#ifdef FF_USE_NCCL
-ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
-  size_t key = get_std_hash(view);
-  if (contains_key(this->view_hash_to_nccl_comms, key)) {
-    return this->view_hash_to_nccl_comms.at(key);
-  } else {
-    assert (config.computationMode == COMP_MODE_INFERENCE);
-    return nullptr;
-  }
-}
-#endif
-
-// Tensor FFModel::create_constant(TensorShape const &shape,
-//                                 float value) {
-//   // FIXME: currently create gradients for constants since the current auto grad
-//   // algorithm computes gradients for all operators
-//   Tensor tensor = create_tensor(shape, false /*create_grad*/);
-//   tensor->initializer = new ConstantInitializer(value);
-//   return tensor;
-// }
-
-OpNode FFModel::new_node(Op const *op) {
-  return this->op_node_mgr.create(op);
-}
-
-// Tensor FFModel::create_tensor(TensorShape const &shape,
-//                               bool create_grad) {
-//   switch (shape.num_dims()) {
-// #define DIMFUNC(DIM)                                                           \
-//   case DIM:                                                                    \
-//     return create_tensor<DIM>(shape, create_grad);
-//     LEGION_FOREACH_N(DIMFUNC)
-// #undef DIMFUNC
-//     default:
-//       assert(false && "Unsupported dim!");
-//   }
-// }
-
-/* ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape, */ /*                                                bool create_grad, */
-/*                                                size_t input_tensor_guid) { */
-/*   switch (shape.num_dims()) { */
-/* #define DIMFUNC(DIM)                                                           \ */
-/*   case DIM:                                                                    \ */
-/*     return create_parallel_tensor<DIM>(                                        \ */
-/*         shape, create_grad, input_tensor_guid); */
-/*     LEGION_FOREACH_N(DIMFUNC) */
-/* #undef DIMFUNC */
-/*     default: */
-/*       assert(false && "Unsupported dim!"); */
-/*   } */
-/* } */
-
-/* Tensor FFModel::create_tensor(LegionTensorShape const &shape, */
-/*                                               bool create_grad) { */
-/*   return create_tensor(static_cast<TensorShape>(shape), create_grad); */
-/* } */
-
-/* ParallelTensor */
-/*     FFModel::create_parallel_tensor(LegionParallelTensorShape const &shape, */
-/*                                                     bool create_grad, */
-/*                                                     size_t input_tensor_guid) { */
-/*   return this->create_parallel_tensor(static_cast<ParallelTensorShape>(shape), create_grad, input_tensor_guid); */
-/* } */
-
-/* template <int NDIM> */
-/* Tensor FFModel::create_tensor(TensorShape const &shape, */
-/*                               bool create_grad) { */
-/*   assert (shape.num_dims() == NDIM); */
-/*   Tensor tensor = this->tensor_mgr.create(shape, create_grad); */
-/*   Layer *input_layer = this->layer_mgr.create(InputAttrs{}, shape.data_type, "input", {}, {}, {tensor}); */
-/*   this->tensor_uses.update(*input_layer); */
-
-/*   return tensor; */
-/* } */
-
-/* template <int NDIM> */
-/* ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape, */
-/*                                                bool create_grad, */
-/*                                                size_t input_tensor_guid) { */
-/*   assert (shape.num_dims() == NDIM); */
-/*   ParallelTensor tensor = this->parallel_tensor_mgr.create(shape, create_grad); */
-
-/*   if (owner_op == nullptr) { */
-/*     NoOp *input_op = new NoOp(*this, OP_INPUT, input_tensor_guid, tensor); */
-/*     operators.push_back(input_op); */
-/*     tensor->owner_op = input_op; */
-/*     tensor->owner_idx = 0; */
-/*   } else { */
-/*     tensor->owner_op = owner_op; */
-/*     tensor->owner_idx = owner_idx; */
-/*   } */
-
-/*   assert(tensor->check_valid()); */
-/*   return tensor; */
-/* } */
-
-/* Parameter FFModel::create_weight(LegionTensorShape const &shape, */
-/*                                                  Layer const *layer, */
-/*                                                  bool create_grad, */
-/*                                                  Initializer *initializer, */
-/*                                                  ParameterSyncType sync_type) { */
-/*   return this->create_weight(static_cast<TensorShape>(shape), layer, create_grad, initializer, sync_type); */
-/* } */
-
-//Parameter FFModel::create_weight(TensorShape const &shape,
-//                                 Layer const *owner_layer,
-//                                 bool create_grad,
-//                                 Initializer *initializer,
-//                                 ParameterSyncType sync_type) {
-//  assert(owner_layer != nullptr);
-//  if (owner_layer == nullptr) {
-//    owner_layer = this->layer_mgr.create(OP_WEIGHT, shape.data_type, nullptr, 0/*inputs*/, 0/*weights*/, 1/*outputs*/);
-//  }
-//
-//  Parameter p = this->tensor_mgr.create(shape, create_grad, initializer, sync_type, owner_layer, 0/*owner_idx*/);
-//
-//  assert(p->get_volume() > 0);
-//  return p;
-//}
-
-/* template <int NDIM> */
-/* ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape, */ 
-/*                                                   Op const *owner_op, */
-/*                                                   bool create_grad, */
-/*                                                   Initializer *initializer, */
-/*                                                   ParameterSyncType sync_type) { */
-/*   ParallelParameter p = this->parallel_tensor_mgr.create( */
-/*     shape, */
-/*     create_grad, */
-/*     sync_type, */
-/*     initializer */
-/*   ); */
-
-/*   if (owner_op == NULL) { */
-/*     NoOp *weight_op = new NoOp(*this, OP_WEIGHT, p); */
-/*     operators.push_back(weight_op); */
-/*     p->owner_op = weight_op; */
-/*   } else { */
-/*     p->owner_op = owner_op; */
-/*   } */
-/*   p->owner_idx = 0; */
-
-/*   assert(p->get_volume() > 0); */
-/*   assert(p->check_valid()); */
-/*   return p; */
-/* } */
-
-/* ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape, */
-/*                                                   Op const *owner_op, */
-/*                                                   bool create_grad, */
-/*                                                   Initializer *initializer, */
-/*                                                   ParameterSyncType sync_type) { */
-/*   switch (shape.num_dims()) { */
-/* #define DIMFUNC(DIM)                                                           \ */
-/*   case DIM:                                                                    \ */
-/*     return create_parallel_weight<DIM>(                                        \ */
-/*         shape, owner_op, create_grad, initializer, sync_type); */
-/*     LEGION_FOREACH_N(DIMFUNC) */
-/* #undef DIMFUNC */
-/*     default: */
-/*       assert(false && "Unsupported dim!"); */
-/*   } */
-/* } */
-
-/* ParallelParameter FFModel::create_parallel_weight( */
-/*     LegionParallelTensorShape const &shape, */
-/*     Op const *owner_op, */
-/*     bool create_grad, */
-/*     Initializer *initializer, */
-/*     ParameterSyncType sync_type) { */
-
-/*   return this->create_parallel_weight(static_cast<ParallelTensorShape>(shape), owner_op, create_grad, initializer, sync_type); */
-/* } */
-
-
-optional<ParallelTensor> FFModel::get_parallel_tensor_from_tensor(
-    Tensor const &tensor) const {
-  std::vector<parallel_tensor_guid_t> pt_guids = this->tensor_map.at(tensor);
-  if (pt_guids.size() == 0) {
-    return nullopt;
-  } else {
-    return this->parallel_tensor_mgr.at(get_only(pt_guids));
-  }
-  // check if tensor->parallel_tensor is already set
-  // if (tensor->parallel_tensor != nullopt) {
-  //   return tensor->parallel_tensor;
-  // }
-  // optional<TensorSourceInfo> source = this->model_spec.get_source(tensor);
-  // if (source.has_value()) {
-  //   Op const *mapped_op = nullptr;
-  //   if (source->layer.op_type == OP_INPUT) {
-  //     // We use tensor_guid to match input operators
-  //     tensor_guid_t tensor_guid = this->model_spec.get_output(source->layer, 0)->guid;
-  //     for (auto const &op : operators) {
-  //       if (op->op_type == OP_INPUT) {
-  //         if (tensor_guid == ((NoOp *)op)->input_tensor_guid) {
-  //           assert(mapped_op == nullptr);
-  //           mapped_op = op;
-  //         }
-  //       }
-  //     }
-  //   } else {
-  //     for (auto const &op : operators) {
-  //       if (op->layer_guid == source->layer.layer_guid) {
-  //         assert(mapped_op == nullptr);
-  //         mapped_op = op;
-  //       }
-  //     }
-  //   }
-  //   if (mapped_op != nullptr) {
-  //     return mapped_op->outputs[source->idx];
-  //   }
-  // }
-  // return nullopt;
-}
-
-void FFModel::reset_metrics() {
-  Context ctx = config.legion_config.lg_ctx;
-  Runtime *runtime = config.legion_config.lg_hlr;
-  TaskLauncher launcher(UPDATE_METRICS_TASK_ID,
-                        TaskArgument(&metrics_op, sizeof(Metrics)));
-  current_metrics = runtime->execute_task(ctx, launcher);
-}
-
 void FFModel::init_operators() {
   for (auto const &op : operators) {
     op->init(*this);
@@ -377,6 +156,7 @@ void FFModel::init_operators() {
 
 void FFModel::forward(int seq_length) {
   iter_config.seq_length = seq_length;
+  forward(this->pcg);
   for (auto const &op : operators) {
     op->forward(*this);
   }
@@ -392,10 +172,6 @@ void FFModel::compute_metrics() {
   Operator final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor.value());
-}
-
-void FFModel::get_metrics() {
-  metrics_input = operators.size() - 1;
 }
 
 void FFModel::backward(int seq_length) {
@@ -897,59 +673,6 @@ void FFModel::perform_fusion_optimizations() {
   }
 }
 
-void FFModel::initialize_nccl_communicators() {
-  // init all nccl communicators
-  Context ctx = this->config.legion_config.lg_ctx;
-  Runtime *runtime = this->config.legion_config.lg_hlr;
-  for (size_t l = 0; l < operators.size(); l++) {
-    // Only create nccl for weights
-    if (operators[l]->op_type != OP_WEIGHT) {
-      continue;
-    }
-    MachineView view = operators[l]->outputs[0]->machine_view.value();
-    if (view_hash_to_nccl_comms.find(get_std_hash(view)) ==
-        view_hash_to_nccl_comms.end()) {
-      TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
-      Future future = runtime->execute_task(ctx, launcher);
-      ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
-      IndexSpace task_is = this->index_space_mgr.get_or_create_task_is(view);
-      ArgumentMap argmap;
-      IndexLauncher index_launcher(
-          NCCL_INIT_COMMS_TASK_ID,
-          task_is,
-          TaskArgument(&ncclId, sizeof(ncclUniqueId)),
-          argmap,
-          Predicate::TRUE_PRED,
-          false /*must*/,
-          0 /*mapper_id*/,
-          get_std_hash(view) /*MappingTagID*/);
-      FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
-      fm.wait_all_results();
-      int idx = 0;
-      Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
-      ncclComm_t *nccl_comms =
-          (ncclComm_t *)malloc(sizeof(ncclComm_t) * task_domain.get_volume());
-      for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
-        nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
-      }
-      view_hash_to_nccl_comms[get_std_hash(view)] = nccl_comms;
-    }
-  }
-}
-
-void FFModel::optimize_unnecessary_gradient_calculations() {
-  // If an operator's input is training data
-  // No need to compute its gradients
-  for (size_t l = 0; l < operators.size(); l++) {
-    Op *op = operators[l];
-    for (int i = 0; i < op->numInputs; i++) {
-      assert(op->inputs[i]->owner_op != nullptr);
-      if (op->inputs[i]->owner_op->op_type == OP_INPUT) {
-        op->trainableInputs[i] = false;
-      }
-    }
-  }
-}
 
 void FFModel::print_operator_regions() const {
   for (size_t i = 0; i < operators.size(); i++) {
@@ -1009,41 +732,6 @@ void FFModel::create_label_tensor(LossType loss_type) {
              parallel_label_tensor.value()->owner_op,
              this->config.legion_config,
              this->index_space_mgr);
-}
-
-void FFModel::populate_tensor_to_parallel_tensor_mapping() {
-  for (auto const &layer : layers) {
-    // map inputs to parallel tensor
-    if (layer->op_type == OP_INPUT) {
-      Tensor tensor = layer->outputs[0];
-      optional<ParallelTensor> parallel_tensor;
-      for (Op const *op : operators) {
-        if (op->op_type == OP_INPUT) {
-          NoOp *noop = (NoOp *)op;
-          if (noop->input_tensor_guid == tensor->tensor_guid) {
-            parallel_tensor = op->outputs[0];
-          }
-        }
-      }
-      tensor->parallel_tensor = parallel_tensor.value();
-    }
-    // map weights to parallel_tensor
-    assert (layer->weights.size() == layer->numWeights);
-
-    bool found = false;
-    for (Op const *op : operators) {
-      if (op->layer_guid == layer->layer_guid) {
-        found = true;
-        assert(op->op_type == layer->op_type);
-        assert(op->numWeights == layer->numWeights);
-        for (int i = 0; i < layer->numWeights; i++) {
-          Tensor weight = layer->weights[i];
-          weight->parallel_tensor = op->weights[i];
-        }
-      }
-    }
-    assert (found);
-  }
 }
 
 void FFModel::execute_graph_optimize() {
