@@ -30,11 +30,11 @@ void init_meta(ConcatPerDeviceState *m, int legion_axis) {
 void calc_blk_size(size_t &num_blocks,
                    size_t &blk_size,
                    ArrayShape const &shape,
-                   int m->legion_axis) {
+                   int axis) {
   num_blocks = 1;
   blk_size = 1;
   for (int d = 0; d < shape.num_dims(); d++) {
-    if (d <= m->legion_axis) {
+    if (d <= axis) {
       blk_size *= shape[d];
     } else {
       num_blocks *= shape[d];
