@@ -18,10 +18,15 @@
 #include <string>
 
 int main(int argc, char *argv[]) {
-  std::string vocab_file = "./gpt2_bpe/vocab.bpe";
-  std::string merge_file = "./gpt2_bpe/encoder.json";
+  if (argc != 2 || (strcmp(argv[1], "gpt-2") && strcmp(argv[1], "opt") )) {
+    fprintf(stderr, "Usage: %s <gpt-2|opt>\n", argv[0]);
+    return 1;
+  }
+  tokenizer_mode mode = strcmp(argv[1], "gpt-2") == 0 ? GPT2 : OPT;
+  std::string vocab_file = mode == GPT2 ? "./gpt2_bpe/vocab.bpe" : "opt_bpe/vocab.bpe";
+  std::string merge_file = mode == GPT2 ? "./gpt2_bpe/encoder.json" : "opt_bpe/encoder.json";
 
-  GPT_Tokenizer tokenizer(merge_file, vocab_file);
+  GPT_Tokenizer tokenizer(mode, merge_file, vocab_file);
 
   std::string line;
   std::vector<std::string> lines;
@@ -30,7 +35,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Error opening input file" << std::endl;
     return -1;
   }
-  std::ofstream outfile("./wikitext-103-raw/wiki.valid.bpe.flexflow",
+  std::ofstream outfile(mode == GPT2 ? "./wikitext-103-raw/wiki.valid.bpe.flexflow.gpt2" : "./wikitext-103-raw/wiki.valid.bpe.flexflow.opt",
                         std::ofstream::out);
   if (!outfile) {
     std::cout << "Error opening output file" << std::endl;
