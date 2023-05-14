@@ -1,17 +1,16 @@
+#include "compiler/compiler.h"
 #include "compiler/unity_algorithm.h"
 
 namespace FlexFlow {
 
-SerialParallelDecomposition
-    get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
-  return get_serial_parallel_decomposition(unsafe_view_as_digraph(pcg.graph()));
+SerialParallelDecomposition get_serial_parallel_decomposition(OptimizerPCG const &pcg) {
+  return get_serial_parallel_decomposition(unsafe_view_as_digraph(MultiDiGraphView(pcg)));
 }
 
-std::vector<MultiDiEdge>
-    get_sorted_node_input_edges(ParallelComputationGraph const &pcg,
-                                Node const &n) {
+std::vector<MultiDiEdge> get_sorted_node_input_edges(OptimizerPCG const &pcg,
+                                                     Node const &n) {
   std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>>
-      incoming_edges = get_incoming_edges_by_idx(pcg.graph(), n);
+      incoming_edges = get_incoming_edges_by_idx(MultiDiGraphView(pcg), n);
 
   std::vector<MultiDiEdge> result;
   for (std::size_t i = 0; i < incoming_edges.size(); i++) {
@@ -22,9 +21,9 @@ std::vector<MultiDiEdge>
 }
 
 std::unordered_map<MultiDiEdge, ParallelTensorShape>
-    infer_tensor_shapes(ParallelComputationGraph const &pcg) {
+    infer_tensor_shapes(OptimizerPCG const &pcg) {
   std::unordered_map<MultiDiEdge, ParallelTensorShape> result;
-  for (Node const &n : get_topological_ordering(pcg.graph())) {
+  for (Node const &n : get_topological_ordering(MultiDiGraphView(pcg))) {
     PCGOperatorAttrs op = pcg.at(n);
 
     std::vector<ParallelTensorShape> input_tensor_shapes =
@@ -34,7 +33,7 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
     std::vector<ParallelTensorShape> output_tensor_shapes =
         get_output_shapes(op, input_tensor_shapes);
 
-    auto outgoing_edges = get_outgoing_edges_by_idx(pcg.graph(), n);
+    auto outgoing_edges = get_outgoing_edges_by_idx(MultiDiGraphView(pcg), n);
 
     for (std::size_t i = 0; i < output_tensor_shapes.size(); i++) {
       if (contains_key(outgoing_edges, i)) {
@@ -45,7 +44,7 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
     }
   }
 
-  assert(result.size() == get_edges(pcg.graph()).size());
+  assert(result.size() == get_edges(MultiDiGraphView(pcg)).size());
 
   return result;
 }
@@ -130,25 +129,27 @@ LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
                  std::unordered_set<Node> const &nodes,
                  InputSettings input_settings,
                  OutputSettings output_settings) {
+ 
+  auto iview = LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>(g).unsafe();
 
   if (input_settings == InputSettings::INCLUDE_INPUTS &&
       output_settings == OutputSettings::INCLUDE_OUTPUTS) {
-    LabelledOpenMultiDiSubgraphView subgraph_view(g, nodes);
+    LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> subgraph_view(*iview, nodes);
     return materialize_labelled_openmultidigraph_view(subgraph_view);
   } else if (input_settings == InputSettings::INCLUDE_INPUTS &&
              output_settings == OutputSettings::EXCLUDE_OUTPUTS) {
-    LabelledUpwardMultiDiSubgraphView subgraph_view(g, nodes);
+    LabelledUpwardMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel> subgraph_view(*iview, nodes);
     return materialize_labelled_openmultidigraph_view(
         view_as_labelled_open_multidisubgraph(subgraph_view));
   } else if (input_settings == InputSettings::EXCLUDE_INPUTS &&
              output_settings == OutputSettings::INCLUDE_OUTPUTS) {
-    LabelledDownwardMultiDiSubgraphView subgraph_view(g, nodes);
+    LabelledDownwardMultiDiSubgraphView<NodeLabel, EdgeLabel, OutputLabel> subgraph_view(*iview, nodes);
     return materialize_labelled_openmultidigraph_view(
         view_as_labelled_open_multidisubgraph(subgraph_view));
   } else {
-    LabelledMultiDiSubgraphView subgraph_view(g, nodes);
+    LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> subgraph_view(*iview, nodes);
     return materialize_labelled_openmultidigraph_view(
-        view_as_labelled_open_multidisubgraph(subgraph_view));
+        view_as_labelled_open_multidisubgraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>(subgraph_view));
   }
 
   // OpenMultiDiGraph const &base_graph(g);
@@ -362,10 +363,10 @@ struct OptimalCost {
   // TODO: move them out of the functor
   template <typename T>
   size_t hash_state(T const &sp_decomposition) const {
-    size_t h = std::hash<T>(sp_decomposition);
+    size_t h = std::hash<T>{}(sp_decomposition);
     hash_combine(h, resource);
-    hash_combine(source_machine_view);
-    hash_combine(sink_machine_view);
+    hash_combine(h, source_machine_view);
+    hash_combine(h, sink_machine_view);
     return h;
   }
 
@@ -378,12 +379,12 @@ struct OptimalCost {
 
   void save_result_to_cache(size_t hash_value, Strategy const &strategy) const {
     assert(!contains_key(cached_subgraph_costs, hash_value));
-    cached_subgraph_costs[hash_value] = strategy;
+    cached_subgraph_costs.emplace(hash_value, strategy);
   }
 
   template <typename T>
   Strategy operator()(T const &t) const {
-    size_t state_hash_value = hash_state(serial);
+    size_t state_hash_value = hash_state(t);
     optional<Strategy> cached_result = load_result_from_cache(state_hash_value);
     if (cached_result) {
       return cached_result.value();
@@ -391,7 +392,7 @@ struct OptimalCost {
 
     Strategy result = this->optimal_cost(t);
 
-    save_result_to_cache(state_hash_value, optimal_result);
+    save_result_to_cache(state_hash_value, result);
     return result;
   }
 
@@ -536,11 +537,10 @@ struct OptimalCost {
 };
 
 SubParallelComputationGraph
-    to_sub_parallel_computation_graph(ParallelComputationGraph const &g) {}
+    to_sub_parallel_computation_graph(OptimizerPCG const &g) {}
 
 Strategy
-    optimal_cost(ParallelComputationGraph const &g,
-                 SerialParallelDecomposition const &sp_decomposition,
+    optimal_cost(OptimizerPCG const &g,
                  std::function<std::unordered_set<MachineView>(
                      PCGOperatorAttrs const &, MachineResource const &)> const
                      &allowed_machine_views,

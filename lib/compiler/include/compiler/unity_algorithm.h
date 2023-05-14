@@ -4,6 +4,7 @@
 #include "op-attrs/operator_attrs.h"
 #include "pcg/machine_view.h"
 #include "utils/graph.h"
+#include "compiler.h"
 
 namespace FlexFlow {
 
@@ -28,7 +29,7 @@ struct ICostEstimator {
                               MachineView const &mv) const = 0;
   virtual float estimate_cost(ParallelTensorShape const &tensor_shape,
                               MachineView const &src,
-                              MachineView const &dst) = 0;
+                              MachineView const &dst) const = 0;
 };
 
 std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g);
@@ -44,6 +45,10 @@ using SubParallelComputationGraph =
                              ParallelTensorShape,
                              MachineView>;
 
+enum class InputSettings { INCLUDE_INPUTS, EXCLUDE_INPUTS };
+
+enum class OutputSettings { INCLUDE_OUTPUTS, EXCLUDE_OUTPUTS };
+
 template <typename NodeLabel,
           typename EdgeLabel,
           typename InputLabel = EdgeLabel,
@@ -56,15 +61,6 @@ LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
                  std::unordered_set<Node> const &nodes,
                  InputSettings input_settings,
                  OutputSettings output_settings);
-
-enum class InputSettings { INCLUDE_INPUTS, EXCLUDE_INPUTS };
-
-enum class OutputSettings { INCLUDE_OUTPUTS, EXCLUDE_OUTPUTS };
-
-struct ParallelComputationGraph {
-  MultiDiGraphView const &graph() const;
-  PCGOperatorAttrs const &at(Node const &) const;
-};
 
 struct Strategy {
   Strategy(float runtime, std::unordered_map<Node, MachineView> machine_views);
@@ -79,8 +75,7 @@ struct Strategy {
 };
 
 Strategy
-    optimal_cost(ParallelComputationGraph const &g,
-                 SerialParallelDecomposition const &sp_decomposition,
+    optimal_cost(OptimizerPCG const &g,
                  std::function<std::unordered_set<MachineView>(
                      PCGOperatorAttrs const &, MachineResource const &)> const
                      &allowed_machine_views,
@@ -88,5 +83,19 @@ Strategy
                  MachineResource const &resources);
 
 } // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<::FlexFlow::Serial> {
+  size_t operator()(::FlexFlow::Serial const &) const; 
+};
+
+template <>
+struct hash<::FlexFlow::Parallel> {
+  size_t operator()(::FlexFlow::Parallel const &) const;
+};
+
+}; // namespace std
+
 
 #endif
