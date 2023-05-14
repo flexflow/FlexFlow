@@ -24,13 +24,14 @@ class OPT {
 public:
   struct Config {
     Config(void) {
-      vocab_size = 50272, word_embed_proj_dim = 768, hidden_size = 768;
+      vocab_size = 50272;
+      word_embed_proj_dim = 4096;
+      hidden_size = 4096;
       max_position_embeddings = 2048;
       layer_norm_elementwise_affine = true;
-      num_attention_heads = 12;
+      num_hidden_layers = 32;
       dropout = 0.1;
-      seed = 3;
-      ffn_dim = 3072;
+      ffn_dim = 16384;
       num_hidden_layers = 12;
       max_beam_width = 1;
       batchSize = 8;
@@ -46,13 +47,22 @@ public:
     int max_position_embeddings;
     bool layer_norm_elementwise_affine;
     float dropout;
-    unsigned long long seed;
     int ffn_dim;
     int num_hidden_layers;
     int max_beam_width;
     int batchSize;
     int sentence_len;
     int max_beam_depth;
+  };
+
+  struct Small_Config : public Config {
+    Small_Config(void) {
+      word_embed_proj_dim = 768;
+      hidden_size = 768;
+      num_attention_heads = 12;
+      ffn_dim = 3072;
+      num_hidden_layers = 12;
+    }
   };
 
   static void create_opt_model(FFModel &ff,

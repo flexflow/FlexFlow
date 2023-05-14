@@ -53,6 +53,16 @@ public:
     std::string tokenizer_file_path;
   };
 
+  struct Small_Config : public Config {
+    Small_Config(void) {
+      vocab_size = 50265;
+      dim = 768;
+      n_heads = 12;
+      n_layers = 12;
+      hidden_dim = 3072;
+    }
+  };
+
   static void create_llama_model(FFModel &ff,
                                  InferenceManager &im,
                                  Config const &llama_config,

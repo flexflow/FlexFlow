@@ -35,7 +35,7 @@ void FlexFlow::top_level_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffconfig;
-  OPT::Config opt_config;
+  OPT::Small_Config opt_config;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;

@@ -59,7 +59,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  int num_transformer_layers = 32;
+  int num_transformer_layers = llama_config.n_layers;
   int num_transformer_layers_per_stage =
       (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
 
@@ -169,7 +169,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   }
   // final normalization and linear
   std::vector<int> axes = {2};
-  token = ff.rms_norm(token, 1e-6, 4096);
+  token = ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
   Layer *final_norm = ff.layers.back();
   weights_layers.emplace("norm_weight", final_norm);
 
