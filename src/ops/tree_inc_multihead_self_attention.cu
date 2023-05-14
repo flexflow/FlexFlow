@@ -182,10 +182,14 @@ __global__ void tree_apply_rotary_embedding(
     // create complex number
     int head_idx = i / (num_tokens * proj_size / 2);
     int idx = i % (num_tokens * proj_size / 2);
+    int token_idx =
+        (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
+
     int real_part_index =
-        idx * 2 + head_idx * (q_block_size + k_block_size + v_block_size) +
+        idx + token_idx * (proj_size / 2) +
+        head_idx * (q_block_size + k_block_size + v_block_size) +
         (q_tensor ? 0 : q_block_size);
-    int complex_part_index = real_part_index + 1;
+    int complex_part_index = real_part_index + (proj_size / 2);
 
     complex_input[i] = {input_ptr[real_part_index],
                         input_ptr[complex_part_index]};
@@ -196,8 +200,7 @@ __global__ void tree_apply_rotary_embedding(
 
     // get position of token
     //  int head_idx = i / (num_tokens * proj_size);
-    int token_idx =
-        (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
+
     // size_t pos = id_map[token_idx].token_position;
     size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
@@ -209,20 +212,9 @@ __global__ void tree_apply_rotary_embedding(
     cuFloatComplex complex_pos = {cos(freq), sin(freq)};
 
     complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-    input_ptr[real_part_index] = complex_input[i].x;
-    input_ptr[real_part_index + 1] = complex_input[i].y;
 
-    // if (i % 64 == 1 && head_idx == 0) {
-    //   printf("head id: %d, tokenid: %d, pospospos:->  %d, before real part
-    //   %f, "
-    //          "before complex part: %f, real part: %f,"
-    //          "complext part: %f,  freq_cis real: %f, freq_cis commplexx
-    //          %f\n", head_idx, token_idx, pos, before_real, before_complex,
-    //          complex_input[i].x,
-    //          complex_input[i].y,
-    //          complex_pos.x,
-    //          complex_pos.y);
-    // }
+    input_ptr[real_part_index] = complex_input[i].x;
+    input_ptr[complex_part_index] = complex_input[i].y;
   }
 }
 
