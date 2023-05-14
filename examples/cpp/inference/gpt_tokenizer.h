@@ -31,16 +31,20 @@ struct hash_pair {
   }
 };
 
+enum tokenizer_mode { GPT2, OPT };
+
 class GPT_Tokenizer {
 
 public:
-  GPT_Tokenizer(std::string const &vocab_file,
+  GPT_Tokenizer(tokenizer_mode mode_,
+                std::string const &vocab_file,
                 std::string const &merge_file,
                 std::string const &bos_token_str = "<s>",
                 const std::string eos_token_str = "</s>",
                 const std::string pad_token_str = "<pad>",
                 const std::string unk_token_str = "<unk>",
                 const std::string mask_token_str = "<mask>") {
+    mode = mode_;
     load_vocab(vocab_file);
     load_merge(merge_file);
     bos_token = bos_token_str;
@@ -58,6 +62,7 @@ public:
               size_t max_length,
               std::vector<int64_t> *input_ids,
               std::vector<int64_t> *mask_ids);
+  tokenizer_mode mode;
   std::string bos_token;
   std::string eos_token;
   std::string pad_token;
