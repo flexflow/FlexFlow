@@ -39,7 +39,6 @@
 #include "kernels/ff_handle.h"
 #include "op-attrs/tensor_shape.h"
 #include "legion_parallel_tensor_shape.h"
-#include "index_space_manager.h"
 #include "computation_graph.h"
 #include "parallel_computation_graph.h"
 #include "tensor_mapping.h"
@@ -77,6 +76,12 @@ public:
   void forward(int seq_length = -1);  
   void backward(int seq_length = -1);
   void update();
+
+  template <typename T>
+  void set_tensor(TensorDims const &, T const *);
+
+  template <typename T>
+  void get_tensor(tensor_guid_t, T *data);
   
   // ========================================
   // Internal APIs that should not be invoked from applications
@@ -109,7 +114,6 @@ public:
   /* optional<Tensor> label_tensor; */
   SimEnvFactory sim_factory;
 
-  IndexSpaceManager index_space_mgr;
   ComputationGraph computation_graph;
   ParallelComputationGraph pcg;
   TensorMapping tensor_map;

@@ -24,7 +24,6 @@
 #include "op-attrs/ffconst.h"
 #include "pcg/machine_view.h"
 #include "utils/record_formatter.h"
-#include "legion.h"
 #include <ostream>
 #include <unordered_map>
 #include "utils/strong_typedef.h"
@@ -34,7 +33,6 @@
 
 namespace FlexFlow {
 
-class FFModel;
 class FFConfig;
 
 /**
@@ -52,12 +50,12 @@ struct ParallelTensor {
                  optional<ParameterSyncType> sync_type = nullopt,
                  Initializer *initializer = nullptr);
 
-  void inline_map(FFConfig &config);
-  void inline_unmap(FFConfig &config);
-  template <typename T>
-  T *get_raw_ptr(FFConfig &config);
-  void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
-  void detach_raw_ptr(FFConfig &config);
+  /* void inline_map(FFConfig &config); */
+  /* void inline_unmap(FFConfig &config); */
+  /* template <typename T> */
+  /* T *get_raw_ptr(FFConfig &config); */
+  /* void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major); */
+  /* void detach_raw_ptr(FFConfig &config); */
   bool get_input_sub_tensor(MachineView const &,
                             ParallelTensor &tensor,
                             OperatorType type);
@@ -71,17 +69,11 @@ struct ParallelTensor {
   size_t get_total_num_parts() const;
   int get_num_replica_dims() const;
   int get_num_replicas() const;
-  Legion::Domain get_domain() const;
+  /* Legion::Domain get_domain() const; */
   bool check_valid() const;
   bool is_valid_machine_view(MachineView const &view) const;
   void print(std::string const &name) const;
   static bool update_parallel_ids(int numdim, ParallelDim *dims);
-  template <typename T>
-  bool set_tensor(FFModel const *model,
-                  std::vector<int> const &dims,
-                  T const *data);
-  template <typename T>
-  bool get_tensor(FFModel const *model, T *data, bool get_parameters);
   ParallelTensorShape get_shape() const;
 
 private:

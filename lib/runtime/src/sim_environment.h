@@ -6,10 +6,47 @@
 #include <vector>
 #include "cost_metrics.h"
 #include "kernels/allocation.h"
+#include "op_task_signature.h"
+#include "task_argument_accessor.h"
 
 namespace FlexFlow {
 
-struct SimEnvironment { };
+enum class Trainable { 
+  YES, NO
+};
+
+struct InputParallelTensorDesc {
+public:
+  ParallelTensorShape shape;
+  Trainable trainable;
+};
+
+struct InputVariadicParallelTensorDesc {
+public:
+  std::vector<ParallelTensorShape> shapes;
+  Trainable trainable;
+};
+
+struct SimTaskBinding {
+  void bind(slot_id, ParallelTensorShape const &);
+  void bind_untrainable(slot_id, ParallelTensorShape const &);
+  void bind(slot_id, ParallelTensorShape const &, Trainable);
+  void bind(slot_id, InputParallelTensorDesc const &);
+
+  void bind(slot_id, std::vector<ParallelTensorShape> const &);
+  void bind_untrainable(slot_id, std::vector<ParallelTensorShape> const &);
+  void bind(slot_id, std::vector<ParallelTensorShape> const &, Trainable);
+  void bind(slot_id, InputVariadicParallelTensorDesc const &);
+
+  template <typename T>
+  void bind_arg(slot_id, T const &);
+};
+
+
+struct SimEnvironment { 
+  TaskArgumentAccessor get_fwd_accessor(task_id_t, SimTaskBinding const &);
+  TaskArgumentAccessor get_bwd_accessor(task_id_t, SimTaskBinding const &);
+};
 
 struct SimEnvFactory {
   SimEnvironment new_environment() const;
@@ -51,6 +88,7 @@ size_t get_op_total_memory(SimEnvironment const &);
 CostMetrics make_metrics(float forward_time, float backward_time, float sync_time, SimEnvironment const &);
 
 float default_estimate_sync_time(SimEnvironment const &);
+
 
 }
 

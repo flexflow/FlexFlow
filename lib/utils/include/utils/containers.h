@@ -314,20 +314,22 @@ std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
   return result;
 }
 
-template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
-std::vector<Out> transform(F const &f, std::vector<In> const &v) {
-  return vector_transform(f, v);
+template <typename C, typename F, typename In = typename C::value_type, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::vector<Out> transform(F const &f, C const &v) {
+  std::vector<Out> result;
+  std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
+  return result;
 }
 
-template <typename F, typename Elem>
-std::vector<Elem> filter(std::vector<Elem> const &v, F const &f) {
-  std::vector<Elem> result = v;
+template <typename C, typename F>
+C filter(C const &v, F const &f) {
+  C result(v);
   inplace_filter(result, f);
   return result;
 }
 
-template <typename F, typename Elem>
-void inplace_filter(std::vector<Elem> &v, F const &f) {
+template <typename C, typename F, typename Elem = typename C::value_type>
+void inplace_filter(C &v, F const &f) {
   std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
 }
 

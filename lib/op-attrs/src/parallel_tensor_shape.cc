@@ -4,10 +4,6 @@
 
 namespace FlexFlow {
 
-ParallelDim::ParallelDim(size_t size, int degree, bool is_replica_dim) 
-  : size(size), degree(degree), is_replica_dim(is_replica_dim)
-{ }
-
 static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
   std::vector<ParallelDim> lifted_dims;
   for (size_t dim_size : dims) {
@@ -18,7 +14,7 @@ static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
 }
 
 ParallelTensorDims::ParallelTensorDims(TensorDims const &dims) 
-  : FFOrdered<ParallelDim>(lift_dims(dims))
+  : data(lift_dims(dims))
 { }
   
 
@@ -30,35 +26,16 @@ int get_num_replica_dims(ParallelTensorShape const &shape) {
   return count(shape.dims, is_replica_dim);
 }
 
-int get_num_replicas(ParallelTensorShape const &shape) const {
-  return product(transform(filter(is_replica_dim, shape.dims), &ParallelDim::degree));
+int get_num_replicas(ParallelTensorShape const &shape) {
+  return product(transform([](ParallelDim const &d) -> int { return d.degree; }, filter(shape.dims, is_replica_dim)));
+}
+
+bool is_valid(ParallelTensorDims const &dims) {
+  return all_of(dims, [](ParallelDim const &d) { return is_valid(d); });
 }
 
 bool is_valid(ParallelTensorShape const &shape) {
-  return all_of(shape.dims, is_valid) && shape.data_type != DT_NONE;
-}
-
-std::unordered_map<int, int>
-    ParallelTensorShape::get_mv_dim_to_tensor_dim_mapping() const {
-  std::unordered_map<int, int> result;
-  for (int i = 0; i < this->num_dims; i++) {
-    int machine_view_dim = this->dims[i].parallel_idx;
-    if (machine_view_dim != -1) {
-      assert(result.find(machine_view_dim) == result.end());
-      result[machine_view_dim] = i;
-    }
-  }
-  return result;
-}
-
-std::unordered_map<int, int>
-    ParallelTensorShape::get_tensor_dim_to_mv_dim_mapping() const {
-  std::unordered_map<int, int> result;
-  for (auto const &kv : this->get_mv_dim_to_tensor_dim_mapping()) {
-    assert(result.find(kv.second) == result.end());
-    result[kv.second] = kv.first;
-  }
-  return result;
+  return is_valid(shape.dims) && shape.data_type != DT_NONE;
 }
 
 }

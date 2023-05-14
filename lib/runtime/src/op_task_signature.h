@@ -36,7 +36,9 @@ struct OpTaskSignature {
   OpTaskType get_task_type() const;
 
   void add_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_untrainable_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_bwd_necessary_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
 
   /* void add_input_slot(slot_id, Legion::PrivilegeMode); */

@@ -55,7 +55,7 @@ struct TaskArgumentAccessor {
                        Legion::Runtime *runtime);
 
   template <typename T>
-  T const &get_argument(slot_id slot) {
+  T const &get_argument(slot_id slot) const {
     TaskArgumentFormat arg_fmt = this->args_fmt.args.at(slot);
     std::type_index actual_type = arg_fmt.type;
     std::type_index requested_type = {typeid(T)};
@@ -89,24 +89,24 @@ struct TaskArgumentAccessor {
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx_t, ParallelTensorSpec> const &p) {
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx_t, ParallelTensorSpec> const &p) const {
     return this->get_generic_accessor<PRIV>(p.second, p.first);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) {
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const {
     auto argument_format = get<NonvariadicFormat>(this->args_fmt.region_idxs.at(slot));
 
     return this->get_generic_accessor<PRIV>(argument_format);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) {
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const {
     return this->get_tensor<PRIV>(slot, IsGrad::YES);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot) {
+  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot) const {
     std::vector<privilege_mode_to_accessor<PRIV>> result;
 
     auto argument_format = get<VariadicFormat>(this->args_fmt.region_idxs.at(slot));
@@ -118,7 +118,7 @@ struct TaskArgumentAccessor {
   }
 
   template <Legion::PrivilegeMode PRIV>
-  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor_grad(slot_id slot) {
+  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor_grad(slot_id slot) const {
     return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES); 
   }
 private:

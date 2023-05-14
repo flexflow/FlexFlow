@@ -56,6 +56,22 @@ private:
   std::shared_ptr<void const *> ptr;
 };
 
+template <typename T>
+struct IndexArg {
+  IndexArg() = delete;
+
+  template <typename F>
+  IndexArg(F const &f) 
+    : f(f) {
+    static_assert(std::is_same<decltype(std::declval<F>()(std::declval<Legion::DomainPoint>())), T>::value, "");
+  }
+
+  T get(Legion::DomainPoint const &p) {
+    return f(p);
+  }
+private:
+  std::function<T(Legion::DomainPoint const &)> f;
+};
 
 struct IndexArgSpec {
 public:
@@ -208,13 +224,34 @@ public:
 
 using ArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
 
+template <typename T>
+using TypedTaskArg = variant<T, IndexArg<T>, TypedFuture<T>, TypedFutureMap<T>, ArgRef<T>>;
+
 std::type_index get_type_index(ArgSpec);
+
+struct TaskInvocation;
+
+template <typename T> struct TypedTaskInvocation { };
+
+template <typename T>
+TypedTaskInvocation<T> check_return_type(TaskInvocation const &);
 
 struct TaskBinding {
 public:
-  explicit TaskBinding(InvocationType);
+  static TaskBinding index_launch(MachineView const &);
+  static TaskBinding index_launch(parallel_tensor_guid_t const &);
+  static TaskBinding index_launch(slot_id const &);
+  static TaskBinding standard_launch();
+  static TaskBinding sync_type_dependent_launch(parallel_tensor_guid_t);
+  static TaskBinding sync_type_dependent_launch(slot_id);
 
-  void bind(slot_id, ParallelTensorSpec const &);
+  void bind(slot_id, parallel_tensor_guid_t const &);
+
+  template <typename T>
+  void bind_arg(slot_id name, TypedTaskArg<T> const &);
+
+  template <typename T>
+  void bind_arg(slot_id, TypedTaskInvocation<T> const &);
 
   template <typename T>
   void bind_arg(slot_id name, T const &t) {

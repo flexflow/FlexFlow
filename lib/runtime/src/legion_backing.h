@@ -5,6 +5,7 @@
 #include "utils/visitable.h"
 #include "kernels/per_device_op_state.h"
 #include "parallel_computation_graph.h"
+#include "index_space_manager.h"
 
 namespace FlexFlow {
 
@@ -44,12 +45,15 @@ public:
 };
 
 struct RuntimeBacking {
+  RuntimeBacking() = delete;
+
   OperatorLegionBacking at(operator_guid_t const &) const;
   ParallelTensorLegionBacking at(parallel_tensor_guid_t const &) const;
 public:
   LegionConfig legion_config;
   std::unordered_map<operator_guid_t, OperatorLegionBacking> op_backing;
   std::unordered_map<parallel_tensor_guid_t, ParallelTensorLegionBacking> parallel_tensor_backing;
+  IndexSpaceManager index_space_mgr;
 };
 
 struct NcclCommunicators {
@@ -62,7 +66,7 @@ std::vector<MachineView> get_all_machine_view(int num_nodes,
                                               int gpus_per_node,
                                               int cpus_per_node);
 RuntimeBacking initializer_runtime();
-NcclCommunicators initialize_nccl_communicators(LegionConfig const &);
+NcclCommunicators initialize_nccl_communicator(LegionConfig const &);
 ncclComm_t *find_nccl_comms(MachineView const &);
 
 

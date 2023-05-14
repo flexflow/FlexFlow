@@ -14,16 +14,11 @@ public:
   IndexSpaceManager() = delete;
   IndexSpaceManager(LegionConfig const &);
 
-  Legion::IndexSpace get_or_create_task_is(MachineView const &);
-  Legion::IndexSpace get_or_create_task_is(Legion::Domain const &);
-  Legion::IndexSpace get_or_create_task_is(ParallelTensorDims const &);
-
-  Legion::IndexSpace get_task_is(MachineView const &) const;
-  Legion::IndexSpace get_task_is(Legion::Domain const &) const;
-  Legion::IndexSpace get_task_is(ParallelTensorDims const &) const;
+  Legion::IndexSpace const &at(MachineView const &) const;
+  Legion::IndexSpace const &at(Legion::Domain const &) const;
 private:
   LegionConfig config;
-  std::map<MachineView, Legion::IndexSpace> all_task_is;
+  mutable std::unordered_map<MachineView, Legion::IndexSpace> all_task_is;
 };
 
 }

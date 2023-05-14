@@ -8,7 +8,7 @@ IndexSpaceManager::IndexSpaceManager(LegionConfig const &config)
   : config(config), all_task_is()
 { }
 
-IndexSpace IndexSpaceManager::get_or_create_task_is(MachineView const &view) {
+IndexSpace const &IndexSpaceManager::at(MachineView const &view) const {
   if (contains_key(this->all_task_is, view)) {
     return all_task_is.at(view);
   }
@@ -32,7 +32,7 @@ IndexSpace IndexSpaceManager::get_or_create_task_is(MachineView const &view) {
       assert(false);
   }
   all_task_is[view] = task_is;
-  return task_is;
+  return all_task_is.at(view);
 }
 
 static MachineView get_example_view(Domain const &domain) {
@@ -46,13 +46,8 @@ static MachineView get_example_view(Domain const &domain) {
   return view;
 }
 
-IndexSpace IndexSpaceManager::get_or_create_task_is(Domain const &domain) {
-  return get_or_create_task_is(get_example_view(domain));
-}
-
-IndexSpace IndexSpaceManager::get_task_is(Domain const &domain) const {
-  MachineView view = get_example_view(domain); 
-  return this->all_task_is.at(view);
+IndexSpace const &IndexSpaceManager::at(Domain const &domain) const {
+  return this->at(get_example_view(domain));
 }
 
 static MachineView singleton_view() {
@@ -67,64 +62,64 @@ static MachineView singleton_view() {
   };
 }
 
-static int get_index_space_dimension(ParallelTensorDims const &dims) {
-  std::vector<int> parallel_idxs;
-  for (ParallelDim const &dim : dims) {
-    if (dim.parallel_idx >= 0) {
-      parallel_idxs.push_back(dim.parallel_idx);
-    }
-  }
+/* static int get_index_space_dimension(ParallelTensorDims const &dims) { */
+/*   std::vector<int> parallel_idxs; */
+/*   for (ParallelDim const &dim : dims) { */
+/*     if (dim.parallel_idx >= 0) { */
+/*       parallel_idxs.push_back(dim.parallel_idx); */
+/*     } */
+/*   } */
 
-  for (int parallel_idx : parallel_idxs) {
-    assert (parallel_idx < parallel_idxs.size());
-  }
+/*   for (int parallel_idx : parallel_idxs) { */
+/*     assert (parallel_idx < parallel_idxs.size()); */
+/*   } */
 
-  return parallel_idxs.size();
-}
+/*   return parallel_idxs.size(); */
+/* } */
 
 
-IndexSpace IndexSpaceManager::get_or_create_task_is(ParallelTensorDims const &dims) {
-  int index_space_dimension = get_index_space_dimension(dims);
-  if (index_space_dimension == 0) {
-    return get_or_create_task_is(singleton_view());
-  }
+/* IndexSpace IndexSpaceManager::get_or_create_task_is(ParallelTensorDims const &dims) { */
+/*   int index_space_dimension = get_index_space_dimension(dims); */
+/*   if (index_space_dimension == 0) { */
+/*     return get_or_create_task_is(singleton_view()); */
+/*   } */
 
-  std::vector<optional<StridedRectangleSide>> sides(index_space_dimension, nullopt);
+/*   std::vector<optional<StridedRectangleSide>> sides(index_space_dimension, nullopt); */
 
-  for (ParallelDim const &dim : dims) {
-    if (dim.parallel_idx >= 0) {
-      sides.at(dim.parallel_idx) = {dim.degree, 1};
-    }
-  }
+/*   for (ParallelDim const &dim : dims) { */
+/*     if (dim.parallel_idx >= 0) { */
+/*       sides.at(dim.parallel_idx) = {dim.degree, 1}; */
+/*     } */
+/*   } */
 
-  StridedRectangle rect = { 0, value_all(sides) };
-  MachineView view = { DeviceType::GPU, rect };
-  return get_or_create_task_is(view);
-}
+/*   StridedRectangle rect = { 0, value_all(sides) }; */
+/*   MachineView view = { DeviceType::GPU, rect }; */
+/*   return get_or_create_task_is(view); */
+/* } */
 
-IndexSpace IndexSpaceManager::get_task_is(MachineView const &view) const {
-  return all_task_is.at(view);
-}
+/* IndexSpace IndexSpaceManager::get_task_is(MachineView const &view) const { */
+/*   return all_task_is.at(view); */
+/* } */
 
-IndexSpace IndexSpaceManager::get_task_is(ParallelTensorDims const &dims) const {
-  int index_space_dimension = get_index_space_dimension(dims);
-  if (index_space_dimension == 0) {
-    return get_task_is(singleton_view());
-  }
+/* IndexSpace IndexSpaceManager::get_task_is(ParallelTensorDims const &dims) const { */
+/*   int index_space_dimension = get_index_space_dimension(dims); */
+/*   if (index_space_dimension == 0) { */
+/*     return get_task_is(singleton_view()); */
+/*   } */
 
-  std::vector<optional<StridedRectangleSide>> sides(index_space_dimension, nullopt);
+/*   std::vector<optional<StridedRectangleSide>> sides(index_space_dimension, nullopt); */
 
-  for (ParallelDim const &dim : dims) {
-    if (dim.parallel_idx >= 0) {
-      sides.at(dim.parallel_idx) = {dim.degree, 1};
-    }
-  }
+/*   for (ParallelDim const &dim : dims) { */
+/*     if (dim.parallel_idx >= 0) { */
+/*       sides.at(dim.parallel_idx) = {dim.degree, 1}; */
+/*     } */
+/*   } */
 
-  StridedRectangle rect = { 0, value_all(sides) };
-  MachineView view = { DeviceType::GPU, rect };
-  return get_task_is(view);
+/*   StridedRectangle rect = { 0, value_all(sides) }; */
+/*   MachineView view = { DeviceType::GPU, rect }; */
+/*   return get_task_is(view); */
 
-}
+/* } */
 
 /* IndexSpace FFModel::get_task_is(ParallelConfig const &pc) const { */
 /*   MachineView view; */
