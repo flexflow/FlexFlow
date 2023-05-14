@@ -21,23 +21,39 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("llama");
 
-void parse_input_args(char **argv, int argc, LLAMA::Config &config) {
+struct FilePaths {
+  std::string weight1_file_path;
+  std::string weight2_file_path;
+  std::string weight3_file_path;
+  std::string weight4_file_path;
+  std::string tokenizer_file_path;
+};
+
+void parse_input_args(char **argv, int argc, FilePaths &paths) {
   for (int i = 1; i < argc; i++) {
-    // input
-    if (!strcmp(argv[i], "--dataset")) {
-      config.input_path = std::string(argv[++i]);
-      continue;
-    }
-
     // weights
-    if (!strcmp(argv[i], "--weights")) {
-      config.weight_file_path = std::string(argv[++i]);
+    if (!strcmp(argv[i], "--weight1")) {
+      paths.weight1_file_path = std::string(argv[++i]);
       continue;
     }
-
+    // weights
+    if (!strcmp(argv[i], "--weight2")) {
+      paths.weight2_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // weights
+    if (!strcmp(argv[i], "--weight3")) {
+      paths.weight3_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // weights
+    if (!strcmp(argv[i], "--weight4")) {
+      paths.weight4_file_path = std::string(argv[++i]);
+      continue;
+    }
     // tokenizer
     if (!strcmp(argv[i], "--tokenizer")) {
-      config.tokenizer_file_path = std::string(argv[++i]);
+      paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
   }
@@ -48,23 +64,32 @@ void FlexFlow::top_level_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffconfig;
-  LLAMA::Config llama_config;
+  FilePaths file_paths;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv, argc, llama_config);
-  SentencePieceTokenizer tokenizer(llama_config.tokenizer_file_path);
-  InferenceManager im(ffconfig, llama_config.max_num_tokens, 1);
+  parse_input_args(argv, argc, file_paths);
+  SentencePieceTokenizer tokenizer(file_paths.tokenizer_file_path);
+  InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm(&tokenizer);
   std::string text2 = "I believe the meaning of life is";
-  rm.register_new_request(text2, llama_config.max_seq_len);
+  int total_num_requests = 5;
+  for (int i = 0; i < total_num_requests; i++) {
+    rm.register_new_request(text2, 128);
+  }
 
   FFModel beam_model(ffconfig), tree_model(ffconfig);
-  LLAMA::create_llama_model(beam_model, im, llama_config, 1, BEAM_SEARCH_MODE);
+  LLAMA::create_llama_model(beam_model,
+                            im,
+                            "195m",
+                            file_paths.weight1_file_path,
+                            1,
+                            BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model,
                             im,
-                            llama_config,
+                            "7b",
+                            file_paths.weight2_file_path,
                             ffconfig.workersPerNode * ffconfig.numNodes,
                             TREE_VERIFY_MODE);
 
@@ -72,19 +97,20 @@ void FlexFlow::top_level_task(Task const *task,
   BeamSearchBatchConfig beam_bc;
   InferenceResult tree_ir;
 
-  int iteration = 0;
-
-  while (iteration++ < 10) {
+  while (rm.get_num_processed_requests() < total_num_requests) {
     int depth = 0;
     // Beam Search
     beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir);
+    if (rm.get_num_processed_requests() >= total_num_requests) {
+      break;
+    }
     while (true) {
       depth = beam_bc.beamRequestsInfo[0].current_depth;
       FutureMap fm = im.inference(&beam_model, 0, beam_bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       Future future = fm.get_future(0);
       BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
-      if (depth - 1 >= llama_config.max_beam_depth) {
+      if (depth - 1 >= BeamSearchBatchConfig::MAX_BEAM_DEPTH) {
         break;
       } else {
         beam_bc = rm.prepare_next_batch_beam(beam_bc, beam_ir);

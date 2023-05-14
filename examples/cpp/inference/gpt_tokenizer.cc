@@ -270,4 +270,8 @@ void GPT_Tokenizer::encode(std::string str,
     input_ids->push_back(vocab[pad_token]);
     mask_ids->push_back(0);
   }
+  if (mode == OPT) {
+    mask_ids->insert(mask_ids->begin(), 1);
+    input_ids->insert(input_ids->begin(), 2);
+  }
 }

@@ -19,11 +19,45 @@ namespace FlexFlow {
 
 using namespace Legion;
 
+LLAMA::Config LLAMA::create_195m_config() {
+  Config config;
+  config.n_layers = 12;
+  config.vocab_size = 50265;
+  config.dim = 768;
+  config.n_heads = 12;
+  config.hidden_dim = 3072;
+  return config;
+}
+
+LLAMA::Config LLAMA::create_7b_config() {
+  // The default config is for llama 7b
+  Config config;
+  return config;
+}
+
+// Deprecated API
 void LLAMA::create_llama_model(FFModel &ff,
                                InferenceManager &im,
                                Config const &llama_config,
                                int num_pipeline_stages,
                                InferenceMode mode) {
+  assert(false);
+}
+
+void LLAMA::create_llama_model(FFModel &ff,
+                               InferenceManager &im,
+                               std::string const &model_name,
+                               std::string const &weight_file_path,
+                               int num_pipeline_stages,
+                               InferenceMode mode) {
+  Config llama_config;
+  if (model_name == "195m" || model_name == "195M") {
+    llama_config = create_195m_config();
+  } else if (model_name == "7b" || model_name == "7B") {
+    llama_config = create_7b_config();
+  } else {
+    assert(false && "Invalide model_name");
+  }
   //------------------------------compute machine views ------------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
   std::vector<MachineView> machine_views;
@@ -43,7 +77,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   Tensor input;
   {
     assert(llama_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {llama_config.max_num_tokens, 1};
+    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
   mapping[input].push_back(machine_views[0]);
@@ -188,8 +222,8 @@ void LLAMA::create_llama_model(FFModel &ff,
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff, mapping);
-  FileDataLoader fileloader(llama_config.input_path,
-                            llama_config.weight_file_path,
+  FileDataLoader fileloader("",
+                            weight_file_path,
                             llama_config.n_heads,
                             llama_config.dim,
                             llama_config.dim / llama_config.n_heads);

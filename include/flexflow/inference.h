@@ -150,7 +150,16 @@ private:
   // Commited Tokens
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
+  // Performance profiling
   size_t num_processed_requests;
+
+private:
+  struct ProfileInfo {
+    int decoding_steps;
+    double start_time, finish_time;
+  };
+  std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
+  double total_request_run_time;
 };
 
 } // namespace FlexFlow

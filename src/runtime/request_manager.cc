@@ -123,10 +123,26 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
-      std::cout << "print results: " << std::endl;
-      for (int i = 0; i < request.tokens.size(); i++) {
-        std::cout << request.tokens.at(i) << ", ";
-      }
+      std::string output = tokenizer->Decode(request.tokens);
+      log_req_mgr.print("Final output: %s", output.c_str());
+      num_processed_requests++;
+      ProfileInfo profile_info = profiling_requests[request.guid];
+      profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
+      total_request_run_time +=
+          profile_info.finish_time - profile_info.start_time;
+      profiling_requests[request.guid] = profile_info;
+      log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
+                        "finish(%.1lf) latency(%.1lf) acc_latency(%.1lf)",
+                        request.guid,
+                        profile_info.decoding_steps,
+                        profile_info.start_time,
+                        profile_info.finish_time,
+                        profile_info.finish_time - profile_info.start_time,
+                        total_request_run_time);
+      // std::cout << "print results: " << std::endl;
+      // for (int i = 0; i < request.tokens.size(); i++) {
+      //   std::cout << request.tokens.at(i) << ", ";
+      // }
     } else {
       new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].token_start_offset = processed_tokens;
@@ -152,6 +168,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
         new_bc.num_tokens++;
       }
+      // Update profiling
+      profiling_requests[new_bc.requestsInfo[i].request_guid].decoding_steps++;
     }
   }
   // Step 3: add new requests to the next batch
@@ -170,6 +188,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
         new_bc.request_completed[i] = false;
+        // add profile_info for the new request
+        ProfileInfo profile_info;
+        profile_info.decoding_steps = 1;
+        profile_info.start_time = Realm::Clock::current_time_in_microseconds();
+        profiling_requests[new_request.guid] = profile_info;
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
           int depth = new_bc.requestsInfo[i].token_start_offset + j;
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
@@ -369,8 +392,21 @@ BeamSearchBatchConfig
       log_req_mgr.print("[Done] guid(%zu) with final length(%zu)",
                         request.guid,
                         request.tokens.size());
-
       new_bc.request_completed[i] = true;
+      num_processed_requests++;
+      ProfileInfo profile_info = profiling_requests[request.guid];
+      profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
+      total_request_run_time +=
+          profile_info.finish_time - profile_info.start_time;
+      profiling_requests[request.guid] = profile_info;
+      log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
+                        "finish(%.1lf) latency(%.1lf) acc_latency(%.1lf)",
+                        request.guid,
+                        profile_info.decoding_steps,
+                        profile_info.start_time,
+                        profile_info.finish_time,
+                        profile_info.finish_time - profile_info.start_time,
+                        total_request_run_time);
 
       beam_trees[i] = BeamTree{};
       dfs_tree_inputs.erase(
@@ -416,6 +452,8 @@ BeamSearchBatchConfig
 
       // Add verified token to request's token list
       request.tokens.push_back(token.first);
+      std::string output = tokenizer->Decode(request.tokens);
+      log_req_mgr.print("Output: %s", output.c_str());
 
       if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
         break;
@@ -438,7 +476,11 @@ BeamSearchBatchConfig
                      (int)new_request.tokens.size());
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
-
+        // add profile_info for the new request
+        ProfileInfo profile_info;
+        profile_info.decoding_steps = 0;
+        profile_info.start_time = Realm::Clock::current_time_in_microseconds();
+        profiling_requests[new_request.guid] = profile_info;
         // init the beam search metadata per request
         new_bc.beamRequestsInfo[i].beam_size =
             BeamSearchBatchConfig::MAX_BEAM_WIDTH;
@@ -507,9 +549,10 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         old_bc.requestsInfo[i].max_sequence_length;
     // TODO: Check this
     new_bc.requestsInfo[i].num_tokens_in_batch = 0;
-
     new_bc.request_completed[i] = false;
 
+    // Profiling
+    profiling_requests[new_bc.requestsInfo[i].request_guid].decoding_steps += 1;
     // TODO: Add prompt token first in first verify iteration
     if (request.tokens.size() == request.initial_len) {
       for (int j = 0; j < request.initial_len; j++) {
