@@ -25,13 +25,13 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-InferenceManager::InferenceManager(FFModel *_model,
+InferenceManager::InferenceManager(FFConfig const &_config,
                                    int _max_num_tokens_per_batch,
                                    int _max_num_inflight_batches)
-    : model(_model), max_num_tokens_per_batch(_max_num_tokens_per_batch),
+    : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch),
       max_num_inflight_batches(_max_num_inflight_batches) {
   // populate array of valid single-device machine views
-  num_devices = model->config.workersPerNode * model->config.numNodes;
+  num_devices = ff_config.workersPerNode * ff_config.numNodes;
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
     view.device_type = MachineView::GPU;
@@ -197,6 +197,11 @@ MachineView *InferenceManager::get_machine_view(int mv_id) {
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfig const &bc) {
+  std::cout << "InferenceManager::inference" << index << std::endl;
+  std::cout << "num_active_tokens = " << bc.num_active_tokens()
+            << ", num_active_requests = " << bc.num_active_requests()
+            << std::endl;
+
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
@@ -211,12 +216,18 @@ FutureMap InferenceManager::inference(FFModel *model,
     if (op->op_type == OP_INPUT) {
       // FIXME: this is a hack, should be replace with an input ParallelTensor
       if (found_input_operator) {
-        continue;
+        // there is another input for position embedding;
+        // now only used in opt model, this input should be init after token
+        // input.
+        assert(op->numOutputs == 1);
+        ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
+        load_positions(bc, pt);
+      } else {
+        found_input_operator = true;
+        assert(op->numOutputs == 1);
+        ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
+        load_input_tokens_from_batch_config(bc, pt);
       }
-      found_input_operator = true;
-      assert(op->numOutputs == 1);
-      ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-      load_input_tokens_from_batch_config(bc, pt);
     }
 
     std::vector<ParallelTensor> inputs(op->numInputs);
@@ -246,8 +257,8 @@ FutureMap InferenceManager::inference(FFModel *model,
 
 void InferenceManager::load_input_tokens_from_batch_config(
     BatchConfig const &bc, ParallelTensor const input) {
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
+  Context ctx = ff_config.lg_ctx;
+  Runtime *runtime = ff_config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
   ArgumentMap argmap;
   IndexLauncher launcher(
@@ -262,6 +273,31 @@ void InferenceManager::load_input_tokens_from_batch_config(
       machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(
       input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, input->region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void InferenceManager::load_positions(BatchConfig const &bc,
+                                      ParallelTensor position_input) {
+  Context ctx = ff_config.lg_ctx;
+  Runtime *runtime = ff_config.lg_hlr;
+  size_t machine_view_hash = position_input->machine_view.hash();
+  ArgumentMap argmap;
+  IndexLauncher launcher(
+      RM_LOAD_POSITION_TASK_ID,
+      position_input->parallel_is,
+      TaskArgument(
+          &bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(position_input->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    position_input->region));
   launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

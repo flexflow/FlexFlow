@@ -117,6 +117,8 @@ int BatchConfig::num_active_requests() const {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
+      // } else {
+      //   std::cout << "request " << i << " is completed" << std::endl;
     }
   }
   return num_requests;
@@ -173,6 +175,7 @@ void BatchConfig::print() const {
   }
 }
 
+#ifdef DEADCODE
 void TreeVerifyBatchConfig::compute_tree_branch_indexes() {
   // Must be called only after setting num_tokens!
   auto is_first_token_in_request = [&](int token_index) -> bool {
@@ -190,5 +193,6 @@ void TreeVerifyBatchConfig::compute_tree_branch_indexes() {
     }
   }
 }
+#endif
 
 }; // namespace FlexFlow

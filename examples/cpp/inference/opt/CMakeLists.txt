@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(FlexFlowExample_SPEC_LLAMA)
-set(project_target SPEC_LLAMA)
+project(FlexFlowExample_OPT)
+set(project_target OPT)
 
 
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
-  llama.cc
-  ../file_loader.cc
-  ../models/llama.cc)
+  opt.cc
+  opt.h
+  ../file_loader.cc)
+
 
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})

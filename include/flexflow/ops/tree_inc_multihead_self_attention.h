@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_SPEC_INC_MULTIHEAD_SELF_ATTENTION_H
-#define _FLEXFLOW_SPEC_INC_MULTIHEAD_SELF_ATTENTION_H
+#ifndef _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_VERIFY_H
+#define _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_VERIFY_H
 
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
@@ -8,21 +8,21 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
+#include "flexflow/ops/inc_multihead_self_attention_params.h"
 #include "math.h"
 #include <cfloat>
 #include <complex>
 
 namespace FlexFlow {
 
-class SpecIncMultiHeadSelfAttentionMeta;
+class TreeIncMultiHeadSelfAttentionMeta;
 
-class SpecIncMultiHeadSelfAttention : public Op {
+class TreeIncMultiHeadSelfAttention : public Op {
 public:
-  using Params = SpecIncMultiHeadSelfAttentionParams;
+  using Params = TreeIncMultiHeadSelfAttentionParams;
   using Input = ParallelTensor;
 
-  SpecIncMultiHeadSelfAttention(FFModel &model,
+  TreeIncMultiHeadSelfAttention(FFModel &model,
                                 LayerID const &layer_guid,
                                 const ParallelTensor _input,
                                 int _embed_dim,
@@ -39,7 +39,7 @@ public:
                                 bool _qk_prod_scaling,
                                 bool allocate_weights,
                                 char const *name);
-  SpecIncMultiHeadSelfAttention(FFModel &model,
+  TreeIncMultiHeadSelfAttention(FFModel &model,
                                 const ParallelTensor _input,
                                 const ParallelTensor _weight,
                                 int _embed_dim,
@@ -56,11 +56,11 @@ public:
                                 bool _qk_prod_scaling,
                                 bool allocate_weights,
                                 char const *name);
-  SpecIncMultiHeadSelfAttention(FFModel &model,
-                                SpecIncMultiHeadSelfAttention const &other,
+  TreeIncMultiHeadSelfAttention(FFModel &model,
+                                TreeIncMultiHeadSelfAttention const &other,
                                 const ParallelTensor input,
                                 bool allocate_weights);
-  SpecIncMultiHeadSelfAttention(FFModel &model,
+  TreeIncMultiHeadSelfAttention(FFModel &model,
                                 Params const &params,
                                 Input const &inputs,
                                 bool allocate_weights = false,
@@ -94,20 +94,16 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void
-      inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
-                               BeamSearchBatchConfig const *bc,
-                               float const *input_ptr,
-                               float const *weight_ptr,
-                               float *output_ptr,
-                               float const *bias_ptr);
+  static void inference_kernel_wrapper(TreeIncMultiHeadSelfAttentionMeta *m,
+                                       TreeVerifyBatchConfig const *bc,
+                                       float const *input_ptr,
+                                       float const *weight_ptr,
+                                       float *output_ptr,
+                                       float const *bias_ptr);
   Params get_params() const;
 
 public:
@@ -120,21 +116,22 @@ public:
   int qoSeqLength, kvSeqLength;
 };
 
-class SpecIncMultiHeadSelfAttentionMeta : public OpMeta {
+class TreeIncMultiHeadSelfAttentionMeta : public OpMeta {
 public:
-  SpecIncMultiHeadSelfAttentionMeta(FFHandler handler,
-                                    SpecIncMultiHeadSelfAttention const *attn,
+  TreeIncMultiHeadSelfAttentionMeta(FFHandler handler,
+                                    TreeIncMultiHeadSelfAttention const *attn,
                                     float const *weight_ptr,
                                     Legion::Memory gpu_mem,
                                     int num_samples,
                                     int _num_heads);
-  ~SpecIncMultiHeadSelfAttentionMeta(void);
+  ~TreeIncMultiHeadSelfAttentionMeta(void);
 
 public:
   Realm::RegionInstance reserveInst;
   size_t weights_params, weightSize, reserveSpaceSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
+  int num_active_tokens;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *bias;
@@ -144,23 +141,14 @@ public:
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif
-  /*#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-    cudnnAttnDescriptor_t attnDesc;
-    cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
-  #endif*/
-  // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   float *devQKVProjArray, *keyCache, *valueCache;
   float *qk_prods, *qk_prods_softmax;
   float *attn_heads, *W_out_contiguous;
-  // void *reserveSpace;
 
-  // BatchConfig::token_idxs *dev_token2ids;
-  BatchConfig::PerTokenInfo *tokenInfos;
-  BatchConfig::PerRequestInfo *requestInfos;
-  BeamSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos;
-  BeamSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos;
+  TreeVerifyBatchConfig::PerTokenInfo *token_infos;
+  TreeVerifyBatchConfig::CommittedTokensInfo *committed_token_infos;
 };
 
 }; // namespace FlexFlow
 
-#endif // _FLEXFLOW_SPEC_INC_MULTIHEAD_SELF_ATTENTION_H
+#endif // _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_VERIFY_H

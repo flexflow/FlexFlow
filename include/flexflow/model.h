@@ -145,16 +145,14 @@ enum TaskIDs {
   RMSNROM_FWD_TASK_ID,
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
-  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_FWD_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_BWD_TASK_ID,
-  INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INF_TASK_ID,
+  SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+  TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
@@ -217,6 +215,7 @@ enum TaskIDs {
   FUSED_PARALLELOP_BWD_TASK_ID,
   // InferenceManager & RequestManager
   RM_LOAD_TOKENS_TASK_ID,
+  RM_LOAD_POSITION_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -293,7 +292,7 @@ class LayerNorm;
 class Linear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
-class IncMultiHeadSelfAttentionVerify;
+class TreeIncMultiHeadSelfAttention;
 class Pool2D;
 class Reduce;
 class Reshape;
@@ -613,11 +612,14 @@ public:
                                       int kdim = 0,
                                       int vdim = 0,
                                       float dropout = 0.0f,
-                                      bool bias = true,
+                                      bool bias = false,
                                       bool add_bias_kv = false,
                                       bool add_zero_attn = false,
                                       Initializer *kernel_initializer = NULL,
                                       bool apply_rotary_embedding = false,
+                                      bool scaling_query = false,
+                                      float scaling_factor = 1.0f,
+                                      bool qk_prod_scaling = true,
                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(const Tensor input,
@@ -626,11 +628,14 @@ public:
                                         int kdim = 0,
                                         int vdim = 0,
                                         float dropout = 0.0f,
-                                        bool bias = true,
+                                        bool bias = false,
                                         bool add_bias_kv = false,
                                         bool add_zero_attn = false,
                                         Initializer *kernel_initializer = NULL,
                                         bool apply_rotary_embedding = false,
+                                        bool scaling_query = false,
+                                        float scaling_factor = 1.0f,
+                                        bool qk_prod_scaling = true,
                                         char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
       const Tensor input,
@@ -639,11 +644,14 @@ public:
       int kdim = 0,
       int vdim = 0,
       float dropout = 0.0f,
-      bool bias = true,
+      bool bias = false,
       bool add_bias_kv = false,
       bool add_zero_attn = false,
       Initializer *kernel_initializer = NULL,
       bool apply_rotary_embedding = false,
+      bool scaling_query = false,
+      float scaling_factor = 1.0f,
+      bool qk_prod_scaling = true,
       char const *name = NULL);
 
   Tensor create_tensor_legion_ordering(int num_dim,
@@ -1014,8 +1022,8 @@ public:
           std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
           SpecIncMultiHeadSelfAttention *>,
       std::unordered_map<
-          std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionVerifyParams>,
-          IncMultiHeadSelfAttentionVerify *>,
+          std::pair<ParallelTensorShape, TreeIncMultiHeadSelfAttentionParams>,
+          TreeIncMultiHeadSelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
                          Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,

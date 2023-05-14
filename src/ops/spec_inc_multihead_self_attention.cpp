@@ -29,7 +29,8 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     BeamSearchBatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
-    float *output_ptr) {
+    float *output_ptr,
+    float const *bias_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -40,7 +41,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     hipEventRecord(t_start, stream);
   }
 
-  handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION);
+  handle_unimplemented_hip_kernel(OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION);
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);

@@ -31,7 +31,6 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
-#include "flexflow/ops/inc_mha_verify.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -45,6 +44,7 @@
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -2275,9 +2275,12 @@ GraphOptimalViewSerialized
         sez.serialize(attn->add_bias_kv);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->scaling_query);
+        sez.serialize(attn->scaling_factor);
+        sez.serialize(attn->qk_prod_scaling);
         break;
       }
-      case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
+      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
         SpecIncMultiHeadSelfAttention *attn =
             (SpecIncMultiHeadSelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
@@ -2290,11 +2293,14 @@ GraphOptimalViewSerialized
         sez.serialize(attn->add_bias_kv);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->scaling_query);
+        sez.serialize(attn->scaling_factor);
+        sez.serialize(attn->qk_prod_scaling);
         break;
       }
-      case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
-        IncMultiHeadSelfAttentionVerify *attn =
-            (IncMultiHeadSelfAttentionVerify *)op;
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+        TreeIncMultiHeadSelfAttention *attn =
+            (TreeIncMultiHeadSelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_heads);
@@ -2305,6 +2311,9 @@ GraphOptimalViewSerialized
         sez.serialize(attn->add_bias_kv);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->scaling_query);
+        sez.serialize(attn->scaling_factor);
+        sez.serialize(attn->qk_prod_scaling);
         break;
       }
       case OP_SOFTMAX: {
@@ -2669,8 +2678,9 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
         int embed_dim, num_heads, k_dim, v_dim;
-        float dropout;
-        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding;
+        float dropout, scaling_factor;
+        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+            scaling_query, qk_prod_scaling;
         size_t id;
         dez.deserialize(id);
         LayerID layer_guid(id);
@@ -2683,6 +2693,9 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
         dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(scaling_query);
+        dez.deserialize(scaling_factor);
+        dez.deserialize(qk_prod_scaling);
 
         IncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2695,14 +2708,18 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
+        params.scaling_query = scaling_query;
+        params.scaling_factor = scaling_factor;
+        params.qk_prod_scaling = qk_prod_scaling;
         node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }
-      case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
+      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
         int embed_dim, num_heads, k_dim, v_dim;
-        float dropout;
-        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding;
+        float dropout, scaling_factor;
+        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+            scaling_query, qk_prod_scaling;
         size_t id;
         dez.deserialize(id);
         LayerID layer_guid(id);
@@ -2715,6 +2732,9 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
         dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(scaling_query);
+        dez.deserialize(scaling_factor);
+        dez.deserialize(qk_prod_scaling);
 
         SpecIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2727,15 +2747,19 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
+        params.scaling_query = scaling_query;
+        params.scaling_factor = scaling_factor;
+        params.qk_prod_scaling = qk_prod_scaling;
         node = get_or_create_node<SpecIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
         break;
       }
-      case OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY: {
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
         int embed_dim, num_heads, k_dim, v_dim;
-        float dropout;
-        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding;
+        float dropout, scaling_factor;
+        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+            scaling_query, qk_prod_scaling;
         size_t id;
         dez.deserialize(id);
         LayerID layer_guid(id);
@@ -2748,8 +2772,11 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
         dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(scaling_query);
+        dez.deserialize(scaling_factor);
+        dez.deserialize(qk_prod_scaling);
 
-        IncMultiHeadSelfAttentionVerifyParams params;
+        TreeIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
         params.num_heads = num_heads;
         params.kdim = k_dim;
@@ -2760,8 +2787,11 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
-        node = get_or_create_node<IncMultiHeadSelfAttentionVerify>(inputs[0],
-                                                                   params);
+        params.scaling_query = scaling_query;
+        params.scaling_factor = scaling_factor;
+        params.qk_prod_scaling = qk_prod_scaling;
+        node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
+                                                                 params);
         break;
       }
       case OP_TOPK: {

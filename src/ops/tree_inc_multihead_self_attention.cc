@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/inc_mha_verify.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/model.h"
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
@@ -48,7 +48,7 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-bool IncMultiHeadSelfAttentionVerifyParams::is_valid(
+bool TreeIncMultiHeadSelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {
   bool is_valid = input.is_valid();
   return is_valid;
@@ -66,14 +66,18 @@ Tensor FFModel::inc_multihead_self_attention_verify(
     bool add_zero_attn,
     Initializer *kernel_initializer,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name) {
+  int weight_num = bias ? 2 : 1;
   // Currently assume that
   Layer *li = new Layer(this,
-                        OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY,
+                        OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
                         DT_FLOAT,
                         name,
                         1 /*inputs*/,
-                        1 /*weights*/,
+                        weight_num /*weights*/,
                         1 /*outputs*/,
                         input);
   {
@@ -104,6 +108,17 @@ Tensor FFModel::inc_multihead_self_attention_verify(
                                                    kernel_initializer,
                                                    CHOSEN_SYNC_TYPE);
   }
+  if (bias) {
+    // q, k, v, o
+    int dims[1] = {embed_dim * 4};
+    li->weights[1] = create_weight_legion_ordering(1,
+                                                   dims,
+                                                   DT_FLOAT,
+                                                   li,
+                                                   true /*create_grad*/,
+                                                   kernel_initializer,
+                                                   CHOSEN_SYNC_TYPE);
+  }
   li->data_type = DT_FLOAT;
   li->add_int_property("embed_dim", embed_dim);
   li->add_int_property("num_heads", num_heads);
@@ -114,11 +129,14 @@ Tensor FFModel::inc_multihead_self_attention_verify(
   li->add_int_property("add_zero_attn", add_zero_attn);
   li->add_float_property("dropout", dropout);
   li->add_int_property("apply_rotary_embedding", apply_rotary_embedding);
+  li->add_int_property("scaling_query", scaling_query);
+  li->add_float_property("scaling_factor", scaling_factor);
+  li->add_int_property("qk_prod_scaling", qk_prod_scaling);
   layers.push_back(li);
   return li->outputs[0];
 }
 
-Op *IncMultiHeadSelfAttentionVerify::create_operator_from_layer(
+Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
@@ -141,23 +159,32 @@ Op *IncMultiHeadSelfAttentionVerify::create_operator_from_layer(
   bool add_zero_attn = (bool)value;
   layer->get_int_property("apply_rotary_embedding", value);
   bool apply_rotary_embedding = (bool)value;
-  return new IncMultiHeadSelfAttentionVerify(model,
-                                             layer->layer_guid,
-                                             inputs[0],
-                                             embed_dim,
-                                             num_heads,
-                                             kdim,
-                                             vdim,
-                                             dropout,
-                                             bias,
-                                             add_bias_kv,
-                                             add_zero_attn,
-                                             apply_rotary_embedding,
-                                             false /*allocate_weights*/,
-                                             layer->name);
+  layer->get_int_property("scaling_query", value);
+  bool scaling_query = (bool)value;
+  float scaling_factor;
+  layer->get_float_property("scaling_factor", scaling_factor);
+  layer->get_int_property("qk_prod_scaling", value);
+  bool qk_prod_scaling = (bool)value;
+  return new TreeIncMultiHeadSelfAttention(model,
+                                           layer->layer_guid,
+                                           inputs[0],
+                                           embed_dim,
+                                           num_heads,
+                                           kdim,
+                                           vdim,
+                                           dropout,
+                                           bias,
+                                           add_bias_kv,
+                                           add_zero_attn,
+                                           apply_rotary_embedding,
+                                           scaling_query,
+                                           scaling_factor,
+                                           qk_prod_scaling,
+                                           false /*allocate_weights*/,
+                                           layer->name);
 }
 
-IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
+TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
     LayerID const &_layer_guid,
     const ParallelTensor _input,
@@ -170,15 +197,18 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
     bool _add_bias_kv,
     bool _add_zero_attn,
     bool _apply_rotary_embedding,
+    bool _scaling_query,
+    float _scaling_factor,
+    bool _qk_prod_scaling,
     bool allocate_weights,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY,
+         OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
          DT_FLOAT,
          name,
          1 /*inputs*/,
-         1 /*weights*/,
+         (_bias ? 2 : 1) /*weights*/,
          1 /*outputs*/,
          _input),
       num_heads(_num_heads), dropout(_dropout), bias(_bias),
@@ -187,7 +217,9 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
-      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size) {
+      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
+      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
+      qk_prod_scaling(_qk_prod_scaling) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -231,6 +263,26 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
                                                  initializer,
                                                  comm_type);
   }
+  if (bias) {
+    ParallelDim dims[2];
+    int num_dims = inputs[0]->num_dims;
+    dims[0] = inputs[0]->dims[num_dims - 1];
+    dims[0].size = dims[0].degree;
+    dims[1].size = oProjSize * 4;
+    dims[1].degree = 1;
+    dims[1].parallel_idx = -1;
+#ifdef USE_NCCL
+    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+    ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+    weights[1] = model.create_parallel_weight<2>(dims,
+                                                 DT_FLOAT,
+                                                 NULL /*owner_op*/,
+                                                 true /*create_grad*/,
+                                                 NULL,
+                                                 comm_type);
+  }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, DT_FLOAT, this);
@@ -241,7 +293,7 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
+TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
     const ParallelTensor _input,
     const ParallelTensor _weight,
@@ -254,15 +306,18 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
     bool _add_bias_kv,
     bool _add_zero_attn,
     bool _apply_rotary_embedding,
+    bool _scaling_query,
+    float _scaling_factor,
+    bool _qk_prod_scaling,
     bool allocate_weights,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_INC_MULTIHEAD_SELF_ATTENTION_VERIFY,
+         OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
          DT_FLOAT,
          name,
          1 /*inputs*/,
-         1 /*weights*/,
+         (_bias ? 2 : 1) /*weights*/,
          1 /*outputs*/,
          _input,
          _weight),
@@ -272,7 +327,9 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
-      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size)
+      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
+      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
+      qk_prod_scaling(_qk_prod_scaling)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -313,6 +370,24 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
                                                  initializer,
                                                  comm_type);
   }
+  if (bias) {
+    ParallelDim dims[2];
+    int num_dims = inputs[0]->num_dims;
+    dims[0] = inputs[0]->dims[num_dims - 1];
+    dims[0].size = dims[0].degree;
+    dims[1].size = oProjSize * 4;
+#ifdef USE_NCCL
+    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+    ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+    weights[1] = model.create_parallel_weight<2>(dims,
+                                                 DT_FLOAT,
+                                                 NULL /*owner_op*/,
+                                                 true /*create_grad*/,
+                                                 NULL,
+                                                 comm_type);
+  }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, DT_FLOAT, this);
 
@@ -325,48 +400,54 @@ IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
+TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
-    IncMultiHeadSelfAttentionVerify const &other,
+    TreeIncMultiHeadSelfAttention const &other,
     const ParallelTensor input,
     bool allocate_weights)
-    : IncMultiHeadSelfAttentionVerify(model,
-                                      other.layer_guid,
-                                      input,
-                                      other.oProjSize,
-                                      other.num_heads,
-                                      other.qProjSize,
-                                      other.vProjSize,
-                                      other.dropout,
-                                      other.bias,
-                                      other.add_bias_kv,
-                                      other.add_zero_attn,
-                                      other.apply_rotary_embedding,
-                                      allocate_weights,
-                                      other.name) {}
+    : TreeIncMultiHeadSelfAttention(model,
+                                    other.layer_guid,
+                                    input,
+                                    other.oProjSize,
+                                    other.num_heads,
+                                    other.qProjSize,
+                                    other.vProjSize,
+                                    other.dropout,
+                                    other.bias,
+                                    other.add_bias_kv,
+                                    other.add_zero_attn,
+                                    other.apply_rotary_embedding,
+                                    other.scaling_query,
+                                    other.scaling_factor,
+                                    other.qk_prod_scaling,
+                                    allocate_weights,
+                                    other.name) {}
 
-IncMultiHeadSelfAttentionVerify::IncMultiHeadSelfAttentionVerify(
+TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
-    IncMultiHeadSelfAttentionVerifyParams const &params,
+    TreeIncMultiHeadSelfAttentionParams const &params,
     ParallelTensor const &input,
     bool allocate_weights,
     char const *name)
-    : IncMultiHeadSelfAttentionVerify(model,
-                                      params.layer_guid,
-                                      input,
-                                      params.embed_dim,
-                                      params.num_heads,
-                                      params.kdim,
-                                      params.vdim,
-                                      params.dropout,
-                                      params.bias,
-                                      params.add_bias_kv,
-                                      params.add_zero_attn,
-                                      params.apply_rotary_embedding,
-                                      allocate_weights,
-                                      name) {}
+    : TreeIncMultiHeadSelfAttention(model,
+                                    params.layer_guid,
+                                    input,
+                                    params.embed_dim,
+                                    params.num_heads,
+                                    params.kdim,
+                                    params.vdim,
+                                    params.dropout,
+                                    params.bias,
+                                    params.add_bias_kv,
+                                    params.add_zero_attn,
+                                    params.apply_rotary_embedding,
+                                    params.scaling_query,
+                                    params.scaling_factor,
+                                    params.qk_prod_scaling,
+                                    allocate_weights,
+                                    name) {}
 
-void IncMultiHeadSelfAttentionVerify::init_inference(
+void TreeIncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
@@ -380,9 +461,9 @@ void IncMultiHeadSelfAttentionVerify::init_inference(
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(
-      INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,
+      TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
       parallel_is,
-      TaskArgument(this, sizeof(IncMultiHeadSelfAttentionVerify)),
+      TaskArgument(this, sizeof(TreeIncMultiHeadSelfAttention)),
       argmap,
       Predicate::TRUE_PRED,
       false /*must*/,
@@ -411,7 +492,7 @@ void IncMultiHeadSelfAttentionVerify::init_inference(
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
-void IncMultiHeadSelfAttentionVerify::init(FFModel const &ff) {
+void TreeIncMultiHeadSelfAttention::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -419,9 +500,9 @@ void IncMultiHeadSelfAttentionVerify::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(
-      INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INIT_TASK_ID,
+      TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
       parallel_is,
-      TaskArgument(this, sizeof(IncMultiHeadSelfAttentionVerify)),
+      TaskArgument(this, sizeof(TreeIncMultiHeadSelfAttention)),
       argmap,
       Predicate::TRUE_PRED,
       false /*must*/,
@@ -455,13 +536,13 @@ void IncMultiHeadSelfAttentionVerify::init(FFModel const &ff) {
   regions[1](I): weight
   regions[2](O): output
 */
-OpMeta *IncMultiHeadSelfAttentionVerify::init_task(
+OpMeta *TreeIncMultiHeadSelfAttention::init_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  IncMultiHeadSelfAttentionVerify const *attn =
-      (IncMultiHeadSelfAttentionVerify *)task->args;
+  TreeIncMultiHeadSelfAttention const *attn =
+      (TreeIncMultiHeadSelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -481,24 +562,19 @@ OpMeta *IncMultiHeadSelfAttentionVerify::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  IncMultiHeadSelfAttentionVerifyMeta *m =
-      new IncMultiHeadSelfAttentionVerifyMeta(handle,
-                                              attn,
-                                              weight.get_float_ptr(),
-                                              gpu_mem,
-                                              num_samples,
-                                              num_heads);
+  TreeIncMultiHeadSelfAttentionMeta *m = new TreeIncMultiHeadSelfAttentionMeta(
+      handle, attn, weight.get_float_ptr(), gpu_mem, num_samples, num_heads);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
   return m;
 }
 
-void IncMultiHeadSelfAttentionVerify::forward(FFModel const &ff) {
-  // IncMultiHeadSelfAttentionVerify doesn't support forward
+void TreeIncMultiHeadSelfAttention::forward(FFModel const &ff) {
+  // TreeIncMultiHeadSelfAttention doesn't support forward
   assert(false);
 }
 
-FutureMap IncMultiHeadSelfAttentionVerify::inference(
+FutureMap TreeIncMultiHeadSelfAttention::inference(
     FFModel const &ff,
     BatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
@@ -515,7 +591,7 @@ FutureMap IncMultiHeadSelfAttentionVerify::inference(
   printf("TreeVerifyBatchConfig, num_tokens: %d, num_requests: %d\n",
          bc.num_tokens,
          bc.num_active_requests());
-  IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_VERIFY_INF_TASK_ID,
+  IndexLauncher launcher(TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(&bc, sizeof(TreeVerifyBatchConfig)),
                          argmap,
@@ -541,6 +617,14 @@ FutureMap IncMultiHeadSelfAttentionVerify::inference(
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
+  if (bias) {
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(idx++, FID_DATA);
+  }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -549,17 +633,18 @@ FutureMap IncMultiHeadSelfAttentionVerify::inference(
   regions[3](I): weight
   regions[4](O): output
 */
-void IncMultiHeadSelfAttentionVerify::inference_task(
+void TreeIncMultiHeadSelfAttention::inference_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  assert(regions.size() == 3);
   assert(task->regions.size() == regions.size());
+  float const *bias_ptr = NULL;
 
   TreeVerifyBatchConfig const *bc = (TreeVerifyBatchConfig *)task->args;
-  IncMultiHeadSelfAttentionVerifyMeta const *m =
-      *((IncMultiHeadSelfAttentionVerifyMeta **)task->local_args);
+  TreeIncMultiHeadSelfAttentionMeta *m =
+      *((TreeIncMultiHeadSelfAttentionMeta **)task->local_args);
+  assert((*m->bias ? regions.size() == 4 : regions.size() == 3));
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -567,6 +652,19 @@ void IncMultiHeadSelfAttentionVerify::inference_task(
       m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  if (*m->bias) {
+    GenericTensorAccessorR biases =
+        helperGetGenericTensorAccessorRO(m->weight_type[1],
+                                         regions[3],
+                                         task->regions[3],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+    Domain bias_domain = runtime->get_index_space_domain(
+        ctx, task->regions[3].region.get_index_space());
+    assert(bias_domain.get_dim() == 2);
+    bias_ptr = biases.get_float_ptr();
+  }
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -583,14 +681,15 @@ void IncMultiHeadSelfAttentionVerify::inference_task(
                       input_domain.get_volume(),
                       "[Attention:forward:query]"); */
 
-  IncMultiHeadSelfAttentionVerify::inference_kernel_wrapper(
+  TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
       m,
       bc,
       input.get_float_ptr(),
       weight.get_float_ptr(),
-      output.get_float_ptr());
+      output.get_float_ptr(),
+      bias_ptr);
 #ifdef INFERENCE_TESTS
-  printf("Checking IncMultiHeadSelfAttentionVerify computations...\n");
+  printf("Checking TreeIncMultiHeadSelfAttention computations...\n");
 
   // =============================================================================
   //  Define helper functions to handle row-major arrays
@@ -1371,13 +1470,13 @@ void IncMultiHeadSelfAttentionVerify::inference_task(
   // Done with INFERENCE_TESTS block
 }
 
-void IncMultiHeadSelfAttentionVerify::backward(FFModel const &ff) {
-  // IncMultiHeadSelfAttentionVerify does not support backward
+void TreeIncMultiHeadSelfAttention::backward(FFModel const &ff) {
+  // TreeIncMultiHeadSelfAttention does not support backward
   assert(false);
 }
 
-bool IncMultiHeadSelfAttentionVerify::get_int_parameter(PMParameter para,
-                                                        int *value) const {
+bool TreeIncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
+                                                      int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
       *value = num_heads;
@@ -1387,24 +1486,27 @@ bool IncMultiHeadSelfAttentionVerify::get_int_parameter(PMParameter para,
   }
 }
 
-bool IncMultiHeadSelfAttentionVerify::measure_operator_cost(
+bool TreeIncMultiHeadSelfAttention::measure_operator_cost(
     Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
   return false;
 }
 
-bool operator==(IncMultiHeadSelfAttentionVerifyParams const &lhs,
-                IncMultiHeadSelfAttentionVerifyParams const &rhs) {
+bool operator==(TreeIncMultiHeadSelfAttentionParams const &lhs,
+                TreeIncMultiHeadSelfAttentionParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
          lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
          lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
          lhs.add_zero_attn == rhs.add_zero_attn &&
-         lhs.apply_rotary_embedding == rhs.apply_rotary_embedding;
+         lhs.apply_rotary_embedding == rhs.apply_rotary_embedding &&
+         lhs.scaling_query == rhs.scaling_query &&
+         lhs.scaling_factor == rhs.scaling_factor &&
+         lhs.qk_prod_scaling == rhs.qk_prod_scaling;
 }
 
-IncMultiHeadSelfAttentionVerifyParams
-    IncMultiHeadSelfAttentionVerify::get_params() const {
-  IncMultiHeadSelfAttentionVerifyParams params;
+TreeIncMultiHeadSelfAttentionParams
+    TreeIncMultiHeadSelfAttention::get_params() const {
+  TreeIncMultiHeadSelfAttentionParams params;
   params.layer_guid = this->layer_guid;
   params.embed_dim = this->oProjSize;
   params.num_heads = this->num_heads;
@@ -1415,14 +1517,17 @@ IncMultiHeadSelfAttentionVerifyParams
   params.add_bias_kv = this->add_bias_kv;
   params.add_zero_attn = this->add_zero_attn;
   params.apply_rotary_embedding = this->apply_rotary_embedding;
+  params.scaling_query = this->scaling_query;
+  params.scaling_factor = this->scaling_factor;
+  params.qk_prod_scaling = this->qk_prod_scaling;
   return params;
 }
 
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::IncMultiHeadSelfAttentionVerifyParams>::operator()(
-    FlexFlow::IncMultiHeadSelfAttentionVerifyParams const &params) const {
+size_t hash<FlexFlow::TreeIncMultiHeadSelfAttentionParams>::operator()(
+    FlexFlow::TreeIncMultiHeadSelfAttentionParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.embed_dim);
@@ -1434,6 +1539,9 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionVerifyParams>::operator()(
   hash_combine(key, params.add_bias_kv);
   hash_combine(key, params.add_zero_attn);
   hash_combine(key, params.apply_rotary_embedding);
+  hash_combine(key, params.scaling_query);
+  hash_combine(key, params.scaling_factor);
+  hash_combine(key, params.qk_prod_scaling);
   return key;
 }
 }; // namespace std

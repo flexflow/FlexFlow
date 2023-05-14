@@ -30,6 +30,7 @@ void RequestManager::load_tokens_task(
 
   BatchConfig const batch_config = *((BatchConfig *)task->args);
   BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
+  assert(batch_config.num_tokens <= BatchConfig::MAX_NUM_TOKENS);
   for (int i = 0; i < batch_config.num_tokens; i++) {
     dram_copy[i] = batch_config.tokensInfo[i].token_id;
   }
@@ -43,6 +44,35 @@ void RequestManager::load_tokens_task(
   checkCUDA(cudaMemcpyAsync(fb_ptr,
                             dram_copy,
                             sizeof(TokenId) * batch_config.num_tokens,
+                            cudaMemcpyHostToDevice,
+                            stream));
+}
+
+void RequestManager::load_positions_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  assert(regions.size() == 1);
+  assert(task->regions.size() == 1);
+
+  BatchConfig const batch_config = *((BatchConfig *)task->args);
+  int offset = 2;
+  int *pos_ptr = helperGetTensorPointerWO<int>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  int dram_copy[BatchConfig::MAX_NUM_TOKENS];
+
+  for (int i = 0; i < batch_config.num_tokens; i++) {
+    dram_copy[i] = batch_config.tokensInfo[i].abs_depth_in_request + offset;
+  }
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  checkCUDA(cudaMemcpyAsync(pos_ptr,
+                            dram_copy,
+                            sizeof(int) * batch_config.num_tokens,
                             cudaMemcpyHostToDevice,
                             stream));
 }

@@ -140,7 +140,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(
-      &ff, moeConfig.batch_size, moeConfig.num_inflight_batches);
+      ff.config, moeConfig.batch_size, moeConfig.num_inflight_batches);
   std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   im.compile_model_and_allocate_buffer(&ff, mapping);
   im.init_operators_inference(&ff);

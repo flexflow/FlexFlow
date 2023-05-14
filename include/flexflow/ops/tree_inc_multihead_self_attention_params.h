@@ -6,25 +6,26 @@
 
 namespace FlexFlow {
 
-struct IncMultiHeadSelfAttentionVerifyParams {
+struct TreeIncMultiHeadSelfAttentionParams {
   LayerID layer_guid;
   int embed_dim, num_heads, kdim, vdim;
-  float dropout;
-  bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding;
+  float dropout, scaling_factor;
+  bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
+      qk_prod_scaling;
 
   bool is_valid(ParallelTensorShape const &) const;
 };
 
-bool operator==(IncMultiHeadSelfAttentionVerifyParams const &,
-                IncMultiHeadSelfAttentionVerifyParams const &);
+bool operator==(TreeIncMultiHeadSelfAttentionParams const &,
+                TreeIncMultiHeadSelfAttentionParams const &);
 
 } // namespace FlexFlow
 
 namespace std {
 template <>
-struct hash<FlexFlow::IncMultiHeadSelfAttentionVerifyParams> {
+struct hash<FlexFlow::TreeIncMultiHeadSelfAttentionParams> {
   size_t
-      operator()(FlexFlow::IncMultiHeadSelfAttentionVerifyParams const &) const;
+      operator()(FlexFlow::TreeIncMultiHeadSelfAttentionParams const &) const;
 };
 } // namespace std
 

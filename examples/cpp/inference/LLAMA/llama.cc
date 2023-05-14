@@ -117,7 +117,7 @@ void FlexFlow::top_level_task(Task const *task,
                                         llamaConfig.dim / llamaConfig.n_heads,
                                         llamaConfig.dim / llamaConfig.n_heads,
                                         0.0f,
-                                        true,
+                                        false,
                                         false,
                                         false,
                                         NULL,
@@ -166,7 +166,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
-  InferenceManager im(&ff, llamaConfig.batchSize, 1);
+  InferenceManager im(ff.config, llamaConfig.batchSize, 1);
   im.compile_model_and_allocate_buffer(&ff, mapping);
   RequestManager rm;
 
@@ -200,8 +200,16 @@ void FlexFlow::top_level_task(Task const *task,
     float *data = (float *)malloc(sizeof(float) * volume);
 
     if (v.first.find("attention_w") != std::string::npos) {
-      loader.load_attention_weights(
-          data, volume, v.first, llamaConfig.weight_file_path);
+      assert(dims_vec[0] =
+                 llamaConfig.dim * (llamaConfig.dim / llamaConfig.n_heads) * 4);
+      assert(dims_vec[1] = llamaConfig.n_heads);
+      assert(volume == dims_vec[0] * dims_vec[1]);
+      loader.load_attention_weights(data,
+                                    volume,
+                                    llamaConfig.dim,
+                                    llamaConfig.n_heads,
+                                    v.first,
+                                    llamaConfig.weight_file_path);
 
     } else {
       loader.load_from_file(

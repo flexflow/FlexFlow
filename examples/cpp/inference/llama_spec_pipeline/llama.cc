@@ -54,10 +54,11 @@ void FlexFlow::top_level_task(Task const *task,
       1, 306, 4658, 278, 6593, 310, 2834, 338};
   rm.register_new_request(prompt, llama_config.sentence_len);
 
-  FFModel beam_model(ffconfig), tree_model(ffconfig), inc_model(ffconfig);
+  FFModel beam_model(ffconfig), tree_model(ffconfig);
   LLAMA::create_llama_model(beam_model, im, llama_config, 1, BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model, im, llama_config, 1, TREE_VERIFY_MODE);
-  LLAMA::create_llama_model(inc_model, im, llama_config, 1, INC_DECODING_MODE);
+  // LLAMA::create_llama_model(inc_model, im, llama_config, 1,
+  // INC_DECODING_MODE);
 
   // entry---------------------------
   int depth = 0;
@@ -68,12 +69,14 @@ void FlexFlow::top_level_task(Task const *task,
   bool new_req = true;
   TreeVerifyBatchConfig tree_bc;
 
+  int iteration = 0;
+
   while (depth < llama_config.max_beam_depth) {
     int bid = 0;
     if (beam_future_handlers.find(bid) == beam_future_handlers.end()) {
       BeamSearchBatchConfig bc;
-      BeamInferenceResult ir;
-      bc = rm.prepare_next_batch_beam(bc, ir);
+      InferenceResult ir;
+      bc = rm.prepare_next_batch_init(tree_bc, ir);
 
       std::cout << "sub_requests: " << bc.sub_requests[0] << "\n";
       FutureMap fm = im.inference(&beam_model, bid, bc);
@@ -103,84 +106,81 @@ void FlexFlow::top_level_task(Task const *task,
 
       // tranverse the tree in dfs order;
       if (depth >= llama_config.max_beam_depth) {
-        // std::cout << "tranverse the tree"
-        //           << "\n";
-        // rm.tranverse_beam_tree(bc);
-        tree_bc = rm.convert_beam_to_tree_batch_config(bc);
+
+        printf("\n\n ------Final Beam Search Batch------\n");
+        printf("[Beam] num_tokens: %d\n", bc.num_tokens);
+        for (int i = 0; i < bc.num_tokens; i++) {
+          std::cout << "[Token] Request Index: "
+                    << bc.tokensInfo[i].request_index
+                    << ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request
+                    << ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
+        }
+
+        // printf("\n\n prepare tree_bc from final beam search bc\n");
+        tree_bc = rm.prepare_next_batch_verify(bc);
+
+        printf("\n\n\n ------Tree Verify Batch-------\n");
+        // should have the same content as the hardcoded verification block
+        // below right now, it only contains the prompt need to add in the beam
+        // search result
+
+        printf("[Verify] num_tokens : %d\n", tree_bc.num_tokens);
+        printf("[Verify] num_tokens_in_batch: %d\n",
+               tree_bc.requestsInfo[0].num_tokens_in_batch);
+        printf("------------------------------\n");
+
+        for (int i = 0; i < tree_bc.num_tokens; i++) {
+          std::cout << "[Token] Request Index: "
+                    << tree_bc.tokensInfo[i].request_index << ", Abs Depth: "
+                    << tree_bc.tokensInfo[i].abs_depth_in_request
+                    << ", Token Id: " << tree_bc.tokensInfo[i].token_id << "\n";
+        }
+
+        printf("\n\n ------Commit Verified Tokens-------\n");
+        for (int i = 0; i < tree_bc.num_tokens_to_commit; i++) {
+          std::cout << "[Commit] Request Index: "
+                    << tree_bc.commited_tokens[i].request_index
+                    << ", Abs Depth: " << tree_bc.commited_tokens[i].token_depth
+                    << ", Token Index in batch: "
+                    << tree_bc.commited_tokens[i].token_index << "\n";
+        }
+
+        FutureMap fm = im.inference(&tree_model, 0, tree_bc);
+        assert(fm.get_future_map_domain().get_volume() == 1);
+        Future future = fm.get_future(0);
+        InferenceResult ir = future.get_result<InferenceResult>();
+        for (int i = 0; i < tree_bc.num_tokens; i++) {
+          if (i == 7) {
+            std::cout << "------------------\n";
+          }
+          printf("verify_tokens[%d] = %d\n", i, ir.token_ids[i]);
+        }
+
+        std::cout << "------Init New Beam Search Batch------\n";
+        bc = rm.prepare_next_batch_init(tree_bc, ir);
+        std::cout << "[Init] num_tokens: " << bc.num_tokens << "\n";
+        for (int i = 0; i < bc.num_tokens; i++) {
+          std::cout << "[Token] Request Index: "
+                    << bc.tokensInfo[i].request_index
+                    << ", Abs Depth: " << bc.tokensInfo[i].abs_depth_in_request
+                    << ", Token Id: " << bc.tokensInfo[i].token_id << "\n";
+        }
+        std::cout << "Batch Depth: " << bc.beamRequestsInfo[0].current_depth
+                  << "\n";
+
+        iteration++;
+
+        if (iteration < 4) {
+          std::cout << "\n\n~~~~~~~~~~teration " << iteration << "~~~~~~~~~~\n";
+          depth = bc.beamRequestsInfo[0].current_depth;
+          fm = im.inference(&beam_model, bid, bc);
+          assert(fm.get_future_map_domain().get_volume() == 1);
+          beam_future_handlers[bid] = fm.get_future(0);
+          beam_batch_configs[bid] = bc;
+        } else {
+          break;
+        }
       }
-    }
-  }
-
-  // original
-  {
-    std::vector<BatchConfig::TokenId> tokens{1,
-                                             306,
-                                             4658,
-                                             278,
-                                             6593,
-                                             310,
-                                             2834,
-                                             338,
-                                             593,
-                                             595,
-                                             17252,
-                                             5031,
-                                             993,
-                                             616,
-                                             368,
-                                             2302};
-    BatchConfig bc;
-    bc.num_tokens = 16;
-    bc.requestsInfo[0].num_tokens_in_batch = bc.num_tokens;
-    bc.requestsInfo[0].token_start_offset = 0;
-    bc.requestsInfo[0].max_sequence_length = 347;
-    bc.requestsInfo[0].request_guid = 1000000;
-    bc.request_completed[0] = false;
-    for (int i = 0; i < bc.num_tokens; i++) {
-      bc.tokensInfo[i].token_id = tokens[i];
-      bc.tokensInfo[i].abs_depth_in_request = i;
-      bc.tokensInfo[i].request_index = 0;
-    }
-    FutureMap fm = im.inference(&inc_model, 0, bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    Future future = fm.get_future(0);
-    InferenceResult ir = future.get_result<InferenceResult>();
-    for (int i = 0; i < bc.num_tokens; i++) {
-      printf("decoding_tokens[%d] = %d\n", i, ir.token_ids[i]);
-    }
-  }
-
-  // verification
-  {
-    std::vector<BatchConfig::TokenId> tokens{1,
-                                             306,
-                                             4658,
-                                             278,
-                                             6593,
-                                             310,
-                                             2834,
-                                             338,
-                                             593,
-                                             595,
-                                             17252,
-                                             5031,
-                                             993,
-                                             616,
-                                             368,
-                                             2302};
-    tree_bc.num_tokens = 16;
-    tree_bc.requestsInfo[0].num_tokens_in_batch = tree_bc.num_tokens;
-    for (int i = 0; i < tree_bc.num_tokens; i++) {
-      tree_bc.tokensInfo[i].token_id = tokens[i];
-      tree_bc.tokensInfo[i].abs_depth_in_request = i;
-      tree_bc.tokensInfo[i].request_index = 0;
-    }
-    FutureMap fm = im.inference(&tree_model, 0, tree_bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    Future future = fm.get_future(0);
-    InferenceResult ir = future.get_result<InferenceResult>();
-    for (int i = 0; i < tree_bc.num_tokens; i++) {
-      printf("verify_tokens[%d] = %d\n", i, ir.token_ids[i]);
     }
   }
 
