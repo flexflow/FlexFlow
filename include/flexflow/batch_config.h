@@ -48,9 +48,9 @@ public:
   int num_active_tokens() const;
   void print() const;
   virtual Mode get_mode() const;
-  static int const MAX_NUM_REQUESTS = 8;
+  static int const MAX_NUM_REQUESTS = 1;
   static int const MAX_NUM_TOKENS = 64;
-  static int const MAX_SEQ_LENGTH = 512;
+  static int const MAX_SEQ_LENGTH = 256;
 
   //  These are set by update
   int num_tokens;

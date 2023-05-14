@@ -26,9 +26,9 @@ namespace FlexFlow {
 class Tokenizer {
 public:
   // bos token
-  int32_t bos_token_id{1};
+  int32_t bos_token_id{0};
   // eos token id
-  int32_t eos_token_id{2};
+  int32_t eos_token_id{1};
 
   virtual ~Tokenizer() {}
   virtual std::vector<int32_t> Encode(std::string const &text) = 0;
