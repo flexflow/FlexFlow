@@ -85,7 +85,7 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel model(ffconfig);
   LLAMA::create_llama_model(model,
                             im,
-                            "7b",
+                            "190m",
                             file_paths.weight2_file_path,
                             ffconfig.workersPerNode * ffconfig.numNodes,
                             INC_DECODING_MODE);

@@ -16,6 +16,7 @@
 #include "models/llama.h"
 #include "flexflow/inference.h"
 #include "flexflow/tokenizers.h"
+#include <nlohmann/json.hpp>
 
 using namespace Legion;
 
@@ -26,6 +27,7 @@ struct FilePaths {
   std::string weight2_file_path;
   std::string weight3_file_path;
   std::string weight4_file_path;
+  std::string prompt_file_path;
   std::string tokenizer_file_path;
 };
 
@@ -51,6 +53,11 @@ void parse_input_args(char **argv, int argc, FilePaths &paths) {
       paths.weight4_file_path = std::string(argv[++i]);
       continue;
     }
+    // prompts
+    if (!strcmp(argv[i], "--prompt")) {
+      paths.prompt_file_path = std::string(argv[++i]);
+      continue;
+    }
     // tokenizer
     if (!strcmp(argv[i], "--tokenizer")) {
       paths.tokenizer_file_path = std::string(argv[++i]);
@@ -73,16 +80,33 @@ void FlexFlow::top_level_task(Task const *task,
   SentencePieceTokenizer tokenizer(file_paths.tokenizer_file_path);
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm(&tokenizer);
-  std::string text2 = "I believe the meaning of life is";
-  int total_num_requests = 5;
-  for (int i = 0; i < total_num_requests; i++) {
-    rm.register_new_request(text2, 128);
+  int total_num_requests = 0;
+  if (false) {
+    using json = nlohmann::json;
+    std::ifstream file_handle(file_paths.prompt_file_path);
+    assert(file_handle.good() && "Prompt file does not exist.");
+    json prompt_json = json::parse(file_handle,
+                                 /*parser_callback_t */ nullptr,
+                                 /*allow_exceptions */ true,
+                                 /*ignore_comments */ true);
+    for (auto & prompt : prompt_json) {
+      std::string text = prompt.get<std::string>();
+      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      total_num_requests ++;
+      rm.register_new_request(text, 128/*max_sequence_length*/);
+      if (total_num_requests == 10)
+        break;
+    }
+  } else {
+    std::string text = "I believe the meaning of life is";
+    rm.register_new_request(text, 128/*max_sequence_length*/);
+    total_num_requests = 1;
   }
 
   FFModel beam_model(ffconfig), tree_model(ffconfig);
   LLAMA::create_llama_model(beam_model,
                             im,
-                            "195m",
+                            "190m",
                             file_paths.weight1_file_path,
                             1,
                             BEAM_SEARCH_MODE);

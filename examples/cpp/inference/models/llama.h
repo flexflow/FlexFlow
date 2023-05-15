@@ -64,7 +64,7 @@ public:
                                  LLAMA::Config const &llama_config,
                                  int num_pipeline_stages,
                                  InferenceMode mode);
-  static Config create_195m_config();
+  static Config create_190m_config();
   static Config create_7b_config();
 };
 

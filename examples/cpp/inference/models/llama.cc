@@ -19,7 +19,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LLAMA::Config LLAMA::create_195m_config() {
+LLAMA::Config LLAMA::create_190m_config() {
   Config config;
   config.n_layers = 12;
   config.vocab_size = 50265;
@@ -51,8 +51,8 @@ void LLAMA::create_llama_model(FFModel &ff,
                                int num_pipeline_stages,
                                InferenceMode mode) {
   Config llama_config;
-  if (model_name == "195m" || model_name == "195M") {
-    llama_config = create_195m_config();
+  if (model_name == "190m" || model_name == "190M") {
+    llama_config = create_190m_config();
   } else if (model_name == "7b" || model_name == "7B") {
     llama_config = create_7b_config();
   } else {
