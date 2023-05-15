@@ -80,7 +80,7 @@ pip3 install transformers
 cat << EOF > hf_tokenizer.py
 #!/usr/bin/env python
 from transformers import GPT2Tokenizer
-model_id = "facebook/opt-125m"
+model_id = "facebook/opt-6.7b"
 tokenizer = GPT2Tokenizer.from_pretrained(model_id)
 inp="./wikitext-103-raw/wiki.valid.raw"
 outp="./wikitext-103-raw/wiki.valid.bpe.OPT"

@@ -25,7 +25,7 @@ using Legion::Memory;
 
 /*static*/
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
-    TreeIncMultiHeadSelfAttentionMeta const *m,
+    TreeIncMultiHeadSelfAttentionMeta *m,
     TreeVerifyBatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
