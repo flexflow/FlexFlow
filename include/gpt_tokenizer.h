@@ -58,13 +58,13 @@ public:
   // ~GPT_Tokenizer();
   std::vector<std::string> bpe(std::wstring token);
   std::vector<std::string> tokenize(std::string str);
-  int64_t convert_token_to_id(std::string token);
+  int32_t convert_token_to_id(std::string token);
   void encode(std::string str,
               size_t max_length,
-              std::vector<int64_t> *input_ids,
-              std::vector<int64_t> *mask_ids);
-  std::string decode(std::vector<int64_t> input_ids,
-                     std::vector<int64_t> mask_ids);
+              std::vector<int32_t> *input_ids,
+              std::vector<int32_t> *mask_ids);
+  std::string decode(std::vector<int32_t> input_ids,
+                     std::vector<int32_t> mask_ids);
   tokenizer_mode mode;
   std::string bos_token;
   std::string eos_token;
@@ -74,8 +74,8 @@ public:
   std::string strip(std::string const &inpt);
 
 private:
-  std::unordered_map<std::string, int64_t> vocab;
-  std::unordered_map<int64_t, std::string> inverse_vocab;
+  std::unordered_map<std::string, int32_t> vocab;
+  std::unordered_map<int32_t, std::string> inverse_vocab;
   std::unordered_map<wbigram_pair, uint32_t, hash_pair> bpe_ranks;
   wchar_t *bytes_to_unicode();
   void unicode_to_bytes();

@@ -49,8 +49,8 @@ int main(int argc, char *argv[]) {
     lines.push_back(line);
   }
 
-  std::vector<int64_t> input_ids;
-  std::vector<int64_t> mask_ids;
+  std::vector<int32_t> input_ids;
+  std::vector<int32_t> mask_ids;
   for (auto l = lines.begin(); l != lines.end(); ++l) {
     std::string stripped_line = tokenizer.strip(*l);
     if (stripped_line.length() == 0) {

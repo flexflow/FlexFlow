@@ -8,7 +8,7 @@ set(CPU_SRC
   moe.cc
   ../dataloader.cc
   ../data_generator.cc
-  ../gpt_tokenizer.cc)
+  ${FLEXFLOW_ROOT}/src/runtime/gpt_tokenizer.cc)
 
 set(GPU_SRC
   ../dataloader.cu)

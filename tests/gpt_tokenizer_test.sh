@@ -13,7 +13,7 @@ cd "${BASH_SOURCE[0]%/*}"
 cleanup
 
 # Compile the FlexFlow C++ tokenizer stand-alone
-g++ -std=c++11 -I../../../deps/json/include -o gpt_tokenizer gpt_tokenizer.cpp gpt_tokenizer.cc
+g++ -std=c++11 -I../deps/json/include -I../include -o gpt_tokenizer gpt_tokenizer.cpp ../src/runtime/gpt_tokenizer.cc
 chmod +x gpt_tokenizer
 
 # Download and inflate wikitext dataset

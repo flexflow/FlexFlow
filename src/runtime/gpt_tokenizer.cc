@@ -29,19 +29,19 @@ std::string GPT_Tokenizer::utf32_to_utf8(std::u32string const &src) {
 };
 
 wchar_t *GPT_Tokenizer::bytes_to_unicode() {
-  std::vector<uint64_t> bs;
-  for (auto i = uint64_t(L'!'); i < uint64_t(L'~') + 1; ++i) {
+  std::vector<uint32_t> bs;
+  for (auto i = uint32_t(L'!'); i < uint32_t(L'~') + 1; ++i) {
     bs.push_back(i);
   }
-  for (auto i = uint64_t(L'¡'); i < uint64_t(L'¬') + 1; ++i) {
+  for (auto i = uint32_t(L'¡'); i < uint32_t(L'¬') + 1; ++i) {
     bs.push_back(i);
   }
-  for (auto i = uint64_t(L'®'); i < uint64_t(L'ÿ') + 1; ++i) {
+  for (auto i = uint32_t(L'®'); i < uint32_t(L'ÿ') + 1; ++i) {
     bs.push_back(i);
   }
-  std::vector<uint64_t> cs = bs;
-  uint64_t n = 0;
-  for (uint64_t b = 0; b < 256; ++b) {
+  std::vector<uint32_t> cs = bs;
+  uint32_t n = 0;
+  for (uint32_t b = 0; b < 256; ++b) {
     auto p = find(bs.begin(), bs.end(), b);
     if (p == bs.end()) {
       bs.push_back(b);
@@ -118,7 +118,7 @@ void GPT_Tokenizer::load_vocab(std::string const &vocab_file) {
                                  /*parser_callback_t */ nullptr,
                                  /*allow_exceptions */ true,
                                  /*ignore_comments */ true);
-  auto vocab_ = vocab_data_.get<std::unordered_map<std::string, int64_t>>();
+  auto vocab_ = vocab_data_.get<std::unordered_map<std::string, int32_t>>();
   for (auto item : vocab_) {
     vocab.insert({item.first, item.second});
     inverse_vocab.insert({item.second, item.first});
@@ -240,7 +240,7 @@ std::vector<std::string> GPT_Tokenizer::tokenize(std::string str) {
   return bpe_tokens;
 }
 
-int64_t GPT_Tokenizer::convert_token_to_id(std::string token) {
+int32_t GPT_Tokenizer::convert_token_to_id(std::string token) {
   auto p = vocab.find(token);
   if (p != vocab.end()) {
     return vocab[token];
@@ -251,8 +251,8 @@ int64_t GPT_Tokenizer::convert_token_to_id(std::string token) {
 
 void GPT_Tokenizer::encode(std::string str,
                            size_t max_length,
-                           std::vector<int64_t> *input_ids,
-                           std::vector<int64_t> *mask_ids) {
+                           std::vector<int32_t> *input_ids,
+                           std::vector<int32_t> *mask_ids) {
   if (not input_ids->empty()) {
     input_ids->clear();
   }
@@ -283,8 +283,8 @@ void GPT_Tokenizer::encode(std::string str,
   }
 }
 
-std::string GPT_Tokenizer::decode(std::vector<int64_t> input_ids,
-                                  std::vector<int64_t> mask_ids) {
+std::string GPT_Tokenizer::decode(std::vector<int32_t> input_ids,
+                                  std::vector<int32_t> mask_ids) {
   // look up each number in encoder.json dictionary
   std::ostringstream oss;
   int index = 0;
