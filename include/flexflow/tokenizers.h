@@ -14,6 +14,7 @@
  */
 
 #pragma once
+#include "gpt_tokenizer.h"
 #include <sentencepiece_processor.h>
 
 namespace FlexFlow {
@@ -60,6 +61,43 @@ public:
 private:
   // the tokenizer
   sentencepiece::SentencePieceProcessor sentence_piece_;
+};
+
+class OptTokenizer : public Tokenizer {
+public:
+  OptTokenizer(std::string const &vocab_file,  // path to "gpt2-vocab.json"
+               std::string const &merges_file) // path to "gpt2-merges.txt"
+      : tokenizer(OPT, vocab_file, merges_file) {
+    bos_token_id = 0;
+    eos_token_id = 2;
+  }
+
+  std::vector<int32_t> Encode(std::string const &text) final {
+    std::vector<int32_t> tokens;
+    std::vector<int32_t> mask_ids;
+    tokenizer.encode(text, text.length(), &tokens, &mask_ids);
+
+    auto it = std::find(mask_ids.begin(), mask_ids.end(), 0);
+
+    if (it != mask_ids.end()) {
+      size_t index = std::distance(mask_ids.begin(), it);
+      tokens.erase(tokens.begin() + index, tokens.end());
+    }
+
+    return tokens;
+  }
+
+  std::string Decode(std::vector<int32_t> const &ids) final {
+    std::vector<int32_t> mask_ids;
+    for (int i = 0; i < ids.size(); i++) {
+      mask_ids.push_back(1);
+    }
+    std::string text = tokenizer.decode(ids, mask_ids);
+    return text;
+  }
+
+private:
+  GPT_Tokenizer tokenizer;
 };
 
 }; // namespace FlexFlow
