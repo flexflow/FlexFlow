@@ -81,7 +81,7 @@ void FlexFlow::top_level_task(Task const *task,
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm(&tokenizer);
   int total_num_requests = 0;
-  if (false) {
+  if (true) {
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
@@ -107,13 +107,13 @@ void FlexFlow::top_level_task(Task const *task,
   LLAMA::create_llama_model(beam_model,
                             im,
                             "190m",
-                            file_paths.weight1_file_path,
+                            file_paths.weight2_file_path,
                             1,
                             BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model,
                             im,
                             "7b",
-                            file_paths.weight2_file_path,
+                            file_paths.weight1_file_path,
                             ffconfig.workersPerNode * ffconfig.numNodes,
                             TREE_VERIFY_MODE);
 
