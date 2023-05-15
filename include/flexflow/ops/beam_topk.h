@@ -13,6 +13,11 @@ public:
   BeamTopKMeta(FFHandler handle);
   bool sorted;
   int max_beam_width;
+  int *parent_ids;
+  float *acc_probs;
+  int *block_start_index;
+  int *request_id;
+  int *tokens_per_request;
 };
 
 class BeamTopK : public Op {
