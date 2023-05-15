@@ -475,7 +475,7 @@ if(FF_BUILD_VISUALIZATION_TOOL)
   add_subdirectory(tools/substitutions_to_dot)
 endif()
 
-if(FF_BUILD_SENTENCEPIECE)
+if(FF_BUILD_SENTENCEPIECE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
   add_subdirectory(deps/sentencepiece sentencepiece EXCLUDE_FROM_ALL)
   target_include_directories(flexflow PUBLIC deps/sentencepiece/src)
   target_link_libraries(flexflow sentencepiece)
