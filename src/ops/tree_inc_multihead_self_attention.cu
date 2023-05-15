@@ -331,8 +331,6 @@ void compute_qkv_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   int q_block_size = m->qProjSize * num_tokens;
   int k_block_size = m->kProjSize * num_tokens;
   int v_block_size = m->vProjSize * num_tokens;
-  cuFloatComplex *complex_input;
-
   // apply bias for q, k, v
   if (*m->bias) {
     tree_apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
@@ -349,15 +347,12 @@ void compute_qkv_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                          m->scaling_factor);
   }
   if (*m->apply_rotary_embedding) {
-    checkCUDA(cudaMalloc(&complex_input,
-                         num_tokens * m->qProjSize * m->num_heads *
-                             sizeof(cuFloatComplex *) / 2));
     /*q*/
     tree_apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                                   min(CUDA_NUM_THREADS, parallelism),
                                   0,
                                   stream>>>(output_ptr,
-                                            complex_input,
+                                            m->complex_input,
                                             m->token_infos,
                                             m->qProjSize,
                                             m->kProjSize,
@@ -372,7 +367,7 @@ void compute_qkv_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                   min(CUDA_NUM_THREADS, parallelism),
                                   0,
                                   stream>>>(output_ptr,
-                                            complex_input,
+                                            m->complex_input,
                                             m->token_infos,
                                             m->qProjSize,
                                             m->kProjSize,
@@ -868,13 +863,16 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
         TreeVerifyBatchConfig::MAX_NUM_TOKENS * num_heads * vProjSize;
     size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     size_t W_out_contiguous_size = W_out_block_size * num_heads;
+    size_t complex_size =
+        (TreeVerifyBatchConfig::MAX_NUM_TOKENS * qProjSize * num_heads) / 2;
     size_t totalSize =
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
             sizeof(float) +
         tokeninfo_size * sizeof(TreeVerifyBatchConfig::PerTokenInfo) +
         committed_tokeninfo_size *
-            sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
+            sizeof(TreeVerifyBatchConfig::CommittedTokensInfo) +
+        complex_size * sizeof(cuFloatComplex);
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
@@ -899,6 +897,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     qk_prods_softmax = (float *)(qk_prods + qk_prod_size);
     attn_heads = (float *)qk_prods_softmax + qk_prod_size;
     W_out_contiguous = (float *)attn_heads + attn_heads_size;
+    complex_input =
+        (cuFloatComplex *)(W_out_contiguous + W_out_contiguous_size);
     int parallelism = vProjSize * oProjSize * num_heads;
     tree_build_w_out_tensor<<<GET_BLOCKS(parallelism),
                               min(CUDA_NUM_THREADS, parallelism),

@@ -610,38 +610,23 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   assert(num_shards >= (size_t)max_heap_size);
   num_shards = max_heap_size;
 
-  // parent_id, per token
-  int *gpu_parents;
-  // acc_porbs, per token
-  float *gpu_probs;
-  // each block's start index;
-  // one block means the single token in different requests;
-  int *gpu_block_start_index;
-  int *gpu_request_id;
-  int *gpu_tokens_per_request;
-
-  checkCUDA(cudaMalloc(&gpu_parents, sizeof(int) * max_total_requests));
-  checkCUDA(cudaMalloc(&gpu_probs, sizeof(float) * max_total_requests));
-  checkCUDA(cudaMalloc(&gpu_block_start_index, sizeof(int) * beam_num_blocks));
-  checkCUDA(cudaMalloc(&gpu_request_id, sizeof(int) * beam_num_blocks));
-  checkCUDA(cudaMalloc(&gpu_tokens_per_request, sizeof(int) * beam_num_blocks));
-  checkCUDA(cudaMemcpy(gpu_parents,
+  checkCUDA(cudaMemcpy(m->parent_ids,
                        parent_ids,
                        sizeof(int) * max_total_requests,
                        cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_probs,
+  checkCUDA(cudaMemcpy(m->acc_probs,
                        acc_probs,
                        sizeof(float) * max_total_requests,
                        cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_block_start_index,
+  checkCUDA(cudaMemcpy(m->block_start_index,
                        beam_block_start_index.data(),
                        sizeof(int) * beam_num_blocks,
                        cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_request_id,
+  checkCUDA(cudaMemcpy(m->request_id,
                        request_id.data(),
                        sizeof(int) * beam_num_blocks,
                        cudaMemcpyHostToDevice));
-  checkCUDA(cudaMemcpy(gpu_tokens_per_request,
+  checkCUDA(cudaMemcpy(m->tokens_per_request,
                        tokens_per_request.data(),
                        sizeof(int) * beam_num_blocks,
                        cudaMemcpyHostToDevice));
@@ -653,11 +638,11 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       length,
       max_beam_width,
       max_heap_size,
-      gpu_parents,
-      gpu_probs,
-      gpu_block_start_index,
-      gpu_request_id,
-      gpu_tokens_per_request,
+      m->parent_ids,
+      m->acc_probs,
+      m->block_start_index,
+      m->request_id,
+      m->tokens_per_request,
       sorted,
       output_ptr,
       indices_ptr,
@@ -708,13 +693,20 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
     cudaEventDestroy(t_end);
     printf("[BeamTopK] forward time = %.2lfms\n", elapsed);
   }
-  // if(bc->beam_slots.at(0).current_depth == 1){
-  //     print_beam_tensor<float>((float *)input_ptr, 50, 32000, 15, "beam topk
-  //     input"); print_tensor<float>((float *)output_ptr, 50, "beam topk
-  //     output");
-  // }
 }
 
-BeamTopKMeta::BeamTopKMeta(FFHandler handler) : OpMeta(handler) {}
-
+BeamTopKMeta::BeamTopKMeta(FFHandler handler) : OpMeta(handler) {
+  checkCUDA(cudaMalloc(&parent_ids,
+                       sizeof(int) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(cudaMalloc(&acc_probs,
+                       sizeof(float) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(cudaMalloc(&block_start_index,
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(cudaMalloc(&request_id,
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(cudaMalloc(&tokens_per_request,
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+}
 }; // namespace FlexFlow

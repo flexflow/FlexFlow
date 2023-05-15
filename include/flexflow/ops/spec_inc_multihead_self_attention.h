@@ -152,6 +152,7 @@ public:
   float *devQKVProjArray, *keyCache, *valueCache;
   float *qk_prods, *qk_prods_softmax;
   float *attn_heads, *W_out_contiguous;
+  cuFloatComplex *complex_input;
   // void *reserveSpace;
 
   // BatchConfig::token_idxs *dev_token2ids;
