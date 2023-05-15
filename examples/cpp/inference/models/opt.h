@@ -43,6 +43,7 @@ public:
     int num_attention_heads;
     std::string input_path;
     std::string weight_file_path;
+    std::string tokenizer_assets_folder;
     int max_position_embeddings;
     bool layer_norm_elementwise_affine;
     float dropout;
