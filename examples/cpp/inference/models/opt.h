@@ -32,7 +32,6 @@ public:
       num_hidden_layers = 32;
       dropout = 0.1;
       ffn_dim = 16384;
-      num_hidden_layers = 12;
       max_beam_width = 1;
       batchSize = 8;
       sentence_len = 100;
