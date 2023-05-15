@@ -67,11 +67,11 @@ struct variant_join_helper<variant<>, variant<Args2...>> {
   using type = variant<Args2...>;
 };
 
-template <template <typename, typename = void> typename Cond, typename Head, typename ...Ts>
+template <template <typename, typename = void> class Cond, typename Head, typename ...Ts>
 struct elements_satisfy_impl<Cond, void, variant<Head, Ts...>>
   : conjunction<Cond<Head>, elements_satisfy<Cond, variant<Ts...>>> { };
 
-template <template <typename, typename = void> typename Cond>
+template <template <typename, typename = void> class Cond>
 struct elements_satisfy_impl<Cond, void, variant<>> : std::true_type { };
 
 

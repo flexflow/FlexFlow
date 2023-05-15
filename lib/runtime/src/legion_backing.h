@@ -57,18 +57,16 @@ public:
 };
 
 struct NcclCommunicators {
-#ifdef FF_USE_NCCL
+  ncclComm_t *at(MachineView const &) const;
+
   std::unordered_map<MachineView, ncclComm_t *> view_to_comms;
-#endif
 };
 
-std::vector<MachineView> get_all_machine_view(int num_nodes,
-                                              int gpus_per_node,
-                                              int cpus_per_node);
+std::vector<MachineView> get_all_machine_views(int num_nodes,
+                                               int gpus_per_node,
+                                               int cpus_per_node);
 RuntimeBacking initializer_runtime();
 NcclCommunicators initialize_nccl_communicator(LegionConfig const &);
-ncclComm_t *find_nccl_comms(MachineView const &);
-
 
 }
 

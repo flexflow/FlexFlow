@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TASK_ARGUMENT_ACCESSOR_H
 #define _FLEXFLOW_RUNTIME_SRC_TASK_ARGUMENT_ACCESSOR_H
 
+#include "accessor.h"
+#include "runtime/config.h"
 #include "utils/strong_typedef.h"
 #include <vector>
 #include "task_invocation.h"
@@ -71,13 +73,13 @@ struct TaskArgumentAccessor {
   }
 
   template <typename T>
-  optional<T> get_optional_argument(slot_id);
+  optional<T> get_optional_argument(slot_id) const;
 
   template <typename T>
-  std::vector<T> get_variadic_argument(slot_id);
+  std::vector<T> get_variadic_argument(slot_id) const;
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(ParallelTensorSpec const &tensor_spec, region_idx_t idx) {
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(ParallelTensorSpec const &tensor_spec, region_idx_t idx) const {
     auto tensor_privs = get_privileges(this->args_fmt, tensor_spec);
     if (tensor_privs != PRIV) {
       std::ostringstream oss;

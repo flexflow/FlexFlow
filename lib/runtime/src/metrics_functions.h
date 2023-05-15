@@ -17,8 +17,8 @@
 #define _FF_METRICS_FUNCTIONS_H_
 
 #include "legion.h"
-#include "loss_functions.h"
-#include "kernels/perf_metrics.h"
+#include "op-attrs/ffconst.h"
+#include "task_invocation.h"
 
 namespace FlexFlow {
 

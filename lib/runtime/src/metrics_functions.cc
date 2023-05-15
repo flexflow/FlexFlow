@@ -61,37 +61,35 @@ enum Slots {
   METRICS_STRUCT,
   ALL_METRICS,
   ONE_METRICS,
-  ENABLE_PROFILING
+  PROFILING_SETTINGS
 };
 
 TaskInvocation compute_metrics(Metrics const &metrics,
                       parallel_tensor_guid_t const &logit,
-                      parallel_tensor_guid_t const &label,
-                      EnableProfiling const &enable_profiling) {
-  TaskBinding binding{ InvocationType::INDEX };
+                      parallel_tensor_guid_t const &label) {
+  auto binding = TaskBinding::index_launch(LOGIT);
   binding.bind(LOGIT, { logit });
   binding.bind(LABEL, { label });
   binding.bind_arg(METRICS_STRUCT, metrics);
-  binding.bind_arg(ENABLE_PROFILING, enable_profiling);
+  binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
 
   return { METRICS_COMP_TASK_ID, binding };
 }
 
 TaskInvocation update_metrics(Metrics const &metrics,
                               TypedFuture<PerfMetrics> const &all_metrics,
-                              TypedFutureMap<PerfMetrics> const &one_metrics,
-                              EnableProfiling const &enable_profiling) {
-  TaskBinding binding{ InvocationType::STANDARD };
+                              TypedFutureMap<PerfMetrics> const &one_metrics) {
+  auto binding = TaskBinding::standard_launch();
   binding.bind_arg(METRICS_STRUCT, metrics);
   binding.bind_arg(ALL_METRICS, all_metrics);
   binding.bind_arg(ONE_METRICS, one_metrics);
-  binding.bind_arg(ENABLE_PROFILING, enable_profiling);
+  binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
 
   return { UPDATE_METRICS_TASK_ID, binding };
 }
 
 TaskInvocation reset_metrics(Metrics const &metrics) {
-  TaskBinding binding(InvocationType::STANDARD);
+  auto binding = TaskBinding::standard_launch();
 
   binding.bind_arg(METRICS_STRUCT, metrics);
 
@@ -150,7 +148,7 @@ static PerfMetrics compute_metrics_task(Legion::Task const *task,
   auto me = acc.get_argument<Metrics>(METRICS_STRUCT);
   auto logit = acc.get_tensor<READ_ONLY>(LOGIT);
   auto label = acc.get_tensor<READ_ONLY>(LABEL);
-  auto enable_profiling = acc.get_argument<EnableProfiling>(ENABLE_PROFILING);
+  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING_SETTINGS);
   
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
@@ -174,7 +172,7 @@ static PerfMetrics compute_metrics_task(Legion::Task const *task,
     assert(!me.measure_categorical_crossentropy);
     profile(
       update_metrics_sparse_label_kernel,
-      EnableProfiling::NO,
+      profiling_settings,
       "[Compute Metrics] running_time = %.2lfms\n",
       me,
       get_float_ptr(logit),
@@ -194,7 +192,7 @@ static PerfMetrics compute_metrics_task(Legion::Task const *task,
     // #threads=256
     profile(
       update_metrics_label_kernel,
-      EnableProfiling::NO,
+      profiling_settings,
       "[Compute Mtrics] running_time = %.2lfms\n",
       me,
       get_float_ptr(logit),
@@ -215,7 +213,7 @@ static PerfMetrics update_metrics_task(Legion::Task const *task,
   auto m = acc.get_argument<Metrics>(METRICS_STRUCT);
   auto maybe_all_metrics = acc.get_optional_argument<PerfMetrics>(ALL_METRICS);
   auto one_metrics = acc.get_variadic_argument<PerfMetrics>(ONE_METRICS);
-  auto enable_profiling = acc.get_argument<EnableProfiling>(ENABLE_PROFILING);
+  auto profiling_settings = acc.get_argument<EnableProfiling>(PROFILING_SETTINGS);
 
   if (!maybe_all_metrics.has_value()) {
     assert (one_metrics.empty());
@@ -236,7 +234,7 @@ void register_task<METRICS_COMP_TASK_ID>() {
   TaskSignature sig;
   sig.add_slot(LOGIT, { SlotType::TENSOR, READ_ONLY });
   sig.add_slot(LABEL, { SlotType::TENSOR, READ_ONLY });
-  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
+  sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);
   sig.add_arg_slot<Metrics>(METRICS_STRUCT);
   sig.add_return_value<PerfMetrics>();
 
@@ -248,7 +246,7 @@ void register_task<UPDATE_METRICS_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<Metrics>(METRICS_STRUCT);
   sig.add_arg_slot<PerfMetrics>(ALL_METRICS);
-  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
+  sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);
   sig.add_variadic_arg_slot<PerfMetrics>(ONE_METRICS);
   sig.add_return_value<PerfMetrics>();
 

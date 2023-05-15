@@ -6,36 +6,32 @@
 #include <vector>
 #include "cost_metrics.h"
 #include "kernels/allocation.h"
-#include "op_task_signature.h"
 #include "task_argument_accessor.h"
+#include "op_task_invocation.h"
 
 namespace FlexFlow {
-
-enum class Trainable { 
-  YES, NO
-};
 
 struct InputParallelTensorDesc {
 public:
   ParallelTensorShape shape;
-  Trainable trainable;
+  IsTrainable trainable;
 };
 
 struct InputVariadicParallelTensorDesc {
 public:
   std::vector<ParallelTensorShape> shapes;
-  Trainable trainable;
+  IsTrainable trainable;
 };
 
 struct SimTaskBinding {
   void bind(slot_id, ParallelTensorShape const &);
   void bind_untrainable(slot_id, ParallelTensorShape const &);
-  void bind(slot_id, ParallelTensorShape const &, Trainable);
+  void bind(slot_id, ParallelTensorShape const &, IsTrainable);
   void bind(slot_id, InputParallelTensorDesc const &);
 
   void bind(slot_id, std::vector<ParallelTensorShape> const &);
   void bind_untrainable(slot_id, std::vector<ParallelTensorShape> const &);
-  void bind(slot_id, std::vector<ParallelTensorShape> const &, Trainable);
+  void bind(slot_id, std::vector<ParallelTensorShape> const &, IsTrainable);
   void bind(slot_id, InputVariadicParallelTensorDesc const &);
 
   template <typename T>

@@ -15,37 +15,22 @@
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
 #include "runtime/config.h"
-#include "accessor.h"
-#include "utils/graph/node.h"
-#include "op-attrs/operator_attrs.h"
-#include "utils/hash-utils.h"
-#include "utils/tuple.h"
-#include "initializer.h"
-#include "layer.h"
 #include "legion.h"
-#include "loss_functions.h"
 #include "metrics_functions.h"
 #include "optimizer.h"
-#include "parallel_tensor.h"
 #include "recompile.h"
-#include "tensor.h"
-#include "tl/optional.hpp"
 #include <functional>
 #include <unistd.h>
 #include <utility>
-#include "compiler/compiler.h"
 #include "op-attrs/ffconst.h"
-#include "layer_id.h"
-#include "kernels/ff_handle.h"
 #include "op-attrs/tensor_shape.h"
-#include "legion_parallel_tensor_shape.h"
 #include "computation_graph.h"
 #include "parallel_computation_graph.h"
 #include "tensor_mapping.h"
-#include "operator.h"
 #include "legion_backing.h"
 #include "sim_environment.h"
 #include "executable_task_invocation.h"
+#include "op-attrs/ops/loss_functions.h"
 
 namespace FlexFlow {
 
@@ -56,6 +41,7 @@ enum ShardingID {
 };
 
 MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
+
 
 class FFModel {
 public:
@@ -71,6 +57,7 @@ public:
   ExecutableTaskInvocation resolve(TaskInvocation const &);
   TaskReturnAccessor execute(ExecutableTaskInvocation const &);
   TaskReturnAccessor execute(std::vector<ExecutableTaskInvocation> const &);
+  std::pair<Legion::TaskArgument, TaskArgumentFormat> construct_legion_task_arg(ExecutableTaskBinding const &);
 
   void init_operators();
   void forward(int seq_length = -1);  

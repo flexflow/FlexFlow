@@ -3,11 +3,13 @@
 
 #include "legion.h"
 #include "legion/legion_utilities.h"
-#include "compiler/compiler.h"
+#include "op-attrs/dim_ordered.h"
 #include "utils/optional.h"
 #include <type_traits>
 #include "utils/visitable.h"
 #include "kernels/device.h"
+#include "utils/variant.h"
+#include "kernels/nccl.h"
 
 namespace FlexFlow {
 
@@ -62,8 +64,8 @@ struct is_trivially_serializable_t<T, typename std::enable_if<visit_trivially_se
 template <typename T>
 struct is_trivially_serializable_t<T, typename std::enable_if<std::is_integral<T>::value>::type> : std::true_type { };
 
-template <>
-struct is_trivially_serializable_t<half> : std::true_type { };
+template <> struct is_trivially_serializable_t<half> : std::true_type { };
+template <> struct is_trivially_serializable_t<ncclUniqueId> : std::true_type { };
 
 template <typename T>
 struct is_trivially_serializable_t<T, typename std::enable_if<std::is_enum<T>::value>::type> : std::true_type { };

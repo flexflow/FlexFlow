@@ -4,6 +4,7 @@
 #include "op-attrs/op-attrs.h"
 #include <string>
 #include "utils/fmt.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -221,6 +222,8 @@ struct formatter<::OperatorType> : formatter<string_view> {
         name = "Pipeline";
       case OP_FUSED_PARALLEL:
         name = "FusedParallelOp";
+      default:
+        throw ::FlexFlow::mk_runtime_error("Unhandled op type {}", (int)ot);
     }
     return formatter<string_view>::format(name, ctx);
   }

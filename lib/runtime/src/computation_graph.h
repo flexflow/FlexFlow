@@ -22,7 +22,7 @@ struct tensor_guid_t : strong_typedef<tensor_guid_t, Node> {
 
 struct ComputationGraph {
 public:
-  ComputationGraph() = default;
+  ComputationGraph();
   ComputationGraph(ComputationGraph const &) = default;
   ComputationGraph(ComputationGraph &&) = default;
   

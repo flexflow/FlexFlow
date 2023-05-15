@@ -1,6 +1,9 @@
 #include "legion_backing.h"
+#include "kernels/nccl.h"
+#include "task_argument_accessor.h"
 
 using namespace Legion;
+using namespace FlexFlow::Kernels;
 
 namespace FlexFlow {
 
@@ -8,23 +11,21 @@ enum Slots {
   NCCL_UNIQUE_ID
 };
 
-#ifdef FF_USE_NCCL
-static ncclUniqueId get_nccl_unique_id_task(Legion::Task const *task,
-                                            std::vector<Legion::PhysicalRegion> const &regions,
-                                            Legion::Context ctx,
-                                            Legion::Runtime *runtime) {
-  ncclUniqueId ncclId;
-  checkNCCL(ncclGetUniqueId(&ncclId));
-  return ncclId;
+static ncclUniqueId generate_nccl_unique_id_task(Legion::Task const *task,
+                                                 std::vector<Legion::PhysicalRegion> const &regions,
+                                                 Legion::Context ctx,
+                                                 Legion::Runtime *runtime) {
+  return NCCL::generate_unique_id();
 }
 
 static ncclComm_t init_nccl_comms_task(Legion::Task const *task,
                                        std::vector<Legion::PhysicalRegion> const &regions,
                                        Legion::Context ctx,
                                        Legion::Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   // Must be an index space launch
   assert(task->is_index_space);
-  ncclUniqueId ncclId = *((ncclUniqueId const *)task->args);
+  auto ncclId = acc.get_argument<ncclUniqueId>(NCCL_UNIQUE_ID);
   int allRanks = task->index_domain.get_volume();
   assert(task->index_domain.contains(task->index_point));
   int myRank = 0;
@@ -33,13 +34,10 @@ static ncclComm_t init_nccl_comms_task(Legion::Task const *task,
       break;
     }
   }
-  ncclComm_t ncclComm;
-  checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
   // fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
   //     ncclComm, allRanks, myRank, ncclId);
-  return ncclComm;
+  return NCCL::create_comm(ncclId, allRanks, myRank);
 }
-#endif
 
 TypedTaskInvocation<ncclUniqueId> get_unique_id() {
   return check_return_type<ncclUniqueId>({ NCCL_GETUNIQUEID_TASK_ID, TaskBinding::standard_launch() });
@@ -86,24 +84,16 @@ TypedTaskInvocation<ncclComm_t> initialize_nccl_communicator( IndexSpaceManager 
   // view_hash_to_nccl_comms[get_std_hash(view)] = nccl_comms;
 }
 
-#ifdef FF_USE_NCCL
-ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
-  size_t key = get_std_hash(view);
-  if (contains_key(this->view_hash_to_nccl_comms, key)) {
-    return this->view_hash_to_nccl_comms.at(key);
-  } else {
-    assert (config.computationMode == COMP_MODE_INFERENCE);
-    return nullptr;
-  }
+ncclComm_t *NcclCommunicators::at(MachineView const &view) const {
+  return this->view_to_comms.at(view);
 }
-#endif
 
 template <>
 void register_task<NCCL_GETUNIQUEID_TASK_ID>() {
   TaskSignature sig;
   sig.add_return_value<ncclUniqueId>();
 
-  register_task(NCCL_GETUNIQUEID_TASK_ID, "NCCL GetUniqueId Task", sig, get_nccl_unique_id_task);
+  register_task(NCCL_GETUNIQUEID_TASK_ID, "NCCL GetUniqueId Task", sig, generate_nccl_unique_id_task);
 }
 
 template <>

@@ -6,6 +6,7 @@
 #include "serialization.h"
 #include <typeindex>
 #include "tasks.h"
+#include <unordered_map>
 
 namespace FlexFlow {
 

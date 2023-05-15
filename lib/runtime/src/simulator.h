@@ -15,6 +15,7 @@
 #ifndef _FLEXFLOW_SIMULATOR_H_
 #define _FLEXFLOW_SIMULATOR_H_
 
+#include "operator_guid_t.h"
 #include "runtime/config.h"
 #include "op-attrs/ffconst.h"
 #include "op-attrs/operator_attrs.h"
@@ -553,7 +554,7 @@ public:
 };
 
 struct OpSyncTask {
-  Op const *op;
+  operator_guid_t op;
   int unsatisfied_dependencies;
   float finish_time;
 };
@@ -615,13 +616,13 @@ public:
   SimTask *new_nominal_comm_task(std::string const &name,
                                  CommDevice *comm_device,
                                  size_t message_size);
-  SimTask *new_forward_task(Op const *op, int idx);
-  SimTask *new_allreduce_task(Op const *op,
+  SimTask *new_forward_task(operator_guid_t const &, int idx);
+  SimTask *new_allreduce_task(operator_guid_t const &,
                               std::vector<int> const &node_ids,
                               size_t message_size);
-  SimTask *new_backward_task(Op const *op, int idx);
-  SimTask *get_forward_task(Op const *op, int idx);
-  SimTask *get_backward_task(Op const *op, int idx);
+  SimTask *new_backward_task(operator_guid_t const &, int idx);
+  SimTask *get_forward_task(operator_guid_t const &, int idx);
+  SimTask *get_backward_task(operator_guid_t const &, int idx);
 
   SimTask *new_task();
 
@@ -650,8 +651,8 @@ public:
                                        SimTask *dst_task,
                                        size_t message_size,
                                        bool force_zero_cost = false);
-  CostMetrics measure_operator_cost(Op const *op, MachineView const &view);
-  float estimate_xfer_cost(Op const *op,
+  CostMetrics measure_operator_cost(operator_guid_t const &, MachineView const &view);
+  float estimate_xfer_cost(operator_guid_t const &,
                            int input_idx,
                            MachineView const &source_view,
                            MachineView const &sink_view);

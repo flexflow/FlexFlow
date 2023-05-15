@@ -8,9 +8,10 @@ namespace FlexFlow {
 using ExecutableArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
 
 struct ExecutableTaskBinding {
-private:
+public:
+  InvocationType invocation_type;
   std::unordered_map<slot_id, ExecutableArgSpec> arg_bindings;
-  std::unordered_map<slot_id, parallel_tensor_guid_t> bindings;
+  std::unordered_map<slot_id, parallel_tensor_guid_t> tensor_bindings;
 };
 
 struct ExecutableTaskInvocation : public use_visitable_cmp<ExecutableTaskInvocation> {

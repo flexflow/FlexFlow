@@ -23,38 +23,6 @@
 #include "op-attrs/ffconst_utils.h"
 #include "mapper.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "ops/aggregate.h"
-#include "ops/aggregate_spec.h"
-#include "ops/attention.h"
-#include "ops/batch_matmul.h"
-#include "ops/batch_norm.h"
-#include "ops/cast.h"
-#include "ops/concat.h"
-#include "ops/conv_2d.h"
-#include "ops/dropout.h"
-#include "ops/element_binary.h"
-#include "ops/element_unary.h"
-#include "ops/embedding.h"
-#include "ops/flat.h"
-#include "ops/fused.h"
-#include "ops/gather.h"
-#include "ops/groupby.h"
-#include "ops/layer_norm.h"
-#include "ops/linear.h"
-#include "ops/noop.h"
-#include "ops/pool_2d.h"
-#include "ops/reduce.h"
-#include "ops/reshape.h"
-#include "ops/reverse.h"
-#include "ops/softmax.h"
-#include "ops/split.h"
-#include "ops/topk.h"
-#include "ops/transpose.h"
-#include "ops/combine.h"
-#include "ops/fused_parallel_op.h"
-#include "ops/repartition.h"
-#include "ops/reduction.h"
-#include "ops/replicate.h"
 #include "utils/random_utils.h"
 #include "test_utils.h"
 #include "legion/legion_utilities.h"
@@ -145,6 +113,23 @@ FFModel::FFModel(FFConfig const &_config,
   int idx = 0;
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
+  }
+}
+
+std::pair<
+  TaskArgument,
+  TaskArgumentFormat
+> FFModel::construct_legion_task_arg(ExecutableTaskBinding const &binding) {
+  for (ExecutableArgSpec const &arg_spec : binding.arg_bindings) {
+    
+  }
+}
+
+TaskReturnAccessor FFModel::execute(ExecutableTaskInvocation const &invocation) {
+  ExecutableTaskBinding binding = invocation.binding;
+  if (binding.invocation_type == InvocationType::STANDARD) {
+    TaskLauncher launcher(invocation.task_id, construct_legion_task_arg(invocation));
+
   }
 }
 

@@ -42,19 +42,19 @@ enum LossSlots {
   LABEL,
   LOSS_ATTRS,
   BATCH_SIZE,
-  ENABLE_PROFILING
+  PROFILING_SETTINGS
 };
 
 TaskInvocation backward_invocation(LossAttrs const &attrs, 
                                    EnableProfiling enable_profiling,
                                    parallel_tensor_guid_t logit,
                                    parallel_tensor_guid_t label) {
-  TaskBinding binding(InvocationType::INDEX);
+  auto binding = TaskBinding::index_launch(LOGIT);
   binding.bind_arg(LOSS_ATTRS, attrs);
-  ParallelTensorSpec logit_spec = { logit };
-  binding.bind(LOGIT, logit_spec);
-  binding.bind(LABEL, { label });
-  binding.bind(LOGIT_GRAD, logit_spec.grad());
+  binding.bind(LOGIT, logit);
+  binding.bind(LABEL, label);
+  binding.bind(LOGIT_GRAD, grad(logit));
+  binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
   
   /* if ((logit_domain != part_domain) || (label_domain != part_domain)) { */ // TODO @lockshaw make sure this is still checked
   /*   fprintf(stderr, */
@@ -70,7 +70,7 @@ static void loss_backward_task(Legion::Task const *task,
                                Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto attrs = acc.get_argument<LossAttrs>(LOSS_ATTRS);
-  auto enable_profiling = acc.get_argument<EnableProfiling>(ENABLE_PROFILING);
+  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING_SETTINGS);
   auto batch_size = acc.get_argument<int>(BATCH_SIZE);
   auto logit_grad = acc.get_tensor<READ_WRITE>(LOGIT_GRAD);
   auto logit = acc.get_tensor<READ_ONLY>(LOGIT);
@@ -101,7 +101,7 @@ static void loss_backward_task(Legion::Task const *task,
 
     profile(
       sparse_categorical_crossentropy_loss_backward_kernel,
-      enable_profiling,
+      profiling_settings,
       "[SparseCategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
       get_float_ptr(logit_grad),
       get_float_ptr(logit),
@@ -125,7 +125,7 @@ static void loss_backward_task(Legion::Task const *task,
       {
         profile(
           categorical_crossentropy_loss_backward_kernel,
-          enable_profiling,
+          profiling_settings,
           "[CategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
           get_float_ptr(logit_grad),
           get_float_ptr(logit),
@@ -139,7 +139,7 @@ static void loss_backward_task(Legion::Task const *task,
       {
         profile(
           mean_squared_error_avg_loss_backward_kernel,
-          enable_profiling,
+          profiling_settings,
           "[MeanSquaredErrorAvgLoss] backward_time = %.2lfms\n",
           get_float_ptr(logit_grad),
           get_float_ptr(logit),
@@ -153,7 +153,7 @@ static void loss_backward_task(Legion::Task const *task,
       {
         profile(
           identity_loss_backward_kernel,
-          enable_profiling,
+          profiling_settings,
           "[IdentityLoss] backward_time = %.2lfms\n",
           get_float_ptr(logit_grad),
           get_float_ptr(logit),
@@ -172,7 +172,7 @@ template <>
 void register_task<LOSS_BWD_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<LossAttrs>(LOSS_ATTRS);
-  sig.add_arg_slot<EnableProfiling>(ENABLE_PROFILING);
+  sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);
   sig.add_slot(LOGIT, { SlotType::TENSOR, READ_ONLY });
   sig.add_slot(LABEL, { SlotType::TENSOR, READ_ONLY });
   sig.add_slot(LOGIT_GRAD, { SlotType::TENSOR, READ_WRITE });

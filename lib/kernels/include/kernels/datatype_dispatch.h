@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-template <template <DataType> typename F, 
+template <template <DataType> class F, 
           typename ...Args,
           typename Out = decltype(std::declval<F<DT_FLOAT>>()(std::declval<Args>()...))
          >
@@ -26,7 +26,7 @@ Out dispatch(DataType dt, Args&&... args) {
   }
 }
 
-template <template <DataType> typename F>
+template <template <DataType> class F>
 struct DataTypeDispatch1 {
   template <DataType DT>
   struct Type1Dispatch {
@@ -42,7 +42,7 @@ struct DataTypeDispatch1 {
   }
 };
 
-template <template <DataType, DataType> typename F>
+template <template <DataType, DataType> class F>
 struct DataTypeDispatch2 {
   template <DataType IT>
   struct InputType {

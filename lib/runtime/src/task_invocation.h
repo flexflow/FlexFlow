@@ -1,17 +1,16 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_H
 #define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_H
 
-#include "utils/strong_typedef.h"
+#include "pcg/machine_view.h"
 #include "utils/visitable.h"
 #include <typeindex>
 #include "serialization.h"
-#include "accessor.h"
-#include "runtime/config.h"
 #include "parallel_tensor_guid_t.h"
 #include "tasks.h"
 #include "task_signature.h"
 #include "profiling.h"
 #include "utils/variant.h"
+#include "kernels/ff_handle.h"
 
 namespace FlexFlow {
 
@@ -126,9 +125,12 @@ public:
   IsGrad is_grad;
 };
 
+ParallelTensorSpec grad(parallel_tensor_guid_t const &);
+
 enum class ArgRefType {
   ENABLE_PROFILING,
   FF_HANDLE,
+  PROFILING_SETTINGS
 };
 
 template <typename T>
@@ -144,10 +146,34 @@ public:
 };
 
 struct ArgRefSpec {
+public:
+  ArgRefSpec() = delete;
+
+  template <typename T>
+  bool holds() const {
+    return std::type_index(typeid(T)) == this->type;
+  }
+
+  ArgRefType const &get_ref_type() const {
+    return this->ref_type;
+  }
+
+  template <typename T>
+  static ArgRefSpec create(ArgRef<T> const &r) {
+    static_assert(is_serializable<T>, "Type must be serializeable");
+
+    return ArgRefSpec(std::type_index(typeid(T)), r.ref_type);
+  }
+private:
+  ArgRefSpec(std::type_index, ArgRefType);
+
+  std::type_index type;
+  ArgRefType ref_type;
 };
 
 
 ArgRef<EnableProfiling> enable_profiling();
+ArgRef<ProfilingSettings> profiling_settings();
 ArgRef<PerDeviceFFHandle> ff_handle();
 
 template <typename T> 
@@ -246,6 +272,12 @@ public:
   static TaskBinding sync_type_dependent_launch(slot_id);
 
   void bind(slot_id, parallel_tensor_guid_t const &);
+  void bind(slot_id, ParallelTensorSpec const &);
+
+  template <typename T>
+  void bind_arg(slot_id name, ArgRef<T> const &a) {
+    this->insert_arg_spec(name, ArgRefSpec::create(a));
+  }
 
   template <typename T>
   void bind_arg(slot_id name, TypedTaskArg<T> const &);
