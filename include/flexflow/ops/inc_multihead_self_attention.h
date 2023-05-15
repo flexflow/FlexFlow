@@ -144,6 +144,7 @@ public:
   float *qk_prods, *qk_prods_softmax;
   float *attn_heads, *W_out_contiguous;
   BatchConfig::PerTokenInfo *token_infos;
+  cuFloatComplex *complex_input;
 };
 
 }; // namespace FlexFlow
