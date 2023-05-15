@@ -703,10 +703,13 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler) : OpMeta(handler) {
                        sizeof(float) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
                            BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&block_start_index,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&request_id,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&tokens_per_request,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
 }
 }; // namespace FlexFlow
