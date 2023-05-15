@@ -26,10 +26,16 @@ for serving generative LLMs while provably preserving model quality.
 </p>
 
 ## Install SpecInfer
-SpecInfer can be automatically installed by building the inference branch of FlexFlow. Please read the [instructions](INSTALL.md) for installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. You can also use `conda` to install the FlexFlow Python package (coming soon).
+SpecInfer can be automatically installed by building the inference branch of FlexFlow. Please read the [instructions](INSTALL.md) for installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
 
 ## Run SpecInfer
-The SpecInfer executable is available at `build_dir/inference/spec_infer/spec_infer`
+The source code for the SpecInfer pipeline is available at [this folder](../inference/spec_infer/), and the SpecInfer executable will be available at `/build_dir/inference/spec_infer/spec_infer`. You can use the following command-line arguments:
+
+* `-ll:gpu`: number of GPU processors to use on each node for serving an LLM (default: 0)
+* `-ll:fsize`: size of device memory on each GPU in MB
+* `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) in MB. SpecInfer keeps a replica of the LLM parameters on zero-copy memory, so you want to make sure the zero-copy memory is sufficient for storing the LLM parameters.
+* `-llm-weight`: path to the folder that stores the LLM weights
+* `-ssm-weight`: path to the folder that stores the small speculative models' weights
 
 ### Tokenizers
 SpecInfer supports two tokenizers:
