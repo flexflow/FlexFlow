@@ -59,6 +59,12 @@ wchar_t *GPT_Tokenizer::bytes_to_unicode() {
   return bytes_mapping;
 }
 
+void GPT_Tokenizer::unicode_to_bytes() {
+  for (int i = 0; i < 256; i++) {
+    bytes_decoder[bytes_encoder[i]] = (char)i;
+  }
+}
+
 std::vector<std::string> GPT_Tokenizer::split(std::string const &s,
                                               std::regex rgx) {
   std::vector<std::string> elems;
@@ -115,6 +121,7 @@ void GPT_Tokenizer::load_vocab(std::string const &vocab_file) {
   auto vocab_ = vocab_data_.get<std::unordered_map<std::string, int64_t>>();
   for (auto item : vocab_) {
     vocab.insert({item.first, item.second});
+    inverse_vocab.insert({item.second, item.first});
   }
 };
 
@@ -274,4 +281,43 @@ void GPT_Tokenizer::encode(std::string str,
     mask_ids->insert(mask_ids->begin(), 1);
     input_ids->insert(input_ids->begin(), 2);
   }
+}
+
+std::string GPT_Tokenizer::decode(std::vector<int64_t> input_ids,
+                                  std::vector<int64_t> mask_ids) {
+  // look up each number in encoder.json dictionary
+  std::ostringstream oss;
+  int index = 0;
+  for (auto const &id : input_ids) {
+    if (index == 0) {
+      if (mode == OPT) {
+        assert(id == 2);
+        index++;
+        continue;
+      }
+    }
+    if (!mask_ids[index]) {
+      index++;
+      continue;
+    }
+    auto it = inverse_vocab.find(id);
+    if (it != inverse_vocab.end()) {
+      oss << it->second;
+    } else {
+      // Handle the case when the integer is not found in the inverse_vocab map.
+      // You can choose to ignore it, skip it, or handle it differently based on
+      // your requirements.
+      assert(false);
+    }
+    index++;
+  }
+  std::string concatenated_tokens = oss.str();
+  // apply byte_decoder to each character in the input_ids string, then decode
+  // as utf-8
+  std::wstring wstr = utf8_to_wstring(concatenated_tokens);
+  std::string result;
+  for (wchar_t ch : wstr) {
+    result += bytes_decoder[ch];
+  }
+  return result;
 }
