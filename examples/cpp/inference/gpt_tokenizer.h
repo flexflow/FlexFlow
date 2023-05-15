@@ -53,6 +53,7 @@ public:
     unk_token = unk_token_str;
     mask_token = mask_token_str;
     bytes_encoder = bytes_to_unicode();
+    unicode_to_bytes();
   };
   // ~GPT_Tokenizer();
   std::vector<std::string> bpe(std::wstring token);
@@ -62,6 +63,8 @@ public:
               size_t max_length,
               std::vector<int64_t> *input_ids,
               std::vector<int64_t> *mask_ids);
+  std::string decode(std::vector<int64_t> input_ids,
+                     std::vector<int64_t> mask_ids);
   tokenizer_mode mode;
   std::string bos_token;
   std::string eos_token;
@@ -72,9 +75,12 @@ public:
 
 private:
   std::unordered_map<std::string, int64_t> vocab;
+  std::unordered_map<int64_t, std::string> inverse_vocab;
   std::unordered_map<wbigram_pair, uint32_t, hash_pair> bpe_ranks;
   wchar_t *bytes_to_unicode();
+  void unicode_to_bytes();
   wchar_t *bytes_encoder;
+  std::unordered_map<wchar_t, char> bytes_decoder;
   uint32_t cache_max_size = 500000;
   uint32_t cache_word_max_length = 30;
   std::string unicode_letter_expr =

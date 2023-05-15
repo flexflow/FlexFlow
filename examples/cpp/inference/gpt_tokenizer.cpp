@@ -70,6 +70,8 @@ int main(int argc, char *argv[]) {
         }
       }
       outfile << std::endl;
+      std::string decoded_line = tokenizer.decode(input_ids, mask_ids);
+      assert(decoded_line == stripped_line);
       input_ids.clear();
       mask_ids.clear();
     }
