@@ -92,16 +92,17 @@ void FlexFlow::top_level_task(Task const *task,
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
     json prompt_json = json::parse(file_handle,
-                                 /*parser_callback_t */ nullptr,
-                                 /*allow_exceptions */ true,
-                                 /*ignore_comments */ true);
-    for (auto & prompt : prompt_json) {
+                                   /*parser_callback_t */ nullptr,
+                                   /*allow_exceptions */ true,
+                                   /*ignore_comments */ true);
+    for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      total_num_requests ++;
-      rm.register_new_request(text, 128/*max_sequence_length*/);
-      if (total_num_requests == 10)
+      total_num_requests++;
+      rm.register_new_request(text, 128 /*max_sequence_length*/);
+      if (total_num_requests == 10) {
         break;
+      }
     }
   }
 
