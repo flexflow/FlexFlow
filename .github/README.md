@@ -54,17 +54,21 @@ For example, you can use the following command line to serve a LLaMA-6B or LLaMA
 ### Tokenizers
 SpecInfer supports two tokenizers:
 
-
+* The [SentencePiece tokenizer](https://github.com/google/sentencepiece), which is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo).
+* The 
 
 ## TODOs
 
 SpecInfer is under active development. We currently focus on the following tasks and strongly welcome all contributions to SpecInfer from bug fixes to new features and extensions.
 
-* Low-precision and mixed-precision support. The 
+* Low-precision and mixed-precision support. The current version uses single-precision floating points for computing tree attention. We are actively working on support half-precision floating points, and int-4 and int-8 quantizations.
+* 
 
 
 ## Acknowledgements
-This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting SpecInfer and the underlying FlexFlow runtime system.
+This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting SpecInfer and the underlying FlexFlow runtime system. The following paper describes design, implementation, and key optimizations of SpecInfer.
+
+* Xupeng Miao*, Gabriele Oliaro*, Zhihao Zhang*, Xinhao Chen, Zeyu Wang, Rae Ying Yee Wong, Zhuoming Chen, Daiyaan Arfeen, Reyna Abhyankar, and Zhihao Jia. [SpecInfer: Accelerating Generative LLM Serving with Speculative Inference and Token Tree Verification]().
 
 ## License
-SpecInfer and FlexFlow uses Apache License 2.0.
+Both SpecInfer and FlexFlow use Apache License 2.0.
