@@ -36,16 +36,32 @@ The source code for the SpecInfer pipeline is available at [this folder](../infe
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) in MB. SpecInfer keeps a replica of the LLM parameters on zero-copy memory, so you want to make sure the zero-copy memory is sufficient for storing the LLM parameters.
 * `-llm-weight`: path to the folder that stores the LLM weights
 * `-ssm-weight`: path to the folder that stores the small speculative models' weights
+* `-tokenizer`: path to the tokenizer file (see [Tokenizers] for preparing a tokenizer for SpecInfer)
+* `-prompt`: (optional) path to the prompt file. SpecInfer expects a json format file for prompts, all of which will be served by SpecInfer. In addition, users can also use the following API for registering requests:
+
+```c++
+class RequestManager {
+  RequestGuid register_new_request(std::string const &prompt, int max_sequence_length);
+}
+```
+For example, you can use the following command line to serve a LLaMA-6B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-190M models for speculative inference.
+
+```bash
+./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-weight /path/to/llm/weights -ssm-weight /paths --tokenizer ../tokenizer.model --prompt ../piqa.json
+
+```
 
 ### Tokenizers
 SpecInfer supports two tokenizers:
 
-* 
 
-## Contributing
-Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
 
-We welcome all contributions to SpecInfer from bug fixes to new features and extensions.
+## TODOs
+
+SpecInfer is under active development. We currently focus on the following tasks and strongly welcome all contributions to SpecInfer from bug fixes to new features and extensions.
+
+* Low-precision and mixed-precision support. The 
+
 
 ## Acknowledgements
 This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting SpecInfer and the underlying FlexFlow runtime system.
