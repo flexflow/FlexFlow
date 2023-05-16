@@ -1,11 +1,14 @@
 # SpecInfer
 ![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) ![gpu tests](https://github.com/flexflow/flexflow/workflows/gpu-ci/badge.svg?branch=master) ![multinode gpu tests](https://github.com/flexflow/flexflow/workflows/multinode-test/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=master) ![pip](https://github.com/flexflow/flexflow/workflows/pip-install/badge.svg?branch=master) ![shell-check](https://github.com/flexflow/flexflow/workflows/Shell%20Check/badge.svg?branch=master) ![clang-format](https://github.com/flexflow/flexflow/workflows/clang-format%20Check/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
 
+<p align="center">
+<img src="../img/spec_infer_demo.gif" alt="A SpecInfer Demo" width="630"/>
+</p>
 
 ## What is SpecInfer
 
 <p align="center">
-<img src="../img/overview.png" alt="An overview of SpecInfer" height="400"/>
+<img src="../img/overview.png" alt="An overview of SpecInfer" width="620"/>
 </p>
   
 The high computational and memory requirements of generative large language
