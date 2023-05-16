@@ -74,6 +74,14 @@ You can use [this script](../inference/spec_infer/MODEL_WEIGHTS.md) to convert t
 ### Prompt Datasets
 We have evaluated SpecInfer on the following prompts datasets: [Chatbot instruction prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatbot.json), [ChatGPT Prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatgpt.json), [WebQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/webqa.json), [Alpaca](https://specinfer.s3.us-east-2.amazonaws.com/prompts/alpaca.json), and [PIQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/piqa.json).
 
+## Difference between SpecInfer and HuggingFace Assistant Model
+
+There are two major differences between the two systems.
+
+* First, the HuggingFace assistant model produces a single candidate token sequence during speculation, while SpecInfer generates and verifies a speculated token tree, whose tokens each represent a candidate token sequence. To deal with the more complex verification task, SpecInfer includes a number of systems and algorithmic optimizations to quickly and efficiently verify all tokens of a token tree in parallel.
+ 
+* Second, instead of considering a single assistant model, SpecInfer combines a variety of collectively boost-tuned small speculative models (SSMs) to jointly predict the LLM's outputs. We observe that using multiple boost-tuned SSMs is critical for improving speculative performance.
+
 ## TODOs
 
 SpecInfer is under active development. We currently focus on the following tasks and strongly welcome all contributions to SpecInfer from bug fixes to new features and extensions.
