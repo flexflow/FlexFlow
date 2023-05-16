@@ -54,8 +54,8 @@ For example, you can use the following command line to serve a LLaMA-6B or LLaMA
 ### Tokenizers
 SpecInfer supports two tokenizers:
 
-* The [SentencePiece tokenizer](https://github.com/google/sentencepiece), which is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). The pretrained sentence piece tokenizer we use is from Hugging Face (model id: [decapoda-research/llama-7b-hf](https://huggingface.co/decapoda-research/llama-7b-hf)), developed by the FAIR team of Meta AI.
-* 
+* The [SentencePiece tokenizer](https://github.com/google/sentencepiece), which is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). The pretrained sentence piece tokenizer we use is from Hugging Face (model id: [decapoda-research/llama-7b-hf](https://huggingface.co/decapoda-research/llama-7b-hf/blob/main/tokenizer.model)), developed by the FAIR team of Meta AI.
+* The 
 
 ## TODOs
 
@@ -68,7 +68,7 @@ SpecInfer is under active development. We currently focus on the following tasks
 ## Acknowledgements
 This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting SpecInfer and the underlying FlexFlow runtime system. The following paper describes design, implementation, and key optimizations of SpecInfer.
 
-* Xupeng Miao*, Gabriele Oliaro*, Zhihao Zhang*, Xinhao Chen, Zeyu Wang, Rae Ying Yee Wong, Zhuoming Chen, Daiyaan Arfeen, Reyna Abhyankar, and Zhihao Jia. [SpecInfer: Accelerating Generative LLM Serving with Speculative Inference and Token Tree Verification]().
+* Xupeng Miao*, Gabriele Oliaro*, Zhihao Zhang*, Xinhao Cheng, Zeyu Wang, Rae Ying Yee Wong, Zhuoming Chen, Daiyaan Arfeen, Reyna Abhyankar, and Zhihao Jia. [SpecInfer: Accelerating Generative LLM Serving with Speculative Inference and Token Tree Verification]().
 
 ## License
 Both SpecInfer and FlexFlow use Apache License 2.0.
