@@ -3644,7 +3644,7 @@ struct DefaultConfig {
       (size_t)2 * 1024 * 1024 * 1024; // 2GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
-  const static bool onlyDataParallel = false;
+  const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
