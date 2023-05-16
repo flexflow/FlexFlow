@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "models/llama.h"
 #include "flexflow/inference.h"
 #include "flexflow/tokenizers.h"
+#include "models/llama.h"
 #include <nlohmann/json.hpp>
 
 using namespace Legion;
@@ -23,10 +23,8 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_app("llama");
 
 struct FilePaths {
-  std::string weight1_file_path;
-  std::string weight2_file_path;
-  std::string weight3_file_path;
-  std::string weight4_file_path;
+  std::string llm_weight_file_path;
+  std::vector<std::string> ssm_weight_file_paths;
   std::string prompt_file_path;
   std::string tokenizer_file_path;
 };
@@ -34,32 +32,23 @@ struct FilePaths {
 void parse_input_args(char **argv, int argc, FilePaths &paths) {
   for (int i = 1; i < argc; i++) {
     // weights
-    if (!strcmp(argv[i], "--weight1")) {
-      paths.weight1_file_path = std::string(argv[++i]);
+    if (!strcmp(argv[i], "-llm-weight")) {
+      paths.llm_weight_file_path = std::string(argv[++i]);
       continue;
     }
     // weights
-    if (!strcmp(argv[i], "--weight2")) {
-      paths.weight2_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // weights
-    if (!strcmp(argv[i], "--weight3")) {
-      paths.weight3_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // weights
-    if (!strcmp(argv[i], "--weight4")) {
-      paths.weight4_file_path = std::string(argv[++i]);
+    if (!strcmp(argv[i], "-ssm-weight")) {
+      std::string file_path = std::string(argv[++i]);
+      paths.ssm_weight_file_paths.push_back(file_path);
       continue;
     }
     // prompts
-    if (!strcmp(argv[i], "--prompt")) {
+    if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
       continue;
     }
     // tokenizer
-    if (!strcmp(argv[i], "--tokenizer")) {
+    if (!strcmp(argv[i], "-tokenizer")) {
       paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
@@ -81,7 +70,7 @@ void FlexFlow::top_level_task(Task const *task,
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm(&tokenizer);
   int total_num_requests = 0;
-  if (true) {
+  {
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
@@ -94,27 +83,25 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       rm.register_new_request(text, 128 /*max_sequence_length*/);
-      if (total_num_requests == 10) {
-        break;
-      }
     }
-  } else {
-    std::string text = "I believe the meaning of life is";
-    rm.register_new_request(text, 128 /*max_sequence_length*/);
-    total_num_requests = 1;
+  }
+  if (file_paths.ssm_weight_file_paths.size() == 0) {
+    assert(false &&
+           "SpecInfer needs at least one SSM for speculative inference");
   }
 
-  FFModel beam_model(ffconfig), tree_model(ffconfig);
+  FFModel beam_model(ffconfig);
+  FFModel tree_model(ffconfig);
   LLAMA::create_llama_model(beam_model,
                             im,
                             "190m",
-                            file_paths.weight2_file_path,
+                            file_paths.ssm_weight_file_paths[0],
                             1,
                             BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model,
                             im,
                             "7b",
-                            file_paths.weight1_file_path,
+                            file_paths.llm_weight_file_path,
                             ffconfig.workersPerNode * ffconfig.numNodes,
                             TREE_VERIFY_MODE);
 

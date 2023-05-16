@@ -6,9 +6,10 @@ set(project_target spec_infer)
 
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
-  llama.cc
+  spec_infer.cc
   ../file_loader.cc
-  ../models/llama.cc)
+  ../models/llama.cc
+  ../models/opt.cc)
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})

@@ -452,13 +452,13 @@ BeamSearchBatchConfig
 
       // Add verified token to request's token list
       request.tokens.push_back(token.first);
-      std::string output = tokenizer->Decode(request.tokens);
-      log_req_mgr.print("Output: %s", output.c_str());
 
       if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
         break;
       }
     }
+    std::string output = tokenizer->Decode(request.tokens);
+    log_req_mgr.print("Output: %s", output.c_str());
   }
 
   // Step 2: Initialize new request
