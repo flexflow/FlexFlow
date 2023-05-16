@@ -54,8 +54,8 @@ For example, you can use the following command line to serve a LLaMA-6B or LLaMA
 ### Tokenizers
 SpecInfer supports two tokenizers:
 
-* The [SentencePiece tokenizer](https://github.com/google/sentencepiece), which is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo).
-* The pretrained sentence piece tokenizer we use is from Hugging Face (model id: [decapoda-research/llama-7b-hf](https://huggingface.co/decapoda-research/llama-7b-hf)), developed by the FAIR team of Meta AI.
+* The [SentencePiece tokenizer](https://github.com/google/sentencepiece), which is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). The pretrained sentence piece tokenizer we use is from Hugging Face (model id: [decapoda-research/llama-7b-hf](https://huggingface.co/decapoda-research/llama-7b-hf)), developed by the FAIR team of Meta AI.
+* 
 
 ## TODOs
 
