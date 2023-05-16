@@ -64,7 +64,7 @@ The weight files using in our demo is extracted from HuggingFace, and stored in 
 
 |  Model   | Model id on Hugging Face  | Storage Location |
 |  :----  | :----  | :----  |
-| LLAMMA-7B | decapoda-research/llama-7b-hf | s3://catalyst-llama/Flexflow_LLM_weights/LLAMA/llama_7B_weights.tar.gz |
+| LLaMA-7B | decapoda-research/llama-7b-hf | s3://catalyst-llama/Flexflow_LLM_weights/LLAMA/llama_7B_weights.tar.gz |
 | LLaMA-190M  | Bingsu/llama-190m-arch | s3://catalyst-llama/Flexflow_LLM_weights/LLAMA/llama_190m_weights.tar.gz |
 | OPT-6.7B  | facebook/opt-6.7b | s3://catalyst-llama/Flexflow_LLM_weights/OPT/opt_6B_weights.tar.gz |
 | OPT-125M  | facebook/opt-125m | s3://catalyst-llama/Flexflow_LLM_weights/OPT/opt_125m_native.tar.gz |
