@@ -13,10 +13,10 @@
   
 The high computational and memory requirements of generative large language
 models (LLMs) make it challenging to serve them quickly and cheaply. 
-SpecInfer is an open-source system that accelerates generative LLM
-inference with speculative inference and token tree verification. A key insight
-behind SpecInfer is to combine various collectively boost-tuned small language
-models to jointly predict the LLM’s outputs; the predictions are organized as a
+SpecInfer is an open-source distributed multi-GPU system that accelerates generative LLM
+inference with __speculative inference__ and __token tree verification__. A key insight
+behind SpecInfer is to combine various collectively boost-tuned small speculative
+models (SSMs) to jointly predict the LLM’s outputs; the predictions are organized as a
 token tree, whose nodes each represent a candidate token sequence. The correctness
 of all candidate token sequences represented by a token tree is verified against the
 LLM’s output in parallel using a novel tree-based parallel decoding mechanism.
@@ -29,7 +29,7 @@ for serving generative LLMs while provably preserving model quality.
 </p>
 
 ## Install SpecInfer
-SpecInfer can be automatically installed by building the inference branch of FlexFlow. Please read the [instructions](INSTALL.md) for installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
+SpecInfer is built on top of FlexFlow. You can install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](INSTALL.md) for installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
 
 ## Run SpecInfer
 The source code for the SpecInfer pipeline is available at [this folder](../inference/spec_infer/), and the SpecInfer executable will be available at `/build_dir/inference/spec_infer/spec_infer`. You can use the following command-line arguments:
