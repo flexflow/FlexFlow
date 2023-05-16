@@ -25,6 +25,8 @@ namespace FlexFlow {
 
 using namespace Legion;
 
+LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
+
 InferenceManager::InferenceManager(FFConfig const &_config,
                                    int _max_num_tokens_per_batch,
                                    int _max_num_inflight_batches)
@@ -197,10 +199,10 @@ MachineView *InferenceManager::get_machine_view(int mv_id) {
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfig const &bc) {
-  std::cout << "InferenceManager::inference" << index << std::endl;
-  std::cout << "num_active_tokens = " << bc.num_active_tokens()
-            << ", num_active_requests = " << bc.num_active_requests()
-            << std::endl;
+  log_inf_mgr.print("mode(%d) num_active_tokens(%d) num_active_requests(%d)",
+                    bc.get_mode(),
+                    bc.num_active_tokens(),
+                    bc.num_active_requests());
 
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed

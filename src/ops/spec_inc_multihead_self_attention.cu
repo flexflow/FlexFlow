@@ -769,8 +769,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->tokenInfos,
                   &(bc->tokensInfo),
-                  bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
-                      sizeof(BatchConfig::PerTokenInfo),
+                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   cudaMemcpyAsync(m->requestInfos,
@@ -880,8 +879,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
         BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
 
     // size_t token2ids_size = BatchConfig::MAX_NUM_TOKENS;
-    size_t tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                            BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+    size_t tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS;
 
     size_t beam_tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
                                  BeamSearchBatchConfig::MAX_BEAM_WIDTH;
@@ -906,9 +904,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
         beam_tokeninfo_size *
             sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo) +
         beam_requestinfo_size *
-            sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo) +
-        complex_size * sizeof(cuFloatComplex); // more components will
-                                               // be added here later
+            sizeof(BeamSearchBatchConfig::
+                       BeamSearchPerRequestInfo); // more components will
+                                                  // be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
@@ -941,8 +939,8 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     qk_prods_softmax = (float *)(qk_prods + qk_prod_size);
     attn_heads = (float *)qk_prods_softmax + qk_prod_size;
     W_out_contiguous = (float *)attn_heads + attn_heads_size;
-    complex_input =
-        (cuFloatComplex *)(W_out_contiguous + W_out_contiguous_size);
+    checkCUDA(
+        cudaMalloc(&complex_input, complex_size * sizeof(cuFloatComplex)));
     int parallelism = vProjSize * oProjSize * num_heads;
     spec_build_w_out_tensor<<<GET_BLOCKS(parallelism),
                               min(CUDA_NUM_THREADS, parallelism),

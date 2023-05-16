@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/inference.h"
+#include "flexflow/tokenizers.h"
 #include "models/opt.h"
 
 using namespace Legion;
@@ -27,6 +28,11 @@ void parse_input_args(char **argv, int argc, OPT::Config &config) {
       config.weight_file_path = std::string(argv[++i]);
       continue;
     }
+    // tokenizer
+    if (!strcmp(argv[i], "--tokenizer")) {
+      config.tokenizer_assets_folder = std::string(argv[++i]);
+      continue;
+    }
   }
 }
 
@@ -35,18 +41,26 @@ void FlexFlow::top_level_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffconfig;
-  OPT::Config opt_config;
+  OPT::Small_Config opt_config;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
   parse_input_args(argv, argc, opt_config);
+  std::string const vocab_filepath =
+      opt_config.tokenizer_assets_folder + "/gpt2-vocab.json";
+  std::string const merges_filepath =
+      opt_config.tokenizer_assets_folder + "/gpt2-merges.txt";
+  OptTokenizer opt_tokenizer(vocab_filepath, merges_filepath);
   InferenceManager im(ffconfig, opt_config.batchSize, 1);
-  RequestManager rm;
+  RequestManager rm(&opt_tokenizer);
   // Add a single request
-  std::vector<BatchConfig::TokenId> prompt = {
-      2, 5625, 16, 10, 2721, 183, 8, 38, 236};
-  rm.register_new_request(prompt, opt_config.sentence_len);
+  // std::vector<BatchConfig::TokenId> prompt = {
+  //     2, 5625, 16, 10, 2721, 183, 8, 38, 236};
+  // rm.register_new_request(prompt, opt_config.sentence_len);
+  std::string text = "I believe the meaning of life is";
+  rm.register_new_request(text,
+                          opt_config.sentence_len /*max_sequence_length*/);
 
   FFModel beam_model(ffconfig), tree_model(ffconfig);
   OPT::create_opt_model(beam_model, im, opt_config, 1, BEAM_SEARCH_MODE);

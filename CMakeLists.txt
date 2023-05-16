@@ -180,16 +180,16 @@ set(LD_FLAGS $ENV{LD_FLAGS})
 # Set global FLAGS
 if(INFERENCE_TESTS)
 list(APPEND CC_FLAGS
-  -std=c++14)
+  -std=c++17)
 
 list(APPEND NVCC_FLAGS
-  -std=c++14)
+  -std=c++17)
 else()
-  list(APPEND CC_FLAGS
-  -std=c++11)
+list(APPEND CC_FLAGS
+  -std=c++17)
 
 list(APPEND NVCC_FLAGS
-  -std=c++11)
+  -std=c++17)
 endif()
 
 add_compile_options(${CC_FLAGS})
@@ -440,6 +440,7 @@ if (INFERENCE_TESTS)
 endif()
 
 # build binary
+option(FF_BUILD_SENTENCEPIECE "build sentencepiece for LLM serving" ON)
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" OFF)
@@ -472,6 +473,12 @@ endif()
 
 if(FF_BUILD_VISUALIZATION_TOOL)
   add_subdirectory(tools/substitutions_to_dot)
+endif()
+
+if(FF_BUILD_SENTENCEPIECE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
+  add_subdirectory(deps/sentencepiece sentencepiece EXCLUDE_FROM_ALL)
+  target_include_directories(flexflow PUBLIC deps/sentencepiece/src)
+  target_link_libraries(flexflow sentencepiece)
 endif()
 
 # Python
@@ -545,15 +552,12 @@ if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
 endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/SPEC_LLAMA)
-endif()
-
-if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/inference/opt)
 endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/inference/llama_spec_pipeline)
+  add_subdirectory(inference/spec_infer)
 endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)

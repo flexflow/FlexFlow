@@ -23,6 +23,8 @@ using Legion::coord_t;
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
 
+LegionRuntime::Logger::Category log_beam_topk("BeamTopK");
+
 template <typename T>
 struct Entry {
   int index;
@@ -268,7 +270,8 @@ __device__ void mergeBeamShards(int num_shards,
                                 Entry<T> *__restrict__ top_k_heap,
                                 T *top_k_values,
                                 int *top_k_indices,
-                                int *top_k_parents) {
+                                int *top_k_parents,
+                                bool verbose) {
   // If k < num_shards, we can use a min-heap with k elements to get the top k
   // of the sorted blocks.
   // If k > num_shards, we can initialize a min-heap with the top element from
@@ -288,7 +291,7 @@ __device__ void mergeBeamShards(int num_shards,
       float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                          ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
-      if (batch_index == 0) {
+      if (verbose && batch_index == 0) {
         printf("slot %d, value %.15f, prob %15f\n",
                slot,
                entries[slot].value,
@@ -304,7 +307,7 @@ __device__ void mergeBeamShards(int num_shards,
 
       float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                          ((shard % max_heap_size) / k)];
-      if (batch_index == 0) {
+      if (verbose && batch_index == 0) {
         printf("shard %d, index %d, value %.15f, prob %.15f\n",
                shard,
                entry.index,
@@ -397,7 +400,7 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                                          T *__restrict__ output,
                                          int *__restrict__ indices,
                                          int *__restrict__ parents,
-                                         bool is_print) {
+                                         bool verbose) {
   __shared__ char shared_memory[48 << 10];
   int const batch_index = blockIdx.x;
   // T const *batch_input = input + batch_index * length;
@@ -408,7 +411,7 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   Entry<T> *shared_entries = (Entry<T> *)shared_memory;
 
   int sub_request_id = thread_index / k;
-  // if (is_print) {
+  // if (verbose) {
   //   printf("beam kernel: batch_index: %d, thread_index %d, sub_request_id %d,
   //   "
   //          "request_id %d, token_nums %d\n",
@@ -422,7 +425,7 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   T const *batch_input = input + gpu_block_start_index[batch_index] +
                          (sub_request_id * token_nums * length);
 
-  if (batch_index == 0) {
+  if (verbose && batch_index == 0) {
     printf("request 0 start index: thread index %d, offset %d, batch_input %p, "
            "acc index %d acc "
            "prob %f, thread_count %d, request_id %d\n",
@@ -465,18 +468,18 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   if (thread_index == 0) {
     // merge beam_width heaps and store the parent
     // find which req it belongs to, replace the offset
-    printf("merge heaps, batch index: %d, sub_request_id %d, value %f\n",
-           batch_index,
-           sub_request_id,
-           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                     sub_request_id]);
+    // printf("merge heaps, batch index: %d, sub_request_id %d, value %f\n",
+    //       batch_index,
+    //       sub_request_id,
+    //       acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+    //                 sub_request_id]);
     int const offset = batch_index * k;
     auto batch_output = output + offset;
     auto batch_indices = indices + offset;
     auto batch_parents = parents + offset;
     Entry<T> *top_k_heap = shared_entries + thread_count * k;
 
-    // if(batch_index == 0 && is_print){
+    // if(batch_index == 0 && verbose) {
     //   for(int i = 0; i < 18; i++){
     //       printf("see value: %.15f\n", shared_entries[i].value);
     //   }
@@ -494,7 +497,8 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                     top_k_heap,
                     batch_output,
                     batch_indices,
-                    batch_parents);
+                    batch_parents,
+                    verbose /*verbose prints*/);
   }
 }
 
@@ -529,8 +533,6 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   std::vector<int> tokens_per_request;
 
   int block_start_index = 0;
-  int depth =
-      bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
 
   // a data structure for prob, parent_id,
   int max_total_requests =
@@ -551,7 +553,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     int beam_size = bc->beamRequestsInfo[i].beam_size;
 
     // initial request
-    std::cout << "sub_requests: " << i << ", " << sub_requests[i] << "\n";
+    log_beam_topk.debug() << "sub_requests: " << i << ", " << sub_requests[i]
+                          << "\n";
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {
@@ -559,12 +562,12 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       // beam_slots[i].parent_id[j];
       acc_probs[req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j] =
           bc->beamRequestsInfo[i].probs[j];
-      std::cout << "probbbb req: " << i << ", sub req probability : "
-                << bc->beamRequestsInfo[i].probs[j] << ", sub request id " << j
-                << ", parent id " << bc->beamRequestsInfo[i].parent_id[j]
-                << ", data inddd"
-                << req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j
-                << "\n";
+      log_beam_topk.debug()
+          << "probbbb req: " << i
+          << ", sub req probability : " << bc->beamRequestsInfo[i].probs[j]
+          << ", sub request id " << j << ", parent id "
+          << bc->beamRequestsInfo[i].parent_id[j] << ", data inddd"
+          << req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j << "\n";
     }
 
     // process tokens
@@ -581,8 +584,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     req_index += 1;
     block_start_index += (sub_requests[i] - 1) * num_new_tokens * length;
   }
-  std::cout << "what index: " << block_start_index
-            << ", block num: " << beam_num_blocks << "\n";
+  log_beam_topk.debug() << "what index: " << block_start_index
+                        << ", block num: " << beam_num_blocks << "\n";
 
   assert(batch_size >= beam_num_blocks);
   assert(bc->num_active_requests() == req_index);
@@ -596,9 +599,9 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     if (num_shards > CUDA_NUM_THREADS) {
       num_shards = CUDA_NUM_THREADS;
     }
-    std::cout << "maxheap size:  " << max_heap_size << "\n";
-    std::cout << "maxbeam width:  " << max_beam_width
-              << ", heap size: " << heap_size << "\n";
+    log_beam_topk.debug() << "maxheap size:  " << max_heap_size << "\n";
+    log_beam_topk.debug() << "maxbeam width:  " << max_beam_width
+                          << ", heap size: " << heap_size << "\n";
   }
   // We are limited by the amount of shared memory we have per block.
   size_t shared_memory_size =
@@ -627,7 +630,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                        tokens_per_request.data(),
                        sizeof(int) * beam_num_blocks,
                        cudaMemcpyHostToDevice));
-
+  // int depth =
+  //     bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
   beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
       shared_memory_size,
@@ -643,7 +647,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       output_ptr,
       indices_ptr,
       parent_ptr,
-      depth == 1);
+      false /*verbose*/ // depth == 1
+  );
 
   // merge sub
 }
@@ -698,10 +703,13 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler) : OpMeta(handler) {
                        sizeof(float) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
                            BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&block_start_index,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&request_id,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&tokens_per_request,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
 }
 }; // namespace FlexFlow

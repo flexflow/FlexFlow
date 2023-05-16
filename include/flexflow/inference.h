@@ -72,12 +72,17 @@ struct BeamTree {
 //   std::vector<float> probs;
 // };
 
+class Tokenizer;
+
 class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
+  RequestManager(Tokenizer *tokenizer, bool verbose = false);
   RequestManager();
   size_t get_num_processed_requests();
+  RequestGuid register_new_request(std::string const &prompt,
+                                   int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
@@ -111,8 +116,9 @@ public:
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
 
-  TreeVerifyBatchConfig
-      convert_beam_to_tree_batch_config(BeamSearchBatchConfig const &beam_bc);
+  // TreeVerifyBatchConfig
+  //     convert_beam_to_tree_batch_config(BeamSearchBatchConfig const
+  //     &beam_bc);
 
   static void
       load_tokens_task(Legion::Task const *task,
@@ -126,6 +132,8 @@ public:
                           Legion::Runtime *runtime);
 
 private:
+  Tokenizer *tokenizer;
+  bool verbose;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;
@@ -142,7 +150,16 @@ private:
   // Commited Tokens
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
+  // Performance profiling
   size_t num_processed_requests;
+
+private:
+  struct ProfileInfo {
+    int decoding_steps;
+    double start_time, finish_time;
+  };
+  std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
+  double total_request_run_time;
 };
 
 } // namespace FlexFlow

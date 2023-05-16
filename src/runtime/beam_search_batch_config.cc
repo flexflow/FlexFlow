@@ -41,6 +41,10 @@ BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
 
 BeamSearchBatchConfig::~BeamSearchBatchConfig() {}
 
+BatchConfig::Mode BeamSearchBatchConfig::get_mode() const {
+  return BEAM_SEARCH_MODE;
+}
+
 bool BeamSearchBatchConfig::done() const {
   assert(current_iteration <= target_iterations);
   return current_iteration == target_iterations;

@@ -48,6 +48,8 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
+LegionRuntime::Logger::Category log_tree_verify("TreeVerifyIncMHA");
+
 bool TreeIncMultiHeadSelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {
   bool is_valid = input.is_valid();
@@ -588,9 +590,10 @@ FutureMap TreeIncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  printf("TreeVerifyBatchConfig, num_tokens: %d, num_requests: %d\n",
-         bc.num_tokens,
-         bc.num_active_requests());
+  log_tree_verify.debug(
+      "TreeVerifyBatchConfig, num_tokens: %d, num_requests: %d",
+      bc.num_tokens,
+      bc.num_active_requests());
   IndexLauncher launcher(TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(&bc, sizeof(TreeVerifyBatchConfig)),

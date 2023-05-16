@@ -897,8 +897,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     qk_prods_softmax = (float *)(qk_prods + qk_prod_size);
     attn_heads = (float *)qk_prods_softmax + qk_prod_size;
     W_out_contiguous = (float *)attn_heads + attn_heads_size;
-    complex_input =
-        (cuFloatComplex *)(W_out_contiguous + W_out_contiguous_size);
+    checkCUDA(
+        cudaMalloc(&complex_input, complex_size * sizeof(cuFloatComplex)));
     int parallelism = vProjSize * oProjSize * num_heads;
     tree_build_w_out_tensor<<<GET_BLOCKS(parallelism),
                               min(CUDA_NUM_THREADS, parallelism),
