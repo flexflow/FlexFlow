@@ -36,7 +36,7 @@ The source code for the SpecInfer pipeline is available at [this folder](../infe
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) in MB. SpecInfer keeps a replica of the LLM parameters on zero-copy memory, so you want to make sure the zero-copy memory is sufficient for storing the LLM parameters.
 * `-llm-weight`: path to the folder that stores the LLM weights
 * `-ssm-weight`: path to the folder that stores the small speculative models' weights
-* `-tokenizer`: path to the tokenizer file (see [Tokenizers] for preparing a tokenizer for SpecInfer)
+* `-tokenizer`: path to the tokenizer file (see [Tokenizers](#tokenizers) for preparing a tokenizer for SpecInfer)
 * `-prompt`: (optional) path to the prompt file. SpecInfer expects a json format file for prompts, all of which will be served by SpecInfer. In addition, users can also use the following API for registering requests:
 
 ```c++
