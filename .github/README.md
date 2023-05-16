@@ -57,7 +57,40 @@ SpecInfer supports two tokenizers:
 * The GPT2 tokenizer is used to support the Open Pre-trained Transformer model family (e.g., OPT-13B and OPT-125M). To use it, download the [vocab](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json) and [merges](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt) files and pass the folder containing them as a parameter. 
 
 ### LLM Weights
+The weight files using in our demo is extracted from HuggingFace, and stored in our AWS S3 bucket.
 
+|  Model   | Model id on Hugging Face  | Storage Location |
+|  :----  | :----  | :----  |
+| LLAMMA-7B | decapoda-research/llama-7b-hf | s3://catalyst-llama/Flexflow_LLM_weights/LLAMA/llama_7B_weights.tar.gz |
+| LLaMA-190M  | Bingsu/llama-190m-arch | s3://catalyst-llama/Flexflow_LLM_weights/LLAMA/llama_190m_weights.tar.gz |
+| OPT-6.7B  | facebook/opt-6.7b | s3://catalyst-llama/Flexflow_LLM_weights/OPT/opt_6B_weights.tar.gz |
+| OPT-125M  | facebook/opt-125m | s3://catalyst-llama/Flexflow_LLM_weights/OPT/opt_125m_native.tar.gz |
+
+A demo script of converting weights: first we load the model, then modify the names to match our system, then convert tensors to numpy arrays and save as binary files.
+```python
+model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
+
+for name, params in model.named_parameters():
+    for name, params in model.named_parameters():
+    name = (
+        name.replace(".", "_")
+        .replace("self_attn", "attention")
+        .replace("q_proj", "wq")
+        .replace("k_proj", "wk")
+        .replace("v_proj", "wv")
+        .replace("o_proj", "wo")
+        .replace("mlp", "feed_forward")
+        .replace("gate_proj", "w1")
+        .replace("down_proj", "w2")
+        .replace("up_proj", "w3")
+        .replace("input_layernorm", "attention_norm")
+        .replace("post_attention_layernorm", "ffn_norm")
+        .replace("embed_tokens", "tok_embeddings")
+        .replace("lm_head", "output")
+        .replace("model_", "")
+    )
+    params.detach().cpu().numpy().tofile('weights/' + name)
+```
 ### Prompt Datasets
 We have evaluated SpecInfer on the following prompts datasets: [Chatbot instruction prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatbot.json), [ChatGPT Prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatgpt.json), [WebQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/webqa.json), [Alpaca](https://specinfer.s3.us-east-2.amazonaws.com/prompts/alpaca.json), and [PIQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/piqa.json).
 
