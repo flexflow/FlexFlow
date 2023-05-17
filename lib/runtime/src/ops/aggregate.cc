@@ -45,13 +45,13 @@ DataDependencies get_data_dependencies(AggregateAttrs const &attrs, TaskSignatur
 }
 
 
-OpTaskInvocation init(AggregateAttrs const &attrs) {
-  OpTaskBinding binding;
+// OpTaskInvocation init(AggregateAttrs const &attrs) {
+//   OpTaskBinding binding;
 
-  binding.bind_arg(ATTRS, attrs);
+//   binding.bind_arg(ATTRS, attrs);
 
-  return { AGGREGATE_INIT_TASK_ID, binding };
-}
+//   return { AGGREGATE_INIT_TASK_ID, binding };
+// }
 
 OpTaskInvocation foward(AggregateAttrs const &attrs) {
   OpTaskBinding binding;
@@ -64,6 +64,10 @@ OpTaskInvocation foward(AggregateAttrs const &attrs) {
   }
 
   binding.bind(OUTPUT, output_tensor(0));
+
+  binding.bind_arg(PROFILING, enable_profiling());
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
   return { AGGREGATE_FWD_TASK_ID, binding };
 }
@@ -83,6 +87,10 @@ OpTaskInvocation backward(AggregateAttrs const &attrs) {
 
   binding.bind_grad(OUTPUT, output_tensor(0).grad());
 
+  binding.bind_arg(PROFILING, enable_profiling());
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
+
   return { AGGREGATE_BWD_TASK_ID, binding };
 }
 
@@ -97,7 +105,10 @@ OpTaskInvocation backward(AggregateAttrs const &attrs) {
 /* } */
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  AggregateAttrs const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
+  auto per_device_state = acc.get_argument<AggregatePerDeviceState>(PER_DEVICE_STATE);
+  auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
+
   int n = attrs.n;
 
   // get gate_pred, gate_assign, output
@@ -124,7 +135,9 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(
     forward_kernel, 
+    enable_profiling,
     "[Aggregate] forward_time = %.2lfms\n",
+    per_device_state,
     exp_preds.data(),
     gate_assign.get_float_ptr(),
     gate_pred.get_float_ptr(),
@@ -147,8 +160,9 @@ static void forward_task(Legion::Task const *task,
 
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto attrs = acc.get_argument<AggregateAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
   auto per_device_state = acc.get_argument<AggregatePerDeviceState>(PER_DEVICE_STATE);
+  auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
 
   int n = attrs.n;
   float lambda_bal = attrs.lambda_bal;
@@ -191,9 +205,9 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(
     backward_kernel,
-    per_device_state.profiling,
+    enable_profiling,
     "[Aggregate] backward_time = %.2lfms\n",
-    m,
+    &per_device_state,
     exp_preds.data(), 
     exp_grads.data(),
     gate_assign.get_float_ptr(),
@@ -287,7 +301,7 @@ static void backward_task(Legion::Task const *task,
   // launcher.add_field(2 * n + 4, FID_DATA);
 
   // runtime->execute_index_space(ctx, launcher);
-}
+// }
 
 
 

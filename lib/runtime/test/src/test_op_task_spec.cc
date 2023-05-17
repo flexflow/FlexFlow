@@ -1,9 +1,10 @@
 #include "doctest/doctest.h"
-#include "task_spec.h"
+#include "op_task_signature.h"
+#include "op_task_invocation.h"
 
 using namespace FlexFlow;
 
-TEST_CASE("OpTaskSignature,Binding") {
+TEST_CASE("OpTaskSignature") {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(0);
@@ -22,8 +23,6 @@ TEST_CASE("OpTaskSignature,Binding") {
   correct_bwd.add_output_grad_slot(2);
 
   CHECK(bwd == correct_bwd);
-
-
 }
 
 TEST_CASE("OpTaskBinding") {
@@ -37,6 +36,12 @@ TEST_CASE("OpTaskBinding") {
 
   OpTaskBinding correct_bwd;
 
-  correct_bwd.bind(0);
-  correct_bwd.bind_grad(0);
+  correct_bwd.bind(0, input_tensor(0));
+  correct_bwd.bind_grad(0, input_tensor(0).grad());
+  correct_bwd.bind(1, input_tensor(1));
+  correct_bwd.bind_grad(1, input_tensor(1).grad());
+  correct_bwd.bind(2, input_tensor(2));
+  correct_bwd.bind_grad(2, input_tensor(2).grad());
+
+  CHECK(correct_bwd == bwd);
 }
