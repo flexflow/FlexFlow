@@ -93,9 +93,9 @@ NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 GASNET_FLAGS	+=
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11
-NVCC_FLAGS	+= -std=c++11
-HIPCC_FLAGS     += -std=c++11
+CC_FLAGS	+= -std=c++17
+NVCC_FLAGS	+= -std=c++17
+HIPCC_FLAGS     += -std=c++17
 
 ifeq ($(strip $(FF_USE_NCCL)), 1)
 INC_FLAGS	+= -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
