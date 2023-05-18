@@ -247,7 +247,7 @@ void FileDataLoader::load_weights(
       assert(weight->data_type == DT_FLOAT);
       float *data = (float *)malloc(sizeof(float) * volume);
 
-      std::string file_path = (v.first.back() == '/') ? v.first : v.first + "/";
+      std::string file_path = (v.first.back() == '/') ? v.first : v.first.append("/");
 
       if (file_path.find("attention_w") != std::string::npos) {
         if (i == 0) {
