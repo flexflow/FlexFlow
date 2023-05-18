@@ -186,19 +186,10 @@ set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
 # Set global FLAGS
-if(INFERENCE_TESTS)
 list(APPEND CC_FLAGS
   -std=c++17)
-
 list(APPEND NVCC_FLAGS
   -std=c++17)
-else()
-list(APPEND CC_FLAGS
-  -std=c++17)
-
-list(APPEND NVCC_FLAGS
-  -std=c++17)
-endif()
 
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
