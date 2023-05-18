@@ -7,6 +7,8 @@ namespace FlexFlow {
 
 struct ReshapeParams {
   std::vector<int> shape;
+  LayerID layer_guid;
+
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(ReshapeParams const &, ReshapeParams const &);

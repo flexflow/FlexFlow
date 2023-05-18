@@ -9,6 +9,12 @@ enum ActiMode {
   AC_MODE_GELU = 14,
 };
 
+enum RegularizerMode {
+  REG_MODE_NONE = 17,
+  REG_MODE_L1 = 18,
+  REG_MODE_L2 = 19,
+};
+
 enum AggrMode {
   AGGR_MODE_NONE = 20,
   AGGR_MODE_SUM = 21,

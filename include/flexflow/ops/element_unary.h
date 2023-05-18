@@ -34,6 +34,7 @@ public:
   using Input = ParallelTensor;
 
   ElementUnary(FFModel &model,
+               LayerID const &layer_guid,
                OperatorType type,
                const ParallelTensor x,
                bool inplace,

@@ -31,6 +31,7 @@ public:
          const Input input,
          char const *name = nullptr);
   Reduce(FFModel &model,
+         LayerID const &layer_guid,
          const ParallelTensor input,
          std::vector<int> const &axes,
          bool keepdims,
