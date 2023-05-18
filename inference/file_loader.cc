@@ -85,6 +85,7 @@ void load_attention_bias(float *ptr,
   for (auto file : bias_files) {
     size_t partial_size = hidden_dim;
     std::ifstream in(file, std::ios::in | std::ios::binary);
+    assert(in.good() && "incorrect bias file path");
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
     in.seekg(0, in.end);
@@ -147,6 +148,7 @@ void load_attention_weights(float *ptr,
     size_t partial_size = one_weight_file_size;
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
+    assert(in.good() && "incorrect weight file path");
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
     in.seekg(0, in.end);
@@ -178,6 +180,7 @@ void load_attention_weights(float *ptr,
 
 void load_from_file(float *ptr, size_t size, std::string filename) {
   std::ifstream in(filename, std::ios::in | std::ios::binary);
+  assert(in.good() && "incorrect weight file path");
   std::vector<float> host_array(size);
   size_t loaded_data_size = sizeof(float) * size;
   in.seekg(0, in.end);
@@ -247,7 +250,7 @@ void FileDataLoader::load_weights(
       assert(weight->data_type == DT_FLOAT);
       float *data = (float *)malloc(sizeof(float) * volume);
 
-      std::string file_path = (v.first.back() == '/') ? v.first : v.first + "/";
+      std::string file_path = (v.first.back() == '/') ? v.first : "/" + v.first;
 
       if (file_path.find("attention_w") != std::string::npos) {
         if (i == 0) {
