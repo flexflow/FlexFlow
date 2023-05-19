@@ -457,14 +457,8 @@ BeamSearchBatchConfig
         break;
       }
     }
-    log_req_mgr.print("Output tokens: %li", request.tokens.size());
-    for (size_t i = 0; i < request.tokens.size(); i++) {
-      printf("\t%i,", request.tokens[i]);
-    }
-    printf("\n");
     std::string output = tokenizer->Decode(request.tokens);
-    log_req_mgr.print(
-        "Output: (length: %i) %s", strlen(output.c_str()), output.c_str());
+    log_req_mgr.print("Output: %s", output.c_str());
   }
 
   // Step 2: Initialize new request
