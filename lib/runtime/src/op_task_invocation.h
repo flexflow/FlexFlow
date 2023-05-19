@@ -81,7 +81,7 @@ private:
   OpArgRefType ref_type;
 };
 
-using OpArgSpec = variant<ConcreteArgSpec, IndexArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
+using OpArgSpec = variant<ConcreteArgSpec, IndexArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
 
 struct OpTaskBinding {
   OpTaskBinding() = default;

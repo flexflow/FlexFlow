@@ -23,30 +23,30 @@ namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_metrics("metrics");
 
-Metrics::Metrics(LossType _loss_type, std::vector<MetricsType> const &metrics)
+Metrics::Metrics(LossFunction _loss_type, std::vector<Metric> const &metrics)
     : loss_type(_loss_type), measure_accuracy(false),
       measure_categorical_crossentropy(false),
       measure_sparse_categorical_crossentropy(false),
       measure_mean_squared_error(false), measure_root_mean_squared_error(false),
       measure_mean_absolute_error(false) {
-  for (MetricsType const &m : metrics) {
+  for (Metric const &m : metrics) {
     switch (m) {
-      case METRICS_ACCURACY:
+      case Metric::ACCURACY:
         measure_accuracy = true;
         continue;
-      case METRICS_CATEGORICAL_CROSSENTROPY:
+      case Metric::CATEGORICAL_CROSSENTROPY:
         measure_categorical_crossentropy = true;
         continue;
-      case METRICS_SPARSE_CATEGORICAL_CROSSENTROPY:
+      case Metric::SPARSE_CATEGORICAL_CROSSENTROPY:
         measure_sparse_categorical_crossentropy = true;
         continue;
-      case METRICS_MEAN_SQUARED_ERROR:
+      case Metric::MEAN_SQUARED_ERROR:
         measure_mean_squared_error = true;
         continue;
-      case METRICS_ROOT_MEAN_SQUARED_ERROR:
+      case Metric::ROOT_MEAN_SQUARED_ERROR:
         measure_root_mean_squared_error = true;
         continue;
-      case METRICS_MEAN_ABSOLUTE_ERROR:
+      case Metric::MEAN_ABSOLUTE_ERROR:
         measure_mean_absolute_error = true;
         continue;
       default:
@@ -120,10 +120,10 @@ TaskInvocation reset_metrics(Metrics const &metrics) {
 //                          0 /*mapper_id*/,
 //                          get_std_hash(logit->machine_view));
 //   launcher.add_region_requirement(RegionRequirement(
-//       logit->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, logit->region));
+//       logit->part, 0 /*projection id*/, Permissions::RO, EXCLUSIVE, logit->region));
 //   launcher.add_field(0, FID_DATA);
 //   launcher.add_region_requirement(RegionRequirement(
-//       label->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, label->region));
+//       label->part, 0 /*projection id*/, Permissions::RO, EXCLUSIVE, label->region));
 //   launcher.add_field(1, FID_DATA);
 //   FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
 //   // Update metrics
@@ -146,15 +146,15 @@ static PerfMetrics compute_metrics_task(Legion::Task const *task,
                               Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto me = acc.get_argument<Metrics>(METRICS_STRUCT);
-  auto logit = acc.get_tensor<READ_ONLY>(LOGIT);
-  auto label = acc.get_tensor<READ_ONLY>(LABEL);
+  auto logit = acc.get_tensor<Permissions::RO>(LOGIT);
+  auto label = acc.get_tensor<Permissions::RO>(LABEL);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING_SETTINGS);
   
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   PerfMetrics perf_zc = make_empty_metrics();
 
-  if (me.loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
+  if (me.loss_type == LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY) {
     // TensorAccessorR<float, NDIM> acc_logit(
     //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
     // TensorAccessorR<int, NDIM> acc_label(
@@ -232,8 +232,8 @@ static PerfMetrics update_metrics_task(Legion::Task const *task,
 template <>
 void register_task<METRICS_COMP_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(LOGIT, { SlotType::TENSOR, READ_ONLY });
-  sig.add_slot(LABEL, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(LOGIT, { SlotType::TENSOR, Permissions::RO });
+  sig.add_slot(LABEL, { SlotType::TENSOR, Permissions::RO });
   sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);
   sig.add_arg_slot<Metrics>(METRICS_STRUCT);
   sig.add_return_value<PerfMetrics>();

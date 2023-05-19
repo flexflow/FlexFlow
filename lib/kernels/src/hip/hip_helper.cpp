@@ -1,5 +1,5 @@
 #include "hip_helper.h"
-#include "flexflow/ffconst_utils.h"
+#include "flexflow/ffconst.h"
 #include "flexflow/model.h"
 #include <hip/hip_runtime.h>
 #include <stdexcept>

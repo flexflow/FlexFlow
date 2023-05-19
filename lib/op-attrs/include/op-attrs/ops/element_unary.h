@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_ELEMENTARY_UNARY_ATTRS_H
 #define _FLEXFLOW_ELEMENTARY_UNARY_ATTRS_H
 
-#include "op-attrs/ffconst.h"
+#include "op-attrs/op.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
 #include "core.h"
@@ -10,9 +10,9 @@ namespace FlexFlow {
 
 struct ElementScalarUnaryAttrs : public use_visitable_cmp<ElementScalarUnaryAttrs> {
 public:
-  ElementScalarUnaryAttrs(OperatorType, float);
+  ElementScalarUnaryAttrs(Op, float);
 public:
-  OperatorType op;
+  Op op;
   /* bool inplace; */
   float scalar;
 };
@@ -21,7 +21,7 @@ struct ElementUnaryAttrs : public use_visitable_cmp<ElementUnaryAttrs> {
 public:
   ElementUnaryAttrs(OperatorType);
 public:
-  OperatorType op;
+  Op op;
 };
 
 }

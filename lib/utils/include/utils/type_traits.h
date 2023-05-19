@@ -101,6 +101,19 @@ using is_copy_assignable = std::is_copy_assignable<T>;
 template <typename T>
 using is_move_assignable = std::is_move_assignable<T>;
 
+template <typename T>
+struct is_well_behaved_value_type 
+  : conjunction<
+      is_equal_comparable<T>,
+      is_neq_comparable<T>,
+      is_lt_comparable<T>,
+      is_copy_constructible<T>,
+      is_move_constructible<T>,
+      is_copy_assignable<T>,
+      is_move_assignable<T>
+    >
+{ };
+
 }
 
 #endif

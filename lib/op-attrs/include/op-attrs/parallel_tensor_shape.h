@@ -1,7 +1,7 @@
 #ifndef _OP_META_PARALLEL_TENSOR_SHAPE_H
 #define _OP_META_PARALLEL_TENSOR_SHAPE_H
 
-#include "ffconst.h"
+#include "datatype.h"
 #include <vector>
 #include "utils/record_formatter.h"
 #include <unordered_map>

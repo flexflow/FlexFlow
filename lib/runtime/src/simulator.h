@@ -17,10 +17,9 @@
 
 #include "operator_guid_t.h"
 #include "runtime/config.h"
-#include "op-attrs/ffconst.h"
 #include "op-attrs/operator_attrs.h"
 #include "utils/hash-utils.h"
-#include "mpark/variant.hpp"
+#include "utils/variant.h"
 #include "parallel_tensor.h"
 #include <fstream>
 #include <memory>
@@ -682,7 +681,7 @@ public:
   off_t offset;
   int warmup_times, repeat_times;
   TaskManager *task_manager;
-  CompMode computationMode;
+  ComputationMode computationMode;
   ffEvent_t start_event, end_event;
   std::unordered_map<size_t, CostMetrics> hash_to_operator_cost;
   std::unordered_map<ProfilingRecordKey, CostMetrics>

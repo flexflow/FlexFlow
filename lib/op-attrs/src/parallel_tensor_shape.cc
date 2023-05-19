@@ -27,7 +27,7 @@ int get_num_replica_dims(ParallelTensorShape const &shape) {
 }
 
 int get_num_replicas(ParallelTensorShape const &shape) {
-  return product(transform([](ParallelDim const &d) -> int { return d.degree; }, filter(shape.dims, is_replica_dim)));
+  return product(transform(filter(as_vector(shape.dims), is_replica_dim), [](ParallelDim const &d) -> int { return d.degree; }));
 }
 
 bool is_valid(ParallelTensorDims const &dims) {
@@ -35,7 +35,7 @@ bool is_valid(ParallelTensorDims const &dims) {
 }
 
 bool is_valid(ParallelTensorShape const &shape) {
-  return is_valid(shape.dims) && shape.data_type != DT_NONE;
+  return is_valid(shape.dims);
 }
 
 }

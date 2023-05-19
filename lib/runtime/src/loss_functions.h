@@ -16,15 +16,12 @@
 #ifndef _FF_LOSS_FUNCTIONS_H_
 #define _FF_LOSS_FUNCTIONS_H_
 
-#include "op-attrs/ffconst.h"
 #include "parallel_tensor.h"
 #include "op-attrs/ops/loss_functions.h"
 #include "operator.h"
 #include "tasks.h"
 
 namespace FlexFlow {
-
-LossType from_loss_type_name(std::string const &loss_type_name);
 
 template <> void register_task<LOSS_BWD_TASK_ID>();
 

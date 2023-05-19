@@ -1,35 +1,34 @@
 #ifndef _FLEXFLOW_KERNELS_ACCESSOR_H
 #define _FLEXFLOW_KERNELS_ACCESSOR_H
 
-#include "op-attrs/ffconst.h"
+#include "op-attrs/datatype.h"
 #include "kernels/ff_handle.h"
 #include "array_shape.h"
-#include <stdexcept>
-#include "op-attrs/ffconst_utils.h"
 #include "device.h"
 #include "utils/exception.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
 template <DataType> struct data_type_enum_to_class;
 
 template <>
-struct data_type_enum_to_class<DT_FLOAT> { using type = float; };
+struct data_type_enum_to_class<DataType::FLOAT> { using type = float; };
 
 template <>
-struct data_type_enum_to_class<DT_DOUBLE> { using type = double; };
+struct data_type_enum_to_class<DataType::DOUBLE> { using type = double; };
 
 template <>
-struct data_type_enum_to_class<DT_INT32> { using type = int32_t; };
+struct data_type_enum_to_class<DataType::INT32> { using type = int32_t; };
 
 template <>
-struct data_type_enum_to_class<DT_INT64> { using type = int64_t; };
+struct data_type_enum_to_class<DataType::INT64> { using type = int64_t; };
 
 template <>
-struct data_type_enum_to_class<DT_HALF> { using type = half; };
+struct data_type_enum_to_class<DataType::HALF> { using type = half; };
 
 template <>
-struct data_type_enum_to_class<DT_BOOLEAN> { using type = bool; };
+struct data_type_enum_to_class<DataType::BOOL> { using type = bool; };
 
 template <DataType DT, typename T>
 typename data_type_enum_to_class<DT>::type cast_to(T t) {
@@ -40,17 +39,17 @@ template <DataType DT>
 using real_type = typename data_type_enum_to_class<DT>::type;
 
 using DataTypeValue = variant<
-  real_type<DT_FLOAT>,
-  real_type<DT_DOUBLE>,
-  real_type<DT_INT32>,
-  real_type<DT_INT64>,
-  real_type<DT_HALF>,
-  real_type<DT_BOOLEAN>
+  real_type<DataType::FLOAT>,
+  real_type<DataType::DOUBLE>,
+  real_type<DataType::INT32>,
+  real_type<DataType::INT64>,
+  real_type<DataType::HALF>,
+  real_type<DataType::BOOL>
 >;
 
 size_t size_of(DataType);
 
-class GenericTensorAccessorW : public use_visitable_eq<GenericTensorAccessorW> {
+class GenericTensorAccessorW : public use_visitable_cmp<GenericTensorAccessorW> {
 public:
   GenericTensorAccessorW() = delete;
 
@@ -77,7 +76,7 @@ public:
   void *ptr;
 };
 
-class GenericTensorAccessorR : public use_visitable_eq<GenericTensorAccessorR> {
+class GenericTensorAccessorR : public use_visitable_cmp<GenericTensorAccessorR> {
 public:
   GenericTensorAccessorR() = delete;
   GenericTensorAccessorR(DataType data_type,
@@ -166,5 +165,10 @@ std::vector<real_type<DT> const *> get(std::vector<GenericTensorAccessorR> const
 
 VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorW, data_type, shape, ptr);
 VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorR, data_type, shape, ptr);
+
+namespace FlexFlow {
+static_assert(is_well_behaved_value_type<GenericTensorAccessorR>::value, "");
+static_assert(is_well_behaved_value_type<GenericTensorAccessorW>::value, "");
+}
 
 #endif

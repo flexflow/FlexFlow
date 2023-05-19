@@ -5,14 +5,26 @@
 
 namespace FlexFlow {
 
-using ExecutableArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap>;
+using ExecutableArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, TaskInvocationSpec>;
+using NonvariadicExecutableTensorSpec = parallel_tensor_guid_t;
+using VariadicExecutableTensorSpec = std::vector<parallel_tensor_guid_t>;
+using ExecutableTensorSpec = variant<NonvariadicExecutableTensorSpec, VariadicExecutableTensorSpec>;
+
+bool is_variadic(ExecutableTensorSpec const &);
+bool is_nonvariadic(ExecutableTensorSpec const &);
+NonvariadicExecutableTensorSpec get_nonvariadic(ExecutableTensorSpec const &);
+VariadicExecutableTensorSpec get_variadic(ExecutableTensorSpec const &);
 
 struct ExecutableTaskBinding {
 public:
   InvocationType invocation_type;
   std::unordered_map<slot_id, ExecutableArgSpec> arg_bindings;
-  std::unordered_map<slot_id, parallel_tensor_guid_t> tensor_bindings;
+  std::unordered_map<slot_id, ExecutableTensorSpec> tensor_bindings;
+  optional<NonvariadicExecutableTensorSpec> domain_spec = nullopt;
 };
+
+bool is_variadic(ExecutableTaskBinding const &, slot_id);
+bool is_nonvariadic(ExecutableTaskBinding const &, slot_id);
 
 struct ExecutableTaskInvocation : public use_visitable_cmp<ExecutableTaskInvocation> {
 public:
@@ -22,14 +34,6 @@ public:
 public:
   task_id_t task_id;
   ExecutableTaskBinding binding;
-};
-
-struct TaskReturnAccessor { 
-  template <typename T>
-  TypedFuture<T> get_returned_future();
-
-  template <typename T>
-  TypedFutureMap<T> get_returned_future_map();
 };
 
 

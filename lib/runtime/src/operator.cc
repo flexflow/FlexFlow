@@ -1,5 +1,4 @@
 #include "operator.h"
-#include "op-attrs/ffconst_utils.h"
 #include <stdexcept>
 
 using namespace Legion;

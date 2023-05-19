@@ -22,7 +22,6 @@
 #include <functional>
 #include <unistd.h>
 #include <utility>
-#include "op-attrs/ffconst.h"
 #include "op-attrs/tensor_shape.h"
 #include "computation_graph.h"
 #include "parallel_computation_graph.h"
@@ -54,8 +53,8 @@ public:
           EnableProfiling const &,
           Metrics const &);
 
-  ExecutableTaskInvocation resolve(TaskInvocation const &);
-  TaskReturnAccessor execute(ExecutableTaskInvocation const &);
+  ExecutableTaskInvocation resolve(TaskInvocation const &) const;
+  TaskReturnAccessor execute(ExecutableTaskInvocation const &) const;
   TaskReturnAccessor execute(std::vector<ExecutableTaskInvocation> const &);
   std::pair<Legion::TaskArgument, TaskArgumentFormat> construct_legion_task_arg(ExecutableTaskBinding const &);
 
@@ -76,13 +75,13 @@ public:
   void reset_metrics();
   void prefetch();
   void compute_metrics();
-  void compile(LossType loss_type,
-               std::vector<MetricsType> const &metrics,
-               CompMode comp_mode = COMP_MODE_TRAINING);
+  void compile(LossFunction loss_type,
+               std::vector<Metric> const &metrics,
+               ComputationMode comp_mode = ComputationMode::TRAINING);
   void compile(Optimizer const &optimizer,
-               LossType loss_type,
-               std::vector<MetricsType> const &metrics,
-               CompMode comp_mode = COMP_MODE_TRAINING);
+               LossFunction loss_type,
+               std::vector<Metric> const &metrics,
+               ComputationMode comp_mode = ComputationMode::TRAINING);
   void recompile_on_condition(RecompileState &r);
   void zero_gradients();
 
@@ -90,7 +89,7 @@ public:
 private:
   void execute_graph_optimize();
   void print_operator_regions() const;
-  void create_label_tensor(LossType);
+  void create_label_tensor(LossFunction);
 public:
   FFConfig config;
   FFIterationConfig iter_config;

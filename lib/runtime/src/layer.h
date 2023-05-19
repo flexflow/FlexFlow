@@ -1,13 +1,12 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_LAYER_H
 #define _FLEXFLOW_RUNTIME_SRC_LAYER_H
 
-#include "op-attrs/ffconst.h"
 #include "layer_id.h"
 #include "tensor.h"
 #include "utils/optional.h"
 #include "utils/stack_vector.h"
 #include "utils/stack_string.h"
-#include "op-attrs/op-attrs.h"
+#include "op-attrs/operator_attrs.h"
 #include "utils/strong_typedef.h"
 
 namespace FlexFlow {
@@ -30,14 +29,7 @@ MAKE_VISIT_HASHABLE(::FlexFlow::Layer);
 
 namespace FlexFlow {
 
-static_assert(is_equal_comparable<Layer>::value, "Layer must be comparable via ==");
-static_assert(is_neq_comparable<Layer>::value, "Layer must be comparable via !=");
-static_assert(is_lt_comparable<Layer>::value, "Layer must be comparable via <");
-static_assert(std::is_copy_constructible<Layer>::value, "Layer must be copy constructible");
-static_assert(std::is_move_constructible<Layer>::value, "Layer must be move constructible");
-static_assert(std::is_copy_assignable<Layer>::value, "Layer must be copy assignable");
-static_assert(std::is_move_assignable<Layer>::value, "Layer must be move assignable");
-static_assert(!std::is_default_constructible<Layer>::value, "Layer must not be default constructible");
+static_assert(is_well_behaved_value_type<Layer>::value, "");
 static_assert(is_fmtable<Layer>::value, "Layer must be fmtable");
 
 }

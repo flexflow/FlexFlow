@@ -19,7 +19,8 @@
 #include "legion.h"
 #include <unordered_map>
 #include <memory>
-#include "op-attrs/ffconst.h"
+#include "op-attrs/datatype.h"
+#include "op-attrs/param_sync.h"
 #include "utils/stack_vector.h"
 #include "kernels/array_shape.h"
 #include "op-attrs/tensor_shape.h"
@@ -27,6 +28,7 @@
 #include <type_traits>
 #include "initializer.h"
 #include "create_grad.h"
+#include "utils/optional.h"
 
 namespace FlexFlow {
 
@@ -36,8 +38,8 @@ struct Tensor : public use_visitable_cmp<Tensor> {
   Tensor() = delete;
   Tensor(TensorShape const &,
          CreateGrad create_gradients, 
-         optional<Initializer> const &initializer = nullopt, 
-         ParameterSyncType sync_type = ParameterSyncType::NONE);
+         optional<Initializer const &> initializer = nullopt, 
+         optional<ParamSync> sync_type = nullopt);
 
   size_t get_volume() const;
   Legion::Domain get_domain() const;
@@ -52,7 +54,7 @@ public:
   DataType data_type;
   optional<Initializer> initializer;
   bool create_gradients;
-  ParameterSyncType sync_type = ParameterSyncType::NONE;
+  optional<ParamSync> sync_type;
 };
 
 template <typename T>

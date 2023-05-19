@@ -203,10 +203,14 @@ class VisitSerialize {
 };
 
 template <typename T>
-void ff_task_serialize(Legion::Serializer &sez, T const &t) {
+size_t ff_task_serialize(Legion::Serializer &sez, T const &t) {
   static_assert(is_serializable<T>, "Type must be serializable"); 
 
-  return Serialization<T>::serialize(sez, t);
+  size_t pre_size = sez.get_used_bytes();
+  Serialization<T>::serialize(sez, t);
+  size_t post_size = sez.get_used_bytes();
+
+  return post_size - pre_size;
 }
 
 template <typename T>

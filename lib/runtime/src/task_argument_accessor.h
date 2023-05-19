@@ -20,7 +20,7 @@ MAKE_TYPEDEF_PRINTABLE(::FlexFlow::region_idx_t, "region_idx");
 
 namespace FlexFlow {
 
-using NonvariadicFormat = std::pair<region_idx_t, ParallelTensorSpec>;
+using NonvariadicFormat = region_idx_t;
 using VariadicFormat = std::vector<NonvariadicFormat>;
 
 using TensorArgumentFormat = variant<NonvariadicFormat, VariadicFormat>;
@@ -30,6 +30,11 @@ VariadicFormat get_variadic_format(TensorArgumentFormat const &);
 NonvariadicFormat get_nonvariadic_format(TensorArgumentFormat const &);
 
 struct TaskArgumentFormat : public use_visitable_cmp<TaskArgumentFormat> {
+  TaskArgumentFormat() = delete;
+  TaskArgumentFormat(std::type_index type, size_t start, size_t end) 
+    : type(type), start(start), end(end)
+  { }
+
   std::type_index type;
   size_t start;
   size_t end;
@@ -37,18 +42,37 @@ struct TaskArgumentFormat : public use_visitable_cmp<TaskArgumentFormat> {
   size_t size() const;
 };
 
+struct FutureArgumentFormat : public use_visitable_cmp<FutureArgumentFormat> {
+  FutureArgumentFormat() = delete;
+  FutureArgumentFormat(std::type_index type, size_t future_idx) 
+    : type(type), future_idx(future_idx)
+  { }
+
+  std::type_index type;
+  size_t future_idx;
+};
+
 struct TaskArgumentsFormat : public use_visitable_eq<TaskArgumentsFormat> {
   stack_map<slot_id, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
   stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> args;
+  stack_map<slot_id, FutureArgumentFormat, MAX_NUM_TASK_ARGUMENTS> futures;
   stack_map<region_idx_t, Legion::PrivilegeMode, MAX_NUM_TASK_REGIONS> regions;
-  stack_map<ParallelTensorSpec, DataType, MAX_NUM_TASK_REGIONS> data_types;
-  ArgSpec self_offset;
+  stack_map<region_idx_t, DataType, MAX_NUM_TASK_REGIONS> data_types;
+
+  void insert(std::pair<slot_id, TaskArgumentFormat> const &);
+  void insert(std::pair<slot_id, FutureArgumentFormat> const &);
+
+  void insert(region_idx_t, Legion::PrivilegeMode, DataType);
+  void insert(slot_id, region_idx_t);
+  void insert(slot_id, std::vector<region_idx_t> const &);
 };
 
-Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, region_idx_t);
-Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, ParallelTensorSpec const &);
-region_idx_t get_region_idx(TaskArgumentsFormat const &, ParallelTensorSpec const &);
-DataType get_datatype(TaskArgumentsFormat const &, ParallelTensorSpec const &);
+Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, region_idx_t const &);
+Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, parallel_tensor_guid_t const &);
+Permissions get_permissions(TaskArgumentsFormat const &, region_idx_t const &);
+Permissions get_permissions(TaskArgumentsFormat const &, parallel_tensor_guid_t const &);
+region_idx_t get_region_idx(TaskArgumentsFormat const &, parallel_tensor_guid_t const &);
+DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 
 struct TaskArgumentAccessor {
   TaskArgumentAccessor(Legion::Task const *task, 
@@ -78,48 +102,41 @@ struct TaskArgumentAccessor {
   template <typename T>
   std::vector<T> get_variadic_argument(slot_id) const;
 
-  template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(ParallelTensorSpec const &tensor_spec, region_idx_t idx) const {
-    auto tensor_privs = get_privileges(this->args_fmt, tensor_spec);
+  template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(region_idx_t const &idx) const {
+    auto tensor_privs = get_permissions(this->args_fmt, idx);
     if (tensor_privs != PRIV) {
-      std::ostringstream oss;
-      oss << "Privilege mismatch while accessing tensor: " << to_string(tensor_privs) << " != " << to_string(PRIV);
-      throw std::runtime_error(oss.str());
+      throw mk_runtime_error("Privilege mismatch while accessing tensor: {} != {}", tensor_privs, PRIV);
     }
     
-    return helperGetGenericTensorAccessor<PRIV>(get_datatype(this->args_fmt, tensor_spec), regions[idx.value()], task->regions[idx.value()], FID_DATA, ctx, runtime);
+    return helperGetGenericTensorAccessor<PRIV>(get_datatype(this->args_fmt, idx), regions[idx.value()], task->regions[idx.value()], FID_DATA, ctx, runtime);
   }
 
-  template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx_t, ParallelTensorSpec> const &p) const {
-    return this->get_generic_accessor<PRIV>(p.second, p.first);
-  }
-
-  template <Legion::PrivilegeMode PRIV>
+  template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const {
     auto argument_format = get<NonvariadicFormat>(this->args_fmt.region_idxs.at(slot));
 
     return this->get_generic_accessor<PRIV>(argument_format);
   }
 
-  template <Legion::PrivilegeMode PRIV>
+  template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const {
     return this->get_tensor<PRIV>(slot, IsGrad::YES);
   }
 
-  template <Legion::PrivilegeMode PRIV>
+  template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot) const {
     std::vector<privilege_mode_to_accessor<PRIV>> result;
 
     auto argument_format = get<VariadicFormat>(this->args_fmt.region_idxs.at(slot));
-    for (auto const &argument : argument_format) {
+    for (NonvariadicFormat const &argument : argument_format) {
       result.push_back(this->get_generic_accessor<PRIV>(argument));
     }
 
     return result;
   }
 
-  template <Legion::PrivilegeMode PRIV>
+  template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor_grad(slot_id slot) const {
     return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES); 
   }

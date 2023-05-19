@@ -46,10 +46,10 @@ enum GlorotSlots {
   INITIALIZER
 };
 
-InvocationType get_invocation_type(ParameterSyncType sync_type) {
-  if (sync_type == ParameterSyncType::PS) {
+InvocationType get_invocation_type(ParamSync sync_type) {
+  if (sync_type == ParamSync::PS) {
     return InvocationType::STANDARD;
-  } else if (sync_type == ParameterSyncType::NCCL) {
+  } else if (sync_type == ParamSync::NCCL) {
     return InvocationType::INDEX;
   } else {
     throw mk_runtime_error("Unhandled sync_type {}", sync_type);
@@ -111,7 +111,7 @@ static void glorot_init_task(Legion::Task const *task,
                       Legion::Context ctx,
                       Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);  
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<GlorotUniform>(INITIALIZER);
   auto tensor_dims = acc.get_argument<TensorDims>(TENSOR_DIMS);
 
@@ -160,7 +160,7 @@ static void glorot_init_task(Legion::Task const *task,
 /* } */
 
 static void zero_init_task_impl(TaskArgumentAccessor const &acc, TaskLocation const &loc) {
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   zero_init_kernel(loc, tensor);
 }
 
@@ -217,7 +217,7 @@ static void zero_init_task(Legion::Task const *task,
 // }
 
 static void uniform_init_task_impl(TaskArgumentAccessor const &acc) {
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<UniformInitializer>(INITIALIZER);
 
   uniform_init_kernel(tensor, initializer.seed, initializer.min_val, initializer.max_val);
@@ -232,7 +232,7 @@ static void uniform_init_task(Legion::Task const *task,
 }
 
 static void norm_init_task_impl(TaskArgumentAccessor const &acc) {
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<NormInitializer>(INITIALIZER);
 
   norm_init_kernel(tensor, initializer.seed, initializer.mean, initializer.stddev);
@@ -248,7 +248,7 @@ static void norm_init_task(Legion::Task const *task,
 
 static void constant_init_task_impl(TaskArgumentAccessor const &acc,
                                     TaskLocation const &loc) {
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<ConstantInitializer>(INITIALIZER);
 
   constant_init_kernel(loc, tensor, initializer.value);
@@ -378,7 +378,7 @@ static void constant_init_task_cpu(Legion::Task const *task,
 template <>
 void register_task<GLOROT_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<GlorotUniform>(INITIALIZER);
   sig.add_arg_slot<TensorDims>(TENSOR_DIMS);
 
@@ -388,15 +388,15 @@ void register_task<GLOROT_INIT_TASK_ID>() {
 template <>
 void register_task<ZERO_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
 
-  register_task(ZERO_INIT_TASK_ID, "Zero Init", sig, zero_init_task, zero_init_task_cpu); // TODO FIXME @lockshaw enable cpu support
+  register_task(ZERO_INIT_TASK_ID, "Zero Init", sig, zero_init_task, zero_init_task_cpu);
 }
 
 template <>
 void register_task<UNIFORM_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<UniformInitializer>(INITIALIZER);
 
   register_task(UNIFORM_INIT_TASK_ID, "Uniform Distribution Init", sig, uniform_init_task);
@@ -405,7 +405,7 @@ void register_task<UNIFORM_INIT_TASK_ID>() {
 template <>
 void register_task<NORMAL_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<NormInitializer>(INITIALIZER);
 
   register_task(NORMAL_INIT_TASK_ID, "Normal Distribution Init", sig, norm_init_task);
@@ -414,10 +414,10 @@ void register_task<NORMAL_INIT_TASK_ID>() {
 template <>
 void register_task<CONSTANT_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<ConstantInitializer>(INITIALIZER);
 
-  register_task(CONSTANT_INIT_TASK_ID, "Constant Init", sig, constant_init_task, constant_init_task_cpu); // TODO FIXME @lockshaw enable cpu support
+  register_task(CONSTANT_INIT_TASK_ID, "Constant Init", sig, constant_init_task, constant_init_task_cpu);
 }
 
 

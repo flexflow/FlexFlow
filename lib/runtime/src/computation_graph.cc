@@ -1,10 +1,9 @@
 #include "computation_graph.h"
-#include "op-attrs/ffconst.h"
 #include "op-attrs/get_output_shapes.h"
 #include "utils/expected.h"
-#include "op-attrs/ffconst_utils.h"
 #include "utils/fmt.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/get_op_type.h"
 
 namespace FlexFlow {
 
@@ -34,7 +33,7 @@ static std::string get_default_name(variant<Args...> const &attrs) {
 Tensor ComputationGraph::element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &attrs, Tensor const &x, optional<std::string> const &maybe_name) {
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+  Tensor input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   Layer layer = { widen<ComputationGraphAttrs>(attrs), name };
   TensorShape output_shape = get_output_shape(attrs, input);
@@ -70,87 +69,87 @@ Tensor ComputationGraph::element_binary(OperatorType op_type, Tensor const &lhs,
 }
 
 Tensor ComputationGraph::exp(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_EXP, input, name);
+  return this->element_unary(Op::EXP, input, name);
 }
 
 Tensor ComputationGraph::add(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
-  return this->element_binary(OP_EW_ADD, lhs, rhs, name);
+  return this->element_binary(Op::EW_ADD, lhs, rhs, name);
 }
 
 Tensor ComputationGraph::subtract(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
-  return this->element_binary(OP_EW_SUB, lhs, rhs, name);
+  return this->element_binary(Op::EW_SUB, lhs, rhs, name);
 }
 
 Tensor ComputationGraph::multiply(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
-  return this->element_binary(OP_EW_MUL, lhs, rhs, name);
+  return this->element_binary(Op::EW_MUL, lhs, rhs, name);
 }
 
 Tensor ComputationGraph::divide(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
-  return this->element_binary(OP_EW_DIV, lhs, rhs, name);
+  return this->element_binary(Op::EW_DIV, lhs, rhs, name);
 }
 
 Tensor ComputationGraph::max(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
-  return this->element_binary(OP_EW_MAX, lhs, rhs, name);
+  return this->element_binary(Op::EW_MAX, lhs, rhs, name);
 }
 
 Tensor ComputationGraph::min(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
-  return this->element_binary(OP_EW_MIN, lhs, rhs, name);
+  return this->element_binary(Op::EW_MIN, lhs, rhs, name);
 }
 
 Tensor ComputationGraph::rsqrt(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_RSQRT, input, name);
+  return this->element_unary(Op::RSQRT, input, name);
 }
 
 Tensor ComputationGraph::pow(Tensor const &input, float exponent, optional<std::string> const &name) {
-  return this->element_scalar_unary(OP_POW, input, exponent, name);
+  return this->element_scalar_unary(Op::POW, input, exponent, name);
 }
 
 Tensor ComputationGraph::scalar_multiply(Tensor const &input, float scalar, optional<std::string> const &name) {
-  return this->element_scalar_unary(OP_SCALAR_MULTIPLY, input, scalar, name);
+  return this->element_scalar_unary(Op::SCALAR_MULTIPLY, input, scalar, name);
 }
 
 Tensor ComputationGraph::scalar_add(Tensor const &input, float scalar, optional<std::string> const &name) {
-  return this->element_scalar_unary(OP_SCALAR_ADD, input, scalar, name);
+  return this->element_scalar_unary(Op::SCALAR_ADD, input, scalar, name);
 }
 
 Tensor ComputationGraph::scalar_sub(Tensor const &lhs, float rhs, optional<std::string> const &name) {
-  return this->element_scalar_unary(OP_SCALAR_SUB, lhs, rhs, name);
+  return this->element_scalar_unary(Op::SCALAR_SUB, lhs, rhs, name);
 }
 
 Tensor ComputationGraph::scalar_truediv(Tensor const &numerator, float denominator, optional<std::string> const &name) {
-  return this->element_scalar_unary(OP_SCALAR_TRUE_DIV, numerator, denominator, name);
+  return this->element_scalar_unary(Op::SCALAR_TRUE_DIV, numerator, denominator, name);
 }
 
 Tensor ComputationGraph::sin(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_SIN, input, name);
+  return this->element_unary(Op::SIN, input, name);
 }
 
 Tensor ComputationGraph::cos(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_COS, input, name);
+  return this->element_unary(Op::COS, input, name);
 }
 
 Tensor ComputationGraph::relu(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_RELU, input, name);
+  return this->element_unary(Op::RELU, input, name);
 }
 
 Tensor ComputationGraph::identity(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_IDENTITY, input, name);
+  return this->element_unary(Op::IDENTITY, input, name);
 }
 
 Tensor ComputationGraph::gelu(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_GELU, input, name);
+  return this->element_unary(Op::GELU, input, name);
 }
 
 Tensor ComputationGraph::sigmoid(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_SIGMOID, input, name);
+  return this->element_unary(Op::SIGMOID, input, name);
 }
 
 Tensor ComputationGraph::tanh(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_TANH, input, name);
+  return this->element_unary(Op::TANH, input, name);
 }
 
 Tensor ComputationGraph::elu(Tensor const &input, optional<std::string> const &name) {
-  return this->element_unary(OP_ELU, input, name);
+  return this->element_unary(Op::ELU, input, name);
 }
 
 Tensor ComputationGraph::conv2d(Tensor const &x, 
@@ -161,11 +160,11 @@ Tensor ComputationGraph::conv2d(Tensor const &x,
                          int strideW,
                          int paddingH,
                          int paddingW,
-                         ActiMode activation,
+                         optional<Activation> const &activation,
                          int groups,
                          bool use_bias,
-                         Initializer *kernel_initializer, 
-                         Initializer *bias_initializer,
+                         optional<Initializer const &> kernel_initializer, 
+                         optional<Initializer const &> bias_initializer,
                          optional<std::string> const &maybe_name) {
   Conv2DAttrs attrs = {
     outChannels,
@@ -181,12 +180,12 @@ Tensor ComputationGraph::conv2d(Tensor const &x,
   };
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+  Tensor input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   Layer layer = { attrs, name };
   TensorShape output_shape = get_output_shape(attrs, input);
 
-  std::vector<std::pair<TensorShape, Initializer *>> weights;
+  std::vector<std::pair<TensorShape, optional<Initializer>>> weights;
 
   weights.push_back({get_kernel_shape(attrs, input), kernel_initializer});
 
@@ -208,7 +207,7 @@ Tensor ComputationGraph::dropout(Tensor const &x,
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   Layer layer = { attrs, name };
-  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+  Tensor input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   TensorShape output_shape = get_output_shape(attrs, input);
 
@@ -218,15 +217,15 @@ Tensor ComputationGraph::dropout(Tensor const &x,
 Tensor ComputationGraph::embedding(Tensor const &x,
                             int num_entries, 
                             int outDim,
-                            AggrMode aggr,
+                            AggregateOp aggr,
                             DataType dtype,
-                            Initializer *kernel_initializer,
+                            optional<Initializer const &> kernel_initializer,
                             optional<std::string> const &maybe_name) {
   EmbeddingAttrs attrs = { num_entries, outDim, aggr, dtype };
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   Layer layer = { attrs, name };
-  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+  Tensor input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   TensorShape output_shape = get_output_shape(attrs, input);
   TensorShape weights_shape = get_weights_shape(attrs, input);
@@ -242,9 +241,9 @@ std::vector<Tensor> ComputationGraph::gather(Tensor const &input,
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   Layer layer = { attrs, name };
-  if (index.data_type != DT_INT32 && index.data_type != DT_INT64) {
+  if (index.data_type != DataType::INT32 && index.data_type != DataType::INT64) {
     throw mk_runtime_error("Invalid data type for input tensor 2 for Gather: {} (should be {} or {})", 
-                           input.data_type, DT_INT32, DT_INT64);
+                           input.data_type, DataType::INT32, DataType::INT64);
   }
   std::vector<TensorShape> output_shapes = get_output_shapes(attrs, input, index);
 

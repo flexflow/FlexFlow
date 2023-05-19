@@ -2,7 +2,6 @@
 #define _FLEXFLOW_FFC_SUBSTITUTIONS_IMPLEMENTATION_H
 
 #include "substitutions/substitutions_v2.h"
-#include "op-meta/ffconst.h"
 
 namespace FlexFlow {
 namespace ffc {
