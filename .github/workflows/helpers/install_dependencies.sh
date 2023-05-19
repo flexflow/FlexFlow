@@ -32,7 +32,6 @@ elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; th
     chmod +x bazel-6.2.0-installer-linux-x86_64.sh 
     ./bazel-6.2.0-installer-linux-x86_64.sh 
     echo "source /usr/local/lib/bazel/bin/bazel-complete.bash" >> ~/.bashrc
-    # shellcheck source=~/.bashrc
     source ~/.bashrc
     ln -s /usr/local/lib/bazel/bin/bazel.fish /root/.config/fish/completions/bazel.fish
     git clone -b 3.20.x https://github.com/protocolbuffers/protobuf.git
