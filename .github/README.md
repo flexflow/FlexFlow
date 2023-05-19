@@ -94,6 +94,9 @@ This project is initiated by members from CMU, Stanford, and UCSD. We will be co
 
 * Xupeng Miao*, Gabriele Oliaro*, Zhihao Zhang*, Xinhao Cheng, Zeyu Wang, Rae Ying Yee Wong, Zhuoming Chen, Daiyaan Arfeen, Reyna Abhyankar, and Zhihao Jia. [SpecInfer: Accelerating Generative LLM Serving with Speculative Inference and Token Tree Verification](https://arxiv.org/abs/2305.09781).
 
+\* Denotes equal contribution
+
+### Citation
 Please cite as:
 
 ``` bibtex
