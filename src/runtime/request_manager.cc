@@ -463,7 +463,8 @@ BeamSearchBatchConfig
     }
     printf("\n");
     std::string output = tokenizer->Decode(request.tokens);
-    log_req_mgr.print("Output: (length: %i) %s", strlen(output.c_str()), output.c_str());
+    log_req_mgr.print(
+        "Output: (length: %i) %s", strlen(output.c_str()), output.c_str());
   }
 
   // Step 2: Initialize new request

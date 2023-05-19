@@ -152,7 +152,9 @@ public:
   float *devQKVProjArray, *keyCache, *valueCache;
   float *qk_prods, *qk_prods_softmax;
   float *attn_heads, *W_out_contiguous;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cuFloatComplex *complex_input;
+#endif
   // void *reserveSpace;
 
   // BatchConfig::token_idxs *dev_token2ids;
