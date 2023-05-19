@@ -33,7 +33,10 @@ elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; th
     git submodule update --init --recursive
     ./autogen.sh
     ./configure
-    make -j
+    cores_available=$(nproc --all)
+    n_build_cores=$(( cores_available -1 ))
+    if (( $n_build_cores < 1 )) ; then n_build_cores=1 ; fi
+    make -j $n_build_cores
     sudo make install
     sudo ldconfig
     cd ..
