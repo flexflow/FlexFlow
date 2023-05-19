@@ -1,25 +1,58 @@
 #include "doctest/doctest.h"
 #include "legion/legion_utilities.h"
 #include "serialization.h"
-#include "op-attrs/ops/linear.h"
-#include "op-attrs/ops/conv_2d.h"
+#include "op-attrs/operator_attrs.h"
 #include "op-attrs/ffconst.h"
 
 using namespace FlexFlow;
 
 TEST_CASE("Serialization") {
-  Legion::Serializer sez ();
+  Legion::Serializer sez;
   Legion::Deserializer dez (sez.get_buffer(), sez.get_buffer_size());
 
-  /* Linear */
-  LinearAttrs linear_attrs ();
-  Serialization<LinearAttrs> linear;
-  linear.serialize(sez, linear_attrs);
-  CHECK(linear_attrs == linear.deserialize(dez));
+  using CompleteOperatorAttrs = variant_join<PCGOperatorAttrs, CompGraphOperatorAttrs>;
 
-  /* Conv2d */
-  Conv2DAttrs conv2d_attrs ();
-  Serialization<Conv2DAttrs> conv2d;
-  conv2d.serialize(sez, conv2d_attrs);
-  CHECK(conv2d_attrs == conv2d.deserialize(dez));
+  std::vector<CompleteOperatorAttrs> operator_attrs {
+    AggregateSpecAttrs agg_spec_attrs,
+    AggregateAttrs aggregate_attrs,
+    BatchMatmulAttrs batch_mm_attrs,
+    BatchNormAttrs batch_norm_attrs,
+    BroadcastAttrs broadcast_attrs,
+    CastAttrs cast_attrs,
+    CombineAttrs combine_attrs,
+    ConcatAttrs concat_attrs,
+    Conv2DAttrs conv2d_attrs,
+    DropoutAttrs dropout_attrs,
+    ElementBinaryAttrs elem_bin_attrs,
+    ElementScalarUnaryAttrs elem_scalar_unary_attrs,
+    ElementUnaryAttrs elem_unary_attrs,
+    EmbeddingAttrs embedding_attrs,
+    FlatAttrs flat_attrs,
+    GatherAttrs gather_attrs,
+    Group_byAttrs group_by_attrs,
+    InputAttrs input_attrs,
+    LayerNormAttrs layer_norm_attrs,
+    LinearAttrs linear_attrs,
+    MultiHeadAttentionAttrs mha_attrs,
+    NoopAttrs noop_attrs,
+    Pool2DAttrs pool2d_attrs,
+    ReduceAttrs reduce_attrs,
+    ReductionAttrs reduction_attrs,
+    RepartitionAttrs repartition_attrs,
+    ReplicateAttrs replicate_attrs,
+    ReverseAttrs reverse_attrs,
+    ReshapeAttrs reshape_attrs,
+    SplitAttrs split_attrs,
+    SoftmaxAttrs softmax_attrs,
+    TopKAttrs topk_attrs,
+    TransposeAttrs transpose_attrs
+  }
+
+  for (auto const & op: operator_attrs) {
+    std::visit([](auto const & arg){ 
+      using T = decltype(arg);
+      ff_task_serialize<T>(sez, arg);
+      CHECK(op == ff_task_deserialize<T>(dez));
+    }, op);
+  }
 }
