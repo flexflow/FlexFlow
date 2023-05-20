@@ -56,7 +56,7 @@ For example, you can use the following command line to serve a LLaMA-6B or LLaMA
 ### Tokenizers
 SpecInfer supports two tokenizers:
 
-* The SentencePiece tokenizer is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). We used the pretrained sentence piece tokenizer from Hugging Face (model id: [decapoda-research/llama-7b-hf](https://huggingface.co/decapoda-research/llama-7b-hf/blob/main/tokenizer.model)).
+* The SentencePiece tokenizer is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). We used the pretrained sentencepiece tokenizer from LLAMA, which is also available on Hugging Face (model id: `decapoda-research/llama-7b-hf`). We store the tokenizer on our S3 bucket at this link: [s3://specinfer/tokenizer/tokenizer.model](https://specinfer.s3.us-east-2.amazonaws.com/tokenizer/tokenizer.model).
 * The GPT2 tokenizer is used to support the Open Pre-trained Transformer model family (e.g., OPT-13B and OPT-125M). To use it, download the [vocab](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json) and [merges](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt) files and pass the folder containing them as a parameter. 
 
 ### LLM Weights
