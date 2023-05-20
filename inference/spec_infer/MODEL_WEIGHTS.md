@@ -1,6 +1,7 @@
 To convert the weights of a HuggingFace LLM to SpecInfer's weight format, we first load the model and modify the tensor names to match SpecInfer's convention, and then convert these tensors to numpy arrays to store them in binary files.
 
 ```python
+from transformers import AutoModelForCausalLM
 model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
 
 for name, params in model.named_parameters():
