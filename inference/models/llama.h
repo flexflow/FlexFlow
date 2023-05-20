@@ -63,14 +63,23 @@ public:
           norm_eps = config_json["norm_eps"];
           total_requests = config_json["total_requests"];
           incremental_mode = config_json["incremental_mode"];
-          max_seq_len = config_json["max_seq_len"];
-          max_num_tokens = config_json["max_num_tokens"];
-          max_beam_width = config_json["max_beam_width"];
-          max_beam_depth = config_json["max_beam_depth"];
-          hidden_dim = config_json["hidden_dim"];
           weight_file_path = config_json["weight_file_path"];
           input_path = config_json["input_path"];
           tokenizer_file_path = config_json["tokenizer_file_path"];
+          // Override values below
+          /* max_seq_len = config_json["max_seq_len"];
+          max_num_tokens = config_json["max_num_tokens"];
+          max_beam_width = config_json["max_beam_width"];
+          max_beam_depth = config_json["max_beam_depth"];
+          hidden_dim = config_json["hidden_dim"]; */
+          max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
+          max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
+          max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+          max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
+          hidden_dim = 4 * dim;
+          hidden_dim = int(2 * hidden_dim / 3);
+          hidden_dim =
+              multiple_of * int((hidden_dim + multiple_of - 1) / multiple_of);
         } catch (json::exception const &e) {
           std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
           assert(false);

@@ -102,6 +102,11 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false &&
            "SpecInfer needs at least one SSM for speculative inference");
   }
+  if (file_paths.ssm_config_file_paths.size() !=
+      file_paths.ssm_weight_file_paths.size()) {
+    assert(false && "Number of SSM config files passed does not match number "
+                    "of SSM weights");
+  }
 
   FFModel beam_model(ffconfig);
   FFModel tree_model(ffconfig);
