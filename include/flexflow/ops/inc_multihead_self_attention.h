@@ -144,7 +144,9 @@ public:
   float *qk_prods, *qk_prods_softmax;
   float *attn_heads, *W_out_contiguous;
   BatchConfig::PerTokenInfo *token_infos;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cuFloatComplex *complex_input;
+#endif
 };
 
 }; // namespace FlexFlow

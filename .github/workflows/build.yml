@@ -99,6 +99,10 @@ jobs:
             export FF_BUILD_ALL_EXAMPLES=ON
             export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
             export FF_BUILD_UNIT_TESTS=ON
+          else 
+            export FF_BUILD_ALL_EXAMPLES=OFF
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=OFF
+            export FF_BUILD_UNIT_TESTS=OFF
           fi
           ../config/config.linux
           sudo make install

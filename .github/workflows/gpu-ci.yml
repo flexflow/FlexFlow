@@ -163,7 +163,7 @@ jobs:
           # C++ tests
           ./tests/cpp_gpu_tests.sh 4
           # GPT tokenizer test
-          ./examples/cpp/inference/gpt_tokenizer_test.sh
+          ./tests/gpt_tokenizer_test.sh
           # Python tests
           ./tests/multi_gpu_tests.sh 4
 
