@@ -24,7 +24,9 @@ LegionRuntime::Logger::Category log_app("llama");
 
 struct FilePaths {
   std::string llm_weight_file_path;
+  std::string llm_config_file_path;
   std::vector<std::string> ssm_weight_file_paths;
+  std::vector<std::string> ssm_config_file_paths;
   std::string prompt_file_path;
   std::string tokenizer_file_path;
 };
@@ -40,6 +42,17 @@ void parse_input_args(char **argv, int argc, FilePaths &paths) {
     if (!strcmp(argv[i], "-ssm-weight")) {
       std::string file_path = std::string(argv[++i]);
       paths.ssm_weight_file_paths.push_back(file_path);
+      continue;
+    }
+    // config
+    if (!strcmp(argv[i], "-llm-config")) {
+      paths.llm_config_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // configs
+    if (!strcmp(argv[i], "-ssm-config")) {
+      std::string file_path = std::string(argv[++i]);
+      paths.ssm_config_file_paths.push_back(file_path);
       continue;
     }
     // prompts
@@ -94,13 +107,13 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel tree_model(ffconfig);
   LLAMA::create_llama_model(beam_model,
                             im,
-                            "190m",
+                            file_paths.ssm_config_file_paths[0],
                             file_paths.ssm_weight_file_paths[0],
                             1,
                             BEAM_SEARCH_MODE);
   LLAMA::create_llama_model(tree_model,
                             im,
-                            "7b",
+                            file_paths.llm_config_file_path,
                             file_paths.llm_weight_file_path,
                             ffconfig.workersPerNode * ffconfig.numNodes,
                             TREE_VERIFY_MODE);
