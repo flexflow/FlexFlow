@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "models/llama.h"
 #include "flexflow/inference.h"
 #include "flexflow/tokenizers.h"
+#include "models/llama.h"
 #include <nlohmann/json.hpp>
 
 using namespace Legion;
@@ -23,43 +23,52 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_app("llama");
 
 struct FilePaths {
-  std::string weight1_file_path;
-  std::string weight2_file_path;
-  std::string weight3_file_path;
-  std::string weight4_file_path;
+  std::string llm_weight_file_path;
+  std::string llm_config_file_path;
   std::string prompt_file_path;
   std::string tokenizer_file_path;
 };
 
-void parse_input_args(char **argv, int argc, FilePaths &paths) {
+enum ModelType { UNKNOWN, LLAMA, OPT };
+
+void parse_input_args(char **argv,
+                      int argc,
+                      FilePaths &paths,
+                      ModelType &llm_model_type) {
   for (int i = 1; i < argc; i++) {
-    // weights
-    if (!strcmp(argv[i], "--weight1")) {
-      paths.weight1_file_path = std::string(argv[++i]);
+    // llm model type
+    if (!strcmp(argv[i], "-llm-model")) {
+      std::string model_type_str = std::string(argv[++i]);
+      std::transform(model_type_str.begin(),
+                     model_type_str.end(),
+                     model_type_str.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      if (model_type_str == "llama") {
+        llm_model_type = ModelType::LLAMA;
+      } else if (model_type_str == "opt") {
+        llm_model_type = ModelType::OPT;
+      } else {
+        llm_model_type = ModelType::UNKNOWN;
+      }
       continue;
     }
-    // weights
-    if (!strcmp(argv[i], "--weight2")) {
-      paths.weight2_file_path = std::string(argv[++i]);
+    // llm model weights
+    if (!strcmp(argv[i], "-llm-weight")) {
+      paths.llm_weight_file_path = std::string(argv[++i]);
       continue;
     }
-    // weights
-    if (!strcmp(argv[i], "--weight3")) {
-      paths.weight3_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // weights
-    if (!strcmp(argv[i], "--weight4")) {
-      paths.weight4_file_path = std::string(argv[++i]);
+    // llm model configs
+    if (!strcmp(argv[i], "-llm-config")) {
+      paths.llm_config_file_path = std::string(argv[++i]);
       continue;
     }
     // prompts
-    if (!strcmp(argv[i], "--prompt")) {
+    if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
       continue;
     }
     // tokenizer
-    if (!strcmp(argv[i], "--tokenizer")) {
+    if (!strcmp(argv[i], "-tokenizer")) {
       paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
@@ -72,20 +81,19 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   FFConfig ffconfig;
   FilePaths file_paths;
-  FFModel ff(ffconfig);
+  ModelType model_type;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv, argc, file_paths);
+  parse_input_args(argv, argc, file_paths, model_type);
+  
+  assert(model_type != ModelType::UNKNOWN &&
+         "Invalid LLM model type passed (or no type was passed).");
+
   SentencePieceTokenizer tokenizer(file_paths.tokenizer_file_path);
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm(&tokenizer);
-  std::string text2 = "I believe the meaning of life is";
-  std::string text3 = "Talk to me as if you are python programming language "
-                      "and want to sell me yourself";
-  std::string text4 = "Write podcast about importance to include ChatGPT into "
-                      "the evening routine.";
   int total_num_requests = 0;
   {
     using json = nlohmann::json;
@@ -100,19 +108,20 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       rm.register_new_request(text, 128 /*max_sequence_length*/);
-      if (total_num_requests == 10) {
-        break;
-      }
     }
   }
 
   FFModel model(ffconfig);
-  LLAMA::create_llama_model(model,
-                            im,
-                            "7b",
-                            file_paths.weight1_file_path,
-                            ffconfig.workersPerNode * ffconfig.numNodes,
-                            INC_DECODING_MODE);
+  if (model_type == ModelType::LLAMA) {
+    LLAMA::create_llama_model(model,
+                              im,
+                              file_paths.llm_config_file_path,
+                              file_paths.llm_weight_file_path,
+                              ffconfig.workersPerNode * ffconfig.numNodes,
+                              INC_DECODING_MODE);
+  } else {
+    // TODO
+  }
 
   BatchConfig bc;
   InferenceResult ir;

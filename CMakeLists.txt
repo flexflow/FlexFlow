@@ -550,10 +550,10 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
 endif()
 
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/LLAMA)
   add_subdirectory(examples/cpp/inference/opt)
   add_subdirectory(examples/cpp/inference/opt_spec_pipeline)
   add_subdirectory(inference/spec_infer)
+  add_subdirectory(inference/incr_decoding)
 endif()
 
 

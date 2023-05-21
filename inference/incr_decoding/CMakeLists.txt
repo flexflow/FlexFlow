@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(FlexFlowExample_LLAMA)
-set(project_target LLAMA)
+project(FlexFlow_IncrDecoding)
+set(project_target incr_decoding)
 
 
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
-  llama.cc
-  ${CMAKE_SOURCE_DIR}/inference/file_loader.cc
-  ${CMAKE_SOURCE_DIR}/inference/models/llama.cc)
+  incr_decoding.cc
+  ../file_loader.cc
+  ../models/llama.cc
+  ../models/opt.cc)
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
