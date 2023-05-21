@@ -21,7 +21,6 @@ def convert_hf_model(model, dst_folder):
             .replace("k_proj", "wk")
             .replace("v_proj", "wv")
             .replace("out_proj", "wo")
-            .replace("embed_tokens_weight", "embed_tokens_weight_lm_head")
         )
         params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
 

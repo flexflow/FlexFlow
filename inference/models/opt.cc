@@ -93,7 +93,7 @@ void OPT::create_opt_model(FFModel &ff,
         residual, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
     Layer *self_attn_layer_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_self_attn_layer_norm_weight",
+                               "_attention_layer_norm_weight",
                            self_attn_layer_norm);
 
     if (i % num_transformer_layers_per_stage == 0) {
@@ -205,7 +205,7 @@ void OPT::create_opt_model(FFModel &ff,
   Tensor lm_head =
       ff.dense(all_final_norm, opt_config.vocab_size, AC_MODE_NONE, false);
   Layer *lm_head_layer = ff.layers.back();
-  weights_layers.emplace("embed_tokens_weight_lm_head", lm_head_layer);
+  weights_layers.emplace("embed_tokens_weight", lm_head_layer);
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
