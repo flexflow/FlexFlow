@@ -23,6 +23,6 @@ for name, params in model.named_parameters():
         .replace("lm_head", "output")
         .replace("model_", "")
     )
-    params.detach().cpu().numpy().tofile('weights/' + name)
+    params.detach().cpu().numpy().tofile('weights/llama_7B_weights/' + name)
 ```
 

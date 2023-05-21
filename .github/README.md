@@ -37,8 +37,12 @@ The source code of the SpecInfer pipeline is available at [this folder](../infer
 * `-ll:gpu`: number of GPU processors to use on each node for serving an LLM (default: 0)
 * `-ll:fsize`: size of device memory on each GPU in MB
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) in MB. SpecInfer keeps a replica of the LLM parameters on zero-copy memory, and therefore requires that the zero-copy memory is sufficient for storing the LLM parameters.
+* `-llm-model`: the LLM model type as a case-insensitive string (e.g. "opt" or "llama")
 * `-llm-weight`: path to the folder that stores the LLM weights
-* `-ssm-weight`: path to the folder that stores the small speculative models' weights. You can use multiple `-ssm-weight`s in the command line to launch multiple SSMs.
+* `-llm-config`: path to the json file that stores the LLM model configs
+* `-ssm-model`: the LLM model type as a case-insensitive string (e.g. "opt" or "llama"). You can use multiple `-ssm-model`s in the command line to launch multiple SSMs.
+* `-ssm-weight`: path to the folder that stores the small speculative models' weights. The number of `-ssm-weight`s must match the number of `-ssm-model`s and `-ssm-config`s.
+* `-ssm-config`: path to the json file that stores the SSM model configs. The number of `-ssm-config`s must match the number of `-ssm-model`s and `-ssm-weight`s.
 * `-tokenizer`: path to the tokenizer file (see [Tokenizers](#tokenizers) for preparing a tokenizer for SpecInfer).
 * `-prompt`: (optional) path to the prompt file. SpecInfer expects a json format file for prompts, all of which will be served by SpecInfer. In addition, users can also use the following API for registering requests:
 
@@ -47,10 +51,10 @@ class RequestManager {
   RequestGuid register_new_request(std::string const &prompt, int max_sequence_length);
 }
 ```
-For example, you can use the following command line to serve a LLaMA-6B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-190M models for speculative inference.
+For example, you can use the following command line to serve a LLaMA-7B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-190M models for speculative inference.
 
 ```bash
-./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-weight /path/to/llm/weights -llm-config /path/to/llm/config.json -ssm-weight /path/to/ssm1/weights -ssm-config /path/to/ssm/config.json -smm-weight /path/to/ssm2/weights -ssm-config /path/to/ssm2/config.json -tokenizer /path/to/tokenizer.model -prompt /path/to/prompt.json
+./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight /path/to/llm/weights -llm-config /path/to/llm/config.json -ssm-model llama -ssm-weight /path/to/ssm1/weights -ssm-config /path/to/ssm/config.json -ssm-model llama -smm-weight /path/to/ssm2/weights -ssm-config /path/to/ssm2/config.json -tokenizer /path/to/tokenizer.model -prompt /path/to/prompt.json
 ```
 
 ### Tokenizers
