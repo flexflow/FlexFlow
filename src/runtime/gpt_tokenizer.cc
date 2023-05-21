@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2019-2020 zili wang <wzlnot@gmail.com>.
 
-#include "gpt_tokenizer.h"
+#include <flexflow/gpt_tokenizer.h>
 
 using json = nlohmann::json;
 
@@ -277,7 +277,7 @@ void GPT_Tokenizer::encode(std::string str,
     input_ids->push_back(vocab[pad_token]);
     mask_ids->push_back(0);
   }
-  if (mode == OPT) {
+  if (mode == OPT_TOKENIZER) {
     mask_ids->insert(mask_ids->begin(), 1);
     input_ids->insert(input_ids->begin(), 2);
   }
@@ -290,7 +290,7 @@ std::string GPT_Tokenizer::decode(std::vector<int32_t> input_ids,
   int index = 0;
   for (auto const &id : input_ids) {
     if (index == 0) {
-      if (mode == OPT) {
+      if (mode == OPT_TOKENIZER) {
         assert(id == 2);
         index++;
         continue;

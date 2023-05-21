@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "gpt_tokenizer.h"
+#include <flexflow/gpt_tokenizer.h>
 
 #include <string>
 
@@ -22,11 +22,12 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: %s <gpt-2|opt>\n", argv[0]);
     return 1;
   }
-  tokenizer_mode mode = strcmp(argv[1], "gpt-2") == 0 ? GPT2 : OPT;
+  tokenizer_mode mode =
+      strcmp(argv[1], "gpt-2") == 0 ? GPT2_TOKENIZER : OPT_TOKENIZER;
   std::string vocab_file =
-      mode == GPT2 ? "./gpt2_bpe/vocab.bpe" : "opt_bpe/vocab.bpe";
-  std::string merge_file =
-      mode == GPT2 ? "./gpt2_bpe/encoder.json" : "opt_bpe/encoder.json";
+      mode == GPT2_TOKENIZER ? "./gpt2_bpe/vocab.bpe" : "opt_bpe/vocab.bpe";
+  std::string merge_file = mode == GPT2_TOKENIZER ? "./gpt2_bpe/encoder.json"
+                                                  : "opt_bpe/encoder.json";
 
   GPT_Tokenizer tokenizer(mode, merge_file, vocab_file);
 
@@ -37,7 +38,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Error opening input file" << std::endl;
     return -1;
   }
-  std::ofstream outfile(mode == GPT2
+  std::ofstream outfile(mode == GPT2_TOKENIZER
                             ? "./wikitext-103-raw/wiki.valid.bpe.flexflow.gpt2"
                             : "./wikitext-103-raw/wiki.valid.bpe.flexflow.opt",
                         std::ofstream::out);

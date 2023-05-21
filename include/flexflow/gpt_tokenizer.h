@@ -31,7 +31,7 @@ struct hash_pair {
   }
 };
 
-enum tokenizer_mode { GPT2, OPT };
+enum tokenizer_mode { GPT2_TOKENIZER, OPT_TOKENIZER };
 
 class GPT_Tokenizer {
 
