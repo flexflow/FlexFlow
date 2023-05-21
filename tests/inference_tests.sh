@@ -22,9 +22,13 @@ python3 ../inference/utils/download_weights.py
 mkdir -p ../inference/prompt
 echo '["Give three tips for staying healthy."]' > ../inference/prompt/test.json
 
-# Run test
-../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../inference/weights/llama_7B_weights/ -llm-config ../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../inference/weights/llama_190M_weights/ -ssm-config ../inference/models/configs/llama_190M.json -tokenizer ../inference/tokenizer/tokenizer.model -prompt ../inference/prompt/test.json 
+# Run speculative inference test
+../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../inference/weights/llama_7B_weights/ -llm-config ../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../inference/weights/llama_190M_weights/ -ssm-config ../inference/models/configs/llama_190M.json -tokenizer ../inference/tokenizer/tokenizer.model -prompt ../inference/prompt/test.json
 
+# Run incremental decoding test
+../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../inference/weights/llama_7B_weights/ -llm-config ../inference/models/configs/llama_7B.json -tokenizer ../inference/tokenizer/tokenizer.model -prompt ../inference/prompt/test.json
+
+# TODO: check alignment of results
 
 # Clean up after test
 cleanup
