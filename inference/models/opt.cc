@@ -21,9 +21,12 @@ using namespace Legion;
 
 void OPT::create_opt_model(FFModel &ff,
                            InferenceManager &im,
-                           Config const &opt_config,
+                           std::string const &model_config_file_path,
+                           std::string const &weight_file_path,
                            int num_pipeline_stages,
                            InferenceMode mode) {
+  Config opt_config(model_config_file_path);
+  opt_config.printConfig();
   //------------------------------compute machine views ------------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
   std::vector<MachineView> machine_views;
@@ -215,8 +218,8 @@ void OPT::create_opt_model(FFModel &ff,
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff, mapping);
-  FileDataLoader fileloader(opt_config.input_path,
-                            opt_config.weight_file_path,
+  FileDataLoader fileloader("",
+                            weight_file_path,
                             opt_config.num_attention_heads,
                             opt_config.hidden_size,
                             opt_config.hidden_size /

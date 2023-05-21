@@ -16,6 +16,8 @@
 #include "flexflow/inference.h"
 #include "flexflow/tokenizers.h"
 #include "models/llama.h"
+#include "models/opt.h"
+#include <filesystem>
 #include <nlohmann/json.hpp>
 
 using namespace Legion;
@@ -69,7 +71,11 @@ void parse_input_args(char **argv,
     }
     // tokenizer
     if (!strcmp(argv[i], "-tokenizer")) {
-      paths.tokenizer_file_path = std::string(argv[++i]);
+      std::string token_folder = std::string(argv[++i]);
+      if (!token_folder.empty() && token_folder.back() != '/')
+        paths.tokenizer_file_path = token_folder + '/';
+      else
+        paths.tokenizer_file_path = token_folder;
       continue;
     }
   }
@@ -91,9 +97,23 @@ void FlexFlow::top_level_task(Task const *task,
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
-  SentencePieceTokenizer tokenizer(file_paths.tokenizer_file_path);
+  // Create SentencePiece tokenizer or OPT tokenizer
+  std::unique_ptr<Tokenizer> tokenizer;
+  if (model_type == ModelType::LLAMA) {
+    tokenizer = std::make_unique<SentencePieceTokenizer>(file_paths.tokenizer_file_path);
+  } else {
+    // check that the path leads to a folder
+    std::string vocab_file = file_paths.tokenizer_file_path + "gpt2-vocab.json";
+    std::string merges_file = file_paths.tokenizer_file_path + "gpt2-merges.txt";
+    std::filesystem::path path1(vocab_file);
+    std::filesystem::path path2(merges_file);
+    assert(std::filesystem::exists(path1) && "Vocab file gpt2-vocab.json does not exist at the specified path");
+    assert(std::filesystem::exists(path2) && "Merge file gpt2-merges.txt does not exist at the specified path");
+    tokenizer = std::make_unique<OptTokenizer>(vocab_file, merges_file);
+  }
+
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
-  RequestManager rm(&tokenizer);
+  RequestManager rm(tokenizer.get());
   int total_num_requests = 0;
   {
     using json = nlohmann::json;
@@ -120,7 +140,13 @@ void FlexFlow::top_level_task(Task const *task,
                               ffconfig.workersPerNode * ffconfig.numNodes,
                               INC_DECODING_MODE);
   } else {
-    // TODO
+    assert(model_type == ModelType::OPT);
+    OPT::create_opt_model(model,
+                          im,
+                          file_paths.llm_config_file_path,
+                          file_paths.llm_weight_file_path,
+                          ffconfig.workersPerNode * ffconfig.numNodes,
+                          INC_DECODING_MODE);
   }
 
   BatchConfig bc;

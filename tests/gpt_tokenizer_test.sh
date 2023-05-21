@@ -69,8 +69,8 @@ diff ./wikitext-103-raw/wiki.valid.bpe.flexflow.gpt2 ./wikitext-103-raw/wiki.val
 
 # Download OPT vocab and merge files
 mkdir -p opt_bpe
-wget -O opt_bpe/encoder.json https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json
-wget -O opt_bpe/vocab.bpe https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt
+wget -O opt_bpe/gpt2-vocab.json https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json
+wget -O opt_bpe/gpt2-merges.txt https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt
 
 # Run the FlexFlow C++ tokenizer (OPT)
 ./gpt_tokenizer opt

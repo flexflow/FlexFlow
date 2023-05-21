@@ -25,9 +25,9 @@ int main(int argc, char *argv[]) {
   tokenizer_mode mode =
       strcmp(argv[1], "gpt-2") == 0 ? GPT2_TOKENIZER : OPT_TOKENIZER;
   std::string vocab_file =
-      mode == GPT2_TOKENIZER ? "./gpt2_bpe/vocab.bpe" : "opt_bpe/vocab.bpe";
+      mode == GPT2_TOKENIZER ? "./gpt2_bpe/vocab.bpe" : "opt_bpe/gpt2-merges.txt";
   std::string merge_file = mode == GPT2_TOKENIZER ? "./gpt2_bpe/encoder.json"
-                                                  : "opt_bpe/encoder.json";
+                                                  : "opt_bpe/gpt2-vocab.json";
 
   GPT_Tokenizer tokenizer(mode, merge_file, vocab_file);
 

@@ -43,11 +43,11 @@ convert_hf_model(model, dst_folder)
 
 # Download tokenizer files
 os.makedirs("../tokenizer", exist_ok=True)
-tokenizer_filepath = '../tokenizer/encoder.json'
+tokenizer_filepath = '../tokenizer/gpt2-vocab.json'
 url = 'https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json'
 r = requests.get(url)
 open(tokenizer_filepath , 'wb').write(r.content)
-tokenizer_filepath = '../tokenizer/vocab.bpe'
+tokenizer_filepath = '../tokenizer/gpt2-merges.txt'
 url = 'https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt'
 r = requests.get(url)
 open(tokenizer_filepath , 'wb').write(r.content)

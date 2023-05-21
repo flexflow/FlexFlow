@@ -6,8 +6,5 @@
     "multiple_of": 256,
     "norm_eps": 1e-6,
     "total_requests": 2560,
-    "incremental_mode": true,
-    "weight_file_path": "",
-    "input_path": "",
-    "tokenizer_file_path": ""
+    "incremental_mode": true
 }

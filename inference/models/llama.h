@@ -63,9 +63,6 @@ public:
           norm_eps = config_json["norm_eps"];
           total_requests = config_json["total_requests"];
           incremental_mode = config_json["incremental_mode"];
-          weight_file_path = config_json["weight_file_path"];
-          input_path = config_json["input_path"];
-          tokenizer_file_path = config_json["tokenizer_file_path"];
           // Override values below
           /* max_seq_len = config_json["max_seq_len"];
           max_num_tokens = config_json["max_num_tokens"];
@@ -91,6 +88,7 @@ public:
     }
 
     void printConfig() const {
+      std::cout << "LLAMA Config:" << std::endl;
       std::cout << "n_layers: " << n_layers << std::endl;
       std::cout << "vocab_size: " << vocab_size << std::endl;
       std::cout << "n_heads: " << n_heads << std::endl;
@@ -104,18 +102,12 @@ public:
       std::cout << "max_beam_width: " << max_beam_width << std::endl;
       std::cout << "max_beam_depth: " << max_beam_depth << std::endl;
       std::cout << "hidden_dim: " << hidden_dim << std::endl;
-      std::cout << "weight_file_path: " << weight_file_path << std::endl;
-      std::cout << "input_path: " << input_path << std::endl;
-      std::cout << "tokenizer_file_path: " << tokenizer_file_path << std::endl;
     }
 
     int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
         total_requests, incremental_mode, max_seq_len, max_num_tokens,
         max_beam_width, max_beam_depth;
     float norm_eps;
-    std::string weight_file_path;
-    std::string input_path;
-    std::string tokenizer_file_path;
   };
 
   static void create_llama_model(FFModel &ff,
