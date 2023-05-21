@@ -16,7 +16,7 @@ cleanup
 pip3 install --upgrade transformers
 
 # Download the weights
-python3 ../inference/utils/download_weights.py
+python3 ../inference/utils/download_llama_weights.py
 
 # Create test prompt file
 mkdir -p ../inference/prompt
