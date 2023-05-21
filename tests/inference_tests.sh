@@ -6,6 +6,11 @@ cleanup() {
     rm -rf ../inference/prompt ../inference/weights ../inference/tokenizer
 }
 
+copy_embedding_weights(){
+    cp ../inference/weights/opt_6B_weights/embed_tokens_weights ../inference/weights/opt_6B_weights/embed_tokens_weight_lm_head
+    cp ../inference/weights/opt_125M_weights/embed_tokens_weights ../inference/weights/opt_125M_weights/embed_tokens_weight_lm_head
+}
+
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
@@ -18,6 +23,9 @@ pip3 install --upgrade transformers
 # Download the weights
 python3 ../inference/utils/download_llama_weights.py
 python3 ../inference/utils/download_opt_weights.py
+
+# because huggingface reuse a weight in embedding and final linear
+copy_embedding_weights
 
 # Create test prompt file
 mkdir -p ../inference/prompt
