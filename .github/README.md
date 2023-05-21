@@ -29,7 +29,7 @@ for serving generative LLMs while provably preserving model quality.
 </p>
 
 ## Build/Install SpecInfer
-SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](INSTALL.md) for installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
+SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](../INSTALL.md) for building/installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
 
 ## Run SpecInfer
 The source code of the SpecInfer pipeline is available at [this folder](../inference/spec_infer/). The SpecInfer executable will be available at `/build_dir/inference/spec_infer/spec_infer` at compilation. You can use the following command-line arguments to run SpecInfer:
@@ -73,7 +73,7 @@ The weight files used in our demo are extracted from HuggingFace, and stored in 
 | OPT-6.7B  | facebook/opt-6.7b | s3://specinfer/weights/opt_6B_weights.tar.gz |
 | OPT-125M  | facebook/opt-125m | s3://specinfer/weights/opt_125m_native.tar.gz |
 
-You can use [this script](../inference/utils/download_weights.py) to automatically download and convert the weights of a HuggingFace LLAMA LLM and a LLAMA SSM to the SpecInfer weight format. The script also downloads the LLAMA tokenizer. 
+You can use [this script](../inference/utils/download_llama_weights.py) to automatically download and convert the weights of a HuggingFace LLAMA LLM and a LLAMA SSM to the SpecInfer weight format. The script also downloads the LLAMA tokenizer. If you would like to try the OPT model instead, use [this script](../inference/utils/download_opt_weights.py) to download (and convert) the OPT weights and tokenizer.
 
 ### Prompt Datasets
 We have evaluated SpecInfer on the following prompts datasets: [Chatbot instruction prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatbot.json), [ChatGPT Prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatgpt.json), [WebQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/webqa.json), [Alpaca](https://specinfer.s3.us-east-2.amazonaws.com/prompts/alpaca.json), and [PIQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/piqa.json).
