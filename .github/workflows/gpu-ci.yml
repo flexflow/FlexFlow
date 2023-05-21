@@ -132,7 +132,7 @@ jobs:
         shell: bash -l {0} # required to use an activated conda environment
     env: 
       CONDA: "3"    
-    needs: python-interface-check
+    needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
