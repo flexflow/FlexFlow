@@ -12,6 +12,9 @@ cd "${BASH_SOURCE[0]%/*}"
 # Clean up before test (just in case)
 cleanup
 
+# Update the transformers library to support the LLAMA model
+pip3 install --upgrade transformers
+
 # Download the weights
 python3 ../inference/utils/download_weights.py
 
