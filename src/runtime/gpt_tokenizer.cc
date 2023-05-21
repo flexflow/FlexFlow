@@ -291,8 +291,9 @@ std::string GPT_Tokenizer::decode(std::vector<int32_t> input_ids,
   for (auto const &id : input_ids) {
     if (index == 0) {
       if (mode == OPT_TOKENIZER) {
-        assert(id == 2);
-        index++;
+        if (id == 2) {
+          index++;
+        }
         continue;
       }
     }
