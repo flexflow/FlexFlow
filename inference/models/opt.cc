@@ -205,7 +205,7 @@ void OPT::create_opt_model(FFModel &ff,
   Tensor lm_head =
       ff.dense(all_final_norm, opt_config.vocab_size, AC_MODE_NONE, false);
   Layer *lm_head_layer = ff.layers.back();
-  weights_layers.emplace("embed_tokens_weight", lm_head_layer);
+  weights_layers.emplace("embed_tokens_weight_lm_head", lm_head_layer);
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
