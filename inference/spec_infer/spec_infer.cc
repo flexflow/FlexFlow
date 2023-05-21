@@ -106,12 +106,7 @@ void parse_input_args(char **argv,
     }
     // tokenizer
     if (!strcmp(argv[i], "-tokenizer")) {
-      std::string token_folder = std::string(argv[++i]);
-      if (!token_folder.empty() && token_folder.back() != '/') {
-        paths.tokenizer_file_path = token_folder + '/';
-      } else {
-        paths.tokenizer_file_path = token_folder;
-      }
+      paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
   }
@@ -157,10 +152,13 @@ void FlexFlow::top_level_task(Task const *task,
     tokenizer = std::make_unique<SentencePieceTokenizer>(
         file_paths.tokenizer_file_path);
   } else {
-    // check that the path leads to a folder
-    std::string vocab_file = file_paths.tokenizer_file_path + "gpt2-vocab.json";
-    std::string merges_file =
-        file_paths.tokenizer_file_path + "gpt2-merges.txt";
+    std::string tokenizer_folder =
+        (!file_paths.tokenizer_file_path.empty() &&
+         file_paths.tokenizer_file_path.back() != '/')
+            ? file_paths.tokenizer_file_path + '/'
+            : file_paths.tokenizer_file_path;
+    std::string vocab_file = tokenizer_folder + "gpt2-vocab.json";
+    std::string merges_file = tokenizer_folder + "gpt2-merges.txt";
     std::filesystem::path path1(vocab_file);
     std::filesystem::path path2(merges_file);
     assert(std::filesystem::exists(path1) &&
