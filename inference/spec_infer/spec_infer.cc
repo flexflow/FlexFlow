@@ -147,10 +147,10 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Create SentencePiece tokenizer or OPT tokenizer
-  std::unique_ptr<Tokenizer> tokenizer;
+  SentencePieceTokenizer *sp_tokenizer = nullptr;
+  OptTokenizer *opt_tokenizer = nullptr;
   if (model_types.llm_model_type == ModelType::LLAMA) {
-    tokenizer = std::make_unique<SentencePieceTokenizer>(
-        file_paths.tokenizer_file_path);
+    sp_tokenizer = new SentencePieceTokenizer(file_paths.tokenizer_file_path);
   } else {
     std::string tokenizer_folder =
         (!file_paths.tokenizer_file_path.empty() &&
@@ -165,11 +165,13 @@ void FlexFlow::top_level_task(Task const *task,
            "Vocab file gpt2-vocab.json does not exist at the specified path");
     assert(std::filesystem::exists(path2) &&
            "Merge file gpt2-merges.txt does not exist at the specified path");
-    tokenizer = std::make_unique<OptTokenizer>(vocab_file, merges_file);
+    opt_tokenizer = new OptTokenizer(vocab_file, merges_file);
   }
 
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
-  RequestManager rm(tokenizer.get());
+  RequestManager rm((model_types.llm_model_type == ModelType::LLAMA)
+                        ? (Tokenizer *)sp_tokenizer
+                        : (Tokenizer *)opt_tokenizer);
   int total_num_requests = 0;
   {
     using json = nlohmann::json;
@@ -261,6 +263,13 @@ void FlexFlow::top_level_task(Task const *task,
 
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;
+
+  // free tokenizer space in memory
+  if (model_types.llm_model_type == ModelType::LLAMA) {
+    delete sp_tokenizer;
+  } else {
+    delete opt_tokenizer;
+  }
 }
 
 void FlexFlow::register_custom_tasks() {}
