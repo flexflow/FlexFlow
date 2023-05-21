@@ -72,10 +72,11 @@ void parse_input_args(char **argv,
     // tokenizer
     if (!strcmp(argv[i], "-tokenizer")) {
       std::string token_folder = std::string(argv[++i]);
-      if (!token_folder.empty() && token_folder.back() != '/')
+      if (!token_folder.empty() && token_folder.back() != '/') {
         paths.tokenizer_file_path = token_folder + '/';
-      else
+      } else {
         paths.tokenizer_file_path = token_folder;
+      }
       continue;
     }
   }
@@ -100,15 +101,19 @@ void FlexFlow::top_level_task(Task const *task,
   // Create SentencePiece tokenizer or OPT tokenizer
   std::unique_ptr<Tokenizer> tokenizer;
   if (model_type == ModelType::LLAMA) {
-    tokenizer = std::make_unique<SentencePieceTokenizer>(file_paths.tokenizer_file_path);
+    tokenizer = std::make_unique<SentencePieceTokenizer>(
+        file_paths.tokenizer_file_path);
   } else {
     // check that the path leads to a folder
     std::string vocab_file = file_paths.tokenizer_file_path + "gpt2-vocab.json";
-    std::string merges_file = file_paths.tokenizer_file_path + "gpt2-merges.txt";
+    std::string merges_file =
+        file_paths.tokenizer_file_path + "gpt2-merges.txt";
     std::filesystem::path path1(vocab_file);
     std::filesystem::path path2(merges_file);
-    assert(std::filesystem::exists(path1) && "Vocab file gpt2-vocab.json does not exist at the specified path");
-    assert(std::filesystem::exists(path2) && "Merge file gpt2-merges.txt does not exist at the specified path");
+    assert(std::filesystem::exists(path1) &&
+           "Vocab file gpt2-vocab.json does not exist at the specified path");
+    assert(std::filesystem::exists(path2) &&
+           "Merge file gpt2-merges.txt does not exist at the specified path");
     tokenizer = std::make_unique<OptTokenizer>(vocab_file, merges_file);
   }
 
