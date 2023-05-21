@@ -19,45 +19,14 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LLAMA::Config LLAMA::create_190m_config() {
-  Config config;
-  config.n_layers = 12;
-  config.vocab_size = 50265;
-  config.dim = 768;
-  config.n_heads = 12;
-  config.hidden_dim = 3072;
-  return config;
-}
-
-LLAMA::Config LLAMA::create_7b_config() {
-  // The default config is for llama 7b
-  Config config;
-  return config;
-}
-
-// Deprecated API
 void LLAMA::create_llama_model(FFModel &ff,
                                InferenceManager &im,
-                               Config const &llama_config,
-                               int num_pipeline_stages,
-                               InferenceMode mode) {
-  assert(false);
-}
-
-void LLAMA::create_llama_model(FFModel &ff,
-                               InferenceManager &im,
-                               std::string const &model_name,
+                               std::string const &model_config_file_path,
                                std::string const &weight_file_path,
                                int num_pipeline_stages,
                                InferenceMode mode) {
-  Config llama_config;
-  if (model_name == "190m" || model_name == "190M") {
-    llama_config = create_190m_config();
-  } else if (model_name == "7b" || model_name == "7B") {
-    llama_config = create_7b_config();
-  } else {
-    assert(false && "Invalide model_name");
-  }
+  Config llama_config(model_config_file_path);
+  llama_config.printConfig();
   //------------------------------compute machine views ------------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
   std::vector<MachineView> machine_views;

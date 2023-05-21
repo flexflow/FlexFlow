@@ -28,8 +28,8 @@ for serving generative LLMs while provably preserving model quality.
 <img src="../img/performance.png" alt="Performance comparison" height="320"/>
 </p>
 
-## Install SpecInfer
-SpecInfer is built on top of FlexFlow. You can install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](INSTALL.md) for installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
+## Build/Install SpecInfer
+SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](../INSTALL.md) for building/installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
 
 ## Run SpecInfer
 The source code of the SpecInfer pipeline is available at [this folder](../inference/spec_infer/). The SpecInfer executable will be available at `/build_dir/inference/spec_infer/spec_infer` at compilation. You can use the following command-line arguments to run SpecInfer:
@@ -37,8 +37,12 @@ The source code of the SpecInfer pipeline is available at [this folder](../infer
 * `-ll:gpu`: number of GPU processors to use on each node for serving an LLM (default: 0)
 * `-ll:fsize`: size of device memory on each GPU in MB
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) in MB. SpecInfer keeps a replica of the LLM parameters on zero-copy memory, and therefore requires that the zero-copy memory is sufficient for storing the LLM parameters.
+* `-llm-model`: the LLM model type as a case-insensitive string (e.g. "opt" or "llama")
 * `-llm-weight`: path to the folder that stores the LLM weights
-* `-ssm-weight`: path to the folder that stores the small speculative models' weights. You can use multiple `-ssm-weight`s in the command line to launch multiple SSMs.
+* `-llm-config`: path to the json file that stores the LLM model configs
+* `-ssm-model`: the LLM model type as a case-insensitive string (e.g. "opt" or "llama"). You can use multiple `-ssm-model`s in the command line to launch multiple SSMs.
+* `-ssm-weight`: path to the folder that stores the small speculative models' weights. The number of `-ssm-weight`s must match the number of `-ssm-model`s and `-ssm-config`s.
+* `-ssm-config`: path to the json file that stores the SSM model configs. The number of `-ssm-config`s must match the number of `-ssm-model`s and `-ssm-weight`s.
 * `-tokenizer`: path to the tokenizer file (see [Tokenizers](#tokenizers) for preparing a tokenizer for SpecInfer).
 * `-prompt`: (optional) path to the prompt file. SpecInfer expects a json format file for prompts, all of which will be served by SpecInfer. In addition, users can also use the following API for registering requests:
 
@@ -47,10 +51,10 @@ class RequestManager {
   RequestGuid register_new_request(std::string const &prompt, int max_sequence_length);
 }
 ```
-For example, you can use the following command line to serve a LLaMA-6B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-190M models for speculative inference.
+For example, you can use the following command line to serve a LLaMA-7B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-190M models for speculative inference.
 
 ```bash
-./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-weight /path/to/llm/weights -ssm-weight /path/to/ssm1/weights -smm-weight /path/to/ssm2/weights -tokenizer /path/to/tokenizer.model -prompt /path/to/prompt.json
+./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight /path/to/llm/weights -llm-config /path/to/llm/config.json -ssm-model llama -ssm-weight /path/to/ssm1/weights -ssm-config /path/to/ssm/config.json -ssm-model llama -smm-weight /path/to/ssm2/weights -ssm-config /path/to/ssm2/config.json -tokenizer /path/to/tokenizer.model -prompt /path/to/prompt.json
 ```
 
 ### Tokenizers
@@ -60,7 +64,7 @@ SpecInfer supports two tokenizers:
 * The GPT2 tokenizer is used to support the Open Pre-trained Transformer model family (e.g., OPT-13B and OPT-125M). To use it, download the [vocab](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json) and [merges](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt) files and pass the folder containing them as a parameter. 
 
 ### LLM Weights
-The weight files using in our demo is extracted from HuggingFace, and stored in our AWS S3 bucket.
+The weight files used in our demo are extracted from HuggingFace, and stored in our AWS S3 bucket.
 
 |  Model   | Model id on Hugging Face  | Storage Location |
 |  :----  | :----  | :----  |
@@ -69,10 +73,13 @@ The weight files using in our demo is extracted from HuggingFace, and stored in 
 | OPT-6.7B  | facebook/opt-6.7b | s3://specinfer/weights/opt_6B_weights.tar.gz |
 | OPT-125M  | facebook/opt-125m | s3://specinfer/weights/opt_125m_native.tar.gz |
 
-You can use [this script](../inference/spec_infer/MODEL_WEIGHTS.md) to convert the weights of a HuggingFace LLM to the SpecInfer weight format.
+You can use [this script](../inference/utils/download_llama_weights.py) to automatically download and convert the weights of a HuggingFace LLAMA LLM and a LLAMA SSM to the SpecInfer weight format. The script also downloads the LLAMA tokenizer. If you would like to try the OPT model instead, use [this script](../inference/utils/download_opt_weights.py) to download (and convert) the OPT weights and tokenizer.
 
 ### Prompt Datasets
 We have evaluated SpecInfer on the following prompts datasets: [Chatbot instruction prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatbot.json), [ChatGPT Prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatgpt.json), [WebQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/webqa.json), [Alpaca](https://specinfer.s3.us-east-2.amazonaws.com/prompts/alpaca.json), and [PIQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/piqa.json).
+
+### Script to run the demo
+You can take a look at [this script](../tests/inference_tests.sh), which is run in CI for each new commit, for an example of how to run the demo.
 
 ## Difference between SpecInfer and HuggingFace Assistant Model
 

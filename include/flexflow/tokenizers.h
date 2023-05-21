@@ -67,7 +67,7 @@ class OptTokenizer : public Tokenizer {
 public:
   OptTokenizer(std::string const &vocab_file,  // path to "gpt2-vocab.json"
                std::string const &merges_file) // path to "gpt2-merges.txt"
-      : tokenizer(OPT, vocab_file, merges_file) {
+      : tokenizer(OPT_TOKENIZER, vocab_file, merges_file) {
     bos_token_id = 0;
     eos_token_id = 2;
   }

@@ -21,9 +21,12 @@ using namespace Legion;
 
 void OPT::create_opt_model(FFModel &ff,
                            InferenceManager &im,
-                           Config const &opt_config,
+                           std::string const &model_config_file_path,
+                           std::string const &weight_file_path,
                            int num_pipeline_stages,
                            InferenceMode mode) {
+  Config opt_config(model_config_file_path);
+  opt_config.printConfig();
   //------------------------------compute machine views ------------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
   std::vector<MachineView> machine_views;
@@ -90,7 +93,7 @@ void OPT::create_opt_model(FFModel &ff,
         residual, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
     Layer *self_attn_layer_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_self_attn_layer_norm_weight",
+                               "_attention_layer_norm_weight",
                            self_attn_layer_norm);
 
     if (i % num_transformer_layers_per_stage == 0) {
@@ -215,14 +218,14 @@ void OPT::create_opt_model(FFModel &ff,
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff, mapping);
-  FileDataLoader fileloader(opt_config.input_path,
-                            opt_config.weight_file_path,
+  FileDataLoader fileloader("",
+                            weight_file_path,
                             opt_config.num_attention_heads,
                             opt_config.hidden_size,
                             opt_config.hidden_size /
                                 opt_config.num_attention_heads);
   fileloader.load_weights(&ff, weights_layers);
-  std::cout << "------load wieght finished----------" << std::endl;
+  std::cout << "------finished loading weights----------" << std::endl;
   im.init_operators_inference(&ff);
 }
 

@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "include/**"
+      - "inference/**"
       - "cmake/**"
       - "config/**"
       - "python/**"
@@ -14,6 +15,7 @@ on:
       - "master"
     paths:
       - "include/**"
+      - "inference/**"
       - "cmake/**"
       - "config/**"
       - "python/**"

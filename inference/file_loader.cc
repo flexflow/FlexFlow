@@ -84,6 +84,7 @@ void load_attention_bias(float *ptr,
 
   for (auto file : bias_files) {
     size_t partial_size = hidden_dim;
+    // std::cout << "Loading filename: " << file << std::endl;
     std::ifstream in(file, std::ios::in | std::ios::binary);
     assert(in.good() && "incorrect bias file path");
     std::vector<float> host_array(partial_size);
@@ -148,6 +149,10 @@ void load_attention_weights(float *ptr,
     size_t partial_size = one_weight_file_size;
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
+    // std::cout << "Loading filename: " << file << std::endl;
+    if (!in.good()) {
+      std::cout << "Could not open file: " << file << std::endl;
+    }
     assert(in.good() && "incorrect weight file path");
     std::vector<float> host_array(partial_size);
     size_t loaded_data_size = sizeof(float) * partial_size;
@@ -179,7 +184,11 @@ void load_attention_weights(float *ptr,
 }
 
 void load_from_file(float *ptr, size_t size, std::string filename) {
+  // std::cout << "Loading filename: " << filename << std::endl;
   std::ifstream in(filename, std::ios::in | std::ios::binary);
+  if (!in.good()) {
+    std::cout << "Could not open file: " << filename << std::endl;
+  }
   assert(in.good() && "incorrect weight file path");
   std::vector<float> host_array(size);
   size_t loaded_data_size = sizeof(float) * size;
