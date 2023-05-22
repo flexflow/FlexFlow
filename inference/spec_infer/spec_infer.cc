@@ -175,6 +175,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   FFModel beam_model(ffconfig);
   FFModel tree_model(ffconfig);
+
   if (model_types.ssm_model_types[0] == ModelType::LLAMA) {
     LLAMA::create_llama_model(beam_model,
                               im,
@@ -190,6 +191,7 @@ void FlexFlow::top_level_task(Task const *task,
                           1,
                           BEAM_SEARCH_MODE);
   }
+  
   if (model_types.llm_model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(tree_model,
                               im,
@@ -207,7 +209,6 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   int beam_model_id = rm.register_new_model(&beam_model);
-  int tree_model_id = rm.register_new_model(&tree_model);
 
   int total_num_requests = 0;
   {
@@ -222,46 +223,46 @@ void FlexFlow::top_level_task(Task const *task,
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm.register_new_request(text, 30 /*max_sequence_length*/);
+      rm.register_new_request(text, 128 /*max_sequence_length*/);
     }
   }
 
   TreeVerifyBatchConfig tree_bc;
   BeamSearchBatchConfig beam_bc(beam_model_id);
+  std::vector<BeamSearchBatchConfig> beam_bc_vec;
+
   InferenceResult tree_ir;
 
   while (rm.get_num_processed_requests() < total_num_requests) {
     int depth = 0;
     // Beam Search
-    std::cout << "11111" << std::endl;
     beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir, beam_model_id);
-    std::cout << "22222" << std::endl;
+    // beam_bc2 = beam_bc;
+
     if (rm.get_num_processed_requests() >= total_num_requests) {
       break;
     }
     while (true) {
       depth = beam_bc.beamRequestsInfo[0].current_depth;
-      // FutureMap fm = im.inference(&beam_model, 0, beam_bc);
-      FutureMap fm = im.inference(rm.get_model(beam_model_id), 0, beam_bc);
 
+      std::cout << "beam depth: " << depth << std::endl;
+      FutureMap fm = im.inference(rm.get_model(beam_model_id), 0, beam_bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       Future future = fm.get_future(0);
       BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
+
       if (depth - 1 >= BeamSearchBatchConfig::MAX_BEAM_DEPTH) {
+        beam_bc_vec.clear();
+        beam_bc_vec.push_back(beam_bc);
         break;
       } else {
-        std::cout << "33333" << std::endl;
         beam_bc = rm.prepare_next_batch_beam(beam_bc, beam_ir);
-        std::cout << "44444" << std::endl;
       }
     }
     // Token Tree Verification
     {
-      std::cout << "55555" << std::endl;
-      tree_bc = rm.prepare_next_batch_verify(beam_bc);
-      std::cout << "66666" << std::endl;
-      // FutureMap fm = im.inference(&tree_model, 0, tree_bc);
-      FutureMap fm = im.inference(rm.get_model(tree_model_id), 0, tree_bc);
+      tree_bc = rm.prepare_next_batch_verify(beam_bc_vec);
+      FutureMap fm = im.inference(&tree_model, 0, tree_bc);
 
       assert(fm.get_future_map_domain().get_volume() == 1);
       Future future = fm.get_future(0);

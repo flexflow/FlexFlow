@@ -105,7 +105,7 @@ public:
                               int model_id);
 
   TreeVerifyBatchConfig
-      prepare_next_batch_verify(BeamSearchBatchConfig const &old_bc);
+      prepare_next_batch_verify(std::vector<BeamSearchBatchConfig> const &old_batches);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
@@ -117,6 +117,11 @@ public:
       traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
                          int request_index,
                          int token_start_offset);
+
+  // remove guid after put the cached tree in request
+  std::vector<std::pair<BatchConfig::TokenId, int>> 
+      merge_dfs_trees(std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>> input_trees,
+                      int root_depth, RequestGuid guid);
 
   std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
       size_t guid,
@@ -144,16 +149,12 @@ private:
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
 
-
-  // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
-  // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
-  // Commited Tokens
+  // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
                      std::vector<std::pair<BatchConfig::TokenId, int>>>
       dfs_tree_inputs;
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
-  struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
 
 
   // Multi-model support
