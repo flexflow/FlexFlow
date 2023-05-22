@@ -53,6 +53,8 @@ struct Request {
   int max_sequence_length;
   int initial_len;
   std::vector<BatchConfig::TokenId> tokens;
+  
+  std::vector<struct BeamTree> beam_trees;
 };
 
 // store the result of beam search
@@ -81,6 +83,12 @@ public:
   RequestManager(Tokenizer *tokenizer, bool verbose = false);
   RequestManager();
   size_t get_num_processed_requests();
+
+  int register_new_model(FFModel *model);
+
+  FFModel *get_model(int model_id);
+
+
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
@@ -93,7 +101,8 @@ public:
 
   BeamSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
-                              InferenceResult const &result);
+                              InferenceResult const &result,
+                              int model_id);
 
   TreeVerifyBatchConfig
       prepare_next_batch_verify(BeamSearchBatchConfig const &old_bc);
@@ -116,10 +125,6 @@ public:
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
 
-  // TreeVerifyBatchConfig
-  //     convert_beam_to_tree_batch_config(BeamSearchBatchConfig const
-  //     &beam_bc);
-
   static void
       load_tokens_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
@@ -139,17 +144,22 @@ private:
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
 
-  struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
-
-  std::unordered_map<RequestGuid,
-                     std::vector<std::pair<BatchConfig::TokenId, int>>>
-      dfs_tree_inputs;
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
   // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
   // Commited Tokens
+  std::unordered_map<RequestGuid,
+                     std::vector<std::pair<BatchConfig::TokenId, int>>>
+      dfs_tree_inputs;
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
+  struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
+
+
+  // Multi-model support
+  int num_ssms;
+  std::vector<FFModel *> models;
+
   // Performance profiling
   size_t num_processed_requests;
 

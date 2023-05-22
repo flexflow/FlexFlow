@@ -33,6 +33,20 @@ RequestManager::RequestManager(Tokenizer *_tokenizer, bool _verbose)
     : tokenizer(_tokenizer), verbose(_verbose), next_available_guid(1000000),
       num_processed_requests(0) {}
 
+int RequestManager::register_new_model(FFModel *model) {
+  int model_id = models.size();
+  models.push_back(model);
+  std::cout << "Register new model with id: " << model_id << std::endl;
+  num_ssms++;
+  assert(models.size() == num_ssms);
+  return model_id;
+}
+
+FFModel *RequestManager::get_model(int model_id) {
+  assert(model_id < models.size());
+  return models[model_id];
+}
+
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
                                          int max_sequence_length) {
@@ -44,6 +58,15 @@ RequestManager::RequestGuid
   request.max_sequence_length = max_sequence_length;
   request.initial_len = prompt.size();
   request.tokens = prompt;
+
+  std::cout << "Num of models: " << num_ssms << std::endl;
+  assert(num_ssms > 0);
+
+  for (int i = 0; i < num_ssms; i++) {
+    std::cout << "i: " << i << std::endl;
+    BeamTree beam_tree = BeamTree{};
+    request.beam_trees.push_back(beam_tree);
+  }
 
   pending_request_queue.push(request);
 
@@ -69,6 +92,15 @@ RequestManager::RequestGuid
   std::vector<int32_t> tokens = tokenizer->Encode(prompt);
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
+
+  std::cout << "Num of models: " << num_ssms << std::endl;
+  assert(num_ssms > 0);
+
+  for (int i = 0; i < num_ssms; i++) {
+    std::cout << "i: " << i << std::endl;
+    BeamTree beam_tree = BeamTree{};
+    request.beam_trees.push_back(beam_tree);
+  }
 
   pending_request_queue.push(request);
   if (verbose) {
@@ -230,10 +262,14 @@ BeamSearchBatchConfig
   }
 
   // Step 1: Store result to the beam tree struct
+  std::cout << "store_beam_metadata\n";
   store_beam_metadata(old_bc, result);
 
   // Step 2: preparing the next batch for existing requests
   BeamSearchBatchConfig new_bc;
+  new_bc.model_id = old_bc.model_id;
+  std::cout << "old_bc.num_tokens: " << old_bc.num_tokens << "\n";
+  std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
 
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (old_bc.request_completed[i]) {
@@ -281,7 +317,9 @@ BeamSearchBatchConfig
 
       // do the slot exchange to minimize the cache exchange in kernel.
       // std::cout << "update metadata" << std::endl;
-      update_beam_metadata(new_bc, beam_trees[i], i);
+      // update_beam_metadata(new_bc, beam_trees[i], i);
+      std::cout << "update metadata" << std::endl;
+      update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id), i);
 
       if (new_bc.requestsInfo[i].token_start_offset + 1 >=
           request.tokens.size()) {
@@ -317,12 +355,14 @@ BeamSearchBatchConfig
 
 BeamSearchBatchConfig
     RequestManager::prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
-                                            InferenceResult const &result) {
+                                            InferenceResult const &result,
+                                            int model_id) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
   // Step 1: use result to update requests
   BeamSearchBatchConfig new_bc;
   new_bc.num_tokens = 0;
+  new_bc.model_id = model_id;
   int result_index = 0;
 
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
@@ -408,7 +448,7 @@ BeamSearchBatchConfig
                         profile_info.finish_time - profile_info.start_time,
                         total_request_run_time);
 
-      beam_trees[i] = BeamTree{};
+      // beam_trees[i] = BeamTree{};
       dfs_tree_inputs.erase(
           request.guid); // delete the old input tree from cache
       continue;
@@ -737,6 +777,10 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       int index = old_bc.tokensInfo[i - 1].request_index;
       int beam_size = old_bc.beamRequestsInfo[index].beam_size;
       int depth = old_bc.beamRequestsInfo[index].current_depth;
+        
+      std::cout << "Guid: " << old_bc.requestsInfo[index].request_guid;
+      Request &request =
+            running_request_queue[old_bc.requestsInfo[index].request_guid];
 
       if (depth == 1) {
         // store the last input into the tree;
@@ -744,11 +788,15 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
           std::cout << "try to store the input"
                     << "\n";
         }
-        Request &request =
-            running_request_queue[old_bc.requestsInfo[index].request_guid];
-        beam_trees[index].treeLayers[0].tokens[0] = request.tokens.back();
-        beam_trees[index].treeLayers[0].probs[0] = 1;
-        beam_trees[index].treeLayers[0].parent_ids[0] = -1;
+
+        std::cout << "here" << std::endl;
+        request.beam_trees.at(0).treeLayers[0].tokens[0] = request.tokens.back();
+        request.beam_trees.at(0).treeLayers[0].probs[0] = 1;
+        request.beam_trees.at(0).treeLayers[0].parent_ids[0] = -1;
+        std::cout << "there" << std::endl;
+        // beam_trees[index].treeLayers[0].tokens[0] = request.tokens.back();
+        // beam_trees[index].treeLayers[0].probs[0] = 1;
+        // beam_trees[index].treeLayers[0].parent_ids[0] = -1;
         if (verbose) {
           std::cout << "Store the previous last token to the tree root: "
                     << request.tokens.back() << "\n";
@@ -756,17 +804,28 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       }
 
       for (int beam_id = 0; beam_id < beam_width; beam_id++) {
-        beam_trees[index].treeLayers[depth].tokens[beam_id] =
+        std::cout << "beam_id: " << beam_id << std::endl;
+        request.beam_trees[0].treeLayers[depth].tokens[beam_id] =
             result.token_ids[result_index];
-        beam_trees[index].treeLayers[depth].probs[beam_id] =
+        request.beam_trees[0].treeLayers[depth].probs[beam_id] =
             result.probs[result_index];
-        beam_trees[index].treeLayers[depth].parent_ids[beam_id] =
+        request.beam_trees[0].treeLayers[depth].parent_ids[beam_id] =
             result.parent_id[result_index];
+
+        // beam_trees[index].treeLayers[depth].tokens[beam_id] =
+        //     result.token_ids[result_index];
+        // beam_trees[index].treeLayers[depth].probs[beam_id] =
+        //     result.probs[result_index];
+        // beam_trees[index].treeLayers[depth].parent_ids[beam_id] =
+        //     result.parent_id[result_index];
 
         if (verbose) {
           std::cout << "tree value: " << depth << "token: "
-                    << beam_trees[index].treeLayers[depth].tokens[beam_id]
+                    << request.beam_trees[0].treeLayers[depth].tokens[beam_id]
                     << "result tokens: " << result.token_ids[result_index];
+          // std::cout << "tree value: " << depth << "token: "
+          //           << beam_trees[index].treeLayers[depth].tokens[beam_id]
+          //           << "result tokens: " << result.token_ids[result_index];
         }
         result_index += 1;
       }
@@ -935,47 +994,6 @@ bool PreOrder(
   return flag;
 }
 
-#ifdef DEADCODE
-TreeVerifyBatchConfig RequestManager::convert_beam_to_tree_batch_config(
-    BeamSearchBatchConfig const &beam_bc) {
-  TreeVerifyBatchConfig tree_bc;
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if (beam_bc.request_completed[i]) {
-      continue;
-    }
-    // We don't modify requests during the conversion
-    tree_bc.request_completed[i] = beam_bc.request_completed[i];
-    BeamTree const &tree = beam_trees[i];
-    // token, index
-    // todo make this one global for different stages
-    std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> serializedTree;
-    PreOrder(tree,
-             beam_bc.beamRequestsInfo[i].max_depth,
-             0,
-             beam_bc.beamRequestsInfo[i].beam_size,
-             0,
-             serializedTree,
-             verbose);
-    tree_bc.requestsInfo[i].request_guid = beam_bc.requestsInfo[i].request_guid;
-    tree_bc.requestsInfo[i].max_sequence_length =
-        beam_bc.requestsInfo[i].max_sequence_length;
-    tree_bc.requestsInfo[i].token_start_offset = serializedTree[0].second;
-    tree_bc.requestsInfo[i].num_tokens_in_batch = 0;
-
-    for (int k = 0; k < serializedTree.size(); k++) {
-      assert(tree_bc.num_tokens < BatchConfig::MAX_NUM_TOKENS);
-      tree_bc.tokensInfo[tree_bc.num_tokens].request_index = i;
-      tree_bc.tokensInfo[tree_bc.num_tokens].abs_depth_in_request =
-          serializedTree[k].second;
-      tree_bc.tokensInfo[tree_bc.num_tokens].token_id = serializedTree[k].first;
-      tree_bc.num_tokens++;
-      tree_bc.requestsInfo[i].num_tokens_in_batch++;
-    }
-  }
-  return tree_bc;
-}
-#endif
-
 std::vector<std::pair<BatchConfig::TokenId, int>>
     RequestManager::traverse_verify_tree(
         size_t guid,
@@ -1063,7 +1081,14 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
     std::cout << "[Traverse Beam Tree] beam_width: "
               << old_bc.beamRequestsInfo[request_index].beam_size << "\n";
   }
-  BeamTree tree = beam_trees[request_index];
+
+  auto guid = old_bc.requestsInfo[request_index].request_guid;
+  Request &request = running_request_queue[guid];
+  std::cout << "request.beam_trees.size(): " << request.beam_trees.size()
+            << std::endl;
+  BeamTree tree = request.beam_trees.at(old_bc.model_id);
+  std::cout << "\n\n";
+  // BeamTree tree = beam_trees[request_index];
 
   // token, index
   // todo make this one global for different stages

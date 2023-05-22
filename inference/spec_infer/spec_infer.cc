@@ -172,22 +172,6 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager rm((model_types.llm_model_type == ModelType::LLAMA)
                         ? (Tokenizer *)sp_tokenizer
                         : (Tokenizer *)opt_tokenizer);
-  int total_num_requests = 0;
-  {
-    using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
-    for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      total_num_requests++;
-      rm.register_new_request(text, 128 /*max_sequence_length*/);
-    }
-  }
 
   FFModel beam_model(ffconfig);
   FFModel tree_model(ffconfig);
@@ -222,33 +206,63 @@ void FlexFlow::top_level_task(Task const *task,
                           TREE_VERIFY_MODE);
   }
 
+  int beam_model_id = rm.register_new_model(&beam_model);
+  int tree_model_id = rm.register_new_model(&tree_model);
+
+  int total_num_requests = 0;
+  {
+    using json = nlohmann::json;
+    std::ifstream file_handle(file_paths.prompt_file_path);
+    assert(file_handle.good() && "Prompt file does not exist.");
+    json prompt_json = json::parse(file_handle,
+                                   /*parser_callback_t */ nullptr,
+                                   /*allow_exceptions */ true,
+                                   /*ignore_comments */ true);
+    for (auto &prompt : prompt_json) {
+      std::string text = prompt.get<std::string>();
+      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      total_num_requests++;
+      rm.register_new_request(text, 30 /*max_sequence_length*/);
+    }
+  }
+
   TreeVerifyBatchConfig tree_bc;
-  BeamSearchBatchConfig beam_bc;
+  BeamSearchBatchConfig beam_bc(beam_model_id);
   InferenceResult tree_ir;
 
   while (rm.get_num_processed_requests() < total_num_requests) {
     int depth = 0;
     // Beam Search
-    beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir);
+    std::cout << "11111" << std::endl;
+    beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir, beam_model_id);
+    std::cout << "22222" << std::endl;
     if (rm.get_num_processed_requests() >= total_num_requests) {
       break;
     }
     while (true) {
       depth = beam_bc.beamRequestsInfo[0].current_depth;
-      FutureMap fm = im.inference(&beam_model, 0, beam_bc);
+      // FutureMap fm = im.inference(&beam_model, 0, beam_bc);
+      FutureMap fm = im.inference(rm.get_model(beam_model_id), 0, beam_bc);
+
       assert(fm.get_future_map_domain().get_volume() == 1);
       Future future = fm.get_future(0);
       BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
       if (depth - 1 >= BeamSearchBatchConfig::MAX_BEAM_DEPTH) {
         break;
       } else {
+        std::cout << "33333" << std::endl;
         beam_bc = rm.prepare_next_batch_beam(beam_bc, beam_ir);
+        std::cout << "44444" << std::endl;
       }
     }
     // Token Tree Verification
     {
+      std::cout << "55555" << std::endl;
       tree_bc = rm.prepare_next_batch_verify(beam_bc);
-      FutureMap fm = im.inference(&tree_model, 0, tree_bc);
+      std::cout << "66666" << std::endl;
+      // FutureMap fm = im.inference(&tree_model, 0, tree_bc);
+      FutureMap fm = im.inference(rm.get_model(tree_model_id), 0, tree_bc);
+
       assert(fm.get_future_map_domain().get_volume() == 1);
       Future future = fm.get_future(0);
       tree_ir = future.get_result<InferenceResult>();
