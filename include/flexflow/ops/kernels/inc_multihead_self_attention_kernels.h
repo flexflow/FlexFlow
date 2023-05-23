@@ -5,6 +5,7 @@
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/batch_config.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -44,6 +45,14 @@ __global__ void
                            int k_block_size,
                            int v_block_size,
                            bool q_tensor);
+
+void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        float const *input_ptr,
+                        float const *weight_ptr,
+                        float *output_ptr,
+                        float const *bias_ptr,
+                        cudaStream_t stream);
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 } // namespace FlexFlow

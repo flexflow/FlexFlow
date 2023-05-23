@@ -139,12 +139,6 @@ __global__ void
   }
 }
 
-
-} // namespace IncMultiHeadAttention
-} // namespace Kernels
-
-using namespace Kernels::IncMultiHeadAttention;
-
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         float const *input_ptr,
@@ -310,6 +304,11 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        false);
   }
 }
+
+} // namespace IncMultiHeadAttention
+} // namespace Kernels
+
+using namespace Kernels::IncMultiHeadAttention;
 
 __global__ void store_kv_cache(float const *devQKVProjArray,
                                float *cache_ptr,
