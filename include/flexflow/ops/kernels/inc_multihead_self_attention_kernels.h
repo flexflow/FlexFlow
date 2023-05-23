@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_ATTENTION_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_ATTENTION_KERNELS_H
 
+#include "flexflow/batch_config.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
-#include "flexflow/batch_config.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 
 namespace FlexFlow {
