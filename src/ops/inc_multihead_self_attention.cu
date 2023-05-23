@@ -683,13 +683,26 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
-    : IncMultiHeadSelfAttentionMeta(handler, INC_DECODING_MODE, attn, attn->qSize, attn->kSize,
-    attn->vSize, attn->qProjSize, attn->kProjSize, attn->vProjSize,
-    attn->oProjSize, attn->apply_rotary_embedding, attn->bias,
-    attn->scaling_query, attn->qk_prod_scaling, attn->add_bias_kv,
-    attn->scaling_factor, weight_ptr, gpu_mem,
-    num_samples, _num_heads) {}
-
+    : IncMultiHeadSelfAttentionMeta(handler,
+                                    INC_DECODING_MODE,
+                                    attn,
+                                    attn->qSize,
+                                    attn->kSize,
+                                    attn->vSize,
+                                    attn->qProjSize,
+                                    attn->kProjSize,
+                                    attn->vProjSize,
+                                    attn->oProjSize,
+                                    attn->apply_rotary_embedding,
+                                    attn->bias,
+                                    attn->scaling_query,
+                                    attn->qk_prod_scaling,
+                                    attn->add_bias_kv,
+                                    attn->scaling_factor,
+                                    weight_ptr,
+                                    gpu_mem,
+                                    num_samples,
+                                    _num_heads) {}
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
@@ -764,24 +777,21 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t key_cache_size = 0, value_cache_size = 0;
     switch (infer_mode) {
       case INC_DECODING_MODE:
-      case TREE_VERIFY_MODE:
-      {
-        key_cache_size = num_heads * kProjSize *
-                            BatchConfig::MAX_NUM_REQUESTS *
-                            BatchConfig::MAX_SEQ_LENGTH;
+      case TREE_VERIFY_MODE: {
+        key_cache_size = num_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS *
+                         BatchConfig::MAX_SEQ_LENGTH;
         value_cache_size = num_heads * vProjSize *
-                              BatchConfig::MAX_NUM_REQUESTS *
-                              BatchConfig::MAX_SEQ_LENGTH;
+                           BatchConfig::MAX_NUM_REQUESTS *
+                           BatchConfig::MAX_SEQ_LENGTH;
         break;
       }
-      case BEAM_SEARCH_MODE:
-      {
+      case BEAM_SEARCH_MODE: {
         key_cache_size =
-        num_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-        BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+            num_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
         value_cache_size =
-        num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-        BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+            num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
         break;
       }
       default:

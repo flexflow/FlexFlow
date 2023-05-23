@@ -8,8 +8,8 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "math.h"
 #include <cfloat>
 #include <complex>

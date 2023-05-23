@@ -15,9 +15,9 @@
 
 #pragma once
 
+#include "flexflow/ffconst.h"
 #include <cstddef>
 #include <cstdlib>
-#include "flexflow/ffconst.h"
 
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2

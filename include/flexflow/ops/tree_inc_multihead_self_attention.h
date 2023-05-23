@@ -125,6 +125,7 @@ public:
                                     int num_samples,
                                     int _num_heads);
   ~TreeIncMultiHeadSelfAttentionMeta(void);
+
 public:
   int num_active_tokens;
   Realm::RegionInstance committed_token_reserve_inst;

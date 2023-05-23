@@ -820,11 +820,26 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
-    : IncMultiHeadSelfAttentionMeta(handler, BEAM_SEARCH_MODE, attn, attn->qSize, attn->kSize, attn->vSize,
-    attn->qProjSize, attn->kProjSize, attn->vProjSize, attn->oProjSize,
-    attn->apply_rotary_embedding, attn->bias, attn->scaling_query,
-    attn->qk_prod_scaling, attn->add_bias_kv, attn->scaling_factor, weight_ptr,
-    gpu_mem, num_samples, _num_heads) {
+    : IncMultiHeadSelfAttentionMeta(handler,
+                                    BEAM_SEARCH_MODE,
+                                    attn,
+                                    attn->qSize,
+                                    attn->kSize,
+                                    attn->vSize,
+                                    attn->qProjSize,
+                                    attn->kProjSize,
+                                    attn->vProjSize,
+                                    attn->oProjSize,
+                                    attn->apply_rotary_embedding,
+                                    attn->bias,
+                                    attn->scaling_query,
+                                    attn->qk_prod_scaling,
+                                    attn->add_bias_kv,
+                                    attn->scaling_factor,
+                                    weight_ptr,
+                                    gpu_mem,
+                                    num_samples,
+                                    _num_heads) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
