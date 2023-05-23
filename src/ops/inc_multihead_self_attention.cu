@@ -54,11 +54,6 @@ __global__ void apply_proj_bias_w(float *input_ptr,
   }
 }
 
-} // namespace IncMultiHeadAttention
-} // namespace Kernels
-
-using namespace Kernels::IncMultiHeadAttention;
-
 __global__ void apply_proj_bias_qkv(float *input_ptr,
                                     float const *bias_ptr,
                                     int num_tokens,
@@ -143,6 +138,12 @@ __global__ void
     input_ptr[complex_part_index] = complex_input[i].y;
   }
 }
+
+
+} // namespace IncMultiHeadAttention
+} // namespace Kernels
+
+using namespace Kernels::IncMultiHeadAttention;
 
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,

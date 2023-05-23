@@ -26,92 +26,6 @@ using Legion::coord_t;
 using Legion::Memory;
 using namespace Kernels::IncMultiHeadAttention;
 
-__global__ void spec_apply_proj_bias_qkv(float *input_ptr,
-                                         float const *bias_ptr,
-                                         int num_tokens,
-                                         int qProjSize,
-                                         int kProjSize,
-                                         int vProjSize,
-                                         int num_heads,
-                                         bool scaling_query,
-                                         float scaling_factor) {
-  CUDA_KERNEL_LOOP(
-      i, num_tokens * (qProjSize + kProjSize + vProjSize) * num_heads) {
-    // for simplicity, assume q, k, v is in same shape
-    // 0->q, 1->k, 2->v
-    int qkv_index = i / (num_tokens * qProjSize) % 3;
-
-    int head_idx = i / (num_tokens * (qProjSize + kProjSize + vProjSize));
-    int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
-    int q_block_size = qProjSize * num_tokens;
-
-    int idx = i % (num_tokens * (qProjSize));
-
-    int real_part_index =
-        head_idx * qkv_block_size + qkv_index * q_block_size + idx;
-    int bias_idx = qkv_index * qProjSize * num_heads + head_idx * qProjSize +
-                   (idx % qProjSize);
-    input_ptr[real_part_index] += bias_ptr[bias_idx];
-
-    if (scaling_query && qkv_index == 0) {
-      input_ptr[real_part_index] *= scaling_factor;
-    }
-  }
-}
-
-__global__ void
-    spec_apply_rotary_embedding(float *input_ptr,
-                                cuFloatComplex *complex_input,
-                                BatchConfig::PerTokenInfo *tokenInfos,
-                                int qProjSize,
-                                int kProjSize,
-                                int num_heads,
-                                int num_tokens,
-                                int q_block_size,
-                                int k_block_size,
-                                int v_block_size,
-                                bool q_tensor) {
-  int proj_size = q_tensor ? qProjSize : kProjSize;
-  CUDA_KERNEL_LOOP(i, num_tokens * proj_size * num_heads / 2) {
-    // create complex number
-    int head_idx = i / (num_tokens * proj_size / 2);
-    int idx = i % (num_tokens * proj_size / 2);
-    int token_idx =
-        (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-
-    int real_part_index =
-        idx + token_idx * (proj_size / 2) +
-        head_idx * (q_block_size + k_block_size + v_block_size) +
-        (q_tensor ? 0 : q_block_size);
-    int complex_part_index = real_part_index + (proj_size / 2);
-
-    complex_input[i] = {input_ptr[real_part_index],
-                        input_ptr[complex_part_index]};
-
-    // get the freq_cis: shape 1 * (qProjSize/2) = 1 * 64
-    // apply a Cartesian coordinate transformation
-    // multiple with input & /copy back to q/k
-
-    // get position of token
-    //  int head_idx = i / (num_tokens * proj_size);
-
-    // size_t pos = id_map[token_idx].token_position;
-    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
-
-    // float before_real = complex_input[i].x, before_complex =
-    // complex_input[i].y;
-
-    int pos_i = i % (proj_size / 2);
-    float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
-    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
-
-    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-
-    input_ptr[real_part_index] = complex_input[i].x;
-    input_ptr[complex_part_index] = complex_input[i].y;
-  }
-}
-
 void compute_qkv_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                         BeamSearchBatchConfig const *bc,
                         float const *input_ptr,
@@ -231,51 +145,51 @@ void compute_qkv_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   int v_block_size = m->vProjSize * num_tokens;
   // apply bias for q, k, v
   if (*m->bias) {
-    spec_apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
-                               min(CUDA_NUM_THREADS, parallelism),
-                               0,
-                               stream>>>(output_ptr,
-                                         bias_ptr,
-                                         num_tokens,
-                                         m->qProjSize,
-                                         m->kProjSize,
-                                         m->vProjSize,
-                                         m->num_heads,
-                                         *m->scaling_query,
-                                         m->scaling_factor);
+    apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(output_ptr,
+                                    bias_ptr,
+                                    num_tokens,
+                                    m->qProjSize,
+                                    m->kProjSize,
+                                    m->vProjSize,
+                                    m->num_heads,
+                                    *m->scaling_query,
+                                    m->scaling_factor);
   }
 
   if (*m->apply_rotary_embedding) {
     /*q*/
-    spec_apply_rotary_embedding<<<GET_BLOCKS(parallelism),
-                                  min(CUDA_NUM_THREADS, parallelism),
-                                  0,
-                                  stream>>>(output_ptr,
-                                            m->complex_input,
-                                            m->token_infos,
-                                            m->qProjSize,
-                                            m->kProjSize,
-                                            m->num_heads,
-                                            num_tokens,
-                                            q_block_size,
-                                            k_block_size,
-                                            v_block_size,
-                                            true);
+    apply_rotary_embedding<<<GET_BLOCKS(parallelism),
+                             min(CUDA_NUM_THREADS, parallelism),
+                             0,
+                             stream>>>(output_ptr,
+                                       m->complex_input,
+                                       m->token_infos,
+                                       m->qProjSize,
+                                       m->kProjSize,
+                                       m->num_heads,
+                                       num_tokens,
+                                       q_block_size,
+                                       k_block_size,
+                                       v_block_size,
+                                       true);
     /*k*/
-    spec_apply_rotary_embedding<<<GET_BLOCKS(parallelism),
-                                  min(CUDA_NUM_THREADS, parallelism),
-                                  0,
-                                  stream>>>(output_ptr,
-                                            m->complex_input,
-                                            m->token_infos,
-                                            m->qProjSize,
-                                            m->kProjSize,
-                                            m->num_heads,
-                                            num_tokens,
-                                            q_block_size,
-                                            k_block_size,
-                                            v_block_size,
-                                            false);
+    apply_rotary_embedding<<<GET_BLOCKS(parallelism),
+                             min(CUDA_NUM_THREADS, parallelism),
+                             0,
+                             stream>>>(output_ptr,
+                                       m->complex_input,
+                                       m->token_infos,
+                                       m->qProjSize,
+                                       m->kProjSize,
+                                       m->num_heads,
+                                       num_tokens,
+                                       q_block_size,
+                                       k_block_size,
+                                       v_block_size,
+                                       false);
   }
   checkCUDA(cudaDeviceSynchronize());
 }

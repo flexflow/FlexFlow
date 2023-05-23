@@ -4,6 +4,7 @@
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
+#include "flexflow/batch_config.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -21,6 +22,28 @@ __global__ void apply_proj_bias_w(float *input_ptr,
                                   int num_tokens,
                                   int oProjSize);
 
+__global__ void apply_proj_bias_qkv(float *input_ptr,
+                                    float const *bias_ptr,
+                                    int num_tokens,
+                                    int qProjSize,
+                                    int kProjSize,
+                                    int vProjSize,
+                                    int num_heads,
+                                    bool scaling_query,
+                                    float scaling_factor);
+
+__global__ void
+    apply_rotary_embedding(float *input_ptr,
+                           cuFloatComplex *complex_input,
+                           BatchConfig::PerTokenInfo const *tokenInfos,
+                           int qProjSize,
+                           int kProjSize,
+                           int num_heads,
+                           int num_tokens,
+                           int q_block_size,
+                           int k_block_size,
+                           int v_block_size,
+                           bool q_tensor);
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 } // namespace FlexFlow
