@@ -683,22 +683,50 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
+    : IncMultiHeadSelfAttentionMeta(handler, attn, attn->qSize, attn->kSize,
+    attn->vSize, attn->qProjSize, attn->kProjSize, attn->vProjSize,
+    attn->oProjSize, attn->apply_rotary_embedding, attn->bias,
+    attn->scaling_query, attn->qk_prod_scaling, attn->add_bias_kv,
+    attn->scaling_factor, weight_ptr, gpu_mem,
+    num_samples, _num_heads) {}
+
+
+IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
+    FFHandler handler,
+    Op const *attn,
+    int _qSize,
+    int _kSize,
+    int _vSize,
+    int _qProjSize,
+    int _kProjSize,
+    int _vProjSize,
+    int _oProjSize,
+    bool _apply_rotary_embedding,
+    bool _bias,
+    bool _scaling_query,
+    bool _qk_prod_scaling,
+    bool _add_bias_kv,
+    float _scaling_factor,
+    float const *weight_ptr,
+    Memory gpu_mem,
+    int num_samples,
+    int _num_heads)
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
-  qSize = attn->qSize;
-  kSize = attn->kSize;
-  vSize = attn->vSize;
+  qSize = _qSize;
+  kSize = _kSize;
+  vSize = _vSize;
   // assume dimensions match for now
   assert(qSize == kSize);
   assert(kSize == vSize);
-  qProjSize = attn->qProjSize;
-  kProjSize = attn->kProjSize;
+  qProjSize = _qProjSize;
+  kProjSize = _kProjSize;
   assert(qProjSize == kProjSize); // required for attention QK^T matmul
-  vProjSize = attn->vProjSize;
-  oProjSize = attn->oProjSize;
+  vProjSize = _vProjSize;
+  oProjSize = _oProjSize;
 
   num_heads = _num_heads;
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
@@ -707,16 +735,16 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   has_load_weights = (bool *)calloc(1, sizeof(bool));
   *has_load_weights = false;
   apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));
-  *apply_rotary_embedding = attn->apply_rotary_embedding;
+  *apply_rotary_embedding = _apply_rotary_embedding;
   bias = (bool *)calloc(1, sizeof(bool));
-  *bias = attn->bias;
+  *bias = _bias;
   scaling_query = (bool *)calloc(1, sizeof(bool));
-  *scaling_query = attn->scaling_query;
-  scaling_factor = attn->scaling_factor;
+  *scaling_query = _scaling_query;
+  scaling_factor = _scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
-  *qk_prod_scaling = attn->qk_prod_scaling;
+  *qk_prod_scaling = _qk_prod_scaling;
   // Currently do not support adding bias to key/value projection
-  assert(!attn->add_bias_kv);
+  assert(!_add_bias_kv);
 
 #ifdef INFERENCE_TESTS
   kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *

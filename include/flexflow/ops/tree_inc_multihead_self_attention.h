@@ -8,7 +8,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/inc_multihead_self_attention_params.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "math.h"
 #include <cfloat>
 #include <complex>
@@ -116,7 +116,7 @@ public:
   int qoSeqLength, kvSeqLength;
 };
 
-class TreeIncMultiHeadSelfAttentionMeta : public OpMeta {
+class TreeIncMultiHeadSelfAttentionMeta : public IncMultiHeadSelfAttentionMeta {
 public:
   TreeIncMultiHeadSelfAttentionMeta(FFHandler handler,
                                     TreeIncMultiHeadSelfAttention const *attn,
@@ -125,30 +125,9 @@ public:
                                     int num_samples,
                                     int _num_heads);
   ~TreeIncMultiHeadSelfAttentionMeta(void);
-
 public:
-  Realm::RegionInstance reserveInst;
-  size_t weights_params, weightSize, reserveSpaceSize;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int num_heads;
   int num_active_tokens;
-  bool *has_load_weights;
-  bool *apply_rotary_embedding;
-  bool *bias;
-  bool *scaling_query;
-  bool *qk_prod_scaling;
-  float scaling_factor;
-#ifdef INFERENCE_TESTS
-  float *kcache, *vcache;
-#endif
-  float *devQKVProjArray, *keyCache, *valueCache;
-  float *qk_prods, *qk_prods_softmax;
-  float *attn_heads, *W_out_contiguous;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cuFloatComplex *complex_input;
-#endif
-
-  TreeVerifyBatchConfig::PerTokenInfo *token_infos;
+  Realm::RegionInstance committed_token_reserve_inst;
   TreeVerifyBatchConfig::CommittedTokensInfo *committed_token_infos;
 };
 
