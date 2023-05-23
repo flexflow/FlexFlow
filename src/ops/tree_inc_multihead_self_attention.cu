@@ -15,6 +15,7 @@
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
 #endif
+#include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -24,31 +25,7 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Memory;
 
-__global__ void tree_build_w_out_tensor(float const *weight_ptr,
-                                        float *contiguous_weight_ptr,
-                                        int vProjSize,
-                                        int oProjSize,
-                                        int num_heads,
-                                        int qkv_weight_block_size) {
-  CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
-    int row_idx = i % vProjSize;
-    int col_idx = (i / vProjSize) % oProjSize;
-    int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[i] =
-        weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
-                   qkv_weight_block_size + col_idx * vProjSize + row_idx];
-  }
-}
-
-__global__ void tree_apply_proj_bias_w(float *input_ptr,
-                                       float const *bias_ptr,
-                                       int num_tokens,
-                                       int oProjSize) {
-  CUDA_KERNEL_LOOP(i, num_tokens * oProjSize) {
-    int bias_idx = 3 * oProjSize + i % oProjSize;
-    input_ptr[i] += bias_ptr[bias_idx];
-  }
-}
+using namespace Kernels::IncMultiHeadAttention;
 
 __global__ void tree_apply_proj_bias_qkv(float *input_ptr,
                                          float const *bias_ptr,
@@ -700,10 +677,10 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   }
   if (*m->bias) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
-    tree_apply_proj_bias_w<<<GET_BLOCKS(parallelism),
-                             min(CUDA_NUM_THREADS, parallelism),
-                             0,
-                             stream>>>(
+    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>(
         output_ptr, bias_ptr, processed_tokens_in_batch, m->oProjSize);
   }
 
@@ -747,17 +724,17 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
   // reload the weight_o
   if (!(*m->has_load_weights)) {
     int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
-    tree_build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                              min(CUDA_NUM_THREADS, parallelism),
-                              0,
-                              stream>>>(weight_ptr,
-                                        m->W_out_contiguous,
-                                        m->vProjSize,
-                                        m->oProjSize,
-                                        m->num_heads,
-                                        (m->qSize * m->qProjSize +
-                                         m->kSize * m->kProjSize +
-                                         m->vSize * m->vProjSize));
+    build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                         min(CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream>>>(weight_ptr,
+                                   m->W_out_contiguous,
+                                   m->vProjSize,
+                                   m->oProjSize,
+                                   m->num_heads,
+                                   (m->qSize * m->qProjSize +
+                                    m->kSize * m->kProjSize +
+                                    m->vSize * m->vProjSize));
     *m->has_load_weights = true;
   }
   // here because we need postion info in infernece 1

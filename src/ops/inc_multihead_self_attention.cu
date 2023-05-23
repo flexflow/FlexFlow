@@ -16,6 +16,7 @@
 #include "cuComplex.h"
 #endif
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -23,6 +24,9 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 using Legion::Memory;
+
+namespace Kernels {
+namespace IncMultiHeadAttention {
 
 __global__ void build_w_out_tensor(float const *weight_ptr,
                                    float *contiguous_weight_ptr,
@@ -49,6 +53,11 @@ __global__ void apply_proj_bias_w(float *input_ptr,
     input_ptr[i] += bias_ptr[bias_idx];
   }
 }
+
+} // namespace IncMultiHeadAttention
+} // namespace Kernels
+
+using namespace Kernels::IncMultiHeadAttention;
 
 __global__ void apply_proj_bias_qkv(float *input_ptr,
                                     float const *bias_ptr,
