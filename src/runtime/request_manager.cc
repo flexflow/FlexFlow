@@ -1091,15 +1091,51 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
                                   int root_depth, RequestGuid guid) {
   std::vector<std::pair<BatchConfig::TokenId, int>> merged_tree;
 
+  std::unordered_map<int, std::set<int>> childrens;
+  std::unordered_map<int, int> curr_path;
 
-  // ToDo: remove duplicate tokens and reorder
+  // convert <token_id, depth> pair to an integer
+  auto root = input_trees.at(0).at(0);
+  int root_id = root.first * 10000 + root.second;
+    
   for (int i = 0; i < input_trees.size(); i++) {
     auto tree = input_trees.at(i);
-    for (int j = 0; j < tree.size(); j++) {
-      auto node = tree.at(j);
-      merged_tree.push_back(node);
+    // all trees should have the same root
+    assert(tree.at(0) == root);
+
+    for (auto const &pair : tree) {
+      int id = pair.first * 10000 + pair.second; // current node
+      curr_path[pair.second] = id; // log node in current search
+      
+      if (childrens.find(id) == childrens.end()) { 
+        // init empty set
+        childrens[id] = std::set<int>();
+      }
+      
+      if (pair.second > root_depth) {
+        int parent_id = curr_path[pair.second - 1];
+        childrens[parent_id].insert(id);
+      }
     }
-  } 
+  }
+    
+  std::stack<int> q;
+  q.push(root_id);
+    
+  while(!q.empty()) {
+    int curr = q.top();
+    q.pop();
+    merged_tree.push_back(std::make_pair(curr/10000, curr%10000));
+    for (int child : childrens[curr]) {
+      q.push(child);
+    }
+  }
+  
+  if (verbose) {
+    for (auto &pair: merged_tree) {
+        std::cout << pair.first << ", depth: "<< pair.second << std::endl;
+    }
+  }
 
   dfs_tree_inputs[guid] = merged_tree;
 

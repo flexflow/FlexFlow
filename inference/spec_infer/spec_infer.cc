@@ -176,6 +176,7 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel beam_model(ffconfig);
   FFModel tree_model(ffconfig);
 
+  // Create SSM models
   if (model_types.ssm_model_types[0] == ModelType::LLAMA) {
     LLAMA::create_llama_model(beam_model,
                               im,
@@ -192,6 +193,7 @@ void FlexFlow::top_level_task(Task const *task,
                           BEAM_SEARCH_MODE);
   }
   
+  // Create LLM model
   if (model_types.llm_model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(tree_model,
                               im,
