@@ -549,7 +549,7 @@ BeamSearchBatchConfig
 }
 
 TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
-  std::vector<BeamSearchBatchConfig> const &old_batches) {
+    std::vector<BeamSearchBatchConfig> const &old_batches) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
   assert(old_batches.size() > 0);
@@ -566,16 +566,17 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     Request &request = running_request_queue[guid];
 
     // Get the dfs tree
-    std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>> all_dfs_trees;
+    std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>>
+        all_dfs_trees;
 
     for (int j = 0; j < old_batches.size(); j++) {
       std::vector<std::pair<BatchConfig::TokenId, int>> new_tree =
-         traverse_beam_tree(old_batches.at(j), i, request.tokens.size() - 1);
+          traverse_beam_tree(old_batches.at(j), i, request.tokens.size() - 1);
       all_dfs_trees.push_back(new_tree);
     }
     assert(all_dfs_trees.size() == old_batches.size());
-    std::vector<std::pair<BatchConfig::TokenId, int>> dfs_tree_inputs = 
-      merge_dfs_trees(all_dfs_trees, request.tokens.size() - 1, guid);
+    std::vector<std::pair<BatchConfig::TokenId, int>> dfs_tree_inputs =
+        merge_dfs_trees(all_dfs_trees, request.tokens.size() - 1, guid);
 
     if (verbose) {
       std::cout << "Request Tokens Size: " << request.tokens.size()
@@ -587,7 +588,8 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
     // Normal Request Info
     new_bc.requestsInfo[i].token_start_offset = dfs_tree_inputs.front().second;
-    new_bc.requestsInfo[i].request_guid = old_batches.at(0).requestsInfo[i].request_guid;
+    new_bc.requestsInfo[i].request_guid =
+        old_batches.at(0).requestsInfo[i].request_guid;
     new_bc.requestsInfo[i].max_sequence_length =
         old_batches.at(0).requestsInfo[i].max_sequence_length;
     // TODO: Check this
@@ -764,9 +766,9 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       int index = old_bc.tokensInfo[i - 1].request_index;
       int beam_size = old_bc.beamRequestsInfo[index].beam_size;
       int depth = old_bc.beamRequestsInfo[index].current_depth;
-        
+
       Request &request =
-            running_request_queue[old_bc.requestsInfo[index].request_guid];
+          running_request_queue[old_bc.requestsInfo[index].request_guid];
 
       if (depth == 1) {
         // store the last input into the tree;
@@ -775,7 +777,8 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                     << "\n";
         }
 
-        request.beam_trees.at(old_bc.model_id).treeLayers[0].tokens[0] = request.tokens.back();
+        request.beam_trees.at(old_bc.model_id).treeLayers[0].tokens[0] =
+            request.tokens.back();
         request.beam_trees.at(old_bc.model_id).treeLayers[0].probs[0] = 1;
         request.beam_trees.at(old_bc.model_id).treeLayers[0].parent_ids[0] = -1;
 
@@ -786,16 +789,21 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       }
 
       for (int beam_id = 0; beam_id < beam_width; beam_id++) {
-        request.beam_trees.at(old_bc.model_id).treeLayers[depth].tokens[beam_id] =
-            result.token_ids[result_index];
-        request.beam_trees.at(old_bc.model_id).treeLayers[depth].probs[beam_id] =
-            result.probs[result_index];
-        request.beam_trees.at(old_bc.model_id).treeLayers[depth].parent_ids[beam_id] =
-            result.parent_id[result_index];
+        request.beam_trees.at(old_bc.model_id)
+            .treeLayers[depth]
+            .tokens[beam_id] = result.token_ids[result_index];
+        request.beam_trees.at(old_bc.model_id)
+            .treeLayers[depth]
+            .probs[beam_id] = result.probs[result_index];
+        request.beam_trees.at(old_bc.model_id)
+            .treeLayers[depth]
+            .parent_ids[beam_id] = result.parent_id[result_index];
 
         if (verbose) {
           std::cout << "tree value: " << depth << "token: "
-                    << request.beam_trees.at(old_bc.model_id).treeLayers[depth].tokens[beam_id]
+                    << request.beam_trees.at(old_bc.model_id)
+                           .treeLayers[depth]
+                           .tokens[beam_id]
                     << "result tokens: " << result.token_ids[result_index];
         }
         result_index += 1;
@@ -1073,7 +1081,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
     }
   }
 
-  // if (dfs_tree_inputs.find(old_bc.requestsInfo[request_index].request_guid) !=
+  // if (dfs_tree_inputs.find(old_bc.requestsInfo[request_index].request_guid)
+  // !=
   //     dfs_tree_inputs.end()) {
   //   dfs_tree_inputs[old_bc.requestsInfo[request_index].request_guid] =
   //       serializedTree;
@@ -1086,9 +1095,12 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   // }
 }
 
-std::vector<std::pair<BatchConfig::TokenId, int>> 
-  RequestManager::merge_dfs_trees(std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>> input_trees,
-                                  int root_depth, RequestGuid guid) {
+std::vector<std::pair<BatchConfig::TokenId, int>>
+    RequestManager::merge_dfs_trees(
+        std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>>
+            input_trees,
+        int root_depth,
+        RequestGuid guid) {
   std::vector<std::pair<BatchConfig::TokenId, int>> merged_tree;
 
   std::unordered_map<int, std::set<int>> childrens;
@@ -1097,7 +1109,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   // convert <token_id, depth> pair to an integer
   auto root = input_trees.at(0).at(0);
   int root_id = root.first * 10000 + root.second;
-    
+
   for (int i = 0; i < input_trees.size(); i++) {
     auto tree = input_trees.at(i);
     // all trees should have the same root
@@ -1105,35 +1117,35 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 
     for (auto const &pair : tree) {
       int id = pair.first * 10000 + pair.second; // current node
-      curr_path[pair.second] = id; // log node in current search
-      
-      if (childrens.find(id) == childrens.end()) { 
+      curr_path[pair.second] = id;               // log node in current search
+
+      if (childrens.find(id) == childrens.end()) {
         // init empty set
         childrens[id] = std::set<int>();
       }
-      
+
       if (pair.second > root_depth) {
         int parent_id = curr_path[pair.second - 1];
         childrens[parent_id].insert(id);
       }
     }
   }
-    
+
   std::stack<int> q;
   q.push(root_id);
-    
-  while(!q.empty()) {
+
+  while (!q.empty()) {
     int curr = q.top();
     q.pop();
-    merged_tree.push_back(std::make_pair(curr/10000, curr%10000));
+    merged_tree.push_back(std::make_pair(curr / 10000, curr % 10000));
     for (int child : childrens[curr]) {
       q.push(child);
     }
   }
-  
+
   if (verbose) {
-    for (auto &pair: merged_tree) {
-        std::cout << pair.first << ", depth: "<< pair.second << std::endl;
+    for (auto &pair : merged_tree) {
+      std::cout << pair.first << ", depth: " << pair.second << std::endl;
     }
   }
 

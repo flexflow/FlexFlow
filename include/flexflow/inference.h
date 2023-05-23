@@ -53,7 +53,7 @@ struct Request {
   int max_sequence_length;
   int initial_len;
   std::vector<BatchConfig::TokenId> tokens;
-  
+
   std::vector<struct BeamTree> beam_trees;
 };
 
@@ -88,7 +88,6 @@ public:
 
   FFModel *get_model(int model_id);
 
-
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
@@ -104,8 +103,8 @@ public:
                               InferenceResult const &result,
                               int model_id);
 
-  TreeVerifyBatchConfig
-      prepare_next_batch_verify(std::vector<BeamSearchBatchConfig> const &old_batches);
+  TreeVerifyBatchConfig prepare_next_batch_verify(
+      std::vector<BeamSearchBatchConfig> const &old_batches);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
@@ -119,9 +118,11 @@ public:
                          int token_start_offset);
 
   // remove guid after put the cached tree in request
-  std::vector<std::pair<BatchConfig::TokenId, int>> 
-      merge_dfs_trees(std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>> input_trees,
-                      int root_depth, RequestGuid guid);
+  std::vector<std::pair<BatchConfig::TokenId, int>> merge_dfs_trees(
+      std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>>
+          input_trees,
+      int root_depth,
+      RequestGuid guid);
 
   std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
       size_t guid,
@@ -155,7 +156,6 @@ private:
       dfs_tree_inputs;
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
-
 
   // Multi-model support
   int num_ssms;
