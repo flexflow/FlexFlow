@@ -125,6 +125,7 @@ public:
                                 int num_samples,
                                 int _num_heads);
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
+                                InferenceMode infer_mode,
                                 Op const *attn,
                                 int _qSize,
                                 int _kSize,
