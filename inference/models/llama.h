@@ -36,16 +36,11 @@ public:
       norm_eps = 1e-6;
       total_requests = 2560;
       incremental_mode = true;
+      hidden_dim = 11008;
       max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
       max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
       max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
       max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
-
-      // hidden dim
-      hidden_dim = 4 * dim;
-      hidden_dim = int(2 * hidden_dim / 3);
-      hidden_dim =
-          multiple_of * int((hidden_dim + multiple_of - 1) / multiple_of);
     }
 
     Config(std::string config_filepath) {
@@ -63,6 +58,7 @@ public:
           norm_eps = config_json["norm_eps"];
           total_requests = config_json["total_requests"];
           incremental_mode = config_json["incremental_mode"];
+          hidden_dim = config_json["hidden_dim"];
           // Override values below
           /* max_seq_len = config_json["max_seq_len"];
           max_num_tokens = config_json["max_num_tokens"];
@@ -73,10 +69,6 @@ public:
           max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
           max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
           max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
-          hidden_dim = 4 * dim;
-          hidden_dim = int(2 * hidden_dim / 3);
-          hidden_dim =
-              multiple_of * int((hidden_dim + multiple_of - 1) / multiple_of);
         } catch (json::exception const &e) {
           std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
           assert(false);
