@@ -14,7 +14,7 @@
 #INSTALL_DIR=
 
 # set build type
-BUILD_TYPE=Debug
+BUILD_TYPE=${BUILD_TYPE:-Release}
 
 # set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
 # To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
@@ -32,10 +32,10 @@ CUDA_DIR=${CUDA_DIR:-"/sw/summit/cuda/11.0.3"}
 FF_USE_PYTHON=${FF_USE_PYTHON:-ON}
 
 # enable GASNet
-FF_USE_GASNET=${FF_USE_GASNET:-OFF}
+FF_USE_GASNET=${FF_USE_GASNET:-ON}
 
 # select GASNET conduit
-FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT:-ibv}
+FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT:-ofi}
 
 # build C++ examples
 FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES:-OFF}
@@ -76,14 +76,5 @@ function get_build_configs() {
     BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} FF_USE_GASNET=${FF_USE_GASNET} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND}"
 }
 
-if [ -n "$1" ]; then
-    if [ "$1" != "get-docker-configs" ]; then
-        . $(dirname $0)/config.inc
-        # You can pass the name of the variable you want to print out as $1. This
-        # is used in the python setup script to get the cmake config
-        echo "${!1}"
-    fi
-else
-    . $(dirname $0)/config.inc
-    run_cmake $*
-fi
+. $(dirname $0)/config.inc
+run_cmake $*
