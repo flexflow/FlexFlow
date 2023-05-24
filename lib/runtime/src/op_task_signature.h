@@ -3,6 +3,7 @@
 
 #include "utils/visitable.h"
 #include "task_signature.h"
+#include "task_invocation.h"
 
 namespace FlexFlow {
 
@@ -18,6 +19,13 @@ enum class OpTaskType {
   BWD
 };
 
+enum class OpSlotOptions {
+  OPTIONAL,
+  UNTRAINABLE,
+  OPTIONAL_UNTRAINABLE
+  NECESSARY
+};
+
 struct OpTensorSlotSpec : public use_visitable_cmp<OpTensorSlotSpec> {
 public:
   OpTensorSlotSpec() = delete;
@@ -27,6 +35,8 @@ public:
   slot_id name;
   SlotType slot_type;
   TensorRole tensor_role;
+  IsGrad is_grad;
+  OpSlotOptions slot_option;
 };
 
 struct OpTaskSignature {
@@ -46,6 +56,8 @@ struct OpTaskSignature {
   void add_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_optional_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
 
+  void add_from_slot_spec(OpTensorSlotSpec const & spec);
+
   /* void add_input_slot(slot_id, Legion::PrivilegeMode); */
   /* void add_input_slot(slot_id, SlotType, Legion::PrivilegeMode); */
 
@@ -57,9 +69,13 @@ struct OpTaskSignature {
     static_assert(is_serializable<T>, "Type must be serializable");
   }
 
+  std::unordered_set<OpTensorSlotSpec> get_tensor_slots();
+  void set_arg_types(std::unordered_map<slot_id, std::type_index> const &);
+  std::unordered_map<slot_id, std::type_index> get_arg_types();
+
 private:
   std::unordered_map<slot_id, std::type_index> task_arg_types;
-  std::unordered_map<slot_id, TensorRole> slots;
+  std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
 
 template <task_id_t> OpTaskSignature get_signature();
