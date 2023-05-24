@@ -15,10 +15,10 @@
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
 #endif
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 
@@ -29,7 +29,7 @@ using Legion::Memory;
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
-template<typename DT>
+template <typename DT>
 __global__ void build_w_out_tensor(DT const *weight_ptr,
                                    DT *contiguous_weight_ptr,
                                    int vProjSize,
@@ -46,7 +46,7 @@ __global__ void build_w_out_tensor(DT const *weight_ptr,
   }
 }
 
-template<typename DT>
+template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
                                   int num_tokens,
@@ -57,7 +57,7 @@ __global__ void apply_proj_bias_w(DT *input_ptr,
   }
 }
 
-template<typename DT>
+template <typename DT>
 __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     DT const *bias_ptr,
                                     int num_tokens,
@@ -91,7 +91,7 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
   }
 }
 
-template<typename DT>
+template <typename DT>
 __global__ void
     apply_rotary_embedding(DT *input_ptr,
                            cuFloatComplex *complex_input,
@@ -144,7 +144,7 @@ __global__ void
   }
 }
 
-template<typename DT>
+template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         DT const *input_ptr,
@@ -311,7 +311,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-template<typename DT>
+template <typename DT>
 void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             BatchConfig const *bc,
                             cudaStream_t stream) {
@@ -321,8 +321,8 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
     store_kv_cache<<<GET_BLOCKS(parallelism),
                      min(CUDA_NUM_THREADS, parallelism),
                      0,
-                     stream>>>(static_cast<DT*>(m->devQKVProjArray),
-                               static_cast<DT*>(m->keyCache),
+                     stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                               static_cast<DT *>(m->keyCache),
                                m->token_infos,
                                m->qProjSize,
                                m->kProjSize,
@@ -336,8 +336,8 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
     store_kv_cache<<<GET_BLOCKS(parallelism),
                      min(CUDA_NUM_THREADS, parallelism),
                      0,
-                     stream>>>(static_cast<DT*>(m->devQKVProjArray),
-                               static_cast<DT*>(m->valueCache),
+                     stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                               static_cast<DT *>(m->valueCache),
                                m->token_infos,
                                m->qProjSize,
                                m->kProjSize,
@@ -349,15 +349,14 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-template<typename DT>
-void inference_kernel(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    DT const *input_ptr,
-    DT const *weight_ptr,
-    DT *output_ptr,
-    DT const *bias_ptr,
-    cudaStream_t stream) {
+template <typename DT>
+void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                      BatchConfig const *bc,
+                      DT const *input_ptr,
+                      DT const *weight_ptr,
+                      DT *output_ptr,
+                      DT const *bias_ptr,
+                      cudaStream_t stream) {
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
@@ -365,8 +364,13 @@ void inference_kernel(
                   cudaMemcpyHostToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(
-      m, bc, input_ptr, weight_ptr, static_cast<DT*>(m->devQKVProjArray), bias_ptr, stream);
+  compute_qkv_kernel(m,
+                     bc,
+                     input_ptr,
+                     weight_ptr,
+                     static_cast<DT *>(m->devQKVProjArray),
+                     bias_ptr,
+                     stream);
 
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
@@ -381,7 +385,7 @@ void inference_kernel(
 
 using namespace Kernels::IncMultiHeadAttention;
 
-template<typename DT>
+template <typename DT>
 __global__ void store_kv_cache(DT const *devQKVProjArray,
                                DT *cache_ptr,
                                BatchConfig::PerTokenInfo const *tokenInfos,
@@ -416,7 +420,7 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
   }
 }
 
-template<typename DT>
+template <typename DT>
 __global__ void fill_entries_above_diagonal(DT *matrix,
                                             size_t num_rows,
                                             size_t num_cols,
@@ -433,7 +437,7 @@ __global__ void fill_entries_above_diagonal(DT *matrix,
   }
 }
 
-template<typename DT>
+template <typename DT>
 void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                               BatchConfig const *bc,
                               DT *output_ptr,
@@ -484,10 +488,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
     }
     // To get A, skip over Q entries from previous requests (same head)
-    void const *A = static_cast<DT*>(m->devQKVProjArray) + tokens_previous_requests * m->qProjSize;
+    void const *A = static_cast<DT *>(m->devQKVProjArray) +
+                    tokens_previous_requests * m->qProjSize;
     // To get B, skip over K entries from previous requests (all heads +
     // padding)
-    void const *B = static_cast<DT*>(m->keyCache) + i * kt_req_block_size;
+    void const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
     // To get C, skip over QK^T products from previous requests
     void *C = (void *)(m->qk_prods);
 
@@ -524,7 +529,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
                                     min((size_t)CUDA_NUM_THREADS, parallelism),
                                     0,
-                                    stream>>>(static_cast<DT*>(C),
+                                    stream>>>(static_cast<DT *>(C),
                                               num_new_tokens,
                                               total_tokens,
                                               m->num_heads,
@@ -583,11 +588,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     A = (void const *)C_softmax;
     // To get B, skip over V^T entries from previous requests (all heads +
     // padding)
-    B = static_cast<DT*>(m->valueCache) + i * vt_req_block_size;
+    B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
     // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
     // requests
-    C = static_cast<DT*>(m->attn_heads) +
-                 tokens_previous_requests * m->num_heads * m->vProjSize;
+    C = static_cast<DT *>(m->attn_heads) +
+        tokens_previous_requests * m->num_heads * m->vProjSize;
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_N,
@@ -679,23 +684,21 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   assert(input.data_type == output.data_type);
   assert(input.data_type == bias.data_type);
   if (input.data_type == DT_HALF) {
-    Kernels::IncMultiHeadAttention::inference_kernel(
-                     m,
-                     bc,
-                     input.get_half_ptr(),
-                     weight.get_half_ptr(),
-                     output.get_half_ptr(),
-                     bias.get_half_ptr(),
-                     stream);
+    Kernels::IncMultiHeadAttention::inference_kernel(m,
+                                                     bc,
+                                                     input.get_half_ptr(),
+                                                     weight.get_half_ptr(),
+                                                     output.get_half_ptr(),
+                                                     bias.get_half_ptr(),
+                                                     stream);
   } else if (input.data_type == DT_FLOAT) {
-    Kernels::IncMultiHeadAttention::inference_kernel(
-                     m,
-                     bc,
-                     input.get_float_ptr(),
-                     weight.get_float_ptr(),
-                     output.get_float_ptr(),
-                     bias.get_float_ptr(),
-                     stream);
+    Kernels::IncMultiHeadAttention::inference_kernel(m,
+                                                     bc,
+                                                     input.get_float_ptr(),
+                                                     weight.get_float_ptr(),
+                                                     output.get_float_ptr(),
+                                                     bias.get_float_ptr(),
+                                                     stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -888,7 +891,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            0,
                            stream>>>(
           weight.get_float_ptr(),
-          (float*)W_out_contiguous,
+          (float *)W_out_contiguous,
           vProjSize,
           oProjSize,
           num_heads,
@@ -900,7 +903,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            0,
                            stream>>>(
           weight.get_half_ptr(),
-          (half*)W_out_contiguous,
+          (half *)W_out_contiguous,
           vProjSize,
           oProjSize,
           num_heads,

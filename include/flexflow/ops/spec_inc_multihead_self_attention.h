@@ -105,10 +105,10 @@ public:
   static void
       inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
                                BeamSearchBatchConfig const *bc,
-    GenericTensorAccessorR const &input,
-    GenericTensorAccessorR const &weight,
-    GenericTensorAccessorW const &output,
-    GenericTensorAccessorR const &bias);
+                               GenericTensorAccessorR const &input,
+                               GenericTensorAccessorR const &weight,
+                               GenericTensorAccessorW const &output,
+                               GenericTensorAccessorR const &bias);
   Params get_params() const;
 
 public:

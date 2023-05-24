@@ -72,8 +72,9 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              float scaling_factor,
                                              bool qk_prod_scaling,
                                              char const *name) {
-  if (data_type == DT_NONE)
+  if (data_type == DT_NONE) {
     data_type = input->data_type;
+  }
   Layer *li = nullptr;
   int weight_num = bias ? 2 : 1;
   if (data_type != input->data_type) {
@@ -562,12 +563,27 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       (IncMultiHeadSelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
 
-  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      attn->inputs[0].data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      attn->weights[0].data_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      attn->outputs[0].data_type, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input =
+      helperGetGenericTensorAccessorRO(attn->inputs[0].data_type,
+                                       regions[0],
+                                       task->regions[0],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR weight =
+      helperGetGenericTensorAccessorRO(attn->weights[0].data_type,
+                                       regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW output =
+      helperGetGenericTensorAccessorWO(attn->outputs[0].data_type,
+                                       regions[2],
+                                       task->regions[2],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
 
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);

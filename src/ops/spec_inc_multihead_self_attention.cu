@@ -15,10 +15,10 @@
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
 #endif
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 
@@ -30,7 +30,7 @@ using namespace Kernels::IncMultiHeadAttention;
 namespace Kernels {
 namespace SpecIncMultiHeadAttention {
 
-template<typename DT>
+template <typename DT>
 __global__ void spec_store_kv_cache(
     DT const *devQKVProjArray,
     DT *cache_ptr,
@@ -158,7 +158,7 @@ __global__ void spec_store_kv_cache(
   }
 }
 
-template<typename DT>
+template <typename DT>
 void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                             BeamSearchBatchConfig const *bc,
                             cudaStream_t stream) {
@@ -171,8 +171,8 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
-                          stream>>>(static_cast<DT*>(m->devQKVProjArray),
-                                    static_cast<DT*>(m->keyCache),
+                          stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                                    static_cast<DT *>(m->keyCache),
                                     m->token_infos,
                                     m->request_infos,
                                     m->beam_token_infos,
@@ -191,8 +191,8 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
-                          stream>>>(static_cast<DT*>(m->devQKVProjArray),
-                                    static_cast<DT*>(m->valueCache),
+                          stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                                    static_cast<DT *>(m->valueCache),
                                     m->token_infos,
                                     m->request_infos,
                                     m->beam_token_infos,
@@ -209,7 +209,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-template<typename DT>
+template <typename DT>
 __global__ void spec_fill_entries_above_diagonal(DT *matrix,
                                                  size_t new_tokens,
                                                  size_t total_tokens_in_request,
@@ -226,7 +226,7 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
   }
 }
 
-template<typename DT>
+template <typename DT>
 void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                               BeamSearchBatchConfig const *bc,
                               DT *output_ptr,
@@ -282,13 +282,12 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
         alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
       }
       // To get A, skip over Q entries from previous requests (same head)
-      void const *A = static_cast<DT*>(m->devQKVProjArray) +
-                                     tokens_previous_requests * m->qProjSize;
+      void const *A = static_cast<DT *>(m->devQKVProjArray) +
+                      tokens_previous_requests * m->qProjSize;
       // To get B, skip over K entries from previous requests (all heads +
       // padding)
-      void const *B =
-          static_cast<DT*>(m->keyCache) + (i * bc->MAX_BEAM_WIDTH + sub_req_id) *
-                                           kt_req_block_size;
+      void const *B = static_cast<DT *>(m->keyCache) +
+                      (i * bc->MAX_BEAM_WIDTH + sub_req_id) * kt_req_block_size;
 
       // if (i == 0 && sub_req_id == 0 &&
       //     bc->beam_slots.at(0).current_depth == 1) {
@@ -296,8 +295,8 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       //   printf("key cache offset %d\n", kt_req_block_size);
       // }
       // To get C, skip over QK^T products from previous requests
-      void *C =
-          static_cast<DT*>(m->qk_prods) + m->num_heads * tokens_prev_requests_squares;
+      void *C = static_cast<DT *>(m->qk_prods) +
+                m->num_heads * tokens_prev_requests_squares;
 
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                            CUBLAS_OP_T,
@@ -332,7 +331,11 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                                parallelism),
                                            0,
                                            stream>>>(
-            static_cast<DT*>(C), num_new_tokens, total_tokens, m->num_heads, static_cast<DT>(-INFINITY));
+            static_cast<DT *>(C),
+            num_new_tokens,
+            total_tokens,
+            m->num_heads,
+            static_cast<DT>(-INFINITY));
       }
       // Compute Softmax(QK^T/sqrt(d_k))
       cudnnTensorDescriptor_t qk_tensor;
@@ -358,8 +361,8 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                             h_param,
                                             w_param));
       alpha = 1.0f, beta = 0.0f;
-      void *C_softmax = static_cast<DT*>(m->qk_prods_softmax) +
-                                 m->num_heads * tokens_prev_requests_squares;
+      void *C_softmax = static_cast<DT *>(m->qk_prods_softmax) +
+                        m->num_heads * tokens_prev_requests_squares;
       // The softmax operation below is executed according to the
       // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
       // softmax operation is computed per spatial location (H,W) per image (N)
@@ -387,12 +390,12 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       A = (void const *)C_softmax;
       // To get B, skip over V^T entries from previous requests (all heads +
       // padding)
-      B = static_cast<DT*>(m->valueCache) + (i * bc->MAX_BEAM_WIDTH + sub_req_id) *
-                                             vt_req_block_size;
+      B = static_cast<DT *>(m->valueCache) +
+          (i * bc->MAX_BEAM_WIDTH + sub_req_id) * vt_req_block_size;
       // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
       // requests
-      C = static_cast<DT*>(m->attn_heads) +
-                   tokens_previous_requests * m->num_heads * m->vProjSize;
+      C = static_cast<DT *>(m->attn_heads) +
+          tokens_previous_requests * m->num_heads * m->vProjSize;
 
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                            CUBLAS_OP_N,
@@ -462,15 +465,14 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   assert(tokens_previous_requests == num_tokens);
 }
 
-template<typename DT>
-void inference_kernel(
-    SpecIncMultiHeadSelfAttentionMeta const *m,
-    BeamSearchBatchConfig const *bc,
-    DT const *input_ptr,
-    DT const *weight_ptr,
-    DT *output_ptr,
-    DT const *bias_ptr,
-    cudaStream_t stream) {
+template <typename DT>
+void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
+                      BeamSearchBatchConfig const *bc,
+                      DT const *input_ptr,
+                      DT const *weight_ptr,
+                      DT *output_ptr,
+                      DT const *bias_ptr,
+                      cudaStream_t stream) {
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
@@ -495,8 +497,13 @@ void inference_kernel(
                   cudaMemcpyHostToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(
-      m, bc, input_ptr, weight_ptr, static_cast<DT*>(m->devQKVProjArray), bias_ptr, stream);
+  compute_qkv_kernel(m,
+                     bc,
+                     input_ptr,
+                     weight_ptr,
+                     static_cast<DT *>(m->devQKVProjArray),
+                     bias_ptr,
+                     stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 
@@ -531,23 +538,21 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
   assert(input.data_type == bias.data_type);
 
   if (input.data_type == DT_HALF) {
-    Kernels::SpecIncMultiHeadAttention::inference_kernel(
-                     m,
-                     bc,
-                     input.get_half_ptr(),
-                     weight.get_half_ptr(),
-                     output.get_half_ptr(),
-                     bias.get_half_ptr(),
-                     stream);
+    Kernels::SpecIncMultiHeadAttention::inference_kernel(m,
+                                                         bc,
+                                                         input.get_half_ptr(),
+                                                         weight.get_half_ptr(),
+                                                         output.get_half_ptr(),
+                                                         bias.get_half_ptr(),
+                                                         stream);
   } else if (input.data_type == DT_FLOAT) {
-    Kernels::SpecIncMultiHeadAttention::inference_kernel(
-                     m,
-                     bc,
-                     input.get_float_ptr(),
-                     weight.get_float_ptr(),
-                     output.get_float_ptr(),
-                     bias.get_float_ptr(),
-                     stream);
+    Kernels::SpecIncMultiHeadAttention::inference_kernel(m,
+                                                         bc,
+                                                         input.get_float_ptr(),
+                                                         weight.get_float_ptr(),
+                                                         output.get_float_ptr(),
+                                                         bias.get_float_ptr(),
+                                                         stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -624,12 +629,19 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                            Realm::ProfilingRequestSet())
         .wait();
     off_t offset = 0;
-    beam_token_infos = beam_search_reserve_inst.pointer<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(offset);
-    offset += beam_tokeninfo_size * sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
-    request_infos = beam_search_reserve_inst.pointer<BatchConfig::PerRequestInfo>(offset);
+    beam_token_infos =
+        beam_search_reserve_inst
+            .pointer<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(offset);
+    offset += beam_tokeninfo_size *
+              sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
+    request_infos =
+        beam_search_reserve_inst.pointer<BatchConfig::PerRequestInfo>(offset);
     offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
-    beam_request_infos = beam_search_reserve_inst.pointer<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(offset);
-    offset += beam_requestinfo_size * sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
+    beam_request_infos =
+        beam_search_reserve_inst
+            .pointer<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(offset);
+    offset += beam_requestinfo_size *
+              sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
     assert(offset == total_size);
   }
 
