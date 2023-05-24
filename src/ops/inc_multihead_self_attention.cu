@@ -443,8 +443,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
-  size_t size_of_dt = data_type_size(m->output_type[0]);
-  assert(size_of_dt == sizeof(DT));
+  assert(data_type_size(m->output_type[0]) == sizeof(DT));
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
@@ -485,10 +484,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
     }
     // To get A, skip over Q entries from previous requests (same head)
-    void const *A = static_cast<char*>(m->devQKVProjArray) + tokens_previous_requests * m->qProjSize * size_of_dt;
+    void const *A = static_cast<DT*>(m->devQKVProjArray) + tokens_previous_requests * m->qProjSize;
     // To get B, skip over K entries from previous requests (all heads +
     // padding)
-    void const *B = static_cast<char*>(m->keyCache) + i * kt_req_block_size * size_of_dt;
+    void const *B = static_cast<DT*>(m->keyCache) + i * kt_req_block_size;
     // To get C, skip over QK^T products from previous requests
     void *C = (void *)(m->qk_prods);
 
@@ -584,11 +583,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     A = (void const *)C_softmax;
     // To get B, skip over V^T entries from previous requests (all heads +
     // padding)
-    B = static_cast<char*>(m->valueCache) + i * vt_req_block_size * size_of_dt;
+    B = static_cast<DT*>(m->valueCache) + i * vt_req_block_size;
     // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
     // requests
-    C = static_cast<char*>(m->attn_heads) +
-                 tokens_previous_requests * m->num_heads * m->vProjSize * size_of_dt;
+    C = static_cast<DT*>(m->attn_heads) +
+                 tokens_previous_requests * m->num_heads * m->vProjSize;
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_N,
@@ -621,7 +620,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     lda = k, ldb = n, ldc = m_;
     A = (void const *)m->W_out_contiguous;
     B = (void const *)C;
-    C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize * size_of_dt);
+    C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
 
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
@@ -680,7 +679,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   assert(input.data_type == output.data_type);
   assert(input.data_type == bias.data_type);
   if (input.data_type == DT_HALF) {
-    inference_kernel(m,
+    Kernels::IncMultiHeadAttention::inference_kernel(
+                     m,
                      bc,
                      input.get_half_ptr(),
                      weight.get_half_ptr(),
@@ -688,7 +688,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                      bias.get_half_ptr(),
                      stream);
   } else if (input.data_type == DT_FLOAT) {
-    inference_kernel(m,
+    Kernels::IncMultiHeadAttention::inference_kernel(
+                     m,
                      bc,
                      input.get_float_ptr(),
                      weight.get_float_ptr(),
