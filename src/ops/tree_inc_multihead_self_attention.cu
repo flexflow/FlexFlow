@@ -443,10 +443,10 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeIncMultiHeadSelfAttentionMeta *m,
     TreeVerifyBatchConfig const *bc,
-    float const *input_ptr,
-    float const *weight_ptr,
-    float *output_ptr,
-    float const *bias_ptr) {
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &weight,
+    GenericTensorAccessorW const &output,
+    GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -456,6 +456,10 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
+
+  assert(input.data_type == weight.data_type);
+  assert(input.data_type == output.data_type);
+  assert(input.data_type == bias.data_type);
 
   // copy committed tokens info to GPU for the commit_tokens kernel
   // Note that m->num_active_tokens stores the number of active
@@ -525,7 +529,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     TreeIncMultiHeadSelfAttention const *attn,
-    float const *weight_ptr,
+    GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
@@ -545,7 +549,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->qk_prod_scaling,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
-                                    weight_ptr,
+                                    weight,
                                     gpu_mem,
                                     num_samples,
                                     _num_heads),
@@ -571,9 +575,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                            0,
                                            Realm::ProfilingRequestSet())
         .wait();
-    committed_token_infos =
-        (TreeVerifyBatchConfig::CommittedTokensInfo *)
-            committed_token_reserve_inst.pointer_untyped(0, sizeof(char));
+    committed_token_infos = committed_token_reserve_inst.pointer<TreeVerifyBatchConfig::CommittedTokensInfo>(0);
   }
 
   cudaStreamSynchronize(stream);
