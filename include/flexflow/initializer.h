@@ -46,7 +46,7 @@ public:
 
 class Op;
 struct ZeroInitMeta {
-  static int const MAX_NUM_REGIONS = 64;
+  static int const MAX_NUM_REGIONS = 128;
   int num_regions;
   Op *op_ptr;
   DataType data_types[MAX_NUM_REGIONS];
