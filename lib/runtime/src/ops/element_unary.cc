@@ -1,6 +1,5 @@
 #include "element_unary.h"
 #include "kernels/element_unary_kernels.h"
-#include "model.h"
 #include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 

@@ -1,4 +1,3 @@
-#include "model.h"
 #include "ops/attention.h"
 #include "ops/concat.h"
 #include "ops/conv_2d.h"
@@ -18,33 +17,6 @@
 namespace FlexFlow {
 
 using namespace Legion;
-
-bool ParallelTensorShape::is_valid() const {
-  bool used[MAX_TENSOR_DIM];
-  std::fill_n(used, MAX_TENSOR_DIM, false);
-
-  for (int i = 0; i < this->num_dims; i++) {
-    ParallelDim const &dim = this->dims[i];
-    assert(dim.size > 0);
-    assert(dim.degree != ParallelDim::UNKNOWN_DEGREE);
-    assert(dim.degree >= 1);
-    assert(dim.parallel_idx != ParallelDim::UNKNOWN_INDEX);
-    assert(dim.parallel_idx < MAX_TENSOR_DIM);
-    used[dims[i].parallel_idx] = true;
-    if (dim.size % dim.degree != 0) {
-      return false;
-    }
-  }
-  int idx = 0;
-  while (used[idx]) {
-    idx++;
-  }
-  for (int i = idx; i < MAX_TENSOR_DIM; i++) {
-    assert(!used[i]);
-  }
-
-  return true;
-}
 
 bool ParallelTensorShape::operator==(ParallelTensorShape const &other) const {
   if (this->num_dims != other.num_dims) {
@@ -68,10 +40,6 @@ bool ParallelTensorShape::operator==(ParallelTensorShape const &other) const {
   return true;
 }
 
-bool ParallelTensorShape::operator!=(ParallelTensorShape const &other) const {
-  return !(*this == other);
-}
-
 size_t ParallelTensorShape::get_piece_size() const {
   size_t piece_size = data_type_size(this->data_type);
   for (int i = 0; i < this->num_dims; i++) {
@@ -90,28 +58,6 @@ RecordFormatter ParallelTensorShape::as_dot() const {
   return r;
 }
 
-std::unordered_map<int, int>
-    ParallelTensorShape::get_mv_dim_to_tensor_dim_mapping() const {
-  std::unordered_map<int, int> result;
-  for (int i = 0; i < this->num_dims; i++) {
-    int machine_view_dim = this->dims[i].parallel_idx;
-    if (machine_view_dim != -1) {
-      assert(result.find(machine_view_dim) == result.end());
-      result[machine_view_dim] = i;
-    }
-  }
-  return result;
-}
-
-std::unordered_map<int, int>
-    ParallelTensorShape::get_tensor_dim_to_mv_dim_mapping() const {
-  std::unordered_map<int, int> result;
-  for (auto const &kv : this->get_mv_dim_to_tensor_dim_mapping()) {
-    assert(result.find(kv.second) == result.end());
-    result[kv.second] = kv.first;
-  }
-  return result;
-}
 
 bool ParallelTensorBase::update_parallel_ids(int numdim, ParallelDim *dims) {
   int next_parallel_idx = 0;
@@ -125,26 +71,6 @@ bool ParallelTensorBase::update_parallel_ids(int numdim, ParallelDim *dims) {
   }
 
   return true;
-}
-
-ParallelTensorBase::ParallelTensorBase(ParallelTensorBase const &rhs) {
-  parallel_tensor_guid = rhs.parallel_tensor_guid;
-  num_dims = rhs.num_dims;
-  for (int i = 0; i < num_dims; i++) {
-    dims[i] = rhs.dims[i];
-  }
-  machine_view = rhs.machine_view;
-  parallel_is = rhs.parallel_is;
-  region = rhs.region;
-  region_grad = rhs.region_grad;
-  part = rhs.part;
-  part_grad = rhs.part_grad;
-  owner_op = rhs.owner_op;
-  owner_idx = rhs.owner_idx;
-  data_type = rhs.data_type;
-  sync_type = rhs.sync_type;
-  initializer = rhs.initializer;
-  create_gradients = rhs.create_gradients;
 }
 
 void ParallelTensorBase::inline_map(FFConfig &config) {
@@ -380,42 +306,6 @@ bool ParallelTensorBase::get_output_sub_tensor(ParallelConfig const &pc,
   }
   tensor.data_type = data_type;
   return true;
-}
-
-size_t ParallelTensorBase::get_owner_independent_hash() const {
-  size_t hash = 17 * 31 + std::hash<int>()((int)data_type);
-  hash = hash * 31 + std::hash<int>()((int)sync_type);
-  hash = hash * 31 + std::hash<int>()(num_dims);
-  for (int i = 0; i < num_dims; i++) {
-    hash = hash * 31 + std::hash<int>()(dims[i].size);
-    hash = hash * 31 + std::hash<int>()(dims[i].degree);
-    hash = hash * 31 + std::hash<int>()(dims[i].parallel_idx);
-  }
-  return hash;
-}
-
-size_t ParallelTensorBase::get_volume() const {
-  size_t volume = 1;
-  for (int i = 0; i < num_dims; i++) {
-    volume *= dims[i].size;
-  }
-  return volume;
-}
-
-size_t ParallelTensorBase::get_total_num_parts() const {
-  size_t parts = 1;
-  for (int i = 0; i < num_dims; i++) {
-    parts *= dims[i].degree;
-  }
-  return parts;
-}
-
-int ParallelTensorBase::get_num_replica_dims() const {
-  return this->get_shape().get_num_replica_dims();
-}
-
-int ParallelTensorBase::get_num_replicas() const {
-  return this->get_shape().get_num_replicas();
 }
 
 Domain ParallelTensorBase::get_domain() const {

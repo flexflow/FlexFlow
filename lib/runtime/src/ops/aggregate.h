@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_AGGREGATE_H_
 #define _FLEXFLOW_AGGREGATE_H_
 
-#include "op_task_spec.h"
+#include "op_task_invocation.h"
 #include "sim_environment.h"
 #include "op-attrs/ops/aggregate.h"
 
@@ -15,7 +15,7 @@ OpTaskInvocation init(AggregateAttrs const &);
 OpTaskInvocation forward(AggregateAttrs const &);
 OpTaskInvocation backward(AggregateAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   AggregateAttrs const &attrs,
                                   ParallelTensorShape const &gate_preds_shape,
                                   ParallelTensorShape const &gate_assign_shape,
@@ -23,7 +23,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   ParallelTensorShape const &full_gate_gradients_shape,
                                   std::vector<ParallelTensorShape> const &exp_preds_shapes,
                                   ProfilingSettings const &settings,
-                                  MachineView const &mv);
+                                  MachineView const &machine_view);
 }
 
 #endif

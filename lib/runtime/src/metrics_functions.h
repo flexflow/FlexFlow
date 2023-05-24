@@ -17,17 +17,27 @@
 #define _FF_METRICS_FUNCTIONS_H_
 
 #include "legion.h"
-#include "loss_functions.h"
-#include "kernels/perf_metrics.h"
+#include "op-attrs/ops/loss_functions.h"
+#include "task_invocation.h"
+#include "utils/fmt.h"
 
 namespace FlexFlow {
+
+enum class Metric {
+  ACCURACY,
+  CATEGORICAL_CROSSENTROPY,
+  SPARSE_CATEGORICAL_CROSSENTROPY,
+  MEAN_SQUARED_ERROR,
+  ROOT_MEAN_SQUARED_ERROR,
+  MEAN_ABSOLUTE_ERROR,
+};
 
 class Metrics {
 public:
   Metrics() = delete;
-  Metrics(LossType, std::vector<MetricsType> const &);
+  Metrics(LossFunction, std::vector<Metric> const &);
 public:
-  LossType loss_type;
+  LossFunction loss_type;
   bool measure_accuracy;
   bool measure_categorical_crossentropy;
   bool measure_sparse_categorical_crossentropy;
@@ -42,6 +52,7 @@ TaskInvocation compute_metrics(Metrics const &,
 TaskInvocation update_metrics(Metrics const &,
                               parallel_tensor_guid_t const &logit,
                               parallel_tensor_guid_t const &label);
+TaskInvocation reset_metrics(Metrics const &);
 
 template <> void register_task<METRICS_COMP_TASK_ID>();
 template <> void register_task<UPDATE_METRICS_TASK_ID>();
@@ -56,5 +67,29 @@ VISITABLE_STRUCT(::FlexFlow::Metrics,
                  measure_mean_squared_error,
                  measure_root_mean_squared_error,
                  measure_mean_absolute_error);
+
+namespace fmt {
+
+template <>
+struct formatter<::FlexFlow::Metric> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::Metric m, FormatContext& ctx) const -> decltype(ctx.out()) {
+    using namespace FlexFlow;
+
+    string_view name = "unknown";
+    switch (m) {
+      case Metric::ACCURACY: name = "Accuracy"; break;
+      case Metric::CATEGORICAL_CROSSENTROPY: name = "CategoricalCrossEntropy"; break;
+      case Metric::SPARSE_CATEGORICAL_CROSSENTROPY: name = "SparseCategoricalCrossEntropy"; break;
+      case Metric::MEAN_SQUARED_ERROR: name = "MeanSquaredError"; break;
+      case Metric::ROOT_MEAN_SQUARED_ERROR: name = "RootMeanSquaredError"; break;
+      case Metric::MEAN_ABSOLUTE_ERROR: name = "MeanAbsoluteError"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  } 
+  
+};
+
+}
 
 #endif

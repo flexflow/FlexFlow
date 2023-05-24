@@ -2,14 +2,15 @@
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_MAPPING_H
 
 #include "legion.h"
-#include "op-attrs/ffconst.h"
 #include <string>
 #include "runtime/config.h"
 #include "operator.h"
 #include "initializer.h"
-#include "index_space_manager.h"
+#include "legion_backing.h"
 
 namespace FlexFlow {
+
+// TODO FIXME @lockshaw modernize
 
 void map_weight(ParallelTensor &weight, Op const *op, LegionConfig const &config);
 

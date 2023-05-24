@@ -15,164 +15,97 @@
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
 #include "runtime/config.h"
-#include "accessor.h"
-#include "utils/graph/node.h"
-#include "op-attrs/operator_attrs.h"
-#include "utils/hash-utils.h"
-#include "utils/tuple.h"
-#include "initializer.h"
-#include "layer.h"
 #include "legion.h"
-#include "loss_functions.h"
 #include "metrics_functions.h"
 #include "optimizer.h"
-#include "parallel_tensor.h"
 #include "recompile.h"
-#include "simulator.h"
-#include "tensor.h"
-#include "tl/optional.hpp"
 #include <functional>
 #include <unistd.h>
 #include <utility>
-#include "compiler/compiler.h"
-#include "op-attrs/ffconst.h"
-#include "layer_id.h"
-#include "kernels/ff_handle.h"
 #include "op-attrs/tensor_shape.h"
-#include "legion_parallel_tensor_shape.h"
-#include "index_space_manager.h"
-#include "parallel_tensor_uses.h"
 #include "computation_graph.h"
 #include "parallel_computation_graph.h"
 #include "tensor_mapping.h"
-#include "operator.h"
 #include "legion_backing.h"
+#include "sim_environment.h"
+#include "executable_task_invocation.h"
+#include "op-attrs/ops/loss_functions.h"
 
 namespace FlexFlow {
+
+template <> void register_task<FF_INIT_TASK_ID>();
 
 enum ShardingID {
   DataParallelShardingID = 135,
 };
 
-class ElementBinary;
-class ElementUnary;
-
 MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
+
 
 class FFModel {
 public:
-  FFModel(FFConfig const &config, ComputationGraph const &, ParallelComputationGraph const &);
+  FFModel() = delete;
+  FFModel(FFConfig const &, 
+          ComputationGraph const &, 
+          ParallelComputationGraph const &,
+          Optimizer const &, 
+          RuntimeBacking const &,
+          EnableProfiling const &,
+          Metrics const &);
 
-  optional<ParallelTensor> get_parallel_tensor_from_tensor(Tensor const &tensor) const;
+  ExecutableTaskInvocation resolve(TaskInvocation const &) const;
+  TaskReturnAccessor execute(ExecutableTaskInvocation const &) const;
+  TaskReturnAccessor execute(std::vector<ExecutableTaskInvocation> const &);
+  std::pair<Legion::TaskArgument, TaskArgumentFormat> construct_legion_task_arg(ExecutableTaskBinding const &);
 
-  // ========================================
-  // Graph APIs
-  // ========================================
-  static void register_all_machine_views(int num_nodes,
-                                         int gpus_per_node,
-                                         int cpus_per_node,
-                                         std::vector<MachineView> &valid_views);
+  void init_operators();
+  void forward(int seq_length = -1);  
+  void backward(int seq_length = -1);
+  void update();
 
-  Node get_or_create_fused_parallel_node(
-      ParallelTensor const &input,
-      std::vector<ParallelOpInfo> const &parallel_ops);
-  Node get_or_create_parallel_op_node(ParallelTensor const &input,
-                                           ParallelOpInfo const &);
+  template <typename T>
+  void set_tensor(TensorDims const &, T const *);
+
+  template <typename T>
+  void get_tensor(tensor_guid_t, T *data);
+  
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
-
-  static PerfMetrics
-      update_metrics_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
   void reset_metrics();
-  void init_operators();
   void prefetch();
-  void forward(int seq_length = -1);
   void compute_metrics();
-  void get_metrics();
-  void backward(int seq_length = -1);
-  void update();
-  bool apply_fusion(std::vector<Op *> const &operators,
-                    std::vector<Op *> &new_operators);
-  Operator get_final_operator() const;
-  void compile(LossType loss_type,
-               std::vector<MetricsType> const &metrics,
-               CompMode comp_mode = COMP_MODE_TRAINING);
+  void compile(LossFunction loss_type,
+               std::vector<Metric> const &metrics,
+               ComputationMode comp_mode = ComputationMode::TRAINING);
   void compile(Optimizer const &optimizer,
-               LossType loss_type,
-               std::vector<MetricsType> const &metrics,
-               CompMode comp_mode = COMP_MODE_TRAINING);
-  /* SearchSolution graph_optimize(ComputationGraph const &, */ 
-  /*                               MachineSpecification const &); */
-#ifdef FF_USE_NCCL
-  ncclComm_t *find_nccl_comms(MachineView const &view) const;
-#endif
+               LossFunction loss_type,
+               std::vector<Metric> const &metrics,
+               ComputationMode comp_mode = ComputationMode::TRAINING);
   void recompile_on_condition(RecompileState &r);
   void zero_gradients();
 
   // APIs for setting iteration configs
-public:
-  void set_iteration_config_sequence_length(int seq_length);
 private:
   void execute_graph_optimize();
-  void perform_inplace_optimizations();
-  void perform_fusion_optimizations();
-  void initialize_nccl_communicators();
-  void optimize_unnecessary_gradient_calculations();
   void print_operator_regions() const;
-  void create_label_tensor(LossType);
-  void populate_tensor_to_parallel_tensor_mapping();
-
-  std::vector<Op *> get_operators();
-  std::vector<Op const *> get_operators() const;
+  void create_label_tensor(LossFunction);
 public:
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer optimizer;
-  optional<LossAttrs> loss_op = nullopt;
-  optional<Metrics> metrics_op = nullopt;
-  std::unique_ptr<Simulator> simulator = nullptr;
-  int metrics_input;
-  optional<ParallelTensor> parallel_label_tensor;
-  optional<Tensor> label_tensor;
+  LossAttrs loss_op;
+  Metrics metrics_op;
+  /* optional<ParallelTensor> parallel_label_tensor; */
+  /* optional<Tensor> label_tensor; */
+  SimEnvFactory sim_factory;
 
-  IndexSpaceManager index_space_mgr;
   ComputationGraph computation_graph;
   ParallelComputationGraph pcg;
-  ParallelTensorUses uses;
   TensorMapping tensor_map;
+  RuntimeBacking runtime_backing;
 
-  std::unordered_map<parallel_tensor_guid_t, ParallelTensorLegionBacking> legion_backing;
-
-  std::vector<ParallelTensor> parameters;
-  std::vector<PerDeviceFFHandle> handles;
-  Legion::Future current_metrics;
-  // Cached operators: key: operator hash, value: operator pointer
-  /* std::unordered_map<PCGOperatorAttrs, Op*> cached_ops; */
-  std::vector<MachineView> all_valid_views;
-#ifdef FF_USE_NCCL
-  std::unordered_map<size_t, ncclComm_t *> view_hash_to_nccl_comms;
-#endif
-private:
-  bool debug;
-  std::vector<std::unique_ptr<Op>> operators;
-
-  Tensor binary(OperatorType op,
-                Tensor const x,
-                Tensor const y,
-                bool inplace_a = false,
-                char const *name = NULL);
-  ElementBinary *binary(OperatorType op, char const *name = NULL);
-  Tensor unary(OperatorType op,
-               Tensor const x,
-               bool inplace = true,
-               char const *name = NULL,
-               float scalar = 0.0);
-  ElementUnary *
-      unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
+  EnableProfiling enable_profiling;
 };
 
 

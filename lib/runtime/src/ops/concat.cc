@@ -14,7 +14,6 @@
  */
 
 #include "concat.h"
-#include "model.h"
 #include "kernels/concat_kernels.h"
 #include "task_spec.h"
 #include "utils/hash-utils.h"

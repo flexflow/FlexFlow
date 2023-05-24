@@ -8,7 +8,7 @@
 
 namespace FlexFlow {
 
-struct CombineAttrs {
+struct CombineAttrs : public use_visitable_cmp<CombineAttrs> {
 public:
   CombineAttrs() = delete;
   CombineAttrs(ff_dim_t combine_dim, int combine_degree);
@@ -17,20 +17,10 @@ public:
   int combine_degree;
 };
 
-bool operator==(CombineAttrs const &, CombineAttrs const &);
-bool operator!=(CombineAttrs const &, CombineAttrs const &);
-bool operator<(CombineAttrs const &, CombineAttrs const &);
-
 }
 
 VISITABLE_STRUCT(::FlexFlow::CombineAttrs, combine_dim, combine_degree);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::CombineAttrs> {
-  size_t operator()(::FlexFlow::CombineAttrs const &) const;
-};
-} 
+MAKE_VISIT_HASHABLE(::FlexFlow::CombineAttrs);
 
 namespace FlexFlow {
 static_assert(is_valid_opattr<CombineAttrs>::value, "CombineAttrs must be a valid opattr (see core.h)");

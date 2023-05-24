@@ -15,12 +15,18 @@
 
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
-#include "op-attrs/ffconst.h"
+#include "op-attrs/param_sync.h"
 #include "legion.h"
 #include <cstring>
 #include "utils/optional.h"
+#include "utils/fmt.h"
 
 namespace FlexFlow {
+
+enum class ComputationMode {
+  TRAINING,
+  INFERENCE,
+};
 
 // ========================================================
 // Define Runtime Constants
@@ -30,22 +36,14 @@ namespace FlexFlow {
 #define MAP_TO_ZC_MEMORY 0xABCE0000
 
 #ifdef FF_USE_NCCL
-constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
+constexpr ParamSync CHOSEN_SYNC_TYPE = ParamSync::NCCL;
 #else
-constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
+constexpr ParamSync CHOSEN_SYNC_TYPE = ParamSync::PS;
 #endif
 
 struct FFInitInfo {
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;
-};
-
-struct LegionConfig {
-  LegionConfig();
-
-  Legion::Context lg_ctx;
-  Legion::Runtime *lg_hlr;
-  Legion::FieldSpace field_space;
 };
 
 class FFConfig {
@@ -64,7 +62,7 @@ public:
     // DataParallelism_CPU_5D = 15,
   };
 
-  FFConfig();
+  FFConfig() = default;
   static Legion::MappingTagID get_hash_id(std::string const &pcname);
 public:
   int epochs = 1;
@@ -76,13 +74,12 @@ public:
   float weightDecay = 0.0001f;
   size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
   bool profiling = false; 
-  LegionConfig legion_config;
   bool perform_fusion = false;
   size_t simulator_work_space_size = (size_t)2 * 1024 * 1024 * 1024; // 2GB
   size_t search_budget = -1;
   float search_alpha = 1.2f;
   bool search_overlap_backward_update = false;
-  CompMode computationMode = COMP_MODE_TRAINING;
+  ComputationMode computationMode = ComputationMode::TRAINING;
   // Control parallelizable dimensions
   bool only_data_parallel = false;
   bool enable_parameter_parallel = false;
@@ -114,6 +111,26 @@ public:
 
 enum FieldIDs {
   FID_DATA,
+};
+
+}
+
+namespace fmt {
+
+template <>
+struct formatter<::FlexFlow::ComputationMode> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::ComputationMode m, FormatContext& ctx) const -> decltype(ctx.out()) {
+    using namespace FlexFlow;
+
+    string_view name = "unknown";
+    switch (m) {
+      case ComputationMode::TRAINING: name = "Training"; break;
+      case ComputationMode::INFERENCE: name = "Inference"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  } 
+  
 };
 
 }

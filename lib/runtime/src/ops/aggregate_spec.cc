@@ -29,7 +29,6 @@ enum Slots {
   GATE_GRADIENTS_FULL,
   ATTRS,
   PER_DEVICE_STATE,
-  FF_HANDLE,
   PROFILING
 };
 
@@ -138,21 +137,20 @@ using namespace FlexFlow::Kernels::AggregateSpec;
 // }
 
 
-OpTaskInvocation init(AggregateSpecAttrs const &attrs) {
-  OpTaskBinding binding;
+// OpTaskInvocation init(AggregateSpecAttrs const &attrs) {
+//   OpTaskBinding binding;
 
-  binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(FF_HANDLE, ff_handle());
+//   binding.bind_arg(ATTRS, attrs);
+//   binding.bind_arg(FF_HANDLE, ff_handle());
 
-  return { AGG_SPEC_INIT_TASK_ID, binding };
-}
+//   return { AGG_SPEC_INIT_TASK_ID, binding };
+// }
 
 OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(GATE_PREDS, input_tensor(0));
   binding.bind(GATE_ASSIGN, input_tensor(1));
-  binding.bind_arg(PROFILING, enable_profiling());
 
   for (int i = 0; i < attrs.n; i++) {
     binding.bind(EXP_PREDS, input_tensor(i+4));
@@ -160,6 +158,7 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
 
   binding.bind(OUTPUT, output_tensor(0));
 
+  binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
@@ -173,7 +172,6 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
   binding.bind(GATE_ASSIGN, input_tensor(1));
   binding.bind(TRUE_GATE_ASSIGN, input_tensor(2));
   binding.bind_grad(GATE_GRADIENTS_FULL, input_tensor(3));
-  binding.bind_arg(PROFILING, enable_profiling());
 
   for (int i = 0; i < attrs.n; i++) {
     binding.bind_grad(EXP_PREDS, input_tensor(i+4));
@@ -181,6 +179,7 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_grad(OUTPUT, output_tensor(0));
   
+  binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
@@ -205,17 +204,17 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
   // fm.wait_all_results();
   // set_opmeta_from_futuremap(ff, fm);
 
-static PerDeviceOpState *init_task(Legion::Task const *task,
-                                   std::vector<Legion::PhysicalRegion> const &regions,
-                                   Legion::Context ctx,
-                                   Legion::Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
-  auto handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
+// static PerDeviceOpState *init_task(Legion::Task const *task,
+//                                    std::vector<Legion::PhysicalRegion> const &regions,
+//                                    Legion::Context ctx,
+//                                    Legion::Runtime *runtime) {
+//   TaskArgumentAccessor acc(task, regions, ctx, runtime);
+//   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
+//   auto handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
 
-  AggregateSpecPerDeviceState *m = new AggregateSpecPerDeviceState(handle, attrs.n);
-  return m;
-}
+//   AggregateSpecPerDeviceState *m = new AggregateSpecPerDeviceState(handle, attrs.n);
+//   return m;
+// }
 
   //ArgumentMap argmap;
   //Context ctx = ff.config.lg_ctx;
@@ -266,10 +265,15 @@ static void forward_task(Legion::Task const *task,
                          Legion::Context ctx,
                          Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
+}
 
-  int n = acc.get_argument<AggregateSpecAttrs>(ATTRS).n;
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
+  auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+  auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
 
-  AggregateSpecPerDeviceState const *m = *((AggregateSpecPerDeviceState **)task->local_args);
+  int n = attrs.n;
 
   auto gate_pred = acc.get_tensor<READ_WRITE>(GATE_PREDS);
   auto gate_assign = acc.get_tensor<READ_WRITE>(GATE_ASSIGN);
@@ -293,9 +297,9 @@ static void forward_task(Legion::Task const *task,
 
   profile(
     forward_kernel,
-    m->profiling,
+    enable_profiling,
     "[AggregateSpec] forward_time = %.2lfms\n",
-    m,
+    &per_device_state,
     exp_preds.data(),
     gate_assign.get_int32_ptr(),
     output.get_float_ptr(),
@@ -378,6 +382,10 @@ static void backward_task(Legion::Task const *task,
                           Legion::Context ctx,
                           Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
+
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
@@ -431,85 +439,53 @@ static void backward_task(Legion::Task const *task,
     out_dim);
 }
 
-bool AggregateSpec::measure_operator_cost(Simulator *sim,
-                                          MachineView const &mv,
-                                          CostMetrics &cost_metrics) const {
-  assert(numInputs <= MAX_NUM_INPUTS);
-  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_assign, sub_output;
-  for (int i = 0; i < numInputs; ++i) {
-    if (!inputs[i + 4]->get_sub_tensor(mv, sub_inputs[i])) {
-      return false;
-    }
-  }
-  if (!inputs[1]->get_sub_tensor(mv, sub_assign)) {
-    return false;
-  }
+ConstMetrics measure_operator_cost(SimEnvFactory const &sim,
+                                   AggregateSpecAttrs const &attrs,
+                                   InputParallelTensorDesc const &gate_preds,
+                                   InputParallelTensorDesc const &gate_assign,
+                                   InputParallelTensorDesc const &true_gate_assign,
+                                   InputParallelTensorDesc const &full_gate_gradients,
+                                   InputVariadicParallelTensorDesc const &exp_preds,
+                                   ProfilingSettings const &settings,
+                                   MachineView const &mv) const {
+  auto env = sim.new_environment();
 
-  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-    return false;
-  }
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind(GATE_PREDS, gate_preds);
+  fwd_binding.bind(GATE_ASSIGN, gate_assign);
+  fwd_binding.bind(EXP_PREDS, exp_preds);
 
-  AggregateSpecPerDeviceState *m = new AggregateSpecPerDeviceState(sim->handler, this->attrs.n);
+  ParallelTensorShape output_shape = get_output_shape(attrs, gate_preds.shape, gate_assign.shape, true_gate_assign.shape, full_gate_gradients.shape, exp_preds.shapes);
+  fwd_binding.bind(OUTPUT, output_shape);
 
-  // allocate
-  sim->free_all();
-  float *input_ptrs[MAX_NUM_INPUTS];
-  bool out_of_memory = false;
-  for (int i = 0; i < numInputs; ++i) {
-    input_ptrs[i] =
-        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
-    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
-  }
-  int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
-  out_of_memory = out_of_memory || (assign_ptr == NULL);
-  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  fwd_binding.bind_arg(PROFILING, settings);
 
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  out_of_memory = out_of_memory || (output_ptr == NULL);
+  auto fwd_accessor = get_fwd_accessor(AGGREGATE_FWD_TASK_ID, fwd_binding);
+  
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+  bwd_binding.bind(FULL_GATE_GRADIENTS, full_gate_gradients);
+  bwd_binding.bind(TRUE_GATE_ASSIGN, true_gate_gradients);
 
-  if (out_of_memory) {
-    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-    return true;
-  }
+  auto bwd_accessor = get_bwd_accessor(AGGREGATE_BWD_TASK_ID, bwd_binding);
+   
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
 
-  assert(m->profiling == false);
+  float sync_time = default_estimate_sync_time(env);
 
-  // compute
-  std::function<void(ffStream_t)> forward, backward;
-  Domain assign_domain = sub_assign.get_domain();
-  Domain exp_domain = sub_inputs[0].get_domain();
-
-  int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
-  int batch_size = assign_domain.hi()[1] - assign_domain.lo()[1] + 1;
-  int rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
-  int out_dim = exp_domain.hi()[0] - exp_domain.lo()[0] + 1;
-
-  forward = [&](ffStream_t stream) {
-    forward_kernel(stream, m, input_ptrs, assign_ptr, output_ptr, this->attrs.n, k, rows, batch_size, out_dim);
-  };
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  log_measure.debug("[Measure Agg Spec] name(%s) forward_time(%.4lf)\n",
-                    name,
-                    cost_metrics.forward_time);
-
-  cost_metrics.backward_time = 0.0f; // not implemented for backward
-  delete m;
-  return true;
+  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-void register_task<AGG_SPEC_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+// template <>
+// void register_task<AGG_SPEC_INIT_TASK_ID>() {
+//   OpTaskSignature init(OpTaskType::INIT);
 
-  init.add_arg_slot<AggregateSpecAttrs>(ATTRS);
-  init.add_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
-  init.add_return_value<AggregateSpecPerDeviceState>();
+//   init.add_arg_slot<AggregateSpecAttrs>(ATTRS);
+//   init.add_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
+//   init.add_return_value<AggregateSpecPerDeviceState>();
 
-  register_task(AGG_SPEC_INIT_TASK_ID, "AggregateSpec Init", init, init_task);
-}
+//   register_task(AGG_SPEC_INIT_TASK_ID, "AggregateSpec Init", init, init_task);
+// }
 
 template <>
 void register_task<AGG_SPEC_FWD_TASK_ID>() {

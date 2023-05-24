@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct BatchMatmulAttrs : use_visitable_cmp<BatchMatmulAttrs> {
+struct BatchMatmulAttrs : public use_visitable_cmp<BatchMatmulAttrs> {
 public:
   BatchMatmulAttrs() = delete;
   BatchMatmulAttrs(int a_seq_length_dim, int b_seq_length_dim);
@@ -18,13 +18,7 @@ public:
 }
 
 VISITABLE_STRUCT(::FlexFlow::BatchMatmulAttrs, a_seq_length_dim, b_seq_length_dim);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::BatchMatmulAttrs> {
-  size_t operator()(::FlexFlow::BatchMatmulAttrs const &) const;
-};
-} 
+MAKE_VISIT_HASHABLE(::FlexFlow::BatchMatmulAttrs);
 
 namespace FlexFlow {
 

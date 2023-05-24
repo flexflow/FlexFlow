@@ -38,9 +38,13 @@ OpTaskInvocation backward(PCGOperatorAttrs const &);
 OpTaskInvocation forward(ParallelComputationGraph const &, operator_guid_t const &);
 OpTaskInvocation backward(ParallelComputationGraph const &, operator_guid_t const &);
 
+std::vector<OpTaskInvocation> init(ParallelComputationGraph const &);
+std::vector<OpTaskInvocation> forward(ParallelComputationGraph const &);
+std::vector<OpTaskInvocation> backward(ParallelComputationGraph const &);
+
 ArgSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpArgRefSpec const &);
 ArgSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpArgSpec const &);
-ParallelTensorSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpTensorSpec const &, IsGrad const &);
+parallel_tensor_guid_t resolve(ParallelComputationGraph const &, operator_guid_t const &, OpTensorSpec const &, IsGrad const &);
 TaskBinding resolve(ParallelComputationGraph const &, operator_guid_t const &, OpTaskBinding const &);
 TaskInvocation resolve(ParallelComputationGraph const &, operator_guid_t const &, OpTaskInvocation const &);
 

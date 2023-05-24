@@ -1,12 +1,25 @@
 #include "conv_2d.h"
 #include "layer.h"
-#include "model.h"
 #include "kernels/conv_2d_kernels.h"
 #include "utils/hash-utils.h"
+#include "task_spec.h"
 #include "legion/legion_utilities.h"
 #include "mpark/variant.hpp"
 
 namespace FlexFlow {
+
+enum Slots {
+  INPUT,
+  OUTPUT,
+  FILTER,
+  BIAS,
+  FILTER_GRAD,
+  INPUT_GRAD,
+  OUTPUT_GRAD,
+  BIAS_GRAD,
+  ATTRS,
+  PROFILING,
+}
 
 // declare Legion names
 using Legion::ArgumentMap;
@@ -426,56 +439,147 @@ Conv2D::Conv2D(FFModel &model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
+static OpTaskSignature get_init_task_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_arg_slot<Conv2dAttrs>(ATTRS);
+  init.add_arg_slot<bool>(PROFILING);
+
+  init.add_input_slot(INPUT);
+  init.add_output_slot(OUTPUT, WRITE_ONLY);
+  init.add_param_slot(FILTER);
+  init.add_param_slot(BIAS);
+  init.add_param_grad_slot(FILTER_GRAD, WRITE_ONLY);
+  init.add_input_grad_slot(INPUT_GRAD);
+
+  return init;
+}
+
+static OpTaskSignature get_fwd_task_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_arg_slot<Conv2dAttrs>(ATTRS);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT, WRITE_ONLY);
+  fwd.add_param_slot(FILTER);
+  fwd.add_param_slot(BIAS);
+
+  return fwd;
+}
+
+static OpTaskSignature get_bwd_task_signature() {
+  OpTaskSignature bwd(OpTaskType::BWD);
+
+  bwd.add_arg_slot<Conv2dAttrs>(ATTRS);
+
+  bwd.add_input_slot(INPUT);
+  bwd.add_input_grad_slot(INPUT_GRAD, READ_WRITE);
+  bwd.add_output_slot(OUTPUT);
+  bwd.add_output_grad_slot(OUTPUT_GRAD, READ_WRITE);
+  bwd.add_param_slot(FILTER);
+  bwd.add_param_grad_slot(FILTER_GRAD, READ_WRITE);
+  bwd.add_param_grad_slot(BIAS_GRAD, READ_WRITE);
+
+  return bwd;
+}
+
+OpTaskBinding Conv2d::get_init_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, this->attrs);
+  binding.bind_arg(PROFILING, this->profiling);
+
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(OUTPUT, output_tensor(0));
+  binding.bind(FILTER, param_tensor(0));
+  binding.bind(BIAS, param_tensor(1));
+  binding.bind(FILTER_GRAD, param_tensor(0).grad());
+  binding.bind(INPUT_GRAD, input_tensor(0).grad());
+
+  return binding;
+}
+
+OpTaskBinding Conv2d::get_fwd_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, this->attrs);
+
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(OUTPUT, output_tensor(0));
+  binding.bind(FILTER, param_tensor(0));
+  binding.bind(BIAS, param_tensor(1));
+
+  return binding;
+}
+
+OpTaskBinding Conv2d::get_bwd_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, this->attrs);
+
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(INPUT_GRAD, input_tensor(0).grad());
+  binding.bind(OUTPUT, output_tensor(0));
+  binding.bind(OUTPUT_GRAD, output_tensor(0).grad());
+  binding.bind(FILTER, param_tensor(0));
+  binding.bind(FILTER_GRAD, param_tensor(0).grad());
+  binding.bind(BIAS_GRAD, param_tensor(1).grad());
+
+  return binding;
+}
+
 void Conv2D::init(FFModel const &ff) {
-  assert(check_output_input_weight_same_parallel_is());
-  parallel_is = outputs[0]->parallel_is;
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(CONV2D_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Conv2D)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
-  launcher.add_field(2, FID_DATA);
-  // launcher.add_region_requirement(
-  //     RegionRequirement(weights[1]->part, 0/*projection id*/,
-  //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
+  this->execute_task(ff, CONV2D_INIT_TASK_ID, get_init_task_signature());
+  // assert(check_output_input_weight_same_parallel_is());
+  // parallel_is = outputs[0]->parallel_is;
+  // ArgumentMap argmap;
+  // Context ctx = ff.config.lg_ctx;
+  // Runtime *runtime = ff.config.lg_hlr;
+  // set_argumentmap_for_init(ff, argmap);
+  // IndexLauncher launcher(CONV2D_INIT_TASK_ID,
+  //                        parallel_is,
+  //                        TaskArgument(this, sizeof(Conv2D)),
+  //                        argmap,
+  //                        Predicate::TRUE_PRED,
+  //                        false /*must*/,
+  //                        0 /*mapper_id*/,
+  //                        outputs[0]->machine_view.hash());
+  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   inputs[0]->region));
+  // launcher.add_field(0, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   WRITE_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   outputs[0]->region));
+  // launcher.add_field(1, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[0]->region));
+  // launcher.add_field(2, FID_DATA);
+  // // launcher.add_region_requirement(
+  // //     RegionRequirement(weights[1]->part, 0/*projection id*/,
+  // //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
+  // // launcher.add_field(3, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+  //                                                   0 /*projection id*/,
+  //                                                   WRITE_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[0]->region_grad));
   // launcher.add_field(3, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region_grad));
-  launcher.add_field(3, FID_DATA);
-  // launcher.add_region_requirement(
-  //     RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-  //                       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
-  // launcher.add_field(4, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  // // launcher.add_region_requirement(
+  // //     RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+  // //                       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
+  // // launcher.add_field(4, FID_DATA);
+  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  // fm.wait_all_results();
+  // set_opmeta_from_futuremap(ff, fm);
 }
 
 /*
@@ -492,46 +596,56 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
                           Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  Conv2D const *conv = (Conv2D *)task->args;
+  // Conv2D const *conv = (Conv2D *)task->args;
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   FFHandler handle = *((FFHandler const *)task->local_args);
-  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(regions[1],
-                                                          task->regions[1],
-                                                          FID_DATA,
-                                                          ctx,
-                                                          runtime,
-                                                          false /*readOutput*/);
-  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
-      regions[3],
-      task->regions[3],
-      FID_DATA,
-      ctx,
-      runtime,
-      false /*readOutput*/);
+  auto const &attrs = acc.get_argument<Conv2dAttrs>(ATTRS);
+  bool profiling = acc.get_argument<bool>(PROFILING);
+  // TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  // TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(regions[1],
+  //                                                         task->regions[1],
+  //                                                         FID_DATA,
+  //                                                         ctx,
+  //                                                         runtime,
+  //                                                         false /*readOutput*/);
+  // TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
+  //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  // TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
+  //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  // TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
+  //     regions[3],
+  //     task->regions[3],
+  //     FID_DATA,
+  //     ctx,
+  //     runtime,
+  //     false /*readOutput*/);
   // TensorAccessorW<float, 4> acc_input_grad(
   //     regions[4], task->regions[4], FID_DATA, ctx, runtime,
   //     false/*readOutput*/);
+  auto input = acc.get_tensor<READ_ONLY>(INPUT);
+  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
+  auto filter = acc.get_tensor<READ_ONLY>(FILTER);
+  auto bias = acc.get_tensor<READ_ONLY>(BIAS);
+  auto filter_grad = acc.get_tensor<READ_WRITE>(FILTER_GRAD);
+  auto input_grad = acc.get_tensor<READ_WRITE>(INPUT_GRAD);
 
-  Conv2DMeta *m = new Conv2DMeta(handle);
-  m->relu = conv->activation == AC_MODE_RELU;
-  m->use_bias = conv->use_bias;
-  m->profiling = conv->profiling;
-  m->trainableInputs[0] = conv->trainableInputs[0];
-  std::strcpy(m->op_name, conv->name);
 
-  int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
-  int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
-  int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
-  int input_n = acc_input.rect.hi[3] - acc_input.rect.lo[3] + 1;
-  int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
-  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
-  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+  Conv2DPerDeviceState *m = new Conv2DPerDeviceState(handle);
+  m->relu = attrs.activation == AC_MODE_RELU;
+  m->use_bias = attrs.use_bias;
+  m->profiling = profiling;
+  // m->trainableInputs[0] = conv->trainableInputs[0]; ??
+  std::strcpy(m->op_name, attrs.name);
+
+  int input_w = input.shape[0];
+  int input_h = input.shape[1];
+  int input_c = input.shape[2];
+  int input_n = input.shape[3];
+  int output_w = output.shape[0];
+  int output_h = output.shape[1];
+  int output_c = output.shape[2];
+  int output_n = output.shape[3];
 
   printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
          input_n,
@@ -547,13 +661,13 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
   // printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h,
   // conv->padding_w, conv->stride_h, conv->stride_w);
   int pad_h =
-      ((output_h - 1) * conv->stride_h + conv->kernel_h - input_h + 1) / 2;
+      ((output_h - 1) * attrs.stride_h + attrs.kernel_h - input_h + 1) / 2;
   int pad_w =
-      ((output_w - 1) * conv->stride_w + conv->kernel_w - input_w + 1) / 2;
-  if (pad_h != conv->padding_h) {
+      ((output_w - 1) * attrs.stride_w + attrs.kernel_w - input_w + 1) / 2;
+  if (pad_h != attrs.padding_h) {
     printf("Warning: changing conv_padding_h to satisfy output_h size\n");
   }
-  if (pad_w != conv->padding_w) {
+  if (pad_w != attrs.padding_w) {
     printf("Warning: changing conv_padding_w to satisfy output_w size\n");
   }
 
@@ -566,47 +680,47 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
               output_h,
               output_c,
               output_n,
-              conv->kernel_h,
-              conv->kernel_w,
-              conv->groups,
-              conv->stride_h,
-              conv->stride_w,
+              attrs.kernel_h,
+              attrs.kernel_w,
+              attrs.groups,
+              attrs.stride_h,
+              attrs.stride_w,
               pad_h,
               pad_w,
-              acc_input.ptr,
-              acc_output.ptr,
-              acc_kernel.ptr,
-              acc_kernel_grad.ptr);
+              input.get_float_ptr(),
+              output.get_float_ptr(),
+              filter.get_float_ptr(),
+              filter_grad.get_float_ptr());
 
   return m;
 }
 
-TaskSpec Conv2D::get_tasks_spec() const {
-  OpTasksSpec spec {
-    CONV2D_INIT_TASK_ID,
-    CONV2D_FWD_TASK_ID,
-    CONV2D_BWD_TASK_ID
-  };
-  auto &fwd = spec.get_fwd();
+// TaskSpec Conv2D::get_tasks_spec() const {
+//   OpTasksSpec spec {
+//     CONV2D_INIT_TASK_ID,
+//     CONV2D_FWD_TASK_ID,
+//     CONV2D_BWD_TASK_ID
+//   };
+//   auto &fwd = spec.get_fwd();
 
-  fwd.add_input_slot(INPUT);
-  fwd.add_param_slot(KERNEL);
-  fwd.add_output_slot(OUTPUT);
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_param_slot(KERNEL);
+//   fwd.add_output_slot(OUTPUT);
 
-  auto input = spec.input_tensor(0);
-  auto kernel = spec.param_tensor(0);
-  auto bias = spec.param_tensor(1);
-  auto output = spec.output_tensor(0);
+//   auto input = spec.input_tensor(0);
+//   auto kernel = spec.param_tensor(0);
+//   auto bias = spec.param_tensor(1);
+//   auto output = spec.output_tensor(0);
 
-  fwd[INPUT] = input;
-  fwd[KERNEL] = kernel;
-  if (this->use_bias) {
-    fwd[BIAS] = bias;
-  }
-  fwd[OUTPUT] = output;
+//   fwd[INPUT] = input;
+//   fwd[KERNEL] = kernel;
+//   if (this->use_bias) {
+//     fwd[BIAS] = bias;
+//   }
+//   fwd[OUTPUT] = output;
 
-  return spec;
-}
+//   return spec;
+// }
 
 /* TaskSpec Conv2D::get_forward_task_spec() const { */
 /*   TaskSpec spec = { CONV2D_FWD_TASK_ID, Pass::FWD }; */
@@ -653,11 +767,11 @@ TaskSpec Conv2D::get_tasks_spec() const {
 /* } */
 
 void Conv2D::forward(FFModel const &ff) {
-  this->execute_task_spec(this->get_task_spec().get_fwd());
+  this->execute_task(ff, CONV2D_FWD_TASK_ID, get_fwd_task_signature());
 }
 
 void Conv2D::backward(FFModel const &ff) {
-  return this->execute_task_spec(this->get_task_spec().get_bwd());
+  this->execute_task(ff, CONV2D_bWD_TASK_ID, get_bwd_task_signature());
 }
 
 /*
@@ -670,14 +784,14 @@ void Conv2D::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  Conv2DMeta const *m = *((Conv2DMeta **)task->local_args);
+  Conv2DPerDeviceState const *m = *((Conv2DPerDeviceState **)task->local_args);
 
-  TaskAccessor acc(task, regions, ctx, runtime, OpTaskType::FWD);
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
-  float const *in_ptr = acc.get_const_slot<float>(INPUT);
-  float const *kernel_ptr = acc.get_const_slot<float>(KERNEL);
-  float const *bias_ptr = acc.get_const_slot<float>(BIAS);
-  float *out_ptr = acc.get_slot<float>(OUTPUT);
+  auto input = acc.get_tensor<READ_ONLY>(INPUT);
+  auto filter = acc.get_tensor<READ_ONLY>(FILTER);
+  auto bias = acc.get_tensor<READ_ONLY>(BIAS);
+  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
   // TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
   //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -696,8 +810,16 @@ void Conv2D::forward_task(Task const *task,
   //   acc_bias_ptr = acc_bias.ptr;
   // }
 
-  forward_kernel_wrapper(
-      m, in_ptr, out_ptr, kernel_ptr, bias_ptr);
+  profile(
+    forward_kernel, 
+    m->profiling, 
+    "[Conv2d] forward_time = %.2lfms\n",
+    m, 
+    input.get_float_ptr(), 
+    output.get_float_ptr(), 
+    filter.get_float_ptr(), 
+    bias.get_float_ptr()
+  );
 }
 
 /*
@@ -714,7 +836,7 @@ void Conv2D::backward_task(Task const *task,
                            Context ctx,
                            Runtime *runtime) {
   // Conv2D* conv = (Conv2D*) task->args;
-  Conv2DMeta const *m = *((Conv2DMeta **)task->local_args);
+  Conv2DPerDeviceState const *m = *((Conv2DPerDeviceState **)task->local_args);
   assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) +
                             static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() ==
@@ -847,7 +969,7 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
 
-  Conv2DMeta *m = sim->conv2d_meta;
+  Conv2DPerDeviceState *m = sim->conv2d_meta;
   m->relu = activation == AC_MODE_RELU;
   // require input_c is divisible by groups
 

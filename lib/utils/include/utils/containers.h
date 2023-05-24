@@ -61,11 +61,34 @@ Element sum(Container const &container) {
   return result;
 }
 
+template <typename Container, typename ConditionF, typename Element = typename Container::value_type>
+Element sum(Container const &container, ConditionF const &condition) {
+  Element result = 0;
+  for (Element const &element : container) {
+    if (condition(element)) {
+      result += element;
+    }
+  }
+  return result;
+}
+
+
 template <typename Container, typename Element = typename Container::value_type>
 Element product(Container const &container) {
   Element result = 1;
   for (Element const &element : container) {
     result *= element;
+  }
+  return result;
+}
+
+template <typename Container, typename ConditionF, typename Element = typename Container::value_type>
+Element product_where(Container const &container, ConditionF const &condition) {
+  Element result = 1;
+  for (Element const &element : container) {
+    if (condition(element)) {
+      result *= element;
+    }
   }
   return result;
 }
@@ -106,6 +129,46 @@ bool contains_r(bidict<K, V> const &m, V const &v) {
   return m.find(v) != m.end();
 }
 
+template <typename K, typename V, typename F, typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
+std::unordered_map<K2, V> map_values(std::unordered_map<K, V> const &m, F const &f) {
+  std::unordered_map<K2, V> result;
+  for (auto const &kv : f) {
+    result.insert({f(kv.first), kv.second});
+  }
+  return result;
+}
+
+template <typename K, typename V, typename F>
+std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m, F const &f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : f) {
+    if (f(kv.first)) {
+      result.insert(kv);
+    }
+  }
+  return result;
+}
+
+template <typename K, typename V, typename F, typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
+std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m, F const &f) {
+  std::unordered_map<K, V2> result;
+  for (auto const &kv : f) {
+    result.insert({kv.first, f(kv.second)});
+  }
+}
+
+template <typename K, typename V, typename F> 
+std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m, F const &f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : f) {
+    if (f(kv.second)) {
+      result.insert(kv);
+    }
+  }
+  return result;
+}
+
+
 template <typename C>
 std::vector<typename C::key_type> keys(C const &c) {
   std::vector<typename C::key_type> result;
@@ -122,6 +185,11 @@ std::vector<typename C::mapped_type> values(C const &c) {
     result.push_back(kv.second);
   }
   return result;
+}
+
+template <typename C, typename T = typename C::value_type>
+std::unordered_set<T> unique(C const &c) {
+  return {c.cbegin(), c.cend()};
 }
 
 template <typename Container, typename Element>
@@ -189,6 +257,21 @@ bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
   }
 
   return result;
+}
+
+template <typename K, typename V>
+std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
+  return [&m](K const &k) -> V { return m.at(k); };
+}
+
+template <typename L, typename R>
+std::function<R(L const &)> lookup_in_l(bidict<L, R> const &m) {
+  return [&m](L const &l) -> L { return m.at_l(l); };
+}
+
+template <typename L, typename R>
+std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
+  return [&m](R const &r) -> R { return m.at_r(r); };
 }
 
 template <typename T> 
@@ -262,6 +345,17 @@ bool all_of(C const &c, F const &f) {
   return true;
 }
 
+template <typename C, typename F>
+int count(C const &c, F const &f) {
+  int result = 0;
+  for (auto const &v : c) {
+    if (f(v)) {
+      result++;
+    }
+  }
+  return result;
+}
+
 template <typename C>
 bool are_all_same(C const &c) {
   auto const &first = *c.cbegin();
@@ -280,8 +374,44 @@ std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
   return result;
 }
 
-template <typename F, typename Elem>
-void inplace_filter(std::vector<Elem> &v, F const &f) {
+template <typename C, typename E = typename C::value_type>
+std::vector<E> as_vector(C const &c) {
+  std::vector<E> result(c.cbegin(), c.end());
+  return result;
+}
+
+template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::vector<Out> transform(std::vector<In> const &v, F const &f) {
+  std::vector<Out> result;
+  std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
+  return result;
+}
+
+template <typename F>
+std::string transform(std::string const &s, F const &f) {
+  std::string result;
+  std::transform(s.cbegin(), s.cend(), std::back_inserter(result), f);
+  return result;
+}
+
+template <typename In, typename F, typename Out = typename decltype(std::declval<F>()(std::declval<In>()))::value_type>
+std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
+  std::vector<Out> result;
+  for (auto const &elem : v) {
+    extend(result, f(elem));
+  }
+  return result;
+}
+
+template <typename C, typename F>
+C filter(C const &v, F const &f) {
+  C result(v);
+  inplace_filter(result, f);
+  return result;
+}
+
+template <typename C, typename F, typename Elem = typename C::value_type>
+void inplace_filter(C &v, F const &f) {
   std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
 }
 

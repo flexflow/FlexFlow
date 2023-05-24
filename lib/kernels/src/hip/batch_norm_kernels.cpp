@@ -142,18 +142,18 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
   // allocate memory for runningMean, runningVar, saveMean, saveVar
   {
     size_t totalSize = sizeof(float) * output_c * 4;
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    runningMean = (float *)reserveInst.pointer_untyped(0, sizeof(char));
+    // Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
+    //                                Realm::Point<1, coord_t>(totalSize - 1));
+    // std::vector<size_t> field_sizes;
+    // field_sizes.push_back(sizeof(char));
+    // Realm::RegionInstance::create_instance(reserveInst,
+    //                                        gpu_mem,
+    //                                        bounds,
+    //                                        field_sizes,
+    //                                        0,
+    //                                        Realm::ProfilingRequestSet())
+    //     .wait();
+    runningMean = (float *)this->allocator->allocate(totalSize);
     runningVar = (float *)runningMean + output_c;
     saveMean = (float *)runningVar + output_c;
     saveVar = (float *)saveMean + output_c;

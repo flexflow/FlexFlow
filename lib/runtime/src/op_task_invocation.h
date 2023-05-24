@@ -37,7 +37,7 @@ OpTensorSpec input_tensor(int);
 OpTensorSpec output_tensor(int);
 OpTensorSpec weight_tensor(int);
 
-enum class OpArgRefType { };
+enum class OpArgRefType { PER_DEVICE_OP_STATE };
 
 template <typename T>
 struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
@@ -50,42 +50,43 @@ public:
   OpArgRefType ref_type;
 };
 
+template <typename T>
+OpArgRef<T> per_device_op_state() {
+  return OpArgRef<T>(OpArgRefType::PER_DEVICE_OP_STATE);
+}
+
 struct OpArgRefSpec {
 public:
   OpArgRefSpec() = delete;
 
   template <typename T>
-  OpArgRef<T> const &get() {
-    assert (std::type_index(typeid(T)) == this->type);
-
-    return *(OpArgRef<T> const *)ptr.get();
+  bool holds() const {
+    return std::type_index(typeid(T)) == this->type;
   }
 
   OpArgRefType const &get_ref_type() const {
-    return ((OpArgRef<void> const *)ptr.get())->ref_type;
+    return this->ref_type;
   }
 
   template <typename T>
   static OpArgRefSpec create(OpArgRef<T> const &r) {
     static_assert(is_serializable<T>, "Type must be serializable");
 
-    return OpArgRefSpec(std::type_index(typeid(T)), std::make_shared<OpArgRef<T>>(r));
+    return OpArgRefSpec(std::type_index(typeid(T)), r.ref_type);
   }
 private:
-  OpArgRefSpec(std::type_index, std::shared_ptr<void const *>);
+  OpArgRefSpec(std::type_index, OpArgRefType);
 
   std::type_index type;
-  std::shared_ptr<void const *> ptr;
+  OpArgRefType ref_type;
 };
 
-using OpArgSpec = variant<ConcreteArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
+using OpArgSpec = variant<ConcreteArgSpec, IndexArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
-  using ArgSpec = OpArgSpec;
-
-  static_assert(is_subeq_variant<OpArgSpec, ArgSpec>::value, "");
+  static_assert(is_subeq_variant<ArgSpec, OpArgSpec>::value, "");
 
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);

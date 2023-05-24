@@ -10,8 +10,8 @@ Pool2DAttrs::Pool2DAttrs(int _kernel_h,
                          int _stride_w,
                          int _padding_h,
                          int _padding_w,
-                         PoolType _pool_type,
-                         ActiMode _activation)
+                         PoolOp _pool_type,
+                         Activation _activation)
   : kernel_h(_kernel_h),
     kernel_w(_kernel_w),
     stride_h(_stride_h),

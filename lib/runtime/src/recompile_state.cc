@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "model.h"
 #include "recompile.h"
 #include "legion.h"
 

@@ -14,7 +14,6 @@
  */
 
 #include "split.h"
-#include "model.h"
 #include "kernels/split_kernels.h"
 #include "utils/hash-utils.h"
 

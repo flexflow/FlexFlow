@@ -46,10 +46,10 @@ enum GlorotSlots {
   INITIALIZER
 };
 
-InvocationType get_invocation_type(ParameterSyncType sync_type) {
-  if (sync_type == ParameterSyncType::PS) {
+InvocationType get_invocation_type(ParamSync sync_type) {
+  if (sync_type == ParamSync::PS) {
     return InvocationType::STANDARD;
-  } else if (sync_type == ParameterSyncType::NCCL) {
+  } else if (sync_type == ParamSync::NCCL) {
     return InvocationType::INDEX;
   } else {
     throw mk_runtime_error("Unhandled sync_type {}", sync_type);
@@ -58,55 +58,51 @@ InvocationType get_invocation_type(ParameterSyncType sync_type) {
 
 TaskInvocation apply_initializer(GlorotUniform const &initializer, 
                                  parallel_tensor_guid_t const &guid, 
-                                 ParallelTensor const &p,
                                  TensorDims const &tensor_dims) {
   assert (tensor_dims.num_dims() >= 2);
 
-  TaskBinding binding(get_invocation_type(p.sync_type));
-  binding.bind(TENSOR, {guid});
-  binding.bind_arg(INITIALIZER, initializer);
-  binding.bind_arg(TENSOR_DIMS, tensor_dims);
+  auto b = TaskBinding::sync_type_dependent_launch(TENSOR);
+  b.bind(TENSOR, {guid});
+  b.bind_arg(INITIALIZER, initializer);
+  b.bind_arg(TENSOR_DIMS, tensor_dims);
 
-  return { GLOROT_INIT_TASK_ID, binding };
+  return { GLOROT_INIT_TASK_ID, b };
 }   
 
 TaskInvocation apply_initializer(ZeroInitializer const &initializer, 
-                                 parallel_tensor_guid_t const &guid, 
-                                 ParallelTensor const &p) {
-  TaskBinding binding(get_invocation_type(p.sync_type));
-  binding.bind(TENSOR, {guid});
+                                 parallel_tensor_guid_t const &guid) {
+  auto b = TaskBinding::sync_type_dependent_launch(TENSOR);
+  b.bind(TENSOR, {guid});
 
-  return { ZERO_INIT_TASK_ID, binding };
+  return { ZERO_INIT_TASK_ID, b };
 }
 
 TaskInvocation apply_initializer(UniformInitializer const &initializer,
-                                 parallel_tensor_guid_t const &guid,
-                                 ParallelTensor const &p) {
-  TaskBinding binding(get_invocation_type(p.sync_type));
-  binding.bind(TENSOR, {guid});
-  binding.bind_arg<UniformInitializer>(INITIALIZER, initializer);
+                                 parallel_tensor_guid_t const &guid) {
+  auto b = TaskBinding::sync_type_dependent_launch(TENSOR);
+  b.bind(TENSOR, {guid});
+  b.bind_arg<UniformInitializer>(INITIALIZER, initializer);
 
-  return { UNIFORM_INIT_TASK_ID, binding };
+  return { UNIFORM_INIT_TASK_ID, b };
 }
 
 TaskInvocation apply_initializer(NormInitializer const &initializer,
-                                 parallel_tensor_guid_t const &guid,
-                                 ParallelTensor const &p) {
-  TaskBinding binding(get_invocation_type(p.sync_type));
-  binding.bind(TENSOR, {guid});
-  binding.bind_arg<NormInitializer>(INITIALIZER, initializer);
+                                 parallel_tensor_guid_t const &guid) {
+  auto b = TaskBinding::sync_type_dependent_launch(TENSOR);
 
-  return { NORMAL_INIT_TASK_ID, binding };
+  b.bind(TENSOR, {guid});
+  b.bind_arg<NormInitializer>(INITIALIZER, initializer);
+
+  return { NORMAL_INIT_TASK_ID, b };
 }
 
 TaskInvocation apply_initializer(ConstantInitializer const &initializer,
-                                 parallel_tensor_guid_t const &guid,
-                                 ParallelTensor const &p) {
-  TaskBinding binding(get_invocation_type(p.sync_type));
-  binding.bind(TENSOR, {guid});
-  binding.bind_arg<ConstantInitializer>(INITIALIZER, initializer);
+                                 parallel_tensor_guid_t const &guid) {
+  auto b = TaskBinding::sync_type_dependent_launch(TENSOR);
+  b.bind(TENSOR, {guid});
+  b.bind_arg<ConstantInitializer>(INITIALIZER, initializer);
 
-  return { CONSTANT_INIT_TASK_ID, binding };
+  return { CONSTANT_INIT_TASK_ID, b };
 }
 
 
@@ -115,7 +111,7 @@ static void glorot_init_task(Legion::Task const *task,
                       Legion::Context ctx,
                       Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);  
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<GlorotUniform>(INITIALIZER);
   auto tensor_dims = acc.get_argument<TensorDims>(TENSOR_DIMS);
 
@@ -163,14 +159,8 @@ static void glorot_init_task(Legion::Task const *task,
   /* } */
 /* } */
 
-static void zero_init_task_impl(Legion::Task const *task,
-                                std::vector<Legion::PhysicalRegion> const &regions,
-                                Legion::Context ctx, 
-                                Legion::Runtime *runtime, 
-                                TaskLocation const &loc) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
-
+static void zero_init_task_impl(TaskArgumentAccessor const &acc, TaskLocation const &loc) {
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   zero_init_kernel(loc, tensor);
 }
 
@@ -178,14 +168,16 @@ static void zero_init_task_cpu(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime) {
-  return zero_init_task_impl(task, regions, ctx, runtime, TaskLocation::CPU);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return zero_init_task_impl(acc, TaskLocation::CPU);
 }
 
 static void zero_init_task(Legion::Task const *task,
                     std::vector<Legion::PhysicalRegion> const &regions,
                     Legion::Context ctx,
                     Legion::Runtime *runtime) {
-  return zero_init_task_impl(task, regions, ctx, runtime, TaskLocation::GPU);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return zero_init_task_impl(acc, TaskLocation::GPU);
 }
 
 // void ZeroInitializer::init(LegionConfig const &config, ParallelTensor const &p) {
@@ -224,16 +216,26 @@ static void zero_init_task(Legion::Task const *task,
 //   }
 // }
 
+static void uniform_init_task_impl(TaskArgumentAccessor const &acc) {
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
+  auto initializer = acc.get_argument<UniformInitializer>(INITIALIZER);
+
+  uniform_init_kernel(tensor, initializer.seed, initializer.min_val, initializer.max_val);
+}
 
 static void uniform_init_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions, 
                        Legion::Context ctx,
                        Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
-  auto initializer = acc.get_argument<UniformInitializer>(INITIALIZER);
+  return uniform_init_task_impl(acc);
+}
 
-  uniform_init_kernel(tensor, initializer.seed, initializer.min_val, initializer.max_val);
+static void norm_init_task_impl(TaskArgumentAccessor const &acc) {
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
+  auto initializer = acc.get_argument<NormInitializer>(INITIALIZER);
+
+  norm_init_kernel(tensor, initializer.seed, initializer.mean, initializer.stddev);
 }
 
 static void norm_init_task(Legion::Task const *task, 
@@ -241,19 +243,12 @@ static void norm_init_task(Legion::Task const *task,
                     Legion::Context ctx,
                     Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
-  auto initializer = acc.get_argument<NormInitializer>(INITIALIZER);
-
-  norm_init_kernel(tensor, initializer.seed, initializer.mean, initializer.stddev);
+  return norm_init_task_impl(acc);
 }
 
-static void constant_init_task_impl(Legion::Task const *task, 
-                                    std::vector<Legion::PhysicalRegion> const &regions,
-                                    Legion::Context ctx,
-                                    Legion::Runtime *runtime,
+static void constant_init_task_impl(TaskArgumentAccessor const &acc,
                                     TaskLocation const &loc) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto tensor = acc.get_tensor<WRITE_ONLY>(TENSOR);
+  auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<ConstantInitializer>(INITIALIZER);
 
   constant_init_kernel(loc, tensor, initializer.value);
@@ -264,14 +259,16 @@ static void constant_init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions, 
                         Legion::Context ctx,
                         Legion::Runtime *runtime) {
-  return constant_init_task_impl(task, regions, ctx, runtime, TaskLocation::GPU);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return constant_init_task_impl(acc, TaskLocation::GPU);
 }
 
 static void constant_init_task_cpu(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime) {
-  return constant_init_task_impl(task, regions, ctx, runtime, TaskLocation::CPU);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return constant_init_task_impl(acc, TaskLocation::CPU);
 }
 
 
@@ -381,7 +378,7 @@ static void constant_init_task_cpu(Legion::Task const *task,
 template <>
 void register_task<GLOROT_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<GlorotUniform>(INITIALIZER);
   sig.add_arg_slot<TensorDims>(TENSOR_DIMS);
 
@@ -391,15 +388,15 @@ void register_task<GLOROT_INIT_TASK_ID>() {
 template <>
 void register_task<ZERO_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
 
-  register_task(ZERO_INIT_TASK_ID, "Zero Init", sig, zero_init_task, zero_init_task_cpu); // TODO FIXME @lockshaw enable cpu support
+  register_task(ZERO_INIT_TASK_ID, "Zero Init", sig, zero_init_task, zero_init_task_cpu);
 }
 
 template <>
 void register_task<UNIFORM_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<UniformInitializer>(INITIALIZER);
 
   register_task(UNIFORM_INIT_TASK_ID, "Uniform Distribution Init", sig, uniform_init_task);
@@ -408,7 +405,7 @@ void register_task<UNIFORM_INIT_TASK_ID>() {
 template <>
 void register_task<NORMAL_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<NormInitializer>(INITIALIZER);
 
   register_task(NORMAL_INIT_TASK_ID, "Normal Distribution Init", sig, norm_init_task);
@@ -417,10 +414,10 @@ void register_task<NORMAL_INIT_TASK_ID>() {
 template <>
 void register_task<CONSTANT_INIT_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, WRITE_ONLY });
+  sig.add_slot(TENSOR, { SlotType::TENSOR, Permissions::WO });
   sig.add_arg_slot<ConstantInitializer>(INITIALIZER);
 
-  register_task(CONSTANT_INIT_TASK_ID, "Constant Init", sig, constant_init_task, constant_init_task_cpu); // TODO FIXME @lockshaw enable cpu support
+  register_task(CONSTANT_INIT_TASK_ID, "Constant Init", sig, constant_init_task, constant_init_task_cpu);
 }
 
 

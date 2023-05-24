@@ -9,6 +9,7 @@ namespace FlexFlow {
 OperatorType get_op_type(AggregateAttrs const &);
 OperatorType get_op_type(AggregateSpecAttrs const &);
 OperatorType get_op_type(BatchMatmulAttrs const &);
+OperatorType get_op_type(BatchNormAttrs const &);
 OperatorType get_op_type(BroadcastAttrs const &);
 OperatorType get_op_type(CastAttrs const &);
 OperatorType get_op_type(ConcatAttrs const &);
@@ -29,6 +30,7 @@ OperatorType get_op_type(NoopAttrs const &);
 OperatorType get_op_type(Pool2DAttrs const &);
 OperatorType get_op_type(ReduceAttrs const &);
 OperatorType get_op_type(ReshapeAttrs const &);
+OperatorType get_op_type(ReverseAttrs const &);
 OperatorType get_op_type(SplitAttrs const &);
 OperatorType get_op_type(SoftmaxAttrs const &);
 OperatorType get_op_type(TopKAttrs const &);
@@ -37,7 +39,6 @@ OperatorType get_op_type(CombineAttrs const &);
 OperatorType get_op_type(ReductionAttrs const &);
 OperatorType get_op_type(RepartitionAttrs const &);
 OperatorType get_op_type(ReplicateAttrs const &);
-OperatorType get_op_type(FusedParallelOpAttrs const &);
 
 struct GetOpTypeFunctor {
   template <typename T>

@@ -27,7 +27,6 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
                          float rate,
                          unsigned long long seed,
                          bool profiling,
-                         Memory gpu_mem,
                          Domain const &output_domain)
     : PerDeviceOpState(handler, profiling)
 {
@@ -42,18 +41,18 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
   {
     // allocate memory for dropoutStates and reserveSpace
     size_t totalSize = dropoutStateSize + reserveSpaceSize;
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    dropoutStates = reserveInst.pointer_untyped(0, sizeof(char));
+    // Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
+    //                                Realm::Point<1, coord_t>(totalSize - 1));
+    // std::vector<size_t> field_sizes;
+    // field_sizes.push_back(sizeof(char));
+    // Realm::RegionInstance::create_instance(reserveInst,
+    //                                        gpu_mem,
+    //                                        bounds,
+    //                                        field_sizes,
+    //                                        0,
+    //                                        Realm::ProfilingRequestSet())
+    //     .wait();
+    dropoutStates = this->allocator->allocate(totalSize);
     reserveSpace = ((char *)dropoutStates) + dropoutStateSize;
   }
   // checkCUDA(cudaMalloc(&dropoutStates, dropoutStateSize));

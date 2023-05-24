@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_GUID_T_H
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_GUID_T_H
 
+#include "utils/graph/labelled_graph_interfaces.h"
 #include "utils/strong_typedef.h"
-#include "utils/graph.h"
 
 namespace FlexFlow {
 

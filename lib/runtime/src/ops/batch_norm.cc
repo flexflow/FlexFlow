@@ -35,18 +35,6 @@ enum Slots {
   PROFILING
 }
 
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::Predicate;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
-
 Tensor FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
   Layer *bm = new Layer(this,

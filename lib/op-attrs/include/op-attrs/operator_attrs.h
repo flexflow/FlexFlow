@@ -5,6 +5,7 @@
 #include "ops/aggregate_spec.h"
 #include "ops/attention.h"
 #include "ops/batch_matmul.h"
+#include "ops/batch_norm.h"
 #include "ops/cast.h"
 #include "ops/concat.h"
 #include "ops/conv_2d.h"
@@ -24,7 +25,6 @@
 #include "ops/split.h"
 #include "ops/transpose.h"
 #include "ops/combine.h"
-#include "ops/fused_parallel_op.h"
 #include "ops/repartition.h"
 #include "ops/reduce.h"
 #include "ops/reduction.h"
@@ -32,6 +32,8 @@
 #include "ops/topk.h"
 #include "utils/variant.h"
 #include "ops/broadcast.h"
+#include "ops/input.h"
+#include "ops/reverse.h"
 
 namespace FlexFlow {
 
@@ -39,6 +41,7 @@ using SharedOperatorAttrs = variant<
                                        AggregateAttrs,
                                        AggregateSpecAttrs,
                                        BatchMatmulAttrs,
+                                       BatchNormAttrs,
                                        CastAttrs,
                                        ConcatAttrs,
                                        Conv2DAttrs,
@@ -57,6 +60,7 @@ using SharedOperatorAttrs = variant<
                                        NoopAttrs,
                                        Pool2DAttrs,
                                        ReduceAttrs,
+                                       ReverseAttrs,
                                        ReshapeAttrs,
                                        SplitAttrs,
                                        SoftmaxAttrs,
@@ -93,9 +97,7 @@ static_assert(is_valid_opattr<TransposeAttrs>::value, "");
 using ParallelOperatorAttrs = variant<CombineAttrs,
                                       ReductionAttrs,
                                       RepartitionAttrs,
-                                      ReplicateAttrs,
-                                      FusedParallelOpAttrs
->;
+                                      ReplicateAttrs>;
 
 
 using ComputationGraphAttrs = variant_join<SharedOperatorAttrs, variant<BroadcastAttrs>>;

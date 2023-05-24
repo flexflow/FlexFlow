@@ -3,13 +3,16 @@
 
 #include "utils/optional.h"
 #include "kernels/device.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct ProfilingSettings {
+struct ProfilingSettings : public use_visitable_cmp<ProfilingSettings> {
+public:
   ProfilingSettings() = delete;
   ProfilingSettings(int warmup_iters, int measure_iters);
 
+public:
   int warmup_iters;
   int measure_iters;
 };
@@ -51,7 +54,10 @@ optional<float> profiling_wrapper(F const &f, ProfilingSettings const &settings,
   checkCUDA(ffEventDestroy(t_end));
   return elapsed;
 }
-  
+
 }
+
+VISITABLE_STRUCT(::FlexFlow::ProfilingSettings, warmup_iters, measure_iters);
+MAKE_VISIT_HASHABLE(::FlexFlow::ProfilingSettings);
 
 #endif

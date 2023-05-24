@@ -19,14 +19,6 @@ OpTensorSpec weight_tensor(int idx) {
   return { TensorRole::WEIGHT, idx };
 }
 
-OpArgRef<EnableProfiling> enable_profiling() {
-  return OpArgRef<EnableProfiling>(OpArgRefType::ENABLE_PROFILING);
-}
-
-OpArgRef<PerDeviceFFHandle> ff_handle() {
-  return OpArgRef<PerDeviceFFHandle>(OpArgRefType::FF_HANDLE);
-}
-
 // OpTaskBinding::OpTaskBinding() {
 //   this->serializer.reserve_bytes(sizeof(TaskArgumentFormat));
 // }

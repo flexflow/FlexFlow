@@ -105,4 +105,8 @@ VISITABLE_STRUCT(::FlexFlow::UniformInitializer, seed, min_val, max_val);
 VISITABLE_STRUCT(::FlexFlow::NormInitializer, seed, mean, stddev);
 VISITABLE_STRUCT(::FlexFlow::ConstantInitializer, value);
 
+namespace FlexFlow {
+static_assert(is_well_behaved_value_type<Initializer>::value, "");
+}
+
 #endif

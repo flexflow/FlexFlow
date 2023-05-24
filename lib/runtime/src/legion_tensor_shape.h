@@ -3,13 +3,14 @@
 
 #include <cstddef>
 #include "utils/stack_vector.h"
-#include "op-attrs/ffconst.h"
+#include "op-attrs/datatype.h"
 #include "op-attrs/tensor_shape.h"
 #include "op-attrs/ff_dim.h"
 #include "kernels/legion_dim.h"
 
 namespace FlexFlow {
 
+// TODO FIXME @lockshaw remove inheritance from legion tensor dims
 struct LegionTensorShape : public use_visitable_cmp<LegionTensorShape>, 
                            public LegionTensorDims {
   LegionTensorShape() = delete;

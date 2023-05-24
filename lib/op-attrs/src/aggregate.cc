@@ -7,7 +7,7 @@ AggregateAttrs::AggregateAttrs(int _n, float _lambda_bal)
   : n(_n), lambda_bal(_lambda_bal)
 { }
 
-DataType get_datatype(AggregateAttrs const &) { return DT_FLOAT; }
+DataType get_datatype(AggregateAttrs const &) { return DataType::FLOAT; }
 
 ParallelTensorShape get_output_shape(AggregateAttrs const &attrs, 
                                     ParallelTensorShape const &gate_preds,
@@ -17,7 +17,7 @@ ParallelTensorShape get_output_shape(AggregateAttrs const &attrs,
                                     std::vector<ParallelTensorShape> const &exp_preds) 
 {
   ParallelTensorShape output_shape = exp_preds.at(0);
-  output_shape.data_type = DT_FLOAT;
+  output_shape.data_type = DataType::FLOAT;
   ff_dim_t idx = ff_dim_t(gate_preds.dims.num_dims() - 1);
   output_shape.dims.at(idx) = gate_preds.dims.at(idx);
   return output_shape;

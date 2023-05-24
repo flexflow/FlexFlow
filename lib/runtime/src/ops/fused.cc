@@ -14,7 +14,6 @@
  */
 
 #include "fused.h"
-#include "model.h"
 #include "kernels/accessor.h"
 #include "kernels/batch_matmul_kernels.h"
 #include "kernels/concat_kernels.h"

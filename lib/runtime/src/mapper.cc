@@ -132,9 +132,7 @@ FFMapper::FFMapper(MapperRuntime *rt,
   assert(all_gpus.size() % total_nodes == 0);
   assert(all_cpus.size() % total_nodes == 0);
 
-  std::vector<MachineView> all_valid_views;
-  FFModel::register_all_machine_views(
-      total_nodes, this->get_gpus_per_node(), this->get_cpus_per_node(), all_valid_views);
+  std::vector<MachineView> all_valid_views = get_all_machine_views(total_nodes, this->get_gpus_per_node(), this->get_cpus_per_node());
   
   // Registering views with different start_device_id;
   for (MachineView const &machine_view : all_valid_views) {
@@ -166,9 +164,7 @@ void FFMapper::register_sharding_functors(Runtime *runtime,
 
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
-  std::vector<MachineView> all_valid_views;
-  FFModel::register_all_machine_views(
-      num_nodes, gpus_per_node, cpus_per_node, all_valid_views);
+  std::vector<MachineView> all_valid_views = get_all_machine_views(num_nodes, gpus_per_node, cpus_per_node);
 
   for (MachineView const &machine_view : all_valid_views) {
     for (MachineView const &transplanted : nodes.starting_at_all_devices(machine_view)) {

@@ -1,6 +1,5 @@
 #include "linear.h"
 #include "layer.h"
-#include "model.h"
 #include "kernels/linear_kernels.h"
 #include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"

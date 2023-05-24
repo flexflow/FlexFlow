@@ -23,7 +23,6 @@
 #error "Unknown device"
 #endif
 
-
 #define checkCUDNN(status)                                                     \
   do {                                                                         \
     std::stringstream _error;                                                  \
@@ -57,20 +56,6 @@ inline int GET_BLOCKS(int const N) {
   int ret = (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
-
-#ifdef FF_USE_NCCL
-#define checkNCCL(cmd)                                                         \
-  do {                                                                         \
-    ncclResult_t r = cmd;                                                      \
-    if (r != ncclSuccess) {                                                    \
-      printf("Failed, NCCL error %s:%d '%s'\n",                                \
-             __FILE__,                                                         \
-             __LINE__,                                                         \
-             ncclGetErrorString(r));                                           \
-      exit(EXIT_FAILURE);                                                      \
-    }                                                                          \
-  } while (0)
-#endif
 
 __global__ void
     scale_kernel(float *ptr, size_t size, float a, float b);

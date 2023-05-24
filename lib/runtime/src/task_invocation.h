@@ -1,21 +1,23 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_H
 #define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_H
 
-#include "utils/strong_typedef.h"
+#include "pcg/machine_view.h"
 #include "utils/visitable.h"
-#include <typeindex>
+#include "utils/type_index.h"
 #include "serialization.h"
-#include "accessor.h"
-#include "runtime/config.h"
 #include "parallel_tensor_guid_t.h"
 #include "tasks.h"
 #include "task_signature.h"
 #include "profiling.h"
 #include "utils/variant.h"
+#include "kernels/ff_handle.h"
+#include "concrete_arg.h"
+#include "index_arg.h"
+#include "typed_future.h"
+#include "typed_future_map.h"
+#include "arg_ref.h"
 
 namespace FlexFlow {
-
-struct RuntimeBacking;
 
 enum class InvocationType {
   INDEX,
@@ -32,72 +34,6 @@ enum class IsGrad {
   NO
 };
 
-struct ConcreteArgSpec {
-public:
-  ConcreteArgSpec() = delete;
-
-  template <typename T>
-  T const &get() {
-    assert (std::type_index(typeid(T)) == this->type);
-
-    return *(T const *)ptr.get();
-  }
-
-  template <typename T>
-  static ConcreteArgSpec create(T const &t) {
-    static_assert(is_serializable<T>, "Type must be serializable");
-
-    return ConcreteArgSpec(std::type_index(typeid(T)), std::make_shared<T>(t));
-  }
-private:
-  ConcreteArgSpec(std::type_index, std::shared_ptr<void const *>);
-
-  std::type_index type;
-  std::shared_ptr<void const *> ptr;
-};
-
-
-struct IndexArgSpec {
-public:
-  template <typename T>
-  T get(Legion::DomainPoint const &p) {
-    assert (std::type_index(typeid(T)) == this->return_type);
-
-    return *(T const *)(f(p).get());
-  }
-
-  template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
-  static IndexArgSpec create(F const &ff) {
-    static_assert(is_serializable<T>, "Type must be serializable");
-
-    std::function<std::shared_ptr<void>(Legion::DomainPoint const &)> wrapped = [=](Legion::DomainPoint const &p) {
-      return std::make_shared<T>(ff(p));
-    };
-
-    return IndexArgSpec(std::type_index(typeid(T)), wrapped);
-  }
-private:
-  IndexArgSpec(std::type_index, std::function<std::shared_ptr<void>(Legion::DomainPoint const &)> const &);
-
-  std::type_index return_type;
-  std::function<std::shared_ptr<void>(Legion::DomainPoint const &)> f;
-};
-
-// struct ArgSpec : public use_visitable_cmp<ArgSpec> {
-// public:
-//   ArgSpec() = delete;
-//   ArgSpec(std::type_index, size_t start, size_t size);
-// 
-//   size_t get_stop() const;
-// public:
-//   std::type_index type;
-//   size_t start;
-//   size_t size;
-// };
-
-/* struct IndexArgSpec : public use_visitable_cmp<IndexArgSpec> { */
-
-/* }; */
 
 struct ParallelTensorSpec : public use_visitable_cmp<ParallelTensorSpec> {
 public:
@@ -110,117 +46,46 @@ public:
   IsGrad is_grad;
 };
 
-enum class ArgRefType {
-  ENABLE_PROFILING,
-  FF_HANDLE,
-  PER_DEVICE_OP_STATE
-};
+ParallelTensorSpec grad(parallel_tensor_guid_t const &);
+
+
+template <typename T> struct TypedTaskInvocation;
+struct TaskInvocationSpec;
+
+using ArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
 
 template <typename T>
-struct ArgRef : public use_visitable_cmp<ArgRef<T>> {
-public:
-  ArgRef() = delete;
-  ArgRef(ArgRefType ref_type)
-    : ref_type(ref_type)
-  { }
-
-public:
-  ArgRefType ref_type;
-};
-
-struct ArgRefSpec {
-};
-
-
-ArgRef<EnableProfiling> enable_profiling();
-ArgRef<PerDeviceFFHandle> ff_handle();
-
-template <typename T>
-ArgRef<T> per_device_op_state() {
-  return ArgRef<T>(ArgRefType::PER_DEVICE_OP_STATE);
-}
-
-template <typename T> 
-struct TypedFuture {
-  explicit TypedFuture(Legion::Future const &future)
-    : future(future)
-  { }
-
-  T get() {
-    return future.get_result<T>();
-  }
-public:
-  Legion::Future future;
-};
-
-struct CheckedTypedFuture {
-public:
-  CheckedTypedFuture() = delete;
-
-  template <typename T>
-  TypedFuture<T> get() {
-    assert (std::type_index(typeid(T)) == this->type);
-
-    return this->future;
-  }
-
-  template <typename T>
-  static 
-  CheckedTypedFuture create(TypedFuture<T> const &f) {
-    return CheckedTypedFuture(std::type_index(typeid(T)), f);
-  }
-private:
-  CheckedTypedFuture(std::type_index, Legion::Future const &);
-
-  std::type_index type;
-  Legion::Future future;
-};
-
-template <typename T> 
-struct TypedFutureMap {
-  explicit TypedFutureMap(Legion::FutureMap const &future_map)
-    : future_map(future_map)
-  { }
-
-  T get(Legion::DomainPoint const &p) {
-    return future_map.get_result<T>(p);
-  }
-public:
-  Legion::FutureMap future_map;
-};
-
-struct CheckedTypedFutureMap {
-public:
-  CheckedTypedFutureMap() = delete;
-
-  template <typename T>
-  TypedFutureMap<T> get() {
-    assert (std::type_index(typeid(T)) == this->type);
-
-    return { this->future_map };
-  }
-
-  template <typename T>
-  static 
-  CheckedTypedFutureMap create(TypedFutureMap<T> const &fm) {
-    return CheckedTypedFuturemap(std::type_index(typeid(T)), fm);
-  }
-public:
-  CheckedTypedFutureMap(std::type_index, Legion::FutureMap const &);
-
-  std::type_index type;
-  Legion::FutureMap future_map;
-};
-
-using ArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec>;
+using TypedTaskArg = variant<T, IndexArg<T>, TypedFuture<T>, TypedFutureMap<T>, ArgRef<T>, TypedTaskInvocation<T>>;
 
 std::type_index get_type_index(ArgSpec);
 
+using IndexLaunchDomainSpec = variant<MachineView, parallel_tensor_guid_t>;
+
+template <typename T> TaskInvocationSpec create_task_invocation_spec(TypedTaskInvocation<T> const &);
+
 struct TaskBinding {
 public:
-  explicit TaskBinding(InvocationType);
+  static TaskBinding index_launch(parallel_tensor_guid_t const &);
+  static TaskBinding index_launch(slot_id const &);
+  static TaskBinding standard_launch();
+  static TaskBinding sync_type_dependent_launch(parallel_tensor_guid_t);
+  static TaskBinding sync_type_dependent_launch(slot_id);
 
+  void bind(slot_id, parallel_tensor_guid_t const &);
   void bind(slot_id, ParallelTensorSpec const &);
+
+  template <typename T>
+  void bind_arg(slot_id name, ArgRef<T> const &a) {
+    this->insert_arg_spec(name, ArgRefSpec::create(a));
+  }
+
+  template <typename T>
+  void bind_arg(slot_id name, TypedTaskArg<T> const &);
+
+  template <typename T>
+  void bind_arg(slot_id name, TypedTaskInvocation<T> const &invoc) {
+    this->insert_arg_spec(name, create_task_invocation_spec(invoc));
+  }
 
   template <typename T>
   void bind_arg(slot_id name, T const &t) {
@@ -242,14 +107,11 @@ public:
     this->insert_arg_spec(name, IndexArgSpec::create(f));
   }
 private:
-  void insert_arg_spec(slot_id name, ArgSpec const &arg_spec) {
-    assert (!contains_key(this->arg_bindings, name));
-    arg_bindings.insert({ name, arg_spec });
-  }
+  void insert_arg_spec(slot_id name, ArgSpec const &arg_spec); 
 
 private:
   std::unordered_map<slot_id, ArgSpec> arg_bindings;
-  std::unordered_map<slot_id, ParallelTensorSpec> bindings;
+  std::unordered_map<slot_id, parallel_tensor_guid_t> bindings;
 };
 
 struct TaskInvocation : public use_visitable_cmp<TaskInvocation> {
@@ -263,23 +125,70 @@ public:
   TaskBinding binding;
 };
 
+template <typename T> TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &);
+
+template <typename T> 
+struct TypedTaskInvocation { 
+public:
+  TypedTaskInvocation() = delete;
+  
+  friend TypedTaskInvocation ensure_return_type<T>(TaskInvocation const &);
+
+private:
+  TypedTaskInvocation(TaskInvocation const &);
+
+  TaskInvocation invocation;
+};
+
+template <typename T>
+TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &invocation) { 
+  optional<std::type_index> signature_return_type = get_signature(invocation.task_id).get_return_type();
+  std::type_index asserted_return_type = type_index<T>();
+  if (!signature_return_type.has_value()) {
+    throw mk_runtime_error("Task {} has no return type (asserted type {})",
+                           asserted_return_type);
+  }
+  if (signature_return_type.value() != asserted_return_type) {
+    throw mk_runtime_error("Task {} does not have asserted return type (asserted type {}, signature type {})",
+                           get_name(invocation.task_id),
+                           asserted_return_type,
+                           signature_return_type.value()
+                           );
+  }
+
+  return TypedTaskInvocation<T>(invocation);
+}
+
+
+struct TaskInvocationSpec {
+  TaskInvocationSpec() = delete;
+
+  TaskInvocation get_invocation() const { 
+    return this->invocation;
+  }
+
+  template <typename T>
+  static TaskInvocationSpec create(TypedTaskInvocation<T> const &invocation) {
+    return TaskInvocationSpec(type_index<T>(), invocation.invocation);
+  }
+private:
+  TaskInvocationSpec(std::type_index const &type_idx, TaskInvocation const &invocation) 
+    : type_idx(type_idx), invocation(invocation)
+  { }
+  
+  std::type_index type_idx;
+  TaskInvocation invocation;
+};
+
+template <typename T> 
+TaskInvocationSpec create_task_invocation_spec(TypedTaskInvocation<T> const &invoc) {
+  return TaskInvocationSpec::create<T>(invoc);
+}
+
 /* TaskArgumentFormat compile_task_invocation(TaskInvocation const &); */
 
 /* std::unordered_map<Legion::DomainPoint, TaskArgumentFormat> compile_index_task_invocation(TaskSignature const &signature, */
 /*                                                                                           TaskBinding const &binding); */
-
-struct TaskReturnAccessor { 
-  template <typename T>
-  TypedFuture<T> get_returned_future();
-
-  template <typename T>
-  TypedFutureMap<T> get_returned_future_map();
-};
-
-
-TaskReturnAccessor execute_task(LegionConfig const &config, 
-                                TaskInvocation const &,
-                                RuntimeBacking const &backing);
 
 
 }

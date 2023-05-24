@@ -15,11 +15,11 @@
 #ifndef _FLEXFLOW_SIMULATOR_H_
 #define _FLEXFLOW_SIMULATOR_H_
 
+#include "operator_guid_t.h"
 #include "runtime/config.h"
-#include "op-attrs/ffconst.h"
 #include "op-attrs/operator_attrs.h"
 #include "utils/hash-utils.h"
-#include "mpark/variant.hpp"
+#include "utils/variant.h"
 #include "parallel_tensor.h"
 #include <fstream>
 #include <memory>
@@ -33,7 +33,6 @@ namespace FlexFlow {
 
 #define MOD(a, b) ((a) % (b)) < 0 ? ((a) % (b)) + (b) : ((a) % (b))
 
-class Op;
 class FFModel;
 
 class Device {
@@ -554,7 +553,7 @@ public:
 };
 
 struct OpSyncTask {
-  Op const *op;
+  operator_guid_t op;
   int unsatisfied_dependencies;
   float finish_time;
 };
@@ -616,13 +615,13 @@ public:
   SimTask *new_nominal_comm_task(std::string const &name,
                                  CommDevice *comm_device,
                                  size_t message_size);
-  SimTask *new_forward_task(Op const *op, int idx);
-  SimTask *new_allreduce_task(Op const *op,
+  SimTask *new_forward_task(operator_guid_t const &, int idx);
+  SimTask *new_allreduce_task(operator_guid_t const &,
                               std::vector<int> const &node_ids,
                               size_t message_size);
-  SimTask *new_backward_task(Op const *op, int idx);
-  SimTask *get_forward_task(Op const *op, int idx);
-  SimTask *get_backward_task(Op const *op, int idx);
+  SimTask *new_backward_task(operator_guid_t const &, int idx);
+  SimTask *get_forward_task(operator_guid_t const &, int idx);
+  SimTask *get_backward_task(operator_guid_t const &, int idx);
 
   SimTask *new_task();
 
@@ -651,8 +650,8 @@ public:
                                        SimTask *dst_task,
                                        size_t message_size,
                                        bool force_zero_cost = false);
-  CostMetrics measure_operator_cost(Op const *op, MachineView const &view);
-  float estimate_xfer_cost(Op const *op,
+  CostMetrics measure_operator_cost(operator_guid_t const &, MachineView const &view);
+  float estimate_xfer_cost(operator_guid_t const &,
                            int input_idx,
                            MachineView const &source_view,
                            MachineView const &sink_view);
@@ -682,7 +681,7 @@ public:
   off_t offset;
   int warmup_times, repeat_times;
   TaskManager *task_manager;
-  CompMode computationMode;
+  ComputationMode computationMode;
   ffEvent_t start_event, end_event;
   std::unordered_map<size_t, CostMetrics> hash_to_operator_cost;
   std::unordered_map<ProfilingRecordKey, CostMetrics>

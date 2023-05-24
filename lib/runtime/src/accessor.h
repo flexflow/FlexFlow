@@ -4,28 +4,28 @@
 #include "legion.h"
 #include "kernels/ff_handle.h"
 #include "kernels/accessor.h"
-#include "op-attrs/ffconst.h"
 #include "mappers/mapping_utilities.h"
+#include "permissions.h"
 
 using Legion::Mapping::Utilities::to_string;
 
 namespace FlexFlow {
 
-template <Legion::PrivilegeMode> struct privilege_mode_to_accessor_t { };
+template <Permissions> struct privilege_mode_to_accessor_t { };
 
-template <> struct privilege_mode_to_accessor_t<READ_WRITE> {
+template <> struct privilege_mode_to_accessor_t<Permissions::RW> {
   using type = GenericTensorAccessorW;
 };
 
-template <> struct privilege_mode_to_accessor_t<READ_ONLY> {
+template <> struct privilege_mode_to_accessor_t<Permissions::RO> {
   using type = GenericTensorAccessorR;
 };
 
-template <> struct privilege_mode_to_accessor_t<WRITE_ONLY> {
+template <> struct privilege_mode_to_accessor_t<Permissions::WO> {
   using type = GenericTensorAccessorW;
 };
 
-template <Legion::PrivilegeMode PRIV>
+template <Permissions PRIV>
 using privilege_mode_to_accessor = typename privilege_mode_to_accessor_t<PRIV>::type;
 
 
@@ -111,7 +111,7 @@ GenericTensorAccessorW
                                      Legion::Context ctx,
                                      Legion::Runtime *runtime);
 
-template <typename Legion::PrivilegeMode PRIV>
+template <Permissions PRIV>
 privilege_mode_to_accessor<PRIV> 
 helperGetGenericTensorAccessor(DataType datatype,
                                Legion::PhysicalRegion const &region,
@@ -121,16 +121,17 @@ helperGetGenericTensorAccessor(DataType datatype,
                                Legion::Runtime *runtime) {
   optional<variant<GenericTensorAccessorR, GenericTensorAccessorW>> result = nullopt;
   switch (PRIV) {
-    case READ_ONLY:
+    case Permissions::RO:
       result = helperGetGenericTensorAccessorRO(datatype, region, req, fid, ctx, runtime);
-    case WRITE_ONLY:
+      break;
+    case Permissions::WO:
       result = helperGetGenericTensorAccessorWO(datatype, region, req, fid, ctx, runtime);
-    case READ_WRITE:
+      break;
+    case Permissions::RW:
       result = helperGetGenericTensorAccessorRW(datatype, region, req, fid, ctx, runtime);
+      break;
     default:
-      std::ostringstream oss;
-      oss << "Unknown privilege mode " << to_string(PRIV);
-      throw std::runtime_error(oss.str());
+      throw mk_runtime_error("Unhandled privilege mode {}", PRIV);
   }
   return get<privilege_mode_to_accessor<PRIV>>(result.value());
 }

@@ -113,10 +113,10 @@ MultiDiGraphView unsafe_view_as_multidigraph(DiGraphView const &);
 MultiDiGraphView view_as_multidigraph(DiGraphView const &);
 
 DiGraphView unsafe_view_as_digraph(MultiDiGraphView const &);
-IDiGraphView view_as_digraph(IMultiDiGraphView const &);
+DiGraphView view_as_digraph(MultiDiGraphView const &);
 
-IMultiDiGraphView unsafe_view_as_multidigraph(OpenMultiDiGraphView const &);
-IMultiDiGraphView view_as_multidigraph(OpenMultiDiGraphView const &);
+MultiDiGraphView unsafe_view_as_multidigraph(OpenMultiDiGraphView const &);
+MultiDiGraphView view_as_multidigraph(OpenMultiDiGraphView const &);
 }
 
 #endif

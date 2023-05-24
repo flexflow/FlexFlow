@@ -1,6 +1,4 @@
 #include "layer.h"
-#include "op-attrs/ffconst_utils.h"
-#include "model.h"
 
 namespace FlexFlow {
 

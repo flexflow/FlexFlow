@@ -2,7 +2,7 @@
 #define _FLEXFLOW_OPATTRS_TENSOR_SHAPE_H
 
 #include "utils/stack_vector.h"
-#include "ffconst.h"
+#include "datatype.h"
 #include "utils/visitable.h"
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/dim_ordered.h"

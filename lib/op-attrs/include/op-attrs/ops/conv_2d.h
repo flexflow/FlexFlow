@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_CONV_2D_ATTRS_H
 #define _FLEXFLOW_CONV_2D_ATTRS_H
 
+#include "op-attrs/activation.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
 #include "op-attrs/tensor_shape.h"
@@ -11,11 +12,11 @@ namespace FlexFlow {
 struct Conv2DAttrs : public use_visitable_cmp<Conv2DAttrs> {
 public:
   Conv2DAttrs() = delete;
-  Conv2DAttrs(int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w, int groups, ActiMode activation, bool use_bias);
+  Conv2DAttrs(int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w, int groups, optional<Activation> activation, bool use_bias);
 public:
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
       padding_w, groups;
-  ActiMode activation;
+  optional<Activation> activation;
   bool use_bias;
 };
 

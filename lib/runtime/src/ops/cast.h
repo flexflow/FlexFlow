@@ -15,49 +15,64 @@
 #ifndef _FLEXFLOW_CAST_H
 #define _FLEXFLOW_CAST_H
 
-#include "layer.h"
-#include "operator.h"
+#include "op_task_invocation.h"
+#include "sim_environment.h"
 #include "op-attrs/ops/cast.h"
 
 namespace FlexFlow {
 
-class Cast : public Op {
-public:
-  Cast(FFModel &model,
-       ParallelTensor const &input,
-       DataType dtype,
-       char const *name);
-  Cast(FFModel &model,
-       CastAttrs const &params,
-       std::vector<ParallelTensor> const &input,
-       char const *name = nullptr);
-  void init(FFModel const &) override;
-  void forward(FFModel const &) override;
-  void backward(FFModel const &) override;
-  static Op *
-      create_operator_from_layer(FFModel &model,
-                                 Layer const *layer,
-                                 std::vector<ParallelTensor> const &inputs);
-  static PerDeviceOpState *init_task(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime);
-  static void forward_task(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime);
-  static void backward_task(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
-  OpTaskBinding get_init_task_binding() const override;
-  OpTaskBinding get_fwd_task_binding() const override;
-  OpTaskBinding get_bwd_task_binding() const override;
 
-  bool measure_operator_cost(Simulator *sim,
-                             MachineView const &pc,
-                             CostMetrics &cost_metrics) const;
-};
+template <> void register_task<CAST_INIT_TASK_ID>();
+template <> void register_task<CAST_FWD_TASK_ID>();
+template <> void register_task<CAST_BWD_TASK_ID>();
+
+OpTaskInvocation init(CastAttrs const &);
+OpTaskInvocation forward(CastAttrs const &);
+OpTaskInvocation backward(CastAttrs const &);
+
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+                                  BatchNormAttrs const &attrs,
+                                  ParallelTensorShape const &input_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &machine_view);
+
+/* class Cast : public Op { */
+/* public: */
+/*   Cast(FFModel &model, */
+/*        ParallelTensor const &input, */
+/*        DataType dtype, */
+/*        char const *name); */
+/*   Cast(FFModel &model, */
+/*        CastAttrs const &params, */
+/*        std::vector<ParallelTensor> const &input, */
+/*        char const *name = nullptr); */
+/*   void init(FFModel const &) override; */
+/*   void forward(FFModel const &) override; */
+/*   void backward(FFModel const &) override; */
+/*   static Op * */
+/*       create_operator_from_layer(FFModel &model, */
+/*                                  Layer const *layer, */
+/*                                  std::vector<ParallelTensor> const &inputs); */
+/*   static PerDeviceOpState *init_task(Legion::Task const *task, */
+/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            Legion::Context ctx, */
+/*                            Legion::Runtime *runtime); */
+/*   static void forward_task(Legion::Task const *task, */
+/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            Legion::Context ctx, */
+/*                            Legion::Runtime *runtime); */
+/*   static void backward_task(Legion::Task const *task, */
+/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             Legion::Context ctx, */
+/*                             Legion::Runtime *runtime); */
+/*   OpTaskBinding get_init_task_binding() const override; */
+/*   OpTaskBinding get_fwd_task_binding() const override; */
+/*   OpTaskBinding get_bwd_task_binding() const override; */
+
+/*   bool measure_operator_cost(Simulator *sim, */
+/*                              MachineView const &pc, */
+/*                              CostMetrics &cost_metrics) const; */
+/* }; */
 
 }
 

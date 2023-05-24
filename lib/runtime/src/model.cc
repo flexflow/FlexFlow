@@ -20,41 +20,9 @@
 /* #include "utils/hip_helper.h" */
 /* #endif */
 #include "legion_parallel_tensor_shape.h"
-#include "op-attrs/ffconst_utils.h"
 #include "mapper.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "ops/aggregate.h"
-#include "ops/aggregate_spec.h"
-#include "ops/attention.h"
-#include "ops/batch_matmul.h"
-#include "ops/batch_norm.h"
-#include "ops/cast.h"
-#include "ops/concat.h"
-#include "ops/conv_2d.h"
-#include "ops/dropout.h"
-#include "ops/element_binary.h"
-#include "ops/element_unary.h"
-#include "ops/embedding.h"
-#include "ops/flat.h"
-#include "ops/fused.h"
-#include "ops/gather.h"
-#include "ops/groupby.h"
-#include "ops/layer_norm.h"
-#include "ops/linear.h"
-#include "ops/noop.h"
-#include "ops/pool_2d.h"
-#include "ops/reduce.h"
-#include "ops/reshape.h"
-#include "ops/reverse.h"
-#include "ops/softmax.h"
-#include "ops/split.h"
-#include "ops/topk.h"
-#include "ops/transpose.h"
-#include "parallel_ops/combine.h"
-#include "parallel_ops/fused_parallel_op.h"
-#include "parallel_ops/partition.h"
-#include "parallel_ops/reduction.h"
-#include "parallel_ops/replicate.h"
+#include "task_argument_accessor.h"
 #include "utils/random_utils.h"
 #include "test_utils.h"
 #include "legion/legion_utilities.h"
@@ -94,12 +62,15 @@ namespace FlexFlow {
 /*   return dim_mapping; */
 /* } */
 
-FFModel::FFModel(FFConfig const &_config, ComputationGraph const &cg, ParallelComputationGraph const &pcg)
-    : op_global_guid(OP_GUID_FIRST_VALID),
-      config(_config), 
+FFModel::FFModel(FFConfig const &_config, 
+                 ComputationGraph const &cg, 
+                 ParallelComputationGraph const &pcg, 
+                 Optimizer const &_optimizer)
+    : config(_config), 
       index_space_mgr(_config.legion_config), 
       computation_graph(cg),
-      pcg(pcg) {
+      pcg(pcg),
+      optimizer(_optimizer) {
 
   Runtime *runtime = config.legion_config.lg_hlr;
   Context ctx = config.legion_config.lg_ctx;
@@ -145,228 +116,315 @@ FFModel::FFModel(FFConfig const &_config, ComputationGraph const &cg, ParallelCo
   }
 }
 
-#ifdef FF_USE_NCCL
-ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
-  size_t key = get_std_hash(view);
-  if (contains_key(this->view_hash_to_nccl_comms, key)) {
-    return this->view_hash_to_nccl_comms.at(key);
+using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>;
+
+struct ArgumentsConstructionState {
+  variant<Legion::TaskLauncher, Legion::IndexLauncher> launcher;
+  int num_futures;
+  Legion::Serializer sez;
+  TaskArgumentsFormat args_fmt;
+};
+
+struct AddArgumentToTaskFunctor {
+  AddArgumentToTaskFunctor(ArgumentsConstructionState &state, slot_id slot) : state(state), slot(slot) { }
+
+  ArgumentsConstructionState &state;
+  slot_id slot;
+
+  void operator()(ConcreteArgSpec const &a) { 
+    size_t start = state.sez.get_used_bytes();
+    a.serialize(state.sez);
+    size_t end = state.sez.get_used_bytes();
+    state.args_fmt.insert({slot, TaskArgumentFormat(a.get_type_tag().get_type_idx(), start, end)});
+  }
+
+  void operator()(CheckedTypedFuture const &a) { 
+    if (holds_alternative<Legion::TaskLauncher>(state.launcher)) {
+      get<Legion::TaskLauncher>(state.launcher).add_future(a.get_unsafe());
+    } else {
+      get<Legion::IndexLauncher>(state.launcher).add_future(a.get_unsafe());
+    }
+    state.args_fmt.insert({slot, FutureArgumentFormat(a.get_type_tag().get_type_idx(), state.num_futures)});
+    state.num_futures++;
+  }
+};
+
+static TaskArgumentFormat add_argument_to_task_arg(ArgumentsConstructionState &state,
+                                                   slot_id slot, 
+                                                   FullyExecutableArgSpec const &arg_spec) {
+  visit(AddArgumentToTaskFunctor{state, slot}, arg_spec);
+}
+
+static ConcreteArgSpec resolve_index_arg(IndexArgSpec const &index_arg, Legion::DomainPoint const &);
+static CheckedTypedFuture resolve_future_map_arg(CheckedTypedFutureMap const &future_map, Legion::DomainPoint const &);
+
+struct ConcreteArgsFormat {
+  ConcreteArgsFormat() = delete;
+  ConcreteArgsFormat(Legion::Serializer const &sez, TaskArgumentsFormat *reserved_bytes_for_fmt, stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> const &fmts)
+    : sez(sez), fmts(fmts)
+  { }
+
+  Legion::Serializer sez;
+  TaskArgumentsFormat *reserved_bytes_for_fmt;
+  stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> fmts;
+};
+
+template <typename T>
+std::unordered_map<slot_id, T> get_args_of_type(ExecutableTaskBinding const &binding) {
+  static_assert(is_in_variant<T, ExecutableArgSpec>::value, "");
+  return map_values(filter_values(binding.arg_bindings, 
+                                  [](ExecutableArgSpec const &s) { return holds_alternative<T>(s); }),
+                    [](ExecutableArgSpec const &s) { return get<T>(s); });
+            
+}
+
+ConcreteArgsFormat process_concrete_args(std::unordered_map<slot_id, ConcreteArgSpec> const &specs) {
+  Legion::Serializer sez;
+  TaskArgumentsFormat *reserved = static_cast<TaskArgumentsFormat*>(sez.reserve_bytes(sizeof(TaskArgumentsFormat)));
+  stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> fmts;
+  for (auto const &kv : specs) {
+    slot_id slot = kv.first;
+    ConcreteArgSpec arg = kv.second;
+
+    size_t before = sez.get_used_bytes();
+    arg.serialize(sez);
+    size_t after = sez.get_used_bytes();
+
+    fmts.insert(slot, {arg.get_type_tag().get_type_idx(), before, after});
+  }
+  return { sez, reserved, fmts };
+
+}
+
+ConcreteArgsFormat process_concrete_args(ExecutableTaskBinding const &binding) {
+  return process_concrete_args(get_args_of_type<ConcreteArgSpec>(binding));
+}
+
+struct FutureArgsFormat {
+  std::vector<Future> futures;
+  stack_map<slot_id, FutureArgumentFormat, MAX_NUM_TASK_ARGUMENTS> fmts;
+};
+
+FutureArgsFormat process_future_args(ExecutableTaskBinding const &binding) {
+  std::vector<Future> futures;
+  stack_map<slot_id, FutureArgumentFormat, MAX_NUM_TASK_ARGUMENTS> fmts;
+
+  for (auto const &kv : get_args_of_type<CheckedTypedFuture>(binding)) {
+    slot_id slot = kv.first;
+    CheckedTypedFuture fut = kv.second;
+
+    futures.push_back(fut.get_unsafe());
+    FutureArgumentFormat fmt = {fut.get_type_idx(), futures.size()-1} ;
+    fmts.insert(slot, fmt);
+  }
+  return { futures, fmts };
+};
+
+struct IndexArgsFormat : public use_visitable_cmp<IndexArgsFormat> {
+  IndexArgsFormat() = delete;
+  IndexArgsFormat(std::map<Legion::DomainPoint, ConcreteArgsFormat> const &point_map)
+    : point_map(point_map)
+  { }
+
+public:
+  std::map<Legion::DomainPoint, ConcreteArgsFormat> point_map;
+};
+
+ConcreteArgsFormat process_index_args_for_point(std::unordered_map<slot_id, IndexArgSpec> const &specs,
+                                                Legion::DomainPoint const &p) {
+  std::unordered_map<slot_id, ConcreteArgSpec> resolved = map_values(specs,
+              [&](IndexArgSpec const &s) { return resolve_index_arg(s, p); });
+  return process_concrete_args(resolved);
+}
+
+void add_futures(TaskLauncher const &, FutureArgsFormat const &);
+void add_futures(IndexTaskLauncher const &, FutureArgsFormat const &);
+
+IndexArgsFormat process_index_args(ExecutableTaskBinding const &binding, Legion::Domain const &domain) {
+  std::map<Legion::DomainPoint, ConcreteArgsFormat> point_map;
+  auto index_args = get_args_of_type<IndexArgSpec>(binding);
+  for (Legion::Domain::DomainPointIterator it(domain); it; it++) {
+    point_map.insert({*it, process_index_args_for_point(index_args, *it)}); 
+  }
+  return { point_map };
+};
+
+struct TensorArgsFormat {
+  bidict<parallel_tensor_guid_t, region_idx_t> region_idxs;
+  std::unordered_map<parallel_tensor_guid_t, Permissions> privs_map;
+  std::unordered_map<parallel_tensor_guid_t, DataType> datatypes;
+  std::unordered_map<slot_id, parallel_tensor_guid_t> nonvariadic_slot_to_tensor;
+  std::unordered_map<slot_id, std::vector<parallel_tensor_guid_t>> variadic_slot_to_tensor;
+};
+
+void add_tensor_requirements(TaskLauncher const &, TensorArgsFormat const &);
+void add_tensor_requirements(IndexTaskLauncher const &, TensorArgsFormat const &);
+
+static bool includes_tensor(ExecutableTensorSpec const &spec, parallel_tensor_guid_t guid) {
+  if (is_variadic(spec)) {
+    return contains(get_variadic(spec), guid);
   } else {
-    assert (config.computationMode == COMP_MODE_INFERENCE);
-    return nullptr;
+    assert (is_nonvariadic(spec));
+    return get_nonvariadic(spec) == guid;
   }
 }
-#endif
 
-// Tensor FFModel::create_constant(TensorShape const &shape,
-//                                 float value) {
-//   // FIXME: currently create gradients for constants since the current auto grad
-//   // algorithm computes gradients for all operators
-//   Tensor tensor = create_tensor(shape, false /*create_grad*/);
-//   tensor->initializer = new ConstantInitializer(value);
-//   return tensor;
-// }
-
-OpNode FFModel::new_node(Op const *op) {
-  return this->op_node_mgr.create(op);
-}
-
-// Tensor FFModel::create_tensor(TensorShape const &shape,
-//                               bool create_grad) {
-//   switch (shape.num_dims()) {
-// #define DIMFUNC(DIM)                                                           \
-//   case DIM:                                                                    \
-//     return create_tensor<DIM>(shape, create_grad);
-//     LEGION_FOREACH_N(DIMFUNC)
-// #undef DIMFUNC
-//     default:
-//       assert(false && "Unsupported dim!");
-//   }
-// }
-
-/* ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape, */ /*                                                bool create_grad, */
-/*                                                size_t input_tensor_guid) { */
-/*   switch (shape.num_dims()) { */
-/* #define DIMFUNC(DIM)                                                           \ */
-/*   case DIM:                                                                    \ */
-/*     return create_parallel_tensor<DIM>(                                        \ */
-/*         shape, create_grad, input_tensor_guid); */
-/*     LEGION_FOREACH_N(DIMFUNC) */
-/* #undef DIMFUNC */
-/*     default: */
-/*       assert(false && "Unsupported dim!"); */
-/*   } */
-/* } */
-
-/* Tensor FFModel::create_tensor(LegionTensorShape const &shape, */
-/*                                               bool create_grad) { */
-/*   return create_tensor(static_cast<TensorShape>(shape), create_grad); */
-/* } */
-
-/* ParallelTensor */
-/*     FFModel::create_parallel_tensor(LegionParallelTensorShape const &shape, */
-/*                                                     bool create_grad, */
-/*                                                     size_t input_tensor_guid) { */
-/*   return this->create_parallel_tensor(static_cast<ParallelTensorShape>(shape), create_grad, input_tensor_guid); */
-/* } */
-
-/* template <int NDIM> */
-/* Tensor FFModel::create_tensor(TensorShape const &shape, */
-/*                               bool create_grad) { */
-/*   assert (shape.num_dims() == NDIM); */
-/*   Tensor tensor = this->tensor_mgr.create(shape, create_grad); */
-/*   Layer *input_layer = this->layer_mgr.create(InputAttrs{}, shape.data_type, "input", {}, {}, {tensor}); */
-/*   this->tensor_uses.update(*input_layer); */
-
-/*   return tensor; */
-/* } */
-
-/* template <int NDIM> */
-/* ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape, */
-/*                                                bool create_grad, */
-/*                                                size_t input_tensor_guid) { */
-/*   assert (shape.num_dims() == NDIM); */
-/*   ParallelTensor tensor = this->parallel_tensor_mgr.create(shape, create_grad); */
-
-/*   if (owner_op == nullptr) { */
-/*     NoOp *input_op = new NoOp(*this, OP_INPUT, input_tensor_guid, tensor); */
-/*     operators.push_back(input_op); */
-/*     tensor->owner_op = input_op; */
-/*     tensor->owner_idx = 0; */
-/*   } else { */
-/*     tensor->owner_op = owner_op; */
-/*     tensor->owner_idx = owner_idx; */
-/*   } */
-
-/*   assert(tensor->check_valid()); */
-/*   return tensor; */
-/* } */
-
-/* Parameter FFModel::create_weight(LegionTensorShape const &shape, */
-/*                                                  Layer const *layer, */
-/*                                                  bool create_grad, */
-/*                                                  Initializer *initializer, */
-/*                                                  ParameterSyncType sync_type) { */
-/*   return this->create_weight(static_cast<TensorShape>(shape), layer, create_grad, initializer, sync_type); */
-/* } */
-
-//Parameter FFModel::create_weight(TensorShape const &shape,
-//                                 Layer const *owner_layer,
-//                                 bool create_grad,
-//                                 Initializer *initializer,
-//                                 ParameterSyncType sync_type) {
-//  assert(owner_layer != nullptr);
-//  if (owner_layer == nullptr) {
-//    owner_layer = this->layer_mgr.create(OP_WEIGHT, shape.data_type, nullptr, 0/*inputs*/, 0/*weights*/, 1/*outputs*/);
-//  }
-//
-//  Parameter p = this->tensor_mgr.create(shape, create_grad, initializer, sync_type, owner_layer, 0/*owner_idx*/);
-//
-//  assert(p->get_volume() > 0);
-//  return p;
-//}
-
-/* template <int NDIM> */
-/* ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape, */ 
-/*                                                   Op const *owner_op, */
-/*                                                   bool create_grad, */
-/*                                                   Initializer *initializer, */
-/*                                                   ParameterSyncType sync_type) { */
-/*   ParallelParameter p = this->parallel_tensor_mgr.create( */
-/*     shape, */
-/*     create_grad, */
-/*     sync_type, */
-/*     initializer */
-/*   ); */
-
-/*   if (owner_op == NULL) { */
-/*     NoOp *weight_op = new NoOp(*this, OP_WEIGHT, p); */
-/*     operators.push_back(weight_op); */
-/*     p->owner_op = weight_op; */
-/*   } else { */
-/*     p->owner_op = owner_op; */
-/*   } */
-/*   p->owner_idx = 0; */
-
-/*   assert(p->get_volume() > 0); */
-/*   assert(p->check_valid()); */
-/*   return p; */
-/* } */
-
-/* ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape, */
-/*                                                   Op const *owner_op, */
-/*                                                   bool create_grad, */
-/*                                                   Initializer *initializer, */
-/*                                                   ParameterSyncType sync_type) { */
-/*   switch (shape.num_dims()) { */
-/* #define DIMFUNC(DIM)                                                           \ */
-/*   case DIM:                                                                    \ */
-/*     return create_parallel_weight<DIM>(                                        \ */
-/*         shape, owner_op, create_grad, initializer, sync_type); */
-/*     LEGION_FOREACH_N(DIMFUNC) */
-/* #undef DIMFUNC */
-/*     default: */
-/*       assert(false && "Unsupported dim!"); */
-/*   } */
-/* } */
-
-/* ParallelParameter FFModel::create_parallel_weight( */
-/*     LegionParallelTensorShape const &shape, */
-/*     Op const *owner_op, */
-/*     bool create_grad, */
-/*     Initializer *initializer, */
-/*     ParameterSyncType sync_type) { */
-
-/*   return this->create_parallel_weight(static_cast<ParallelTensorShape>(shape), owner_op, create_grad, initializer, sync_type); */
-/* } */
-
-
-optional<ParallelTensor> FFModel::get_parallel_tensor_from_tensor(
-    Tensor const &tensor) const {
-  std::vector<parallel_tensor_guid_t> pt_guids = this->tensor_map.at(tensor);
-  if (pt_guids.size() == 0) {
-    return nullopt;
-  } else {
-    return this->parallel_tensor_mgr.at(get_only(pt_guids));
+std::unordered_set<slot_id> get_tensor_slots(ExecutableTaskBinding const &binding, parallel_tensor_guid_t guid) {
+  std::unordered_set<slot_id> results; 
+  for (auto const &kv : binding.tensor_bindings) {
+    slot_id slot = kv.first;
+    ExecutableTensorSpec spec = kv.second;
+    if (includes_tensor(spec, guid)) {
+      results.insert(slot);
+    }
   }
-  // check if tensor->parallel_tensor is already set
-  // if (tensor->parallel_tensor != nullopt) {
-  //   return tensor->parallel_tensor;
-  // }
-  // optional<TensorSourceInfo> source = this->model_spec.get_source(tensor);
-  // if (source.has_value()) {
-  //   Op const *mapped_op = nullptr;
-  //   if (source->layer.op_type == OP_INPUT) {
-  //     // We use tensor_guid to match input operators
-  //     tensor_guid_t tensor_guid = this->model_spec.get_output(source->layer, 0)->guid;
-  //     for (auto const &op : operators) {
-  //       if (op->op_type == OP_INPUT) {
-  //         if (tensor_guid == ((NoOp *)op)->input_tensor_guid) {
-  //           assert(mapped_op == nullptr);
-  //           mapped_op = op;
-  //         }
-  //       }
-  //     }
-  //   } else {
-  //     for (auto const &op : operators) {
-  //       if (op->layer_guid == source->layer.layer_guid) {
-  //         assert(mapped_op == nullptr);
-  //         mapped_op = op;
-  //       }
-  //     }
-  //   }
-  //   if (mapped_op != nullptr) {
-  //     return mapped_op->outputs[source->idx];
-  //   }
-  // }
-  // return nullopt;
+  return results;
 }
 
-void FFModel::reset_metrics() {
-  Context ctx = config.legion_config.lg_ctx;
-  Runtime *runtime = config.legion_config.lg_hlr;
-  TaskLauncher launcher(UPDATE_METRICS_TASK_ID,
-                        TaskArgument(&metrics_op, sizeof(Metrics)));
-  current_metrics = runtime->execute_task(ctx, launcher);
+Permissions get_tensor_permissions(TaskSignature const &sig, ExecutableTaskBinding const &binding, parallel_tensor_guid_t guid) {
+  Permissions result = Permissions::NONE;
+  for (slot_id slot : get_tensor_slots(binding, guid)) {
+    result = join(result, sig.get_slot(slot)->perm);
+  }
+  return result;
+}
+
+std::vector<parallel_tensor_guid_t> as_vector(ExecutableTensorSpec const &spec) {
+  if (is_variadic(spec)) {
+    return get_variadic(spec);
+  } else {
+    assert (is_nonvariadic(spec));
+    return { get_nonvariadic(spec) };
+  }
+}
+
+TensorArgsFormat process_tensor_args(TaskSignature const &sig, 
+                                     ParallelComputationGraph const &pcg,
+                                     ExecutableTaskBinding const &binding) {
+  std::unordered_map<parallel_tensor_guid_t, Permissions> privs_map;
+  bidict<parallel_tensor_guid_t, region_idx_t> region_idxs;
+  std::unordered_map<parallel_tensor_guid_t, DataType> datatypes;
+  int idx_ctr = 0;
+  for (parallel_tensor_guid_t const &guid : unique(flatmap(values(binding.tensor_bindings), as_vector))) {
+    for (slot_id slot : get_tensor_slots(binding, guid)) {
+      privs_map[guid] = get_tensor_permissions(sig, binding, guid);
+      region_idx_t idx = region_idx_t(idx_ctr++);
+      region_idxs.equate(guid, idx);
+      datatypes[guid] = pcg.at(guid).data_type;
+    }
+  }
+  std::unordered_map<slot_id, parallel_tensor_guid_t> nonvariadic_slot_to_tensor;
+  std::unordered_map<slot_id, std::vector<parallel_tensor_guid_t>> variadic_slot_to_tensor;
+  for (slot_id slot : keys(binding.tensor_bindings)) {
+    if (is_variadic(binding, slot)) {
+      variadic_slot_to_tensor[slot] = get_variadic(binding.tensor_bindings.at(slot));
+    } else {
+      assert (is_nonvariadic(binding, slot));
+      nonvariadic_slot_to_tensor[slot] = get_nonvariadic(binding.tensor_bindings.at(slot));
+    }
+  }
+
+  return { region_idxs, privs_map, datatypes, nonvariadic_slot_to_tensor, variadic_slot_to_tensor };
+}
+
+TaskArgumentsFormat create_serializable_format(TensorArgsFormat const &tensor_args_format,
+                                               ConcreteArgsFormat const &concrete_args_format,
+                                               FutureArgsFormat const &future_args_format,
+                                               optional<IndexArgsFormat> const &index_args_format = nullopt) {
+  TaskArgumentsFormat result;
+  for (auto const &kv : concrete_args_format.fmts) {
+    result.insert(kv);
+  }
+  for (auto const &kv : future_args_format.fmts) {
+    result.insert(kv);
+  }
+  assert (!index_args_format.has_value());
+  for (parallel_tensor_guid_t const &guid : keys(tensor_args_format.region_idxs)) {
+    region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid);
+    Legion::PrivilegeMode privs = to_legion(tensor_args_format.privs_map.at(guid));
+    DataType datatype = tensor_args_format.datatypes.at(guid);
+    result.insert(region_idx, privs, datatype);
+  }
+  for (auto const &kv : tensor_args_format.nonvariadic_slot_to_tensor) {
+    slot_id slot = kv.first;
+    parallel_tensor_guid_t guid = kv.second;
+    region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid);
+    result.insert(slot, region_idx);
+  }
+  for (auto const &kv : tensor_args_format.variadic_slot_to_tensor) {
+    slot_id slot = kv.first;
+    std::vector<parallel_tensor_guid_t> guids = kv.second;
+    std::vector<region_idx_t> region_idxs = transform(guids, lookup_in_l(tensor_args_format.region_idxs));
+    result.insert(slot, region_idxs);
+  }
+  return result;
+}
+
+
+std::vector<ExecutableArgSpec> process_task_invocation_args(FFModel const &model, ExecutableTaskBinding const &binding) {
+  for (auto const &kv : get_args_of_type<TaskInvocationSpec>(binding)) {
+    slot_id slot = kv.first;
+    TaskInvocationSpec spec = kv.second;
+    ExecutableTaskInvocation executable = model.resolve(spec.get_invocation());
+
+    TaskReturnAccessor ret_val = model.execute(executable);
+    
+  }
+}
+
+Legion::TaskArgument as_task_argument(ConcreteArgsFormat const &concrete_args_format, 
+                                      FutureArgsFormat const &future_args_format, 
+                                      TensorArgsFormat const &tensor_args_format, 
+                                      optional<IndexArgsFormat const &> index_args_format = nullopt) {
+  TaskArgumentsFormat serializable_format = create_serializable_format(tensor_args_format,
+                                                                       concrete_args_format,
+                                                                       future_args_format,
+                                                                       index_args_format);
+  *(concrete_args_format.reserved_bytes_for_fmt) = serializable_format;
+  return Legion::TaskArgument(concrete_args_format.sez.get_buffer(),
+                              concrete_args_format.sez.get_used_bytes());
+}
+Legion::ArgumentMap as_argument_map(IndexArgsFormat const &);
+
+TaskReturnAccessor FFModel::execute(ExecutableTaskInvocation const &invocation) const {
+  TaskSignature sig = get_signature(invocation.task_id);
+  ExecutableTaskBinding binding = invocation.binding;
+  TensorArgsFormat tensor_args_format = process_tensor_args(sig, this->pcg, binding);
+  ConcreteArgsFormat concrete_args_format = process_concrete_args(binding);
+  FutureArgsFormat future_args_format = process_future_args(binding);
+  TaskInvocationArgsFormat task_invocation_args_format = process_task_invocation_args(*this, binding);
+  assert (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we don't handle these as I don't think they're used anywhere
+  if (binding.invocation_type == InvocationType::STANDARD) {
+    assert (get_args_of_type<IndexArgSpec>(binding).empty());
+    Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
+                                                     future_args_format,
+                                                     tensor_args_format);
+    TaskLauncher launcher(invocation.task_id, task_arg);
+    add_tensor_requirements(launcher, tensor_args_format);
+    Future returned_future = this->runtime_backing.execute_task(launcher);
+    return TaskReturnAccessor(sig.get_return_type(), returned_future);
+  } else if (binding.invocation_type == InvocationType::INDEX) {
+    parallel_tensor_guid_t index_space_determiner = binding.domain_spec.value();
+    ParallelTensorBacking backing = this->runtime_backing.at(index_space_determiner);
+    IndexArgsFormat index_args_format = process_index_args(binding, 
+                                                           this->runtime_backing.get_domain(backing.parallel_is));
+    Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
+                                                     future_args_format,
+                                                     tensor_args_format,
+                                                     index_args_format);
+    IndexTaskLauncher launcher(invocation.task_id,
+                               backing.parallel_is,
+                               task_arg,
+                               as_argument_map(index_args_format),
+                               Predicate::TRUE_PRED,
+                               false /*must*/,
+                               0 /*mapper_id*/,
+                               backing.mapping_id.value()
+                               );
+    add_tensor_requirements(launcher, tensor_args_format);
+    FutureMap returned_future = this->runtime_backing.execute_task(launcher);
+    return TaskReturnAccessor(sig.get_return_type(), returned_future);
+  }
 }
 
 void FFModel::init_operators() {
@@ -377,6 +435,7 @@ void FFModel::init_operators() {
 
 void FFModel::forward(int seq_length) {
   iter_config.seq_length = seq_length;
+  forward(this->pcg);
   for (auto const &op : operators) {
     op->forward(*this);
   }
@@ -392,10 +451,6 @@ void FFModel::compute_metrics() {
   Operator final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor.value());
-}
-
-void FFModel::get_metrics() {
-  metrics_input = operators.size() - 1;
 }
 
 void FFModel::backward(int seq_length) {
@@ -897,59 +952,6 @@ void FFModel::perform_fusion_optimizations() {
   }
 }
 
-void FFModel::initialize_nccl_communicators() {
-  // init all nccl communicators
-  Context ctx = this->config.legion_config.lg_ctx;
-  Runtime *runtime = this->config.legion_config.lg_hlr;
-  for (size_t l = 0; l < operators.size(); l++) {
-    // Only create nccl for weights
-    if (operators[l]->op_type != OP_WEIGHT) {
-      continue;
-    }
-    MachineView view = operators[l]->outputs[0]->machine_view.value();
-    if (view_hash_to_nccl_comms.find(get_std_hash(view)) ==
-        view_hash_to_nccl_comms.end()) {
-      TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
-      Future future = runtime->execute_task(ctx, launcher);
-      ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
-      IndexSpace task_is = this->index_space_mgr.get_or_create_task_is(view);
-      ArgumentMap argmap;
-      IndexLauncher index_launcher(
-          NCCL_INIT_COMMS_TASK_ID,
-          task_is,
-          TaskArgument(&ncclId, sizeof(ncclUniqueId)),
-          argmap,
-          Predicate::TRUE_PRED,
-          false /*must*/,
-          0 /*mapper_id*/,
-          get_std_hash(view) /*MappingTagID*/);
-      FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
-      fm.wait_all_results();
-      int idx = 0;
-      Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
-      ncclComm_t *nccl_comms =
-          (ncclComm_t *)malloc(sizeof(ncclComm_t) * task_domain.get_volume());
-      for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
-        nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
-      }
-      view_hash_to_nccl_comms[get_std_hash(view)] = nccl_comms;
-    }
-  }
-}
-
-void FFModel::optimize_unnecessary_gradient_calculations() {
-  // If an operator's input is training data
-  // No need to compute its gradients
-  for (size_t l = 0; l < operators.size(); l++) {
-    Op *op = operators[l];
-    for (int i = 0; i < op->numInputs; i++) {
-      assert(op->inputs[i]->owner_op != nullptr);
-      if (op->inputs[i]->owner_op->op_type == OP_INPUT) {
-        op->trainableInputs[i] = false;
-      }
-    }
-  }
-}
 
 void FFModel::print_operator_regions() const {
   for (size_t i = 0; i < operators.size(); i++) {
@@ -1009,41 +1011,6 @@ void FFModel::create_label_tensor(LossType loss_type) {
              parallel_label_tensor.value()->owner_op,
              this->config.legion_config,
              this->index_space_mgr);
-}
-
-void FFModel::populate_tensor_to_parallel_tensor_mapping() {
-  for (auto const &layer : layers) {
-    // map inputs to parallel tensor
-    if (layer->op_type == OP_INPUT) {
-      Tensor tensor = layer->outputs[0];
-      optional<ParallelTensor> parallel_tensor;
-      for (Op const *op : operators) {
-        if (op->op_type == OP_INPUT) {
-          NoOp *noop = (NoOp *)op;
-          if (noop->input_tensor_guid == tensor->tensor_guid) {
-            parallel_tensor = op->outputs[0];
-          }
-        }
-      }
-      tensor->parallel_tensor = parallel_tensor.value();
-    }
-    // map weights to parallel_tensor
-    assert (layer->weights.size() == layer->numWeights);
-
-    bool found = false;
-    for (Op const *op : operators) {
-      if (op->layer_guid == layer->layer_guid) {
-        found = true;
-        assert(op->op_type == layer->op_type);
-        assert(op->numWeights == layer->numWeights);
-        for (int i = 0; i < layer->numWeights; i++) {
-          Tensor weight = layer->weights[i];
-          weight->parallel_tensor = op->weights[i];
-        }
-      }
-    }
-    assert (found);
-  }
 }
 
 void FFModel::execute_graph_optimize() {

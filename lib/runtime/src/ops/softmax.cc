@@ -14,7 +14,6 @@
  */
 
 #include "softmax.h"
-#include "model.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {

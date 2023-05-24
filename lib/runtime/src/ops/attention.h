@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
-#include "op_task_spec.h"
+#include "op_task_signature.h"
 #include "sim_environment.h"
 #include "op-attrs/ops/attention.h"
 

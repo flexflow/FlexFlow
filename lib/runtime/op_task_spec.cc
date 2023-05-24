@@ -8,11 +8,11 @@ using namespace Legion;
 
 namespace FlexFlow {
 
-bool TensorSpec::operator==(TensorSpec const &other) const {
+bool OpTensorSpec::operator==(OpTensorSpec const &other) const {
   return visit_eq(*this, other);
 }
 
-bool TensorSpec::operator!=(TensorSpec const &other) const {
+bool OpTensorSpec::operator!=(OpTensorSpec const &other) const {
   return visit_neq(*this, other);
 }
 
@@ -95,7 +95,7 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   }
 }
 
-TensorSpec input_tensor(Op const *op, int idx) {
+OpTensorSpec input_tensor(Op const *op, int idx) {
   return {
     TensorRole::INPUT,
     idx, 
@@ -104,7 +104,7 @@ TensorSpec input_tensor(Op const *op, int idx) {
   };
 }
 
-TensorSpec output_tensor(Op const *op, int idx) {
+OpTensorSpec output_tensor(int idx) {
   return {
     TensorRole::OUTPUT,
     idx,
@@ -113,7 +113,7 @@ TensorSpec output_tensor(Op const *op, int idx) {
   };
 }
 
-TensorSpec param_tensor(Op const *op, int idx) {
+OpTensorSpec param_tensor(int idx) {
   return {
     TensorRole::PARAM,
     idx,
@@ -122,14 +122,14 @@ TensorSpec param_tensor(Op const *op, int idx) {
   };
 }
 
-using TensorSpecCollection = std::unordered_map<slot_id, variant<TensorSpec, std::vector<TensorSpec>>>;
+using TensorSpecCollection = std::unordered_map<slot_id, variant<OpTensorSpec, std::vector<OpTensorSpec>>>;
 
 static TensorSpecCollection
 collect_tensor_specs(OpTaskSignature const &signature, OpTaskBinding const &binding) {
-  std::unordered_map<slot_id, std::vector<TensorSpec>> intermediate;
+  std::unordered_map<slot_id, std::vector<OpTensorSpec>> intermediate;
   for (auto const &kv : binding.get_bindings()) {
     slot_id slot = kv.first;
-    TensorSpec tensor_spec = kv.second;
+    OpTensorSpec tensor_spec = kv.second;
     SlotSpec slot_spec = signature.get_slot(slot); 
 
     if (is_tensor_slot(slot_spec)) {
@@ -152,12 +152,12 @@ collect_tensor_specs(OpTaskSignature const &signature, OpTaskBinding const &bind
   TensorSpecCollection result;
   for (slot_id slot : keys(binding.get_tensor_bindings())) {
     SlotSpec slot_spec = signature.get_slot(slot); 
-    std::vector<TensorSpec> tensors = intermediate.at(slot);
+    std::vector<OpTensorSpec> tensors = intermediate.at(slot);
 
     assert (is_tensor_slot(slot_spec));
 
     TensorSlotSpec tensor_slot = get_tensor_slot(slot_spec);
-    for (TensorSpec const &tensor : tensors) {
+    for (OpTensorSpec const &tensor : tensors) {
       assert (privs_satisfies_slot(tensor_slot, tensor.get_privileges()));
     }
 
@@ -178,19 +178,19 @@ allocate_region_idxs(OpTaskSignature const &signature, OpTaskBinding const &bind
   int region_idx = 0;
   for (auto const &kv : collected) {
     slot_id slot = kv.first;
-    if (holds_alternative<TensorSpec>(kv.second)) {
-      auto tensor_spec = get<TensorSpec>(kv.second);
+    if (holds_alternative<OpTensorSpec>(kv.second)) {
+      auto tensor_spec = get<OpTensorSpec>(kv.second);
 
-      result[slot] = std::pair<int, TensorSpec>{
+      result[slot] = std::pair<int, OpTensorSpec>{
         region_idx,
         tensor_spec
       };
       region_idx++;
     } else {
-      auto tensor_specs = get<std::vector<TensorSpec>>(kv.second);
-      std::vector<std::pair<int, TensorSpec>> region_idx_mappings;
+      auto tensor_specs = get<std::vector<OpTensorSpec>>(kv.second);
+      std::vector<std::pair<int, OpTensorSpec>> region_idx_mappings;
 
-      for (TensorSpec const &tensor_spec : tensor_specs) {
+      for (OpTensorSpec const &tensor_spec : tensor_specs) {
         region_idx_mappings.push_back({
           region_idx,
           tensor_spec
@@ -240,7 +240,7 @@ OpTaskArgumentAccessor::OpTaskArgumentAccessor(Legion::Task const *task,
   : task(task), regions(regions), ctx(ctx), runtime(runtime), args_fmt(*(OpTaskArgumentFormat const *)task->args)
 { }
 
-/* TensorSpec::TensorSpec(TensorRole tensor_role, int idx, IsGrad is_grad, optional<Legion::PrivilegeMode> mode) */
+/* OpTensorSpec::OpTensorSpec(TensorRole tensor_role, int idx, IsGrad is_grad, optional<Legion::PrivilegeMode> mode) */
 /*   : role(tensor_role), idx(idx), is_grad(is_grad), mode(mode) */
 /* { } */
 
@@ -260,7 +260,7 @@ OpTaskArgumentAccessor::OpTaskArgumentAccessor(Legion::Task const *task,
 /*   this->slots.insert({slot, TensorRole::OUTPUT}); */
 /* } */
 
-/* static bool spec_satisfies_slot_role(TensorRole slot_role, TensorSpec const &tensor_spec) { */
+/* static bool spec_satisfies_slot_role(TensorRole slot_role, OpTensorSpec const &tensor_spec) { */
 /*   if (slot_role == TensorRole::INPUT || slot_role == TensorRole::PARAM) { */
 /*     return (tensor_spec.mode == READ_ONLY || tensor_spec.mode == READ_WRITE); */
 /*   } else if (slot_role == TensorRole::OUTPUT) { */
@@ -268,7 +268,7 @@ OpTaskArgumentAccessor::OpTaskArgumentAccessor(Legion::Task const *task,
 /*   } */
 /* } */
 
-/* void OpTaskSpec::bind(int slot, TensorSpec const &tensor_spec) { */
+/* void OpTaskSpec::bind(int slot, OpTensorSpec const &tensor_spec) { */
 /*   assert (contains_key(this->slots, slot)); */
 /*   assert (spec_satisfies_slot_role(this->slots.at(slot), tensor_spec)); */
 
@@ -279,17 +279,17 @@ OpTaskArgumentAccessor::OpTaskArgumentAccessor(Legion::Task const *task,
 /*   this->bindings.insert({slot, tensor_spec}); */
 /* } */
 
-/* void OpTaskSpec::bind(std::vector<std::pair<int, TensorSpec>> const &bindings) { */
+/* void OpTaskSpec::bind(std::vector<std::pair<int, OpTensorSpec>> const &bindings) { */
 /*   for (auto const &binding : bindings) { */
 /*     this->bind(binding.first, binding.second); */
 /*   } */
 /* } */
 
-/* tl::optional<TensorSpec const &> OpTaskSpec::in_slot(int slot) const { */
+/* tl::optional<OpTensorSpec const &> OpTaskSpec::in_slot(int slot) const { */
 /*   return this->bindings.at(slot); */
 /* } */
 
-/* int OpTaskSpec::get_region_idx(TensorSpec const &tensor_spec) const { */
+/* int OpTaskSpec::get_region_idx(OpTensorSpec const &tensor_spec) const { */
 /*   return this->region_idxs.at_l(tensor_spec); */
 /* }; */
 
@@ -344,7 +344,7 @@ OpTaskArgumentAccessor::OpTaskArgumentAccessor(Legion::Task const *task,
 
 /*   for (auto const &kv : get_region_idxs(task_arg_fmt)) { */
 /*     int region_idx = kv.second; */
-/*     TensorSpec const &tensor_spec = kv.second; */
+/*     OpTensorSpec const &tensor_spec = kv.second; */
 
 /*     ParallelTensor const &parallel_tensor = this->get_parallel_tensor(tensor_spec); */
 

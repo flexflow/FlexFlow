@@ -46,7 +46,7 @@ TensorShape get_weights_shape(MultiHeadAttentionAttrs const &attrs,
 
   TensorDims dims = { qParas + kParas + vParas + oParas, static_cast<size_t>(attrs.embed_dim) };
 
-  return { dims, DT_FLOAT };
+  return { dims, DataType::FLOAT };
 }
 
 ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
@@ -68,9 +68,9 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
                              TensorShape const &key_shape,
                              TensorShape const &value_shape) {
   ParallelTensorShape parallel_shape = get_output_shape(attrs, 
-                                                        (ParallelTensorShape)query_shape, 
-                                                        (ParallelTensorShape)key_shape, 
-                                                        (ParallelTensorShape)value_shape);
+                                                        static_cast<ParallelTensorShape>(query_shape), 
+                                                        static_cast<ParallelTensorShape>(key_shape), 
+                                                        static_cast<ParallelTensorShape>(value_shape));
   return get_tensor_shape_unsafe(parallel_shape);
 }
 
