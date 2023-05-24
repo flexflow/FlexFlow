@@ -443,30 +443,12 @@ __host__ void FusedOp::forward_task(Task const *task,
                my_output_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
         assert(my_input_accessor[0].data_type == my_output_accessor[0].data_type);
-        if (my_input_accessor[0].data_type == DT_INT64) {
-          Kernels::Transpose::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_int64_ptr(),
-              my_output_accessor[0].get_int64_ptr(),
-              my_input_accessor[0].domain,
-              my_output_accessor[0].domain);
-        } else if (my_input_accessor[0].data_type == DT_INT32) {
-          Kernels::Transpose::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_int32_ptr(),
-              my_output_accessor[0].get_int32_ptr(),
-              my_input_accessor[0].domain,
-              my_output_accessor[0].domain);
-        } else if (my_input_accessor[0].data_type == DT_FLOAT) {
-          Kernels::Transpose::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_float_ptr(),
-              my_output_accessor[0].get_float_ptr(),
-              my_input_accessor[0].domain,
-              my_output_accessor[0].domain);
-        } else {
-          assert(false && "Unsupported data type");
-        }
+        Kernels::Transpose::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain,
+            my_output_accessor[0].domain);
         break;
       }
       default: {
