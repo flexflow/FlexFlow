@@ -8,6 +8,8 @@ namespace FlexFlow {
 
 std::string get_operator_type_name(OperatorType type);
 
+size_t data_type_size(DataType type);
+
 std::ostream &operator<<(std::ostream &, OperatorType);
 
 }; // namespace FlexFlow

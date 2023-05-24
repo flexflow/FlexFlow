@@ -349,25 +349,6 @@ void Simulator::free_all() {
   offset = 0;
 }
 
-size_t data_type_size(DataType type) {
-  switch (type) {
-    case DT_HALF:
-      return sizeof(half);
-    case DT_FLOAT:
-      return sizeof(float);
-    case DT_DOUBLE:
-      return sizeof(double);
-    case DT_INT32:
-      return sizeof(int32_t);
-    case DT_INT64:
-      return sizeof(int64_t);
-    case DT_BOOLEAN:
-      return sizeof(bool);
-    default:
-      assert(false);
-  }
-}
-
 void *Simulator::allocate(size_t num_elements, DataType type) {
   size_t element_size = data_type_size(type);
   void *ret_ptr = base_ptr + offset;
