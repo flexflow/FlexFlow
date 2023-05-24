@@ -414,10 +414,25 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Kernels::Reshape::forward_kernel_wrapper(
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_input_accessor[0].domain.get_volume());
+        assert(my_input_accessor[0].data_type == my_output_accessor[0].data_type);
+        if (my_input_accessor[0].data_type == DT_INT64) {
+          Kernels::Reshape::forward_kernel_wrapper(
+              my_input_accessor[0].get_int64_ptr(),
+              my_output_accessor[0].get_int64_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else if (my_input_accessor[0].data_type == DT_INT32) {
+          Kernels::Reshape::forward_kernel_wrapper(
+              my_input_accessor[0].get_int32_ptr(),
+              my_output_accessor[0].get_int32_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else if (my_input_accessor[0].data_type == DT_FLOAT) {
+          Kernels::Reshape::forward_kernel_wrapper(
+              my_input_accessor[0].get_int64_ptr(),
+              my_output_accessor[0].get_int64_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else {
+          assert(false && "Unsupported data type");
+        }
         break;
       }
       case OP_TRANSPOSE: {
@@ -427,12 +442,31 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Kernels::Transpose::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_input_accessor[0].domain,
-            my_output_accessor[0].domain);
+        assert(my_input_accessor[0].data_type == my_output_accessor[0].data_type);
+        if (my_input_accessor[0].data_type == DT_INT64) {
+          Kernels::Transpose::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_int64_ptr(),
+              my_output_accessor[0].get_int64_ptr(),
+              my_input_accessor[0].domain,
+              my_output_accessor[0].domain);
+        } else if (my_input_accessor[0].data_type == DT_INT32) {
+          Kernels::Transpose::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_int32_ptr(),
+              my_output_accessor[0].get_int32_ptr(),
+              my_input_accessor[0].domain,
+              my_output_accessor[0].domain);
+        } else if (my_input_accessor[0].data_type == DT_FLOAT) {
+          Kernels::Transpose::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr(),
+              my_input_accessor[0].domain,
+              my_output_accessor[0].domain);
+        } else {
+          assert(false && "Unsupported data type");
+        }
         break;
       }
       default: {
