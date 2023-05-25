@@ -189,7 +189,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
-  cudaDataType_t compute_type = CUDA_R_16F;
+  cudaDataType_t compute_type = cublas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
   int processed_tokens_in_batch = 0;
@@ -513,6 +513,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  bool use_bias = *m->bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -523,23 +524,29 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  assert(input.data_type == bias.data_type);
+  if (use_bias) {
+    assert(input.data_type == bias.data_type);
+  }
 
   if (input.data_type == DT_HALF) {
+    half const *bias_ptr =
+        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(m,
                                                          bc,
                                                          input.get_half_ptr(),
                                                          weight.get_half_ptr(),
                                                          output.get_half_ptr(),
-                                                         bias.get_half_ptr(),
+                                                         bias_ptr,
                                                          stream);
   } else if (input.data_type == DT_FLOAT) {
+    float const *bias_ptr =
+        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(m,
                                                          bc,
                                                          input.get_float_ptr(),
                                                          weight.get_float_ptr(),
                                                          output.get_float_ptr(),
-                                                         bias.get_float_ptr(),
+                                                         bias_ptr,
                                                          stream);
   } else {
     assert(false && "Unspported data type");

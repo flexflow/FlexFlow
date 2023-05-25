@@ -429,6 +429,8 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
 
 cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return CUDNN_DATA_HALF;
     case DT_FLOAT:
       return CUDNN_DATA_FLOAT;
     case DT_DOUBLE:
@@ -443,6 +445,8 @@ cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
 
 cudaDataType_t ff_to_cuda_datatype(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return CUDA_R_16F;
     case DT_FLOAT:
       return CUDA_R_32F;
     case DT_DOUBLE:

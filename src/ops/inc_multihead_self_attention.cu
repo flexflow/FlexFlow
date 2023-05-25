@@ -157,12 +157,12 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
-  cudaDataType_t data_type = ff_to_cuda_datatype(m->output_type[0]);
+  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
-  cudaDataType_t compute_type = CUDA_R_16F;
+  cudaDataType_t compute_type = cublas_data_type;
 #endif
   // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
   // Weights: qSize x qProjSize x 3 x num_heads
@@ -190,16 +190,16 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        k,
                                        &alpha,
                                        weight_ptr,
-                                       data_type,
+                                       cublas_data_type,
                                        lda,
                                        strideA,
                                        input_ptr,
-                                       data_type,
+                                       cublas_data_type,
                                        ldb,
                                        strideB,
                                        &beta,
                                        output_ptr,
-                                       data_type,
+                                       cublas_data_type,
                                        ldc_q,
                                        strideC,
                                        m->num_heads,
@@ -214,16 +214,16 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        k,
                                        &alpha,
                                        weight_ptr + m_q * k,
-                                       data_type,
+                                       cublas_data_type,
                                        lda,
                                        strideA,
                                        input_ptr,
-                                       data_type,
+                                       cublas_data_type,
                                        ldb,
                                        strideB,
                                        &beta,
                                        output_ptr + m_q * n,
-                                       data_type,
+                                       cublas_data_type,
                                        ldc_k,
                                        strideC,
                                        m->num_heads,
@@ -238,16 +238,16 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        k,
                                        &alpha,
                                        weight_ptr + (m_q + m_k) * k,
-                                       data_type,
+                                       cublas_data_type,
                                        lda,
                                        strideA,
                                        input_ptr,
-                                       data_type,
+                                       cublas_data_type,
                                        ldb,
                                        strideB,
                                        &beta,
                                        output_ptr + (m_q + m_k) * n,
-                                       data_type,
+                                       cublas_data_type,
                                        ldc_v,
                                        strideC,
                                        m->num_heads,
@@ -452,7 +452,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
-  cudaDataType_t compute_type = CUDA_R_16F;
+  cudaDataType_t compute_type = cublas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
@@ -672,6 +672,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  bool use_bias = *m->bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -682,22 +683,28 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  assert(input.data_type == bias.data_type);
+  if (use_bias) {
+    assert(input.data_type == bias.data_type);
+  }
   if (input.data_type == DT_HALF) {
+    half const *bias_ptr =
+        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(m,
                                                      bc,
                                                      input.get_half_ptr(),
                                                      weight.get_half_ptr(),
                                                      output.get_half_ptr(),
-                                                     bias.get_half_ptr(),
+                                                     bias_ptr,
                                                      stream);
   } else if (input.data_type == DT_FLOAT) {
+    float const *bias_ptr =
+        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(m,
                                                      bc,
                                                      input.get_float_ptr(),
                                                      weight.get_float_ptr(),
                                                      output.get_float_ptr(),
-                                                     bias.get_float_ptr(),
+                                                     bias_ptr,
                                                      stream);
   } else {
     assert(false && "Unspported data type");
@@ -762,48 +769,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _add_bias_kv,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
-    int num_samples,
-    int _num_heads)
-    : IncMultiHeadSelfAttentionMeta(handler,
-                                    INC_DECODING_MODE,
-                                    attn,
-                                    attn->qSize,
-                                    attn->kSize,
-                                    attn->vSize,
-                                    attn->qProjSize,
-                                    attn->kProjSize,
-                                    attn->vProjSize,
-                                    attn->oProjSize,
-                                    attn->apply_rotary_embedding,
-                                    attn->bias,
-                                    attn->scaling_query,
-                                    attn->qk_prod_scaling,
-                                    attn->add_bias_kv,
-                                    attn->scaling_factor,
-                                    weight_ptr,
-                                    gpu_mem,
-                                    num_samples,
-                                    _num_heads) {}
-
-IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
-    FFHandler handler,
-    InferenceMode infer_mode,
-    Op const *attn,
-    int _qSize,
-    int _kSize,
-    int _vSize,
-    int _qProjSize,
-    int _kProjSize,
-    int _vProjSize,
-    int _oProjSize,
-    bool _apply_rotary_embedding,
-    bool _bias,
-    bool _scaling_query,
-    bool _qk_prod_scaling,
-    bool _add_bias_kv,
-    float _scaling_factor,
-    float const *weight_ptr,
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
