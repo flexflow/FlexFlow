@@ -516,8 +516,11 @@ public:
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
   // Add a root mean square layer
-  Tensor
-      rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
+  Tensor rms_norm(const Tensor input,
+                  float eps,
+                  int dim,
+                  DataType data_type = DT_NONE,
+                  char const *name = NULL);
   // Add a beam search top k layer
   Tensor beam_top_k(const Tensor input,
                     int max_beam_size,
@@ -529,7 +532,7 @@ public:
                int outDim,
                ActiMode activation = AC_MODE_NONE,
                bool use_bias = true,
-               DataType data_type = DT_FLOAT,
+               DataType data_type = DT_NONE,
                Layer const *shared_op = NULL,
                Initializer *kernel_initializer = NULL,
                Initializer *bias_initializer = NULL,

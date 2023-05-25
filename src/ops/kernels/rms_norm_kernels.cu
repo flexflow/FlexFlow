@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/utils/cuda_helper.h"
@@ -36,8 +37,9 @@ RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
   batch_size = rms->effective_batch_size;
   num_elements = in_dim * batch_size;
 
-  checkCUDA(cudaMalloc(&rms_ptr, batch_size * sizeof(float)));
-  checkCUDA(cudaMalloc(&norm_ptr, num_elements * sizeof(float)));
+  DataType data_type = rms->weights[0]->data_type;
+  checkCUDA(cudaMalloc(&rms_ptr, batch_size * data_type_size(data_type)));
+  checkCUDA(cudaMalloc(&norm_ptr, num_elements * data_type_size(data_type)));
 }
 
 namespace Kernels {
@@ -83,18 +85,18 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 
 template <typename T>
 __global__ void
-    RowwiseRootMeanSquareKernel(int64_t N, T eps, T const *X, T *rms) {
+    RowwiseRootMeanSquareKernel(long long N, T eps, T const *X, T *rms) {
   __shared__ T v_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
+  long long const i = blockIdx.x;
   T sum = 0;
-  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+  for (long long j = threadIdx.x; j < N; j += blockDim.x) {
+    long long const index = i * N + j;
     sum += static_cast<T>(X[index]) * static_cast<T>(X[index]);
   }
   sum = BlockReduceSum<T>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
 
   if (threadIdx.x == 0) {
-    rms[i] = rsqrt((sum / static_cast<T>(N)) + static_cast<T>(eps));
+    rms[i] = rsqrt((sum / static_cast<T>(N)) + (eps));
     // printf("index: %d, rms norm mean value: %.15f, rms norm sum value: "
     //        "%.20f, eps: %f, value: %.20f, num:%d, num2: %d\n",
     //        i,
@@ -117,14 +119,45 @@ __global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
   }
 }
 
+template <typename T>
 __global__ void elewise_apply_weights(int64_t batch_size,
                                       int64_t in_dim,
-                                      float const *norm,
-                                      float const *weights,
-                                      float *output) {
+                                      T const *norm,
+                                      T const *weights,
+                                      T *output) {
   CUDA_KERNEL_LOOP(i, batch_size * in_dim) {
     output[i] = norm[i] * weights[i % in_dim];
   }
+}
+
+template <typename T>
+void forward_kernel(RMSNormMeta const *m,
+                    T const *input_ptr,
+                    T const *weight_ptr,
+                    T *output_ptr,
+                    cudaStream_t stream) {
+  int parallelism = m->batch_size * m->in_dim;
+  RowwiseRootMeanSquareKernel<T>
+      <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
+          m->in_dim,
+          static_cast<T>(m->eps),
+          input_ptr,
+          static_cast<T *>(m->rms_ptr));
+
+  NormKernel<T><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
+      m->in_dim,
+      input_ptr,
+      static_cast<T *>(m->rms_ptr),
+      static_cast<T *>(m->norm_ptr));
+
+  elewise_apply_weights<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(m->batch_size,
+                                    m->in_dim,
+                                    static_cast<T *>(m->norm_ptr),
+                                    weight_ptr,
+                                    output_ptr);
 }
 
 void forward_kernel_wrapper(RMSNormMeta const *m,
@@ -133,7 +166,6 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  int parallelism = m->batch_size * m->in_dim;
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
@@ -141,21 +173,24 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  RowwiseRootMeanSquareKernel<float>
-      <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->in_dim, m->eps, input.get_float_ptr(), m->rms_ptr);
+  assert(output.data_type == input.data_type);
+  assert(weight.data_type == output.data_type);
+  if (output.data_type == DT_HALF) {
+    forward_kernel(m,
+                   input.get_half_ptr(),
+                   weight.get_half_ptr(),
+                   output.get_half_ptr(),
+                   stream);
+  } else if (output.data_type == DT_FLOAT) {
+    forward_kernel(m,
+                   input.get_float_ptr(),
+                   weight.get_float_ptr(),
+                   output.get_float_ptr(),
+                   stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
 
-  NormKernel<float><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
-      m->in_dim, input.get_float_ptr(), m->rms_ptr, m->norm_ptr);
-
-  elewise_apply_weights<<<GET_BLOCKS(parallelism),
-                          min(CUDA_NUM_THREADS, parallelism),
-                          0,
-                          stream>>>(m->batch_size,
-                                    m->in_dim,
-                                    m->norm_ptr,
-                                    weight.get_float_ptr(),
-                                    output.get_float_ptr());
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));

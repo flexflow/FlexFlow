@@ -10,7 +10,7 @@ namespace FlexFlow {
 
 class ArgTopKMeta : public OpMeta {
 public:
-  ArgTopKMeta(FFHandler handle);
+  ArgTopKMeta(FFHandler handle, Op const *op);
   bool sorted;
 };
 
@@ -68,8 +68,9 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+  template <typename DT>
   static void forward_kernel(ArgTopKMeta const *m,
-                             float const *input_ptr,
+                             DT const *input_ptr,
                              // float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
@@ -78,13 +79,8 @@ public:
                              bool sorted,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
-                                     float const *input_ptr,
-                                     // float *output_ptr,
-                                     int *indices_ptr,
-                                     size_t batch_size,
-                                     int length,
-                                     int k,
-                                     bool sorted);
+                                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW const &indices);
   Params get_params() const;
 
 public:

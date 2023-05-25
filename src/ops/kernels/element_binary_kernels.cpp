@@ -67,9 +67,9 @@ void init_kernel(ElementBinaryMeta *m,
 
 /*static*/
 void forward_kernel_wrapper(ElementBinaryMeta const *m,
-                            float const *in1_ptr,
-                            float const *in2_ptr,
-                            float *out_ptr) {
+                            GenericTensorAccessorR const &in1,
+                            GenericTensorAccessorR const &in2,
+                            GenericTensorAccessorW const &out) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -81,7 +81,8 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
   }
   // print_tensor<float>(in1_ptr, in1_domain.get_volume(), "input1:");
   // print_tensor<float>(in2_ptr, in2_domain.get_volume(), "input2:");
-  Internal::forward_kernel(m, in1_ptr, in2_ptr, out_ptr, stream);
+  Internal::forward_kernel(
+      m, in1.get_float_ptr(), in2.get_float_ptr(), out.get_float_ptr(), stream);
   // print_tensor<float>(out_ptr, in1_domain.get_volume(), "output:");
   if (m->profiling) {
     hipEventRecord(t_end, stream);
@@ -238,10 +239,11 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
 }
 
 /*static*/
+template <typename DT>
 void forward_kernel(ElementBinaryMeta const *m,
-                    float const *in1_ptr,
-                    float const *in2_ptr,
-                    float *out_ptr,
+                    DT const *in1_ptr,
+                    DT const *in2_ptr,
+                    DT *out_ptr,
                     hipStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));

@@ -364,8 +364,9 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
 }
 
 /*static*/
+template <typename DT>
 void ArgTopK::forward_kernel(ArgTopKMeta const *m,
-                             float const *input_ptr,
+                             DT const *input_ptr,
                              // float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
@@ -378,7 +379,7 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
   int num_shards = 0;
   {
     constexpr auto shared_memory_size = 48 << 10;
-    auto const heap_size = k * sizeof(Entry<float>);
+    auto const heap_size = k * sizeof(Entry<DT>);
     // shared_memory_size = (num_shards + 1) * heap_size <=>
     num_shards = shared_memory_size / heap_size - 1;
     assert(num_shards > 0);
@@ -387,7 +388,7 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
     }
   }
   // We are limited by the amount of shared memory we have per block.
-  size_t shared_memory_size = (num_shards + 1) * k * sizeof(Entry<float>);
+  size_t shared_memory_size = (num_shards + 1) * k * sizeof(Entry<DT>);
   // size_t num_blocks = (batch_size + num_shards - 1) / num_shards;
   size_t num_blocks = batch_size;
   assert(num_shards >= (size_t)k);
@@ -408,15 +409,41 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
 
 /*static*/
 void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
-                                     float const *input_ptr,
+                                     GenericTensorAccessorR const &input,
                                      // float *output_ptr,
-                                     int *indices_ptr,
-                                     size_t batch_size,
-                                     int length,
-                                     int k,
-                                     bool sorted) {
+                                     GenericTensorAccessorW const &indices) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  // Domain in1_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[0].region.get_index_space());
+  //   Domain out1_domain = runtime->get_index_space_domain(
+  //       ctx, task->regions[1].region.get_index_space());
+  // Domain out2_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[1].region.get_index_space());
+  int numdims = input.domain.get_dim();
+  assert(indices.domain.get_dim() == numdims);
+
+  int in_cols = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  // int out1_cols = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
+  int out2_cols = indices.domain.hi()[0] - indices.domain.lo()[0] + 1;
+
+  // assert(out1_domain == out2_domain);
+  for (int i = 1; i < input.domain.get_dim(); i++) {
+    assert(input.domain.lo()[i] == indices.domain.lo()[i]);
+    assert(input.domain.hi()[i] == indices.domain.hi()[i]);
+  }
+  // float const *in_ptr = helperGetTensorPointerRO<float>(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  //   float *value_ptr = helperGetTensorPointerWO<float>(
+  //       regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  // int *index_ptr = helperGetTensorPointerWO<int>(
+  //    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  int k = indices.domain.hi()[0] - indices.domain.lo()[0] +
+          1; /*TODO: This prints to 5*/
+  size_t batch_size = input.domain.get_volume() / length;
+  assert(indices.domain.get_volume() / k == batch_size);
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -425,16 +452,29 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
     hipEventRecord(t_start, stream);
   }
 
-  ArgTopK::forward_kernel(m,
-                          input_ptr,
-                          // output_ptr,
-                          indices_ptr,
-                          batch_size,
-                          length,
-                          k,
-                          sorted,
-                          stream);
-
+  if (input.data_type == DT_HALF) {
+    ArgTopK::forward_kernel(m,
+                            input.get_half_ptr(),
+                            // output_ptr,
+                            indices.get_int32_ptr(),
+                            batch_size,
+                            length,
+                            k,
+                            m->sorted,
+                            stream);
+  } else if (input.data_type == DT_FLOAT) {
+    ArgTopK::forward_kernel(m,
+                            input.get_float_ptr(),
+                            // output_ptr,
+                            indices.get_int32_ptr(),
+                            batch_size,
+                            length,
+                            k,
+                            m->sorted,
+                            stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));

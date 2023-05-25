@@ -14,6 +14,7 @@
  */
 
 #include "file_loader.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/inference.h"
 
 #include <vector>
@@ -60,7 +61,8 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
   return prompts;
 };
 
-void load_attention_bias(float *ptr,
+template <typename DT>
+void load_attention_bias(DT *ptr,
                          int num_heads,
                          size_t hidden_dim,
                          size_t qkv_inner_dim,
@@ -87,8 +89,8 @@ void load_attention_bias(float *ptr,
     // std::cout << "Loading filename: " << file << std::endl;
     std::ifstream in(file, std::ios::in | std::ios::binary);
     assert(in.good() && "incorrect bias file path");
-    std::vector<float> host_array(partial_size);
-    size_t loaded_data_size = sizeof(float) * partial_size;
+    std::vector<DT> host_array(partial_size);
+    size_t loaded_data_size = sizeof(DT) * partial_size;
     in.seekg(0, in.end);
     in.seekg(0, in.beg);
     in.read((char *)host_array.data(), loaded_data_size);
@@ -113,7 +115,8 @@ void load_attention_bias(float *ptr,
   }
 }
 
-void load_attention_weights(float *ptr,
+template <typename DT>
+void load_attention_weights(DT *ptr,
                             int num_heads,
                             size_t hidden_dim,
                             size_t qkv_inner_dim,
@@ -154,8 +157,8 @@ void load_attention_weights(float *ptr,
       std::cout << "Could not open file: " << file << std::endl;
     }
     assert(in.good() && "incorrect weight file path");
-    std::vector<float> host_array(partial_size);
-    size_t loaded_data_size = sizeof(float) * partial_size;
+    std::vector<DT> host_array(partial_size);
+    size_t loaded_data_size = sizeof(DT) * partial_size;
     in.seekg(0, in.end);
     in.seekg(0, in.beg);
     in.read((char *)host_array.data(), loaded_data_size);
@@ -183,15 +186,16 @@ void load_attention_weights(float *ptr,
   }
 }
 
-void load_from_file(float *ptr, size_t size, std::string filename) {
+template <typename DT>
+void load_from_file(DT *ptr, size_t size, std::string filename) {
   // std::cout << "Loading filename: " << filename << std::endl;
   std::ifstream in(filename, std::ios::in | std::ios::binary);
   if (!in.good()) {
     std::cout << "Could not open file: " << filename << std::endl;
   }
   assert(in.good() && "incorrect weight file path");
-  std::vector<float> host_array(size);
-  size_t loaded_data_size = sizeof(float) * size;
+  std::vector<DT> host_array(size);
+  size_t loaded_data_size = sizeof(DT) * size;
   in.seekg(0, in.end);
   in.seekg(0, in.beg);
   in.read((char *)host_array.data(), loaded_data_size);
@@ -199,7 +203,7 @@ void load_from_file(float *ptr, size_t size, std::string filename) {
   size_t in_get_size = in.gcount();
   if (in_get_size != loaded_data_size) {
     std::cout << "load weight data error " << in_get_size << ", "
-              << loaded_data_size << ", " << sizeof(float) << std::endl;
+              << loaded_data_size << ", " << sizeof(DT) << std::endl;
     return;
   }
   assert(size == host_array.size());
@@ -237,60 +241,77 @@ void FileDataLoader::load_positions(FFModel *ff,
   position_pt->set_tensor<int>(ff, dims_vec, data);
 }
 
+template <typename DT>
+void FileDataLoader::load_single_weight_tensor(FFModel *ff,
+                                               Tensor weight,
+                                               int weight_idx,
+                                               std::string const &layername) {
+  size_t volume = 1;
+  std::vector<int> dims_vec;
+  for (int i = 0; i < weight->num_dims; i++) {
+    dims_vec.push_back(weight->dims[i]);
+    volume *= weight->dims[i];
+  }
+
+  assert(data_type_size(weight->data_type) == sizeof(DT));
+  DT *data = (DT *)malloc(sizeof(DT) * volume);
+
+  std::string file_path =
+      (layername.back() == '/') ? layername : "/" + layername;
+
+  if (file_path.find("attention_w") != std::string::npos) {
+    if (weight_idx == 0) {
+      load_attention_weights(data,
+                             num_heads,
+                             hidden_dim,
+                             qkv_inner_dim,
+                             file_path,
+                             weight_file_path,
+                             volume);
+    } else {
+      load_attention_bias(data,
+                          num_heads,
+                          hidden_dim,
+                          qkv_inner_dim,
+                          file_path,
+                          weight_file_path);
+    }
+
+  } else {
+    if (weight_idx > 0) {
+      int index = file_path.find("_weight");
+      assert(index != std::string::npos);
+      file_path = file_path.substr(0, index) + "_bias";
+    }
+    load_from_file(data, volume, weight_file_path + file_path);
+  }
+
+  ParallelTensor weight_pt;
+  ff->get_parallel_tensor_from_tensor(weight, weight_pt);
+  weight_pt->set_tensor<DT>(ff, dims_vec, data);
+
+  delete data;
+}
+
 void FileDataLoader::load_weights(
     FFModel *ff, std::unordered_map<std::string, Layer *> weights_layers) {
-
   for (auto &v : weights_layers) {
-
     int weights_num = v.second->numWeights;
     for (int i = 0; i < weights_num; i++) {
       Tensor weight = v.second->weights[i];
       if (weight == NULL) {
         continue;
       }
-
-      size_t volume = 1;
-      std::vector<int> dims_vec;
-      for (int i = 0; i < weight->num_dims; i++) {
-        dims_vec.push_back(weight->dims[i]);
-        volume *= weight->dims[i];
+      switch (weight->data_type) {
+        case DT_HALF:
+          load_single_weight_tensor<half>(ff, weight, i, v.first);
+          break;
+        case DT_FLOAT:
+          load_single_weight_tensor<float>(ff, weight, i, v.first);
+          break;
+        default:
+          assert(false && "Unsupported data type");
       }
-
-      assert(weight->data_type == DT_FLOAT);
-      float *data = (float *)malloc(sizeof(float) * volume);
-
-      std::string file_path = (v.first.back() == '/') ? v.first : "/" + v.first;
-
-      if (file_path.find("attention_w") != std::string::npos) {
-        if (i == 0) {
-          load_attention_weights(data,
-                                 num_heads,
-                                 hidden_dim,
-                                 qkv_inner_dim,
-                                 file_path,
-                                 weight_file_path,
-                                 volume);
-        } else {
-          load_attention_bias(data,
-                              num_heads,
-                              hidden_dim,
-                              qkv_inner_dim,
-                              file_path,
-                              weight_file_path);
-        }
-
-      } else {
-        if (i > 0) {
-          int index = file_path.find("_weight");
-          assert(index != std::string::npos);
-          file_path = file_path.substr(0, index) + "_bias";
-        }
-        load_from_file(data, volume, weight_file_path + file_path);
-      }
-
-      ParallelTensor weight_pt;
-      ff->get_parallel_tensor_from_tensor(weight, weight_pt);
-      weight_pt->set_tensor<float>(ff, dims_vec, data);
     }
   }
 }

@@ -40,14 +40,31 @@ Tensor FFModel::dense(const Tensor input,
                       RegularizerMode kernel_reg_type,
                       float kernel_reg_lambda,
                       char const *name) {
-  Layer *li = new Layer(this,
-                        OP_LINEAR,
-                        data_type,
-                        name,
-                        1 /*inputs*/,
-                        use_bias ? 2 : 1 /*weights*/,
-                        1 /*outputs*/,
-                        input);
+  if (data_type == DT_NONE) {
+    data_type = input->data_type;
+  }
+  Layer *li = nullptr;
+  if (data_type != input->data_type) {
+    Tensor casted_input = cast(input, data_type, "type cast for dense");
+    li = new Layer(this,
+                   OP_LINEAR,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   use_bias ? 2 : 1 /*weights*/,
+                   1 /*outputs*/,
+                   casted_input);
+  } else {
+    li = new Layer(this,
+                   OP_LINEAR,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   use_bias ? 2 : 1 /*weights*/,
+                   1 /*outputs*/,
+                   input);
+  }
+
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
@@ -333,12 +350,24 @@ OpMeta *Linear::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  switch (out_domain.get_dim()) {
+  Linear const *linear = (Linear *)task->args;
+  GenericTensorAccessorW output =
+      helperGetGenericTensorAccessorWO(linear->inputs[0]->data_type,
+                                       regions[0],
+                                       task->regions[0],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  switch (output.domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return init_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (output.data_type == DT_HALF) {                                         \
+      return init_task_with_dim<half, DIM>(task, regions, ctx, runtime);       \
+    } else if (output.data_type == DT_FLOAT) {                                 \
+      return init_task_with_dim<float, DIM>(task, regions, ctx, runtime);      \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -347,7 +376,7 @@ OpMeta *Linear::init_task(Task const *task,
   return NULL;
 }
 
-template <int NDIM>
+template <typename DT, int NDIM>
 OpMeta *Linear::init_task_with_dim(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
@@ -358,18 +387,18 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   FFHandler handle = *((FFHandler const *)task->local_args);
   // TensorAccessorR<float, 2> acc_input(
   //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, NDIM> acc_output(regions[0],
-                                          task->regions[0],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
-  TensorAccessorW<float, NDIM> acc_kernel(regions[1],
-                                          task->regions[1],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
+  TensorAccessorW<DT, NDIM> acc_output(regions[0],
+                                       task->regions[0],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
+  TensorAccessorW<DT, NDIM> acc_kernel(regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
   // TensorAccessorR<float, 1> acc_bias(
   //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
   // int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
@@ -494,12 +523,21 @@ void Linear::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  Domain in_domain = runtime->get_index_space_domain(
+  Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  switch (in_domain.get_dim()) {
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  assert(m->input_type == m->weight_type);
+  assert(m->input_type == m->output_type);
+  switch (input_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (m->output_type == DT_HALF) {                                           \
+      return forward_task_with_dim<half, DIM>(task, regions, ctx, runtime);    \
+    } else if (m->output_type == DT_FLOAT) {                                   \
+      return forward_task_with_dim<float, DIM>(task, regions, ctx, runtime);   \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -513,7 +551,7 @@ void Linear::forward_task(Task const *task,
   regions[2](I): kernel
   regions[3](I): bias
 */
-template <int NDIM>
+template <typename DT, int NDIM>
 void Linear::forward_task_with_dim(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
@@ -523,15 +561,15 @@ void Linear::forward_task_with_dim(Task const *task,
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
 
-  TensorAccessorR<float, NDIM> acc_input(
+  TensorAccessorR<DT, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, NDIM> acc_output(regions[1],
-                                          task->regions[1],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
-  TensorAccessorR<float, NDIM> acc_kernel(
+  TensorAccessorW<DT, NDIM> acc_output(regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
+  TensorAccessorR<DT, NDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
@@ -539,9 +577,9 @@ void Linear::forward_task_with_dim(Task const *task,
   assert(acc_output.rect.volume() == static_cast<size_t>(out_dim * batch_size));
   assert(acc_input.rect.volume() == static_cast<size_t>(in_dim * batch_size));
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
-  float const *acc_bias_ptr = NULL;
+  DT const *acc_bias_ptr = nullptr;
   if (m->use_bias) {
-    TensorAccessorR<float, NDIM> acc_bias(
+    TensorAccessorR<DT, NDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(acc_bias.rect.volume() == static_cast<size_t>(out_dim));
     acc_bias_ptr = acc_bias.ptr;
@@ -639,10 +677,19 @@ void Linear::backward_task(Task const *task,
                            Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  assert(m->input_type == m->weight_type);
+  assert(m->input_type == m->output_type);
   switch (in_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (m->output_type == DT_HALF) {                                           \
+      return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
+    } else if (m->output_type == DT_FLOAT) {                                   \
+      return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -659,7 +706,7 @@ void Linear::backward_task(Task const *task,
   regions[5](I/O): filter_grad
   regions[6](I/O): bias_grad
 */
-template <int NDIM>
+template <typename DT, int NDIM>
 void Linear::backward_task_with_dim(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
@@ -671,9 +718,9 @@ void Linear::backward_task_with_dim(Task const *task,
   assert(task->regions.size() ==
          (5 + static_cast<size_t>(m->trainableInputs[0]) +
           static_cast<size_t>(m->use_bias)));
-  float *input_grad = NULL;
+  DT *input_grad = nullptr;
   size_t rid = 0;
-  TensorAccessorR<float, NDIM> acc_input(
+  TensorAccessorR<DT, NDIM> acc_input(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
   if (m->trainableInputs[0]) {
@@ -681,39 +728,39 @@ void Linear::backward_task_with_dim(Task const *task,
         ctx, task->regions[rid].region.get_index_space());
     if (domain.get_dim() == NDIM + 1) {
       assert(domain.get_volume() == acc_input.rect.volume());
-      input_grad = helperGetTensorPointerWO<float>(
+      input_grad = helperGetTensorPointerWO<DT>(
           regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
     } else {
-      TensorAccessorW<float, NDIM> acc_replica_grad(regions[rid],
-                                                    task->regions[rid],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime,
-                                                    true /*readOutput*/);
+      TensorAccessorW<DT, NDIM> acc_replica_grad(regions[rid],
+                                                 task->regions[rid],
+                                                 FID_DATA,
+                                                 ctx,
+                                                 runtime,
+                                                 true /*readOutput*/);
       assert(acc_replica_grad.rect.volume() == acc_input.rect.volume());
       input_grad = acc_replica_grad.ptr;
     }
     rid++;
   }
-  TensorAccessorR<float, NDIM> acc_output(
+  TensorAccessorR<DT, NDIM> acc_output(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
-  TensorAccessorW<float, NDIM> acc_output_grad(regions[rid],
-                                               task->regions[rid],
-                                               FID_DATA,
-                                               ctx,
-                                               runtime,
-                                               true /*readOutput*/);
+  TensorAccessorW<DT, NDIM> acc_output_grad(regions[rid],
+                                            task->regions[rid],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime,
+                                            true /*readOutput*/);
   rid++;
-  TensorAccessorR<float, NDIM> acc_kernel(
+  TensorAccessorR<DT, NDIM> acc_kernel(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
-  TensorAccessorW<float, NDIM> acc_kernel_grad(regions[rid],
-                                               task->regions[rid],
-                                               FID_DATA,
-                                               ctx,
-                                               runtime,
-                                               true /*readOutput*/);
+  TensorAccessorW<DT, NDIM> acc_kernel_grad(regions[rid],
+                                            task->regions[rid],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime,
+                                            true /*readOutput*/);
   rid++;
   // make sure the sizes match
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
@@ -725,17 +772,17 @@ void Linear::backward_task_with_dim(Task const *task,
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   assert(acc_kernel_grad.rect.volume() ==
          static_cast<size_t>(in_dim * out_dim));
-  float *acc_bias_grad_ptr = NULL;
+  DT *acc_bias_grad_ptr = nullptr;
   if (m->use_bias) {
-    TensorAccessorW<float, 3> acc_bias_grad(regions[rid],
-                                            task->regions[rid],
-                                            FID_DATA,
-                                            ctx,
-                                            runtime,
-                                            true /*readOutput*/);
+    TensorAccessorW<DT, 3> acc_bias_grad(regions[rid],
+                                         task->regions[rid],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime,
+                                         true /*readOutput*/);
     rid++;
     assert(acc_bias_grad.rect.volume() == static_cast<size_t>(out_dim));
-    acc_bias_grad_ptr = static_cast<float *>(acc_bias_grad.ptr);
+    acc_bias_grad_ptr = static_cast<DT *>(acc_bias_grad.ptr);
   }
   assert(rid == regions.size());
 

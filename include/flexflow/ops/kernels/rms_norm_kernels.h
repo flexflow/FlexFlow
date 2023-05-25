@@ -24,8 +24,8 @@ public:
 
 public:
   float eps;
-  float *rms_ptr;
-  float *norm_ptr;
+  void *rms_ptr;
+  void *norm_ptr;
 
   float alpha;
   float beta;

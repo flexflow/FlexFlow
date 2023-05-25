@@ -56,7 +56,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                               llama_config.vocab_size,
                               llama_config.dim,
                               AGGR_MODE_NONE,
-                              DT_FLOAT,
+                              DT_HALF,
                               NULL,
                               embed_init);
   Layer *embedding = ff.layers.back();

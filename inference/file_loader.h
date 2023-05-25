@@ -32,6 +32,11 @@ public:
 
   BatchConfig::TokenId *generate_requests(int num, int length);
 
+  template <typename DT>
+  void load_single_weight_tensor(FFModel *ff,
+                                 Tensor weight,
+                                 int weight_idx,
+                                 std::string const &layername);
   void load_weights(FFModel *ff,
                     std::unordered_map<std::string, Layer *> weights_layers);
 

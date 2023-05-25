@@ -88,7 +88,7 @@ Simulator::Simulator(FFModel const *model,
   linear_meta = new LinearMeta(handler, 4096);
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
-  ele_binary_meta = new ElementBinaryMeta(handler);
+  // ele_binary_meta = new ElementBinaryMeta(handler);
   // embedding_meta = new EmbeddingMeta(handler);
   //  softmax_meta = new SoftmaxMeta(handler);
   batch_matmul_meta = new BatchMatmulMeta(handler);
