@@ -3,6 +3,7 @@
 #include "serialization.h"
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/ffconst.h"
+#include <rapidcheck.h>
 
 using namespace FlexFlow;
 
@@ -48,11 +49,15 @@ TEST_CASE("Serialization") {
     TransposeAttrs transpose_attrs
   }
 
-  for (auto const & op: operator_attrs) {
-    std::visit([](auto const & arg){ 
-      using T = decltype(arg);
-      ff_task_serialize<T>(sez, arg);
-      CHECK(op == ff_task_deserialize<T>(dez));
-    }, op);
+  for (CompleteOperatorAttrs const & op: operator_attrs) {
+    CHECK(rc::check("Serialization", 
+                    [](CompleteOperatorAttrs const & pre_op) {
+        pre_op = *rc::gen::arbitrary<CompleteOperatorAttrs>();
+        auto post_op = pre_op;
+        ff_task_serialize<CompleteOperatorAttrs>(sez, post_op);
+        auto post_op = ff_task_deserialize<CompleteOperatorAttrs>(dez);
+        RC_ASSERT(post_op == pre_op);
+      })
+    )
   }
 }

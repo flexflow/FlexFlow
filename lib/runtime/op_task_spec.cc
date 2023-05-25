@@ -46,44 +46,39 @@ Legion::PrivilegeMode TensorSlotSpec::get_privileges(OpTaskType task_type) const
   };
 }
 
-TensorSlotSpec get_backward_slot(TensorSlotSpec const &forward_slot) {
+OpTensorSlotSpec get_backward_slot(OpTensorSlotSpec const &forward_slot) {
   assert (forward_slot.is_grad == IsGrad::NO);
   return {
     forward_slot.name,
     forward_slot.slot_type,
     forward_slot.tensor_role,
-    IsGrad::NO
+    IsGrad::NO,
+    forward_slot.slot_option
   };
 }
 
-TensorSlotSpec get_backward_grad_slot(TensorSlotSpec const &forward_slot) {
+OpTensorSlotSpec get_backward_grad_slot(OpTensorSlotSpec const &forward_slot) {
+  assert (forward_slot.is_grad == IsGrad::NO);
   return {
     forward_slot.name,
     forward_slot.slot_type,
     forward_slot.tensor_role,
-    IsGrad::YES
+    IsGrad::YES,
+    forward_slot.slot_option
   };
 }
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd) {
+  assert(fwd.get_task_type() == OpTaskType::FWD);
+
   OpTaskSignature bwd(OpTaskType::BWD);
 
-  for (SlotSpec const &slot : fwd.get_slots()) {
-    if (is_tensor_slot(slot)) {
-      TensorSlotSpec tensor_slot = get_tensor_slot(slot);
-      assert (tensor_slot.is_grad == IsGrad::NO);
-
-      TensorSlotSpec grad_slot = tensor_slot;
-      grad_slot.is_grad = IsGrad::YES;
-
-      bwd.add_slot(tensor_slot);
-      bwd.add_slot(grad_slot);
-    } else if (is_arg_slot(slot)) {
-      ArgSlotSpec arg_slot = get_arg_slot(slot);
-
-      bwd.add_slot(arg_slot);
-    }
+  for (OpTensorSlotSpec const &slot : fwd.get_tensor_slots()) {
+    bwd.add_from_slot_spec(get_backward_slot(slot));
+    bwd.add_from_slot_spec(get_backward_grad_slot(slot));
   }
+
+  bwd.set_arg_types(fwd.get_arg_types());
 }
 
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
@@ -121,6 +116,41 @@ OpTensorSpec param_tensor(int idx) {
     IsGrad::NO
   };
 }
+
+void OpTaskSignature::add_input_slot(slot_id, SlotType slot_type) {
+  this.op_tensor_slots.insert({
+    slot_id,
+    slot_type,
+    TensorRole::INPUT,
+    IsGrad::NO,
+    OpSlotOptions::NECESSARY
+  })
+}
+
+void OpTaskSignature::add_optional_input_slot(slot_id, SlotType slot_type) {
+  this.op_tensor_slots.insert({
+    slot_id,
+    slot_type,
+    TensorRole::INPUT,
+    IsGrad::NO,
+    OpSlotOptions::OPTIONAL
+  })
+}
+
+void OpTaskSignature::add_untrainable_input_slot(slot_id, SlotType slot_type) {
+  this.op_tensor_slots.insert({
+    slot_id,
+    slot_type,
+    TensorRole::INPUT,
+    IsGrad::NO,
+    OpSlotOptions::UNTRAINABLE
+  })
+}
+
+void OpTaskSignature::add_from_slot_spec(OpTensorSlotSpec const & spec) {
+  this.op_tensor_slots.insert(spec);
+}
+
 
 using TensorSpecCollection = std::unordered_map<slot_id, variant<OpTensorSpec, std::vector<OpTensorSpec>>>;
 
