@@ -765,6 +765,48 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
+    : IncMultiHeadSelfAttentionMeta(handler,
+                                    INC_DECODING_MODE,
+                                    attn,
+                                    attn->qSize,
+                                    attn->kSize,
+                                    attn->vSize,
+                                    attn->qProjSize,
+                                    attn->kProjSize,
+                                    attn->vProjSize,
+                                    attn->oProjSize,
+                                    attn->apply_rotary_embedding,
+                                    attn->bias,
+                                    attn->scaling_query,
+                                    attn->qk_prod_scaling,
+                                    attn->add_bias_kv,
+                                    attn->scaling_factor,
+                                    weight_ptr,
+                                    gpu_mem,
+                                    num_samples,
+                                    _num_heads) {}
+
+IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
+    FFHandler handler,
+    InferenceMode infer_mode,
+    Op const *attn,
+    int _qSize,
+    int _kSize,
+    int _vSize,
+    int _qProjSize,
+    int _kProjSize,
+    int _vProjSize,
+    int _oProjSize,
+    bool _apply_rotary_embedding,
+    bool _bias,
+    bool _scaling_query,
+    bool _qk_prod_scaling,
+    bool _add_bias_kv,
+    float _scaling_factor,
+    float const *weight_ptr,
+    Memory gpu_mem,
+    int num_samples,
+    int _num_heads)
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
