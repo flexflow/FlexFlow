@@ -92,9 +92,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int num_samples,
     int _num_heads)
     : OpMeta(handler, attn) {
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDNN(cudnnSetStream(handler.dnn, stream));
+  checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {}
