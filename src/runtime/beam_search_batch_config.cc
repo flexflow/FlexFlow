@@ -41,7 +41,7 @@ BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
 
 BeamSearchBatchConfig::~BeamSearchBatchConfig() {}
 
-BatchConfig::Mode BeamSearchBatchConfig::get_mode() const {
+InferenceMode BeamSearchBatchConfig::get_mode() const {
   return BEAM_SEARCH_MODE;
 }
 

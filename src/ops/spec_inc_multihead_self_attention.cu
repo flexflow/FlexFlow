@@ -15,6 +15,7 @@
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
 #endif
+#include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -23,286 +24,7 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 using Legion::Memory;
-
-__global__ void spec_build_w_out_tensor(float const *weight_ptr,
-                                        float *contiguous_weight_ptr,
-                                        int vProjSize,
-                                        int oProjSize,
-                                        int num_heads,
-                                        int qkv_weight_block_size) {
-  CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
-    int row_idx = i % vProjSize;
-    int col_idx = (i / vProjSize) % oProjSize;
-    int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[i] =
-        weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
-                   qkv_weight_block_size + col_idx * vProjSize + row_idx];
-  }
-}
-
-__global__ void spec_apply_proj_bias_w(float *input_ptr,
-                                       float const *bias_ptr,
-                                       int num_tokens,
-                                       int oProjSize) {
-  CUDA_KERNEL_LOOP(i, num_tokens * oProjSize) {
-    int bias_idx = 3 * oProjSize + i % oProjSize;
-    input_ptr[i] += bias_ptr[bias_idx];
-  }
-}
-
-__global__ void spec_apply_proj_bias_qkv(float *input_ptr,
-                                         float const *bias_ptr,
-                                         int num_tokens,
-                                         int qProjSize,
-                                         int kProjSize,
-                                         int vProjSize,
-                                         int num_heads,
-                                         bool scaling_query,
-                                         float scaling_factor) {
-  CUDA_KERNEL_LOOP(
-      i, num_tokens * (qProjSize + kProjSize + vProjSize) * num_heads) {
-    // for simplicity, assume q, k, v is in same shape
-    // 0->q, 1->k, 2->v
-    int qkv_index = i / (num_tokens * qProjSize) % 3;
-
-    int head_idx = i / (num_tokens * (qProjSize + kProjSize + vProjSize));
-    int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
-    int q_block_size = qProjSize * num_tokens;
-
-    int idx = i % (num_tokens * (qProjSize));
-
-    int real_part_index =
-        head_idx * qkv_block_size + qkv_index * q_block_size + idx;
-    int bias_idx = qkv_index * qProjSize * num_heads + head_idx * qProjSize +
-                   (idx % qProjSize);
-    input_ptr[real_part_index] += bias_ptr[bias_idx];
-
-    if (scaling_query && qkv_index == 0) {
-      input_ptr[real_part_index] *= scaling_factor;
-    }
-  }
-}
-
-__global__ void
-    spec_apply_rotary_embedding(float *input_ptr,
-                                cuFloatComplex *complex_input,
-                                BatchConfig::PerTokenInfo *tokenInfos,
-                                int qProjSize,
-                                int kProjSize,
-                                int num_heads,
-                                int num_tokens,
-                                int q_block_size,
-                                int k_block_size,
-                                int v_block_size,
-                                bool q_tensor) {
-  int proj_size = q_tensor ? qProjSize : kProjSize;
-  CUDA_KERNEL_LOOP(i, num_tokens * proj_size * num_heads / 2) {
-    // create complex number
-    int head_idx = i / (num_tokens * proj_size / 2);
-    int idx = i % (num_tokens * proj_size / 2);
-    int token_idx =
-        (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-
-    int real_part_index =
-        idx + token_idx * (proj_size / 2) +
-        head_idx * (q_block_size + k_block_size + v_block_size) +
-        (q_tensor ? 0 : q_block_size);
-    int complex_part_index = real_part_index + (proj_size / 2);
-
-    complex_input[i] = {input_ptr[real_part_index],
-                        input_ptr[complex_part_index]};
-
-    // get the freq_cis: shape 1 * (qProjSize/2) = 1 * 64
-    // apply a Cartesian coordinate transformation
-    // multiple with input & /copy back to q/k
-
-    // get position of token
-    //  int head_idx = i / (num_tokens * proj_size);
-
-    // size_t pos = id_map[token_idx].token_position;
-    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
-
-    // float before_real = complex_input[i].x, before_complex =
-    // complex_input[i].y;
-
-    int pos_i = i % (proj_size / 2);
-    float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
-    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
-
-    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-
-    input_ptr[real_part_index] = complex_input[i].x;
-    input_ptr[complex_part_index] = complex_input[i].y;
-  }
-}
-
-void compute_qkv_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                        BeamSearchBatchConfig const *bc,
-                        float const *input_ptr,
-                        float const *weight_ptr,
-                        float *output_ptr,
-                        float const *bias_ptr,
-                        cudaStream_t stream) {
-
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f, beta = 0.0f;
-  assert(m->qSize == m->vSize && m->qSize == m->kSize);
-  cudaDataType_t data_type = ff_to_cuda_datatype(DT_FLOAT);
-#if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-#else
-  cudaDataType_t compute_type = CUDA_R_32F;
-#endif
-  // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
-  // Weights: qSize x qProjSize x 3 x num_heads
-  // Input: qSize x num_tokens
-  // Output >>> qProjSize x num_tokens x 3 x num_heads
-  int m_q = m->qProjSize;
-  int m_k = m->kProjSize;
-  int m_v = m->vProjSize;
-  assert(m_q == m_k && m_k == m_v); // keep things simple for now
-  int n = bc->num_active_tokens();
-  int k = m->qSize;
-  int lda = k, ldb = k, ldc_q = m_q, ldc_k = m_k, ldc_v = m_v;
-  size_t strideA =
-      m->weights_params; // need to also skip over all the parameters for each
-                         // head, plus the unused W_o weights
-  size_t strideB = 0;    // input stays the same for all heads.
-  size_t strideC =
-      (m_q + m_k + m_v) * n; // size of the output block for each head.
-  // Q
-  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_OP_N,
-                                       m_q,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       weight_ptr,
-                                       data_type,
-                                       lda,
-                                       strideA,
-                                       input_ptr,
-                                       data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       output_ptr,
-                                       data_type,
-                                       ldc_q,
-                                       strideC,
-                                       m->num_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
-  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_OP_N,
-                                       m_k,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       weight_ptr + m_q * k,
-                                       data_type,
-                                       lda,
-                                       strideA,
-                                       input_ptr,
-                                       data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       output_ptr + m_q * n,
-                                       data_type,
-                                       ldc_k,
-                                       strideC,
-                                       m->num_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // V
-  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_OP_N,
-                                       m_v,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       weight_ptr + (m_q + m_k) * k,
-                                       data_type,
-                                       lda,
-                                       strideA,
-                                       input_ptr,
-                                       data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       output_ptr + (m_q + m_k) * n,
-                                       data_type,
-                                       ldc_v,
-                                       strideC,
-                                       m->num_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
-  // apply rotary emmmbedding for k and v
-  // step1 change the k, v to complex tensor
-  int num_tokens = bc->num_active_tokens();
-
-  int parallelism = m->kProjSize * num_tokens * m->num_heads;
-  int q_block_size = m->qProjSize * num_tokens;
-  int k_block_size = m->kProjSize * num_tokens;
-  int v_block_size = m->vProjSize * num_tokens;
-  // apply bias for q, k, v
-  if (*m->bias) {
-    spec_apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
-                               min(CUDA_NUM_THREADS, parallelism),
-                               0,
-                               stream>>>(output_ptr,
-                                         bias_ptr,
-                                         num_tokens,
-                                         m->qProjSize,
-                                         m->kProjSize,
-                                         m->vProjSize,
-                                         m->num_heads,
-                                         *m->scaling_query,
-                                         m->scaling_factor);
-  }
-
-  if (*m->apply_rotary_embedding) {
-    /*q*/
-    spec_apply_rotary_embedding<<<GET_BLOCKS(parallelism),
-                                  min(CUDA_NUM_THREADS, parallelism),
-                                  0,
-                                  stream>>>(output_ptr,
-                                            m->complex_input,
-                                            m->tokenInfos,
-                                            m->qProjSize,
-                                            m->kProjSize,
-                                            m->num_heads,
-                                            num_tokens,
-                                            q_block_size,
-                                            k_block_size,
-                                            v_block_size,
-                                            true);
-    /*k*/
-    spec_apply_rotary_embedding<<<GET_BLOCKS(parallelism),
-                                  min(CUDA_NUM_THREADS, parallelism),
-                                  0,
-                                  stream>>>(output_ptr,
-                                            m->complex_input,
-                                            m->tokenInfos,
-                                            m->qProjSize,
-                                            m->kProjSize,
-                                            m->num_heads,
-                                            num_tokens,
-                                            q_block_size,
-                                            k_block_size,
-                                            v_block_size,
-                                            false);
-  }
-  checkCUDA(cudaDeviceSynchronize());
-}
+using namespace Kernels::IncMultiHeadAttention;
 
 __global__ void spec_store_kv_cache(
     float const *devQKVProjArray,
@@ -445,10 +167,10 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                           0,
                           stream>>>(m->devQKVProjArray,
                                     m->keyCache,
-                                    m->tokenInfos,
-                                    m->requestInfos,
-                                    m->beamTokenInfos,
-                                    m->beamRequestInfos,
+                                    m->token_infos,
+                                    m->request_infos,
+                                    m->beam_token_infos,
+                                    m->beam_request_infos,
                                     m->qProjSize,
                                     m->kProjSize,
                                     m->vProjSize,
@@ -465,10 +187,10 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                           0,
                           stream>>>(m->devQKVProjArray,
                                     m->valueCache,
-                                    m->tokenInfos,
-                                    m->requestInfos,
-                                    m->beamTokenInfos,
-                                    m->beamRequestInfos,
+                                    m->token_infos,
+                                    m->request_infos,
+                                    m->beam_token_infos,
+                                    m->beam_request_infos,
                                     m->qProjSize,
                                     m->kProjSize,
                                     m->vProjSize,
@@ -719,10 +441,10 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     }
     if (*m->bias) {
       int parallelism = m->oProjSize * num_tokens;
-      spec_apply_proj_bias_w<<<GET_BLOCKS(parallelism),
-                               min(CUDA_NUM_THREADS, parallelism),
-                               0,
-                               stream>>>(
+      apply_proj_bias_w<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(
           output_ptr, bias_ptr, num_tokens, m->oProjSize);
     }
   }
@@ -752,38 +474,38 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   if (!(*m->has_load_weights)) {
     int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
-    spec_build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                              min(CUDA_NUM_THREADS, parallelism),
-                              0,
-                              stream>>>(weight_ptr,
-                                        m->W_out_contiguous,
-                                        m->vProjSize,
-                                        m->oProjSize,
-                                        m->num_heads,
-                                        (m->qSize * m->qProjSize +
-                                         m->kSize * m->kProjSize +
-                                         m->vSize * m->vProjSize));
+    build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                         min(CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream>>>(weight_ptr,
+                                   m->W_out_contiguous,
+                                   m->vProjSize,
+                                   m->oProjSize,
+                                   m->num_heads,
+                                   (m->qSize * m->qProjSize +
+                                    m->kSize * m->kProjSize +
+                                    m->vSize * m->vProjSize));
     *m->has_load_weights = true;
   }
 
   // here because we need postion info in infernece 1
-  cudaMemcpyAsync(m->tokenInfos,
+  cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaMemcpyAsync(m->requestInfos,
+  cudaMemcpyAsync(m->request_infos,
                   &(bc->requestsInfo),
                   bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaMemcpyAsync(m->beamTokenInfos,
+  cudaMemcpyAsync(m->beam_token_infos,
                   &(bc->beamTokenInfo),
                   bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
                       sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaMemcpyAsync(m->beamRequestInfos,
+  cudaMemcpyAsync(m->beam_request_infos,
                   &(bc->beamRequestsInfo),
                   bc->MAX_NUM_REQUESTS *
                       sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
@@ -820,86 +542,37 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
-    : OpMeta(handler, attn) {
+    : IncMultiHeadSelfAttentionMeta(handler,
+                                    BEAM_SEARCH_MODE,
+                                    attn,
+                                    attn->qSize,
+                                    attn->kSize,
+                                    attn->vSize,
+                                    attn->qProjSize,
+                                    attn->kProjSize,
+                                    attn->vProjSize,
+                                    attn->oProjSize,
+                                    attn->apply_rotary_embedding,
+                                    attn->bias,
+                                    attn->scaling_query,
+                                    attn->qk_prod_scaling,
+                                    attn->add_bias_kv,
+                                    attn->scaling_factor,
+                                    weight_ptr,
+                                    gpu_mem,
+                                    num_samples,
+                                    _num_heads) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
-  qSize = attn->qSize;
-  kSize = attn->kSize;
-  vSize = attn->vSize;
-  // assume dimensions match for now
-  assert(qSize == kSize);
-  assert(kSize == vSize);
-  qProjSize = attn->qProjSize;
-  kProjSize = attn->kProjSize;
-  assert(qProjSize == kProjSize); // required for attention QK^T matmul
-  vProjSize = attn->vProjSize;
-  oProjSize = attn->oProjSize;
-
-  // print params;
-
-  num_heads = _num_heads;
-  weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
-                    oProjSize * (vProjSize > 0 ? vProjSize : vSize));
-  weightSize = weights_params * num_heads * sizeof(float);
-  has_load_weights = (bool *)calloc(1, sizeof(bool));
-  *has_load_weights = false;
-  apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));
-  *apply_rotary_embedding = attn->apply_rotary_embedding;
-  bias = (bool *)calloc(1, sizeof(bool));
-  *bias = attn->bias;
-  scaling_query = (bool *)calloc(1, sizeof(bool));
-  *scaling_query = attn->scaling_query;
-  scaling_factor = attn->scaling_factor;
-  qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
-  *qk_prod_scaling = attn->qk_prod_scaling;
-  // Currently do not support adding bias to key/value projection
-  assert(!attn->add_bias_kv);
-
-#ifdef INFERENCE_TESTS
-  kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
-                               BeamSearchBatchConfig::MAX_NUM_REQUESTS,
-                           sizeof(float));
-  vcache = (float *)calloc(vProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
-                               BeamSearchBatchConfig::MAX_NUM_REQUESTS,
-                           sizeof(float));
-#endif
-
   // allocate memory for the seqArray and reserve space
   {
-    size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
-    size_t qkv_max_proj_size =
-        BeamSearchBatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
-    size_t key_cache_size =
-        num_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-        BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    size_t value_cache_size =
-        num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-        BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-
-    // size_t token2ids_size = BatchConfig::MAX_NUM_TOKENS;
-    size_t tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS;
-
     size_t beam_tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
                                  BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-
     size_t requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
     size_t beam_requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
-
-    size_t qk_prod_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                          BeamSearchBatchConfig::MAX_NUM_TOKENS * num_heads;
-    size_t attn_heads_size =
-        BeamSearchBatchConfig::MAX_NUM_TOKENS * num_heads * vProjSize;
-    size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    size_t W_out_contiguous_size = W_out_block_size * num_heads;
-    size_t complex_size =
-        (BeamSearchBatchConfig::MAX_NUM_TOKENS * qProjSize * num_heads) / 2;
     size_t totalSize =
-        (qkv_max_proj_size + key_cache_size + value_cache_size +
-         2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
-            sizeof(float) +
-        tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
         requestinfo_size * sizeof(BatchConfig::PerRequestInfo) +
         beam_tokeninfo_size *
             sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo) +
@@ -912,57 +585,28 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                    Realm::Point<1, coord_t>(totalSize - 1));
     std::vector<size_t> field_sizes;
     field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
+    Realm::RegionInstance::create_instance(beam_search_reserve_inst,
                                            gpu_mem,
                                            bounds,
                                            field_sizes,
                                            0,
                                            Realm::ProfilingRequestSet())
         .wait();
-    devQKVProjArray = (float *)reserveInst.pointer_untyped(0, sizeof(char));
-    keyCache = (float *)devQKVProjArray + qkv_max_proj_size;
-    valueCache = (float *)keyCache + key_cache_size;
-    // dev_token2ids = (BatchConfig::token_idxs *)(valueCache +
-    // value_cache_size);
-
-    tokenInfos = (BatchConfig::PerTokenInfo *)(valueCache + value_cache_size);
-    beamTokenInfos =
-        (BeamSearchBatchConfig::BeamSearchPerTokenInfo *)(tokenInfos +
-                                                          tokeninfo_size);
-    requestInfos =
-        (BatchConfig::PerRequestInfo *)(beamTokenInfos + beam_tokeninfo_size);
-    beamRequestInfos =
-        (BeamSearchBatchConfig::BeamSearchPerRequestInfo *)(requestInfos +
+    beam_token_infos =
+        (BeamSearchBatchConfig::BeamSearchPerTokenInfo *)
+            beam_search_reserve_inst.pointer_untyped(0, sizeof(char));
+    request_infos =
+        (BatchConfig::PerRequestInfo *)(beam_token_infos + beam_tokeninfo_size);
+    beam_request_infos =
+        (BeamSearchBatchConfig::BeamSearchPerRequestInfo *)(request_infos +
                                                             requestinfo_size);
-
-    qk_prods = (float *)(beamRequestInfos + beam_requestinfo_size);
-    qk_prods_softmax = (float *)(qk_prods + qk_prod_size);
-    attn_heads = (float *)qk_prods_softmax + qk_prod_size;
-    W_out_contiguous = (float *)attn_heads + attn_heads_size;
-    checkCUDA(
-        cudaMalloc(&complex_input, complex_size * sizeof(cuFloatComplex)));
-    int parallelism = vProjSize * oProjSize * num_heads;
-    spec_build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                              min(CUDA_NUM_THREADS, parallelism),
-                              0,
-                              stream>>>(
-        weight_ptr,
-        W_out_contiguous,
-        vProjSize,
-        oProjSize,
-        num_heads,
-        (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
   }
 
   cudaStreamSynchronize(stream);
 }
 
 SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(void) {
-  reserveInst.destroy();
-#ifdef INFERENCE_TESTS
-  free(kcache);
-  free(vcache);
-#endif
+  beam_search_reserve_inst.destroy();
 }
 
 }; // namespace FlexFlow

@@ -35,7 +35,7 @@ BatchConfig::BatchConfig() : num_tokens(0) {
   }
 }
 
-BatchConfig::Mode BatchConfig::get_mode() const {
+InferenceMode BatchConfig::get_mode() const {
   return INC_DECODING_MODE;
 }
 

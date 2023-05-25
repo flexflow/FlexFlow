@@ -70,6 +70,33 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
+IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
+    FFHandler handler,
+    InferenceMode infer_mode,
+    Op const *attn,
+    int _qSize,
+    int _kSize,
+    int _vSize,
+    int _qProjSize,
+    int _kProjSize,
+    int _vProjSize,
+    int _oProjSize,
+    bool _apply_rotary_embedding,
+    bool _bias,
+    bool _scaling_query,
+    bool _qk_prod_scaling,
+    bool _add_bias_kv,
+    float _scaling_factor,
+    float const *weight_ptr,
+    Memory gpu_mem,
+    int num_samples,
+    int _num_heads)
+    : OpMeta(handler, attn) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  checkCUDNN(miopenSetStream(handler.dnn, stream));
+}
+
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {}
 
 }; // namespace FlexFlow

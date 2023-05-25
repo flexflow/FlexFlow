@@ -26,7 +26,7 @@ TreeVerifyBatchConfig::TreeVerifyBatchConfig() : BatchConfig() {}
 
 TreeVerifyBatchConfig::~TreeVerifyBatchConfig() {}
 
-BatchConfig::Mode TreeVerifyBatchConfig::get_mode() const {
+InferenceMode TreeVerifyBatchConfig::get_mode() const {
   return TREE_VERIFY_MODE;
 }
 
