@@ -585,7 +585,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     strideC = num_new_tokens * m->vProjSize;
     // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
     // requests (all heads)
-    A = (void const *)C_softmax;
+    A = static_cast<DT *>(C_softmax);
     // To get B, skip over V^T entries from previous requests (all heads +
     // padding)
     B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
@@ -623,9 +623,9 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     k = m->vProjSize * m->num_heads;
     n = num_new_tokens;
     lda = k, ldb = n, ldc = m_;
-    A = (void const *)m->W_out_contiguous;
-    B = (void const *)C;
-    C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
+    A = m->W_out_contiguous;
+    B = C;
+    C = (output_ptr + tokens_previous_requests * m->oProjSize);
 
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,

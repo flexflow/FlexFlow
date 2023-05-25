@@ -1,3 +1,4 @@
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"

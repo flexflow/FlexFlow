@@ -979,6 +979,7 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
                                               bias,
                                               add_bias_kv,
                                               add_zero_attn,
+                                              key->data_type,
                                               kernel_initializer,
                                               name);
   DEBUG_PRINT("[MultiHeadAttention] new Tensor %p, query %p, key %p, value %p, "
@@ -1027,6 +1028,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
                                                        bias,
                                                        add_bias_kv,
                                                        add_zero_attn,
+                                                       input->data_type,
                                                        kernel_initializer,
                                                        name);
   return FFCObjectWrapper::wrap(tensor);

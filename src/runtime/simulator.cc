@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/simulator.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/partition.h"

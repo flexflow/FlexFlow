@@ -98,6 +98,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,
             false,
             false,
+            DT_NONE,
             NULL,
             true);
         break;
@@ -113,6 +114,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,   /*bias*/
             false,   /*add_bias_kv*/
             false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
             true     /*apply_rotary_embedding*/
         );
@@ -129,6 +131,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,   /*bias*/
             false,   /*add_bias_kv*/
             false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
             true     /*apply_rotary_embedding*/
         );

@@ -59,8 +59,11 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     bool bias,
                                     bool add_bias_kv,
                                     bool add_zero_attn,
+                                    DataType data_type,
                                     Initializer *kernel_initializer,
                                     char const *name) {
+  // Currently only support float for the original attention operator
+  assert(data_type == DT_NONE || data_type == DT_FLOAT);
   Layer *li = new Layer(this,
                         OP_MULTIHEAD_ATTENTION,
                         DT_FLOAT,

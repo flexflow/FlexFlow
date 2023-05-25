@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
@@ -564,21 +565,21 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   FFHandler handle = *((FFHandler const *)task->local_args);
 
   GenericTensorAccessorR input =
-      helperGetGenericTensorAccessorRO(attn->inputs[0].data_type,
+      helperGetGenericTensorAccessorRO(attn->inputs[0]->data_type,
                                        regions[0],
                                        task->regions[0],
                                        FID_DATA,
                                        ctx,
                                        runtime);
   GenericTensorAccessorR weight =
-      helperGetGenericTensorAccessorRO(attn->weights[0].data_type,
+      helperGetGenericTensorAccessorRO(attn->weights[0]->data_type,
                                        regions[1],
                                        task->regions[1],
                                        FID_DATA,
                                        ctx,
                                        runtime);
   GenericTensorAccessorW output =
-      helperGetGenericTensorAccessorWO(attn->outputs[0].data_type,
+      helperGetGenericTensorAccessorWO(attn->outputs[0]->data_type,
                                        regions[2],
                                        task->regions[2],
                                        FID_DATA,
@@ -599,7 +600,8 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       handle, attn, weight, gpu_mem, num_samples, num_heads);
 
   m->profiling = attn->profiling;
-  assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
+  assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
+         m->weightSize);
   return m;
 }
 
@@ -676,8 +678,6 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(task->regions.size() == regions.size());
 
-  float const *bias_ptr = NULL;
-
   BatchConfig const *bc = (BatchConfig *)task->args;
   IncMultiHeadSelfAttentionMeta const *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
@@ -690,19 +690,17 @@ void IncMultiHeadSelfAttention::inference_task(
       m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-
+  GenericTensorAccessorR biases;
   if (*m->bias) {
-    GenericTensorAccessorR biases =
-        helperGetGenericTensorAccessorRO(m->weight_type[1],
-                                         regions[3],
-                                         task->regions[3],
-                                         FID_DATA,
-                                         ctx,
-                                         runtime);
+    biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
+                                              regions[3],
+                                              task->regions[3],
+                                              FID_DATA,
+                                              ctx,
+                                              runtime);
     Domain bias_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
     assert(bias_domain.get_dim() == 2);
-    bias_ptr = biases.get_float_ptr();
   }
 
   Domain input_domain = runtime->get_index_space_domain(
@@ -716,12 +714,8 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
 
-  IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
-                                                      bc,
-                                                      input.get_float_ptr(),
-                                                      weight.get_float_ptr(),
-                                                      output.get_float_ptr(),
-                                                      bias_ptr);
+  IncMultiHeadSelfAttention::inference_kernel_wrapper(
+      m, bc, input, weight, output, biases);
 #ifdef INFERENCE_TESTS
   printf("Checking IncMultiHeadSelfAttention computations...\n");
 

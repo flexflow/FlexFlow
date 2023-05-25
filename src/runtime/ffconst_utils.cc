@@ -1,4 +1,5 @@
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/accessor.h"
 #include <stdexcept>
 
 namespace FlexFlow {
