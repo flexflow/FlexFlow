@@ -246,10 +246,10 @@ ParallelConfig Op::get_data_parallel_config(FFModel const &ff) const {
       ff.config.workersPerNode * ff.config.numNodes, this->get_dimension());
 }
 
-ParallelConfig get_basic_data_parallel_config(int num_parts, int dims) {
+ParallelConfig get_basic_data_parallel_config(int num_parts, int num_dims) {
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
-  pc.nDims = dims;
+  pc.nDims = num_dims;
   for (int i = 0; i < pc.nDims; i++) {
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
   }

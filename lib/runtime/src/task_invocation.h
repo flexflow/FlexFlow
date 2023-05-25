@@ -67,6 +67,7 @@ struct TaskBinding {
 public:
   static TaskBinding index_launch(parallel_tensor_guid_t const &);
   static TaskBinding index_launch(slot_id const &);
+  static TaskBinding index_launch(MachineView const &);
   static TaskBinding standard_launch();
   static TaskBinding sync_type_dependent_launch(parallel_tensor_guid_t);
   static TaskBinding sync_type_dependent_launch(slot_id);

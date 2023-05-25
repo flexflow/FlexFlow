@@ -12,7 +12,8 @@ extern LegionRuntime::Logger::Category log_profile,
                                         log_xfer_sim,
                                         log_xfer_est,
                                         log_metrics,
-                                        log_model;
+                                        log_model,
+                                        log_mapper;
 
 }
 

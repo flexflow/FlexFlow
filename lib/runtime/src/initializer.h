@@ -17,6 +17,7 @@
 #define _FLEXFLOW_INITIALIZER_H_
 
 #include "legion.h"
+#include "op-attrs/tensor_shape.h"
 #include "runtime/config.h"
 #include "kernels/accessor.h"
 #include "task_signature.h"

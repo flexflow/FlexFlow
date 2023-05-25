@@ -18,30 +18,37 @@
 #include "tasks.h"
 #include "default_mapper.h"
 #include "utils/exception.h"
+#include "loggers.h"
 
 namespace FlexFlow {
 
 using namespace Legion;
 using namespace Mapping;
 
-LegionRuntime::Logger::Category log_ff_mapper("Mapper");
-
-DeviceID get_device_index(MachineView const &machine_view, DomainPoint const &point, Domain const &domain) {
+static FFOrdered<num_points_t> from_domain_point(Legion::DomainPoint const &point,
+                                                 Legion::Domain const &domain) {
   assert(point.get_dim() == domain.get_dim());
-  std::vector<int> idxs;
-  for (int i = 0; i < point.get_dim(); i++) {
-    idxs.push_back(point[i] - domain.lo()[i]);
+  std::vector<num_points_t> idxs;
+  for (int i = point.get_dim(); i > 0; i--) {
+    idxs.push_back(num_points_t(point[i] - domain.lo()[i]));
   }
-  return machine_view.at(idxs);
+
+  return FFOrdered<num_points_t>(idxs);
 }
 
-ShardID FFShardingFunctor::get_shard_id(DeviceID device_id, DeviceType device_type) const {
-  if (device_type == DeviceType::GPU) {
-    return device_id.value() / this->gpus_per_node;
-  } else if (device_type == DeviceType::CPU) {
-    return device_id.value() / this->cpus_per_node;
-  } else {
-    throw mk_runtime_error("Unknown DeviceType {}", device_type);
+device_id_t get_device_index(MachineView const &machine_view, DomainPoint const &point, Domain const &domain, DeviceType device_type) {
+  return machine_view.at(from_domain_point(point, domain));
+}
+
+ShardID FFShardingFunctor::get_shard_id(device_id_t device_id) const {
+  DeviceType device_type = get_device_type(device_id);
+  switch (device_type)  {
+    case DeviceType::GPU:
+      return unwrap_gpu(device_id).value() / this->gpus_per_node;
+    case DeviceType::CPU:
+      return unwrap_cpu(device_id).value() / this->cpus_per_node;
+    default:
+      throw mk_runtime_error("Unknown DeviceType {}", device_type);
   }
 }
 
@@ -56,9 +63,9 @@ ShardID FFShardingFunctor::shard(DomainPoint const &point,
                                  Domain const &full_space,
                                  const size_t total_shards) {
   assert(point.get_dim() == full_space.get_dim());
-  DeviceID device_id = get_device_index(this->machine_view, point, full_space);
+  device_id_t device_id = get_device_index(this->machine_view, point, full_space);
 
-  ShardID shard_id = this->get_shard_id(device_id, machine_view.device_type);
+  ShardID shard_id = this->get_shard_id(device_id);
   assert(shard_id < (size_t)num_nodes);
   // fprintf(stderr, "view.hash(%zu) shard_id(%zu)\n", machine_view.hash(),
   // shard_id);
@@ -123,11 +130,10 @@ FFMapper::FFMapper(MapperRuntime *rt,
   }
   total_nodes = address_space_set.size();
   if (enable_control_replication) {
-    log_ff_mapper.print("Enabled Control Replication Optimizations.");
+    log_mapper.print("Enabled Control Replication Optimizations.");
   }
-  this->register_machine_view(FFConfig::DataParallelism_GPU, make_1d_machine_view(DeviceType::GPU, DeviceID(0), all_gpus.size(), 1));
-  this->register_machine_view(FFConfig::DataParallelism_CPU, make_1d_machine_view(DeviceType::CPU, DeviceID(0), all_cpus.size(), 1));
-
+  this->register_machine_view(FFConfig::DataParallelism_GPU, make_1d_machine_view(gpu_id_t(0), all_gpus.size()));
+  this->register_machine_view(FFConfig::DataParallelism_CPU, make_1d_machine_view(cpu_id_t(0), all_cpus.size()));
 
   assert(all_gpus.size() % total_nodes == 0);
   assert(all_cpus.size() % total_nodes == 0);
@@ -159,8 +165,8 @@ void FFMapper::register_sharding_functors(Runtime *runtime,
   }
   NodesConfig nodes(num_nodes, gpus_per_node, cpus_per_node);
 
-  runtime->register_sharding_functor(FFConfig::DataParallelism_GPU, nodes.make_sharding_functor(make_1d_machine_view(DeviceType::GPU, DeviceID(0), nodes.get_total_num_gpus(), 1)));
-  runtime->register_sharding_functor(FFConfig::DataParallelism_CPU, nodes.make_sharding_functor(make_1d_machine_view(DeviceType::CPU, DeviceID(0), nodes.get_total_num_cpus(), 1)));
+  runtime->register_sharding_functor(FFConfig::DataParallelism_GPU, nodes.make_sharding_functor(make_1d_machine_view(gpu_id_t(0), nodes.get_total_num_gpus())));
+  runtime->register_sharding_functor(FFConfig::DataParallelism_CPU, nodes.make_sharding_functor(make_1d_machine_view(cpu_id_t(0), nodes.get_total_num_cpus())));
 
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
@@ -256,13 +262,13 @@ void FFMapper::select_task_options(const MapperContext ctx,
     MappingTagID hash = task.tag;
     if (machine_views.find(hash) != machine_views.end()) {
       MachineView view = machine_views.at(hash);
-      if (view.num_devices() == 1) {
-        output.initial_proc = this->get_processor(view.get_starting_device_id(), DeviceType::GPU);
+      if (num_devices(view) == 1) {
+        output.initial_proc = this->get_processor(view.start);
         // Current assert this sould be a local proc
         assert(output.initial_proc.address_space() == node_id);
         return;
       } else {
-        output.initial_proc = this->get_processor(view.get_starting_device_id(), DeviceType::GPU);
+        output.initial_proc = this->get_processor(view.start);
         return;
       }
     }
@@ -300,21 +306,16 @@ void FFMapper::select_task_options(const MapperContext ctx,
   // Assert that all single tasks should be handled and returned before
   // So task must be an indextask
   if (!task.is_index_space) {
-    fprintf(stderr,
-            "The following task is currently not captured by the "
-            "FlexFlow Mapper: %s\n"
-            "Report the issue to the FlexFlow developers\n",
-            task.get_task_name());
+    throw mk_runtime_error("The following task is currently not captured by the FlexFlow mapper: {}\nReport the issue to the FlexFlow developers",
+                           task.get_task_name());
   }
-  assert(task.is_index_space);
 }
 
-void FFMapper::slice_task(const MapperContext ctx,
+void FFMapper::slice_task(MapperContext const ctx,
                           Task const &task,
                           SliceTaskInput const &input,
                           SliceTaskOutput &output) {
   output.slices.resize(input.domain.get_volume());
-  std::vector<Processor> const *devices;
   tl::optional<MachineView> view = tl::nullopt;
   if ((task.task_id == TOP_LEVEL_TASK_ID) ||
       ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST) &&
@@ -326,8 +327,7 @@ void FFMapper::slice_task(const MapperContext ctx,
     assert(machine_views.find(FFConfig::DataParallelism_CPU) !=
            machine_views.end());
     view = machine_views.at(FFConfig::DataParallelism_CPU);
-    printf("num_devices %zu", view->num_devices());
-    devices = &all_cpus;
+    log_mapper.info("num_devices %zu", num_devices(view.value()));
   } else if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID) ||
              (task.task_id == PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID) ||
              (task.task_id == PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
@@ -339,7 +339,6 @@ void FFMapper::slice_task(const MapperContext ctx,
     assert(machine_views.find(FFConfig::DataParallelism_GPU) !=
            machine_views.end());
     view = machine_views.at(FFConfig::DataParallelism_GPU);
-    devices = &all_cpus;
   } else {
     MappingTagID hash = task.tag;
     // Make sure the task has a non-zero tag
@@ -375,12 +374,7 @@ void FFMapper::slice_task(const MapperContext ctx,
       // Found a strategy
       view = machine_views.at(hash);
       // Check that the dimensions match
-      assert(view->num_dims() == input.domain.get_dim());
-    }
-    if (view->device_type == DeviceType::GPU) {
-      devices = &all_gpus;
-    } else {
-      devices = &all_cpus;
+      assert(num_dims(view.value()) == input.domain.get_dim());
     }
   }
   switch (input.domain.get_dim()) {
@@ -389,11 +383,11 @@ void FFMapper::slice_task(const MapperContext ctx,
     Rect<DIM> rect = input.domain;                                               \
     int cnt = 0;                                                                 \
     for (PointInRectIterator<DIM> pir(rect); pir(); pir++) {                     \
-      int idx = get_device_index(view.value(), *pir, task.index_domain).value(); \
-      assert((size_t)idx < devices->size());                                     \
+      device_id_t idx = get_device_index(view.value(), *pir, task.index_domain); \
+      assert(this->has_device(idx));                                             \
       Rect<DIM> slice(*pir, *pir);                                               \
       output.slices[cnt++] = TaskSlice(                                          \
-          slice, (*devices)[idx], false /*recurse*/, false /*stealable*/);       \
+          slice, this->get_processor(idx), false /*recurse*/, false /*stealable*/);       \
     }                                                                            \
     break;                                                                       \
   }
@@ -557,7 +551,7 @@ void FFMapper::map_task(const MapperContext ctx,
                                &footprint)) {
       if (log_instance_creation) {
         for (size_t idx = 0; idx < created_instances.size(); idx++) {
-          log_ff_mapper.print("Instance[%zu]: memory:" IDFMT "	proc:" IDFMT
+          log_mapper.print("Instance[%zu]: memory:" IDFMT "	proc:" IDFMT
                               "	size:%zu	task:%s",
                               idx,
                               created_instances[idx].memory.id,
@@ -567,7 +561,7 @@ void FFMapper::map_task(const MapperContext ctx,
         }
       }
       // Report failed to creation
-      log_ff_mapper.error(
+      log_mapper.error(
           "FlexFlow failed allocation of size %zd bytes for "
           "region requirement %d of task %s (UID %lld) in memory " IDFMT
           " with kind %d for processor " IDFMT ".",
@@ -666,7 +660,7 @@ void FFMapper::select_task_sources(const MapperContext ctx,
       // Found a strategy
       view = machine_views.at(hash);
     }
-    Processor parameter_server = this->get_processor(view->get_starting_device_id(), DeviceType::GPU);
+    Processor parameter_server = this->get_processor(view->start);
     // Prefer instances located on the parameter server
     Memory ps_memory = proc_fbmems[parameter_server];
     default_policy_select_sources(ctx,
@@ -796,7 +790,7 @@ void FFMapper::map_inline(const MapperContext ctx,
       valid_mems.has_affinity_to(inline_op.parent_task->current_proc);
       valid_mems.only_kind(creation_constraints.memory_constraint.get_kind());
       if (valid_mems.count() == 0) {
-        log_ff_mapper.error("FlexFlow mapper error. Mapper %s could find no "
+        log_mapper.error("FlexFlow mapper error. Mapper %s could find no "
                             "valid memories for the constraints requested by "
                             "inline mapping %lld in parent task %s (ID %lld).",
                             get_mapper_name(),
@@ -866,7 +860,7 @@ void FFMapper::map_inline(const MapperContext ctx,
                              inline_op.requirement,
                              created,
                              &footprint)) {
-    log_ff_mapper.error(
+    log_mapper.error(
         "FlexFlow Mapper failed allocation of size %zd bytes"
         " for region requirement of inline ammping in task %s (UID %lld)"
         " in memory " IDFMT "for processor " IDFMT ".",
@@ -1437,4 +1431,4 @@ void FFMapper::update_mappers(Machine machine,
 
 FFMapper::~FFMapper(void) {}
 
-}; // namespace FlexFlow
+}

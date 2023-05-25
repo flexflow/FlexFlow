@@ -140,6 +140,8 @@ struct TaskArgumentAccessor {
   std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor_grad(slot_id slot) const {
     return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES); 
   }
+
+  size_t get_device_idx() const;
 private:
   Legion::Task const *task;
   std::vector<Legion::PhysicalRegion> const &regions;

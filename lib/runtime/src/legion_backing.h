@@ -8,17 +8,19 @@
 #include "pcg/machine_view.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include <map>
+#include "tensorless_task_invocation.h"
 
 namespace FlexFlow {
 
 template <> void register_task<NCCL_GETUNIQUEID_TASK_ID>();
 template <> void register_task<NCCL_INIT_COMMS_TASK_ID>();
+template <> void register_task<FF_INIT_TASK_ID>();
 
 struct LegionConfig {
   LegionConfig();
 
-  Legion::Context lg_ctx;
-  Legion::Runtime *lg_hlr;
+  Legion::Context context;
+  Legion::Runtime *runtime;
   Legion::FieldSpace field_space;
 };
 
@@ -74,8 +76,9 @@ struct RuntimeBacking {
   Legion::Domain get_domain(Legion::IndexSpace const &) const;
   Legion::Domain get_domain(parallel_tensor_guid_t const &) const;
 
-  Legion::Future execute_task(Legion::TaskLauncher const &) const;
-  Legion::FutureMap execute_task(Legion::IndexTaskLauncher const &) const;
+  TaskReturnAccessor execute_task(TensorlessTaskInvocation const &) const;
+  /* Legion::Future execute_task(Legion::TaskLauncher const &) const; */
+  /* Legion::FutureMap execute_task(Legion::IndexTaskLauncher const &) const; */
 public:
   LegionConfig legion_config;
   std::unordered_map<operator_guid_t, OperatorLegionBacking> op_backing;
@@ -93,7 +96,7 @@ struct NcclCommunicators {
 std::vector<MachineView> get_all_machine_views(int num_nodes,
                                                int gpus_per_node,
                                                int cpus_per_node);
-RuntimeBacking initialize_runtime();
+RuntimeBacking initialize_runtime(LegionConfig const &);
 NcclCommunicators initialize_nccl_communicator(LegionConfig const &);
 
 }
