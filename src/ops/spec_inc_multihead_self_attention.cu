@@ -355,7 +355,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       int w_param = num_new_tokens;
       checkCUDNN(cudnnSetTensor4dDescriptor(qk_tensor,
                                             CUDNN_TENSOR_NCHW,
-                                            CUDNN_DATA_FLOAT,
+                                            cudnn_data_type,
                                             n_param,
                                             c_param,
                                             h_param,

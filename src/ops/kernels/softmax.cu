@@ -42,7 +42,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
                             DT *output_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-            << "\n";
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -51,7 +50,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
     cudaEventRecord(t_start, stream);
   }
   Internal::forward_kernel(m, input_ptr, output_ptr, stream);
-            << "\n";
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -65,6 +63,9 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
     log_measure.debug(
         "%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
   }
+
+  print_tensor<half>((half *)input_ptr, 100, "softmax input");
+  print_tensor<half>((half *)output_ptr, 100, "softmax output");
 }
 
 template <typename DT>
