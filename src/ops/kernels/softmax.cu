@@ -42,7 +42,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
                             DT *output_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  std::cout << "inside kernel: "
             << "\n";
 
   cudaEvent_t t_start, t_end;
@@ -52,7 +51,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
     cudaEventRecord(t_start, stream);
   }
   Internal::forward_kernel(m, input_ptr, output_ptr, stream);
-  std::cout << "fuck kernel: "
             << "\n";
   if (m->profiling) {
     cudaEventRecord(t_end, stream);

@@ -415,11 +415,11 @@ void Softmax::backward_task_with_dim(Task const *task,
   // const Softmax* softmax = (Softmax*) task->args;
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   TensorAccessorW<DT, NDIM> acc_input_grad(regions[0],
-                                              task->regions[0],
-                                              FID_DATA,
-                                              ctx,
-                                              runtime,
-                                              true /*readOutput*/);
+                                           task->regions[0],
+                                           FID_DATA,
+                                           ctx,
+                                           runtime,
+                                           true /*readOutput*/);
   TensorAccessorR<DT, NDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   // make sure the image indices match!
@@ -441,11 +441,11 @@ InferenceResult
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
     if (m->output_type == DT_HALF) {                                           \
-      forward_task_with_dim<half, DIM>(task, regions, ctx, runtime);    \
-      break;                                                             \
+      forward_task_with_dim<half, DIM>(task, regions, ctx, runtime);           \
+      break;                                                                   \
     } else if (m->output_type == DT_FLOAT) {                                   \
-      forward_task_with_dim<float, DIM>(task, regions, ctx, runtime);   \
-      break;                                                             \
+      forward_task_with_dim<float, DIM>(task, regions, ctx, runtime);          \
+      break;                                                                   \
     } else {                                                                   \
       assert(false && "Unsupported data type");                                \
     }
