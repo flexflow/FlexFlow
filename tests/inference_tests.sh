@@ -11,6 +11,10 @@ copy_embedding_weights(){
     cp ../inference/weights/opt_125M_weights/embed_tokens_weight ../inference/weights/opt_125M_weights/embed_tokens_weight_lm_head
 }
 
+download_ssm_llama(){
+    wget https://catalyst-llama.s3.us-east-2.amazonaws.com/llama-190m/pytorch_model.bin -P ../inference/weights/llama_190M_weights
+}
+
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
@@ -19,6 +23,9 @@ cleanup
 
 # Update the transformers library to support the LLAMA model
 pip3 install --upgrade transformers
+
+# Download pre-trained ssm llama
+download_ssm_llama
 
 # Download the weights
 python3 ../inference/utils/download_llama_weights.py

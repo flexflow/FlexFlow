@@ -3,6 +3,7 @@
 import os
 import requests
 from transformers import AutoModelForCausalLM
+import torch
 
 # Change working dir to folder storing this script
 abspath = os.path.abspath(__file__)
@@ -38,6 +39,7 @@ convert_hf_model(model, dst_folder)
 
 # Download and convert small model weights
 model = AutoModelForCausalLM.from_pretrained("Bingsu/llama-190m-arch")
+model.load_state_dict(torch.load('../weights/llama_190M_weights/pytorch_model.bin'))
 dst_folder="../weights/llama_190M_weights"
 convert_hf_model(model, dst_folder)
 
