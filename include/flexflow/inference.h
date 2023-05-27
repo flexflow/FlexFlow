@@ -78,7 +78,9 @@ class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
-  RequestManager(Tokenizer *tokenizer, bool verbose = false);
+  RequestManager(Tokenizer *tokenizer,
+                 bool verbose = false,
+                 std::string output_filepath = "");
   RequestManager();
   size_t get_num_processed_requests();
   RequestGuid register_new_request(std::string const &prompt,
@@ -134,6 +136,7 @@ public:
 private:
   Tokenizer *tokenizer;
   bool verbose;
+  std::string output_filepath;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;

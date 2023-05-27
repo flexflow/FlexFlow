@@ -29,6 +29,7 @@ struct FilePaths {
   std::string llm_config_file_path;
   std::string prompt_file_path;
   std::string tokenizer_file_path;
+  std::string output_file_path;
 };
 
 enum ModelType { UNKNOWN, LLAMA, OPT };
@@ -72,6 +73,11 @@ void parse_input_args(char **argv,
     // tokenizer
     if (!strcmp(argv[i], "-tokenizer")) {
       paths.tokenizer_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // output file
+    if (!strcmp(argv[i], "-output-file")) {
+      paths.output_file_path = std::string(argv[++i]);
       continue;
     }
   }
@@ -118,7 +124,9 @@ void FlexFlow::top_level_task(Task const *task,
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm((model_type == ModelType::LLAMA)
                         ? (Tokenizer *)sp_tokenizer
-                        : (Tokenizer *)opt_tokenizer);
+                        : (Tokenizer *)opt_tokenizer,
+                    /*verbose*/ false,
+                    file_paths.output_file_path);
   int total_num_requests = 0;
   {
     using json = nlohmann::json;

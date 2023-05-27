@@ -29,9 +29,11 @@ RequestManager::RequestManager()
     : tokenizer(nullptr), verbose(false), next_available_guid(1000000),
       num_processed_requests(0) {}
 
-RequestManager::RequestManager(Tokenizer *_tokenizer, bool _verbose)
+RequestManager::RequestManager(Tokenizer *_tokenizer,
+                               bool _verbose,
+                               std::string _output_filepath)
     : tokenizer(_tokenizer), verbose(_verbose), next_available_guid(1000000),
-      num_processed_requests(0) {}
+      num_processed_requests(0), output_filepath(_output_filepath) {}
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
@@ -140,6 +142,26 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                         profile_info.finish_time,
                         profile_info.finish_time - profile_info.start_time,
                         total_request_run_time);
+      // Write output to file if needed:
+      if (!output_filepath.empty()) {
+        std::ofstream outputFile(output_filepath);
+        if (outputFile.is_open()) {
+          for (int i = 0; i < request.tokens.size(); i++) {
+            outputFile << request.tokens[i];
+            if (i < request.tokens.size() - 1) {
+              outputFile << ",";
+            }
+          }
+          outputFile << std::endl;
+          outputFile << output;
+          outputFile.close();
+        } else {
+          std::cout << "Unable to open the output file: " << output_filepath
+                    << std::endl;
+          assert(false);
+        }
+      }
+
       // std::cout << "print results: " << std::endl;
       // for (int i = 0; i < request.tokens.size(); i++) {
       //   std::cout << request.tokens.at(i) << ", ";
