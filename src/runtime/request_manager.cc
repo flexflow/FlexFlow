@@ -415,6 +415,8 @@ BeamSearchBatchConfig
       log_req_mgr.print("[Done] guid(%zu) with final length(%zu)",
                         request.guid,
                         request.tokens.size());
+      std::string output = tokenizer->Decode(request.tokens);
+      log_req_mgr.print("Final output: %s", output.c_str());
       new_bc.request_completed[i] = true;
       num_processed_requests++;
       ProfileInfo profile_info = profiling_requests[request.guid];
@@ -430,6 +432,26 @@ BeamSearchBatchConfig
                         profile_info.finish_time,
                         profile_info.finish_time - profile_info.start_time,
                         total_request_run_time);
+
+      // Write output to file if needed:
+      if (!output_filepath.empty()) {
+        std::ofstream outputFile(output_filepath);
+        if (outputFile.is_open()) {
+          for (int i = 0; i < request.tokens.size(); i++) {
+            outputFile << request.tokens[i];
+            if (i < request.tokens.size() - 1) {
+              outputFile << ",";
+            }
+          }
+          outputFile << std::endl;
+          outputFile << output;
+          outputFile.close();
+        } else {
+          std::cout << "Unable to open the output file: " << output_filepath
+                    << std::endl;
+          assert(false);
+        }
+      }
 
       beam_trees[i] = BeamTree{};
       dfs_tree_inputs.erase(
