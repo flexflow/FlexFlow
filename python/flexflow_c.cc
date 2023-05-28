@@ -33,7 +33,9 @@ public:
     t_.impl = const_cast<void *>(static_cast<void const *>(t));                \
     return t_;                                                                 \
   }                                                                            \
-  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \
+  static T unwrap(T_ t_) {                                                     \
+    return static_cast<T>(t_.impl);                                            \
+  }                                                                            \
   static const T unwrap_const(const T_ t_) {                                   \
     return static_cast<const T>(t_.impl);                                      \
   }
@@ -737,7 +739,7 @@ flexflow_tensor_t flexflow_model_add_softmax(flexflow_model_t handle_,
                                              char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor tensor = handle->softmax(input, dim, name);
+  Tensor tensor = handle->softmax(input, dim, input->data_type, name);
   DEBUG_PRINT(
       "[Softmax] new Tensor %p, input %p, name %s", tensor, input, name);
   return FFCObjectWrapper::wrap(tensor);

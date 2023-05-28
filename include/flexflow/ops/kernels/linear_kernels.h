@@ -51,6 +51,7 @@ void backward_kernel_wrapper(LinearMeta const *m,
 bool use_activation(ActiMode mode);
 
 namespace Internal {
+template <typename DT>
 void forward_kernel(LinearMeta const *m,
                     void const *input_ptr,
                     void *output_ptr,
@@ -60,6 +61,7 @@ void forward_kernel(LinearMeta const *m,
                     int out_dim,
                     int batch_size,
                     ffStream_t stream);
+template <typename DT>
 void backward_kernel(LinearMeta const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,

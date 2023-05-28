@@ -137,7 +137,7 @@ __global__ void update_tree_branch_kv_cache(
         (i / proj_size) % num_tokens_in_branch; // index in the tree branch
     int head_idx = i / (proj_size * num_tokens_in_branch);
 
-    token_idx += processed_tokens_in_batch; // get index in the whole batch
+    token_idx += processed_tokens_in_batch;     // get index in the whole batch
     int qkv_block_size = (qProjSize + kProjSize + vProjSize) *
                          total_tokens_in_batch; // skip over previous heads
     int current_head_block_size =
@@ -269,9 +269,9 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       int strideC = num_new_tokens * total_tokens_in_request;
 
       // a flag of using this scaling alpha
-      float alpha = 1.0f, beta = 0.0f;
+      DT alpha = 1.0f, beta = 0.0f;
       if (*m->qk_prod_scaling) {
-        alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
+        alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
       }
       // To get A, skip over Q entries from previous requests (same head)
       void const *A = static_cast<DT *>(m->devQKVProjArray) +
@@ -346,7 +346,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                             c_param,
                                             h_param,
                                             w_param));
-      alpha = 1.0f, beta = 0.0f;
+      float softmax_alpha = 1.0f, softmax_beta = 0.0f;
       void *C_softmax = (void *)(m->qk_prods_softmax);
       // The softmax operation below is executed according to the
       // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
@@ -355,10 +355,10 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                      CUDNN_SOFTMAX_ACCURATE,
                                      CUDNN_SOFTMAX_MODE_CHANNEL,
-                                     &alpha,
+                                     &softmax_alpha,
                                      qk_tensor,
                                      C,
-                                     &beta,
+                                     &softmax_beta,
                                      qk_tensor,
                                      C_softmax));
       // Matmul softmax(QK^T/sqrt(d_k)) by V

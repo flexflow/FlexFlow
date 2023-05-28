@@ -45,10 +45,11 @@ void ElementUnary::init_kernel(ElementUnaryMeta *m,
   }
   checkCUDNN(cudnnSetActivationDescriptor(
       m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(
+      m->inputTensor, input_domain, m->data_type));
   // input_domain == output_domain
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(
+      m->outputTensor, output_domain, m->data_type));
 }
 
 template <typename T>

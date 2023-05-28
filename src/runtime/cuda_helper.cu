@@ -550,6 +550,8 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+template __host__ void
+    print_tensor<half>(half const *ptr, size_t rect, char const *prefix);
 
 template __host__ void print_beam_tensor<float>(float const *ptr,
                                                 size_t num_elements,
@@ -572,6 +574,8 @@ template __host__ void
 template __host__ void save_tensor<int64_t>(int64_t const *ptr,
                                             size_t rect,
                                             char const *file_name);
+template __host__ void
+    save_tensor<half>(half const *ptr, size_t rect, char const *file_name);
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);

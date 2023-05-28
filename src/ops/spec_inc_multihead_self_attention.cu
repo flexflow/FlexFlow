@@ -277,9 +277,9 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       int strideC = num_new_tokens * total_tokens;
 
       // a flag of using this scaling alpha
-      float alpha = 1.0f, beta = 0.0f;
+      DT alpha = 1.0f, beta = 0.0f;
       if (*m->qk_prod_scaling) {
-        alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
+        alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
       }
       // To get A, skip over Q entries from previous requests (same head)
       void const *A = static_cast<DT *>(m->devQKVProjArray) +
@@ -297,7 +297,6 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // To get C, skip over QK^T products from previous requests
       void *C = static_cast<DT *>(m->qk_prods) +
                 m->num_heads * tokens_prev_requests_squares;
-
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                            CUBLAS_OP_T,
                                            CUBLAS_OP_N,
@@ -360,7 +359,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                             c_param,
                                             h_param,
                                             w_param));
-      alpha = 1.0f, beta = 0.0f;
+      float softmax_alpha = 1.0f, softmax_beta = 0.0f;
       void *C_softmax = static_cast<DT *>(m->qk_prods_softmax) +
                         m->num_heads * tokens_prev_requests_squares;
       // The softmax operation below is executed according to the
@@ -370,10 +369,10 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                      CUDNN_SOFTMAX_ACCURATE,
                                      CUDNN_SOFTMAX_MODE_CHANNEL,
-                                     &alpha,
+                                     &softmax_alpha,
                                      qk_tensor,
                                      C,
-                                     &beta,
+                                     &softmax_beta,
                                      qk_tensor,
                                      C_softmax));
       // Matmul softmax(QK^T/sqrt(d_k)) by V
@@ -576,6 +575,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+  // print_tensor<half>(output.get_half_ptr(), 10000, "att output");
 }
 
 SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(

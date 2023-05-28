@@ -85,27 +85,18 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 
 template <typename T>
 __global__ void
-    RowwiseRootMeanSquareKernel(long long N, T eps, T const *X, T *rms) {
-  __shared__ T v_shared[C10_WARP_SIZE];
+    RowwiseRootMeanSquareKernel(long long N, float eps, T const *X, T *rms) {
+  __shared__ float v_shared[C10_WARP_SIZE];
   long long const i = blockIdx.x;
-  T sum = 0;
+  float sum = 0.0f;
   for (long long j = threadIdx.x; j < N; j += blockDim.x) {
     long long const index = i * N + j;
-    sum += static_cast<T>(X[index]) * static_cast<T>(X[index]);
+    sum += (static_cast<float>(X[index]) * static_cast<float>(X[index]));
   }
-  sum = BlockReduceSum<T>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
+  sum = BlockReduceSum<float>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
 
   if (threadIdx.x == 0) {
-    rms[i] = rsqrt((sum / static_cast<T>(N)) + (eps));
-    // printf("index: %d, rms norm mean value: %.15f, rms norm sum value: "
-    //        "%.20f, eps: %f, value: %.20f, num:%d, num2: %d\n",
-    //        i,
-    //        sum / static_cast<T>(N),
-    //        sum,
-    //        static_cast<T>(eps),
-    //        rms[i],
-    //        blockDim.x,
-    //        warpSize);
+    rms[i] = static_cast<T>(rsqrt((sum / static_cast<float>(N)) + eps));    
   }
 }
 
@@ -140,16 +131,14 @@ void forward_kernel(RMSNormMeta const *m,
   RowwiseRootMeanSquareKernel<T>
       <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
           m->in_dim,
-          static_cast<T>(m->eps),
+          m->eps,
           input_ptr,
           static_cast<T *>(m->rms_ptr));
-
   NormKernel<T><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
       m->in_dim,
       input_ptr,
       static_cast<T *>(m->rms_ptr),
       static_cast<T *>(m->norm_ptr));
-
   elewise_apply_weights<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,

@@ -26,8 +26,8 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
                          Domain const &input_domain)
     : OpMeta(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain4SoftMax(inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain4SoftMax(
+      inputTensor, input_domain, softmax->data_type));
   dim = softmax->dim;
   profiling = softmax->profiling;
   std::strcpy(op_name, softmax->name);
@@ -64,8 +64,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
         "%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
   }
 
-  print_tensor<half>((half *)input_ptr, 100, "softmax input");
-  print_tensor<half>((half *)output_ptr, 100, "softmax output");
 }
 
 template <typename DT>
