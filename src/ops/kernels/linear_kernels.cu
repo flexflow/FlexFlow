@@ -13,24 +13,34 @@
  * limitations under the License.
  */
 
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
+LinearMeta::LinearMeta(FFHandler handler, int batch_size, Linear const *li)
+    : OpMeta(handler, li) {
   // Allocate an all-one's vector
-  float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
-  for (int i = 0; i < batch_size; i++) {
-    dram_one_ptr[i] = 1.0f;
+  DataType data_type = li->data_type;
+  checkCUDA(cudaMalloc(&one_ptr, data_type_size(data_type) * batch_size));
+  int parallelism = batch_size;
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  if (data_type == DT_FLOAT) {
+    Kernels::Linear::Internal::
+        build_one_ptr<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>((float *)one_ptr, batch_size);
+  } else if (data_type == DT_HALF) {
+    Kernels::Linear::Internal::
+        build_one_ptr<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>((half *)one_ptr, batch_size);
   }
-  float *fb_one_ptr;
-  checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * batch_size));
-  checkCUDA(cudaMemcpy(fb_one_ptr,
-                       dram_one_ptr,
-                       sizeof(float) * batch_size,
-                       cudaMemcpyHostToDevice));
-  one_ptr = (float const *)fb_one_ptr;
+
   // Allocate descriptors
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -271,8 +281,8 @@ void forward_kernel(LinearMeta const *m,
                            bias_ptr,
                            weight_type,
                            1,
-                           m->one_ptr,
-                           CUDA_R_32F,
+                           static_cast<DT *>(m->one_ptr),
+                           weight_type,
                            1,
                            &alpha,
                            output_ptr,
@@ -393,7 +403,7 @@ void backward_kernel(LinearMeta const *m,
                            out_dim,
                            batch_size,
                            &alpha,
-                           m->one_ptr,
+                           static_cast<DT *>(m->one_ptr),
                            CUDA_R_32F,
                            1,
                            output_grad_ptr,
@@ -428,6 +438,13 @@ void backward_kernel(LinearMeta const *m,
                            in_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  }
+}
+
+template <typename DT>
+__global__ void build_one_ptr(DT *one_ptr, int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size) {
+    one_ptr[i] = static_cast<DT>(1.0f);
   }
 }
 

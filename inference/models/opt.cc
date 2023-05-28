@@ -24,7 +24,8 @@ void OPT::create_opt_model(FFModel &ff,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
                            int num_pipeline_stages,
-                           InferenceMode mode) {
+                           InferenceMode mode,
+                           bool use_full_precision) {
   Config opt_config(model_config_file_path);
   opt_config.printConfig();
   //------------------------------compute machine views ------------------
@@ -57,24 +58,46 @@ void OPT::create_opt_model(FFModel &ff,
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
   std::vector<int> axes = {0};
 
-  Tensor token = ff.embedding(input,
-                              opt_config.vocab_size,
-                              opt_config.word_embed_proj_dim,
-                              AGGR_MODE_NONE,
-                              DT_FLOAT,
-                              NULL,
-                              embed_init);
-  Layer *embedding = ff.layers.back();
+  Tensor token;
+  if (use_full_precision) {
+    token = ff.embedding(input,
+                         opt_config.vocab_size,
+                         opt_config.word_embed_proj_dim,
+                         AGGR_MODE_NONE,
+                         DT_FLOAT,
+                         NULL,
+                         embed_init);
+  } else {
+    token = ff.embedding(input,
+                         opt_config.vocab_size,
+                         opt_config.word_embed_proj_dim,
+                         AGGR_MODE_NONE,
+                         DT_HALF,
+                         NULL,
+                         embed_init);
+  }
 
+  Layer *embedding = ff.layers.back();
   weights_layers.emplace("embed_tokens_weight", embedding);
 
-  Tensor positional_embedding = ff.embedding(position_input,
-                                             opt_config.max_position_embeddings,
-                                             opt_config.hidden_size,
-                                             AGGR_MODE_NONE,
-                                             DT_FLOAT,
-                                             NULL,
-                                             embed_init);
+  Tensor positional_embedding;
+  if (use_full_precision) {
+    positional_embedding = ff.embedding(position_input,
+                                        opt_config.max_position_embeddings,
+                                        opt_config.hidden_size,
+                                        AGGR_MODE_NONE,
+                                        DT_FLOAT,
+                                        NULL,
+                                        embed_init);
+  } else {
+    positional_embedding = ff.embedding(position_input,
+                                        opt_config.max_position_embeddings,
+                                        opt_config.hidden_size,
+                                        AGGR_MODE_NONE,
+                                        DT_HALF,
+                                        NULL,
+                                        embed_init);
+  }
   Layer *pos_embedding = ff.layers.back();
   weights_layers.emplace("embed_positions_weight", pos_embedding);
 
@@ -82,7 +105,6 @@ void OPT::create_opt_model(FFModel &ff,
 
   int num_transformer_layers_per_stage =
       (32 + num_pipeline_stages - 1) / num_pipeline_stages;
-
   for (int i = 0; i < opt_config.num_hidden_layers; i++) {
     // 125m, 1.7B, ..., 175B applies layer norm BEFORE attention,
     // 350m applies layer norm AFTER attention

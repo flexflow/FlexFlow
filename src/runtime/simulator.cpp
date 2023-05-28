@@ -85,7 +85,7 @@ Simulator::Simulator(FFModel const *model,
   hipEventCreate(&start_event);
   hipEventCreate(&end_event);
   conv2d_meta = new Conv2DMeta(handler);
-  linear_meta = new LinearMeta(handler, 4096);
+  // linear_meta = new LinearMeta(handler, 4096);
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
   // ele_binary_meta = new ElementBinaryMeta(handler);

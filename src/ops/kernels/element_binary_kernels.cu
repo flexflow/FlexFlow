@@ -200,18 +200,18 @@ void backward_kernel_wrapper(ElementBinaryMeta const *m,
 }
 
 namespace Internal {
-template <typename DT>
+
 __global__ void elewise_binary_forward_kernel(coord_t volume,
-                                              DT const alpha,
-                                              DT const beta,
+                                              float const alpha,
+                                              float const beta,
                                               OperatorType type,
-                                              DT const *in1,
-                                              DT const *in2,
-                                              DT *out) {
+                                              float const *in1,
+                                              float const *in2,
+                                              float *out) {
   switch (type) {
     case OP_EW_ADD: {
       CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = in1[i] + in2[i];
+        out[i] = alpha * (in1[i] + in2[i]) + beta * out[i];
       }
       break;
     }
@@ -223,7 +223,7 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
     }
     case OP_EW_MUL: {
       CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = in1[i] * in2[i];
+        out[i] = alpha * in1[i] * in2[i] + beta * out[i];
       }
       break;
     }
@@ -235,13 +235,13 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
     }
     case OP_EW_MAX: {
       CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * (in1[i] >= in2[i] ? in1[i] : in2[i]) + beta * out[i];
+        out[i] = alpha * max(in1[i], in2[i]) + beta * out[i];
       }
       break;
     }
     case OP_EW_MIN: {
       CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * (in1[i] <= in2[i] ? in1[i] : in2[i]) + beta * out[i];
+        out[i] = alpha * min(in1[i], in2[i]) + beta * out[i];
       }
       break;
     }
@@ -330,24 +330,7 @@ void forward_kernel(ElementBinaryMeta const *m,
   }
   // cudnn currently does not support broadcasting the first input in
   // cudnnOpTensor
-  if (m->input_type[0] == DT_HALF) {
-    DT alpha = 1.0f, beta = 1.0f;
-    cudnnDataType_t dataType = ff_to_cudnn_datatype(m->output_type[0]);
-    int n;
-    int dims[MAX_TENSOR_DIM];
-    int strides[MAX_TENSOR_DIM];
-    checkCUDNN(cudnnGetTensorNdDescriptor(
-        m->outputTensor, MAX_TENSOR_DIM, &dataType, &n, dims, strides));
-    size_t volume = 1;
-    for (int i = 0; i < n; i++) {
-      volume *= dims[i];
-    }
-    elewise_binary_forward_kernel<<<GET_BLOCKS(volume),
-                                    CUDA_NUM_THREADS,
-                                    0,
-                                    stream>>>(
-        volume, alpha, beta, m->op_type, in1_ptr, in2_ptr, out_ptr);
-  } else if (m->broadcast_input1) {
+  if (m->broadcast_input1) {
     // currently only handle add and sub
     assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
            m->op_type == OP_EW_MUL);

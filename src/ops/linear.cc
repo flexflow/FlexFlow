@@ -409,7 +409,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
          in_dim,
          out_dim,
          batch_size);
-  LinearMeta *m = new LinearMeta(handle, batch_size);
+  LinearMeta *m = new LinearMeta(handle, batch_size, linear);
   m->activation = linear->activation;
   m->kernel_reg_type = linear->kernel_reg_type;
   m->kernel_reg_lambda = linear->kernel_reg_lambda;

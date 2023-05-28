@@ -110,7 +110,7 @@ void parse_input_args(char **argv,
       paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "--use_full_precision")) {
+    if (!strcmp(argv[i], "--use-full-precision")) {
       use_full_precision = true;
       continue;
     }
@@ -211,7 +211,8 @@ void FlexFlow::top_level_task(Task const *task,
                           file_paths.ssm_config_file_paths[0],
                           file_paths.ssm_weight_file_paths[0],
                           1,
-                          BEAM_SEARCH_MODE);
+                          BEAM_SEARCH_MODE,
+                          use_full_precision);
   }
   if (model_types.llm_model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(tree_model,
@@ -227,7 +228,8 @@ void FlexFlow::top_level_task(Task const *task,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
                           ffconfig.workersPerNode * ffconfig.numNodes,
-                          TREE_VERIFY_MODE);
+                          TREE_VERIFY_MODE,
+                          use_full_precision);
   }
 
   TreeVerifyBatchConfig tree_bc;

@@ -132,17 +132,18 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T *gamma_ptr,
                                T *beta_ptr,
                                hipStream_t stream) {
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<float>),
-                     m->effective_batch_size,
-                     kCUDABlockReduceNumThreads,
-                     0,
-                     stream,
-                     m->effective_num_elements,
-                     m->eps,
-                     in_ptr,
-                     m->mean_ptr,
-                     m->rstd_ptr);
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<float>),
+  hipLaunchKernelGGL(
+      HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<TENSOR_GUID_FIRST_VALID>),
+      m->effective_batch_size,
+      kCUDABlockReduceNumThreads,
+      0,
+      stream,
+      m->effective_num_elements,
+      m->eps,
+      in_ptr,
+      m->mean_ptr,
+      m->rstd_ptr);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<T>),
                      m->effective_batch_size,
                      kCUDANumThreads,
                      0,
@@ -157,16 +158,30 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
 }
 
 /*static*/
-template <typename T>
 void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
-                                       T const *in_ptr,
-                                       T *out_ptr,
-                                       T *gamma_ptr,
-                                       T *beta_ptr) {
+                                       GenericTensorAccessorR const &input,
+                                       GenericTensorAccessorW &output,
+                                       GenericTensorAccessorW &gamma,
+                                       GenericTensorAccessorW &beta) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  LayerNorm::forward_kernel<float>(
-      m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
+  if (m->input_type[0] == DT_FLOAT) {
+    LayerNorm::forward_kernel<float>(m,
+                                     input.get_half_ptr(),
+                                     output.get_half_ptr(),
+                                     gamma.get_half_ptr(),
+                                     beta.get_half_ptr(),
+                                     stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    LayerNorm::forward_kernel<half>(m,
+                                    input.get_half_ptr(),
+                                    output.get_half_ptr(),
+                                    gamma.get_half_ptr(),
+                                    beta.get_half_ptr(),
+                                    stream);
+  } else {
+    assert(false && "unsupport datatype in layernorm");
+  }
 }
 
 template <typename T>
@@ -443,11 +458,6 @@ void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
                                     stream);
 }
 
-template void LayerNorm::forward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                                       float const *in_ptr,
-                                                       float *out_ptr,
-                                                       float *gamma_ptr,
-                                                       float *beta_ptr);
 template void
     LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
                                               float const *output_grad_ptr,

@@ -33,7 +33,7 @@ public:
     t_.impl = const_cast<void *>(static_cast<void const *>(t));                \
     return t_;                                                                 \
   }                                                                            \
-  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \                                                                           \
+  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \
   static const T unwrap_const(const T_ t_) {                                   \
     return static_cast<const T>(t_.impl);                                      \
   }
@@ -569,7 +569,7 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
     axes_vec.push_back(axes[i]);
   }
   Tensor tensor =
-      handle->layer_norm(input, axes_vec, elementwise_affine, eps, name);
+      handle->layer_norm(input, axes_vec, elementwise_affine, eps, input->data_type ,name);
   DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps "
               "%f, name %s",
               tensor,
@@ -979,7 +979,7 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
                                               bias,
                                               add_bias_kv,
                                               add_zero_attn,
-                                              key->data_type,
+                                              query->data_type,
                                               kernel_initializer,
                                               name);
   DEBUG_PRINT("[MultiHeadAttention] new Tensor %p, query %p, key %p, value %p, "
