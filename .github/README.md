@@ -60,7 +60,7 @@ For example, you can use the following command line to serve a LLaMA-7B or LLaMA
 ### Tokenizers
 SpecInfer supports two tokenizers:
 
-* The SentencePiece tokenizer is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). We used the pretrained sentencepiece tokenizer from LLAMA, which is also available on Hugging Face (model id: `decapoda-research/llama-7b-hf`). We store the tokenizer on our S3 bucket at this link: [s3://specinfer/tokenizer/tokenizer.model](https://specinfer.s3.us-east-2.amazonaws.com/tokenizer/tokenizer.model).
+* The SentencePiece tokenizer is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). We used the pretrained sentencepiece tokenizer from LLAMA, which is also available on Hugging Face (model id: `decapoda-research/llama-7b-hf`). If you  are using our LLAMA-160M weights for the demo, however, you should use the tokenizer from the [JackFram/llama-160m](https://huggingface.co/JackFram/llama-160m/resolve/main/tokenizer.model) HuggingFace repo.
 * The GPT2 tokenizer is used to support the Open Pre-trained Transformer model family (e.g., OPT-13B and OPT-125M). To use it, download the [vocab](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json) and [merges](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt) files and pass the folder containing them as a parameter. 
 
 ### LLM Weights
@@ -69,7 +69,7 @@ The weight files used in our demo are extracted from HuggingFace, and stored in 
 |  Model   | Model id on Hugging Face  | Storage Location |
 |  :----  | :----  | :----  |
 | LLaMA-7B | decapoda-research/llama-7b-hf | s3://specinfer/weights/llama_7B_weights.tar.gz |
-| LLaMA-190M  | Bingsu/llama-190m-arch | s3://specinfer/weights/llama_190m_weights.tar.gz |
+| LLaMA-190M  | JackFram/llama-160m | s3://specinfer/weights/llama_160M_weights.tar.gz |
 | OPT-6.7B  | facebook/opt-6.7b | s3://specinfer/weights/opt_6B_weights.tar.gz |
 | OPT-125M  | facebook/opt-125m | s3://specinfer/weights/opt_125m_native.tar.gz |
 

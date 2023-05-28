@@ -37,13 +37,13 @@ dst_folder="../weights/llama_7B_weights"
 convert_hf_model(model, dst_folder)
 
 # Download and convert small model weights
-model = AutoModelForCausalLM.from_pretrained("Bingsu/llama-190m-arch")
-dst_folder="../weights/llama_190M_weights"
+model = AutoModelForCausalLM.from_pretrained("JackFram/llama-160m")
+dst_folder="../weights/llama_160M_weights"
 convert_hf_model(model, dst_folder)
 
 # Download tokenizer
 os.makedirs("../tokenizer", exist_ok=True)
 tokenizer_filepath = '../tokenizer/tokenizer.model'
-url = 'https://specinfer.s3.us-east-2.amazonaws.com/tokenizer/tokenizer.model'
+url = 'https://huggingface.co/JackFram/llama-160m/resolve/main/tokenizer.model'
 r = requests.get(url)
 open(tokenizer_filepath , 'wb').write(r.content)

@@ -1,6 +1,6 @@
 {
     "n_layers": 12,
-    "vocab_size": 50265,
+    "vocab_size": 32000,
     "n_heads": 12,
     "dim": 768,
     "multiple_of": 256,
