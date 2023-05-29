@@ -485,6 +485,7 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
   }
 }
 
-ArgTopKMeta::ArgTopKMeta(FFHandler handler) : OpMeta(handler) {}
+ArgTopKMeta::ArgTopKMeta(FFHandler handler, Op const *op)
+    : OpMeta(handler, op) {}
 
 }; // namespace FlexFlow
