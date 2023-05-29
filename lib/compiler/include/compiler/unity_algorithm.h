@@ -3,6 +3,7 @@
 
 #include "op-attrs/operator_attrs.h"
 #include "pcg/machine_view.h"
+#include "pcg/machine_specification.h"
 #include "utils/graph.h"
 #include "compiler.h"
 
@@ -77,10 +78,10 @@ struct Strategy {
 Strategy
     optimal_cost(OptimizerPCG const &g,
                  std::function<std::unordered_set<MachineView>(
-                     PCGOperatorAttrs const &, MachineResource const &)> const
+                     PCGOperatorAttrs const &, MachineSpecification const &)> const
                      &allowed_machine_views,
                  ICostEstimator const &cost_estimator,
-                 MachineResource const &resources,
+                 MachineSpecification const &resources,
                  std::unordered_map<size_t, Strategy> &cached_subgraph_costs);
 
 struct GraphOptResult {
@@ -92,6 +93,15 @@ struct GraphOptResult {
   bool operator<(GraphOptResult const &r) const;
 };
 
+GraphOptResult
+    graph_optimize(OptimizerComputationGraph &cg,
+                   ICostEstimator const &cost_estimator,
+                   MachineSpecification const &resources,
+                   std::function<std::unordered_set<MachineView>(
+                       PCGOperatorAttrs const &, MachineSpecification const &)> const
+                       &allowed_machine_views,
+                   OptimizerConfig const &opt_config);
+                   
 } // namespace FlexFlow
 
 namespace std {

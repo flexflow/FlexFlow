@@ -309,16 +309,14 @@ std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
   }
 }
 
-std::vector<std::pair<MachineResource, MachineResource>>
-    get_resource_split(MachineResource const &resource) {
-  std::vector<std::pair<MachineResource, MachineResource>> result;
+std::vector<std::pair<MachineSpecification, MachineSpecification>>
+    get_resource_split(MachineSpecification const &resource) {
+  std::vector<std::pair<MachineSpecification, MachineSpecification>> result;
   for (int i = 1; i < resource.num_nodes; ++i) {
-    result.push_back({MachineResource(i,
-                                      resource.num_cpus_per_node,
-                                      resource.num_gpus_per_node),
-                      MachineResource(resource.num_nodes - i,
-                                      resource.num_cpus_per_node,
-                                      resource.num_gpus_per_node)});
+    MachineSpecification sub_resource1 = resource, sub_resource2 = resource;
+    sub_resource1.num_nodes = i;
+    sub_resource2.num_nodes = resource.num_nodes - i;
+    result.push_back(std::make_pair(sub_resource1, sub_resource2));
   }
   return result;
 }
@@ -330,10 +328,10 @@ std::vector<std::pair<MachineResource, MachineResource>>
 // float internal_optimal_cost(SubParallelComputationGraph const &g,
 //                             ICostEstimator const &cost_estimator,
 //                             SerialParallelDecomposition const
-//                             &sp_decomposition, MachineResource const
+//                             &sp_decomposition, MachineSpecification const
 //                             &resource,
 //                             std::function<std::unordered_set<MachineView>(PCGOperatorAttrs
-//                             const &, MachineResource const &)> const &f ) {
+//                             const &, MachineSpecification const &)> const &f ) {
 //   if (is_base_case(g)) {
 //     // base case
 //   } else {
@@ -368,11 +366,11 @@ struct OptimalCost {
   OptimalCost(
       SubParallelComputationGraph const &g,
       ICostEstimator const &cost_estimator,
-      MachineResource const &resource,
+      MachineSpecification const &resource,
       optional<MachineView> const &source_machine_view, // assume perfect SP
       optional<MachineView> const &sink_machine_view,
       std::function<std::unordered_set<MachineView>(
-          PCGOperatorAttrs const &, MachineResource const &)> const
+          PCGOperatorAttrs const &, MachineSpecification const &)> const
           &allowed_machine_views,
       std::unordered_map<size_t, Strategy> &cached_subgraph_costs)
       : g(g), cost_estimator(cost_estimator), resource(resource),
@@ -548,11 +546,11 @@ struct OptimalCost {
 
   SubParallelComputationGraph const &g;
   ICostEstimator const &cost_estimator;
-  MachineResource const &resource;
+  MachineSpecification const &resource;
   optional<MachineView> const &source_machine_view;
   optional<MachineView> const &sink_machine_view;
   std::function<std::unordered_set<MachineView>(PCGOperatorAttrs const &,
-                                                MachineResource const &)> const
+                                                MachineSpecification const &)> const
       &allowed_machine_views;
   std::unordered_map<size_t, Strategy> &cached_subgraph_costs;
 };
@@ -560,10 +558,10 @@ struct OptimalCost {
 Strategy
     optimal_cost(OptimizerPCG const &g,
                  std::function<std::unordered_set<MachineView>(
-                     PCGOperatorAttrs const &, MachineResource const &)> const
+                     PCGOperatorAttrs const &, MachineSpecification const &)> const
                      &allowed_machine_views,
                  ICostEstimator const &cost_estimator,
-                 MachineResource const &resources,
+                 MachineSpecification const &resources,
                  std::unordered_map<size_t, Strategy> &cached_subgraph_costs) {
   return visit(OptimalCost(pcg_to_subpcg(g),
                            cost_estimator,
@@ -638,9 +636,9 @@ struct OptimizerConfig {
 GraphOptResult
     graph_optimize(OptimizerComputationGraph &cg,
                    ICostEstimator const &cost_estimator,
-                   MachineResource const &resources,
+                   MachineSpecification const &resources,
                    std::function<std::unordered_set<MachineView>(
-                       PCGOperatorAttrs const &, MachineResource const &)> const
+                       PCGOperatorAttrs const &, MachineSpecification const &)> const
                        &allowed_machine_views,
                    OptimizerConfig const &opt_config) {
 
