@@ -81,6 +81,6 @@ public:
   int dim;
 };
 
-};     // namespace FlexFlow
+}; // namespace FlexFlow
 
 #endif // _FLEXFLOW_SOFTMAX_H

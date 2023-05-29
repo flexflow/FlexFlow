@@ -22,7 +22,8 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-ElementBinaryMeta::ElementBinaryMeta(FFHandler handler) : OpMeta(handler) {
+ElementBinaryMeta::ElementBinaryMeta(FFHandler handler, Op const *op)
+    : OpMeta(handler, op) {
   checkCUDNN(miopenCreateTensorDescriptor(&input1Tensor));
   checkCUDNN(miopenCreateTensorDescriptor(&input2Tensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));

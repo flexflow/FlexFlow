@@ -60,7 +60,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     IncMultiHeadSelfAttention const *attn,
-    float const *weight_ptr,
+    GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
@@ -87,7 +87,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _qk_prod_scaling,
     bool _add_bias_kv,
     float _scaling_factor,
-    float const *weight_ptr,
+    GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
     int _num_heads)

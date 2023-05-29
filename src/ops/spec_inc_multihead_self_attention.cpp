@@ -60,7 +60,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
 SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     SpecIncMultiHeadSelfAttention const *attn,
-    float const *weight_ptr,
+    GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
     int _num_heads)

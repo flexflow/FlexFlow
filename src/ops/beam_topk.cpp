@@ -711,6 +711,7 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   // }
 }
 
-BeamTopKMeta::BeamTopKMeta(FFHandler handler) : OpMeta(handler) {}
+BeamTopKMeta::BeamTopKMeta(FFHandler handler, Op const *op)
+    : OpMeta(handler, op) {}
 
 }; // namespace FlexFlow
