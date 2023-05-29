@@ -293,12 +293,6 @@ __device__ void mergeBeamShards(int num_shards,
       T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
-      if (verbose && batch_index == 0) {
-        printf("slot %d, value %.15f, prob %15f\n",
-               slot,
-               entries[slot].value,
-               prob);
-      }
     }
     min_heap.build(heap_size);
 
@@ -309,13 +303,6 @@ __device__ void mergeBeamShards(int num_shards,
 
       T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((shard % max_heap_size) / k)];
-      if (verbose && batch_index == 0) {
-        printf("shard %d, index %d, value %.15f, prob %.15f\n",
-               shard,
-               entry.index,
-               entry.value,
-               prob);
-      }
       if (entry.value * prob < root.value) {
         continue;
       }
@@ -353,12 +340,6 @@ __device__ void mergeBeamShards(int num_shards,
 
       T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((next_shard_index % max_heap_size) / k)];
-      if (batch_index == 0) {
-        printf("next_shard_index %d, value %.15f, prob %.15f\n",
-               next_shard_index,
-               entries[next_shard_index].value,
-               prob);
-      }
 
       max_heap.replace_root(
           {next_shard_index, entries[next_shard_index].value * prob},
@@ -427,20 +408,6 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   T const *batch_input = input + gpu_block_start_index[batch_index] +
                          (sub_request_id * token_nums * length);
 
-  if (verbose && batch_index == 0) {
-    printf("request 0 start index: thread index %d, offset %d, batch_input %p, "
-           "acc index %d acc "
-           "prob %f, thread_count %d, request_id %d\n",
-           thread_index,
-           gpu_block_start_index[batch_index] +
-               (sub_request_id * token_nums * length),
-           batch_input,
-           request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id,
-           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                     sub_request_id],
-           thread_count,
-           request_id);
-  }
   // printf("thread index %d, thread_count %d, batch_index %d\n", thread_index,
   // thread_count, batch_index);
   heapBeamTopK<T, StridedData>(batch_input,
