@@ -36,9 +36,10 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
 namespace Kernels {
 namespace Softmax {
 
+template <typename DT>
 void forward_kernel_wrapper(SoftmaxMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
+                            DT const *input_ptr,
+                            DT *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -64,9 +65,10 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
   }
 }
 
+template <typename DT>
 void backward_kernel_wrapper(SoftmaxMeta const *m,
-                             float *input_grad_ptr,
-                             float const *output_grad_ptr,
+                             DT *input_grad_ptr,
+                             DT const *output_grad_ptr,
                              size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -94,11 +96,27 @@ void backward_kernel_wrapper(SoftmaxMeta const *m,
   }
 }
 
-namespace Internal {
+template void forward_kernel_wrapper<float>(SoftmaxMeta const *m,
+                                            float const *input_ptr,
+                                            float *output_ptr);
+template void forward_kernel_wrapper<half>(SoftmaxMeta const *m,
+                                           half const *input_ptr,
+                                           half *output_ptr);
 
+template void backward_kernel_wrapper<float>(SoftmaxMeta const *m,
+                                             float *input_grad_ptr,
+                                             float const *output_grad_ptr,
+                                             size_t num_elements);
+template void backward_kernel_wrapper<half>(SoftmaxMeta const *m,
+                                            half *input_grad_ptr,
+                                            half const *output_grad_ptr,
+                                            size_t num_elements);
+
+namespace Internal {
+template <typename DT>
 void forward_kernel(SoftmaxMeta const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
+                    DT const *input_ptr,
+                    DT *output_ptr,
                     hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -114,13 +132,14 @@ void forward_kernel(SoftmaxMeta const *m,
                                      MIOPEN_SOFTMAX_MODE_CHANNEL));
 }
 
-void backward_kernel(float *input_grad_ptr,
-                     float const *output_grad_ptr,
+template <typename DT>
+void backward_kernel(DT *input_grad_ptr,
+                     DT const *output_grad_ptr,
                      size_t num_elements,
                      hipStream_t stream) {
   checkCUDA(hipMemcpyAsync(input_grad_ptr,
                            output_grad_ptr,
-                           num_elements * sizeof(float),
+                           num_elements * sizeof(DT),
                            hipMemcpyDeviceToDevice,
                            stream));
 }

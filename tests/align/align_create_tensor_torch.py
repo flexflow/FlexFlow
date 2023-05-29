@@ -2,6 +2,7 @@ import os
 import sys
 
 import torch
+torch.manual_seed(1)
 
 sys.path.append("./align/")
 from align_utils import gen_tensor, parse_create_tensor_args, create_general_test_tensor_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
