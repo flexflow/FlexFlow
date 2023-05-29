@@ -249,7 +249,7 @@ struct LabelledUpwardMultiDiSubgraphView {
 public:
   LabelledUpwardMultiDiSubgraphView() = delete;
   template<typename OutputLabel>
-  explicit LabelledDownwardMultiDiSubgraphView(
+  explicit LabelledUpwardMultiDiSubgraphView(
     ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &,
     std::unordered_set<Node> const &);
 };
@@ -305,6 +305,13 @@ template<typename NodeLabel,
          typename OutputLabel = InputLabel>
 LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
     view_as_labelled_open_multidisubgraph(LabelledDownwardMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel> const &);
+
+template<typename NodeLabel,
+         typename EdgeLabel,
+         typename InputLabel = EdgeLabel,
+         typename OutputLabel = InputLabel>
+LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
+    view_as_labelled_open_multidisubgraph(LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> const &);
 
 DirectedEdge flipped(DirectedEdge const &);
 

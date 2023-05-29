@@ -136,6 +136,11 @@ template <>
 struct hash<::FlexFlow::MachineView> {
   size_t operator()(::FlexFlow::MachineView const &) const;
 };
+
+template <>
+struct hash<::FlexFlow::MachineResource> {
+  size_t operator()(::FlexFlow::MachineResource const &) const;
+};
 }; // namespace std
 
 #endif // _FLEXFLOW_MACHINE_VIEW_H

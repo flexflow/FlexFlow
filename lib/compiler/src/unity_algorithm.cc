@@ -1,10 +1,17 @@
-#include "compiler/compiler.h"
 #include "compiler/unity_algorithm.h"
+#include "compiler/compiler.h"
+#include "substitutions_implementation.h"
 
 namespace FlexFlow {
 
-SerialParallelDecomposition get_serial_parallel_decomposition(OptimizerPCG const &pcg) {
-  return get_serial_parallel_decomposition(unsafe_view_as_digraph(MultiDiGraphView(pcg)));
+SubParallelComputationGraph pcg_to_subpcg(OptimizerPCG const &g) {}
+
+OptimizerPCG cg_to_pcg(OptimizerComputationGraph const &g) {}
+
+SerialParallelDecomposition
+    get_serial_parallel_decomposition(OptimizerPCG const &pcg) {
+  return get_serial_parallel_decomposition(
+      unsafe_view_as_digraph(MultiDiGraphView(pcg)));
 }
 
 std::vector<MultiDiEdge> get_sorted_node_input_edges(OptimizerPCG const &pcg,
@@ -129,27 +136,41 @@ LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
                  std::unordered_set<Node> const &nodes,
                  InputSettings input_settings,
                  OutputSettings output_settings) {
- 
-  auto iview = LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>(g).unsafe();
+
+  auto iview = LabelledOpenMultiDiGraphView<NodeLabel,
+                                            EdgeLabel,
+                                            InputLabel,
+                                            OutputLabel>(g)
+                   .unsafe();
 
   if (input_settings == InputSettings::INCLUDE_INPUTS &&
       output_settings == OutputSettings::INCLUDE_OUTPUTS) {
-    LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> subgraph_view(*iview, nodes);
+    LabelledOpenMultiDiSubgraphView<NodeLabel,
+                                    EdgeLabel,
+                                    InputLabel,
+                                    OutputLabel>
+        subgraph_view(*iview, nodes);
     return materialize_labelled_openmultidigraph_view(subgraph_view);
   } else if (input_settings == InputSettings::INCLUDE_INPUTS &&
              output_settings == OutputSettings::EXCLUDE_OUTPUTS) {
-    LabelledUpwardMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel> subgraph_view(*iview, nodes);
+    LabelledUpwardMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel>
+        subgraph_view(*iview, nodes);
     return materialize_labelled_openmultidigraph_view(
         view_as_labelled_open_multidisubgraph(subgraph_view));
   } else if (input_settings == InputSettings::EXCLUDE_INPUTS &&
              output_settings == OutputSettings::INCLUDE_OUTPUTS) {
-    LabelledDownwardMultiDiSubgraphView<NodeLabel, EdgeLabel, OutputLabel> subgraph_view(*iview, nodes);
+    LabelledDownwardMultiDiSubgraphView<NodeLabel, EdgeLabel, OutputLabel>
+        subgraph_view(*iview, nodes);
     return materialize_labelled_openmultidigraph_view(
         view_as_labelled_open_multidisubgraph(subgraph_view));
   } else {
-    LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> subgraph_view(*iview, nodes);
+    LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> subgraph_view(*iview,
+                                                                    nodes);
     return materialize_labelled_openmultidigraph_view(
-        view_as_labelled_open_multidisubgraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>(subgraph_view));
+        view_as_labelled_open_multidisubgraph<NodeLabel,
+                                              EdgeLabel,
+                                              InputLabel,
+                                              OutputLabel>(subgraph_view));
   }
 
   // OpenMultiDiGraph const &base_graph(g);
@@ -536,18 +557,15 @@ struct OptimalCost {
   std::unordered_map<size_t, Strategy> &cached_subgraph_costs;
 };
 
-SubParallelComputationGraph
-    to_sub_parallel_computation_graph(OptimizerPCG const &g) {}
-
 Strategy
     optimal_cost(OptimizerPCG const &g,
                  std::function<std::unordered_set<MachineView>(
                      PCGOperatorAttrs const &, MachineResource const &)> const
                      &allowed_machine_views,
                  ICostEstimator const &cost_estimator,
-                 MachineResource const &resources) {
-  std::unordered_map<size_t, Strategy> cached_subgraph_costs;
-  return visit(OptimalCost(to_sub_parallel_computation_graph(g),
+                 MachineResource const &resources,
+                 std::unordered_map<size_t, Strategy> &cached_subgraph_costs) {
+  return visit(OptimalCost(pcg_to_subpcg(g),
                            cost_estimator,
                            resources,
                            nullopt,
@@ -556,4 +574,126 @@ Strategy
                            cached_subgraph_costs),
                get_serial_parallel_decomposition(g));
 }
+
+// Substitution logic
+
+GraphOptResult::GraphOptResult(OptimizerPCG const &pcg,
+                               Strategy const &strategy)
+    : pcg(pcg), strategy(strategy) {}
+
+bool GraphOptResult::operator<(GraphOptResult const &r) const {
+  return strategy.runtime < r.strategy.runtime;
+}
+
+template <typename Elem,
+          typename Container = std::vector<Elem>,
+          typename Compare = std::less<typename Container::value_type>,
+          typename Hash = std::hash<Elem>>
+class DeduplicatedPriorityQueue {
+public:
+  Elem const &top() const {
+    return impl.top();
+  }
+
+  bool empty() const {
+    return impl.empty();
+  }
+
+  size_t size() const {
+    return impl.size();
+  }
+
+  void push(Elem const &e) {
+    size_t hash = Hash{}(e);
+    if (!contains(hashmap, e)) {
+      impl.push(e);
+      hashmap.insert(hash);
+    }
+  }
+
+  void pop() {
+    hashmap.erase(Hash{}(impl.top()));
+    impl.pop();
+  }
+
+private:
+  std::priority_queue<Elem, Container, Compare> impl;
+  std::unordered_set<size_t> hashmap;
+};
+
+std::unordered_set<substitutions::SubstitutionPattern>
+    get_all_substitutions(OptimizerPCG const &pcg);
+
+std::unordered_set<OptimizerPCG>
+    apply_substitution(OptimizerPCG const &pcg,
+                       substitutions::SubstitutionPattern const &);
+
+struct OptimizerConfig {
+  float alpha;
+  int budget;
+  float threshold;
+  int max_num_ops;
+};
+
+GraphOptResult
+    graph_optimize(OptimizerComputationGraph &cg,
+                   ICostEstimator const &cost_estimator,
+                   MachineResource const &resources,
+                   std::function<std::unordered_set<MachineView>(
+                       PCGOperatorAttrs const &, MachineResource const &)> const
+                       &allowed_machine_views,
+                   OptimizerConfig const &opt_config) {
+
+  OptimizerPCG pcg = cg_to_pcg(cg);
+
+  std::unordered_set<substitutions::SubstitutionPattern> subs =
+      get_all_substitutions(pcg);
+
+  std::unordered_map<size_t, Strategy> cached_subgraph_costs;
+  DeduplicatedPriorityQueue<GraphOptResult,
+                            std::vector<GraphOptResult>,
+                            std::greater<GraphOptResult>>
+      candidates;
+
+  GraphOptResult initial_result(pcg,
+                                optimal_cost(pcg,
+                                             allowed_machine_views,
+                                             cost_estimator,
+                                             resources,
+                                             cached_subgraph_costs));
+
+  GraphOptResult best_result = initial_result;
+  candidates.push(initial_result);
+
+  for (int iteration = 0; !candidates.empty() && iteration < opt_config.budget;
+       ++iteration) {
+    GraphOptResult const &current_result = candidates.top();
+    candidates.pop();
+
+    if (current_result < best_result) {
+      best_result = current_result;
+    } else if (current_result.strategy.runtime >
+               best_result.strategy.runtime * opt_config.alpha) {
+      continue;
+    }
+
+    for (auto const &sub : subs) {
+      for (auto const &new_pcg : apply_substitution(current_result.pcg, sub)) {
+        GraphOptResult new_result(new_pcg,
+                                  optimal_cost(new_pcg,
+                                               allowed_machine_views,
+                                               cost_estimator,
+                                               resources,
+                                               cached_subgraph_costs));
+        if (new_result.strategy.runtime <= opt_config.threshold &&
+            new_result.pcg.query_nodes({}).size() <= opt_config.max_num_ops) {
+          candidates.push(new_result);
+        }
+      }
+    }
+  }
+
+  return best_result;
+}
+
 } // namespace FlexFlow

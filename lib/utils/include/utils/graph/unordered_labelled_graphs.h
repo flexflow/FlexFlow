@@ -51,6 +51,8 @@ private:
   std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
 };
 
+MultiDiOutput get_output(MultiDiEdge const &e);
+
 template <typename NodeLabel, typename OutputLabel>
 struct UnorderedOutputLabelledMultiDiGraph : public IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>, 
                                              public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {

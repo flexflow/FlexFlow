@@ -23,6 +23,9 @@ using OptimizerPCG =
 LabelledMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape>
     infer_tensor_shape(NodeLabelledMultiDiGraph<PCGOperatorAttrs> const &);
 
+struct Substitution {
+};
+
 } // namespace FlexFlow
 
 #endif

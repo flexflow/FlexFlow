@@ -80,7 +80,17 @@ Strategy
                      PCGOperatorAttrs const &, MachineResource const &)> const
                      &allowed_machine_views,
                  ICostEstimator const &cost_estimator,
-                 MachineResource const &resources);
+                 MachineResource const &resources,
+                 std::unordered_map<size_t, Strategy> &cached_subgraph_costs);
+
+struct GraphOptResult {
+  OptimizerPCG pcg;
+  Strategy strategy;
+
+  GraphOptResult(OptimizerPCG const &pcg, Strategy const &strategy);
+
+  bool operator<(GraphOptResult const &r) const;
+};
 
 } // namespace FlexFlow
 
@@ -94,6 +104,11 @@ template <>
 struct hash<::FlexFlow::Parallel> {
   size_t operator()(::FlexFlow::Parallel const &) const;
 };
+
+template <>
+struct hash<::FlexFlow::GraphOptResult> {
+  size_t operator()(::FlexFlow::GraphOptResult const &) const;
+}
 
 }; // namespace std
 

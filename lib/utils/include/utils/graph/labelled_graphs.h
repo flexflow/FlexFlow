@@ -74,9 +74,12 @@ public:
     swap(lhs.ptr, rhs.ptr);
   }
 
+  operator MultiDiGraphView() const;
+
   Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
   NodeLabel &at(Node const &n) { return this->ptr->at(n); }
-  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  // NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  NodeLabel const &at(Node const &n) const;
 
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l) { return this->ptr->add_edge(e, l); }
   EdgeLabel &at(MultiDiEdge const &e) { return this->ptr->at(e); }
@@ -138,6 +141,22 @@ private:
   std::unique_ptr<Interface> ptr;
 };
 
+template<typename NodeLabel,
+         typename EdgeLabel,
+         typename InputLabel = EdgeLabel,
+         typename OutputLabel = InputLabel>
+struct LabelledOpenMultiDiGraphView {
+public:
+  LabelledOpenMultiDiGraphView() = delete;
+
+  ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const *unsafe() const {
+    return this->ptr.get();
+  }
+
+private:
+  std::shared_ptr<ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const> ptr;
+};
+
 template<typename NodeLabel, 
          typename EdgeLabel, 
          typename InputLabel = EdgeLabel, 
@@ -156,6 +175,7 @@ public:
   }
 
   operator OpenMultiDiGraph() const;
+  operator LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>() const;
 
   friend void swap(LabelledOpenMultiDiGraph &lhs, LabelledOpenMultiDiGraph &rhs) {
     using std::swap;
@@ -165,7 +185,8 @@ public:
 
   Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
   NodeLabel &at(Node const &n) { return this->ptr->at(n); }
-  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  // NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  NodeLabel const &at(Node const &n) const;
 
   void add_node_unsafe(Node const &n, NodeLabel const &l);
 

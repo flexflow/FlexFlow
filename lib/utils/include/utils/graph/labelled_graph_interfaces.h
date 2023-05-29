@@ -82,11 +82,23 @@ public:
 
 static_assert(is_rc_copy_virtual_compliant<IOutputLabelledMultiDiGraph<int, int>>::value, RC_COPY_VIRTUAL_MSG);
 
+template<typename NodeLabel,
+         typename EdgeLabel,
+         typename InputLabel = EdgeLabel,
+         typename OutputLabel = InputLabel>
+struct ILabelledOpenMultiDiGraphView : public IOpenMultiDiGraphView {
+public:
+  virtual InputLabel const &at(InputMultiDiEdge const &e) const = 0;
+  virtual OutputLabel const &at(OutputMultiDiEdge const &e) const = 0;
+  virtual EdgeLabel const &at(MultiDiEdge const &e) const = 0;
+};
+
 template<typename NodeLabel, 
          typename EdgeLabel, 
          typename InputLabel = EdgeLabel, 
          typename OutputLabel = InputLabel>
-struct ILabelledOpenMultiDiGraph : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel> {
+struct ILabelledOpenMultiDiGraph : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel>,
+                                   public ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> {
 public:
   virtual void add_edge(InputMultiDiEdge const &e, InputLabel const &label) = 0;
   virtual void add_edge(OutputMultiDiEdge const &e, OutputLabel const &label) = 0;
@@ -101,17 +113,6 @@ public:
 static_assert(is_rc_copy_virtual_compliant<ILabelledOpenMultiDiGraph<int, int, int, int>>::value, RC_COPY_VIRTUAL_MSG);
 
 }
-
-template<typename NodeLabel,
-         typename EdgeLabel,
-         typename InputLabel = EdgeLabel,
-         typename OutputLabel = InputLabel>
-struct ILabelledOpenMultiDiGraphView : public IOpenMultiDiGraphView {
-public:
-  virtual InputLabel const &at(InputMultiDiEdge const &e) const = 0;
-  virtual OutputLabel const &at(OutputMultiDiEdge const &e) const = 0;
-  virtual EdgeLabel const &at(MultiDiEdge const &e) const = 0;
-};
 
 namespace fmt {
 
