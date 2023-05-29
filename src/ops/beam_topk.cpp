@@ -673,7 +673,7 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   if (m->profiling) {
     hipEventCreate(&t_start);
     hipEventCreate(&t_end);
-    hipEventCreate(t_start, stream);
+    hipEventRecord(t_start, stream);
   }
 
   if (input.data_type == DT_HALF) {
