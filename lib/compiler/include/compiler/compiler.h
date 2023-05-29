@@ -15,17 +15,6 @@ namespace FlexFlow {
 // SearchSolution run_data_parallelize(ComputationGraph const &,
 // MachineSpecification const &);
 
-using OptimizerComputationGraph =
-    NodeLabelledMultiDiGraph<ComputationGraphAttrs>;
-using OptimizerPCG =
-    LabelledMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape>;
-
-LabelledMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape>
-    infer_tensor_shape(NodeLabelledMultiDiGraph<PCGOperatorAttrs> const &);
-
-struct Substitution {
-};
-
 } // namespace FlexFlow
 
 #endif

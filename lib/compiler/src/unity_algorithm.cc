@@ -1,67 +1,9 @@
 #include "compiler/unity_algorithm.h"
 #include "compiler/compiler.h"
 #include "substitutions_implementation.h"
+#include "graph_utils.h"
 
 namespace FlexFlow {
-
-SubParallelComputationGraph pcg_to_subpcg(OptimizerPCG const &g) {}
-
-OptimizerPCG cg_to_pcg(OptimizerComputationGraph const &g) {}
-
-SerialParallelDecomposition
-    get_serial_parallel_decomposition(OptimizerPCG const &pcg) {
-  return get_serial_parallel_decomposition(
-      unsafe_view_as_digraph(MultiDiGraphView(pcg)));
-}
-
-std::vector<MultiDiEdge> get_sorted_node_input_edges(OptimizerPCG const &pcg,
-                                                     Node const &n) {
-  std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>>
-      incoming_edges = get_incoming_edges_by_idx(MultiDiGraphView(pcg), n);
-
-  std::vector<MultiDiEdge> result;
-  for (std::size_t i = 0; i < incoming_edges.size(); i++) {
-    result.push_back(get_only(incoming_edges.at(i)));
-  }
-
-  return result;
-}
-
-std::unordered_map<MultiDiEdge, ParallelTensorShape>
-    infer_tensor_shapes(OptimizerPCG const &pcg) {
-  std::unordered_map<MultiDiEdge, ParallelTensorShape> result;
-  for (Node const &n : get_topological_ordering(MultiDiGraphView(pcg))) {
-    PCGOperatorAttrs op = pcg.at(n);
-
-    std::vector<ParallelTensorShape> input_tensor_shapes =
-        vector_transform([&](MultiDiEdge const &e) { return result.at(e); },
-                         get_sorted_node_input_edges(pcg, n));
-
-    std::vector<ParallelTensorShape> output_tensor_shapes =
-        get_output_shapes(op, input_tensor_shapes);
-
-    auto outgoing_edges = get_outgoing_edges_by_idx(MultiDiGraphView(pcg), n);
-
-    for (std::size_t i = 0; i < output_tensor_shapes.size(); i++) {
-      if (contains_key(outgoing_edges, i)) {
-        for (MultiDiEdge const &e : outgoing_edges.at(i)) {
-          result.insert({e, output_tensor_shapes[i]});
-        }
-      }
-    }
-  }
-
-  assert(result.size() == get_edges(MultiDiGraphView(pcg)).size());
-
-  return result;
-}
-
-/* ParallelComputationGraph get_subgraph(ParallelComputationGraph const &pcg,
- * std::unordered_set<Node> const &nodes) { */
-/*   auto raw_subgraph = get_subgraph<AdjacencyMultiDiGraph>(pcg.g, nodes); */
-/*   auto raw_nodeMap = restrict_keys(pcg.nodeMap, nodes); */
-/*   return { raw_subgraph, raw_nodeMap }; */
-/* } */
 
 struct GetNodes {
   template <typename T>
@@ -94,139 +36,10 @@ std::unordered_set<Node> get_nodes(Node const &node) {
   return {node};
 }
 
-/* float optimal_cost(ParallelComputationGraph const &g,
- * std::unordered_set<MachineView> const &allowed_machine_views) { */
-/*   auto sp_decomposition = get_serial_parallel_decomposition(g); */
-/*   return optimal_cost(g, sp_decomposition, allowed_machine_views); */
-/* } */
-
-// struct OpenSubParallelComputationGraph {
-//   std::unique_ptr<IDownwardOpenMultiDiGraphView const> g;
-//   std::unordered_map<Node, PCGOperatorAttrs> nodeMap;
-//   std::unordered_map<DownwardOpenMultiDiEdge, MachineView> const
-//   &output_machine_views;
-// };
-
-// Move them to the proper place after finalizing the design
-template <class T>
-void minimize(T &t, T const &v) {
-  t = std::min(t, v);
-}
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = EdgeLabel>
-LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    materialize_labelled_openmultidigraph_view(
-        ILabelledOpenMultiDiGraphView<NodeLabel,
-                                      EdgeLabel,
-                                      InputLabel,
-                                      OutputLabel> const &g) {}
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = EdgeLabel>
-LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    get_subgraph(LabelledOpenMultiDiGraph<NodeLabel,
-                                          EdgeLabel,
-                                          InputLabel,
-                                          OutputLabel> const &g,
-                 std::unordered_set<Node> const &nodes,
-                 InputSettings input_settings,
-                 OutputSettings output_settings) {
-
-  auto iview = LabelledOpenMultiDiGraphView<NodeLabel,
-                                            EdgeLabel,
-                                            InputLabel,
-                                            OutputLabel>(g)
-                   .unsafe();
-
-  if (input_settings == InputSettings::INCLUDE_INPUTS &&
-      output_settings == OutputSettings::INCLUDE_OUTPUTS) {
-    LabelledOpenMultiDiSubgraphView<NodeLabel,
-                                    EdgeLabel,
-                                    InputLabel,
-                                    OutputLabel>
-        subgraph_view(*iview, nodes);
-    return materialize_labelled_openmultidigraph_view(subgraph_view);
-  } else if (input_settings == InputSettings::INCLUDE_INPUTS &&
-             output_settings == OutputSettings::EXCLUDE_OUTPUTS) {
-    LabelledUpwardMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel>
-        subgraph_view(*iview, nodes);
-    return materialize_labelled_openmultidigraph_view(
-        view_as_labelled_open_multidisubgraph(subgraph_view));
-  } else if (input_settings == InputSettings::EXCLUDE_INPUTS &&
-             output_settings == OutputSettings::INCLUDE_OUTPUTS) {
-    LabelledDownwardMultiDiSubgraphView<NodeLabel, EdgeLabel, OutputLabel>
-        subgraph_view(*iview, nodes);
-    return materialize_labelled_openmultidigraph_view(
-        view_as_labelled_open_multidisubgraph(subgraph_view));
-  } else {
-    LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> subgraph_view(*iview,
-                                                                    nodes);
-    return materialize_labelled_openmultidigraph_view(
-        view_as_labelled_open_multidisubgraph<NodeLabel,
-                                              EdgeLabel,
-                                              InputLabel,
-                                              OutputLabel>(subgraph_view));
-  }
-
-  // OpenMultiDiGraph const &base_graph(g);
-  // OpenMultiDiGraphView base_subgraph =
-  //     get_subgraph(OpenMultiDiGraphView(base_graph), nodes);
-
-  // auto subgraph =
-  //     LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel,
-  //     OutputLabel>::
-  //         create<UnorderedLabelledOpenMultiDiGraph<NodeLabel,
-  //                                                  EdgeLabel,
-  //                                                  InputLabel,
-  //                                                  OutputLabel>>();
-  // for (Node node : base_subgraph.query_nodes({})) {
-  //   subgraph.add_node_unsafe(node, g.at(node));
-  // }
-  // for (OpenMultiDiEdge edge : get_edges(base_subgraph)) {
-  //   if (holds_alternative<InputMultiDiEdge>(edge)) {
-  //     if (input_settings == InputSettings::INCLUDE_INPUTS) {
-  //       subgraph.add_edge(get<InputMultiDiEdge>(edge),
-  //                         g.at(get<InputMultiDiEdge>(edge)));
-  //     }
-  //   } else if (holds_alternative<OutputMultiDiEdge>(edge)) {
-  //     if (output_settings == OutputSettings::INCLUDE_OUTPUTS) {
-  //       subgraph.add_edge(get<OutputMultiDiEdge>(edge),
-  //                         g.at(get<OutputMultiDiEdge>(edge)));
-  //     }
-  //   } else {
-  //     subgraph.add_edge(get<MultiDiEdge>(edge),
-  //     g.at(get<MultiDiEdge>(edge)));
-  //   }
-  // }
-
-  // return subgraph;
-}
-
 float estimate_cost(
     SubParallelComputationGraph const &g,
     ICostEstimator const &estimator,
     std::unordered_map<Node, MachineView> const &device_mapping) {}
-
-// std::size_t num_nodes(OpenSubParallelComputationGraph const &g) {
-//   return num_nodes(*g.g);
-// }
-
-// std::size_t num_nodes(ParallelComputationGraph const &g) {
-//   return num_nodes(g.graph());
-// }
-
-// bool is_base_case(SubParallelComputationGraph const &g) {
-//   if (holds_alternative<OpenSubParallelComputationGraph>(g)) {
-//     return num_nodes(get<OpenSubParallelComputationGraph>(g)) == 1;
-//   } else {
-//     return num_nodes(get<ParallelComputationGraph>(g)) == 2;
-//   }
-// }
 
 // We may replace this by having unflattened AST
 template <typename T>
@@ -246,26 +59,6 @@ GraphSplit
                     SerialParallelDecomposition const &post_decomposition) {
   return {get_nodes(pre_decomposition), get_nodes(post_decomposition)};
 }
-
-// std::pair<
-//   OpenSubParallelComputationGraph,
-//   OpenSubParallelComputationGraph
-// > apply_split(OpenSubParallelComputationGraph const &g, GraphSplit const
-// &split) {
-
-// }
-
-// std::pair<
-//   OpenSubParallelComputationGraph,
-//   ParallelComputationGraph
-// > apply_split(ParallelComputationGraph const &g, GraphSplit const &split) {
-
-// }
-
-// enum class EdgeDirection {
-//   FIRST_TO_SECOND,
-//   SECOND_TO_FIRST
-// };
 
 std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
     apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
@@ -320,24 +113,6 @@ std::vector<std::pair<MachineSpecification, MachineSpecification>>
   }
   return result;
 }
-
-// float base_case(OpenSubParallelComputationGraph const &g);
-// float base_case(ParallelComputationGraph const &g);
-
-// TODO: Generalize the return type to record strategies
-// float internal_optimal_cost(SubParallelComputationGraph const &g,
-//                             ICostEstimator const &cost_estimator,
-//                             SerialParallelDecomposition const
-//                             &sp_decomposition, MachineSpecification const
-//                             &resource,
-//                             std::function<std::unordered_set<MachineView>(PCGOperatorAttrs
-//                             const &, MachineSpecification const &)> const &f ) {
-//   if (is_base_case(g)) {
-//     // base case
-//   } else {
-//     // non-base-case
-//   }
-// }
 
 Strategy::Strategy(float runtime,
                    std::unordered_map<Node, MachineView> machine_views)
