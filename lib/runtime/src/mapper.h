@@ -20,6 +20,8 @@
 #include "model.h"
 #include "null_mapper.h"
 #include "tasks.h"
+#include "pcg/device_id.h"
+#include "pcg/device_type.h"
 
 namespace FlexFlow {
 
@@ -28,14 +30,14 @@ public:
   FFShardingFunctor(int gpus_per_node,
                     int cpus_per_node,
                     int num_nodes,
-                    MachineView const &_mv);
+                    MachineView const &mv);
 
 public:
   Legion::ShardID shard(Legion::DomainPoint const &point,
                 Legion::Domain const &full_space,
                 const size_t total_shards);
 private:
-  Legion::ShardID get_shard_id(DeviceID, DeviceType) const;
+  Legion::ShardID get_shard_id(device_id_t) const;
 private:
   int gpus_per_node, cpus_per_node, num_nodes;
   MachineView machine_view;
@@ -51,7 +53,7 @@ struct InstanceCreationLog {
 void register_sharding_functor(Legion::Runtime *, FFShardingFunctor *);
 void register_sharding_functor(Legion::Runtime *, std::size_t, FFShardingFunctor *);
 std::vector<MachineView> starting_at_all_devices(MachineView const &, int total_num_cpus, int total_num_gpus);
-DeviceID get_device_index(MachineView const &, Legion::DomainPoint const &, Legion::Domain const &);
+device_id_t get_device_index(MachineView const &, Legion::DomainPoint const &, Legion::Domain const &);
 
 struct NodesConfig {
   NodesConfig(int num_nodes, int cpus_per_node, int gpus_per_node);
@@ -366,10 +368,12 @@ private:
   int get_gpus_per_node() const;
   int get_cpus_per_node() const;
 
-  Legion::Processor const &get_processor(DeviceID, DeviceType);
+  Legion::Processor const &get_processor(device_id_t);
+
+  bool has_device(device_id_t);
 protected:
-  const Legion::Processor local_processor;
-  const Legion::AddressSpace node_id;
+  Legion::Processor const local_processor;
+  Legion::AddressSpace const node_id;
   int total_nodes;
   char const *mapper_name;
   bool enable_control_replication;

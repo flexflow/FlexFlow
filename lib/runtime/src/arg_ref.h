@@ -64,7 +64,6 @@ ArgRef<EnableProfiling> enable_profiling();
 ArgRef<ProfilingSettings> profiling_settings();
 ArgRef<PerDeviceFFHandle> ff_handle();
 
-
 }
 
 #endif

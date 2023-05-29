@@ -3,67 +3,29 @@
 
 namespace FlexFlow {
 
-//Domain MachineView::get_domain() const {
-//  Domain d;
-//  d.dim = this->ndims;
-//  for (int i = 0; i < d.dim; i++) {
-//    d.rect_data[i] = 0;
-//    d.rect_data[i + d.dim] = this->dim[i] - 1;
-//  }
-//  return d;
-//}
-
-//std::vector<int> MachineView::device_ids() const {
-//  std::vector<int> device_ids_list;
-//
-//  if (this->ndims == 0) {
-//    return {this->start_device_id};
-//  }
-//
-//  Domain d = this->get_domain();
-//  for (Domain::DomainPointIterator it(d); it; it++) {
-//    device_ids_list.push_back(this->get_device_id(*it));
-//  }
-//
-//  return device_ids_list;
-//}
-
-size_t MachineView::num_devices() const {
-  return num_entries(this->rect);
+static StridedRectangle make_1d_rect(int start,
+                                int stop,
+                                int stride) {
+  assert (stop > start);
+  assert (stride > 0);
+  StridedRectangleSide side = { side_size_t(stop - start), stride };
+  StridedRectangle rect = { { side } };
+  return rect;
 }
 
-bool MachineView::operator==(MachineView const &rhs) const {
-  return visit_eq(*this, rhs);
+MachineView make_1d_machine_view(gpu_id_t start, gpu_id_t stop, int stride) {
+  StridedRectangle rect = make_1d_rect(start.value(), stop.value(), stride);
+  return { start, rect };
 }
 
-bool MachineView::operator!=(MachineView const &rhs) const {
-  return visit_neq(*this, rhs);
+MachineView make_1d_machine_view(cpu_id_t start, cpu_id_t stop, int stride) {
+  StridedRectangle rect = make_1d_rect(start.value(), stop.value(), stride);
+  return { start, rect };
 }
 
-/* std::ostream &operator<<(std::ostream &s, StridedInterval const &interval) { */
-/*   return s << "[" << interval.start << ":" << interval.stop << ":" << interval.stride << "]"; */
-/* } */
-
-/* std::ostream &operator<<(std::ostream &s, MachineView const &mv) { */
-/*   s << "MachineView<"; */
-/*   s << join_strings(mv.dims, ", "); */
-/*   s << ">"; */
-
-/*   return s; */
-/* } */
-
-MachineResource::MachineResource(
-    int numNodes, 
-    int cpusPerNode,
-    int gpusPerNode
-    )
-    : num_nodes(numNodes), num_cpus_per_node(cpusPerNode), num_gpus_per_node(gpusPerNode){}
-
+device_id_t MachineView::at(FFOrdered<num_points_t> const &coord) const {
+  size_t offset = this->rect.at(coord);
+  return this->start + offset;
 }
 
-namespace std {
-size_t hash<::FlexFlow::MachineView>::operator()(
-    ::FlexFlow::MachineView const &mv) const {
-  return visit_hash(mv);
-}
 }

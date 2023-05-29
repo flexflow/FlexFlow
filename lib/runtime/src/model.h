@@ -14,6 +14,7 @@
  */
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
+#include "pcg/machine_specification.h"
 #include "runtime/config.h"
 #include "legion.h"
 #include "metrics_functions.h"
@@ -40,41 +41,30 @@ enum ShardingID {
 };
 
 MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
-
+MachineView get_basic_data_parallel_machine_view(FFConfig const &);
+MachineView get_basic_data_parallel_machine_view(MachineSpecification const &);
 
 class FFModel {
 public:
   FFModel() = delete;
-  FFModel(FFConfig const &, 
+  FFModel(FFConfig const &,
           ComputationGraph const &, 
           ParallelComputationGraph const &,
           Optimizer const &, 
           RuntimeBacking const &,
           EnableProfiling const &,
-          Metrics const &);
+          Metrics const &,
+          SimEnvFactory const &,
+          LossAttrs const &,
+          TensorMapping const &);
 
-  ExecutableTaskInvocation resolve(TaskInvocation const &) const;
   TaskReturnAccessor execute(ExecutableTaskInvocation const &) const;
   TaskReturnAccessor execute(std::vector<ExecutableTaskInvocation> const &);
-  std::pair<Legion::TaskArgument, TaskArgumentFormat> construct_legion_task_arg(ExecutableTaskBinding const &);
 
-  void init_operators();
-  void forward(int seq_length = -1);  
-  void backward(int seq_length = -1);
-  void update();
 
-  template <typename T>
-  void set_tensor(TensorDims const &, T const *);
-
-  template <typename T>
-  void get_tensor(tensor_guid_t, T *data);
-  
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
-  void reset_metrics();
-  void prefetch();
-  void compute_metrics();
   void compile(LossFunction loss_type,
                std::vector<Metric> const &metrics,
                ComputationMode comp_mode = ComputationMode::TRAINING);
@@ -82,32 +72,44 @@ public:
                LossFunction loss_type,
                std::vector<Metric> const &metrics,
                ComputationMode comp_mode = ComputationMode::TRAINING);
-  void recompile_on_condition(RecompileState &r);
-  void zero_gradients();
 
   // APIs for setting iteration configs
 private:
-  void execute_graph_optimize();
-  void print_operator_regions() const;
   void create_label_tensor(LossFunction);
 public:
   FFConfig config;
-  FFIterationConfig iter_config;
-  Optimizer optimizer;
-  LossAttrs loss_op;
-  Metrics metrics_op;
-  /* optional<ParallelTensor> parallel_label_tensor; */
-  /* optional<Tensor> label_tensor; */
-  SimEnvFactory sim_factory;
-
   ComputationGraph computation_graph;
   ParallelComputationGraph pcg;
-  TensorMapping tensor_map;
+  Optimizer optimizer;
   RuntimeBacking runtime_backing;
-
   EnableProfiling enable_profiling;
+  Metrics metrics;
+  SimEnvFactory sim_factory;
+  LossAttrs loss;
+  TensorMapping tensor_map;
+
+  FFIterationConfig iter_config;
+  /* optional<ParallelTensor> parallel_label_tensor; */
+  /* optional<Tensor> label_tensor; */
+
+
 };
 
+void init_operators(FFModel const &);
+void forward(FFModel const &, int seq_length = -1);  
+void backward(FFModel const &, int seq_length = -1);
+void update(FFModel const &);
+void zero_gradients(FFModel const &);
+void reset_metrics(FFModel const &);
+void compute_metrics(FFModel const &);
+void recompile_on_condition(FFModel const &, RecompileState &r);
+template <typename T> void set_tensor(FFModel const &, TensorDims const &, T const *);
+template <typename T> void get_tensor(FFModel const &, tensor_guid_t, T *data);
+  
+
+ExecutableTaskInvocation resolve(TaskInvocation const &, 
+                                 EnableProfiling enable_profiling,
+                                 RuntimeBacking const &runtime_backing);
 
 void top_level_task(Legion::Task const *task,
                     std::vector<Legion::PhysicalRegion> const &regions,

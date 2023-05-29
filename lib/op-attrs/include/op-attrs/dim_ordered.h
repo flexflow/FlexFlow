@@ -132,6 +132,30 @@ private:
 template <typename T>
 using FFOrdered = DimOrdered<ff_dim_t, T>;
 
+template <typename T>
+auto inner_to_outer(FFOrdered<T> const &ff_ordered) -> decltype(reversed_container(ff_ordered)) {
+  return reversed_container(ff_ordered);
+}
+
+template <typename T>
+std::vector<ff_dim_t> inner_to_outer_idxs(FFOrdered<T> const &ff_ordered) {
+  std::vector<ff_dim_t> idxs;
+  for (size_t i = 0; i < ff_ordered.size(); i++) {
+    idxs.push_back(ff_dim_t(ff_ordered.size() - i - 1));
+  }
+  return idxs;
+}
+
+template <typename T>
+std::vector<ff_dim_t> outer_to_inner_idxs(FFOrdered<T> const &ff_ordered) {
+  return reversed(inner_to_outer_idxs<T>(ff_ordered));
+}
+
+template <typename T>
+FFOrdered<T> const &outer_to_inner(FFOrdered<T> const &ff_ordered) {
+  return ff_ordered;
+}
+
 }
 
 namespace std {

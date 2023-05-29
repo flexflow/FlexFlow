@@ -21,6 +21,7 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_H
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_H
 
+#include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/machine_view.h"
 #include "utils/record_formatter.h"
 #include <ostream>

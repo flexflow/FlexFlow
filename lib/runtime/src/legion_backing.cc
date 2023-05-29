@@ -1,5 +1,7 @@
 #include "legion_backing.h"
+#include "device_specific_arg.h"
 #include "kernels/nccl.h"
+#include "model.h"
 #include "task_argument_accessor.h"
 
 using namespace Legion;
@@ -7,63 +9,121 @@ using namespace FlexFlow::Kernels;
 
 namespace FlexFlow {
 
+using GenericTaskLauncher = variant<Legion::TaskLauncher, Legion::IndexTaskLauncher>;
+
+GenericTaskLauncher compile_to_launcher(TensorlessTaskInvocation const &invocation,
+                           ParallelComputationGraph const &pcg,
+                           RuntimeBacking const &backing,
+                           EnableProfiling enable_profiling) {
+  TaskSignature sig = get_signature(invocation.task_id);
+  TensorlessTaskBinding binding = invocation.binding;
+  /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg, binding); */
+  ConcreteArgsFormat concrete_args_format = process_concrete_args(binding);
+  FutureArgsFormat future_args_format = process_future_args(binding);
+  TaskInvocationArgsFormat task_invocation_args_format = process_task_invocation_args(binding, enable_profiling, backing);
+  assert (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we don't handle these as I don't think they're used anywhere
+  if (binding.invocation_type == InvocationType::STANDARD) {
+    assert (get_args_of_type<IndexArgSpec>(binding).empty());
+    Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
+                                                     future_args_format,
+                                                     tensor_args_format);
+    TaskLauncher launcher(invocation.task_id, task_arg);
+    add_tensor_requirements(launcher, tensor_args_format);
+    Future returned_future = backing.execute_task(launcher);
+    return TaskReturnAccessor(sig.get_return_type(), returned_future);
+  } else if (binding.invocation_type == InvocationType::INDEX) {
+    parallel_tensor_guid_t index_space_determiner = binding.domain_spec.value();
+    ParallelTensorBacking pt_backing = backing.at(index_space_determiner);
+    IndexArgsFormat index_args_format = process_index_args(binding, 
+                                                           backing.get_domain(pt_backing.parallel_is));
+    Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
+                                                     future_args_format,
+                                                     tensor_args_format,
+                                                     index_args_format);
+    IndexTaskLauncher launcher(invocation.task_id,
+                               pt_backing.parallel_is,
+                               task_arg,
+                               as_argument_map(index_args_format),
+                               Predicate::TRUE_PRED,
+                               false /*must*/,
+                               0 /*mapper_id*/,
+                               pt_backing.mapping_id.value()
+                               );
+    add_tensor_requirements(launcher, tensor_args_format);
+    FutureMap returned_future = backing.execute_task(launcher);
+    return TaskReturnAccessor(sig.get_return_type(), returned_future);
+  }
+}
+
+
+
+static void allocate_region_fields(LegionConfig const &config) {
+  FieldAllocator allocator =
+      config.runtime->create_field_allocator(config.context, config.field_space);
+  allocator.allocate_field(sizeof(float), FID_DATA);
+};
+
+RuntimeBacking initialize_runtime(LegionConfig const &config) {
+  allocate_region_fields(config);
+}
+
 IndexSpaceManager::IndexSpaceManager(LegionConfig const &config)
   : config(config), all_task_is()
 { }
 
-IndexSpace const &IndexSpaceManager::at(MachineView const &view) const {
-  if (contains_key(this->all_task_is, view)) {
-    return all_task_is.at(view);
-  }
-  IndexSpace task_is;
-  Context ctx = config.lg_ctx;
-  Runtime *runtime = config.lg_hlr;
-  switch (view.num_dims()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    Rect<DIM> task_rect;                                                       \
-    for (int i = 0; i < DIM; i++) {                                            \
-      task_rect.lo[i] = 0;                                                     \
-      task_rect.hi[i] = view.at(i).num_points - 1;                             \
-    }                                                                          \
-    task_is = runtime->create_index_space(ctx, task_rect);                     \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  all_task_is[view] = task_is;
-  return all_task_is.at(view);
-}
+/* IndexSpace const &IndexSpaceManager::at(MachineView const &view) const { */
+/*   if (contains_key(this->all_task_is, view)) { */
+/*     return all_task_is.at(view); */
+/*   } */
+/*   IndexSpace task_is; */
+/*   Context ctx = config.lg_ctx; */
+/*   Runtime *runtime = config.lg_hlr; */
+/*   switch (view.num_dims()) { */
+/* #define DIMFUNC(DIM)                                                           \ */
+/*   case DIM: {                                                                  \ */
+/*     Rect<DIM> task_rect;                                                       \ */
+/*     for (int i = 0; i < DIM; i++) {                                            \ */
+/*       task_rect.lo[i] = 0;                                                     \ */
+/*       task_rect.hi[i] = view.at(i).num_points - 1;                             \ */
+/*     }                                                                          \ */
+/*     task_is = runtime->create_index_space(ctx, task_rect);                     \ */
+/*     break;                                                                     \ */
+/*   } */
+/*     LEGION_FOREACH_N(DIMFUNC) */
+/* #undef DIMFUNC */
+/*     default: */
+/*       assert(false); */
+/*   } */
+/*   all_task_is[view] = task_is; */
+/*   return all_task_is.at(view); */
+/* } */
 
-static MachineView get_example_view(Domain const &domain) {
-  std::vector<StridedRectangleSide> sides;
-  for (int i = 0; i < domain.get_dim(); i++) {
-    int size = domain.hi()[i] - domain.lo()[i] + 1;
-    sides.push_back({ size, 1 });
-  }
-  StridedRectangle rect = { 0, sides };
-  MachineView view = { DeviceType::GPU, rect };
-  return view;
-}
+/* static MachineView get_example_view(Domain const &domain) { */
+/*   std::vector<StridedRectangleSide> sides; */
+/*   for (int i = 0; i < domain.get_dim(); i++) { */
+/*     int size = domain.hi()[i] - domain.lo()[i] + 1; */
+/*     sides.push_back({ size, 1 }); */
+/*   } */
+/*   StridedRectangle rect = { 0, sides }; */
+/*   MachineView view = { DeviceType::GPU, rect }; */
+/*   return view; */
+/* } */
 
-IndexSpace const &IndexSpaceManager::at(Domain const &domain) const {
-  return this->at(get_example_view(domain));
-}
+/* IndexSpace const &IndexSpaceManager::at(Domain const &domain) const { */
+/*   return this->at(get_example_view(domain)); */
+/* } */
 
-static MachineView singleton_view() {
-  return {
-    DeviceType::GPU,
-    {
-      0, 
-      {
-        {1, 1}
-      }
-    }
-  };
-}
+/* static MachineView singleton_view() { */
+/*   return { */
+/*     DeviceType::GPU, */
+/*     { */
+/*       0, */ 
+/*       { */
+/*         {1, 1} */
+/*       } */
+/*     } */
+/*   }; */
+/* } */
 
 /* static int get_index_space_dimension(ParallelTensorDims const &dims) { */
 /*   std::vector<int> parallel_idxs; */
@@ -148,14 +208,15 @@ int get_num_nodes() {
 }
 
 LegionConfig::LegionConfig() 
-  : lg_ctx(Runtime::get_context()), lg_hlr(Runtime::get_runtime())
+  : context(Runtime::get_context()), runtime(Runtime::get_runtime())
 {
-  this->field_space = this->lg_hlr->create_field_space(this->lg_ctx); 
+  this->field_space = this->runtime->create_field_space(this->context); 
 }
 
 
 enum Slots {
-  NCCL_UNIQUE_ID
+  NCCL_UNIQUE_ID,
+  FF_INIT_INFO
 };
 
 static ncclUniqueId generate_nccl_unique_id_task(Legion::Task const *task,
@@ -235,6 +296,21 @@ ncclComm_t *NcclCommunicators::at(MachineView const &view) const {
   return this->view_to_comms.at(view);
 }
 
+static void ff_init_task(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime) {
+
+}
+
+ExecutableTaskInvocation ff_init(FFConfig const &config, FFInitInfo const &info) {
+  MachineView mv = get_basic_data_parallel_machine_view(config);
+  auto b = TaskBinding::index_launch(mv);
+  b.bind_arg(FF_INIT_INFO, info);
+
+  return { FF_INIT_TASK_ID, b };
+}
+
 template <>
 void register_task<NCCL_GETUNIQUEID_TASK_ID>() {
   TaskSignature sig;
@@ -250,6 +326,15 @@ void register_task<NCCL_INIT_COMMS_TASK_ID>() {
   sig.add_return_value<ncclComm_t>();
 
   register_task(NCCL_INIT_COMMS_TASK_ID, "NCCL Init Communicators Task", sig, init_nccl_comms_task);
+}
+
+template <>
+void register_task<FF_INIT_TASK_ID>() {
+  TaskSignature sig;
+  sig.add_arg_slot<FFInitInfo>(FF_INIT_INFO);
+  sig.add_return_value<DeviceSpecificArg<PerDeviceFFHandle>>();
+
+  register_task(FF_INIT_TASK_ID, "cuda init task", sig, ff_init_task);
 }
 
 

@@ -3,6 +3,7 @@
 
 #include "utils/hash-utils.h"
 #include "utils/type_traits.h"
+#include <rapidcheck.h>
 
 namespace FlexFlow {
 
@@ -58,7 +59,7 @@ bool visit_lt(const T & t1, const T & t2) {
   static_assert(is_visitable<T>::value, "Type must be visitable");
   static_assert(elements_satisfy<is_lt_comparable, T>::value, "Values must be comparable via operator<");
 
-  eq_visitor vis;
+  lt_visitor vis;
   visit_struct::for_each(t1, t2, vis);
   return vis.result;
 }
@@ -107,6 +108,34 @@ struct use_visitable_hash {
   }
 };
 }
+
+namespace rc {
+namespace gen {
+
+struct gen_visitor {
+  template <typename Member>
+  auto operator()(Member const& m) {
+    return gen::set(m);
+  }
+};
+
+template <typename T>
+Gen<T> build_visitable(T const &t) {
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+
+  gen_visitor vis;
+  return gen::build<T>(visit_struct::for_each(t, vis));
+}
+
+template <typename T, std::enable_if_t<FlexFlow::is_visitable<T>::value>>
+struct Arbitrary<T> {
+  static Gen<T> arbitrary() {
+    return build_visitable<T>();
+  }
+};
+
+} // namespace gen
+} // namespace rc
 
 #define MAKE_VISIT_HASHABLE(TYPENAME) \
   namespace std { \

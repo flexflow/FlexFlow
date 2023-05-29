@@ -20,6 +20,7 @@
 #include <cstring>
 #include "utils/optional.h"
 #include "utils/fmt.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -41,12 +42,12 @@ constexpr ParamSync CHOSEN_SYNC_TYPE = ParamSync::NCCL;
 constexpr ParamSync CHOSEN_SYNC_TYPE = ParamSync::PS;
 #endif
 
-struct FFInitInfo {
+struct FFInitInfo : public use_visitable_cmp<FFInitInfo> {
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;
 };
 
-class FFConfig {
+struct FFConfig : public use_visitable_cmp<FFConfig> {
 public:
   enum PreservedIDs {
     InvalidID = 0,
@@ -114,6 +115,45 @@ enum FieldIDs {
 };
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::FFInitInfo, 
+                 workSpaceSize,
+                 allowTensorOpMathConversion);
+MAKE_VISIT_HASHABLE(::FlexFlow::FFInitInfo);
+
+VISITABLE_STRUCT(::FlexFlow::FFConfig, 
+                 epochs,
+                 batchSize,
+                 numNodes,
+                 cpusPerNode,
+                 workersPerNode,
+                 learningRate,
+                 weightDecay,
+                 workSpaceSize,
+                 profiling,
+                 perform_fusion,
+                 simulator_work_space_size,
+                 search_budget,
+                 search_alpha,
+                 search_overlap_backward_update,
+                 computationMode,
+                 only_data_parallel,
+                 enable_parameter_parallel,
+                 enable_inplace_optimizations,
+                 allow_tensor_op_math_conversion,
+                 dataset_path,
+                 export_strategy_computation_graph_file,
+                 include_costs_dot_graph,
+                 substitution_json_path,
+                 machine_model_version,
+                 machine_model_file,
+                 simulator_segment_size,
+                 simulator_max_num_segments,
+                 search_num_nodes,
+                 search_num_workers,
+                 base_optimize_threshold,
+                 enable_control_replication,
+                 python_data_loader_type);
 
 namespace fmt {
 
