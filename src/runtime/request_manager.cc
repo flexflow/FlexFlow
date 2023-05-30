@@ -466,7 +466,7 @@ BeamSearchBatchConfig
 
     new_bc.request_completed[i] = false;
 
-    // Normal Reuqest Info
+    // Normal Request Info
     new_bc.requestsInfo[i].token_start_offset = verified_tokens.front().second;
     new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
     new_bc.requestsInfo[i].max_sequence_length =
@@ -988,47 +988,6 @@ bool PreOrder(
   return flag;
 }
 
-#ifdef DEADCODE
-TreeVerifyBatchConfig RequestManager::convert_beam_to_tree_batch_config(
-    BeamSearchBatchConfig const &beam_bc) {
-  TreeVerifyBatchConfig tree_bc;
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if (beam_bc.request_completed[i]) {
-      continue;
-    }
-    // We don't modify requests during the conversion
-    tree_bc.request_completed[i] = beam_bc.request_completed[i];
-    BeamTree const &tree = beam_trees[i];
-    // token, index
-    // todo make this one global for different stages
-    std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> serializedTree;
-    PreOrder(tree,
-             beam_bc.beamRequestsInfo[i].max_depth,
-             0,
-             beam_bc.beamRequestsInfo[i].beam_size,
-             0,
-             serializedTree,
-             verbose);
-    tree_bc.requestsInfo[i].request_guid = beam_bc.requestsInfo[i].request_guid;
-    tree_bc.requestsInfo[i].max_sequence_length =
-        beam_bc.requestsInfo[i].max_sequence_length;
-    tree_bc.requestsInfo[i].token_start_offset = serializedTree[0].second;
-    tree_bc.requestsInfo[i].num_tokens_in_batch = 0;
-
-    for (int k = 0; k < serializedTree.size(); k++) {
-      assert(tree_bc.num_tokens < BatchConfig::MAX_NUM_TOKENS);
-      tree_bc.tokensInfo[tree_bc.num_tokens].request_index = i;
-      tree_bc.tokensInfo[tree_bc.num_tokens].abs_depth_in_request =
-          serializedTree[k].second;
-      tree_bc.tokensInfo[tree_bc.num_tokens].token_id = serializedTree[k].first;
-      tree_bc.num_tokens++;
-      tree_bc.requestsInfo[i].num_tokens_in_batch++;
-    }
-  }
-  return tree_bc;
-}
-#endif
-
 std::vector<std::pair<BatchConfig::TokenId, int>>
     RequestManager::traverse_verify_tree(
         size_t guid,
@@ -1046,14 +1005,17 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
                     outputSerializedTree.size());
 
   log_req_mgr.print("========Input============");
+  // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token id, depth) pairs
   for (auto const &pair : inputSerializedTree) {
     log_req_mgr.print("(%d, %d)", pair.first, pair.second);
   }
   log_req_mgr.print("========Output============");
+  // outputSerializedTree is an array of (token id, depth + 1) pairs
   for (auto const &pair : outputSerializedTree) {
     log_req_mgr.print("(%d, %d)", pair.first, pair.second);
   }
   log_req_mgr.print("========Committed============");
+  // committed_tokens[guid] is an array of (depth, result_index) pairs for the given request
   for (auto const &pair : committed_tokens.at(guid)) {
     log_req_mgr.print("(%d, %d)", pair.first, pair.second);
   }

@@ -118,36 +118,6 @@ void InferenceManager::compile_model_and_allocate_buffer(
       tensor_buffer[pt_base] = list;
     }
   }
-#ifdef DEADCODE
-  // Set machine_view for batch_tensors in the tensor_buffer
-  for (int batch_index = 0; batch_index < max_num_inflight_batches;
-       batch_index++) {
-    int expert_device_index = 0;
-    int device_index = batch_index % num_devices;
-    for (size_t o = 0; o < model->operators.size(); o++) {
-      Op *op = model->operators[o];
-      if (op->op_type == OP_WEIGHT) {
-        continue;
-      }
-      MachineView *view;
-      if (op->op_type == OP_EXPERTS) {
-        view = get_machine_view(expert_device_index);
-        // view = &machine_views[expert_device_index];
-        expert_device_index = (expert_device_index + 1) % num_devices;
-      } else {
-        // pick mv w startdeviceid = device_index
-        // view = &machine_views[device_index];
-        view = get_machine_view(device_index);
-      }
-      for (int i = 0; i < op->numOutputs; i++) {
-        tensor_buffer[op->outputs[i]][batch_index]->machine_view = *view;
-        Domain part_domain =
-            runtime->get_index_space_domain(ctx, op->outputs[i]->parallel_is);
-        assert(view->get_domain() == part_domain);
-      }
-    }
-  }
-#endif
 }
 
 void InferenceManager::init_operators_inference(FFModel *model) {
