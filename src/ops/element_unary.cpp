@@ -285,6 +285,11 @@ ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
 }
 
 template void
+    ElementUnary::forward_kernel_wrapper<half>(ElementUnaryMeta const *m,
+                                               half const *input_ptr,
+                                               half *output_ptr,
+                                               size_t num_elements);
+template void
     ElementUnary::forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
                                                 float const *input_ptr,
                                                 float *output_ptr,
