@@ -145,6 +145,6 @@ public:
   float scalar;
 };
 
-};     // namespace FlexFlow
+}; // namespace FlexFlow
 
 #endif // _ELEMENT_UNARY_H
