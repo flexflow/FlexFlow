@@ -462,7 +462,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
   // tokens in the previous batch, which is needed for committing
   // keys/values to the key-value cache
   cudaMemcpyAsync(m->committed_token_infos,
-                  &(bc->commited_tokens),
+                  &(bc->committed_tokens),
                   bc->MAX_NUM_TOKENS *
                       sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
                   cudaMemcpyHostToDevice,

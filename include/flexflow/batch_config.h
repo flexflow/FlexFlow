@@ -86,7 +86,7 @@ public:
   // void compute_tree_branch_indexes();
 
   int num_tokens_to_commit;
-  CommittedTokensInfo commited_tokens[MAX_NUM_TOKENS];
+  CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
 };
 
 struct InferenceResult {

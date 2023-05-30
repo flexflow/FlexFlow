@@ -150,7 +150,7 @@ private:
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
   // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
-  // Commited Tokens
+  // Committed Tokens
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
   // Performance profiling
