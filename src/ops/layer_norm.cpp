@@ -132,17 +132,16 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T *gamma_ptr,
                                T *beta_ptr,
                                hipStream_t stream) {
-  hipLaunchKernelGGL(
-      HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<TENSOR_GUID_FIRST_VALID>),
-      m->effective_batch_size,
-      kCUDABlockReduceNumThreads,
-      0,
-      stream,
-      m->effective_num_elements,
-      m->eps,
-      in_ptr,
-      static_cast<T *>(m->mean_ptr),
-      static_cast<T *>(m->rstd_ptr));
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<T>),
+                     m->effective_batch_size,
+                     kCUDABlockReduceNumThreads,
+                     0,
+                     stream,
+                     m->effective_num_elements,
+                     m->eps,
+                     in_ptr,
+                     static_cast<T *>(m->mean_ptr),
+                     static_cast<T *>(m->rstd_ptr));
   hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<T>),
                      m->effective_batch_size,
                      kCUDANumThreads,
@@ -167,10 +166,10 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   if (m->input_type[0] == DT_FLOAT) {
     LayerNorm::forward_kernel<float>(m,
-                                     input.get_half_ptr(),
-                                     output.get_half_ptr(),
-                                     gamma.get_half_ptr(),
-                                     beta.get_half_ptr(),
+                                     input.get_float_ptr(),
+                                     output.get_float_ptr(),
+                                     gamma.get_float_ptr(),
+                                     beta.get_float_ptr(),
                                      stream);
   } else if (m->input_type[0] == DT_HALF) {
     LayerNorm::forward_kernel<half>(m,
