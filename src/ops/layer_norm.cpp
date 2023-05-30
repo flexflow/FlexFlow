@@ -79,26 +79,26 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__global__ void
-    RowwiseMomentsCUDAKernel(int64_t N, T eps, T const *X, T *mean, T *rstd) {
-  __shared__ T m_shared[C10_WARP_SIZE];
-  __shared__ T v_shared[C10_WARP_SIZE];
+__global__ void RowwiseMomentsCUDAKernel(
+    int64_t N, float eps, T const *X, T *mean, T *rstd) {
+  __shared__ float m_shared[C10_WARP_SIZE];
+  __shared__ float v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
-  T sum1 = 0;
-  T sum2 = 0;
+  float sum1 = 0.0f;
+  float sum2 = 0.0f;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
-    sum1 += static_cast<T>(X[index]);
-    sum2 += static_cast<T>(X[index]) * static_cast<T>(X[index]);
+    sum1 += static_cast<float>(X[index]);
+    sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
-  sum1 = BlockReduceSum<T>(sum1, m_shared);
-  sum2 = BlockReduceSum<T>(sum2, v_shared);
+  sum1 = BlockReduceSum<float>(sum1, m_shared);
+  sum2 = BlockReduceSum<float>(sum2, v_shared);
   if (threadIdx.x == 0) {
-    const T scale = T(1) / static_cast<T>(N);
+    float const scale = float(1) / static_cast<float>(N);
     sum1 *= scale;
-    sum2 = max(sum2 * scale - sum1 * sum1, T(0));
-    mean[i] = sum1;
-    rstd[i] = rsqrt(sum2 + static_cast<T>(eps));
+    sum2 = max(sum2 * scale - sum1 * sum1, float(0));
+    mean[i] = static_cast<T>(sum1);
+    rstd[i] = static_cast<T>(rsqrt(sum2 + eps));
   }
 }
 
@@ -141,8 +141,8 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
       m->effective_num_elements,
       m->eps,
       in_ptr,
-      m->mean_ptr,
-      m->rstd_ptr);
+      static_cast<T *>(m->mean_ptr),
+      static_cast<T *>(m->rstd_ptr));
   hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<T>),
                      m->effective_batch_size,
                      kCUDANumThreads,
@@ -150,8 +150,8 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                      stream,
                      m->effective_num_elements,
                      in_ptr,
-                     m->mean_ptr,
-                     m->rstd_ptr,
+                     static_cast<T *>(m->mean_ptr),
+                     static_cast<T *>(m->rstd_ptr),
                      gamma_ptr,
                      beta_ptr,
                      out_ptr);
