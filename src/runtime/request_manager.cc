@@ -1005,7 +1005,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
                     outputSerializedTree.size());
 
   log_req_mgr.print("========Input============");
-  // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token id, depth) pairs
+  // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token id,
+  // depth) pairs
   for (auto const &pair : inputSerializedTree) {
     log_req_mgr.print("(%d, %d)", pair.first, pair.second);
   }
@@ -1015,7 +1016,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
     log_req_mgr.print("(%d, %d)", pair.first, pair.second);
   }
   log_req_mgr.print("========Committed============");
-  // committed_tokens[guid] is an array of (depth, result_index) pairs for the given request
+  // committed_tokens[guid] is an array of (depth, result_index) pairs for the
+  // given request
   for (auto const &pair : committed_tokens.at(guid)) {
     log_req_mgr.print("(%d, %d)", pair.first, pair.second);
   }
