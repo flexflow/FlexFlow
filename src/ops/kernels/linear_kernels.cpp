@@ -32,7 +32,7 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size, Linear const *li)
                       dram_one_ptr,
                       sizeof(float) * batch_size,
                       hipMemcpyHostToDevice));
-  one_ptr = (float const *)fb_one_ptr;
+  one_ptr = (void *)fb_one_ptr;
   // Allocate descriptors
   checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
