@@ -101,11 +101,12 @@ RequestManager::RequestGuid
   }
 
   pending_request_queue.push(request);
-  if (verbose) {
-    std::cout << "new req: " << request.tokens.size() << std::endl;
+  {
+    std::string output = "New request tokens:";
     for (int i = 0; i < request.tokens.size(); i++) {
-      std::cout << i << " : " << request.tokens[i] << std::endl;
+      output = output + " " + std::to_string(request.tokens[i]);
     }
+    log_req_mgr.print("%s", output.c_str());
   }
   return request.guid;
 }

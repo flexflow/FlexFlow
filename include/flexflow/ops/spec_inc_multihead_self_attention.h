@@ -8,6 +8,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "math.h"
 #include <cfloat>
@@ -120,7 +121,7 @@ public:
   int qoSeqLength, kvSeqLength;
 };
 
-class SpecIncMultiHeadSelfAttentionMeta : public OpMeta {
+class SpecIncMultiHeadSelfAttentionMeta : public IncMultiHeadSelfAttentionMeta {
 public:
   SpecIncMultiHeadSelfAttentionMeta(FFHandler handler,
                                     SpecIncMultiHeadSelfAttention const *attn,
@@ -131,37 +132,10 @@ public:
   ~SpecIncMultiHeadSelfAttentionMeta(void);
 
 public:
-  Realm::RegionInstance reserveInst;
-  size_t weights_params, weightSize, reserveSpaceSize;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int num_heads;
-  bool *has_load_weights;
-  bool *apply_rotary_embedding;
-  bool *bias;
-  bool *scaling_query;
-  bool *qk_prod_scaling;
-  float scaling_factor;
-#ifdef INFERENCE_TESTS
-  float *kcache, *vcache;
-#endif
-  /*#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-    cudnnAttnDescriptor_t attnDesc;
-    cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
-  #endif*/
-  // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
-  float *devQKVProjArray, *keyCache, *valueCache;
-  float *qk_prods, *qk_prods_softmax;
-  float *attn_heads, *W_out_contiguous;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cuFloatComplex *complex_input;
-#endif
-  // void *reserveSpace;
-
-  // BatchConfig::token_idxs *dev_token2ids;
-  BatchConfig::PerTokenInfo *tokenInfos;
-  BatchConfig::PerRequestInfo *requestInfos;
-  BeamSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos;
-  BeamSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos;
+  Realm::RegionInstance beam_search_reserve_inst;
+  BatchConfig::PerRequestInfo *request_infos;
+  BeamSearchBatchConfig::BeamSearchPerTokenInfo *beam_token_infos;
+  BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos;
 };
 
 }; // namespace FlexFlow

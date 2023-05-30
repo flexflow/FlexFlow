@@ -16,6 +16,7 @@
 #include "cuComplex.h"
 #endif
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -23,6 +24,9 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 using Legion::Memory;
+
+namespace Kernels {
+namespace IncMultiHeadAttention {
 
 __global__ void build_w_out_tensor(float const *weight_ptr,
                                    float *contiguous_weight_ptr,
@@ -300,6 +304,11 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        false);
   }
 }
+
+} // namespace IncMultiHeadAttention
+} // namespace Kernels
+
+using namespace Kernels::IncMultiHeadAttention;
 
 __global__ void store_kv_cache(float const *devQKVProjArray,
                                float *cache_ptr,
@@ -683,22 +692,64 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
+    : IncMultiHeadSelfAttentionMeta(handler,
+                                    INC_DECODING_MODE,
+                                    attn,
+                                    attn->qSize,
+                                    attn->kSize,
+                                    attn->vSize,
+                                    attn->qProjSize,
+                                    attn->kProjSize,
+                                    attn->vProjSize,
+                                    attn->oProjSize,
+                                    attn->apply_rotary_embedding,
+                                    attn->bias,
+                                    attn->scaling_query,
+                                    attn->qk_prod_scaling,
+                                    attn->add_bias_kv,
+                                    attn->scaling_factor,
+                                    weight_ptr,
+                                    gpu_mem,
+                                    num_samples,
+                                    _num_heads) {}
+
+IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
+    FFHandler handler,
+    InferenceMode infer_mode,
+    Op const *attn,
+    int _qSize,
+    int _kSize,
+    int _vSize,
+    int _qProjSize,
+    int _kProjSize,
+    int _vProjSize,
+    int _oProjSize,
+    bool _apply_rotary_embedding,
+    bool _bias,
+    bool _scaling_query,
+    bool _qk_prod_scaling,
+    bool _add_bias_kv,
+    float _scaling_factor,
+    float const *weight_ptr,
+    Memory gpu_mem,
+    int num_samples,
+    int _num_heads)
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
-  qSize = attn->qSize;
-  kSize = attn->kSize;
-  vSize = attn->vSize;
+  qSize = _qSize;
+  kSize = _kSize;
+  vSize = _vSize;
   // assume dimensions match for now
   assert(qSize == kSize);
   assert(kSize == vSize);
-  qProjSize = attn->qProjSize;
-  kProjSize = attn->kProjSize;
+  qProjSize = _qProjSize;
+  kProjSize = _kProjSize;
   assert(qProjSize == kProjSize); // required for attention QK^T matmul
-  vProjSize = attn->vProjSize;
-  oProjSize = attn->oProjSize;
+  vProjSize = _vProjSize;
+  oProjSize = _oProjSize;
 
   num_heads = _num_heads;
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
@@ -707,16 +758,16 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   has_load_weights = (bool *)calloc(1, sizeof(bool));
   *has_load_weights = false;
   apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));
-  *apply_rotary_embedding = attn->apply_rotary_embedding;
+  *apply_rotary_embedding = _apply_rotary_embedding;
   bias = (bool *)calloc(1, sizeof(bool));
-  *bias = attn->bias;
+  *bias = _bias;
   scaling_query = (bool *)calloc(1, sizeof(bool));
-  *scaling_query = attn->scaling_query;
-  scaling_factor = attn->scaling_factor;
+  *scaling_query = _scaling_query;
+  scaling_factor = _scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
-  *qk_prod_scaling = attn->qk_prod_scaling;
+  *qk_prod_scaling = _qk_prod_scaling;
   // Currently do not support adding bias to key/value projection
-  assert(!attn->add_bias_kv);
+  assert(!_add_bias_kv);
 
 #ifdef INFERENCE_TESTS
   kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
@@ -732,12 +783,29 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size =
         BatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
-    size_t key_cache_size = num_heads * kProjSize *
-                            BatchConfig::MAX_NUM_REQUESTS *
-                            BatchConfig::MAX_SEQ_LENGTH;
-    size_t value_cache_size = num_heads * vProjSize *
-                              BatchConfig::MAX_NUM_REQUESTS *
-                              BatchConfig::MAX_SEQ_LENGTH;
+    size_t key_cache_size = 0, value_cache_size = 0;
+    switch (infer_mode) {
+      case INC_DECODING_MODE:
+      case TREE_VERIFY_MODE: {
+        key_cache_size = num_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS *
+                         BatchConfig::MAX_SEQ_LENGTH;
+        value_cache_size = num_heads * vProjSize *
+                           BatchConfig::MAX_NUM_REQUESTS *
+                           BatchConfig::MAX_SEQ_LENGTH;
+        break;
+      }
+      case BEAM_SEARCH_MODE: {
+        key_cache_size =
+            num_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        value_cache_size =
+            num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        break;
+      }
+      default:
+        assert(false && "Unkown inference mode");
+    }
     size_t tokeninfo_size = BatchConfig::MAX_NUM_TOKENS;
     size_t qk_prod_size =
         BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_SEQ_LENGTH * num_heads;
