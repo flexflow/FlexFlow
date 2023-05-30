@@ -392,12 +392,12 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                      stream,
                      M,
                      N,
-                     m->mean_ptr,
-                     m->rstd_ptr,
-                     m->ds_ptr,
-                     m->db_ptr,
-                     m->scale_ptr,
-                     m->bias_ptr);
+                     static_cast<T *>(m->mean_ptr),
+                     static_cast<T *>(m->rstd_ptr),
+                     static_cast<T *>(m->ds_ptr),
+                     static_cast<T *>(m->db_ptr),
+                     static_cast<T *>(m->scale_ptr),
+                     static_cast<T *>(m->bias_ptr));
   if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
     if (M < 512) {
       // For small batch size, do colwise reduce directly
@@ -411,8 +411,8 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                          N,
                          output_grad_ptr,
                          input_ptr,
-                         m->mean_ptr,
-                         m->rstd_ptr,
+                         static_cast<T *>(m->mean_ptr),
+                         static_cast<T *>(m->rstd_ptr),
                          gamma_grad_ptr,
                          beta_grad_ptr);
     } else {
@@ -429,8 +429,8 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                          N,
                          output_grad_ptr,
                          input_ptr,
-                         m->mean_ptr,
-                         m->rstd_ptr,
+                         static_cast<T *>(m->mean_ptr),
+                         static_cast<T *>(m->rstd_ptr),
                          gamma_grad_ptr,
                          beta_grad_ptr);
     }
