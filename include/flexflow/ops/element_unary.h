@@ -3,6 +3,7 @@
 
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/inference.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
@@ -144,6 +145,6 @@ public:
   float scalar;
 };
 
-}; // namespace FlexFlow
+};     // namespace FlexFlow
 
 #endif // _ELEMENT_UNARY_H
