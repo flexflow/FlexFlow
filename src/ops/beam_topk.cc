@@ -145,7 +145,7 @@ BeamTopK::BeamTopK(FFModel &model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, inputs[0]->dims, DT_INT32, this, 0 /*owner_idx*/);
   outputs[1] = model.create_parallel_tensor_legion_ordering(
-      numdim, inputs[0]->dims, _input->data_type, this, 1 /*owner_idx*/);
+      numdim, inputs[0]->dims, DT_FLOAT, this, 1 /*owner_idx*/);
   outputs[2] = model.create_parallel_tensor_legion_ordering(
       numdim, inputs[0]->dims, DT_INT32, this, 2 /*owner_idx*/);
 }
@@ -270,10 +270,11 @@ OpMeta *BeamTopK::init_task(Task const *task,
                             Runtime *runtime) {
   BeamTopK *topk = (BeamTopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  BeamTopKMeta *m = new BeamTopKMeta(handle);
+  BeamTopKMeta *m = new BeamTopKMeta(handle, topk);
   m->profiling = topk->profiling;
   m->sorted = topk->sorted;
   m->max_beam_width = topk->max_beam_width;
+  m->input_type[0] = topk->inputs[0]->data_type;
   return m;
 }
 
@@ -341,7 +342,6 @@ BeamInferenceResult
 
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-
   BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
   // std::cout << "beam search topk inference: "
@@ -356,13 +356,16 @@ BeamInferenceResult
       ctx, task->regions[1].region.get_index_space());
   int numdims = in1_domain.get_dim();
 
-  float const *in_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  // float const *in_ptr = helperGetTensorPointerRO<float>(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   //   float *value_ptr = helperGetTensorPointerWO<float>(
   //       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   int *index_ptr = helperGetTensorPointerWO<int>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
+  // );
   float *value_ptr = helperGetTensorPointerWO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
@@ -396,7 +399,7 @@ BeamInferenceResult
   // need meta for: how many sub requests in a main request
   BeamTopK::forward_kernel_wrapper(m,
                                    bc,
-                                   in_ptr,
+                                   input,
                                    value_ptr,
                                    index_ptr,
                                    parent_ptr,
@@ -408,6 +411,13 @@ BeamInferenceResult
 
   download_tensor<int>(index_ptr, ir.token_ids, batch_size * m->max_beam_width);
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
+  // if(m->output_type[0] == DT_FLOAT){
+  //     download_tensor<float>(value.get_float_ptr(), ir.probs, batch_size *
+  //     m->max_beam_width);
+  // }else if(m->output_type[0] == DT_HALF){
+  //     download_tensor<float>(value.get_half_ptr(), ir.probs, batch_size *
+  //     m->max_beam_width);
+  // }
   download_tensor<int>(
       parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
   return ir;

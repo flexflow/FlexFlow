@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/beam_topk.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -265,10 +266,10 @@ __device__ void mergeBeamShards(int num_shards,
                                 int max_heap_size,
                                 int request_id,
                                 int *parent_id,
-                                float *probs,
+                                T *probs,
                                 Entry<T> *__restrict__ entries,
                                 Entry<T> *__restrict__ top_k_heap,
-                                T *top_k_values,
+                                float *top_k_values,
                                 int *top_k_indices,
                                 int *top_k_parents,
                                 bool verbose) {
@@ -288,8 +289,8 @@ __device__ void mergeBeamShards(int num_shards,
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
       // int beam = (slot % max_heap_size) / k;
-      float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                         ((slot % max_heap_size) / k)];
+      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
       if (verbose && batch_index == 0) {
         printf("slot %d, value %.15f, prob %15f\n",
@@ -305,8 +306,8 @@ __device__ void mergeBeamShards(int num_shards,
       auto const entry = entries[shard];
       auto const root = min_heap.root();
 
-      float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                         ((shard % max_heap_size) / k)];
+      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     ((shard % max_heap_size) / k)];
       if (verbose && batch_index == 0) {
         printf("shard %d, index %d, value %.15f, prob %.15f\n",
                shard,
@@ -341,7 +342,7 @@ __device__ void mergeBeamShards(int num_shards,
     int const last_k = k - 1;
     for (int rank = 0; rank < last_k; rank++) {
       Entry<T> const &max_element = max_heap.root();
-      top_k_values[rank] = max_element.value;
+      top_k_values[rank] = __half2float(max_element.value);
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
       top_k_parents[rank] =
@@ -349,8 +350,8 @@ __device__ void mergeBeamShards(int num_shards,
                     ((shard_index % max_heap_size) / k)];
       int next_shard_index = shard_index + num_shards;
 
-      float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                         ((next_shard_index % max_heap_size) / k)];
+      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     ((next_shard_index % max_heap_size) / k)];
       if (batch_index == 0) {
         printf("next_shard_index %d, value %.15f, prob %.15f\n",
                next_shard_index,
@@ -365,7 +366,7 @@ __device__ void mergeBeamShards(int num_shards,
 
     // rank == last_k.
     Entry<T> const &max_element = max_heap.root();
-    top_k_values[last_k] = max_element.value;
+    top_k_values[last_k] = __half2float(max_element.value);
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
     top_k_parents[last_k] =
@@ -392,12 +393,12 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                                          int k,
                                          int max_heap_size,
                                          int *parent_ids,
-                                         float *acc_probs,
+                                         T *acc_probs,
                                          int *gpu_block_start_index,
                                          int *gpu_request_id,
                                          int *tokens_per_request,
                                          bool sorted,
-                                         T *__restrict__ output,
+                                         float *__restrict__ output,
                                          int *__restrict__ indices,
                                          int *__restrict__ parents,
                                          bool verbose) {
@@ -503,9 +504,10 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
 }
 
 /*static*/
+template <typename DT>
 void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                               BeamSearchBatchConfig const *bc,
-                              float const *input_ptr,
+                              DT const *input_ptr,
                               float *output_ptr,
                               int *indices_ptr,
                               int *parent_ptr,
@@ -538,7 +540,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   int max_total_requests =
       BeamSearchBatchConfig::MAX_BEAM_WIDTH * bc->num_active_requests();
   int parent_ids[max_total_requests];
-  float acc_probs[max_total_requests];
+  DT acc_probs[max_total_requests];
 
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
     if (bc->request_completed[i]) {
@@ -592,7 +594,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
   {
     constexpr auto shared_memory_size = 48 << 10;
-    auto const heap_size = max_heap_size * sizeof(Entry<float>);
+    auto const heap_size = max_heap_size * sizeof(Entry<DT>);
     // shared_memory_size = (num_shards + 1) * heap_size <=>
     num_shards = shared_memory_size / heap_size - 1;
     assert(num_shards > 0);
@@ -605,7 +607,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   }
   // We are limited by the amount of shared memory we have per block.
   size_t shared_memory_size =
-      (num_shards + 1) * max_heap_size * sizeof(Entry<float>);
+      (num_shards + 1) * max_heap_size * sizeof(Entry<DT>);
 
   assert(num_shards >= (size_t)max_heap_size);
   num_shards = max_heap_size;
@@ -616,7 +618,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaMemcpy(m->acc_probs,
                        acc_probs,
-                       sizeof(float) * max_total_requests,
+                       sizeof(DT) * max_total_requests,
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaMemcpy(m->block_start_index,
                        beam_block_start_index.data(),
@@ -639,7 +641,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       max_beam_width,
       max_heap_size,
       m->parent_ids,
-      m->acc_probs,
+      static_cast<DT *>(m->acc_probs),
       m->block_start_index,
       m->request_id,
       m->tokens_per_request,
@@ -656,7 +658,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 /*static*/
 void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
                                       BeamSearchBatchConfig const *bc,
-                                      float const *input_ptr,
+                                      GenericTensorAccessorR const &input,
                                       float *output_ptr,
                                       int *indices_ptr,
                                       int *parent_ptr,
@@ -673,16 +675,29 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  BeamTopK::forward_kernel(m,
-                           bc,
-                           input_ptr,
-                           output_ptr,
-                           indices_ptr,
-                           parent_ptr,
-                           batch_size,
-                           length,
-                           sorted,
-                           stream);
+  if (input.data_type == DT_HALF) {
+    BeamTopK::forward_kernel(m,
+                             bc,
+                             input.get_half_ptr(),
+                             output_ptr,
+                             indices_ptr,
+                             parent_ptr,
+                             batch_size,
+                             length,
+                             sorted,
+                             stream);
+  } else if (input.data_type == DT_FLOAT) {
+    BeamTopK::forward_kernel(m,
+                             bc,
+                             input.get_float_ptr(),
+                             output_ptr,
+                             indices_ptr,
+                             parent_ptr,
+                             batch_size,
+                             length,
+                             sorted,
+                             stream);
+  }
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -695,12 +710,14 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   }
 }
 
-BeamTopKMeta::BeamTopKMeta(FFHandler handler) : OpMeta(handler) {
+BeamTopKMeta::BeamTopKMeta(FFHandler handler, Op const *op) : OpMeta(handler) {
+  DataType data_type = op->inputs[0]->data_type;
   checkCUDA(cudaMalloc(&parent_ids,
                        sizeof(int) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
                            BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&acc_probs,
-                       sizeof(float) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                       sizeof(data_type_size(data_type)) *
+                           BeamSearchBatchConfig::MAX_BEAM_WIDTH *
                            BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&block_start_index,
                        sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *

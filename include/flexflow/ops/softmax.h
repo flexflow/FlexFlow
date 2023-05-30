@@ -64,13 +64,13 @@ public:
   Params get_params() const;
 
 private:
-  template <int NDIM>
+  template <typename DT, int NDIM>
   static void
       forward_task_with_dim(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  template <int NDIM>
+  template <typename DT, int NDIM>
   static void
       backward_task_with_dim(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,

@@ -141,7 +141,8 @@ bool download_tensor(T const *ptr, T *dst, size_t num_elements);
 
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
-                                       Legion::Domain domain);
+                                       Legion::Domain domain,
+                                       DataType data_type = DT_FLOAT);
 
 hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 

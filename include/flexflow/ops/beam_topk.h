@@ -10,11 +10,11 @@ namespace FlexFlow {
 
 class BeamTopKMeta : public OpMeta {
 public:
-  BeamTopKMeta(FFHandler handle);
+  BeamTopKMeta(FFHandler handle, Op const *op);
   bool sorted;
   int max_beam_width;
   int *parent_ids;
-  float *acc_probs;
+  void *acc_probs;
   int *block_start_index;
   int *request_id;
   int *tokens_per_request;
@@ -75,9 +75,10 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+  template <typename DT>
   static void forward_kernel(BeamTopKMeta const *m,
                              BeamSearchBatchConfig const *bc,
-                             float const *input_ptr,
+                             DT const *input_ptr,
                              float *output_ptr,
                              int *indices_ptr,
                              int *parent_ptr,
@@ -87,7 +88,7 @@ public:
                              ffStream_t stream);
   static void forward_kernel_wrapper(BeamTopKMeta const *m,
                                      BeamSearchBatchConfig const *bc,
-                                     float const *input_ptr,
+                                     GenericTensorAccessorR const &input,
                                      float *output_ptr,
                                      int *indices_ptr,
                                      int *parent_ptr,

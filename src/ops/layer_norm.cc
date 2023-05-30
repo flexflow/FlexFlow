@@ -61,6 +61,7 @@ Tensor FFModel::layer_norm(const Tensor input,
                            std::vector<int> const &axes,
                            bool elementwise_affine,
                            float eps,
+                           DataType data_type,
                            char const *name) {
   // In PyTorch, axes must be the sizes of the last axes.size() dimensions of
   // the input tensor. However, since the tensor dimensions are reversed in
@@ -93,15 +94,32 @@ Tensor FFModel::layer_norm(const Tensor input,
     }
   }
 #endif
+  if (data_type == DT_NONE) {
+    data_type = input->data_type;
+  }
   int num_weights = elementwise_affine ? 2 : 0;
-  Layer *ln = new Layer(this,
-                        OP_LAYERNORM,
-                        DT_FLOAT,
-                        name,
-                        1 /*inputs*/,
-                        num_weights,
-                        1 /*outputs*/,
-                        input);
+  Layer *ln = nullptr;
+  if (data_type != input->data_type) {
+    Tensor casted_input = cast(input, data_type, "type cast for layer_norm");
+    ln = new Layer(this,
+                   OP_LAYERNORM,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   num_weights,
+                   1 /*outputs*/,
+                   casted_input);
+  } else {
+    ln = new Layer(this,
+                   OP_LAYERNORM,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   num_weights,
+                   1 /*outputs*/,
+                   input);
+  }
+
   ln->outputs[0] = create_tensor_legion_ordering(input->num_dims,
                                                  input->dims,
                                                  input->data_type,
@@ -217,7 +235,7 @@ LayerNorm::LayerNorm(FFModel &model,
     weights[0] =
         model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,
-                                                     DT_FLOAT,
+                                                     _input->data_type,
                                                      NULL /*owner_op*/,
                                                      true /*create_grad*/,
                                                      gamma_initializer,
@@ -225,7 +243,7 @@ LayerNorm::LayerNorm(FFModel &model,
     weights[1] =
         model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,
-                                                     DT_FLOAT,
+                                                     _input->data_type,
                                                      NULL /*owner_op*/,
                                                      true /*create_grad*/,
                                                      beta_initializer,
@@ -337,6 +355,8 @@ OpMeta *LayerNorm::init_task(Task const *task,
   LayerNorm *ln = (LayerNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   LayerNormMeta *meta = new LayerNormMeta(handle, ln);
+  meta->input_type[0] = ln->inputs[0]->data_type;
+  meta->output_type[0] = ln->outputs[0]->data_type;
   return meta;
 }
 
@@ -447,14 +467,21 @@ void LayerNorm::forward_task(Task const *task,
   assert(task->regions.size() == regions.size());
   float const *in_ptr = NULL;
   float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
+  GenericTensorAccessorR in;
+  GenericTensorAccessorW out, gamma, beta;
+
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  in_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  // in_ptr = helperGetTensorPointerRO<float>(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  in = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  out_ptr = helperGetTensorPointerWO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  // out_ptr = helperGetTensorPointerWO<float>(
+  //     regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  out = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(in_domain == out_domain);
   assert(in_domain.get_volume() ==
          m->effective_num_elements * m->effective_batch_size);
@@ -462,12 +489,16 @@ void LayerNorm::forward_task(Task const *task,
     assert(regions.size() == 4);
     Domain gamma_domain = runtime->get_index_space_domain(
         ctx, task->regions[2].region.get_index_space());
-    gamma_ptr = helperGetTensorPointerRW<float>(
-        regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    // gamma_ptr = helperGetTensorPointerRW<float>(
+    //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    gamma = helperGetGenericTensorAccessorRW(
+        m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
     Domain beta_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
-    beta_ptr = helperGetTensorPointerRW<float>(
-        regions[3], task->regions[3], FID_DATA, ctx, runtime);
+    // beta_ptr = helperGetTensorPointerRW<float>(
+    //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
+    beta = helperGetGenericTensorAccessorRW(
+        m->input_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(gamma_domain == beta_domain);
     assert(gamma_domain.get_volume() == m->effective_num_elements);
     int numdims = gamma_domain.get_dim();
@@ -479,9 +510,7 @@ void LayerNorm::forward_task(Task const *task,
   } else {
     assert(regions.size() == 2);
   }
-
-  LayerNorm::forward_kernel_wrapper<float>(
-      m, in_ptr, out_ptr, gamma_ptr, beta_ptr);
+  LayerNorm::forward_kernel_wrapper(m, in, out, gamma, beta);
 }
 
 void LayerNorm::backward(FFModel const &ff) {
@@ -615,19 +644,26 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
   if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
+  Domain input_domain = sub_input.get_domain();
+  Domain output_domain = sub_output.get_domain();
   LayerNormMeta *m = new LayerNormMeta(sim->handler, this);
 
   sim->free_all();
   float *in_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(in_ptr != NULL);
+  GenericTensorAccessorR input1_acc(inputs[0]->data_type, input_domain, in_ptr);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(out_ptr != NULL);
+  GenericTensorAccessorW output_acc(
+      outputs[0]->data_type, output_domain, out_ptr);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   // FIXME please add gamma_ptr and beta_ptr after finish the implementation
   float *gamma_ptr = NULL, *beta_ptr = NULL;
+  GenericTensorAccessorW gamma_acc;
+  GenericTensorAccessorW beta_acc;
 
   bool out_of_memory =
       (in_ptr == NULL) || (out_ptr == NULL) ||
@@ -640,7 +676,7 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m, in_ptr, out_ptr, gamma_ptr, beta_ptr);
+    forward_kernel_wrapper(m, input1_acc, output_acc, gamma_acc, beta_acc);
   };
 
   if (sim->computationMode == COMP_MODE_TRAINING) {

@@ -505,6 +505,7 @@ public:
                     std::vector<int> const &axes,
                     bool elementwise_affine,
                     float eps,
+                    DataType data_type = DT_NONE,
                     char const *name = NULL);
   // Add a batch_norm layer
   Tensor
@@ -516,8 +517,11 @@ public:
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
   // Add a root mean square layer
-  Tensor
-      rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
+  Tensor rms_norm(const Tensor input,
+                  float eps,
+                  int dim,
+                  DataType data_type = DT_NONE,
+                  char const *name = NULL);
   // Add a beam search top k layer
   Tensor beam_top_k(const Tensor input,
                     int max_beam_size,
@@ -529,7 +533,7 @@ public:
                int outDim,
                ActiMode activation = AC_MODE_NONE,
                bool use_bias = true,
-               DataType data_type = DT_FLOAT,
+               DataType data_type = DT_NONE,
                Layer const *shared_op = NULL,
                Initializer *kernel_initializer = NULL,
                Initializer *bias_initializer = NULL,
@@ -572,7 +576,10 @@ public:
   // Add a flat layer
   Tensor flat(const Tensor input, char const *name = NULL);
   // Add a softmax layer
-  Tensor softmax(const Tensor input, int dim = -1, char const *name = NULL);
+  Tensor softmax(const Tensor input,
+                 int dim = -1,
+                 DataType data_type = DT_NONE,
+                 char const *name = NULL);
   // Create input tensors and constants
   Tensor transpose(const Tensor input,
                    std::vector<int> const &perm,
@@ -606,6 +613,7 @@ public:
                              bool bias = true,
                              bool add_bias_kv = false,
                              bool add_zero_attn = false,
+                             DataType data_type = DT_NONE,
                              Initializer *kernel_initializer = NULL,
                              char const *name = NULL);
   Tensor inc_multihead_self_attention(const Tensor input,
@@ -617,6 +625,7 @@ public:
                                       bool bias = false,
                                       bool add_bias_kv = false,
                                       bool add_zero_attn = false,
+                                      DataType data_type = DT_NONE,
                                       Initializer *kernel_initializer = NULL,
                                       bool apply_rotary_embedding = false,
                                       bool scaling_query = false,
@@ -633,6 +642,7 @@ public:
                                         bool bias = false,
                                         bool add_bias_kv = false,
                                         bool add_zero_attn = false,
+                                        DataType data_type = DT_NONE,
                                         Initializer *kernel_initializer = NULL,
                                         bool apply_rotary_embedding = false,
                                         bool scaling_query = false,
@@ -649,6 +659,7 @@ public:
       bool bias = false,
       bool add_bias_kv = false,
       bool add_zero_attn = false,
+      DataType data_type = DT_NONE,
       Initializer *kernel_initializer = NULL,
       bool apply_rotary_embedding = false,
       bool scaling_query = false,

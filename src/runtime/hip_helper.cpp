@@ -273,22 +273,23 @@ __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   return true;
 }
 
-miopenStatus_t
-    cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
-                                       Domain domain) {
+miopenStatus_t cudnnSetTensorDescriptorFromDomain(
+    miopenTensorDescriptor_t tensor, Domain domain, DataType data_type) {
   int dims[MAX_TENSOR_DIM];
+  miopenDataType_t cudnn_data_type = ff_to_cudnn_datatype(data_type);
   switch (domain.get_dim()) {
     case 1: {
       Rect<1> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
-      return miopenSet4dTensorDescriptor(tensor, miopenFloat, dims[0], 1, 1, 1);
+      return miopenSet4dTensorDescriptor(
+          tensor, cudnn_data_type, dims[0], 1, 1, 1);
     }
     case 2: {
       Rect<2> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[1], dims[0], 1, 1);
+          tensor, cudnn_data_type, dims[1], dims[0], 1, 1);
     }
     case 3: {
       Rect<3> rect = domain;
@@ -296,7 +297,7 @@ miopenStatus_t
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[2], dims[1], dims[0], 1);
+          tensor, cudnn_data_type, dims[2], dims[1], dims[0], 1);
     }
     case 4: {
       Rect<4> rect = domain;
@@ -305,7 +306,7 @@ miopenStatus_t
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+          tensor, cudnn_data_type, dims[3], dims[2], dims[1], dims[0]);
     }
     case 5: {
       Rect<5> rect = domain;
@@ -316,7 +317,7 @@ miopenStatus_t
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+          tensor, cudnn_data_type, dims[3], dims[2], dims[1], dims[0]);
     }
     default:
       assert(false && "Unsupported dim number");
@@ -326,6 +327,8 @@ miopenStatus_t
 
 miopenDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return miopenHalf;
     case DT_FLOAT:
       return miopenFloat;
     case DT_DOUBLE:

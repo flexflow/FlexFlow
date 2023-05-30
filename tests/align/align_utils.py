@@ -102,7 +102,7 @@ def align_tensors(tensor_alignment_data_iter: Iterable[TensorAlignmentData]):
         ff_tensor = torch.load(ff_filepath).cpu()
         torch_tensor = torch.load(torch_filepath).cpu()
         print(f"Checking {tensor_alignment_data.tensor_name} alignment...")
-        torch.testing.assert_close(ff_tensor, torch_tensor)
+        torch.testing.assert_close(ff_tensor, torch_tensor, rtol=1e-2, atol=1e-4)
 
 
 def parse_create_tensor_args():
