@@ -382,8 +382,8 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                      output_grad_ptr,
                      input_ptr,
                      gamma_ptr,
-                     m->ds_ptr,
-                     m->db_ptr);
+                     static_cast<T *>(m->ds_ptr),
+                     static_cast<T *>(m->db_ptr));
   const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeGradientFusedParamsCUDAKernel<T>),
                      B,
