@@ -367,15 +367,18 @@ BeamSearchBatchConfig
     } else {
       committed_tokens.at(guid).clear();
     }
+    // iterate through all the tokens that belong to request i
     while (result_index < old_bc.num_tokens &&
            old_bc.tokensInfo[result_index].request_index == i) {
+      // new tokens have not been appended yet, so the last appended token is the root of the beam search token tree
       int root_abs_depth = request.tokens.size() - 1;
       if (old_bc.tokensInfo[result_index].abs_depth_in_request >=
           root_abs_depth) {
+        // append to tree_outputs a pair consisting of (token id, depth)
         tree_outputs.push_back(std::make_pair(
             result.token_ids[result_index],
             old_bc.tokensInfo[result_index].abs_depth_in_request + 1));
-
+        // append (depth, index of the token in result) to committed_tokens array
         committed_tokens.at(guid).push_back(
             std::make_pair(old_bc.tokensInfo[result_index].abs_depth_in_request,
                            result_index));
@@ -401,7 +404,7 @@ BeamSearchBatchConfig
     }
 
     std::vector<std::pair<BatchConfig::TokenId, int>> verified_tokens =
-        traverse_verify_tree(guid, dfs_tree_inputs.at(guid), tree_outputs);
+        traverse_verify_tree(guid, dfs_tree_inputs_map.at(guid), tree_outputs);
     log_req_mgr.print("Number of Verified Tokens = %zu",
                       verified_tokens.size());
     // check if the request is finished
@@ -454,7 +457,7 @@ BeamSearchBatchConfig
       }
 
       beam_trees[i] = BeamTree{};
-      dfs_tree_inputs.erase(
+      dfs_tree_inputs_map.erase(
           request.guid); // delete the old input tree from cache
       continue;
     }
@@ -1136,12 +1139,12 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   // std::cout << "Done printing serialized tree, "
   //           << old_bc.requestsInfo[request_index].request_guid << "\n";
 
-  if (dfs_tree_inputs.find(old_bc.requestsInfo[request_index].request_guid) !=
-      dfs_tree_inputs.end()) {
-    dfs_tree_inputs[old_bc.requestsInfo[request_index].request_guid] =
+  if (dfs_tree_inputs_map.find(old_bc.requestsInfo[request_index].request_guid) !=
+      dfs_tree_inputs_map.end()) {
+    dfs_tree_inputs_map[old_bc.requestsInfo[request_index].request_guid] =
         serializedTree;
   } else {
-    dfs_tree_inputs.insert(std::make_pair(
+    dfs_tree_inputs_map.insert(std::make_pair(
         old_bc.requestsInfo[request_index].request_guid, serializedTree));
   }
 

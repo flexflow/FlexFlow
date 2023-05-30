@@ -146,7 +146,7 @@ private:
 
   std::unordered_map<RequestGuid,
                      std::vector<std::pair<BatchConfig::TokenId, int>>>
-      dfs_tree_inputs;
+      dfs_tree_inputs_map;
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
   // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
