@@ -80,7 +80,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->qk_prod_scaling,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
-                                    weight_ptr,
+                                    weight,
                                     gpu_mem,
                                     num_samples,
                                     _num_heads) {
