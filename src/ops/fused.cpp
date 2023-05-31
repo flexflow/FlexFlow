@@ -284,11 +284,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        Kernels::ElementBinary::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_input_accessor[1].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr());
+        Kernels::ElementBinary::forward_kernel_wrapper(m,
+                                                       my_input_accessor[0],
+                                                       my_input_accessor[1],
+                                                       my_output_accessor[0]);
         break;
         break;
       }

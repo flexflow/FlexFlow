@@ -57,23 +57,40 @@ RMSNormParams RMSNorm::get_params() const {
 Tensor FFModel::rms_norm(const Tensor input,
                          float eps,
                          int dim,
+                         DataType data_type,
                          char const *name) {
-  Layer *rm = new Layer(this,
-                        OP_RMS_NORM,
-                        DT_FLOAT,
-                        name,
-                        1 /*inputs*/,
-                        1 /*weights*/,
-                        1 /*outputs*/,
-                        input);
+  if (data_type == DT_NONE) {
+    data_type = input->data_type;
+  }
+  Layer *rm = nullptr;
+  if (data_type != input->data_type) {
+    Tensor casted_input = cast(input, data_type, "type cast for rms_norm");
+    rm = new Layer(this,
+                   OP_RMS_NORM,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   1 /*weights*/,
+                   1 /*outputs*/,
+                   casted_input);
+  } else {
+    rm = new Layer(this,
+                   OP_RMS_NORM,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   1 /*weights*/,
+                   1 /*outputs*/,
+                   input);
+  }
   rm->outputs[0] = create_tensor_legion_ordering(
-      input->num_dims, input->dims, DT_FLOAT, rm, 0, true /*create_grad*/);
+      input->num_dims, input->dims, data_type, rm, 0, true /*create_grad*/);
 
   // weights
   int weight_dims[1] = {dim};
   rm->weights[0] = create_weight_legion_ordering(1,
                                                  weight_dims,
-                                                 DT_FLOAT,
+                                                 data_type,
                                                  rm,
                                                  true /*create_grad*/,
                                                  nullptr,
@@ -362,11 +379,11 @@ void RMSNorm::forward_task(Task const *task,
   assert(regions.size() == 3);
   RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   forward_kernel_wrapper(m, input, weight, output);
 }
 

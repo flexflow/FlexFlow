@@ -345,10 +345,12 @@ GenericTensorAccessorW
 }
 
 #define DIMFUNC(DIM)                                                           \
+  template class TensorAccessorR<half, DIM>;                                   \
   template class TensorAccessorR<float, DIM>;                                  \
   template class TensorAccessorR<double, DIM>;                                 \
   template class TensorAccessorR<int32_t, DIM>;                                \
   template class TensorAccessorR<int64_t, DIM>;                                \
+  template class TensorAccessorW<half, DIM>;                                   \
   template class TensorAccessorW<float, DIM>;                                  \
   template class TensorAccessorW<double, DIM>;                                 \
   template class TensorAccessorW<int32_t, DIM>;                                \

@@ -4,12 +4,13 @@
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
+#include "flexflow/ops/linear.h"
 
 namespace FlexFlow {
 
 class LinearMeta : public OpMeta {
 public:
-  LinearMeta(FFHandler handle, int batch_size);
+  LinearMeta(FFHandler handle, int batch_size, Linear const *li);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
@@ -17,7 +18,7 @@ public:
   miopenTensorDescriptor_t outputTensor;
   miopenActivationDescriptor_t actiDesc;
 #endif
-  float const *one_ptr;
+  void *one_ptr;
   ActiMode activation;
   RegularizerMode kernel_reg_type;
   float kernel_reg_lambda;
@@ -51,6 +52,7 @@ void backward_kernel_wrapper(LinearMeta const *m,
 bool use_activation(ActiMode mode);
 
 namespace Internal {
+template <typename DT>
 void forward_kernel(LinearMeta const *m,
                     void const *input_ptr,
                     void *output_ptr,
@@ -60,6 +62,7 @@ void forward_kernel(LinearMeta const *m,
                     int out_dim,
                     int batch_size,
                     ffStream_t stream);
+template <typename DT>
 void backward_kernel(LinearMeta const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,
@@ -72,6 +75,8 @@ void backward_kernel(LinearMeta const *m,
                      int out_dim,
                      int batch_size,
                      ffStream_t stream);
+template <typename DT>
+__global__ void build_one_ptr(DT *one_ptr, int batch_size);
 } // namespace Internal
 } // namespace Linear
 } // namespace Kernels

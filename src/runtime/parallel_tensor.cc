@@ -1,3 +1,4 @@
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
@@ -834,6 +835,12 @@ template bool TensorBase::get_tensor<int64_t>(FFModel const *ff,
                                               int64_t *data,
                                               bool get_gradients);
 
+template bool ParallelTensorBase::set_tensor<half>(FFModel const *ff,
+                                                   std::vector<int> const &dims,
+                                                   half const *data);
+template bool ParallelTensorBase::get_tensor<half>(FFModel const *ff,
+                                                   half *data,
+                                                   bool get_gradients);
 template bool ParallelTensorBase::set_tensor<float>(
     FFModel const *ff, std::vector<int> const &dims, float const *data);
 template bool ParallelTensorBase::get_tensor<float>(FFModel const *ff,

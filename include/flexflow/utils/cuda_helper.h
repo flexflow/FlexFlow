@@ -155,11 +155,13 @@ template <typename T>
 bool download_tensor(T const *ptr, T *dst, size_t num_elements);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
-                                                 Legion::Domain domain);
+                                                 Legion::Domain domain,
+                                                 DataType data_type = DT_FLOAT);
 
 cudnnStatus_t
     cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
-                                               Legion::Domain domain);
+                                               Legion::Domain domain,
+                                               DataType data_type = DT_FLOAT);
 
 cudaDataType_t ff_to_cuda_datatype(DataType type);
 cudnnDataType_t ff_to_cudnn_datatype(DataType type);

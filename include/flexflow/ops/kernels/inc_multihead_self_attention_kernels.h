@@ -11,20 +11,23 @@ namespace FlexFlow {
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
-__global__ void build_w_out_tensor(float const *weight_ptr,
-                                   float *contiguous_weight_ptr,
+template <typename DT>
+__global__ void build_w_out_tensor(DT const *weight_ptr,
+                                   DT *contiguous_weight_ptr,
                                    int vProjSize,
                                    int oProjSize,
                                    int num_heads,
                                    int qkv_weight_block_size);
 
-__global__ void apply_proj_bias_w(float *input_ptr,
-                                  float const *bias_ptr,
+template <typename DT>
+__global__ void apply_proj_bias_w(DT *input_ptr,
+                                  DT const *bias_ptr,
                                   int num_tokens,
                                   int oProjSize);
 
-__global__ void apply_proj_bias_qkv(float *input_ptr,
-                                    float const *bias_ptr,
+template <typename DT>
+__global__ void apply_proj_bias_qkv(DT *input_ptr,
+                                    DT const *bias_ptr,
                                     int num_tokens,
                                     int qProjSize,
                                     int kProjSize,
@@ -33,8 +36,9 @@ __global__ void apply_proj_bias_qkv(float *input_ptr,
                                     bool scaling_query,
                                     float scaling_factor);
 
+template <typename DT>
 __global__ void
-    apply_rotary_embedding(float *input_ptr,
+    apply_rotary_embedding(DT *input_ptr,
                            cuFloatComplex *complex_input,
                            BatchConfig::PerTokenInfo const *tokenInfos,
                            int qProjSize,
@@ -46,12 +50,13 @@ __global__ void
                            int v_block_size,
                            bool q_tensor);
 
+template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
-                        float const *input_ptr,
-                        float const *weight_ptr,
-                        float *output_ptr,
-                        float const *bias_ptr,
+                        DT const *input_ptr,
+                        DT const *weight_ptr,
+                        DT *output_ptr,
+                        DT const *bias_ptr,
                         cudaStream_t stream);
 } // namespace IncMultiHeadAttention
 } // namespace Kernels

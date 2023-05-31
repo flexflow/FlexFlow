@@ -310,23 +310,23 @@ __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   // checkCUDA(cudaDeviceSynchronize());
   return true;
 }
-cudnnStatus_t
-    cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
-                                               Domain domain) {
+cudnnStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(
+    cudnnTensorDescriptor_t tensor, Domain domain, DataType data_type) {
   int dims[MAX_TENSOR_DIM];
+  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(data_type);
   switch (domain.get_dim()) {
     case 1: {
       Rect<1> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       return cudnnSetTensor4dDescriptor(
-          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[0], 1, 1, 1);
+          tensor, CUDNN_TENSOR_NCHW, cudnn_data_type, dims[0], 1, 1, 1);
     }
     case 2: {
       Rect<2> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       return cudnnSetTensor4dDescriptor(
-          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[1], dims[0], 1, 1);
+          tensor, CUDNN_TENSOR_NCHW, cudnn_data_type, dims[1], dims[0], 1, 1);
     }
     case 3: {
       Rect<3> rect = domain;
@@ -335,7 +335,7 @@ cudnnStatus_t
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       return cudnnSetTensor4dDescriptor(tensor,
                                         CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
+                                        cudnn_data_type,
                                         dims[2] * dims[1],
                                         dims[0],
                                         1,
@@ -349,7 +349,7 @@ cudnnStatus_t
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return cudnnSetTensor4dDescriptor(tensor,
                                         CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
+                                        cudnn_data_type,
                                         dims[3] * dims[2] * dims[1],
                                         dims[0],
                                         1,
@@ -362,21 +362,23 @@ cudnnStatus_t
 }
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
-                                                 Domain domain) {
+                                                 Domain domain,
+                                                 DataType data_type) {
   int dims[MAX_TENSOR_DIM];
+  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(data_type);
   switch (domain.get_dim()) {
     case 1: {
       Rect<1> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       return cudnnSetTensor4dDescriptor(
-          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[0], 1, 1, 1);
+          tensor, CUDNN_TENSOR_NCHW, cudnn_data_type, dims[0], 1, 1, 1);
     }
     case 2: {
       Rect<2> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       return cudnnSetTensor4dDescriptor(
-          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[1], dims[0], 1, 1);
+          tensor, CUDNN_TENSOR_NCHW, cudnn_data_type, dims[1], dims[0], 1, 1);
     }
     case 3: {
       Rect<3> rect = domain;
@@ -385,7 +387,7 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       return cudnnSetTensor4dDescriptor(tensor,
                                         CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
+                                        cudnn_data_type,
                                         dims[2],
                                         dims[1],
                                         dims[0],
@@ -399,7 +401,7 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return cudnnSetTensor4dDescriptor(tensor,
                                         CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
+                                        cudnn_data_type,
                                         dims[3],
                                         dims[2],
                                         dims[1],
@@ -415,7 +417,7 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return cudnnSetTensor4dDescriptor(tensor,
                                         CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
+                                        cudnn_data_type,
                                         dims[3],
                                         dims[2],
                                         dims[1],
@@ -429,6 +431,8 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
 
 cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return CUDNN_DATA_HALF;
     case DT_FLOAT:
       return CUDNN_DATA_FLOAT;
     case DT_DOUBLE:
@@ -443,6 +447,8 @@ cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
 
 cudaDataType_t ff_to_cuda_datatype(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return CUDA_R_16F;
     case DT_FLOAT:
       return CUDA_R_32F;
     case DT_DOUBLE:
@@ -544,6 +550,8 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+template __host__ void
+    print_tensor<half>(half const *ptr, size_t rect, char const *prefix);
 
 template __host__ void print_beam_tensor<float>(float const *ptr,
                                                 size_t num_elements,
@@ -566,6 +574,8 @@ template __host__ void
 template __host__ void save_tensor<int64_t>(int64_t const *ptr,
                                             size_t rect,
                                             char const *file_name);
+template __host__ void
+    save_tensor<half>(half const *ptr, size_t rect, char const *file_name);
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);

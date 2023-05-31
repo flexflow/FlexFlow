@@ -27,10 +27,10 @@ using Legion::Memory;
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeIncMultiHeadSelfAttentionMeta *m,
     TreeVerifyBatchConfig const *bc,
-    float const *input_ptr,
-    float const *weight_ptr,
-    float *output_ptr,
-    float const *bias_ptr) {
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &weight,
+    GenericTensorAccessorW const &output,
+    GenericTensorAccessorR const &bias) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -60,7 +60,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     TreeIncMultiHeadSelfAttention const *attn,
-    float const *weight_ptr,
+    GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
     int _num_heads)
@@ -80,7 +80,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->qk_prod_scaling,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
-                                    weight_ptr,
+                                    weight,
                                     gpu_mem,
                                     num_samples,
                                     _num_heads),

@@ -2,7 +2,6 @@
 
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
-
 namespace FlexFlow {
 
 class LayerNormMeta;
@@ -76,12 +75,11 @@ public:
                              T *gamma_ptr,
                              T *beta_ptr,
                              ffStream_t stream);
-  template <typename T>
   static void forward_kernel_wrapper(LayerNormMeta const *m,
-                                     T const *input_ptr,
-                                     T *output_ptr,
-                                     T *gamma_ptr,
-                                     T *beta_ptr);
+                                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW &output,
+                                     GenericTensorAccessorW &gamma,
+                                     GenericTensorAccessorW &beta);
   template <typename T>
   static void backward_kernel(LayerNormMeta const *m,
                               T const *output_grad_ptr,
@@ -115,7 +113,7 @@ public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
-  float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+  void *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
   char op_name[MAX_OPNAME];
 };
 

@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
@@ -65,22 +66,38 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              bool bias,
                                              bool add_bias_kv,
                                              bool add_zero_attn,
+                                             DataType data_type,
                                              Initializer *kernel_initializer,
                                              bool apply_rotary_embedding,
                                              bool scaling_query,
                                              float scaling_factor,
                                              bool qk_prod_scaling,
                                              char const *name) {
+  if (data_type == DT_NONE) {
+    data_type = input->data_type;
+  }
+  Layer *li = nullptr;
   int weight_num = bias ? 2 : 1;
-  // Currently assume that
-  Layer *li = new Layer(this,
-                        OP_INC_MULTIHEAD_SELF_ATTENTION,
-                        DT_FLOAT,
-                        name,
-                        1 /*inputs*/,
-                        weight_num /*weights*/,
-                        1 /*outputs*/,
-                        input);
+  if (data_type != input->data_type) {
+    Tensor casted_input = cast(input, data_type, "type cast for IncMHA");
+    li = new Layer(this,
+                   OP_INC_MULTIHEAD_SELF_ATTENTION,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   weight_num /*weights*/,
+                   1 /*outputs*/,
+                   casted_input);
+  } else {
+    li = new Layer(this,
+                   OP_INC_MULTIHEAD_SELF_ATTENTION,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   weight_num /*weights*/,
+                   1 /*outputs*/,
+                   input);
+  }
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
@@ -89,7 +106,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
     }
     dims[0] = embed_dim;
     li->outputs[0] = create_tensor_legion_ordering(
-        numdims, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+        numdims, dims, data_type, li, 0, true /*create_grad*/);
   }
   {
     // Compute weight size
@@ -103,7 +120,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
     int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
     li->weights[0] = create_weight_legion_ordering(2,
                                                    dims,
-                                                   DT_FLOAT,
+                                                   data_type,
                                                    li,
                                                    true /*create_grad*/,
                                                    kernel_initializer,
@@ -114,13 +131,13 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
     int dims[1] = {embed_dim * 4};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
-                                                   DT_FLOAT,
+                                                   data_type,
                                                    li,
                                                    true /*create_grad*/,
                                                    kernel_initializer,
                                                    CHOSEN_SYNC_TYPE);
   }
-  li->data_type = DT_FLOAT;
+  li->data_type = data_type;
   li->add_int_property("embed_dim", embed_dim);
   li->add_int_property("num_heads", num_heads);
   li->add_int_property("kdim", kdim);
@@ -208,7 +225,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     // Initializer* _bias_initializer)
     : Op(model,
          OP_INC_MULTIHEAD_SELF_ATTENTION,
-         DT_FLOAT,
+         _input->data_type,
          name,
          1 /*inputs*/,
          (_bias ? 2 : 1), /*weights*/
@@ -260,8 +277,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
     weights[0] = model.create_parallel_weight<3>(dims,
-                                                 DT_FLOAT,
-                                                 NULL /*owner_op*/,
+                                                 this->data_type,
+                                                 nullptr /*owner_op*/,
                                                  true /*create_grad*/,
                                                  initializer,
                                                  comm_type);
@@ -280,7 +297,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
     weights[1] = model.create_parallel_weight<2>(dims,
-                                                 DT_FLOAT,
+                                                 this->data_type,
                                                  NULL /*owner_op*/,
                                                  true /*create_grad*/,
                                                  NULL,
@@ -288,7 +305,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _input->num_dims, dims, DT_FLOAT, this);
+      _input->num_dims, dims, this->data_type, this);
   /* for (int i = 0; i < numdim; i++) { */
   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
   /* } */
@@ -317,7 +334,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     // Initializer* _bias_initializer)
     : Op(model,
          OP_INC_MULTIHEAD_SELF_ATTENTION,
-         DT_FLOAT,
+         _input->data_type,
          name,
          1 /*inputs*/,
          (_bias ? 2 : 1), /*weights*/
@@ -367,7 +384,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
     weights[0] = model.create_parallel_weight<3>(dims,
-                                                 DT_FLOAT,
+                                                 this->data_type,
                                                  NULL /*owner_op*/,
                                                  true /*create_grad*/,
                                                  initializer,
@@ -385,14 +402,14 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
     weights[1] = model.create_parallel_weight<2>(dims,
-                                                 DT_FLOAT,
+                                                 this->data_type,
                                                  NULL /*owner_op*/,
                                                  true /*create_grad*/,
                                                  NULL,
                                                  comm_type);
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _input->num_dims, dims, DT_FLOAT, this);
+      _input->num_dims, dims, this->data_type, this);
 
   /* for (int i = 0; i < numdim; i++) { */
   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
@@ -547,12 +564,27 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       (IncMultiHeadSelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
 
-  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input =
+      helperGetGenericTensorAccessorRO(attn->inputs[0]->data_type,
+                                       regions[0],
+                                       task->regions[0],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR weight =
+      helperGetGenericTensorAccessorRO(attn->weights[0]->data_type,
+                                       regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW output =
+      helperGetGenericTensorAccessorWO(attn->outputs[0]->data_type,
+                                       regions[2],
+                                       task->regions[2],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
 
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
@@ -565,10 +597,11 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
                        .best_affinity_to(task->target_proc)
                        .first();
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-      handle, attn, weight.get_float_ptr(), gpu_mem, num_samples, num_heads);
+      handle, attn, weight, gpu_mem, num_samples, num_heads);
 
   m->profiling = attn->profiling;
-  assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
+  assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
+         m->weightSize);
   return m;
 }
 
@@ -645,8 +678,6 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(task->regions.size() == regions.size());
 
-  float const *bias_ptr = NULL;
-
   BatchConfig const *bc = (BatchConfig *)task->args;
   IncMultiHeadSelfAttentionMeta const *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
@@ -659,19 +690,17 @@ void IncMultiHeadSelfAttention::inference_task(
       m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-
+  GenericTensorAccessorR biases;
   if (*m->bias) {
-    GenericTensorAccessorR biases =
-        helperGetGenericTensorAccessorRO(m->weight_type[1],
-                                         regions[3],
-                                         task->regions[3],
-                                         FID_DATA,
-                                         ctx,
-                                         runtime);
+    biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
+                                              regions[3],
+                                              task->regions[3],
+                                              FID_DATA,
+                                              ctx,
+                                              runtime);
     Domain bias_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
     assert(bias_domain.get_dim() == 2);
-    bias_ptr = biases.get_float_ptr();
   }
 
   Domain input_domain = runtime->get_index_space_domain(
@@ -685,12 +714,8 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
 
-  IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
-                                                      bc,
-                                                      input.get_float_ptr(),
-                                                      weight.get_float_ptr(),
-                                                      output.get_float_ptr(),
-                                                      bias_ptr);
+  IncMultiHeadSelfAttention::inference_kernel_wrapper(
+      m, bc, input, weight, output, biases);
 #ifdef INFERENCE_TESTS
   printf("Checking IncMultiHeadSelfAttention computations...\n");
 
