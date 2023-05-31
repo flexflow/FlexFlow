@@ -37,7 +37,8 @@ enum ModelType { UNKNOWN, LLAMA, OPT };
 void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
-                      ModelType &llm_model_type) {
+                      ModelType &llm_model_type,
+                      bool &use_full_precision) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -80,6 +81,10 @@ void parse_input_args(char **argv,
       paths.output_file_path = std::string(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--use-full-precision")) {
+      use_full_precision = true;
+      continue;
+    }
   }
 }
 
@@ -90,11 +95,12 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   FilePaths file_paths;
   ModelType model_type;
+  bool use_full_precision = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv, argc, file_paths, model_type);
+  parse_input_args(argv, argc, file_paths, model_type, use_full_precision);
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
@@ -151,7 +157,8 @@ void FlexFlow::top_level_task(Task const *task,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
                               ffconfig.workersPerNode * ffconfig.numNodes,
-                              INC_DECODING_MODE);
+                              INC_DECODING_MODE,
+                              use_full_precision);
   } else {
     assert(model_type == ModelType::OPT);
     OPT::create_opt_model(model,
@@ -159,7 +166,8 @@ void FlexFlow::top_level_task(Task const *task,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
                           ffconfig.workersPerNode * ffconfig.numNodes,
-                          INC_DECODING_MODE);
+                          INC_DECODING_MODE,
+                          use_full_precision);
   }
 
   BatchConfig bc;
