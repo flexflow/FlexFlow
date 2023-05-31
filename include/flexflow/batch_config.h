@@ -74,6 +74,7 @@ public:
   TreeVerifyBatchConfig();
   ~TreeVerifyBatchConfig();
   InferenceMode get_mode() const;
+  void print() const;
   // struct PerTokenInfo : BatchConfig::PerTokenInfo {
   //   int tree_branch_idx;
   // };
@@ -104,6 +105,8 @@ public:
 
   void print() const;
   bool done() const;
+  int max_beam_depth_all_requests() const;
+  int current_depth_all_requests() const;
 
   size_t beam_width;
   size_t target_iterations;
@@ -111,7 +114,6 @@ public:
   static int const MAX_BEAM_DEPTH = 8;
 
   struct BeamSearchPerRequestInfo {
-    bool request_completed;
     int beam_size;
     int current_depth = -1;
     int max_depth = MAX_BEAM_DEPTH;
