@@ -64,7 +64,7 @@ SpecInfer supports two tokenizers:
 * The GPT2 tokenizer is used to support the Open Pre-trained Transformer model family (e.g., OPT-13B and OPT-125M). To use it, download the [vocab](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json) and [merges](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt) files and pass the folder containing them as a parameter. 
 
 ### Mixed-precision support
-SpecInfer now supports single-precision floating points and half-precision floating points. By default we use half-precision. Add `--use-full-precision` to the command line to run demo with single-precision, please make sure to use the correct weight files in the form below.
+SpecInfer now supports single-precision floating points and half-precision floating points. By default we use half-precision. Add `--use-full-precision` to the command line to run the demo with single-precision, please make sure to use the correct weight files in the form below.
 
 ### LLM Weights
 The weight files used in our demo are extracted from HuggingFace, and stored in our AWS S3 bucket.
