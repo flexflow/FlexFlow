@@ -63,15 +63,18 @@ SpecInfer supports two tokenizers:
 * The SentencePiece tokenizer is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). We used the pretrained sentencepiece tokenizer from LLAMA, which is also available on Hugging Face (model id: `decapoda-research/llama-7b-hf`). If you  are using our LLAMA-160M weights for the demo, however, you should use the tokenizer from the [JackFram/llama-160m](https://huggingface.co/JackFram/llama-160m/resolve/main/tokenizer.model) HuggingFace repo.
 * The GPT2 tokenizer is used to support the Open Pre-trained Transformer model family (e.g., OPT-13B and OPT-125M). To use it, download the [vocab](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json) and [merges](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt) files and pass the folder containing them as a parameter. 
 
+### Mixed-precision support
+SpecInfer now supports single-precision floating points and half-precision floating points. By default we use half-precision. Add `--use-full-precision` to the command line to run demo with single-precision, please make sure to use the correct weight files in the form below.
+
 ### LLM Weights
 The weight files used in our demo are extracted from HuggingFace, and stored in our AWS S3 bucket.
 
-|  Model   | Model id on Hugging Face  | Storage Location |
-|  :----  | :----  | :----  |
-| LLaMA-7B | decapoda-research/llama-7b-hf | s3://specinfer/weights/llama_7B_weights.tar.gz |
-| LLaMA-190M  | JackFram/llama-160m | s3://specinfer/weights/llama_160M_weights.tar.gz |
-| OPT-6.7B  | facebook/opt-6.7b | s3://specinfer/weights/opt_6B_weights.tar.gz |
-| OPT-125M  | facebook/opt-125m | s3://specinfer/weights/opt_125m_native.tar.gz |
+|  Model   | Model id on Hugging Face  | Storage Location (single precision) | Storage Location (half precision) |
+|  :----  | :----  | :----  | :----  |
+| LLaMA-7B | decapoda-research/llama-7b-hf | s3://specinfer/weights/llama_7B_weights.tar.gz | s3://specinfer/half_weights/llama_7B_weights.tar.gz
+| LLaMA-190M  | JackFram/llama-160m | s3://specinfer/weights/llama_160M_weights.tar.gz | s3://specinfer/half_weights/llama_160M_weights.tar.gz
+| OPT-6.7B  | facebook/opt-6.7b | s3://specinfer/weights/opt_6B_weights.tar.gz | s3://specinfer/half_weights/opt_6B_weights.tar.gz
+| OPT-125M  | facebook/opt-125m | s3://specinfer/weights/opt_125M_weights.tar.gz | s3://specinfer/half_weights/opt_125M_weights.tar.gz
 
 You can use [this script](../inference/utils/download_llama_weights.py) to automatically download and convert the weights of a HuggingFace LLAMA LLM and a LLAMA SSM to the SpecInfer weight format. The script also downloads the LLAMA tokenizer. If you would like to try the OPT model instead, use [this script](../inference/utils/download_opt_weights.py) to download (and convert) the OPT weights and tokenizer.
 
