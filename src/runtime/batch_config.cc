@@ -145,6 +145,8 @@ int BatchConfig::num_active_tokens() const {
 }
 
 void BatchConfig::print() const {
+  std::cout << "@@@@@@@@@@@@@@ Batch Config (mode " << get_mode()
+            << ") @@@@@@@@@@@@@@" << std::endl;
   std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
   std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
@@ -176,26 +178,8 @@ void BatchConfig::print() const {
               << std::endl;
     std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
   }
+  std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+            << std::endl;
 }
-
-#ifdef DEADCODE
-void TreeVerifyBatchConfig::compute_tree_branch_indexes() {
-  // Must be called only after setting num_tokens!
-  auto is_first_token_in_request = [&](int token_index) -> bool {
-    if (token_index == 0) {
-      return true; // First entry in tokensInfo is the first in a request.
-    }
-    return tokensInfo[token_index].request_index !=
-           tokensInfo[token_index - 1].request_index;
-  };
-  for (int i = 0; i < num_tokens; i++) {
-    if (is_first_token_in_request(i)) {
-      tokensInfo[i].tree_branch_idx = 0;
-    } else {
-      tokensInfo[i].tree_branch_idx = tokensInfo[i - 1].tree_branch_idx + 1;
-    }
-  }
-}
-#endif
 
 }; // namespace FlexFlow

@@ -78,7 +78,9 @@ class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
-  RequestManager(Tokenizer *tokenizer, bool verbose = false);
+  RequestManager(Tokenizer *tokenizer,
+                 bool verbose = false,
+                 std::string output_filepath = "");
   RequestManager();
   size_t get_num_processed_requests();
   RequestGuid register_new_request(std::string const &prompt,
@@ -134,6 +136,7 @@ public:
 private:
   Tokenizer *tokenizer;
   bool verbose;
+  std::string output_filepath;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;
@@ -143,11 +146,11 @@ private:
 
   std::unordered_map<RequestGuid,
                      std::vector<std::pair<BatchConfig::TokenId, int>>>
-      dfs_tree_inputs;
+      dfs_tree_inputs_map;
 
   // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
   // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
-  // Commited Tokens
+  // Committed Tokens
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
   // Performance profiling
