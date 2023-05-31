@@ -29,10 +29,17 @@ jobs:
     needs: gpu-ci-concierge
     steps:
       - run: 'echo "No gpu-ci required"'
+  
+  inference-tests:
+    name: Inference Tests
+    runs-on: ubuntu-20.04
+    needs: gpu-ci-concierge
+    steps:
+      - run: 'echo "No gpu-ci required"'
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: ubuntu-20.04
-    needs: gpu-ci-concierge
+    needs: inference-tests
     steps:
       - run: 'echo "No gpu-ci required"'
