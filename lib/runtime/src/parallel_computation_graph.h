@@ -50,7 +50,7 @@ OpTaskInvocation backward(ParallelComputationGraph const &, operator_guid_t cons
 
 std::unordered_map<operator_guid_t, OpTaskInvocation> init(ParallelComputationGraph const &);
 std::unordered_map<operator_guid_t, OpTaskInvocation> forward(ParallelComputationGraph const &);
-std::vector<OpTaskInvocation> backward(ParallelComputationGraph const &);
+std::unordered_map<operator_guid_t, OpTaskInvocation> backward(ParallelComputationGraph const &);
 std::unordered_map<operator_guid_t, OpTaskInvocation> update(ParallelComputationGraph const &, Optimizer const &);
 
 ArgSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpArgRefSpec const &);

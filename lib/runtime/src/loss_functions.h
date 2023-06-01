@@ -25,8 +25,7 @@ namespace FlexFlow {
 
 template <> void register_task<LOSS_BWD_TASK_ID>();
 
-TaskInvocation backward_invocation(LossAttrs const &, 
-                                   EnableProfiling, 
+TaskInvocation backward(LossAttrs const &, 
                                    parallel_tensor_guid_t logit, 
                                    parallel_tensor_guid_t label);
 

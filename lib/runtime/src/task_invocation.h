@@ -16,50 +16,31 @@
 #include "typed_future.h"
 #include "typed_future_map.h"
 #include "arg_ref.h"
+#include "parallel_tensor_spec.h"
 
 namespace FlexFlow {
-
-enum class InvocationType {
-  INDEX,
-  STANDARD
-};
 
 enum class ArgSlotType {
   INDEX,
   STANDARD
 };
 
-enum class IsGrad {
-  YES,
-  NO
-};
-
-
-struct ParallelTensorSpec : public use_visitable_cmp<ParallelTensorSpec> {
-public:
-  ParallelTensorSpec() = delete;
-  ParallelTensorSpec(parallel_tensor_guid_t, IsGrad is_grad = IsGrad::NO);
-
-  ParallelTensorSpec grad() const;
-public:
-  parallel_tensor_guid_t parallel_tensor_guid; 
-  IsGrad is_grad;
-};
-
-ParallelTensorSpec grad(parallel_tensor_guid_t const &);
-
-
 template <typename T> struct TypedTaskInvocation;
+template <typename T> struct TypedIndexTaskInvocation;
 struct TaskInvocationSpec;
 
-using ArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
+using StandardArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
 
 template <typename T>
-using TypedTaskArg = variant<T, IndexArg<T>, TypedFuture<T>, TypedFutureMap<T>, ArgRef<T>, TypedTaskInvocation<T>>;
+using TypedTaskArg = variant<T, IndexArg<T>, TypedFuture<T>, TypedFutureMap<T>, ArgRef<T>, TypedTaskInvocation<T>, TypedIndexTaskInvocation<T>>;
+
+template <typename T>
+using StandardTypedTaskArg = variant<T, TypedFuture<T>, ArgRef<T>, TypedTaskInvocation<T>>;
+
+template <typename T>
+using IndexTypedTaskArg = variant<IndexArg<T>, TypedFutureMap<T>, TypedIndexTaskInvocation<T>>;
 
 std::type_index get_type_index(ArgSpec);
-
-using IndexLaunchDomainSpec = variant<MachineView, parallel_tensor_guid_t>;
 
 template <typename T> TaskInvocationSpec create_task_invocation_spec(TypedTaskInvocation<T> const &);
 
@@ -84,9 +65,15 @@ public:
   void bind_arg(slot_id name, TypedTaskArg<T> const &);
 
   template <typename T>
+  void bind_arg(slot_id name, StandardTypedTaskArg<T> const &);
+
+  template <typename T>
   void bind_arg(slot_id name, TypedTaskInvocation<T> const &invoc) {
     this->insert_arg_spec(name, create_task_invocation_spec(invoc));
   }
+
+  template <typename T>
+  void bind_arg(slot_id name, TypedIndexTaskInvocation<T> const &invoc);
 
   template <typename T>
   void bind_arg(slot_id name, T const &t) {
@@ -103,10 +90,6 @@ public:
     this->insert_arg_spec(name, CheckedTypedFutureMap::create(fm));
   }
 
-  template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
-  void bind_index_arg(slot_id name, F const &f) {
-    this->insert_arg_spec(name, IndexArgSpec::create(f));
-  }
 private:
   void insert_arg_spec(slot_id name, ArgSpec const &arg_spec); 
 
@@ -125,66 +108,6 @@ public:
   task_id_t task_id;
   TaskBinding binding;
 };
-
-template <typename T> TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &);
-
-template <typename T> 
-struct TypedTaskInvocation { 
-public:
-  TypedTaskInvocation() = delete;
-  
-  friend TypedTaskInvocation ensure_return_type<T>(TaskInvocation const &);
-
-private:
-  TypedTaskInvocation(TaskInvocation const &);
-
-  TaskInvocation invocation;
-};
-
-template <typename T>
-TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &invocation) { 
-  optional<std::type_index> signature_return_type = get_signature(invocation.task_id).get_return_type();
-  std::type_index asserted_return_type = type_index<T>();
-  if (!signature_return_type.has_value()) {
-    throw mk_runtime_error("Task {} has no return type (asserted type {})",
-                           asserted_return_type);
-  }
-  if (signature_return_type.value() != asserted_return_type) {
-    throw mk_runtime_error("Task {} does not have asserted return type (asserted type {}, signature type {})",
-                           get_name(invocation.task_id),
-                           asserted_return_type,
-                           signature_return_type.value()
-                           );
-  }
-
-  return TypedTaskInvocation<T>(invocation);
-}
-
-
-struct TaskInvocationSpec {
-  TaskInvocationSpec() = delete;
-
-  TaskInvocation get_invocation() const { 
-    return this->invocation;
-  }
-
-  template <typename T>
-  static TaskInvocationSpec create(TypedTaskInvocation<T> const &invocation) {
-    return TaskInvocationSpec(type_index<T>(), invocation.invocation);
-  }
-private:
-  TaskInvocationSpec(std::type_index const &type_idx, TaskInvocation const &invocation) 
-    : type_idx(type_idx), invocation(invocation)
-  { }
-  
-  std::type_index type_idx;
-  TaskInvocation invocation;
-};
-
-template <typename T> 
-TaskInvocationSpec create_task_invocation_spec(TypedTaskInvocation<T> const &invoc) {
-  return TaskInvocationSpec::create<T>(invoc);
-}
 
 /* TaskArgumentFormat compile_task_invocation(TaskInvocation const &); */
 

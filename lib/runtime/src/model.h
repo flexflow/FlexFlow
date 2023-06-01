@@ -30,15 +30,9 @@
 #include "sim_environment.h"
 #include "executable_task_invocation.h"
 #include "op-attrs/ops/loss_functions.h"
-#include "metrics_node.h"
+#include "training_pcg.h"
 
 namespace FlexFlow {
-
-template <> void register_task<FF_INIT_TASK_ID>();
-
-enum ShardingID {
-  DataParallelShardingID = 135,
-};
 
 MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
 MachineView get_basic_data_parallel_machine_view(FFConfig const &);
@@ -49,17 +43,15 @@ public:
   FFModel() = delete;
   FFModel(FFConfig const &,
           ComputationGraph const &, 
-          ParallelComputationGraph const &,
+          TrainingPCG const &,
           Optimizer const &, 
           RuntimeBacking const &,
           EnableProfiling const &,
-          MetricsNode const &,
           SimEnvFactory const &,
-          LossAttrs const &,
           TensorMapping const &);
 
   TaskReturnAccessor execute(operator_guid_t, OpTaskInvocation const &) const;
-  std::unordered_map<operator_guid_t, TaskReturnAccessor> execute(std::unordered_map<operator_guid_t, OpTaskInvocation> const &) const;
+  std::vector<TaskReturnAccessor> execute(std::vector<TaskInvocation> const &) const;
   TaskReturnAccessor execute(TaskInvocation const &) const;
   TaskReturnAccessor execute(ExecutableTaskInvocation const &) const;
   std::vector<TaskReturnAccessor> execute(std::vector<ExecutableTaskInvocation> const &) const;
@@ -82,13 +74,11 @@ private:
 public:
   FFConfig config;
   ComputationGraph computation_graph;
-  ParallelComputationGraph pcg;
+  TrainingPCG training_pcg;
   Optimizer optimizer;
   RuntimeBacking runtime_backing;
   EnableProfiling enable_profiling;
-  MetricsNode metrics;
   SimEnvFactory sim_factory;
-  LossAttrs loss;
   TensorMapping tensor_map;
 
   FFIterationConfig iter_config;
@@ -104,7 +94,7 @@ void backward(FFModel const &, int seq_length = -1);
 void update(FFModel const &);
 void zero_gradients(FFModel const &);
 void reset_metrics(FFModel const &);
-void compute_metrics(FFModel const &);
+TypedFuture<PerfMetrics> compute_metrics(FFModel const &);
 void recompile_on_condition(FFModel const &, RecompileState &r);
 template <typename T> void set_tensor(FFModel const &, TensorDims const &, T const *);
 template <typename T> void get_tensor(FFModel const &, tensor_guid_t, T *data);

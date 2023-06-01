@@ -4,6 +4,7 @@
 #include "legion.h"
 #include "utils/optional.h"
 #include "utils/type_index.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 

@@ -16,6 +16,7 @@
 #ifndef _FF_METRICS_FUNCTIONS_H_
 #define _FF_METRICS_FUNCTIONS_H_
 
+#include "kernels/perf_metrics.h"
 #include "legion.h"
 #include "op-attrs/ops/loss_functions.h"
 #include "task_invocation.h"
@@ -32,10 +33,10 @@ enum class Metric {
   MEAN_ABSOLUTE_ERROR,
 };
 
-class Metrics {
+class MetricsAttrs {
 public:
-  Metrics() = delete;
-  Metrics(LossFunction, std::vector<Metric> const &);
+  MetricsAttrs() = delete;
+  MetricsAttrs(LossFunction, std::vector<Metric> const &);
 public:
   LossFunction loss_type;
   bool measure_accuracy;
@@ -46,20 +47,24 @@ public:
   bool measure_mean_absolute_error;
 };
 
-TaskInvocation compute_metrics(Metrics const &,
+TypedIndexTaskInvocation<PerfMetrics> compute_metrics(MetricsAttrs const &,
                                parallel_tensor_guid_t const &logit,
                                parallel_tensor_guid_t const &label);
-TaskInvocation update_metrics(Metrics const &,
-                              parallel_tensor_guid_t const &logit,
-                              parallel_tensor_guid_t const &label);
-TaskInvocation reset_metrics(Metrics const &);
+TypedTaskInvocation<PerfMetrics> update_metrics(MetricsAttrs const &,
+                              StandardTypedTaskArg<PerfMetrics> const &all_metrics,
+                              IndexTypedTaskArg<PerfMetrics> const &one_metrics);
+TypedTaskInvocation<PerfMetrics> compute_and_update_metrics(MetricsAttrs const &metrics,
+                                                            StandardTypedTaskArg<PerfMetrics> const &all_metrics,
+                                                            parallel_tensor_guid_t const &logit,
+                                                            parallel_tensor_guid_t const &label);
+TaskInvocation reset_metrics(MetricsAttrs const &);
 
 template <> void register_task<METRICS_COMP_TASK_ID>();
 template <> void register_task<UPDATE_METRICS_TASK_ID>();
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::Metrics, 
+VISITABLE_STRUCT(::FlexFlow::MetricsAttrs, 
                  loss_type, 
                  measure_accuracy, 
                  measure_categorical_crossentropy, 
