@@ -4,13 +4,16 @@
 #include "legion.h"
 #include "utils/stack_map.h"
 #include "tensorless_task_invocation.h"
+#include "task_argument_accessor.h"
 
 namespace FlexFlow {
 
 struct ConcreteArgsFormat {
 public:
   ConcreteArgsFormat() = delete;
-  ConcreteArgsFormat(Legion::Serializer const &sez, TaskArgumentsFormat *reserved_bytes_for_fmt, stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> const &fmts)
+  ConcreteArgsFormat(Legion::Serializer const &sez, 
+                     TaskArgumentsFormat *reserved_bytes_for_fmt, 
+                     stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> const &fmts)
     : sez(sez), fmts(fmts)
   { }
 

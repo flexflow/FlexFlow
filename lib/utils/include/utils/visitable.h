@@ -3,7 +3,7 @@
 
 #include "utils/hash-utils.h"
 #include "utils/type_traits.h"
-#include <rapidcheck.h>
+#include "rapidcheck.h"
 
 namespace FlexFlow {
 
@@ -110,32 +110,30 @@ struct use_visitable_hash {
 }
 
 namespace rc {
-namespace gen {
 
 struct gen_visitor {
   template <typename Member>
-  auto operator()(Member const& m) {
+  auto operator()(Member const& m) -> Gen<Member> {
     return gen::set(m);
   }
 };
 
 template <typename T>
 Gen<T> build_visitable(T const &t) {
-  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(::FlexFlow::is_visitable<T>::value, "Type must be visitable");
 
   gen_visitor vis;
   return gen::build<T>(visit_struct::for_each(t, vis));
 }
 
-template <typename T, std::enable_if_t<FlexFlow::is_visitable<T>::value>>
-struct Arbitrary<T> {
+template <typename T>
+struct Arbitrary<T, typename std::enable_if<::FlexFlow::is_visitable<T>::value>::type> {
   static Gen<T> arbitrary() {
     return build_visitable<T>();
   }
 };
 
-} // namespace gen
-} // namespace rc
+}
 
 #define MAKE_VISIT_HASHABLE(TYPENAME) \
   namespace std { \

@@ -17,7 +17,6 @@
 #include "pcg/machine_specification.h"
 #include "runtime/config.h"
 #include "legion.h"
-#include "metrics_functions.h"
 #include "optimizer.h"
 #include "recompile.h"
 #include <functional>
@@ -31,6 +30,7 @@
 #include "sim_environment.h"
 #include "executable_task_invocation.h"
 #include "op-attrs/ops/loss_functions.h"
+#include "metrics_node.h"
 
 namespace FlexFlow {
 
@@ -53,13 +53,16 @@ public:
           Optimizer const &, 
           RuntimeBacking const &,
           EnableProfiling const &,
-          Metrics const &,
+          MetricsNode const &,
           SimEnvFactory const &,
           LossAttrs const &,
           TensorMapping const &);
 
+  TaskReturnAccessor execute(operator_guid_t, OpTaskInvocation const &) const;
+  std::unordered_map<operator_guid_t, TaskReturnAccessor> execute(std::unordered_map<operator_guid_t, OpTaskInvocation> const &) const;
+  TaskReturnAccessor execute(TaskInvocation const &) const;
   TaskReturnAccessor execute(ExecutableTaskInvocation const &) const;
-  TaskReturnAccessor execute(std::vector<ExecutableTaskInvocation> const &);
+  std::vector<TaskReturnAccessor> execute(std::vector<ExecutableTaskInvocation> const &) const;
 
 
   // ========================================
@@ -83,7 +86,7 @@ public:
   Optimizer optimizer;
   RuntimeBacking runtime_backing;
   EnableProfiling enable_profiling;
-  Metrics metrics;
+  MetricsNode metrics;
   SimEnvFactory sim_factory;
   LossAttrs loss;
   TensorMapping tensor_map;

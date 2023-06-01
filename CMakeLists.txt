@@ -83,6 +83,7 @@ include(visit_struct)
 include(CTest)
 include(fmt)
 include(legion)
+include(rapidcheck)
 #include(gtest)
 #include(fmt)
 

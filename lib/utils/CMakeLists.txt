@@ -25,6 +25,7 @@ target_link_libraries(
   mpark_variant
   visit_struct
   fmt::fmt
+  rapidcheck
 )
 set_target_properties(
   ${project_target} 

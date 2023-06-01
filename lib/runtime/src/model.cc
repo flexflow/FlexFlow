@@ -68,7 +68,7 @@ FFModel::FFModel(FFConfig const &_config,
                  Optimizer const &_optimizer,
                  RuntimeBacking const &_runtime_backing,
                  EnableProfiling const &_enable_profiling,
-                 Metrics const &_metrics,
+                 MetricsNode const &_metrics,
                  SimEnvFactory const &_sim_factory,
                  LossAttrs const &_loss,
                  TensorMapping const &_tensor_map)
@@ -83,35 +83,33 @@ FFModel::FFModel(FFConfig const &_config,
       loss(_loss),
       tensor_map(_tensor_map)
   {
-  metrics_input = -1;
+  /* ArgumentMap argmap; */
+  /* Rect<1> task_rect(Point<1>(0), */
+  /*                   Point<1>(config.workersPerNode * config.numNodes - 1)); */
+  /* IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect); */
 
-  ArgumentMap argmap;
-  Rect<1> task_rect(Point<1>(0),
-                    Point<1>(config.workersPerNode * config.numNodes - 1));
-  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
-
-  for (PointInRectIterator<1> it(task_rect); it(); it++) {
-    FFInitInfo info;
-    info.workSpaceSize = config.workSpaceSize;
-    info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
-    argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
-  }
+  /* for (PointInRectIterator<1> it(task_rect); it(); it++) { */
+  /*   FFInitInfo info; */
+  /*   info.workSpaceSize = config.workSpaceSize; */
+  /*   info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion; */
+  /*   argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo))); */
+  /* } */
 
   // Init CUDA library on each worker
-  IndexLauncher initLauncher(FF_INIT_TASK_ID,
-                             task_is,
-                             TaskArgument(NULL, 0),
-                             argmap,
-                             Predicate::TRUE_PRED,
-                             false /*must*/,
-                             0 /*mapper_id*/,
-                             FFConfig::DataParallelism_GPU);
-  FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
-  fm.wait_all_results();
-  int idx = 0;
-  for (PointInRectIterator<1> it(task_rect); it(); it++) {
-    handlers[idx++] = fm.get_result<FFHandler>(*it);
-  }
+  // IndexLauncher initLauncher(FF_INIT_TASK_ID,
+  //                            task_is,
+  //                            TaskArgument(NULL, 0),
+  //                            argmap,
+  //                            Predicate::TRUE_PRED,
+  //                            false /*must*/,
+  //                            0 /*mapper_id*/,
+  //                            FFConfig::DataParallelism_GPU);
+  // FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
+  // fm.wait_all_results();
+  // int idx = 0;
+  // for (PointInRectIterator<1> it(task_rect); it(); it++) {
+  //   handlers[idx++] = fm.get_result<FFHandler>(*it);
+  // }
 }
 
 /* using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>; */
@@ -154,10 +152,10 @@ FFModel::FFModel(FFConfig const &_config,
 /* } */
 
 
-TaskArgumentsFormat create_serializable_format(TensorArgsFormat const &tensor_args_format,
-                                               ConcreteArgsFormat const &concrete_args_format,
-                                               FutureArgsFormat const &future_args_format,
-                                               optional<IndexArgsFormat> const &index_args_format = nullopt);
+//TaskArgumentsFormat create_serializable_format(TensorArgsFormat const &tensor_args_format,
+//                                               ConcreteArgsFormat const &concrete_args_format,
+//                                               FutureArgsFormat const &future_args_format,
+//                                               optional<IndexArgsFormat> const &index_args_format = nullopt);
   /* TaskArgumentsFormat result; */
   /* for (auto const &kv : concrete_args_format.fmts) { */
   /*   result.insert(kv); */
@@ -188,69 +186,65 @@ TaskArgumentsFormat create_serializable_format(TensorArgsFormat const &tensor_ar
 /* } */
 
 
-TaskReturnAccessor execute(TensorlessTaskInvocation const &invocation,
-                           /* TensorArgsFormat const &tensor_args_format, */
-                           ParallelComputationGraph const &pcg,
-                           RuntimeBacking const &backing,
-                           EnableProfiling enable_profiling) {
-  TaskSignature sig = get_signature(invocation.task_id);
-  TensorlessTaskBinding binding = invocation.binding;
-  /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg, binding); */
-  ConcreteArgsFormat concrete_args_format = process_concrete_args(binding);
-  FutureArgsFormat future_args_format = process_future_args(binding);
-  TaskInvocationArgsFormat task_invocation_args_format = process_task_invocation_args(binding, enable_profiling, backing);
-  assert (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we don't handle these as I don't think they're used anywhere
-  if (binding.invocation_type == InvocationType::STANDARD) {
-    assert (get_args_of_type<IndexArgSpec>(binding).empty());
-    Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
-                                                     future_args_format,
-                                                     tensor_args_format);
-    TaskLauncher launcher(invocation.task_id, task_arg);
-    add_tensor_requirements(launcher, tensor_args_format);
-    Future returned_future = backing.execute_task(launcher);
-    return TaskReturnAccessor(sig.get_return_type(), returned_future);
-  } else if (binding.invocation_type == InvocationType::INDEX) {
-    parallel_tensor_guid_t index_space_determiner = binding.domain_spec.value();
-    ParallelTensorBacking pt_backing = backing.at(index_space_determiner);
-    IndexArgsFormat index_args_format = process_index_args(binding, 
-                                                           backing.get_domain(pt_backing.parallel_is));
-    Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
-                                                     future_args_format,
-                                                     tensor_args_format,
-                                                     index_args_format);
-    IndexTaskLauncher launcher(invocation.task_id,
-                               pt_backing.parallel_is,
-                               task_arg,
-                               as_argument_map(index_args_format),
-                               Predicate::TRUE_PRED,
-                               false /*must*/,
-                               0 /*mapper_id*/,
-                               pt_backing.mapping_id.value()
-                               );
-    add_tensor_requirements(launcher, tensor_args_format);
-    FutureMap returned_future = backing.execute_task(launcher);
-    return TaskReturnAccessor(sig.get_return_type(), returned_future);
-  }
+// TaskReturnAccessor execute(TensorlessTaskInvocation const &invocation,
+//                            /* TensorArgsFormat const &tensor_args_format, */
+//                            ParallelComputationGraph const &pcg,
+//                            RuntimeBacking const &backing,
+//                            EnableProfiling enable_profiling) {
+//   TaskSignature sig = get_signature(invocation.task_id);
+//   TensorlessTaskBinding binding = invocation.binding;
+//   /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg, binding); */
+//   ConcreteArgsFormat concrete_args_format = process_concrete_args(binding);
+//   FutureArgsFormat future_args_format = process_future_args(binding);
+//   TaskInvocationArgsFormat task_invocation_args_format = process_task_invocation_args(binding, enable_profiling, backing);
+//   assert (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we don't handle these as I don't think they're used anywhere
+//   if (binding.invocation_type == InvocationType::STANDARD) {
+//     assert (get_args_of_type<IndexArgSpec>(binding).empty());
+//     Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
+//                                                      future_args_format,
+//                                                      tensor_args_format);
+//     TaskLauncher launcher(invocation.task_id, task_arg);
+//     add_tensor_requirements(launcher, tensor_args_format);
+//     Future returned_future = backing.execute_task(launcher);
+//     return TaskReturnAccessor(sig.get_return_type(), returned_future);
+//   } else if (binding.invocation_type == InvocationType::INDEX) {
+//     parallel_tensor_guid_t index_space_determiner = binding.domain_spec.value();
+//     ParallelTensorBacking pt_backing = backing.at(index_space_determiner);
+//     IndexArgsFormat index_args_format = process_index_args(binding, 
+//                                                            backing.get_domain(pt_backing.parallel_is));
+//     Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
+//                                                      future_args_format,
+//                                                      tensor_args_format,
+//                                                      index_args_format);
+//     IndexTaskLauncher launcher(invocation.task_id,
+//                                pt_backing.parallel_is,
+//                                task_arg,
+//                                as_argument_map(index_args_format),
+//                                Predicate::TRUE_PRED,
+//                                false /*must*/,
+//                                0 /*mapper_id*/,
+//                                pt_backing.mapping_id.value()
+//                                );
+//     add_tensor_requirements(launcher, tensor_args_format);
+//     FutureMap returned_future = backing.execute_task(launcher);
+//     return TaskReturnAccessor(sig.get_return_type(), returned_future);
+//   }
+// }
+
+void init_operators(FFModel const &ff) {
+  std::unordered_map<operator_guid_t, OpTaskInvocation> init_invocations = init(ff.pcg);
+  ff.execute(init_invocations);
 }
 
-void FFModel::init_operators() {
-  for (auto const &op : operators) {
-    op->init(*this);
-  }
-}
-
-void FFModel::forward(int seq_length) {
+void forward(FFModel const &ff, int seq_length) {
   iter_config.seq_length = seq_length;
-  forward(this->pcg);
-  for (auto const &op : operators) {
-    op->forward(*this);
-  }
+  std::unordered_map<operator_guid_t, OpTaskInvocation> forward_invocations = forward(ff.pcg);
+  ff.execute(forward_invocations);
 }
 
-void FFModel::compute_metrics() {
-  Operator final_operator = get_final_operator();
-  assert(final_operator->numOutputs == 1);
-  metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor.value());
+void compute_metrics(FFModel const &ff) {
+  ff.execute(compute_metrics(ff.metrics));
+  ff.execute(update_metrics(ff.metrics));
 }
 
 void FFModel::backward(int seq_length) {
@@ -284,23 +278,16 @@ void FFModel::backward(int seq_length) {
   }
 }
 
-void FFModel::update() {
-  optimizer->next();
-  for (size_t i = 0; i < parameters.size(); i++) {
-    optimizer->update(parameters[i]);
-  }
+void update(FFModel const &ff) {
+  ff.execute(update(ff.pcg, ff.optimizer));
 }
 
-Op const *FFModel::get_final_operator() const {
-  int idx = operators.size() - 1;
-  std::vector<Op const *> operators = this->get_operators();
-  while (operators[idx]->op_type == OP_INPUT ||
-         operators[idx]->op_type == OP_WEIGHT) {
-    idx--;
-  }
+operator_guid_t get_final_operator(FFModel const &ff) {
+  operator_guid_t final_op_id = get_only(get_sinks(ff.pcg.graph));
   // assert that the final operator has exactly one output
-  assert(operators[idx]->numOutputs == 1);
-  return operators.at(idx);
+  Operator op = ff.pcg.at(final_op_id);
+  assert (get_num_outputs(op) == 1);
+  return final_op_id;
 }
 
 void FFModel::compile(Optimizer *_optimizer,

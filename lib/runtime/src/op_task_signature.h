@@ -22,7 +22,7 @@ enum class OpTaskType {
 enum class OpSlotOptions {
   OPTIONAL,
   UNTRAINABLE,
-  OPTIONAL_UNTRAINABLE
+  OPTIONAL_UNTRAINABLE,
   NECESSARY
 };
 

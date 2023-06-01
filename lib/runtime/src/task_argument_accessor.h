@@ -108,7 +108,7 @@ struct TaskArgumentAccessor {
     if (tensor_privs != PRIV) {
       throw mk_runtime_error("Privilege mismatch while accessing tensor: {} != {}", tensor_privs, PRIV);
     }
-    
+
     return helperGetGenericTensorAccessor<PRIV>(get_datatype(this->args_fmt, idx), regions[idx.value()], task->regions[idx.value()], FID_DATA, ctx, runtime);
   }
 

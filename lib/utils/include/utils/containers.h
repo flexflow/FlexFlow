@@ -152,15 +152,16 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m, F const 
 template <typename K, typename V, typename F, typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
 std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m, F const &f) {
   std::unordered_map<K, V2> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     result.insert({kv.first, f(kv.second)});
   }
+  return result;
 }
 
 template <typename K, typename V, typename F> 
 std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m, F const &f) {
   std::unordered_map<K, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     if (f(kv.second)) {
       result.insert(kv);
     }

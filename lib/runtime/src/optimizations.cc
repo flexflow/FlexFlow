@@ -1,19 +1,32 @@
 #include "optimizations.h"
+#include "op-attrs/get_op_type.h"
+#include "utils/graph/rewriting.h"
 
 namespace FlexFlow {
 
-void FFModel::optimize_unnecessary_gradient_calculations() {
+struct OptimizeUnnecessaryGradientCalculations {
+  OptimizeUnnecessaryGradientCalculations() = default;
+
+  Operator operator()(LabelledOpenMultiDiGraph<Operator, ParallelTensorAttrs> const &g, 
+                      Node const &n, 
+                      Operator const &op) { return op; }
+  ParallelTensorAttrs operator()(LabelledOpenMultiDiGraph<Operator, ParallelTensorAttrs> const &g,
+                                 MultiDiEdge const &e, 
+                                 ParallelTensorAttrs const &pt) {
+    ParallelTensorAttrs result = pt;
+    if (get_op_type(g.at(e.src).attrs) == OperatorType::INPUT) {
+      result.create_gradients = CreateGrad::NO;
+    }
+    return result;
+  }
+};
+
+ParallelComputationGraph optimize_unnecessary_gradient_calculations(ParallelComputationGraph const &pcg) {
   // If an operator's input is training data
   // No need to compute its gradients
-  for (size_t l = 0; l < operators.size(); l++) {
-    Op *op = operators[l];
-    for (int i = 0; i < op->numInputs; i++) {
-      assert(op->inputs[i]->owner_op != nullptr);
-      if (op->inputs[i]->owner_op->op_type == OP_INPUT) {
-        op->trainableInputs[i] = false;
-      }
-    }
-  }
+  return pcg.on_underlying([](LabelledOpenMultiDiGraph<Operator, ParallelTensor> const &g) {
+    return rewrite(OptimizeUnnecessaryGradientCalculations{}, g);
+  });
 }
 
 }
