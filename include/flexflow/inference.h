@@ -117,6 +117,7 @@ public:
           &inputSerializedTree,
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
+  int get_requests_init_length(BeamSearchBatchConfig const &old_bc);      
 
   // TreeVerifyBatchConfig
   //     convert_beam_to_tree_batch_config(BeamSearchBatchConfig const

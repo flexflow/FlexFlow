@@ -257,7 +257,9 @@ void FlexFlow::top_level_task(Task const *task,
       assert(fm.get_future_map_domain().get_volume() == 1);
       Future future = fm.get_future(0);
       BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
-      if (depth - 1 >= beam_bc.max_beam_depth_all_requests()) {
+      if (depth - 1 >= beam_bc.max_beam_depth_all_requests() ||
+          depth + 1 + rm.get_requests_init_length(beam_bc) >=
+              BatchConfig::MAX_NUM_TOKENS) {
         break;
       } else {
         beam_bc = rm.prepare_next_batch_beam(beam_bc, beam_ir);
