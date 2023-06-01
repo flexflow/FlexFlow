@@ -2,7 +2,16 @@
 
 import os
 import requests
+import argparse
 from transformers import AutoModelForCausalLM
+
+# You can pass the --use-full-precision flag to use the full-precision weight. By default, we use half precision.
+parser = argparse.ArgumentParser()
+parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
+args = parser.parse_args()
+if not args.use_full_precision:
+    import torch
+    torch.set_default_tensor_type(torch.HalfTensor)
 
 # Change working dir to folder storing this script
 abspath = os.path.abspath(__file__)
