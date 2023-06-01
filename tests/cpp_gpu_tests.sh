@@ -10,7 +10,7 @@ export FF_HOME
 
 GPUS=$1
 BATCHSIZE=$((GPUS * 64))
-FSIZE=14048
+FSIZE=13800
 ZSIZE=12192
 
 remove_mnist() {

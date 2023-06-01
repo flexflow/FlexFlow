@@ -35,7 +35,8 @@ void forward_kernel(float const *input_ptr,
                     float *output_ptr,
                     Legion::coord_t output_size,
                     Legion::coord_t stride,
-                    Legion::coord_t dim_size,
+                    Legion::coord_t input_dim_size,
+                    Legion::coord_t output_dim_size,
                     ffStream_t stream);
 template <typename IndexType>
 void backward_kernel(float const *output_grad_ptr,
@@ -43,7 +44,8 @@ void backward_kernel(float const *output_grad_ptr,
                      float *input_grad_ptr,
                      Legion::coord_t output_size,
                      Legion::coord_t stride,
-                     Legion::coord_t dim_size,
+                     Legion::coord_t input_dim_size,
+                     Legion::coord_t output_dim_size,
                      ffStream_t stream);
 } // namespace Internal
 } // namespace Gather

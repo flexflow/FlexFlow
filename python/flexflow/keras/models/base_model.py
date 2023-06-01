@@ -18,7 +18,7 @@ from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, Permute, Maximum, Minimum
-from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum, Rsqrt
+from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum, Rsqrt, Gather
 from flexflow.keras.optimizers import SGD, Adam
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics
 from flexflow.keras import losses as keras_losses
@@ -485,7 +485,7 @@ class BaseModel(object):
       elif isinstance(layer, Flatten) == True:
         out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
       elif isinstance(layer, Dense) == True:
-        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias, ff.DataType.DT_FLOAT, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias, ff.DataType.DT_FLOAT, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle, layer.kernel_regularizer)
       elif isinstance(layer, Add) == True:
         out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Subtract) == True:
@@ -520,6 +520,8 @@ class BaseModel(object):
         out_t = self._ffmodel.reduce_sum(layer.input_tensors[0].ffhandle, layer.axis, layer.keepdims)
       elif isinstance(layer, Rsqrt):
         out_t = self._ffmodel.rsqrt(layer.input_tensors[0].ffhandle)
+      elif isinstance(layer, Gather):
+        out_t = self._ffmodel.gather(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle, layer.axis)
       else:
         assert 0, "unknown layer"
 

@@ -1,10 +1,10 @@
-from align_utils import gen_tensor, parse_create_tensor_args, create_general_test_tensor_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
 import os
 import sys
 
 import torch
 
 sys.path.append("./align/")
+from align_utils import gen_tensor, parse_create_tensor_args, create_general_test_tensor_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
 
 assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
@@ -74,6 +74,8 @@ def create_single_operator_torch():
         label, output = create_tensors_for_max_torch()
     elif operator_name == 'min':
         label, output = create_tensors_for_min_torch()
+    elif operator_name == 'gather':
+        label, output = create_tensors_for_gather_torch()
     else:
         raise ValueError('Not Include such Operator in Aligment Test ', operator_name)
 
@@ -557,6 +559,18 @@ def create_tensors_for_min_torch():
     output = torch.minimum(
         input=inp,
         other=oth
+    ).to(DEVICE)
+    output.requires_grad = True
+    return label, output
+
+def create_tensors_for_gather_torch():
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    index = torch.zeros(BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE, dtype=torch.int64).to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
+    output = torch.gather(
+        input=inp,
+        index=index,
+        dim=0
     ).to(DEVICE)
     output.requires_grad = True
     return label, output

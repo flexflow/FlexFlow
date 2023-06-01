@@ -22,7 +22,7 @@ import logging
 import warnings
 import numpy as np
 from .flexflow_logger import fflogger
-from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
+from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
 _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
 if not _FF_BUILD_DOCS:
   from .flexflowlib import ffi, flexflow_library
@@ -1470,7 +1470,8 @@ class FFModel(object):
             use_bias=True, 
             datatype=DataType.DT_FLOAT, 
             shared_op=None,
-            kernel_initializer=None, bias_initializer=None, name=None):
+            kernel_initializer=None, bias_initializer=None, 
+            kernel_regularizer=None, name=None):
     """Dense implements the operation: :attr:`output = activation(dot(input, kernel) + bias)` where 
     :attr:`activation` is the element-wise activation function passed as the activation argument, 
     :attr:`kernel` is a weights matrix created by the layer, and 
@@ -1499,6 +1500,9 @@ class FFModel(object):
 
     :param bias_initializer: Initializer for the bias vector. If it is set to None, the ZeroInitializer is applied.
     :type bias_initializer: Initializer
+
+    :param kernel_regularizer: Regularizer for the kernel weights matrix
+    :type bias_initializer: Regularizer
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -1511,7 +1515,17 @@ class FFModel(object):
     c_datatype = enum_to_int(DataType, datatype)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, c_datatype, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
+    if kernel_regularizer:
+      c_kernel_reg_type = enum_to_int(RegularizerMode, kernel_regularizer.type)
+      kernel_reg_lambda = kernel_regularizer._lambda
+    else:
+      c_kernel_reg_type = enum_to_int(
+        RegularizerMode, RegularizerMode.REG_MODE_NONE)
+      kernel_reg_lambda = 0.0
+    handle = ffc.flexflow_model_add_dense(
+      self.handle, input.handle, out_dim, c_activation, use_bias, c_datatype,
+      shared_op_handle, kernel_init_handle, bias_init_handle,
+      c_kernel_reg_type, kernel_reg_lambda, c_name)
     self.add_layer(OpType.LINEAR, name)
     return Tensor(handle, owner_op_type=OpType.LINEAR)
 

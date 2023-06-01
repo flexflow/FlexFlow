@@ -40,15 +40,18 @@ void forward_kernel_wrapper(GatherMeta const *m,
   for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output.domain.hi()[i] - output.domain.lo()[i] + 1);
   }
-  coord_t dim_size =
+  coord_t output_dim_size =
       output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] + 1;
+  coord_t input_dim_size =
+      input.domain.hi()[m->legion_dim] - input.domain.lo()[m->legion_dim] + 1;
   if (index.data_type == DT_INT32) {
     Internal::forward_kernel(input.get_float_ptr(),
                              index.get_int32_ptr(),
                              output.get_float_ptr(),
                              output.domain.get_volume(),
                              stride,
-                             dim_size,
+                             input_dim_size,
+                             output_dim_size,
                              stream);
   } else {
     assert(index.data_type == DT_INT64);
@@ -57,7 +60,8 @@ void forward_kernel_wrapper(GatherMeta const *m,
                              output.get_float_ptr(),
                              output.domain.get_volume(),
                              stride,
-                             dim_size,
+                             input_dim_size,
+                             output_dim_size,
                              stream);
   }
 }
@@ -72,15 +76,18 @@ void backward_kernel_wrapper(GatherMeta const *m,
   for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output_grad.domain.hi()[i] - output_grad.domain.lo()[i] + 1);
   }
-  coord_t dim_size = output_grad.domain.hi()[m->legion_dim] -
-                     output_grad.domain.lo()[m->legion_dim] + 1;
+  coord_t output_dim_size = output_grad.domain.hi()[m->legion_dim] -
+                            output_grad.domain.lo()[m->legion_dim] + 1;
+  coord_t input_dim_size = input_grad.domain.hi()[m->legion_dim] -
+                           input_grad.domain.lo()[m->legion_dim] + 1;
   if (index.data_type == DT_INT32) {
     Internal::backward_kernel(output_grad.get_float_ptr(),
                               index.get_int32_ptr(),
                               input_grad.get_float_ptr(),
                               output_grad.domain.get_volume(),
                               stride,
-                              dim_size,
+                              input_dim_size,
+                              output_dim_size,
                               stream);
   } else {
     assert(index.data_type == DT_INT64);
@@ -89,7 +96,8 @@ void backward_kernel_wrapper(GatherMeta const *m,
                               input_grad.get_float_ptr(),
                               output_grad.domain.get_volume(),
                               stride,
-                              dim_size,
+                              input_dim_size,
+                              output_dim_size,
                               stream);
   }
 }
@@ -102,16 +110,23 @@ __global__ void gather_forward(float const *input,
                                float *output,
                                coord_t output_size,
                                coord_t stride,
-                               coord_t dim_size) {
+                               coord_t input_dim_size,
+                               coord_t output_dim_size) {
   CUDA_KERNEL_LOOP(o, output_size) {
-    // First, remove the offset caused by the index dimension
-    // Assume 3 dim index: (i, j, k) and i is the specified dim
-    // then adjust_idx = (0, j, k)
-    // Note that stride is the stride of dim i and dim_size is
-    // the size of dim i
-    // input_idx = (index[i,j,k], j, k)
-    coord_t adjust_idx = o - (o / stride) % dim_size * stride;
-    coord_t input_idx = adjust_idx + index[o] * stride;
+    // output tensor shape: [*, output_dim_size, stride]
+    // output tensor stride: [output_dim_size * stride, stride, 1]
+    // output tensor index: [outter_index, index_2, left_over]
+    // input tensor shape: [*, input_dim_size, stride]
+    // input tensor stride: [input_dim_size * stride, stride, 1]
+    // the index of the corresponding input tensor should be:
+    // [outter_index, index[0], left_over]
+    // Therefore, input_index = outter_index * (stride * input_dim_size)
+    //                        + index[0] * stride + left_over;
+    coord_t outter_index = o / (stride * output_dim_size);
+    // coord_t index_2 = (o / stride) % dim_size
+    coord_t left_over = o % stride;
+    coord_t input_idx = outter_index * (stride * input_dim_size) +
+                        index[o] * stride + left_over;
     output[o] = input[input_idx];
   }
 }
@@ -122,14 +137,21 @@ void forward_kernel(float const *input_ptr,
                     float *output_ptr,
                     coord_t output_size,
                     coord_t stride,
-                    coord_t dim_size,
+                    coord_t input_dim_size,
+                    coord_t output_dim_size,
                     cudaStream_t stream) {
   assert(input_ptr != nullptr);
   assert(index_ptr != nullptr);
   assert(output_ptr != nullptr);
   gather_forward<IndexType>
       <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
-          input_ptr, index_ptr, output_ptr, output_size, stride, dim_size);
+          input_ptr,
+          index_ptr,
+          output_ptr,
+          output_size,
+          stride,
+          input_dim_size,
+          output_dim_size);
 }
 
 template <typename IndexType>
@@ -138,17 +160,25 @@ __global__ void gather_backward(float const *output_grad,
                                 float *input_grad,
                                 coord_t output_size,
                                 coord_t stride,
-                                coord_t dim_size) {
+                                coord_t input_dim_size,
+                                coord_t output_dim_size) {
   CUDA_KERNEL_LOOP(o, output_size) {
-    // First, remove the offset caused by the index dimension
-    // Assume 3 dim index: (i, j, k) and i is the specified dim
-    // then adjust_idx = (0, j, k)
-    // Note that stride is the stride of dim i and dim_size is
-    // the size of dim i
-    // input_idx = (index[i,j,k], j, k)
-    coord_t adjust_idx = o - (o / stride) % dim_size * stride;
-    coord_t input_idx = adjust_idx + index[o] * stride;
-    input_grad[input_idx] += output_grad[o];
+    // output tensor shape: [*, output_dim_size, stride]
+    // output tensor stride: [output_dim_size * stride, stride, 1]
+    // output tensor index: [outter_index, index_2, left_over]
+    // input tensor shape: [*, input_dim_size, stride]
+    // input tensor stride: [input_dim_size * stride, stride, 1]
+    // the index of the corresponding input tensor should be:
+    // [outter_index, index[0], left_over]
+    // Therefore, input_index = outter_index * (stride * input_dim_size)
+    //                        + index[0] * stride + left_over;
+    coord_t outter_index = o / (stride * output_dim_size);
+    // coord_t index_2 = (o / stride) % dim_size
+    coord_t left_over = o % stride;
+    coord_t input_idx = outter_index * (stride * input_dim_size) +
+                        index[o] * stride + left_over;
+
+    atomicAdd(&input_grad[input_idx], output_grad[o]);
   }
 }
 
@@ -158,7 +188,8 @@ void backward_kernel(float const *output_grad_ptr,
                      float *input_grad_ptr,
                      coord_t output_size,
                      coord_t stride,
-                     coord_t dim_size,
+                     coord_t input_dim_size,
+                     coord_t output_dim_size,
                      cudaStream_t stream) {
   assert(output_grad_ptr != nullptr);
   assert(input_grad_ptr != nullptr);
@@ -170,7 +201,8 @@ void backward_kernel(float const *output_grad_ptr,
           input_grad_ptr,
           output_size,
           stride,
-          dim_size);
+          input_dim_size,
+          output_dim_size);
 }
 
 } // namespace Internal

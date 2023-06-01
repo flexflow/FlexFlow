@@ -101,11 +101,9 @@ class Flexflow(CMakePackage):
       options.append('-DFF_USE_AVX2=OFF')
 
     if '+gasnet' in spec:
-      options.append('-DFF_USE_GASNET=ON')
+      options.append('-DFF_LEGION_NETWORKS=ucx')
       gasnet_conduit = spec.variants['conduit'].value
       options.append('-DFF_GASNET_CONDUIT=%s' % gasnet_conduit)
-    else:
-      options.append('-DFF_USE_GASNET=OFF')
 
     maxdims = int(spec.variants['max_dims'].value)
     options.append('-DFF_MAX_DIM=%d' % maxdims)

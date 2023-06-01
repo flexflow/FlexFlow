@@ -6,7 +6,7 @@ set -e
 GPUS=${1:-1} # number of GPUS per node
 NUM_NODES=${2:-1} # number of nodes
 BATCHSIZE=$(( NUM_NODES * GPUS * 64))
-FSIZE=14048
+FSIZE=13800
 ZSIZE=12192
 
 FF_HOME="$(realpath "${BASH_SOURCE[0]%/*}/..")"
@@ -43,6 +43,8 @@ $EXE "$FF_HOME"/examples/python/keras/reduce_sum.py -ll:py 1 -ll:gpu "$GPUS" -ll
 $EXE "$FF_HOME"/examples/python/keras/identity_loss.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel 
 $EXE "$FF_HOME"/examples/python/keras/elementwise_max_min.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel 
 $EXE "$FF_HOME"/examples/python/keras/rsqrt.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+$EXE "$FF_HOME"/examples/python/keras/gather.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+$EXE "$FF_HOME"/examples/python/keras/regularizer.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 
 #Functional API
 $EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
