@@ -215,7 +215,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                             llama_config.dim,
                             llama_config.dim / llama_config.n_heads);
   fileloader.load_weights(&ff, weights_layers);
-  std::cout << "------load wieght finished----------" << std::endl;
+  std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
   im.init_operators_inference(&ff);
