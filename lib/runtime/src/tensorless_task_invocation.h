@@ -10,6 +10,17 @@ using ExecutableArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFut
 
 struct TensorlessTaskBinding : public use_visitable_cmp<TensorlessTaskBinding> {
 public:
+  static TensorlessTaskBinding index_launch(MachineView const &);
+  static TaskBinding standard_launch();
+
+  template <typename T> void bind_arg(slot_id name, T const &);
+  template <typename T> void bind_arg(slot_id name, TypedFuture<T> const &);
+  template <typename T> void bind_arg(slot_id name, TypedFutureMap<T> const &);
+  template <typename T> void bind_arg(TypedTaskInvocation<T> const &);
+  
+  template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
+  void bind_index_arg(slot_id name, F const &f);
+public:
   InvocationType invocation_type;
   std::unordered_map<slot_id, ExecutableArgSpec> arg_bindings;
   optional<MachineView> domain_view = nullopt;
@@ -32,7 +43,7 @@ public:
 public:
   task_id_t task_id;
   TensorlessTaskBinding binding;
-}
+};
 
 }
 
