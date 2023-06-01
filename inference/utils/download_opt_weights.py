@@ -35,12 +35,12 @@ def convert_hf_model(model, dst_folder):
 
 # Download and convert big model weights
 model = AutoModelForCausalLM.from_pretrained("facebook/opt-6.7b")
-dst_folder="../weights/opt_6B_weights"
+dst_folder="../weights/opt_6B_weights" if args.use_full_precision else "../weights/opt_6B_weights_half"
 convert_hf_model(model, dst_folder)
 
 # Download and convert small model weights
 model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m")
-dst_folder="../weights/opt_125M_weights"
+dst_folder="../weights/opt_125M_weights" if args.use_full_precision else "../weights/opt_125M_weights_half"
 convert_hf_model(model, dst_folder)
 
 # Download tokenizer files

@@ -42,12 +42,12 @@ def convert_hf_model(model, dst_folder):
 
 # Download and convert big model weights
 model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
-dst_folder="../weights/llama_7B_weights"
+dst_folder="../weights/llama_7B_weights" if args.use_full_precision else "../weights/llama_7B_weights_half"
 convert_hf_model(model, dst_folder)
 
 # Download and convert small model weights
 model = AutoModelForCausalLM.from_pretrained("JackFram/llama-160m")
-dst_folder="../weights/llama_160M_weights"
+dst_folder="../weights/llama_160M_weights" if args.use_full_precision else "../weights/llama_160M_weights_half"
 convert_hf_model(model, dst_folder)
 
 # Download tokenizer
