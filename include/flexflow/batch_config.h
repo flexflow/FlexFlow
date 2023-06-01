@@ -47,6 +47,7 @@ public:
   static int const MAX_NUM_REQUESTS = 1;
   static int const MAX_NUM_TOKENS = 64;
   static int const MAX_SEQ_LENGTH = 256;
+  static int const MAX_VOCAB_SIZE = 50272;
 
   //  These are set by update
   int num_tokens;
@@ -92,6 +93,10 @@ public:
 struct InferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
+};
+
+struct SampleTopPInferenceResult {
+  float probs[BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_VOCAB_SIZE];
 };
 
 class BeamSearchBatchConfig : public BatchConfig {

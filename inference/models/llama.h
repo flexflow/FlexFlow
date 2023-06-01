@@ -102,13 +102,14 @@ public:
     float norm_eps;
   };
 
-  static void create_llama_model(FFModel &ff,
+  static int create_llama_model(FFModel &ff,
                                  InferenceManager &im,
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  int num_pipeline_stages,
                                  InferenceMode mode,
-                                 bool use_full_precision = false);
+                                 bool use_full_precision = false,
+                                 bool use_sampleing = false);
 };
 
 }; // namespace FlexFlow

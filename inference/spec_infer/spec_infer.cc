@@ -44,7 +44,8 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       ModelTypes &model_types,
-                      bool &use_full_precision) {
+                      bool &use_full_precision,
+                      bool &use_sampleing) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -114,6 +115,10 @@ void parse_input_args(char **argv,
       use_full_precision = true;
       continue;
     }
+    if (!strcmp(argv[i], "--use-sampleing")) {
+      use_sampleing = true;
+      continue;
+    }
   }
 }
 
@@ -125,11 +130,13 @@ void FlexFlow::top_level_task(Task const *task,
   FilePaths file_paths;
   ModelTypes model_types;
   bool use_full_precision = false;
+  bool use_sampleing = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv, argc, file_paths, model_types, use_full_precision);
+  parse_input_args(
+      argv, argc, file_paths, model_types, use_full_precision, use_sampleing);
   if (file_paths.ssm_weight_file_paths.size() == 0) {
     assert(false &&
            "SpecInfer needs at least one SSM for speculative inference");
@@ -195,6 +202,7 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
+  int vocab_size = 0;
   FFModel beam_model(ffconfig);
   FFModel tree_model(ffconfig);
   if (model_types.ssm_model_types[0] == ModelType::LLAMA) {
@@ -215,21 +223,24 @@ void FlexFlow::top_level_task(Task const *task,
                           use_full_precision);
   }
   if (model_types.llm_model_type == ModelType::LLAMA) {
-    LLAMA::create_llama_model(tree_model,
+    vocab_size =
+        LLAMA::create_llama_model(tree_model,
+                                  im,
+                                  file_paths.llm_config_file_path,
+                                  file_paths.llm_weight_file_path,
+                                  ffconfig.workersPerNode * ffconfig.numNodes,
+                                  TREE_VERIFY_MODE,
+                                  use_full_precision,
+                                  use_sampleing);
+  } else {
+    vocab_size =
+        OPT::create_opt_model(tree_model,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
                               ffconfig.workersPerNode * ffconfig.numNodes,
                               TREE_VERIFY_MODE,
                               use_full_precision);
-  } else {
-    OPT::create_opt_model(tree_model,
-                          im,
-                          file_paths.llm_config_file_path,
-                          file_paths.llm_weight_file_path,
-                          ffconfig.workersPerNode * ffconfig.numNodes,
-                          TREE_VERIFY_MODE,
-                          use_full_precision);
   }
 
   TreeVerifyBatchConfig tree_bc;
@@ -261,7 +272,15 @@ void FlexFlow::top_level_task(Task const *task,
       FutureMap fm = im.inference(&tree_model, 0, tree_bc);
       assert(fm.get_future_map_domain().get_volume() == 1);
       Future future = fm.get_future(0);
-      tree_ir = future.get_result<InferenceResult>();
+      if (use_sampleing) {
+        tree_ir =
+            rm.sample_top_p(future.get_result<SampleTopPInferenceResult>(),
+                            vocab_size,
+                            tree_bc.num_active_tokens(),
+                            0.95f);
+      } else {
+        tree_ir = future.get_result<InferenceResult>();
+      }
     }
   }
 

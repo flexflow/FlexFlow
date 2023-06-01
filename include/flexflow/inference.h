@@ -130,6 +130,10 @@ public:
                           std::vector<Legion::PhysicalRegion> const &regions,
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
+  InferenceResult sample_top_p(SampleTopPInferenceResult sir,
+                               int vocab_size,
+                               int num_tokens,
+                               float top_p);
 
 private:
   Tokenizer *tokenizer;

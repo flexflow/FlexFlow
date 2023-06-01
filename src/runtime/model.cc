@@ -4391,7 +4391,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<InferenceResult, Softmax::inference_task>(
+    Runtime::preregister_task_variant<SampleTopPInferenceResult, Softmax::inference_task>(
         registrar, "softmax_inf_task");
   }
   // compute Loss

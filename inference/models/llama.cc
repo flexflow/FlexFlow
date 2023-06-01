@@ -19,13 +19,14 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-void LLAMA::create_llama_model(FFModel &ff,
-                               InferenceManager &im,
-                               std::string const &model_config_file_path,
-                               std::string const &weight_file_path,
-                               int num_pipeline_stages,
-                               InferenceMode mode,
-                               bool use_full_precision) {
+int LLAMA::create_llama_model(FFModel &ff,
+                              InferenceManager &im,
+                              std::string const &model_config_file_path,
+                              std::string const &weight_file_path,
+                              int num_pipeline_stages,
+                              InferenceMode mode,
+                              bool use_full_precision,
+                              bool use_sampleing) {
   Config llama_config(model_config_file_path);
   llama_config.printConfig();
   //------------------------------compute machine views ------------------
@@ -203,7 +204,14 @@ void LLAMA::create_llama_model(FFModel &ff,
     Tensor softmax = ff.softmax(dense, -1);
     output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
   } else {
-    output = ff.arg_top_k(dense, /*k=*/1, false);
+    if (use_sampleing) {
+      // sampleing
+      Tensor temperature_scaling = ff.scalar_truediv(dense, 0.8);
+      output = ff.softmax(temperature_scaling, -1);
+    } else {
+      // greedy
+      output = ff.arg_top_k(dense, /*k=*/1, false);
+    }
   }
 
   // Compile the model
@@ -219,6 +227,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   // init operators
   im.init_operators_inference(&ff);
+  return llama_config.vocab_size;
 }
 
 }; // namespace FlexFlow

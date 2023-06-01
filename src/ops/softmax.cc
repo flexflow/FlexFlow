@@ -17,6 +17,11 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/hash_utils.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
 
 namespace FlexFlow {
 // declare Legion names
@@ -429,7 +434,7 @@ void Softmax::backward_task_with_dim(Task const *task,
       m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 
-InferenceResult
+SampleTopPInferenceResult
     Softmax::inference_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
@@ -455,8 +460,13 @@ InferenceResult
       assert(false);
   }
   // FIXME: replace this with actual result
-  InferenceResult ir;
-  return ir;
+
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  SampleTopPInferenceResult sir;
+  download_tensor<float>(
+      output.get_float_ptr(), sir.probs, output.domain.get_volume());    
+  return sir;
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {

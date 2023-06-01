@@ -19,7 +19,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-void OPT::create_opt_model(FFModel &ff,
+int OPT::create_opt_model(FFModel &ff,
                            InferenceManager &im,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
@@ -252,6 +252,7 @@ void OPT::create_opt_model(FFModel &ff,
   fileloader.load_weights(&ff, weights_layers);
   std::cout << "------finished loading weights----------" << std::endl;
   im.init_operators_inference(&ff);
+  return opt_config.vocab_size;
 }
 
 }; // namespace FlexFlow

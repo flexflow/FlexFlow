@@ -16,7 +16,9 @@
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 #include "flexflow/tokenizers.h"
+#include <algorithm>
 #include <new>
+#include <numeric>
 #include <stdexcept>
 
 namespace FlexFlow {
@@ -810,7 +812,7 @@ void RequestManager::update_beam_metadata(BeamSearchBatchConfig &new_bc,
     for (int j = 0; j < beam_size; j++) {
       new_bc.beamRequestsInfo[request_index].parent_id[j] = j;
       new_bc.beamRequestsInfo[request_index].probs[j] =
-          tree.treeLayers[depth].probs[j]; // ?
+          tree.treeLayers[depth].probs[j];  // ?
       new_bc.beamRequestsInfo[request_index].tokens[j] =
           tree.treeLayers[depth].tokens[j]; // ?
     }
@@ -1103,6 +1105,59 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 
   return serializedTree;
   // }
+}
+
+InferenceResult RequestManager::sample_top_p(SampleTopPInferenceResult sir,
+                                             int vocab_size,
+                                             int num_tokens,
+                                             float top_p) {
+  InferenceResult ir;
+  // sort
+  for (int i = 0; i < num_tokens; i++) {
+    // sort
+    int start_idx = i * vocab_size;
+    int end_idx = start_idx + vocab_size;
+    std::sort(sir.probs + start_idx, sir.probs + end_idx);
+
+    // cum sum
+    float acc_sum[vocab_size];
+    std::partial_sum(sir.probs + start_idx, sir.probs + end_idx, acc_sum);
+    float sum = 0.0f;
+
+    // disable acc probs > topp
+    for (int j = 0; j < vocab_size; j++) {
+      if (acc_sum[j] > top_p) {
+        acc_sum[j] = 0;
+      } else {
+        sum += acc_sum[j];
+      }
+    }
+
+    // random
+    float target = ((float)rand() / (RAND_MAX));
+
+    // which range it belongs to
+    int l = start_idx, r = end_idx;
+    while (r > l) {
+      int mid = (l + r) / 2;
+      if ((acc_sum[mid] / sum) > target) {
+        r = mid;
+      } else {
+        l = mid;
+      }
+    }
+
+    assert(r >= 0 && r < vocab_size);
+    // find the element in original array;
+    float *res =
+        std::find(sir.probs + start_idx, sir.probs + end_idx, acc_sum[r] / sum);
+    assert(res != sir.probs + end_idx);
+    int org_idx = res - (sir.probs + start_idx);
+
+    // add result to ir
+    ir.token_ids[i] = org_idx;
+  }
+  return ir;
 }
 
 }; // namespace FlexFlow
