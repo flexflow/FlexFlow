@@ -107,7 +107,8 @@ void FlexFlow::top_level_task(Task const *task,
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv, argc, file_paths, model_type, use_full_precision, verbose);
+  parse_input_args(
+      argv, argc, file_paths, model_type, use_full_precision, verbose);
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");

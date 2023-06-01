@@ -142,7 +142,8 @@ void FlexFlow::top_level_task(Task const *task,
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv, argc, file_paths, model_types, use_full_precision, verbose);
+  parse_input_args(
+      argv, argc, file_paths, model_types, use_full_precision, verbose);
   if (file_paths.ssm_weight_file_paths.size() == 0) {
     assert(false &&
            "SpecInfer needs at least one SSM for speculative inference");
