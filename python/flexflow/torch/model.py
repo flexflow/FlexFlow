@@ -670,7 +670,7 @@ class LayerNormNode(ModuleNode):
             axes=axes,
             elementwise_affine=True,
             eps=1e-6,
-            name=name,
+            name=self.name,
         )
 
 class T5LayerNormNode(Node):
