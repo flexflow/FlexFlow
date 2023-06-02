@@ -31,6 +31,14 @@ BeamSearchBatchConfig::BeamSearchBatchConfig() : BatchConfig() {
   current_iteration = 0;
 }
 
+BeamSearchBatchConfig::BeamSearchBatchConfig(int model_id) : BatchConfig() {
+  this->model_id = model_id;
+  std::cout << "==================\n"
+            << "Register Batch Config with Model " << this->model_id
+            << std::endl;
+  current_iteration = 0;
+}
+
 BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
                                              size_t target_iterations)
     : BatchConfig() {
