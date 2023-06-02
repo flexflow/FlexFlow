@@ -3,6 +3,7 @@
 import os
 import requests
 import argparse
+import shutil
 from transformers import AutoModelForCausalLM
 
 # You can pass the --use-full-precision flag to use the full-precision weight. By default, we use half precision.
@@ -32,6 +33,8 @@ def convert_hf_model(model, dst_folder):
             .replace("out_proj", "wo")
         )
         params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
+    # copy embedding weights
+    shutil.copy(os.path.join(dst_folder, "embed_tokens_weight"), os.path.join(dst_folder, "embed_tokens_weight_lm_head"))
 
 # Download and convert big model weights
 model = AutoModelForCausalLM.from_pretrained("facebook/opt-6.7b")

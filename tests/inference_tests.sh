@@ -6,15 +6,6 @@ cleanup() {
     rm -rf ../inference/prompt ../inference/weights ../inference/tokenizer
 }
 
-copy_embedding_weights(){
-    # Full precision
-    cp ../inference/weights/opt_6B_weights/embed_tokens_weight ../inference/weights/opt_6B_weights/embed_tokens_weight_lm_head
-    cp ../inference/weights/opt_125M_weights/embed_tokens_weight ../inference/weights/opt_125M_weights/embed_tokens_weight_lm_head
-    # Half precision
-    cp ../inference/weights/opt_6B_weights_half/embed_tokens_weight ../inference/weights/opt_6B_weights_half/embed_tokens_weight_lm_head
-    cp ../inference/weights/opt_125M_weights_half/embed_tokens_weight ../inference/weights/opt_125M_weights_half/embed_tokens_weight_lm_head
-}
-
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
@@ -29,9 +20,6 @@ python3 ../inference/utils/download_llama_weights.py
 python3 ../inference/utils/download_llama_weights.py --use-full-precision
 python3 ../inference/utils/download_opt_weights.py
 python3 ../inference/utils/download_opt_weights.py --use-full-precision
-
-# because huggingface reuse a weight in embedding and final linear
-copy_embedding_weights
 
 # Create test prompt file
 mkdir -p ../inference/prompt
