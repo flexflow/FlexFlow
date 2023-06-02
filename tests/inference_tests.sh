@@ -95,7 +95,7 @@ function compare_speed_spec_infer_incr_decoding {
     else
         echo "Error: The latency in $specInf_file is not at least 1.5x smaller than the latency in $incrDec_file!"
         exit 1
-    fi
+    fi < /dev/null
 }
 # Full precision
 compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_llama_7B.txt" "../inference/output/spec_inference_llama.txt"
