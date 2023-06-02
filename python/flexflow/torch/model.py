@@ -653,14 +653,25 @@ class LayerNormNode(ModuleNode):
         data = Node.StringData(string)
         name = data.name
         input_tensor = node_to_output[data.innodes[0]]
-        return ffmodel.identity(input=input_tensor, name=name)
-        # TODO: Change to ffmodel.layernorm() once supported
+        axes = [len(input_tensor.dims) - 1]
+        return ffmodel.layer_norm(
+            input=input_tensor,
+            axes=axes,
+            elementwise_affine=True,
+            eps=1e-6,
+            name=name,
+        )
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
-        return ffmodel.identity(input=input_tensor, name=self.name)
-        # TODO: Change to ffmodel.layernorm() once supported
-
+        axes = [len(input_tensor.dims) - 1]
+        return ffmodel.layer_norm(
+            input=input_tensor,
+            axes=axes,
+            elementwise_affine=True,
+            eps=1e-6,
+            name=name,
+        )
 
 class T5LayerNormNode(Node):
     """
