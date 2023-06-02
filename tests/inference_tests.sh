@@ -92,10 +92,11 @@ function compare_speed_spec_infer_incr_decoding {
     threshold=$(bc <<< "$specInf * 1.5")
     if (( $(echo "$incrDec >= $threshold" | bc -l) )); then
         #echo "The latency in $specInf_file is at least 1.5x smaller than the latency from $incrDec_file."
+        :
     else
         echo "Error: The latency in $specInf_file is not at least 1.5x smaller than the latency in $incrDec_file!"
         exit 1
-    fi < /dev/null
+    fi
 }
 # Full precision
 compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_llama_7B.txt" "../inference/output/spec_inference_llama.txt"
