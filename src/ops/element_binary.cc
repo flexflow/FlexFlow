@@ -395,7 +395,7 @@ OpMeta *ElementBinary::init_task(Task const *task,
                                  Runtime *runtime) {
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  ElementBinaryMeta *m = new ElementBinaryMeta(handle);
+  ElementBinaryMeta *m = new ElementBinaryMeta(handle, eb);
   for (int i = 0; i < eb->numInputs; i++) {
     m->trainableInputs[i] = eb->trainableInputs[i];
   }
@@ -596,8 +596,11 @@ __host__ void
                                 Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
+  GenericTensorAccessorR in1, in2;
+  GenericTensorAccessorW out;
   Domain in1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
+
   if (!m->has_same_operands) {
     Domain in2_domain = runtime->get_index_space_domain(
         ctx, task->regions[1].region.get_index_space());
@@ -607,53 +610,78 @@ __host__ void
              m->op_type == OP_EW_MUL);
     }
   }
-  float const *in1_ptr = NULL, *in2_ptr = NULL;
-  float *out_ptr = NULL;
+
   if (m->inplace_a) {
     if (m->has_same_operands) {
       assert(regions.size() == 1);
       assert(task->regions.size() == 1);
-      out_ptr = helperGetTensorPointerRW<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = out_ptr;
-      in1_ptr = out_ptr;
+      out = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = out;
+      in1 = out;
     } else {
       assert(regions.size() == 2);
       assert(task->regions.size() == 2);
-      out_ptr = helperGetTensorPointerRW<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      in1_ptr = out_ptr;
+      out = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = helperGetGenericTensorAccessorRO(m->input_type[1],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in1 = out;
     }
   } else {
     if (m->has_same_operands) {
       assert(regions.size() == 2);
       assert(task->regions.size() == 2);
-      Domain out_domain = runtime->get_index_space_domain(
-          ctx, task->regions[1].region.get_index_space());
-      // assert(out_domain == in1_domain);
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = in1_ptr;
-      out_ptr = helperGetTensorPointerWO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      in1 = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = in1;
+      out = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
     } else {
       assert(regions.size() == 3);
       assert(task->regions.size() == 3);
-      Domain out_domain = runtime->get_index_space_domain(
-          ctx, task->regions[2].region.get_index_space());
-      // assert(out_domain == in1_domain);
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      out_ptr = helperGetTensorPointerWO<float>(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      in1 = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = helperGetGenericTensorAccessorRO(m->input_type[1],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      out = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                             regions[2],
+                                             task->regions[2],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
     }
   }
 
-  forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
+  forward_kernel_wrapper(m, in1, in2, out);
 }
 
 void ElementBinary::backward(FFModel const &ff) {
@@ -855,7 +883,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
   if (!inputs[1]->get_sub_tensor(mv, sub_input2)) {
     return false;
   }
-  ElementBinaryMeta *m = sim->ele_binary_meta;
+  ElementBinaryMeta *m = new ElementBinaryMeta(sim->handler, this);
   m->op_type = op_type;
   m->profiling = this->profiling;
   m->inplace_a = this->inplace_a;
@@ -871,8 +899,12 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input1_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
   assert(input1_ptr != NULL);
+  GenericTensorAccessorR input1_acc(
+      inputs[0]->data_type, input1_domain, input1_ptr);
   float *input2_ptr = (float *)sim->allocate(sub_input2.get_volume(), DT_FLOAT);
   assert(input2_ptr != NULL);
+  GenericTensorAccessorR input2_acc(
+      inputs[1]->data_type, input2_domain, input2_ptr);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptr = NULL;
@@ -882,13 +914,15 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
     output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   }
   assert(output_ptr != NULL);
+  GenericTensorAccessorW output_acc(
+      outputs[0]->data_type, output_domain, output_ptr);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   assert(m->profiling == false);
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m, input1_ptr, input2_ptr, output_ptr);
+    forward_kernel_wrapper(m, input1_acc, input2_acc, output_acc);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input1_grad_ptr =
@@ -937,6 +971,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
                       cost_metrics.forward_time);
   }
 
+  delete m;
   return true;
 }
 

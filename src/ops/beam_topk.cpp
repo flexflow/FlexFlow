@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/beam_topk.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -23,6 +24,8 @@ using Legion::coord_t;
 
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
+
+LegionRuntime::Logger::Category log_beam_topk("BeamTopK");
 
 template <typename T>
 struct Entry {
@@ -264,12 +267,13 @@ __device__ void mergeBeamShards(int num_shards,
                                 int max_heap_size,
                                 int request_id,
                                 int *parent_id,
-                                float *probs,
+                                T *probs,
                                 Entry<T> *__restrict__ entries,
                                 Entry<T> *__restrict__ top_k_heap,
-                                T *top_k_values,
+                                float *top_k_values,
                                 int *top_k_indices,
-                                int *top_k_parents) {
+                                int *top_k_parents,
+                                bool verbose) {
   // If k < num_shards, we can use a min-heap with k elements to get the top k
   // of the sorted blocks.
   // If k > num_shards, we can initialize a min-heap with the top element from
@@ -286,15 +290,9 @@ __device__ void mergeBeamShards(int num_shards,
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
       // int beam = (slot % max_heap_size) / k;
-      float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                         ((slot % max_heap_size) / k)];
+      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
-      if (batch_index == 0) {
-        printf("slot %d, value %.15f, prob %15f\n",
-               slot,
-               entries[slot].value,
-               prob);
-      }
     }
     min_heap.build(heap_size);
 
@@ -303,15 +301,8 @@ __device__ void mergeBeamShards(int num_shards,
       auto const entry = entries[shard];
       auto const root = min_heap.root();
 
-      float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                         ((shard % max_heap_size) / k)];
-      if (batch_index == 0) {
-        printf("shard %d, index %d, value %.15f, prob %.15f\n",
-               shard,
-               entry.index,
-               entry.value,
-               prob);
-      }
+      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     ((shard % max_heap_size) / k)];
       if (entry.value * prob < root.value) {
         continue;
       }
@@ -339,7 +330,7 @@ __device__ void mergeBeamShards(int num_shards,
     int const last_k = k - 1;
     for (int rank = 0; rank < last_k; rank++) {
       Entry<T> const &max_element = max_heap.root();
-      top_k_values[rank] = max_element.value;
+      top_k_values[rank] = __half2float(max_element.value);
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
       top_k_parents[rank] =
@@ -347,14 +338,8 @@ __device__ void mergeBeamShards(int num_shards,
                     ((shard_index % max_heap_size) / k)];
       int next_shard_index = shard_index + num_shards;
 
-      float prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                         ((next_shard_index % max_heap_size) / k)];
-      if (batch_index == 0) {
-        printf("next_shard_index %d, value %.15f, prob %.15f\n",
-               next_shard_index,
-               entries[next_shard_index].value,
-               prob);
-      }
+      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                     ((next_shard_index % max_heap_size) / k)];
 
       max_heap.replace_root(
           {next_shard_index, entries[next_shard_index].value * prob},
@@ -363,7 +348,7 @@ __device__ void mergeBeamShards(int num_shards,
 
     // rank == last_k.
     Entry<T> const &max_element = max_heap.root();
-    top_k_values[last_k] = max_element.value;
+    top_k_values[last_k] = __half2float(max_element.value);
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
     top_k_parents[last_k] =
@@ -390,15 +375,15 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                                          int k,
                                          int max_heap_size,
                                          int *parent_ids,
-                                         float *acc_probs,
+                                         T *acc_probs,
                                          int *gpu_block_start_index,
                                          int *gpu_request_id,
                                          int *tokens_per_request,
                                          bool sorted,
-                                         T *__restrict__ output,
+                                         float *__restrict__ output,
                                          int *__restrict__ indices,
                                          int *__restrict__ parents,
-                                         bool is_print) {
+                                         bool verbose) {
   __shared__ char shared_memory[48 << 10];
   int const batch_index = blockIdx.x;
   // T const *batch_input = input + batch_index * length;
@@ -409,7 +394,7 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   Entry<T> *shared_entries = (Entry<T> *)shared_memory;
 
   int sub_request_id = thread_index / k;
-  // if (is_print) {
+  // if (verbose) {
   //   printf("beam kernel: batch_index: %d, thread_index %d, sub_request_id %d,
   //   "
   //          "request_id %d, token_nums %d\n",
@@ -423,20 +408,6 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   T const *batch_input = input + gpu_block_start_index[batch_index] +
                          (sub_request_id * token_nums * length);
 
-  if (batch_index == 0) {
-    printf("request 0 start index: thread index %d, offset %d, batch_input %p, "
-           "acc index %d acc "
-           "prob %f, thread_count %d, request_id %d\n",
-           thread_index,
-           gpu_block_start_index[batch_index] +
-               (sub_request_id * token_nums * length),
-           batch_input,
-           request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id,
-           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                     sub_request_id],
-           thread_count,
-           request_id);
-  }
   // printf("thread index %d, thread_count %d, batch_index %d\n", thread_index,
   // thread_count, batch_index);
   heapBeamTopK<T, StridedData>(batch_input,
@@ -466,18 +437,18 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   if (thread_index == 0) {
     // merge beam_width heaps and store the parent
     // find which req it belongs to, replace the offset
-    printf("merge heaps, batch index: %d, sub_request_id %d, value %f\n",
-           batch_index,
-           sub_request_id,
-           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                     sub_request_id]);
+    // printf("merge heaps, batch index: %d, sub_request_id %d, value %f\n",
+    //       batch_index,
+    //       sub_request_id,
+    //       acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+    //                 sub_request_id]);
     int const offset = batch_index * k;
     auto batch_output = output + offset;
     auto batch_indices = indices + offset;
     auto batch_parents = parents + offset;
     Entry<T> *top_k_heap = shared_entries + thread_count * k;
 
-    // if(batch_index == 0 && is_print){
+    // if(batch_index == 0 && verbose) {
     //   for(int i = 0; i < 18; i++){
     //       printf("see value: %.15f\n", shared_entries[i].value);
     //   }
@@ -495,14 +466,16 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                     top_k_heap,
                     batch_output,
                     batch_indices,
-                    batch_parents);
+                    batch_parents,
+                    verbose /*verbose prints*/);
   }
 }
 
 /*static*/
+template <typename DT>
 void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                               BeamSearchBatchConfig const *bc,
-                              float const *input_ptr,
+                              DT const *input_ptr,
                               float *output_ptr,
                               int *indices_ptr,
                               int *parent_ptr,
@@ -530,14 +503,12 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   std::vector<int> tokens_per_request;
 
   int block_start_index = 0;
-  int depth =
-      bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
 
   // a data structure for prob, parent_id,
   int max_total_requests =
       BeamSearchBatchConfig::MAX_BEAM_WIDTH * bc->num_active_requests();
   int parent_ids[max_total_requests];
-  float acc_probs[max_total_requests];
+  DT acc_probs[max_total_requests];
 
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
     if (bc->request_completed[i]) {
@@ -552,7 +523,8 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     int beam_size = bc->beamRequestsInfo[i].beam_size;
 
     // initial request
-    std::cout << "sub_requests: " << i << ", " << sub_requests[i] << "\n";
+    log_beam_topk.debug() << "sub_requests: " << i << ", " << sub_requests[i]
+                          << "\n";
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {
@@ -560,12 +532,12 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       // beam_slots[i].parent_id[j];
       acc_probs[req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j] =
           bc->beamRequestsInfo[i].probs[j];
-      std::cout << "probbbb req: " << i << ", sub req probability : "
-                << bc->beamRequestsInfo[i].probs[j] << ", sub request id " << j
-                << ", parent id " << bc->beamRequestsInfo[i].parent_id[j]
-                << ", data inddd"
-                << req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j
-                << "\n";
+      log_beam_topk.debug()
+          << "probbbb req: " << i
+          << ", sub req probability : " << bc->beamRequestsInfo[i].probs[j]
+          << ", sub request id " << j << ", parent id "
+          << bc->beamRequestsInfo[i].parent_id[j] << ", data inddd"
+          << req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j << "\n";
     }
 
     // process tokens
@@ -582,84 +554,71 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     req_index += 1;
     block_start_index += (sub_requests[i] - 1) * num_new_tokens * length;
   }
-  std::cout << "what index: " << block_start_index
-            << ", block num: " << beam_num_blocks << "\n";
+  log_beam_topk.debug() << "what index: " << block_start_index
+                        << ", block num: " << beam_num_blocks << "\n";
 
   assert(batch_size >= beam_num_blocks);
   assert(bc->num_active_requests() == req_index);
 
   {
     constexpr auto shared_memory_size = 48 << 10;
-    auto const heap_size = max_heap_size * sizeof(Entry<float>);
+    auto const heap_size = max_heap_size * sizeof(Entry<DT>);
     // shared_memory_size = (num_shards + 1) * heap_size <=>
     num_shards = shared_memory_size / heap_size - 1;
     assert(num_shards > 0);
     if (num_shards > CUDA_NUM_THREADS) {
       num_shards = CUDA_NUM_THREADS;
     }
-    std::cout << "maxheap size:  " << max_heap_size << "\n";
-    std::cout << "maxbeam width:  " << max_beam_width
-              << ", heap size: " << heap_size << "\n";
+    log_beam_topk.debug() << "maxheap size:  " << max_heap_size << "\n";
+    log_beam_topk.debug() << "maxbeam width:  " << max_beam_width
+                          << ", heap size: " << heap_size << "\n";
   }
   // We are limited by the amount of shared memory we have per block.
   size_t shared_memory_size =
-      (num_shards + 1) * max_heap_size * sizeof(Entry<float>);
+      (num_shards + 1) * max_heap_size * sizeof(Entry<DT>);
 
   assert(num_shards >= (size_t)max_heap_size);
   num_shards = max_heap_size;
 
-  // parent_id, per token
-  int *gpu_parents;
-  // acc_porbs, per token
-  float *gpu_probs;
-  // each block's start index;
-  // one block means the single token in different requests;
-  int *gpu_block_start_index;
-  int *gpu_request_id;
-  int *gpu_tokens_per_request;
-
-  checkCUDA(hipMalloc(&gpu_parents, sizeof(int) * max_total_requests));
-  checkCUDA(hipMalloc(&gpu_probs, sizeof(float) * max_total_requests));
-  checkCUDA(hipMalloc(&gpu_block_start_index, sizeof(int) * beam_num_blocks));
-  checkCUDA(hipMalloc(&gpu_request_id, sizeof(int) * beam_num_blocks));
-  checkCUDA(hipMalloc(&gpu_tokens_per_request, sizeof(int) * beam_num_blocks));
-  checkCUDA(hipMemcpy(gpu_parents,
+  checkCUDA(hipMemcpy(m->parent_ids,
                       parent_ids,
                       sizeof(int) * max_total_requests,
                       hipMemcpyHostToDevice));
-  checkCUDA(hipMemcpy(gpu_probs,
+  checkCUDA(hipMemcpy(m->acc_probs,
                       acc_probs,
-                      sizeof(float) * max_total_requests,
+                      sizeof(DT) * max_total_requests,
                       hipMemcpyHostToDevice));
-  checkCUDA(hipMemcpy(gpu_block_start_index,
+  checkCUDA(hipMemcpy(m->block_start_index,
                       beam_block_start_index.data(),
                       sizeof(int) * beam_num_blocks,
                       hipMemcpyHostToDevice));
-  checkCUDA(hipMemcpy(gpu_request_id,
+  checkCUDA(hipMemcpy(m->request_id,
                       request_id.data(),
                       sizeof(int) * beam_num_blocks,
                       hipMemcpyHostToDevice));
-  checkCUDA(hipMemcpy(gpu_tokens_per_request,
+  checkCUDA(hipMemcpy(m->tokens_per_request,
                       tokens_per_request.data(),
                       sizeof(int) * beam_num_blocks,
                       hipMemcpyHostToDevice));
-
+  // int depth =
+  //     bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
   beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
       shared_memory_size,
       length,
       max_beam_width,
       max_heap_size,
-      gpu_parents,
-      gpu_probs,
-      gpu_block_start_index,
-      gpu_request_id,
-      gpu_tokens_per_request,
+      m->parent_ids,
+      static_cast<DT *>(m->acc_probs),
+      m->block_start_index,
+      m->request_id,
+      m->tokens_per_request,
       sorted,
       output_ptr,
       indices_ptr,
       parent_ptr,
-      depth == 1);
+      false /*verbose*/ // depth == 1
+  );
 
   // merge sub
 }
@@ -667,7 +626,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 /*static*/
 void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
                                       BeamSearchBatchConfig const *bc,
-                                      float const *input_ptr,
+                                      GenericTensorAccessorR const &input,
                                       float *output_ptr,
                                       int *indices_ptr,
                                       int *parent_ptr,
@@ -684,16 +643,29 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
     hipEventRecord(t_start, stream);
   }
 
-  BeamTopK::forward_kernel(m,
-                           bc,
-                           input_ptr,
-                           output_ptr,
-                           indices_ptr,
-                           parent_ptr,
-                           batch_size,
-                           length,
-                           sorted,
-                           stream);
+  if (input.data_type == DT_HALF) {
+    BeamTopK::forward_kernel(m,
+                             bc,
+                             input.get_half_ptr(),
+                             output_ptr,
+                             indices_ptr,
+                             parent_ptr,
+                             batch_size,
+                             length,
+                             sorted,
+                             stream);
+  } else if (input.data_type == DT_FLOAT) {
+    BeamTopK::forward_kernel(m,
+                             bc,
+                             input.get_float_ptr(),
+                             output_ptr,
+                             indices_ptr,
+                             parent_ptr,
+                             batch_size,
+                             length,
+                             sorted,
+                             stream);
+  }
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);
@@ -704,13 +676,25 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
     hipEventDestroy(t_end);
     printf("[BeamTopK] forward time = %.2lfms\n", elapsed);
   }
-  // if(bc->beam_slots.at(0).current_depth == 1){
-  //     print_beam_tensor<float>((float *)input_ptr, 50, 32000, 15, "beam topk
-  //     input"); print_tensor<float>((float *)output_ptr, 50, "beam topk
-  //     output");
-  // }
 }
 
-BeamTopKMeta::BeamTopKMeta(FFHandler handler) : OpMeta(handler) {}
-
+BeamTopKMeta::BeamTopKMeta(FFHandler handler, Op const *op) : OpMeta(handler) {
+  DataType data_type = op->inputs[0]->data_type;
+  checkCUDA(hipMalloc(&parent_ids,
+                      sizeof(int) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(hipMalloc(&acc_probs,
+                      sizeof(data_type_size(data_type)) *
+                          BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(hipMalloc(&block_start_index,
+                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(hipMalloc(&request_id,
+                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  checkCUDA(hipMalloc(&tokens_per_request,
+                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+}
 }; // namespace FlexFlow

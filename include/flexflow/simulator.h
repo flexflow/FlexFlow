@@ -684,8 +684,6 @@ public:
   std::map<size_t, SimTask *> hash_to_forward_task, hash_to_backward_task;
 };
 
-size_t data_type_size(DataType);
-
 using ProfilingRecordKey = std::tuple<OperatorParameters, MachineView>;
 
 class Simulator {
@@ -756,7 +754,7 @@ public:
   LinearMeta *linear_meta;
   Pool2DMeta *pool2d_meta;
   ElementUnaryMeta *ele_unary_meta;
-  ElementBinaryMeta *ele_binary_meta;
+  // ElementBinaryMeta *ele_binary_meta;
   // EmbeddingMeta *embedding_meta;
   // SoftmaxMeta *softmax_meta;
   BatchMatmulMeta *batch_matmul_meta;

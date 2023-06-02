@@ -13,24 +13,34 @@
  * limitations under the License.
  */
 
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
+LinearMeta::LinearMeta(FFHandler handler, int batch_size, Linear const *li)
+    : OpMeta(handler, li) {
   // Allocate an all-one's vector
-  float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
-  for (int i = 0; i < batch_size; i++) {
-    dram_one_ptr[i] = 1.0f;
+  DataType data_type = li->data_type;
+  checkCUDA(cudaMalloc(&one_ptr, data_type_size(data_type) * batch_size));
+  int parallelism = batch_size;
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  if (data_type == DT_FLOAT) {
+    Kernels::Linear::Internal::
+        build_one_ptr<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>((float *)one_ptr, batch_size);
+  } else if (data_type == DT_HALF) {
+    Kernels::Linear::Internal::
+        build_one_ptr<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>((half *)one_ptr, batch_size);
   }
-  float *fb_one_ptr;
-  checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * batch_size));
-  checkCUDA(cudaMemcpy(fb_one_ptr,
-                       dram_one_ptr,
-                       sizeof(float) * batch_size,
-                       cudaMemcpyHostToDevice));
-  one_ptr = (float const *)fb_one_ptr;
+
   // Allocate descriptors
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -97,15 +107,27 @@ void forward_kernel_wrapper(LinearMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Internal::forward_kernel(m,
-                           input_ptr,
-                           output_ptr,
-                           weight_ptr,
-                           bias_ptr,
-                           in_dim,
-                           out_dim,
-                           batch_size,
-                           stream);
+  if (m->input_type == DT_FLOAT) {
+    Internal::forward_kernel<float>(m,
+                                    input_ptr,
+                                    output_ptr,
+                                    weight_ptr,
+                                    bias_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    batch_size,
+                                    stream);
+  } else if (m->input_type == DT_HALF) {
+    Internal::forward_kernel<half>(m,
+                                   input_ptr,
+                                   output_ptr,
+                                   weight_ptr,
+                                   bias_ptr,
+                                   in_dim,
+                                   out_dim,
+                                   batch_size,
+                                   stream);
+  }
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -143,18 +165,34 @@ void backward_kernel_wrapper(LinearMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Internal::backward_kernel(m,
-                            input_ptr,
-                            input_grad_ptr,
-                            output_ptr,
-                            output_grad_ptr,
-                            kernel_ptr,
-                            kernel_grad_ptr,
-                            bias_grad_ptr,
-                            in_dim,
-                            out_dim,
-                            batch_size,
-                            stream);
+  if (m->input_type == DT_FLOAT) {
+    Internal::backward_kernel<float>(m,
+                                     input_ptr,
+                                     input_grad_ptr,
+                                     output_ptr,
+                                     output_grad_ptr,
+                                     kernel_ptr,
+                                     kernel_grad_ptr,
+                                     bias_grad_ptr,
+                                     in_dim,
+                                     out_dim,
+                                     batch_size,
+                                     stream);
+  } else if (m->input_type == DT_HALF) {
+    Internal::backward_kernel<half>(m,
+                                    input_ptr,
+                                    input_grad_ptr,
+                                    output_ptr,
+                                    output_grad_ptr,
+                                    kernel_ptr,
+                                    kernel_grad_ptr,
+                                    bias_grad_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    batch_size,
+                                    stream);
+  }
+
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -189,6 +227,7 @@ Parameter* Linear::get_parameter(int index)
 */
 namespace Internal {
 
+template <typename DT>
 void forward_kernel(LinearMeta const *m,
                     void const *input_ptr,
                     void *output_ptr,
@@ -200,15 +239,16 @@ void forward_kernel(LinearMeta const *m,
                     ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f, beta = 0.0f;
+  DT alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+  assert(input_type == weight_type && weight_type == output_type);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
-  cudaDataType_t compute_type = CUDA_R_32F;
+  cudaDataType_t compute_type = input_type;
 #endif
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
@@ -241,8 +281,8 @@ void forward_kernel(LinearMeta const *m,
                            bias_ptr,
                            weight_type,
                            1,
-                           m->one_ptr,
-                           CUDA_R_32F,
+                           static_cast<DT *>(m->one_ptr),
+                           weight_type,
                            1,
                            &alpha,
                            output_ptr,
@@ -273,6 +313,7 @@ void forward_kernel(LinearMeta const *m,
   }
 }
 
+template <typename DT>
 void backward_kernel(LinearMeta const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,
@@ -288,7 +329,8 @@ void backward_kernel(LinearMeta const *m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  float alpha = 1.0f;
+  DT alpha = 1.0f;
+  float sgeam_alpha = 1.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
@@ -338,7 +380,7 @@ void backward_kernel(LinearMeta const *m,
                           CUBLAS_OP_N,
                           in_dim,
                           out_dim,
-                          &alpha,
+                          &sgeam_alpha,
                           (float *)kernel_grad_ptr,
                           in_dim,
                           &(m->kernel_reg_lambda),
@@ -361,7 +403,7 @@ void backward_kernel(LinearMeta const *m,
                            out_dim,
                            batch_size,
                            &alpha,
-                           m->one_ptr,
+                           static_cast<DT *>(m->one_ptr),
                            CUDA_R_32F,
                            1,
                            output_grad_ptr,
@@ -396,6 +438,13 @@ void backward_kernel(LinearMeta const *m,
                            in_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  }
+}
+
+template <typename DT>
+__global__ void build_one_ptr(DT *one_ptr, int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size) {
+    one_ptr[i] = static_cast<DT>(1.0f);
   }
 }
 

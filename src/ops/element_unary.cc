@@ -27,11 +27,11 @@ Tensor FFModel::unary(OperatorType op,
                       char const *name,
                       float scalar) {
   Layer *ele = nullptr;
-  DataType dtype;
-  // FIXME: currently cast input to float if it has a lower type
-  if (x->data_type < DT_FLOAT) {
+  DataType dtype = x->data_type;
+  // if (x->data_type < DT_FLOAT) {
+  if (false) {
     dtype = DT_FLOAT;
-    std::string str(name);
+    std::string str = nullptr ? "" : std::string(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
     ele = new Layer(this,
                     op,
@@ -473,7 +473,9 @@ void ElementUnary::forward_task(Task const *task,
                                 Context ctx,
                                 Runtime *runtime) {
   ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
-  if (m->data_type == DT_FLOAT) {
+  if (m->data_type == DT_HALF) {
+    forward_task_with_type<half>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (m->data_type == DT_DOUBLE) {
     forward_task_with_type<double>(task, regions, ctx, runtime);

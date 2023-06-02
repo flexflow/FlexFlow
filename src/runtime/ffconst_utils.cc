@@ -1,4 +1,5 @@
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/accessor.h"
 #include <stdexcept>
 
 namespace FlexFlow {
@@ -189,6 +190,25 @@ std::string get_operator_type_name(OperatorType type) {
     default:
       throw std::runtime_error("Operator type unsupported: " +
                                std::to_string(type));
+  }
+}
+
+size_t data_type_size(DataType type) {
+  switch (type) {
+    case DT_HALF:
+      return sizeof(half);
+    case DT_FLOAT:
+      return sizeof(float);
+    case DT_DOUBLE:
+      return sizeof(double);
+    case DT_INT32:
+      return sizeof(int32_t);
+    case DT_INT64:
+      return sizeof(int64_t);
+    case DT_BOOLEAN:
+      return sizeof(bool);
+    default:
+      assert(false);
   }
 }
 

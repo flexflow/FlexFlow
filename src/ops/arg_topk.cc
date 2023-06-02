@@ -233,7 +233,7 @@ OpMeta *ArgTopK::init_task(Task const *task,
                            Runtime *runtime) {
   ArgTopK *topk = (ArgTopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  ArgTopKMeta *m = new ArgTopKMeta(handle);
+  ArgTopKMeta *m = new ArgTopKMeta(handle, topk);
   m->profiling = topk->profiling;
   m->sorted = topk->sorted;
   return m;
@@ -296,42 +296,20 @@ InferenceResult
   assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
   ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
-  Domain in1_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  //   Domain out1_domain = runtime->get_index_space_domain(
-  //       ctx, task->regions[1].region.get_index_space());
-  Domain out2_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  int numdims = in1_domain.get_dim();
-  assert(out2_domain.get_dim() == numdims);
 
-  int in_cols = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-  // int out1_cols = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
-  int out2_cols = out2_domain.hi()[0] - out2_domain.lo()[0] + 1;
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
+      DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  // assert(out1_domain == out2_domain);
-  for (int i = 1; i < in1_domain.get_dim(); i++) {
-    assert(in1_domain.lo()[i] == out2_domain.lo()[i]);
-    assert(in1_domain.hi()[i] == out2_domain.hi()[i]);
-  }
-  float const *in_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  //   float *value_ptr = helperGetTensorPointerWO<float>(
-  //       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  int *index_ptr = helperGetTensorPointerWO<int>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  ArgTopK::forward_kernel_wrapper(m, input, indices);
 
-  int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-  int k =
-      out2_domain.hi()[0] - out2_domain.lo()[0] + 1; /*TODO: This prints to 5*/
-  size_t batch_size = in1_domain.get_volume() / length;
-  assert(out2_domain.get_volume() / k == batch_size);
-
-  ArgTopK::forward_kernel_wrapper(
-      m, in_ptr, index_ptr, batch_size, length, k, m->sorted);
+  int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  int batch_size = input.domain.get_volume() / length;
 
   InferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(index_ptr, ir.token_ids, batch_size);
+  download_tensor<BatchConfig::TokenId>(
+      indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
 }
 

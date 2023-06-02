@@ -58,17 +58,54 @@ bool BeamSearchBatchConfig::done() const {
   return current_iteration == target_iterations;
 }
 
+int BeamSearchBatchConfig::max_beam_depth_all_requests() const {
+  int max_depth_all_requests = 0;
+  for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i] &&
+        beamRequestsInfo[i].max_depth > max_depth_all_requests) {
+      /* printf("\treq %i has max_depth=%i. Increasing max_depth_all_requests "
+             "from %i\n",
+             i,
+             beamRequestsInfo[i].max_depth,
+             max_depth_all_requests); */
+      max_depth_all_requests = beamRequestsInfo[i].max_depth;
+    }
+  }
+  assert(max_depth_all_requests <= BeamSearchBatchConfig::MAX_BEAM_DEPTH);
+  return max_depth_all_requests;
+}
+
+int BeamSearchBatchConfig::current_depth_all_requests() const {
+  int current_depth = 0;
+  for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i] &&
+        beamRequestsInfo[i].current_depth > current_depth) {
+      /* printf("\treq %i has current_depth=%i. Increasing "
+             "current_depth_all_requests from %i\n",
+             i,
+             beamRequestsInfo[i].current_depth,
+             current_depth); */
+      current_depth = beamRequestsInfo[i].current_depth;
+    }
+  }
+  assert(current_depth <= BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1);
+  return current_depth;
+}
+
 void BeamSearchBatchConfig::print() const {
+  std::cout << "@@@@@@@@@@@@@@ BeamSearchBatchConfig (mode " << get_mode()
+            << ") @@@@@@@@@@@@@@" << std::endl;
   std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
   std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
   std::cout << "Beam width: " << beam_width << std::endl;
-  std::cout << "Target Iterations" << target_iterations << std::endl;
-  std::cout << "Current Iterations" << current_iteration << std::endl;
+  std::cout << "Target Iterations: " << target_iterations << std::endl;
+  std::cout << "Current Iterations: " << current_iteration << std::endl;
 
   std::cout << "Per-request info:\n";
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    // assert(beamRequestsInfo[i].request_completed == request_completed[i]);
     if (!request_completed[i]) {
       std::cout << "  Request " << i << ":\n";
       std::cout << "    Token start offset: "
@@ -78,8 +115,28 @@ void BeamSearchBatchConfig::print() const {
       std::cout << "    GUID: " << requestsInfo[i].request_guid << std::endl;
       std::cout << "    Max sequence length: "
                 << requestsInfo[i].max_sequence_length << std::endl;
-      std::cout << "    Request completed: " << request_completed[i]
+      std::cout << "    Beam Search Specific: " << std::endl;
+      std::cout << "        beam_size: " << beamRequestsInfo[i].beam_size
                 << std::endl;
+      std::cout << "        current_depth: "
+                << beamRequestsInfo[i].current_depth << std::endl;
+      std::cout << "        max_depth: " << beamRequestsInfo[i].max_depth
+                << std::endl;
+      std::cout << "        tokens: ";
+      for (int j = 0; j < MAX_BEAM_WIDTH; j++) {
+        std::cout << beamRequestsInfo[i].tokens[j] << ", ";
+      }
+      std::cout << std::endl;
+      std::cout << "        probs: ";
+      for (int j = 0; j < MAX_BEAM_WIDTH; j++) {
+        std::cout << beamRequestsInfo[i].probs[j] << ", ";
+      }
+      std::cout << std::endl;
+      std::cout << "        parent_id: ";
+      for (int j = 0; j < MAX_BEAM_WIDTH; j++) {
+        std::cout << beamRequestsInfo[i].parent_id[j] << ", ";
+      }
+      std::cout << std::endl;
     }
   }
 
@@ -91,10 +148,15 @@ void BeamSearchBatchConfig::print() const {
     std::cout << "    Request index: " << tokensInfo[i].request_index
               << std::endl;
     std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
+    std::cout << "    Beam Search Specific: " << std::endl;
+    std::cout << "        beam_size: " << beamTokenInfo[i].sub_request_index
+              << std::endl;
     // std::cout << "    Parent token id: " << tokensInfo[i].parent_token_id <<
     // std::endl; std::cout << "    Accumulated log prob: "
     //           << tokensInfo[i].cum_log_prob << std::endl;
   }
+  std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+            << std::endl;
 }
 
 }; // namespace FlexFlow

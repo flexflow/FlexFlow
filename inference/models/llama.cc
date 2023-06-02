@@ -24,7 +24,8 @@ void LLAMA::create_llama_model(FFModel &ff,
                                std::string const &model_config_file_path,
                                std::string const &weight_file_path,
                                int num_pipeline_stages,
-                               InferenceMode mode) {
+                               InferenceMode mode,
+                               bool use_full_precision) {
   Config llama_config(model_config_file_path);
   llama_config.printConfig();
   //------------------------------compute machine views ------------------
@@ -52,13 +53,27 @@ void LLAMA::create_llama_model(FFModel &ff,
   mapping[input].push_back(machine_views[0]);
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
-  Tensor token = ff.embedding(input,
-                              llama_config.vocab_size,
-                              llama_config.dim,
-                              AGGR_MODE_NONE,
-                              DT_FLOAT,
-                              NULL,
-                              embed_init);
+
+  Tensor token;
+
+  if (use_full_precision) {
+    token = ff.embedding(input,
+                         llama_config.vocab_size,
+                         llama_config.dim,
+                         AGGR_MODE_NONE,
+                         DT_FLOAT,
+                         NULL,
+                         embed_init);
+  } else {
+    token = ff.embedding(input,
+                         llama_config.vocab_size,
+                         llama_config.dim,
+                         AGGR_MODE_NONE,
+                         DT_HALF,
+                         NULL,
+                         embed_init);
+  }
+
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
@@ -98,6 +113,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,
             false,
             false,
+            DT_NONE,
             NULL,
             true);
         break;
@@ -113,6 +129,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,   /*bias*/
             false,   /*add_bias_kv*/
             false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
             true     /*apply_rotary_embedding*/
         );
@@ -129,6 +146,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,   /*bias*/
             false,   /*add_bias_kv*/
             false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
             true     /*apply_rotary_embedding*/
         );
