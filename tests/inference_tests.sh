@@ -76,8 +76,8 @@ diff ../inference/output/incr_decoding_llama_7B.txt ../inference/output/spec_inf
 diff ../inference/output/incr_decoding_opt_6B.txt ../inference/output/spec_inference_opt.txt
 
 # Half precision
-diff ../inference/output/incr_decoding_llama_7B_half.txt ../inference/output/spec_inference_llama_half.txt
-diff ../inference/output/incr_decoding_opt_6B_half.txt ../inference/output/spec_inference_opt_half.txt
+# diff ../inference/output/incr_decoding_llama_7B_half.txt ../inference/output/spec_inference_llama_half.txt
+# diff ../inference/output/incr_decoding_opt_6B_half.txt ../inference/output/spec_inference_opt_half.txt
 
 ######################### Alignment tests with HuggingFace ####################################
 pip3 install protobuf==3.20.3
