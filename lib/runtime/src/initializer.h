@@ -22,10 +22,10 @@
 #include "kernels/accessor.h"
 #include "task_signature.h"
 #include "task_invocation.h"
+#include "pcg/parallel_tensor.h"
 
 namespace FlexFlow {
 
-struct ParallelTensor;
 struct parallel_tensor_guid_t;
 
 template <> void register_task<GLOROT_INIT_TASK_ID>();
@@ -33,53 +33,6 @@ template <> void register_task<ZERO_INIT_TASK_ID>();
 template <> void register_task<UNIFORM_INIT_TASK_ID>();
 template <> void register_task<NORMAL_INIT_TASK_ID>();
 template <> void register_task<CONSTANT_INIT_TASK_ID>();
-
-class GlorotUniform : public use_visitable_cmp<GlorotUniform> {
-public:
-  GlorotUniform() = delete;
-  GlorotUniform(int seed);
-public:
-  int seed;
-  /* float scale; */
-  /* DataType data_type; */
-};
-
-class ZeroInitializer : public use_visitable_cmp<ZeroInitializer> {
-public:
-  ZeroInitializer() = default;
-};
-
-class UniformInitializer : public use_visitable_cmp<UniformInitializer> {
-public:
-  UniformInitializer(int seed, float min, float max);
-public:
-  int seed;
-  float min_val, max_val;
-};
-
-class NormInitializer : public use_visitable_cmp<NormInitializer> {
-public:
-  NormInitializer(int seed, float mean, float stddev);
-public:
-  int seed;
-  float mean, stddev;
-};
-
-class ConstantInitializer : public use_visitable_cmp<ConstantInitializer> {
-public:
-  ConstantInitializer(DataTypeValue const &value);
-
-public:
-  DataTypeValue value;
-};
-
-using Initializer = variant<
-  GlorotUniform,
-  ZeroInitializer,
-  UniformInitializer,
-  NormInitializer,
-  ConstantInitializer
->;
 
 TaskInvocation apply_initializer(GlorotUniform const &, 
                                  parallel_tensor_guid_t const &,

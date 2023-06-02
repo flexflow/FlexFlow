@@ -14,6 +14,34 @@ typedef enum {
   FLEXFLOW_DATATYPE_DOUBLE
 } flexflow_datatype_t;
 
+typedef enum {
+  FLEXFLOW_ACTIVATION_RELU,
+  FLEXFLOW_ACTIVATION_SIGMOID,
+  FLEXFLOW_ACTIVATION_TANH,
+  FLEXFLOW_ACTIVATION_GELU,
+  FLEXFLOW_ACTIVATION_NONE
+} flexflow_activation_t;
+
+typedef enum {
+  FLEXFLOW_POOL_OP_MAX,
+  FLEXFLOW_POOL_OP_AVG,
+} flexflow_pool_op_t;
+
+typedef enum {
+  FLEXFLOW_PARAM_SYNC_PARAMETER_SERVER,
+  FLEXFLOW_PARAM_SYNC_NCCL
+} flexflow_param_sync_t;
+
+typedef enum {
+  FLEXFLOW_AGGREGATE_OP_SUM,
+  FLEXFLOW_AGGREGATE_OP_AVG,
+} flexflow_aggregate_op_t;
+
+typedef enum {
+  FLEXFLOW_OPATTRS_STATUS_OK,
+  FLEXFLOW_OPATTRS_ERROR_UNKNOWN
+} flexflow_opattrs_error_t;
+
 FLEXFLOW_FFI_END()
 
 #endif

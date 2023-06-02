@@ -8,27 +8,18 @@
 #include "flexflow/op-attrs.h"
 #include "flexflow/compiler.h"
 
-FLEXFLOW_FFI_BEGIN();
+FLEXFLOW_FFI_BEGIN()
 
 FF_NEW_OPAQUE_TYPE(flexflow_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_optimizer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_compilation_result_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_training_instance_t);
-FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
-FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_t);
 
 typedef enum {
   FLEXFLOW_RUNTIME_STATUS_OK,
   FLEXFLOW_RUNTIME_ERROR_UNKNOWN,
 } flexflow_runtime_error_t;
-
-typedef enum {
-  FLEXFLOW_ACTIVATION_RELU,
-  FLEXFLOW_ACTIVATION_SIGMOID,
-  FLEXFLOW_ACTIVATION_TANH,
-  FLEXFLOW_ACTIVATION_GELU,
-} flexflow_activation_t;
 
 typedef enum {
   FLEXFLOW_METRIC_ACCURACY,
@@ -52,11 +43,6 @@ typedef enum {
   FLEXFLOW_COMPUTATION_MODE_INFERENCE,
 } flexflow_computation_mode_t;
 
-typedef enum {
-  FLEXFLOW_DEVICE_TYPE_CPU,
-  FLEXFLOW_DEVICE_TYPE_GPU,
-} flexflow_device_type_t;
-
 char *flexflow_runtime_get_error_string(flexflow_runtime_error_t);
 
 flexflow_runtime_error_t flexflow_config_parse_argv(int *argc,
@@ -71,37 +57,13 @@ flexflow_runtime_error_t flexflow_model_config_parse_argv(int *argc,
                                                           bool remove_used,
                                                           flexflow_model_config_t *out);
 
-flexflow_runtime_error_t flexflow_computation_graph_create(flexflow_computation_graph_t *out);
 flexflow_runtime_error_t flexflow_computation_graph_set_model_config(flexflow_computation_graph_t,
                                                                      flexflow_model_config_t);
 flexflow_runtime_error_t flexflow_computation_graph_get_model_config(flexflow_computation_graph_t,
                                                                      flexflow_model_config_t *out);
-flexflow_runtime_error_t flexflow_computation_graph_destroy(flexflow_computation_graph_t);
 flexflow_runtime_error_t flexflow_computation_graph_compile(flexflow_computation_graph_t, 
                                                             flexflow_optimizer_t,
                                                             flexflow_model_compilation_result_t *out);
-
-flexflow_runtime_error_t flexflow_computation_graph_create_tensor(flexflow_computation_graph_t,
-                                                                  int num_dims,
-                                                                  int *dims,
-                                                                  flexflow_datatype_t datatype,
-                                                                  bool create_grad,
-                                                                  flexflow_tensor_t *out);
-
-                                                                  flexflow_tensor_t *out);
-flexflow_runtime_error_t flexflow_computation_graph_add_op_exp(flexflow_computation_graph_t,
-                                                               flexflow_tensor_t, 
-                                                               char *name);
-flexflow_runtime_error_t flexflow_computation_graph_add_op_add(flexflow_computation_graph_t,
-                                                               flexflow_tensor_t,
-                                                               flexflow_tensor_t,
-                                                               char *name);
-flexflow_runtime_error_t flexflow_computation_graph_add_op_subtract(flexflow_computation_graph_t,
-                                                                    flexflow_tensor_t, 
-                                                                    char *name);
-flexflow_runtime_error_t flexflow_computation_graph_add_op_multiply(flexflow_computation_graph_t,
-                                                                    flexflow_tensor_t, 
-                                                                    char *name);
 
 flexflow_runtime_error_t flexflow_model_compilation_result_get_pcg(flexflow_model_compilation_result_t,
                                                                    flexflow_parallel_computation_graph_t *out);

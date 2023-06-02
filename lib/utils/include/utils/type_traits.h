@@ -110,7 +110,8 @@ struct is_well_behaved_value_type
       is_copy_constructible<T>,
       is_move_constructible<T>,
       is_copy_assignable<T>,
-      is_move_assignable<T>
+      is_move_assignable<T>,
+      is_hashable<T>
     >
 { };
 

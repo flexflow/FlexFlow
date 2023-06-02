@@ -14,7 +14,7 @@ class strong_typedef {
 public:
     strong_typedef() = delete;
 
-    explicit strong_typedef(const T& value) 
+    explicit strong_typedef(T const &value) 
       : value_(value)
     { }
 
@@ -53,6 +53,14 @@ public:
 
     T const &value() const noexcept {
       return value_;
+    }
+
+    template <typename F>
+    strong_typedef fmap(F const &f) {
+      static_assert(std::is_same<decltype(std::declval<F>()(std::declval<T const &>())), T>::value, 
+                    "Function must return an value of the underlying type");
+
+      return strong_typedef(f(this->value_));
     }
 
 private:

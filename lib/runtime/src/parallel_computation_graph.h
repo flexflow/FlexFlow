@@ -13,35 +13,6 @@
 
 namespace FlexFlow {
 
-class ParallelComputationGraph {
-public:
-  ParallelComputationGraph() = delete;
-  ParallelComputationGraph(LabelledOpenMultiDiGraph<Operator, ParallelTensor> const &);
-  
-  Operator const &at(operator_guid_t const &) const;
-  Operator &at(operator_guid_t);
-
-  Operator const &operator[](operator_guid_t const &) const;
-  Operator &operator[](operator_guid_t);
-
-  ParallelTensor const &at(parallel_tensor_guid_t const &) const;
-  ParallelTensor &at(parallel_tensor_guid_t);
-
-  ParallelTensor const &operator[](parallel_tensor_guid_t const &) const;
-  ParallelTensor &operator[](parallel_tensor_guid_t);
-
-  template <typename F>
-  ParallelComputationGraph on_underlying(F const &f) {
-    using Underlying = LabelledOpenMultiDiGraph<Operator, ParallelTensor>;
-    static_assert(std::is_same<decltype(std::declval<F>()(std::declval<Underlying const &>())), Underlying>::value, 
-                  "Function must return an value of the type underlying PCG");
-  }
-
-  friend void swap(ParallelComputationGraph &, ParallelComputationGraph &);
-public:
-  LabelledOpenMultiDiGraph<Operator, ParallelTensor> graph;
-};
-
 OpTaskInvocation forward(PCGOperatorAttrs const &);
 OpTaskInvocation backward(PCGOperatorAttrs const &);
 
