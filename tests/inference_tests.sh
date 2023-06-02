@@ -79,6 +79,20 @@ diff ../inference/output/incr_decoding_opt_6B.txt ../inference/output/spec_infer
 diff ../inference/output/incr_decoding_llama_7B_half.txt ../inference/output/spec_inference_llama_half.txt
 diff ../inference/output/incr_decoding_opt_6B_half.txt ../inference/output/spec_inference_opt_half.txt
 
+######################### Alignment tests with HuggingFace ####################################
+pip3 install protobuf==3.20.3
+
+# LLAMA (small model, full precision)
+python3 ./inference/huggingface_inference.py --model-name "JackFram/llama-160m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M.txt"
+
+# LLAMA (small model, half precision)
+python3 ./inference/huggingface_inference.py --model-name "JackFram/llama-160m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M_half.txt"
+
+# LLAMA (big model, full precision)
+python3 ./inference/huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B.txt"
+
+# LLAMA (small model, half precision)
+python3 ./inference/huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B_half.txt"
 
 ###############################################################################################
 ###################################### Cleanup ################################################
