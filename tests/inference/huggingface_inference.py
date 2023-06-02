@@ -44,12 +44,13 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(args.model_name)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     with open(args.output_file, 'w') as f:
-        for prompt in prompt_list:
+        for i, prompt in enumerate(prompt_list):
             batch = tokenizer(prompt_list, return_tensors="pt", add_special_tokens=True)
             generated = model.generate(batch["input_ids"], max_length=args.max_length)
             out = tokenizer.decode(generated[0])
             # Write output to file
-            f.write(out + "\n")
+            out_str = out if i == (len(prompt_list) - 1) else out + "\n"
+            f.write(out_str)
 
 if __name__ == '__main__':
     main()

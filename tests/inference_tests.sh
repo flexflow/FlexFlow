@@ -94,6 +94,11 @@ python3 ./inference/huggingface_inference.py --model-name "decapoda-research/lla
 # LLAMA (small model, half precision)
 python3 ./inference/huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B_half.txt"
 
+diff <(tail -n +2 "../inference/output/huggingface_llama_160M.txt") <(tail -n +3 "../inference/output/incr_decoding_llama_160M.txt")
+diff <(tail -n +2 "../inference/output/huggingface_llama_160M_half.txt") <(tail -n +3 "../inference/output/incr_decoding_llama_160M_half.txt")
+diff <(tail -n +2 "../inference/output/huggingface_llama_7B.txt") <(tail -n +3 "../inference/output/incr_decoding_llama_7B.txt")
+diff <(tail -n +2 "../inference/output/huggingface_llama_7B_half.txt") <(tail -n +3 "../inference/output/incr_decoding_llama_7B_half.txt")
+
 ###############################################################################################
 ###################################### Cleanup ################################################
 ###############################################################################################
