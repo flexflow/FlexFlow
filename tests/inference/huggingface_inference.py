@@ -13,6 +13,7 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-name', type=str, required=True)
+    parser.add_argument('--tokenizer-model-name', type=str, required=True)
     parser.add_argument('--max-length', type=int, default=128)
     parser.add_argument('--prompt-file', type=str, required=True)
     parser.add_argument('--output-file', type=str, required=True)
@@ -42,7 +43,7 @@ def main():
 
     # Run huggingface model
     model = AutoModelForCausalLM.from_pretrained(args.model_name)
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_model_name)
     with open(args.output_file, 'w') as f:
         for i, prompt in enumerate(prompt_list):
             batch = tokenizer(prompt_list, return_tensors="pt", add_special_tokens=True)
