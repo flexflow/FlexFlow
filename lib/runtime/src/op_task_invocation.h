@@ -14,7 +14,7 @@
 #include "utils/stack_map.h"
 #include "accessor.h"
 #include "profiling.h"
-#include "task_invocation.h"
+#include "index_task_invocation.h"
 #include "op_task_signature.h"
 
 namespace FlexFlow {
@@ -86,7 +86,7 @@ using OpArgSpec = variant<ConcreteArgSpec, IndexArgSpec, OpArgRefSpec, CheckedTy
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
-  static_assert(is_subeq_variant<ArgSpec, OpArgSpec>::value, "");
+  static_assert(is_subeq_variant<IndexTaskArgSpec, OpArgSpec>::value, "");
 
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);
@@ -112,9 +112,9 @@ struct OpTaskBinding {
   }
 
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &get_tensor_bindings() const;
-  std::unordered_map<slot_id, ArgSpec> const &get_arg_bindings() const;
+  std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
 private:
-  void insert_arg_spec(slot_id name, ArgSpec const &arg_spec) {
+  void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
     assert (!contains_key(this->arg_bindings, name));
     arg_bindings.insert({ name, arg_spec });
   }
@@ -134,7 +134,7 @@ private:
   // }
 
   /* Legion::Serializer serializer; */
-  std::unordered_map<slot_id, ArgSpec> arg_bindings;
+  std::unordered_map<slot_id, OpArgSpec> arg_bindings;
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
 };
 

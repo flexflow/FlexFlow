@@ -1,4 +1,5 @@
 set(project_target utils)
+set(ffi_target ${project_target}-ffi)
 project(${project_target})
 
 file(GLOB_RECURSE SRC
@@ -27,12 +28,7 @@ target_link_libraries(
   fmt::fmt
   rapidcheck
 )
-set_target_properties(
-  ${project_target} 
-  PROPERTIES 
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
-)
+ff_set_cxx_properties(${project_target})
 
+add_subdirectory(ffi)
 # add_subdirectory(test)

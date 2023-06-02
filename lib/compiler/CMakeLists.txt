@@ -1,7 +1,7 @@
 project(compiler)
 set(project_target compiler)
 
-file(GLOB_RECURSE ffc_SRC
+file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
      src/*.cc)
@@ -9,7 +9,7 @@ file(GLOB_RECURSE ffc_SRC
 add_library(
   ${project_target}
   SHARED
-  ${ffc_SRC}
+  ${SRC}
 )
 target_include_directories(
   ${project_target}
@@ -28,10 +28,6 @@ target_link_libraries(
   spdlog::spdlog
   # substitutions
 )
-set_target_properties(
-  ${project_target} 
-  PROPERTIES 
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
-)
+ff_set_cxx_properties(${project_target})
+
+add_subdirectory(ffi)

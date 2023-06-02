@@ -53,8 +53,8 @@ std::unordered_map<operator_guid_t, OpTaskInvocation> forward(ParallelComputatio
 std::unordered_map<operator_guid_t, OpTaskInvocation> backward(ParallelComputationGraph const &);
 std::unordered_map<operator_guid_t, OpTaskInvocation> update(ParallelComputationGraph const &, Optimizer const &);
 
-ArgSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpArgRefSpec const &);
-ArgSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpArgSpec const &);
+IndexTaskArgSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpArgRefSpec const &);
+IndexTaskArgSpec resolve(ParallelComputationGraph const &, operator_guid_t const &, OpArgSpec const &);
 parallel_tensor_guid_t resolve(ParallelComputationGraph const &, operator_guid_t const &, OpTensorSpec const &, IsGrad const &);
 TaskBinding resolve(ParallelComputationGraph const &, operator_guid_t const &, OpTaskBinding const &);
 

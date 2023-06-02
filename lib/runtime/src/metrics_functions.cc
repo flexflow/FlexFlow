@@ -18,6 +18,8 @@
 #include "kernels/metrics_kernels.h"
 #include "profiling.h"
 #include "task_argument_accessor.h"
+#include "index_task_invocation.h"
+#include "typed_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -67,13 +69,13 @@ enum Slots {
 TypedIndexTaskInvocation<PerfMetrics> compute_metrics(MetricsAttrs const &metrics,
                       parallel_tensor_guid_t const &logit,
                       parallel_tensor_guid_t const &label) {
-  auto binding = TaskBinding::index_launch(LOGIT);
-  binding.bind(LOGIT, { logit });
-  binding.bind(LABEL, { label });
+  IndexTaskBinding binding(LOGIT);
+  binding.bind(LOGIT, logit);
+  binding.bind(LABEL, label);
   binding.bind_arg(METRICS_STRUCT, metrics);
   binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
 
-  return ensure_index_return_type<PerfMetrics>({ METRICS_COMP_TASK_ID, binding });
+  return ensure_return_type<PerfMetrics>({ METRICS_COMP_TASK_ID, binding });
 }
 
 TypedTaskInvocation<PerfMetrics> update_metrics(MetricsAttrs const &metrics,

@@ -44,6 +44,15 @@ function(define_ff_vars target)
   endif()
 endfunction()
 
+function(ff_set_cxx_properties target)
+  set_target_properties(${target}
+    PROPERTIES
+      CXX_STANDARD 11
+      CXX_STANDARD_REQUIRED YES
+      CXX_EXTENSIONS NO
+  )
+endfunction()
+
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)

@@ -32,6 +32,7 @@ target_link_libraries(
 )
 
 define_ff_vars(${project_target})
+ff_set_cxx_properties(${project_target})
 
 project(${test_target})
 
@@ -55,11 +56,7 @@ target_link_libraries(
   ${project_target}
   doctest::doctest
 )
-set_target_properties(
-  ${test_target}
-  PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
-)
 doctest_discover_tests(${test_target})
+ff_set_cxx_properties(${test_target})
+
+add_subdirectory(ffi)

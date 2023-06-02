@@ -53,7 +53,7 @@ DataDependencies get_data_dependencies(AggregateAttrs const &attrs, TaskSignatur
 //   return { AGGREGATE_INIT_TASK_ID, binding };
 // }
 
-OpTaskInvocation foward(AggregateAttrs const &attrs) {
+OpTaskInvocation forward(AggregateAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(GATE_PREDS, input_tensor(0));

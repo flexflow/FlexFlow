@@ -17,6 +17,7 @@
 #include "typed_future_map.h"
 #include "arg_ref.h"
 #include "parallel_tensor_spec.h"
+#include "typed_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -27,7 +28,6 @@ enum class ArgSlotType {
 
 template <typename T> struct TypedTaskInvocation;
 template <typename T> struct TypedIndexTaskInvocation;
-struct TaskInvocationSpec;
 
 using StandardArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
 
@@ -37,18 +37,12 @@ using TypedTaskArg = variant<T, IndexArg<T>, TypedFuture<T>, TypedFutureMap<T>, 
 template <typename T>
 using StandardTypedTaskArg = variant<T, TypedFuture<T>, ArgRef<T>, TypedTaskInvocation<T>>;
 
-template <typename T>
-using IndexTypedTaskArg = variant<IndexArg<T>, TypedFutureMap<T>, TypedIndexTaskInvocation<T>>;
-
-std::type_index get_type_index(ArgSpec);
+std::type_index get_type_index(StandardArgSpec);
 
 template <typename T> TaskInvocationSpec create_task_invocation_spec(TypedTaskInvocation<T> const &);
 
 struct TaskBinding {
 public:
-  static TaskBinding index_launch(parallel_tensor_guid_t const &);
-  static TaskBinding index_launch(slot_id const &);
-  static TaskBinding index_launch(MachineView const &);
   static TaskBinding standard_launch();
   static TaskBinding sync_type_dependent_launch(parallel_tensor_guid_t);
   static TaskBinding sync_type_dependent_launch(slot_id);
@@ -91,10 +85,10 @@ public:
   }
 
 private:
-  void insert_arg_spec(slot_id name, ArgSpec const &arg_spec); 
+  void insert_arg_spec(slot_id name, StandardArgSpec const &arg_spec); 
 
 private:
-  std::unordered_map<slot_id, ArgSpec> arg_bindings;
+  std::unordered_map<slot_id, StandardArgSpec> arg_bindings;
   std::unordered_map<slot_id, parallel_tensor_guid_t> bindings;
 };
 
