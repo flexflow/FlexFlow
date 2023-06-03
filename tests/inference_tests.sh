@@ -88,6 +88,11 @@ function compare_speed_spec_infer_incr_decoding {
     incrDec=$(sed -n '1 s/end-to-end latency: \(.*\)/\1/p' "$incrDec_file")
     specInf=$(sed -n '1 s/end-to-end latency: \(.*\)/\1/p' "$specInf_file")
 
+    if ! command -v bc &> /dev/null; then
+        echo "bc is not installed. Installing..."
+        sudo apt-get install -y bc
+    fi
+    
     # Perform the comparison
     threshold=$(bc <<< "$specInf * 1.5")
     if (( $(echo "$incrDec >= $threshold" | bc -l) )); then
