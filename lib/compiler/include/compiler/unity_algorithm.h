@@ -1,77 +1,50 @@
-#ifndef _FLEXFLOW_FFC_UNITY_ALGORITHM_H
-#define _FLEXFLOW_FFC_UNITY_ALGORITHM_H
+#ifndef _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
+#define _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 
-#include "op-attrs/operator_attrs.h"
-#include "pcg/machine_view.h"
-#include "pcg/machine_specification.h"
-#include "utils/graph.h"
-#include "compiler.h"
 #include "cost_estimate.h"
+#include "machine_mapping.h"
+#include "optimizer_graph.h"
 
 namespace FlexFlow {
 
-using OptimizerComputationGraph =
-    NodeLabelledMultiDiGraph<ComputationGraphAttrs>;
-using OptimizerPCG =
-    LabelledMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape>;
-
-using SubParallelComputationGraph =
-    LabelledOpenMultiDiGraph<PCGOperatorAttrs,
-                             ParallelTensorShape,
-                             MachineView>;
-
-struct Substitution {
-};
+struct Substitution {};
 
 struct Strategy {
-  Strategy(float runtime, std::unordered_map<Node, MachineView> machine_views);
-  bool operator<(Strategy const &s) const;
-
-  static Strategy sequential_combine(Strategy const &s1, Strategy const &s2);
-  static Strategy parallel_combine(Strategy const &s1, Strategy const &s2);
-  static Strategy infinity();
-
-  float runtime;
-  std::unordered_map<Node, MachineView> machine_views;
-};
-
-Strategy
-    optimal_cost(OptimizerPCG const &g,
-                 std::function<std::unordered_set<MachineView>(
-                     PCGOperatorAttrs const &, MachineSpecification const &)> const
-                     &allowed_machine_views,
-                 ICostEstimator const &cost_estimator,
-                 MachineSpecification const &resources,
-                 std::unordered_map<size_t, Strategy> &cached_subgraph_costs);
-
-struct GraphOptResult {
   OptimizerPCG pcg;
-  Strategy strategy;
+  MachineMapping machine_mapping;
 
-  GraphOptResult(OptimizerPCG const &pcg, Strategy const &strategy);
-
-  bool operator<(GraphOptResult const &r) const;
+  Strategy(OptimizerPCG const &pcg, MachineMapping const &strategy);
 };
 
-GraphOptResult
-    graph_optimize(OptimizerComputationGraph &cg,
-                   ICostEstimator const &cost_estimator,
-                   MachineSpecification const &resources,
-                   std::function<std::unordered_set<MachineView>(
-                       PCGOperatorAttrs const &, MachineSpecification const &)> const
-                       &allowed_machine_views,
-                   OptimizerConfig const &opt_config);
-                   
-} // namespace FlexFlow
+struct StrategyRuntimeCmp {
+  bool operator()(Strategy const &, Strategy const &);
+};
+
+struct OptimizerConfig {
+  float alpha;
+  int budget;
+  float threshold;
+  int max_num_ops;
+};
+
+Strategy graph_optimize(
+    OptimizerComputationGraph &cg,
+    ICostEstimator const &cost_estimator,
+    MachineSpecification const &resources,
+    std::function<std::unordered_set<MachineView>(
+        PCGOperatorAttrs const &, MachineSpecification const &)> const
+        &allowed_machine_views,
+    OptimizerConfig const &opt_config);
+
+}
 
 namespace std {
-  
+
 template <>
-struct hash<::FlexFlow::GraphOptResult> {
-  size_t operator()(::FlexFlow::GraphOptResult const &) const;
+struct hash<::FlexFlow::Strategy> {
+  size_t operator()(::FlexFlow::Strategy const &) const;
 };
 
-}; // namespace std
+}
 
-
-#endif
+#endif /* _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H */

@@ -64,22 +64,7 @@ struct formatter<::FlexFlow::DeviceType> : formatter<string_view> {
 
 };
 
-namespace std {
-template <>
-struct hash<::FlexFlow::StridedRectangle> {
-  size_t operator()(::FlexFlow::StridedRectangle const &) const; 
-};
-
-template <>
-struct hash<::FlexFlow::MachineView> {
-  size_t operator()(::FlexFlow::MachineView const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::MachineResource> {
-  size_t operator()(::FlexFlow::MachineResource const &) const;
-};
-}; // namespace std
+MAKE_VISIT_HASHABLE(FlexFlow::MachineView);
+MAKE_VISIT_HASHABLE(FlexFlow::StridedRectangle);
 
 #endif // _FLEXFLOW_MACHINE_VIEW_H
-#endif 

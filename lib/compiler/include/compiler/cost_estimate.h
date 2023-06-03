@@ -14,7 +14,14 @@ struct ICostEstimator {
   virtual float estimate_cost(ParallelTensorShape const &tensor_shape,
                               MachineView const &src,
                               MachineView const &dst) const = 0;
+
+  ICostEstimator(ICostEstimator& const) = delete;
+  ICostEstimator& operator=(ICostEstimator& const) = delete;
+
+  virtual ~ICostEstimator();
 };
+
+static_assert(is_rc_copy_virtual_compliant<ICostEstimator>::value, RC_COPY_VIRTUAL_MSG);
 
 }
 

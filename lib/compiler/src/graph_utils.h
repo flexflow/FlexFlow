@@ -50,8 +50,9 @@ LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
                                       InputLabel,
                                       OutputLabel> const &g);
 
+std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp);
 
-template <class T>
+template <typename T>
 void minimize(T &t, T const &v) {
   t = std::min(t, v);
 }
@@ -69,6 +70,18 @@ struct hash<::FlexFlow::Parallel> {
   size_t operator()(::FlexFlow::Parallel const &) const;
 };
 
-}; // namespace std
+template<typename N, typename E>
+struct hash<::FlexFlow::LabelledMultiDiGraph<N, E>> {
+  size_t operator()(::FlexFlow::LabelledOpenMultiDiGraph<N, E> const &) const {
+  }
+};
+
+template<typename N, typename E, typename I, typename O>
+struct hash<::FlexFlow::LabelledOpenMultiDiGraph<N, E, I, O>> {
+  size_t operator()(::FlexFlow::LabelledOpenMultiDiGraph<N, E, I, O> const &) const {
+  }
+};
+
+}
 
 #endif

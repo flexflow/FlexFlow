@@ -15,6 +15,6 @@ namespace FlexFlow {
 // SearchSolution run_data_parallelize(ComputationGraph const &,
 // MachineSpecification const &);
 
-} // namespace FlexFlow
+}
 
 #endif

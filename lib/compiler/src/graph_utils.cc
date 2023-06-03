@@ -10,12 +10,12 @@ SerialParallelDecomposition
 
 std::vector<MultiDiEdge> get_sorted_node_input_edges(OptimizerPCG const &pcg,
                                                      Node const &n) {
-  std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>>
+  std::unordered_map<size_t, std::unordered_set<MultiDiEdge>>
       incoming_edges = get_incoming_edges_by_idx(MultiDiGraphView(pcg), n);
 
   std::vector<MultiDiEdge> result;
-  for (std::size_t i = 0; i < incoming_edges.size(); i++) {
-    result.push_back(get_only(incoming_edges.at(i)));
+  for (auto const &p_id_edge_set : incoming_edges) {
+    result.push_back(get_only(p_id_edge_set.second));
   }
 
   return result;
@@ -34,7 +34,7 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
     std::vector<ParallelTensorShape> output_tensor_shapes =
         get_output_shapes(op, input_tensor_shapes);
 
-    auto outgoing_edges = get_outgoing_edges_by_idx(MultiDiGraphView(pcg), n);
+    auto outgoing_edges = get_outgoing_edges_by_idx(pcg, n);
 
     for (std::size_t i = 0; i < output_tensor_shapes.size(); i++) {
       if (contains_key(outgoing_edges, i)) {
@@ -100,4 +100,35 @@ LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
   }
 }
 
-} // namespace FlexFlow
+struct GetNodes {
+  template <typename T>
+  std::unordered_set<Node> operator()(T const &t) {
+    return get_nodes(t);
+  }
+};
+
+std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
+  return visit(GetNodes{}, sp);
+}
+
+std::unordered_set<Node> get_nodes(Serial const &serial) {
+  return set_union(vector_transform(
+      [](variant<Parallel, Node> const child) {
+        return visit(GetNodes{}, child);
+      },
+      serial.children));
+}
+
+std::unordered_set<Node> get_nodes(Parallel const &parallel) {
+  return set_union(vector_transform(
+      [](variant<Serial, Node> const child) {
+        return visit(GetNodes{}, child);
+      },
+      parallel.children));
+}
+
+std::unordered_set<Node> get_nodes(Node const &node) {
+  return {node};
+}
+
+}
