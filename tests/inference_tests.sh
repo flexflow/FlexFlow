@@ -3,7 +3,7 @@ set -x
 set -e
 
 cleanup() {
-    rm -rf ../inference/prompt ../inference/weights ../inference/tokenizer
+    rm -rf ../inference/prompt ../inference/weights ../inference/tokenizer ../inference/output
 }
 
 # Cd into directory holding this script
