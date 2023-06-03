@@ -135,11 +135,17 @@ bool ParallelTensorShape::operator!=(ParallelTensorShape const &other) const {
 
 size_t ParallelTensorShape::get_piece_size() const {
   size_t piece_size = data_type_size(this->data_type);
-  for (int i = 0; i < this->num_dims; i++) {
-    piece_size *= this->dims[i].size / this->dims[i].degree;
-  }
-  return piece_size;
+  return piece_size * this->get_piece_num_elements();
 }
+
+size_t ParallelTensorShape::get_piece_num_elements() const {
+  size_t piece_num_elements = 1;
+  for (int i = 0; i < this->num_dims; i++) {
+    piece_num_elements *= this->dims[i].size / this->dims[i].degree;
+  }
+  return piece_num_elements;
+}
+
 
 RecordFormatter ParallelTensorShape::as_dot() const {
   RecordFormatter r;

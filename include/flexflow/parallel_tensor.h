@@ -100,6 +100,7 @@ struct ParallelTensorShape {
   RecordFormatter as_dot() const;
 
   size_t get_piece_size() const;
+  size_t get_piece_num_elements() const;
   bool is_valid() const;
 
   int get_num_replica_dims() const;
