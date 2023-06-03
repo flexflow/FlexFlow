@@ -16,9 +16,9 @@
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 #include "flexflow/tokenizers.h"
+#include <iomanip>
 #include <new>
 #include <stdexcept>
-#include <iomanip>
 
 namespace FlexFlow {
 
@@ -147,7 +147,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       if (!output_filepath.empty()) {
         std::ofstream outputFile(output_filepath);
         if (outputFile.is_open()) {
-          outputFile << "end-to-end latency: " << std::fixed << std::setprecision(3) << total_request_run_time << std::endl;
+          outputFile << "end-to-end latency: " << std::fixed
+                     << std::setprecision(3) << total_request_run_time
+                     << std::endl;
           outputFile << "token IDs: ";
           for (int i = 0; i < request.tokens.size(); i++) {
             outputFile << request.tokens[i];
@@ -459,7 +461,9 @@ BeamSearchBatchConfig
       if (!output_filepath.empty()) {
         std::ofstream outputFile(output_filepath);
         if (outputFile.is_open()) {
-          outputFile << "end-to-end latency: " << std::fixed << std::setprecision(3) << total_request_run_time << std::endl;
+          outputFile << "end-to-end latency: " << std::fixed
+                     << std::setprecision(3) << total_request_run_time
+                     << std::endl;
           outputFile << "token IDs: ";
           for (int i = 0; i < request.tokens.size(); i++) {
             outputFile << request.tokens[i];
