@@ -182,7 +182,7 @@ LayerNorm::LayerNorm(FFModel &model,
     M *= inputs[0]->dims[inputs[0]->num_dims - 1 - axes[i]].size;
   }
   effective_num_elements = M;
-  effective_batch_size = inputs[0]->get_shape().get_piece_size() / M;
+  effective_batch_size = inputs[0]->get_shape().get_piece_num_elements() / M;
   if (numWeights > 0 && allocate_weights) {
     int kernel_dims = 2;
     assert(false);

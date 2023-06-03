@@ -61,7 +61,11 @@ class TensorShapePrinter:
             size = dim['size']
             degree = dim['degree']
             parallel_idx = dim['parallel_idx']
-            toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx}]')
+            if dim['is_replica_dim']:
+                is_replica = 'r=t'
+            else:
+                is_replica = 'r=f'
+            toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx} {is_replica}]') 
         return f'TensorShape<{" ".join(toks)}>'
 
 class ParallelTensorBasePrinter:
