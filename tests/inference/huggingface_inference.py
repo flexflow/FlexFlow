@@ -18,6 +18,7 @@ def main():
     parser.add_argument('--prompt-file', type=str, required=True)
     parser.add_argument('--output-file', type=str, required=True)
     parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
+    parser.add_argument("--gpu", action="store_true", help="Run on GPU")
     args = parser.parse_args()
     # Check if max-length is greater than 0
     if args.max_length <= 0:
@@ -42,11 +43,12 @@ def main():
         torch.set_default_tensor_type(torch.HalfTensor)
 
     # Run huggingface model
-    model = AutoModelForCausalLM.from_pretrained(args.model_name).to("cuda")
+    device = "cuda" if args.gpu else "cpu"
+    model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_model_name)
     with open(args.output_file, 'w') as f:
         for i, prompt in enumerate(prompt_list):
-            batch = tokenizer(prompt_list, return_tensors="pt", add_special_tokens=True).to("cuda")
+            batch = tokenizer(prompt_list, return_tensors="pt", add_special_tokens=True).to(device)
             generated = model.generate(batch["input_ids"], max_length=args.max_length)
             out = tokenizer.decode(generated[0])
             # Write output to file
