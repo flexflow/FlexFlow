@@ -66,6 +66,7 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 template <typename DT>
 void load_attention_bias(DT *ptr,
                          int partition_idx,
+                         int tensor_parallelism_degree,
                          int num_heads,
                          size_t hidden_dim,
                          size_t qkv_inner_dim,
@@ -121,6 +122,7 @@ void load_attention_bias(DT *ptr,
 template <typename DT>
 void load_attention_weights(DT *ptr,
                             int partition_idx,
+                            int tensor_parallelism_degree,
                             int num_heads,
                             size_t hidden_dim,
                             size_t qkv_inner_dim,
@@ -145,11 +147,14 @@ void load_attention_weights(DT *ptr,
 
   int file_index = 0;
 
+  assert(num_heads % tensor_parallelism_degree == 0);
+
   size_t single_proj_size =
       hidden_dim *
       qkv_inner_dim; // size of each of Q,K,V,O weights for a single head
   size_t one_weight_file_size =
-      num_heads * single_proj_size; // size of each of Q/K/V/O for all heads
+      (num_heads / tensor_parallelism_degree) *
+      single_proj_size; // size of each of Q/K/V/O for all heads
 
   // q, k, v, o -> 0, 1, 2, 3
   for (auto file : weight_files) {
@@ -177,8 +182,11 @@ void load_attention_weights(DT *ptr,
     size_t one_head_size = hidden_dim * (hidden_dim / num_heads);
     size_t data_index = 0;
 
-    for (int i = 0; i < num_heads; i++) {
-      size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
+    for (int i = 0; i < num_heads / tensor_parallelism_degree; i++) {
+      size_t start_index =
+          (i + partition_idx * (num_heads / tensor_parallelism_degree)) *
+              one_head_size * 4 +
+          file_index * one_head_size;
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
         ptr[j] = host_array.at(data_index);
         data_index += 1;
@@ -273,11 +281,14 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
       file_path2 += '/';
     }
     int partition_idx = std::stoi(numberSubstring);
-    assert(partition_idx >= 0);
+    assert(partition_idx >= 0 && partition_idx < tensor_parallelism_degree);
+    // std::cout << "file_path: " << file_path << ", file_path2: " << file_path2
+    // << ", partition_idx: " << partition_idx << std::endl;
 
     if (weight_idx == 0) {
       load_attention_weights(data,
                              partition_idx,
+                             tensor_parallelism_degree,
                              num_heads,
                              hidden_dim,
                              qkv_inner_dim,
@@ -287,6 +298,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     } else {
       load_attention_bias(data,
                           partition_idx,
+                          tensor_parallelism_degree,
                           num_heads,
                           hidden_dim,
                           qkv_inner_dim,
