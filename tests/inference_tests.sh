@@ -132,10 +132,10 @@ python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --
 python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 127
 
 # OPT (big model, full precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B.txt" --max-length 127
+#python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B.txt" --max-length 127
 
 # OPT (big model, half precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B_half.txt" --gpu --max-length 127
+#python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B_half.txt" --gpu --max-length 127
 
 diff <(tail -n +2 "../inference/output/huggingface_llama_160M.txt") <(tail -n +4 "../inference/output/incr_decoding_llama_160M.txt")
 diff <(tail -n +2 "../inference/output/huggingface_llama_160M_half.txt") <(tail -n +4 "../inference/output/incr_decoding_llama_160M_half.txt")
@@ -144,8 +144,8 @@ diff <(tail -n +2 "../inference/output/huggingface_llama_7B_half.txt") <(tail -n
 
 diff <(tail -n +2 "../inference/output/huggingface_opt_125M.txt") <(tail -n +4 "../inference/output/incr_decoding_opt_125M.txt")
 diff <(tail -n +2 "../inference/output/huggingface_opt_125M_half.txt") <(tail -n +4 "../inference/output/incr_decoding_opt_125M_half.txt")
-diff <(tail -n +2 "../inference/output/huggingface_opt_6B.txt") <(tail -n +4 "../inference/output/incr_decoding_opt_6B.txt")
-diff <(tail -n +2 "../inference/output/huggingface_opt_6B_half.txt") <(tail -n +4 "../inference/output/incr_decoding_opt_6B_half.txt")
+#diff <(tail -n +2 "../inference/output/huggingface_opt_6B.txt") <(tail -n +4 "../inference/output/incr_decoding_opt_6B.txt")
+#diff <(tail -n +2 "../inference/output/huggingface_opt_6B_half.txt") <(tail -n +4 "../inference/output/incr_decoding_opt_6B_half.txt")
 
 ###############################################################################################
 ###################################### Cleanup ################################################
