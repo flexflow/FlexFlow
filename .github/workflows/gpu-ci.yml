@@ -181,6 +181,8 @@ jobs:
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
+    #skip this time-consuming test for PRs to the inference branch
+    if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
     needs: inference-tests
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
