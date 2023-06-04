@@ -65,6 +65,7 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
 template <typename DT>
 void load_attention_bias(DT *ptr,
+                         int partition_idx,
                          int num_heads,
                          size_t hidden_dim,
                          size_t qkv_inner_dim,
@@ -119,6 +120,7 @@ void load_attention_bias(DT *ptr,
 
 template <typename DT>
 void load_attention_weights(DT *ptr,
+                            int partition_idx,
                             int num_heads,
                             size_t hidden_dim,
                             size_t qkv_inner_dim,
@@ -262,20 +264,33 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
       (layername.back() == '/') ? layername : "/" + layername;
 
   if (file_path.find("attention_w") != std::string::npos) {
+    bool ends_with_slash = file_path.back() == '/';
+    size_t underscorePosition = file_path.find_last_of("_");
+    std::string numberSubstring = file_path.substr(underscorePosition + 1);
+    std::string file_path2 = file_path.substr(0, underscorePosition);
+    if (ends_with_slash) {
+      numberSubstring.pop_back();
+      file_path2 += '/';
+    }
+    int partition_idx = std::stoi(numberSubstring);
+    assert(partition_idx >= 0);
+
     if (weight_idx == 0) {
       load_attention_weights(data,
+                             partition_idx,
                              num_heads,
                              hidden_dim,
                              qkv_inner_dim,
-                             file_path,
+                             file_path2,
                              weight_file_path,
                              volume);
     } else {
       load_attention_bias(data,
+                          partition_idx,
                           num_heads,
                           hidden_dim,
                           qkv_inner_dim,
-                          file_path,
+                          file_path2,
                           weight_file_path);
     }
 

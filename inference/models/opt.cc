@@ -191,7 +191,7 @@ void OPT::create_opt_model(FFModel &ff,
                     -0.5),
                 /*qk_prod_scaling*/ false);
           } else {
-            Tensor res = ff.inc_multihead_self_attention(
+            Tensor partial_mha = ff.inc_multihead_self_attention(
                 hidden_states,
                 opt_config.hidden_size,
                 opt_config.num_attention_heads / tensor_parallelism_degree,
@@ -209,7 +209,7 @@ void OPT::create_opt_model(FFModel &ff,
                 pow((opt_config.hidden_size / opt_config.num_attention_heads),
                     -0.5),
                 /*qk_prod_scaling*/ false);
-            ff.add(mha, res, true);
+            ff.add(mha, partial_mha, true);
           }
         }
         break;
@@ -219,9 +219,16 @@ void OPT::create_opt_model(FFModel &ff,
       }
     }
 
-    Layer *attention_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
-                           attention_layer);
+    int partition_idx = 0;
+    for (auto it = ff.layers.end() - tensor_parallelism_degree;
+         it != ff.layers.end();
+         ++it, partition_idx++) {
+      Layer *attention_layer = *it;
+      weights_layers.emplace("layers_" + std::to_string(i) +
+                                 "_attention_weight_" +
+                                 std::to_string(partition_idx),
+                             attention_layer);
+    }
 
     Tensor added = ff.add(mha, residual);
 
