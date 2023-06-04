@@ -156,6 +156,7 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
+                              2, // tensor_parallelism_degree
                               ffconfig.workersPerNode * ffconfig.numNodes,
                               INC_DECODING_MODE,
                               use_full_precision);
@@ -165,6 +166,7 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
+                          2, // tensor_parallelism_degree
                           ffconfig.workersPerNode * ffconfig.numNodes,
                           INC_DECODING_MODE,
                           use_full_precision);

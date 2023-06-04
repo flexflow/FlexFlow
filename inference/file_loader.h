@@ -26,6 +26,7 @@ class FileDataLoader {
 public:
   FileDataLoader(std::string _input_path,
                  std::string _weight_file_path,
+                 int _tensor_parallelism_degree,
                  int _num_heads,
                  size_t _hidden_dim,
                  size_t _qkv_inner_dim);
@@ -47,6 +48,7 @@ public:
                       int offset);
 
 private:
+  int tensor_parallelism_degree;
   int num_heads;
   size_t hidden_dim, qkv_inner_dim;
   std::string input_path;

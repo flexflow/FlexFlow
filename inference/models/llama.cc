@@ -23,6 +23,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                                InferenceManager &im,
                                std::string const &model_config_file_path,
                                std::string const &weight_file_path,
+                               int tensor_parallelism_degree,
                                int num_pipeline_stages,
                                InferenceMode mode,
                                bool use_full_precision) {
@@ -211,6 +212,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   im.compile_model_and_allocate_buffer(&ff, mapping);
   FileDataLoader fileloader("",
                             weight_file_path,
+                            tensor_parallelism_degree,
                             llama_config.n_heads,
                             llama_config.dim,
                             llama_config.dim / llama_config.n_heads);

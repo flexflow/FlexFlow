@@ -210,6 +210,7 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.ssm_config_file_paths[0],
                               file_paths.ssm_weight_file_paths[0],
+                              1, // tensor_parallelism_degree
                               1,
                               BEAM_SEARCH_MODE,
                               use_full_precision);
@@ -218,6 +219,7 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.ssm_config_file_paths[0],
                           file_paths.ssm_weight_file_paths[0],
+                          1, // tensor_parallelism_degree
                           1,
                           BEAM_SEARCH_MODE,
                           use_full_precision);
@@ -227,6 +229,7 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
+                              2, // tensor_parallelism_degree
                               ffconfig.workersPerNode * ffconfig.numNodes,
                               TREE_VERIFY_MODE,
                               use_full_precision);
@@ -235,6 +238,7 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
+                          2, // tensor_parallelism_degree
                           ffconfig.workersPerNode * ffconfig.numNodes,
                           TREE_VERIFY_MODE,
                           use_full_precision);

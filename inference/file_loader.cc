@@ -24,10 +24,12 @@ using namespace Legion;
 
 FileDataLoader::FileDataLoader(std::string _input_path,
                                std::string _weight_file_path,
+                               int _tensor_parallelism_degree,
                                int _num_heads,
                                size_t _hidden_dim,
                                size_t _qkv_inner_dim)
     : input_path(_input_path), weight_file_path(_weight_file_path),
+      tensor_parallelism_degree(_tensor_parallelism_degree),
       num_heads(_num_heads), hidden_dim(_hidden_dim),
       qkv_inner_dim(_qkv_inner_dim){};
 

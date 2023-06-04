@@ -23,6 +23,7 @@ void OPT::create_opt_model(FFModel &ff,
                            InferenceManager &im,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
+                           int tensor_parallelism_degree,
                            int num_pipeline_stages,
                            InferenceMode mode,
                            bool use_full_precision) {
@@ -168,24 +169,49 @@ void OPT::create_opt_model(FFModel &ff,
         break;
       }
       case INC_DECODING_MODE: {
-        mha = ff.inc_multihead_self_attention(
-            hidden_states,
-            opt_config.hidden_size,
-            opt_config.num_attention_heads,
-            opt_config.hidden_size / opt_config.num_attention_heads,
-            opt_config.hidden_size / opt_config.num_attention_heads,
-            0.0f,
-            true,
-            false,
-            false,
-            DT_NONE, /*data_type*/
-            NULL,
-            false,
-            /*scaling query*/ true,
-            /*sacling factor*/
-            pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                -0.5),
-            /*qk_prod_scaling*/ false);
+        assert(opt_config.num_attention_heads % tensor_parallelism_degree == 0);
+        for (int j = 0; j < tensor_parallelism_degree; j++) {
+          if (j == 0) {
+            mha = ff.inc_multihead_self_attention(
+                hidden_states,
+                opt_config.hidden_size,
+                opt_config.num_attention_heads / tensor_parallelism_degree,
+                opt_config.hidden_size / opt_config.num_attention_heads,
+                opt_config.hidden_size / opt_config.num_attention_heads,
+                0.0f,
+                true,
+                false,
+                false,
+                DT_NONE, /*data_type*/
+                NULL,
+                false,
+                /*scaling query*/ true,
+                /*sacling factor*/
+                pow((opt_config.hidden_size / opt_config.num_attention_heads),
+                    -0.5),
+                /*qk_prod_scaling*/ false);
+          } else {
+            Tensor res = ff.inc_multihead_self_attention(
+                hidden_states,
+                opt_config.hidden_size,
+                opt_config.num_attention_heads / tensor_parallelism_degree,
+                opt_config.hidden_size / opt_config.num_attention_heads,
+                opt_config.hidden_size / opt_config.num_attention_heads,
+                0.0f,
+                true,
+                false,
+                false,
+                DT_NONE, /*data_type*/
+                NULL,
+                false,
+                /*scaling query*/ true,
+                /*sacling factor*/
+                pow((opt_config.hidden_size / opt_config.num_attention_heads),
+                    -0.5),
+                /*qk_prod_scaling*/ false);
+            ff.add(mha, res, true);
+          }
+        }
         break;
       }
       default: {
@@ -245,6 +271,7 @@ void OPT::create_opt_model(FFModel &ff,
   im.compile_model_and_allocate_buffer(&ff, mapping);
   FileDataLoader fileloader("",
                             weight_file_path,
+                            tensor_parallelism_degree,
                             opt_config.num_attention_heads,
                             opt_config.hidden_size,
                             opt_config.hidden_size /
