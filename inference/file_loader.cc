@@ -109,7 +109,7 @@ void load_attention_bias(DT *ptr,
     size_t data_index = 0;
 
     for (int i = 0; i < hidden_dim; i++) {
-      ptr[file_index * hidden_dim + i] = host_array.at(data_index);
+      // ptr[file_index * hidden_dim + i] = host_array.at(data_index);
       data_index++;
     }
 
@@ -188,7 +188,7 @@ void load_attention_weights(DT *ptr,
               one_head_size * 4 +
           file_index * one_head_size;
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
-        ptr[j] = host_array.at(data_index);
+        //ptr[j] = host_array.at(data_index);
         data_index += 1;
       }
     }
