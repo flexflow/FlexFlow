@@ -169,49 +169,49 @@ void OPT::create_opt_model(FFModel &ff,
         break;
       }
       case INC_DECODING_MODE: {
-        assert(opt_config.num_attention_heads % tensor_parallelism_degree == 0);
-        for (int j = 0; j < tensor_parallelism_degree; j++) {
-          if (j == 0) {
-            mha = ff.inc_multihead_self_attention(
-                hidden_states,
-                opt_config.hidden_size,
-                opt_config.num_attention_heads / tensor_parallelism_degree,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                0.0f,
-                true,
-                false,
-                false,
-                DT_NONE, /*data_type*/
-                NULL,
-                false,
-                /*scaling query*/ true,
-                /*sacling factor*/
-                pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                    -0.5),
-                /*qk_prod_scaling*/ false);
-          } else {
-            Tensor partial_mha = ff.inc_multihead_self_attention(
-                hidden_states,
-                opt_config.hidden_size,
-                opt_config.num_attention_heads / tensor_parallelism_degree,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                0.0f,
-                true,
-                false,
-                false,
-                DT_NONE, /*data_type*/
-                NULL,
-                false,
-                /*scaling query*/ true,
-                /*sacling factor*/
-                pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                    -0.5),
-                /*qk_prod_scaling*/ false);
-            ff.add(mha, partial_mha, true);
-          }
-        }
+        // assert(opt_config.num_attention_heads % tensor_parallelism_degree ==
+        // 0); for (int j = 0; j < tensor_parallelism_degree; j++) {
+        //   if (j == 0) {
+        mha = ff.inc_multihead_self_attention(
+            hidden_states,
+            opt_config.hidden_size,
+            opt_config.num_attention_heads / tensor_parallelism_degree,
+            opt_config.hidden_size / opt_config.num_attention_heads,
+            opt_config.hidden_size / opt_config.num_attention_heads,
+            0.0f,
+            true,
+            false,
+            false,
+            DT_NONE, /*data_type*/
+            NULL,
+            false,
+            /*scaling query*/ true,
+            /*sacling factor*/
+            pow((opt_config.hidden_size / opt_config.num_attention_heads),
+                -0.5),
+            /*qk_prod_scaling*/ false);
+        // } else {
+        //   Tensor partial_mha = ff.inc_multihead_self_attention(
+        //       hidden_states,
+        //       opt_config.hidden_size,
+        //       opt_config.num_attention_heads / tensor_parallelism_degree,
+        //       opt_config.hidden_size / opt_config.num_attention_heads,
+        //       opt_config.hidden_size / opt_config.num_attention_heads,
+        //       0.0f,
+        //       true,
+        //       false,
+        //       false,
+        //       DT_NONE, /*data_type*/
+        //       NULL,
+        //       false,
+        //       /*scaling query*/ true,
+        //       /*sacling factor*/
+        //       pow((opt_config.hidden_size / opt_config.num_attention_heads),
+        //           -0.5),
+        //       /*qk_prod_scaling*/ false);
+        //   ff.add(mha, partial_mha, true);
+        //   }
+        // }
         break;
       }
       default: {
@@ -219,11 +219,13 @@ void OPT::create_opt_model(FFModel &ff,
       }
     }
 
-    int partition_idx = 0;
-    for (auto it = ff.layers.end() - tensor_parallelism_degree;
-         it != ff.layers.end();
-         ++it, partition_idx++) {
-      Layer *attention_layer = *it;
+    for (int partition_idx = 0; partition_idx < tensor_parallelism_degree;
+         partition_idx++) {
+      // std::cout << "partition_idx: " << partition_idx << ",
+      // tensor_parallelism_degree: " << tensor_parallelism_degree << std::endl;
+      Layer *attention_layer =
+          ff.layers[ff.layers.size() - tensor_parallelism_degree +
+                    partition_idx];
       weights_layers.emplace("layers_" + std::to_string(i) +
                                  "_attention_weight_" +
                                  std::to_string(partition_idx),
@@ -283,6 +285,10 @@ void OPT::create_opt_model(FFModel &ff,
                             opt_config.hidden_size,
                             opt_config.hidden_size /
                                 opt_config.num_attention_heads);
+  std::cout << "Loading weights! Weights layers:" << std::endl;
+  for (auto const &pair : weights_layers) {
+    std::cout << "\t" << pair.first << ": " << pair.second->name << std::endl;
+  }
   fileloader.load_weights(&ff, weights_layers);
   std::cout << "------finished loading weights----------" << std::endl;
   im.init_operators_inference(&ff);

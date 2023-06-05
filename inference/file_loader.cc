@@ -282,8 +282,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     }
     int partition_idx = std::stoi(numberSubstring);
     assert(partition_idx >= 0 && partition_idx < tensor_parallelism_degree);
-    // std::cout << "file_path: " << file_path << ", file_path2: " << file_path2
-    // << ", partition_idx: " << partition_idx << std::endl;
+    std::cout << "Loading file_path: " << file_path
+              << ", file_path2: " << file_path2
+              << ", partition_idx: " << partition_idx << std::endl;
 
     if (weight_idx == 0) {
       load_attention_weights(data,
