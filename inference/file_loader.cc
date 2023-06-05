@@ -90,7 +90,7 @@ void load_attention_bias(DT *ptr,
 
   for (auto file : bias_files) {
     size_t partial_size = hidden_dim;
-    // std::cout << "Loading filename: " << file << std::endl;
+    std::cout << "Loading attention bias filename: " << file << std::endl;
     std::ifstream in(file, std::ios::in | std::ios::binary);
     assert(in.good() && "incorrect bias file path");
     std::vector<DT> host_array(partial_size);
@@ -161,7 +161,7 @@ void load_attention_weights(DT *ptr,
     size_t partial_size = one_weight_file_size;
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
-    // std::cout << "Loading filename: " << file << std::endl;
+    std::cout << "Loading attention filename: " << file << std::endl;
     if (!in.good()) {
       std::cout << "Could not open file: " << file << std::endl;
     }
@@ -284,9 +284,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     }
     int partition_idx = std::stoi(numberSubstring);
     assert(partition_idx >= 0 && partition_idx < tensor_parallelism_degree);
-    // std::cout << "Loading file_path: " << file_path
-    //           << ", file_path2: " << file_path2
-    //           << ", partition_idx: " << partition_idx << std::endl;
+    std::cout << "Loading file_path: " << file_path
+              << ", file_path2: " << file_path2
+              << ", partition_idx: " << partition_idx << std::endl;
 
     // std::cout << "data array has volume " << volume << std::endl;
 

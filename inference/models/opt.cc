@@ -219,16 +219,24 @@ void OPT::create_opt_model(FFModel &ff,
       }
     }
 
-    for (int partition_idx = 0; partition_idx < tensor_parallelism_degree;
-         partition_idx++) {
-      Layer *attention_layer =
-          ff.layers[ff.layers.size() - tensor_parallelism_degree +
-                    partition_idx];
+    int num_mha_allreduce = tensor_parallelism_degree -1;
+    int mha_layer_start_idx = ff.layers.size() - tensor_parallelism_degree - num_mha_allreduce;
+    int partition_idx=0;
+    for (int mha_tensor_idx = mha_layer_start_idx; mha_tensor_idx < ff.layers.size(); mha_tensor_idx++) {
+      Layer *attention_layer = ff.layers[mha_tensor_idx];
+      std::cout << "attention_layer->op_type: " << attention_layer->op_type << ",  attention_layer->name: " << attention_layer->name << std::endl;
+      if (mha_tensor_idx >= mha_layer_start_idx+2 && (mha_tensor_idx-mha_layer_start_idx) % 2 == 0) {
+        assert(attention_layer->op_type == OP_EW_ADD);
+        continue;
+      }
+      assert(attention_layer->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION);
       weights_layers.emplace("layers_" + std::to_string(i) +
                                  "_attention_weight_" +
                                  std::to_string(partition_idx),
                              attention_layer);
+      partition_idx++;
     }
+    assert(partition_idx == tensor_parallelism_degree);
 
     Tensor added = ff.add(mha, residual);
 
