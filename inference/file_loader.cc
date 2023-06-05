@@ -109,7 +109,7 @@ void load_attention_bias(DT *ptr,
     size_t data_index = 0;
 
     for (int i = 0; i < hidden_dim; i++) {
-      // ptr[file_index * hidden_dim + i] = host_array.at(data_index);
+      ptr[file_index * hidden_dim + i] = host_array.at(data_index);
       data_index++;
     }
 
@@ -169,7 +169,9 @@ void load_attention_weights(DT *ptr,
     std::vector<DT> host_array(partial_size);
     size_t loaded_data_size = sizeof(DT) * partial_size;
     in.seekg(0, in.end);
-    in.seekg(0, in.beg);
+    in.seekg(single_proj_size * partition_idx *
+                 (num_heads / tensor_parallelism_degree) * sizeof(DT),
+             in.beg);
     in.read((char *)host_array.data(), loaded_data_size);
     size_t in_get_size = in.gcount();
 
@@ -180,18 +182,18 @@ void load_attention_weights(DT *ptr,
     assert(partial_size == host_array.size());
 
     size_t one_head_size = hidden_dim * (hidden_dim / num_heads);
+    assert(qkv_inner_dim == (hidden_dim / num_heads) &&
+           one_head_size == single_proj_size);
     size_t data_index = 0;
 
     for (int i = 0; i < num_heads / tensor_parallelism_degree; i++) {
-      size_t start_index =
-          (i + partition_idx * (num_heads / tensor_parallelism_degree)) *
-              one_head_size * 4 +
-          file_index * one_head_size;
+      size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
-        //ptr[j] = host_array.at(data_index);
+        ptr[j] = host_array.at(data_index);
         data_index += 1;
       }
     }
+    assert(data_index == partial_size);
     file_index++;
 
     in.close();
@@ -282,9 +284,11 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     }
     int partition_idx = std::stoi(numberSubstring);
     assert(partition_idx >= 0 && partition_idx < tensor_parallelism_degree);
-    std::cout << "Loading file_path: " << file_path
-              << ", file_path2: " << file_path2
-              << ", partition_idx: " << partition_idx << std::endl;
+    // std::cout << "Loading file_path: " << file_path
+    //           << ", file_path2: " << file_path2
+    //           << ", partition_idx: " << partition_idx << std::endl;
+
+    // std::cout << "data array has volume " << volume << std::endl;
 
     if (weight_idx == 0) {
       load_attention_weights(data,
