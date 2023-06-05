@@ -63,7 +63,6 @@ Tensor FFModel::layer_norm(const Tensor input,
                            float eps,
                            char const *name) {
   // FIXME: currently disable elementwise_affine
-  assert(!elementwise_affine);
   elementwise_affine = false;
   // axes must be the last axes.size() dimensions
   for (int i = 0; i < axes.size(); i++) {
