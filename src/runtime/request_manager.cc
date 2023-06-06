@@ -452,7 +452,7 @@ BeamSearchBatchConfig
     }
 
     std::vector<std::pair<BatchConfig::TokenId, int>> verified_tokens =
-        traverse_verify_tree(guid, dfs_tree_inputs_map.at(guid), tree_outputs);
+        traverse_verify_tree(guid, dfs_tree_inputs.at(guid), tree_outputs);
     log_req_mgr.print("Number of Verified Tokens = %zu",
                       verified_tokens.size());
     // check if the request is finished
@@ -505,9 +505,10 @@ BeamSearchBatchConfig
           assert(false);
         }
       }
-
-      dfs_tree_inputs.erase
-          request.guid); // delete the old input tree from cache
+      
+      // delete the old input tree from cache
+      dfs_tree_inputs.erase(request.guid); 
+      
       continue;
     }
 
@@ -809,8 +810,8 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
   if (verbose) {
     std::cout << "prepare_next_batch_verify OLD vs NEW batchconfigs below:"
               << std::endl;
-    old_bc.print();
-    new_bc.print();
+    // old_batches.print();
+    // new_bc.print();
   }
 
   return new_bc;
