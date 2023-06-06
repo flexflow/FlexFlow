@@ -62,12 +62,16 @@ RequestManager::RequestGuid
   request.initial_len = prompt.size();
   request.tokens = prompt;
 
-  std::cout << "Num of models: " << num_ssms << std::endl;
-  assert(num_ssms > 0);
-
-  for (int i = 0; i < num_ssms; i++) {
-    BeamTree beam_tree = BeamTree{};
-    request.beam_trees.push_back(beam_tree);
+  if (num_ssms == 0) {
+    std::cout << "No small spective model registered yet, using increamental "
+                 "decoding."
+              << std::endl;
+  } else {
+    std::cout << "Num of models: " << num_ssms << std::endl;
+    for (int i = 0; i < num_ssms; i++) {
+      BeamTree beam_tree = BeamTree{};
+      request.beam_trees.push_back(beam_tree);
+    }
   }
 
   pending_request_queue.push(request);
