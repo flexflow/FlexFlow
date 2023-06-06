@@ -127,6 +127,13 @@ std::pair<std::unordered_set<Node>, std::unordered_set<Node>> JoinedNodeView::tr
   return {left_nodes, right_nodes};
 }
 
+JoinNodeKey::JoinNodeKey(Node const & node, LRDirection direction)
+:node(node), direction(direction){}
+
+bool JoinNodeKey::operator==(JoinNodeKey const & jnk) const {
+  return node== jnk.node && direction == jnk.direction;
+}
+
 Node JoinedNodeView::at_join_key(JoinNodeKey const &k) const {
   return this->mapping.at_l(k);
 }

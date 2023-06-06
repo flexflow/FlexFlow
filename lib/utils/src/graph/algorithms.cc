@@ -259,7 +259,7 @@ std::unordered_set<Node> get_sinks(MultiDiGraphView const & g){
       dsts.insert(n);
     }
   }
-  return dsts
+  return dsts;
 }
 
 
