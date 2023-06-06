@@ -21,6 +21,7 @@ target_link_libraries(
   ${target}
   PUBLIC
     utils-ffi
+    pcg-ffi
   PRIVATE
     compiler
 )

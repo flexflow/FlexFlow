@@ -29,5 +29,6 @@ target_link_libraries(
   # substitutions
 )
 ff_set_cxx_properties(${project_target})
+define_ff_vars(${project_target})
 
 add_subdirectory(ffi)

@@ -18,4 +18,17 @@
     void *impl;                                                                \
   } T
 
+typedef enum {
+  FLEXFLOW_ERROR_SOURCE_RUNTIME,
+  FLEXFLOW_ERROR_SOURCE_PCG,
+  FLEXFLOW_ERROR_SOURCE_COMPILER,
+  FLEXFLOW_ERROR_SOURCE_OPATTRS,
+} flexflow_error_source_t;
+
+typedef struct {
+  flexflow_error_source_t error_source;
+  int error_code;
+} flexflow_error_t;
+
+
 #endif
