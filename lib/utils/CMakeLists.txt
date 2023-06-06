@@ -35,4 +35,4 @@ set_target_properties(
     CXX_EXTENSIONS NO
 )
 
-# add_subdirectory(test)
+add_subdirectory(test)

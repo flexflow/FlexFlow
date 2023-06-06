@@ -55,7 +55,7 @@ struct IMultiDiGraphView : public IGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IMultiDiGraphView();
+  virtual ~IMultiDiGraphView()=default;
 };
 
 template <typename T>
@@ -81,6 +81,8 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   virtual void remove_edge(Edge const &) = 0;
 
   virtual IMultiDiGraph *clone() const = 0;
+
+  virtual ~IMultiDiGraph()=default;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraph>::value, RC_COPY_VIRTUAL_MSG);
@@ -90,7 +92,9 @@ public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
 
-  operator GraphView() const;
+  operator GraphView() const{
+    return GraphView(ptr); // struct IMultiDiGraphView : public IGraphView 
+  }//TODO 
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
@@ -111,8 +115,11 @@ public:
   create(Args &&... args) { 
     return MultiDiGraphView(std::make_shared<T const>(std::forward<Args>(args)...));
   }
+
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){} //struct IMultiDiGraph: IMultiDiGraphView
+
 private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
+  // MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
 
   friend struct MultiDiGraph;
   friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
@@ -130,7 +137,7 @@ public:
   MultiDiGraph() = delete;
   MultiDiGraph(MultiDiGraph const &);
 
-  operator MultiDiGraphView() const;
+  operator MultiDiGraphView() const; //TODO, maybe we should implement it 
 
   MultiDiGraph &operator=(MultiDiGraph);
 

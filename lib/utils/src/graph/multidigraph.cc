@@ -10,6 +10,13 @@ std::ostream &operator<<(std::ostream &s, MultiDiEdge const &e) {
   return (s << "MultiDiEdge<" << e.src.value() << ":" << e.srcIdx << " -> " << e.dst.value() << ":" << e.dstIdx << ">");
 }
 
+//add MultiDiEdgeQuery::MultiDiEdgeQuery constructor
+MultiDiEdgeQuery::MultiDiEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs, 
+                   tl::optional<std::unordered_set<Node>> const &dsts, 
+                   tl::optional<std::unordered_set<std::size_t>> const &srcIdxs , 
+                   tl::optional<std::unordered_set<std::size_t>> const &dstIdxs):srcs(srcs), dsts(dsts),srcIdxs(srcIdxs), dstIdxs(dstIdxs)
+{}
+
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(std::unordered_set<Node> const &nodes) const {
   MultiDiEdgeQuery e{*this};
   if (e.srcs != tl::nullopt) {
@@ -70,6 +77,10 @@ void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   using std::swap;
 
   swap(lhs.ptr, rhs.ptr);
+}
+
+MultiDiGraph::operator MultiDiGraphView() const{
+  return MultiDiGraphView(this->ro_ptr);
 }
 
 MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) 

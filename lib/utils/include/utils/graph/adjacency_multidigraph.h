@@ -20,6 +20,14 @@ public:
   AdjacencyMultiDiGraph *clone() const override { 
     return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
   }
+
+
+  AdjacencyMultiDiGraph(){
+    next_node_idx = 0;
+  }
+
+  ~AdjacencyMultiDiGraph(){}
+
 private:
   using ContentsType = 
     std::unordered_map<Node, 
@@ -28,6 +36,8 @@ private:
 
   AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
 
+  
+  
 private:
   std::size_t next_node_idx = 0;
   ContentsType adjacency;
