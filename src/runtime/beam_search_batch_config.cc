@@ -47,6 +47,15 @@ BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
   current_iteration = 0;
 }
 
+BeamSearchBatchConfig::BeamSearchBatchConfig(BeamSearchBatchConfig const &other,
+                                             int model_id)
+    : BatchConfig() {
+  this->beam_width = other.beam_width;
+  this->target_iterations = other.target_iterations;
+  this->model_id = model_id;
+  current_iteration = 0;
+}
+
 BeamSearchBatchConfig::~BeamSearchBatchConfig() {}
 
 InferenceMode BeamSearchBatchConfig::get_mode() const {

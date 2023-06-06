@@ -219,8 +219,14 @@ void FlexFlow::top_level_task(Task const *task,
   // Create SSM models
   int num_ssms = model_types.ssm_model_types.size();
   std::vector<int> ssm_model_ids;
-  FFModel beam_model(ffconfig);
+  std::vector<FFModel> ssm_models;
+  for (int ssm_id = 0; ssm_id < num_ssms; ssm_id ++) {
+    FFModel beam_model(ffconfig);
+    ssm_models.push_back(beam_model);
+  }
+  
   for(int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
+    FFModel &beam_model = ssm_models[ssm_id];
     if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA) {
       LLAMA::create_llama_model(beam_model,
                                 im,
@@ -274,33 +280,40 @@ void FlexFlow::top_level_task(Task const *task,
     int depth = 0;
     // Beam Search
     beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir, 0);
-    // for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
+    for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
 
-    // }
+      beam_bc_vec[ssm_id] = beam_bc;
+      beam_bc_vec[ssm_id].model_id = ssm_id;
+    }
 
     if (rm.get_num_processed_requests() >= total_num_requests) {
       break;
     }
-    while (true) {
-      depth = beam_bc.beamRequestsInfo[0].current_depth;
 
-      FutureMap fm = im.inference(rm.get_model(0), 0, beam_bc);
-      assert(fm.get_future_map_domain().get_volume() == 1);
-      Future future = fm.get_future(0);
-      BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
+    for (int i = 0; i < num_ssms; i++) {
+      while (true) {
+        beam_bc = beam_bc_vec[i];
+        depth = beam_bc.beamRequestsInfo[0].current_depth;
 
-      if (depth - 1 >= BeamSearchBatchConfig::MAX_BEAM_DEPTH) {
-        beam_bc_vec.clear();
-        beam_bc_vec.push_back(beam_bc);
-        break;
-      } else {
-        beam_bc = rm.prepare_next_batch_beam(beam_bc, beam_ir);
-        if (beam_bc.num_active_tokens() == 0 && beam_bc.num_active_requests() != 0) {
-          beam_bc_vec.clear();
-          beam_bc_vec.push_back(beam_bc);
+        FutureMap fm = im.inference(rm.get_model(0), 0, beam_bc);
+        assert(fm.get_future_map_domain().get_volume() == 1);
+        Future future = fm.get_future(0);
+        BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
+
+        if (depth - 1 >= BeamSearchBatchConfig::MAX_BEAM_DEPTH) {
+          beam_bc_vec[i] = beam_bc;
           break;
+        } else {
+          beam_bc_vec[i] = rm.prepare_next_batch_beam(beam_bc, beam_ir);
+          beam_bc = beam_bc_vec[i];
+          if (beam_bc.num_active_tokens() == 0 && beam_bc.num_active_requests() != 0) {
+            beam_bc_vec[i] = beam_bc;
+            break;
+          }
         }
       }
+      std::cout << "----------beam search finished for model " 
+                << beam_bc_vec[i].model_id <<  "------------" << std::endl;
     }
     // Token Tree Verification
     {
