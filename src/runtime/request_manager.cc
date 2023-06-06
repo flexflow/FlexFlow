@@ -514,10 +514,10 @@ BeamSearchBatchConfig
           assert(false);
         }
       }
-      
+
       // delete the old input tree from cache
-      dfs_tree_inputs.erase(request.guid); 
-      
+      dfs_tree_inputs.erase(request.guid);
+
       continue;
     }
 

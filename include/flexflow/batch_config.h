@@ -100,8 +100,7 @@ public:
   BeamSearchBatchConfig();
   BeamSearchBatchConfig(int model_id);
   BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
-  BeamSearchBatchConfig(BeamSearchBatchConfig const &other,
-                        int model_id);
+  BeamSearchBatchConfig(BeamSearchBatchConfig const &other, int model_id);
   InferenceMode get_mode() const;
 
   ~BeamSearchBatchConfig();

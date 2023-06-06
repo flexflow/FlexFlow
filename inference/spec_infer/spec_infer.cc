@@ -220,12 +220,12 @@ void FlexFlow::top_level_task(Task const *task,
   int num_ssms = model_types.ssm_model_types.size();
   std::vector<int> ssm_model_ids;
   std::vector<FFModel> ssm_models;
-  for (int ssm_id = 0; ssm_id < num_ssms; ssm_id ++) {
+  for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
     FFModel beam_model(ffconfig);
     ssm_models.push_back(beam_model);
   }
-  
-  for(int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
+
+  for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
     FFModel &beam_model = ssm_models[ssm_id];
     if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA) {
       LLAMA::create_llama_model(beam_model,
@@ -248,7 +248,7 @@ void FlexFlow::top_level_task(Task const *task,
     int beam_model_id = rm.register_new_model(&beam_model);
     ssm_model_ids.push_back(beam_model_id);
   }
-  
+
   // Register requests from prompt file
   int total_num_requests = 0;
   {
@@ -303,13 +303,14 @@ void FlexFlow::top_level_task(Task const *task,
           break;
         } else {
           beam_bc_vec[i] = rm.prepare_next_batch_beam(beam_bc_vec[i], beam_ir);
-          if (beam_bc_vec[i].num_active_tokens() == 0 && beam_bc_vec[i].num_active_requests() != 0) {
+          if (beam_bc_vec[i].num_active_tokens() == 0 &&
+              beam_bc_vec[i].num_active_requests() != 0) {
             break;
           }
         }
       }
-      std::cout << "----------beam search finished for model " 
-                << beam_bc_vec[i].model_id <<  "------------" << std::endl;
+      std::cout << "----------beam search finished for model "
+                << beam_bc_vec[i].model_id << "------------" << std::endl;
     }
     // Token Tree Verification
     {
@@ -340,4 +341,3 @@ void FlexFlow::top_level_task(Task const *task,
 }
 
 void FlexFlow::register_custom_tasks() {}
-
