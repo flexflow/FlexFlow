@@ -126,7 +126,8 @@ def top_level_task():
     output_tensors = hf_model.torch_to_ff(ffmodel, input_tensors, verbose=True)
     #from flexflow.torch.model import file_to_ff
     #file_to_ff("mt5.ff", ffmodel, input_tensors)
-    ffoptimizer = SGDOptimizer(ffmodel, lr=0.01)
+    ffoptimizer = AdamOptimizer(ffmodel, alpha=1e-4, adam_beta1=0.9, adam_beta2=0.98, weight_decay=0.0, adam_epsilon=2e-8)
+    # ffoptimizer = SGDOptimizer(ffmodel, lr=0.01)
 
     print("Compiling the model...")
     ffmodel.compile(
