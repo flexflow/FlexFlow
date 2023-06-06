@@ -232,7 +232,6 @@ private:
 
 DirectedEdge flipped(DirectedEdge const &);
 
-
 DiGraphView unsafe_view_as_flipped(DiGraphView const &);
 DiGraphView view_as_flipped(DiGraphView const &);
 
@@ -249,13 +248,13 @@ OpenMultiDiGraphView unsafe_view_as_subgraph(OpenMultiDiGraphView const &, std::
 OpenMultiDiGraphView view_subgraph(OpenMultiDiGraphView const &, std::unordered_set<Node> const &);
 
 UndirectedGraphView unsafe_view_as_joined(UndirectedGraphView const &, UndirectedGraphView const &);
-UndirectedGraphView view_as_joined(UndirectedGraphView const &, UndirectedGraphView const &);
+UndirectedGraphView view_as_joined(UndirectedGraphView const &, UndirectedGraphView const &);//TODO
 
 DiGraphView unsafe_view_as_joined(DiGraphView const &, DiGraphView const &);
-DiGraphView view_as_joined(DiGraphView const &, DiGraphView const &);
+DiGraphView view_as_joined(DiGraphView const &, DiGraphView const &);//TODO
 
 MultiDiGraphView unsafe_view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);
-MultiDiGraphView view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);
+MultiDiGraphView view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);//TODO
 
 DiGraphView unsafe_view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);
 DiGraphView view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);

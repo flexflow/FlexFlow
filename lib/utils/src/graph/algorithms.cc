@@ -1,5 +1,7 @@
 #include "utils/graph/algorithms.h"
 #include "utils/graph/conversions.h"
+#include <cstddef>
+#include <memory>
 #include <queue>
 #include <algorithm>
 #include <iostream>
@@ -238,6 +240,29 @@ std::unordered_set<Node> get_sources(DiGraphView const &g) {
   return sources;
 }
 
+std::unordered_set<Node> get_sinks(DiGraphView const & g){
+  std::unordered_set<Node> dsts ;
+  for(Node const &n : get_nodes(g)) {
+    auto outgoing = get_outgoing_edges(g, n);
+    if(outgoing.size() == 0){
+      dsts.insert(n);
+    }
+  }
+  return dsts;
+}
+
+std::unordered_set<Node> get_sinks(MultiDiGraphView const & g){
+  std::unordered_set<Node> dsts ;
+  for(Node const &n : get_nodes(g)) {
+    auto outgoing = get_outgoing_edges(g, n);
+    if(outgoing.size() == 0){
+      dsts.insert(n);
+    }
+  }
+  return dsts
+}
+
+
 tl::optional<bool> is_acyclic(DiGraphView const &g) {
   if (num_nodes(g) == 0) {
     return tl::nullopt;
@@ -449,5 +474,48 @@ UndirectedGraphView join(UndirectedGraphView const &lhs, UndirectedGraphView con
   return view_as_joined(lhs, rhs);
 }
 
+
+// DiGraphView view_as_joined(DiGraphView const &lhs, DiGraphView const &rhs) {
+//   //TODO we should use the lhs->ptr, rhs->ptr
+//   //lhs->ptr: IDiGraphView, and the IDigraph->(IDiGraphView, IGraph), AdjacencyDiGraph ->IDiGraph
+//   //use the DiGraphView::create to get the DigraphView
+  
+// }
+
+// MultiDiGraphView view_as_joined(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs){
+//   //class AdjacencyMultiDiGraph : public IMultiDiGraph
+//   //struct IMultiDiGraph : public IMultiDiGraphView, public IGraph 
+//   //MultiDiGraphView->ptr:  std::shared_ptr<IMultiDiGraphView const> ptr;
+//   //I think the lhs->ptr and rhs->ptr should be AdjacencyMultiDiGraph
+//   AdjacencyMultiDiGraph lhs_ptr = std::dynamic_pointer_cast(AdjacencyMultiDiGraph)(lhs->ptr)
+//   AdjacencyMultiDiGraph rhs_ptr = std::dynamic_pointer_cast(AdjacencyMultiDiGraph)(rhs->ptr);
+//   assert(!lhs_ptr);
+//   assert(!rhs_ptr);
+
+//   AdjacencyMultiDiGraph g;
+  
+//   ContentsType lhs_adjacency = lhs_ptr.get_adjacency()
+//   for (auto const &kv : this->adjacency) {
+//     Node src = kv.first;
+//     g.add_node(src);
+//   }
+//   std::unordered_set<MultiDiEdge> lhs_edge = lhs_ptr.query_edges({});//get the all edge of the rhs
+//   for(auto const & edge : lhs_edge){
+//     g.add_edge(edge);
+//   }
+
+//   ContentsType rhs_adjacency = rhs_ptr.get_adjacency();
+//   for (auto const &kv : this->adjacency) {
+//     Node src = kv.first;
+//     g.add_node(src);
+//   }
+//   std::unordered_set<MultiDiEdge> rhs_edge = rhs_ptr.query_edges({});//get the all edge of the rhs
+//   for(auto const & edge : rhs_edge){
+//     g.add_edge(edge);
+//   }
+//   //now we build the AdjacencyMultiDiGrap
+//   return MultiDiGraphView::create<AdjacencyMultiDiGraph>(g);
+
+// }
 
 }

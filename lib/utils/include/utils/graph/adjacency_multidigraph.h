@@ -17,8 +17,16 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  void add_node(Node const &); //add node
+
   AdjacencyMultiDiGraph *clone() const override { 
     return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
+  }
+
+  //add my constructor
+  AdjacencyMultiDiGraph(AdjacencyMultiDiGraph const & g){
+    this->next_node_idx = g.next_node_idx;
+    this->adjacency = g.get_adjacency();
   }
 
 
@@ -36,7 +44,10 @@ private:
 
   AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
 
-  
+public:
+  ContentsType get_adjacency(){
+    return this->adjacency;
+  } 
   
 private:
   std::size_t next_node_idx = 0;

@@ -23,6 +23,11 @@ public:
   AdjacencyDiGraph *clone() const override {
     return new AdjacencyDiGraph(this->next_node_idx, this->adjacency);
   }
+
+  AdjacencyDiGraph() {
+    next_node_idx = 0;
+  }
+
 private:
   using ContentsType = std::unordered_map<Node, std::unordered_set<Node>>;
 
