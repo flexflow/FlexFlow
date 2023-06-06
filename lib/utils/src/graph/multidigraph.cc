@@ -1,4 +1,7 @@
 #include "utils/graph/multidigraph.h"
+#include "utils/containers.h"
+#include <cstdio>
+
 
 namespace FlexFlow {
 
@@ -72,6 +75,17 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(std::size_t idx) const {
 MultiDiEdgeQuery MultiDiEdgeQuery::all() {
   return MultiDiEdgeQuery{};
 }
+
+// MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &, MultiDiEdgeQuery const &){
+//   assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
+
+//   tl::optional<std::unordered_set<Node>> srcs_t1 = intersection(*lhs.srcs, *rhs.srcs);
+//   tl::optional<std::unordered_set<Node>> dsts_t1 = intersection(*lhs.dsts, *rhs.dsts);
+  
+//   //TODO, how to set srcIdxs, dstIdxs
+//   // return MultiDiEdgeQuery()
+// }
+
 
 void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   using std::swap;
