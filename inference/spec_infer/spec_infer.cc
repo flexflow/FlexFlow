@@ -44,7 +44,9 @@ struct ModelTypes {
 void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
-                      ModelTypes &model_types) {
+                      ModelTypes &model_types,
+                      bool &use_full_precision,
+                      bool &verbose) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -110,6 +112,20 @@ void parse_input_args(char **argv,
       paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
+    // output file
+    if (!strcmp(argv[i], "-output-file")) {
+      paths.output_file_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--use-full-precision")) {
+      use_full_precision = true;
+      continue;
+    }
+    // verbose logging to stdout
+    if (!strcmp(argv[i], "--verbose")) {
+      verbose = true;
+      continue;
+    }
   }
 }
 
@@ -120,11 +136,15 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   FilePaths file_paths;
   ModelTypes model_types;
+  bool use_full_precision = false;
+  bool verbose = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv, argc, file_paths, model_types);
+  parse_input_args(
+      argv, argc, file_paths, model_types, use_full_precision, verbose);
+
   if (file_paths.ssm_weight_file_paths.size() == 0) {
     assert(false &&
            "SpecInfer needs at least one SSM for speculative inference");
@@ -172,7 +192,9 @@ void FlexFlow::top_level_task(Task const *task,
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm((model_types.llm_model_type == ModelType::LLAMA)
                         ? (Tokenizer *)sp_tokenizer
-                        : (Tokenizer *)opt_tokenizer);
+                        : (Tokenizer *)opt_tokenizer,
+                    /*verbose*/ verbose,
+                    file_paths.output_file_path);
 
   // Create LLM model
   FFModel tree_model(ffconfig);

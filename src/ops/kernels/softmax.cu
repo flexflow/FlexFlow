@@ -63,7 +63,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
     log_measure.debug(
         "%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
   }
-
 }
 
 template <typename DT>

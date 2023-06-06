@@ -2,7 +2,16 @@
 
 import os
 import requests
+import argparse
 from transformers import AutoModelForCausalLM
+
+# You can pass the --use-full-precision flag to use the full-precision weight. By default, we use half precision.
+parser = argparse.ArgumentParser()
+parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
+args = parser.parse_args()
+if not args.use_full_precision:
+    import torch
+    torch.set_default_tensor_type(torch.HalfTensor)
 
 # Change working dir to folder storing this script
 abspath = os.path.abspath(__file__)
@@ -33,12 +42,12 @@ def convert_hf_model(model, dst_folder):
 
 # Download and convert big model weights
 model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
-dst_folder="../weights/llama_7B_weights"
+dst_folder="../weights/llama_7B_weights" if args.use_full_precision else "../weights/llama_7B_weights_half"
 convert_hf_model(model, dst_folder)
 
 # Download and convert small model weights
 model = AutoModelForCausalLM.from_pretrained("JackFram/llama-160m")
-dst_folder="../weights/llama_160M_weights"
+dst_folder="../weights/llama_160M_weights" if args.use_full_precision else "../weights/llama_160M_weights_half"
 convert_hf_model(model, dst_folder)
 
 # Download tokenizer

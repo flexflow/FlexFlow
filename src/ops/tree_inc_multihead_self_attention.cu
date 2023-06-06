@@ -137,7 +137,7 @@ __global__ void update_tree_branch_kv_cache(
         (i / proj_size) % num_tokens_in_branch; // index in the tree branch
     int head_idx = i / (proj_size * num_tokens_in_branch);
 
-    token_idx += processed_tokens_in_batch;     // get index in the whole batch
+    token_idx += processed_tokens_in_batch; // get index in the whole batch
     int qkv_block_size = (qProjSize + kProjSize + vProjSize) *
                          total_tokens_in_batch; // skip over previous heads
     int current_head_block_size =
