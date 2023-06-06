@@ -6,6 +6,7 @@
 #include "utils/graph/traversal.h"
 #include "utils/containers.h"
 #include <cassert>
+#include <valarray>
 #include "utils/graph/views.h"
 
 namespace FlexFlow {
@@ -163,8 +164,18 @@ std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g, std::u
   return to_directed_edges(get_incoming_edges(multidigraph_view, dsts));
 }
 
+//implement methods for std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &, Node const &);
+std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const & g, Node const & n){
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
+}   
+
 std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g, std::unordered_set<Node> const &srcs) {
   return g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(srcs));
+}
+
+//implement std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &, std::unordered_set<Node> const &);
+std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const & g, Node const & n){
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
 
 std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g, std::unordered_set<Node> const &dsts) {

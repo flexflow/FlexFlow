@@ -3,6 +3,7 @@
 
 #include "node.h"
 #include "tl/optional.hpp"
+#include <memory>
 #include <unordered_set>
 #include "utils/visitable.h"
 #include "utils/unique.h"
@@ -58,7 +59,7 @@ public:
 
   DiGraphView() = delete;
 
-  operator GraphView() const;
+  operator GraphView() const;//TODO
 
   friend void swap(DiGraphView &, DiGraphView &);
 
@@ -82,6 +83,8 @@ public:
   create(Args &&... args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
+  DiGraphView(std::unique_ptr<IDiGraphView> const );
+
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const>);
 
@@ -110,7 +113,7 @@ public:
 
   DiGraph &operator=(DiGraph);
 
-  operator DiGraphView() const;
+  operator DiGraphView() const; //TODO
 
   friend void swap(DiGraph &, DiGraph &);
 
