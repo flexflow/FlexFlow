@@ -66,5 +66,4 @@ std::unordered_set<Node> AdjacencyMultiDiGraph::query_nodes(NodeQuery const &que
   return result;
 }
 
-
 }

@@ -8,8 +8,8 @@ namespace FlexFlow {
 
 struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
   InputMultiDiEdge() = delete;
-  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid_, Node const & dst_, std::size_t const & dstIdx_)
-  : uid(uid_), dst(dst_), dstIdx(dstIdx_){}
+  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid, Node const & dst, std::size_t const & dstIdx)
+  : uid(uid), dst(dst), dstIdx(dstIdx){}
 
   std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple input edges from different sources resulting from a graph cut
   Node dst;

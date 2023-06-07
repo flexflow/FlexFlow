@@ -52,8 +52,7 @@ public:
 
 struct MultiDiInput : public use_visitable_cmp<MultiDiInput> {
 public:
-  MultiDiInput(Node const & node, size_t idx)
-  : node(node), idx(idx){}
+  MultiDiInput(Node const & node, size_t idx): node(node), idx(idx){}
 
 public:
   Node node;

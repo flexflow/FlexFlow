@@ -154,10 +154,6 @@ std::unique_ptr<IMultiDiGraphView> unsafe_view_as_multidigraph(IDiGraphView cons
   return std::unique_ptr<IMultiDiGraphView>(new ViewDiGraphAsMultiDiGraph(directed));
 }
 
-// MultiDiGraphView unsafe_view_as_multidigraph(DiGraphView const & durected){
-
-// }
-
 std::unique_ptr<IMultiDiGraphView> view_as_multidigraph(std::shared_ptr<IDiGraphView> const &directed) {
   return std::unique_ptr<IMultiDiGraphView>(new ViewDiGraphAsMultiDiGraph(directed));
 }

@@ -81,7 +81,7 @@ public:
     return UndirectedGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr_):ptr(ptr_){}
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr):ptr(ptr){}
 
   friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
 private:

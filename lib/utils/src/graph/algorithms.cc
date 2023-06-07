@@ -181,7 +181,6 @@ std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g, std::u
   return to_directed_edges(get_incoming_edges(multidigraph_view, dsts));
 }
 
-//implement methods for std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &, Node const &);
 std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const & g, Node const & n){
   return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }   
@@ -190,7 +189,6 @@ std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g, st
   return g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(srcs));
 }
 
-//implement std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &, std::unordered_set<Node> const &);
 std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const & g, Node const & n){
   return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
@@ -488,53 +486,5 @@ DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs) {
 UndirectedGraphView join(UndirectedGraphView const &lhs, UndirectedGraphView const &rhs) {
   return view_as_joined(lhs, rhs);
 }
-
-// DiGraphView view_as_joined(DiGraphView const &lhs, DiGraphView const &rhs) {
-//   // return tl::nullopt; //TODO
-
-
-// }
-// DiGraphView view_as_joined(DiGraphView const &lhs, DiGraphView const &rhs) {
-//   //TODO we should use the lhs->ptr, rhs->ptr
-//   //lhs->ptr: IDiGraphView, and the IDigraph->(IDiGraphView, IGraph), AdjacencyDiGraph ->IDiGraph
-//   //use the DiGraphView::create to get the DigraphView
-  
-// }
-
-// MultiDiGraphView view_as_joined(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs){
-//   //class AdjacencyMultiDiGraph : public IMultiDiGraph
-//   //struct IMultiDiGraph : public IMultiDiGraphView, public IGraph 
-//   //MultiDiGraphView->ptr:  std::shared_ptr<IMultiDiGraphView const> ptr;
-//   //I think the lhs->ptr and rhs->ptr should be AdjacencyMultiDiGraph
-//   AdjacencyMultiDiGraph lhs_ptr = std::dynamic_pointer_cast(AdjacencyMultiDiGraph)(lhs->ptr)
-//   AdjacencyMultiDiGraph rhs_ptr = std::dynamic_pointer_cast(AdjacencyMultiDiGraph)(rhs->ptr);
-//   assert(!lhs_ptr);
-//   assert(!rhs_ptr);
-
-//   AdjacencyMultiDiGraph g;
-  
-//   ContentsType lhs_adjacency = lhs_ptr.get_adjacency()
-//   for (auto const &kv : this->adjacency) {
-//     Node src = kv.first;
-//     g.add_node(src);
-//   }
-//   std::unordered_set<MultiDiEdge> lhs_edge = lhs_ptr.query_edges({});//get the all edge of the rhs
-//   for(auto const & edge : lhs_edge){
-//     g.add_edge(edge);
-//   }
-
-//   ContentsType rhs_adjacency = rhs_ptr.get_adjacency();
-//   for (auto const &kv : this->adjacency) {
-//     Node src = kv.first;
-//     g.add_node(src);
-//   }
-//   std::unordered_set<MultiDiEdge> rhs_edge = rhs_ptr.query_edges({});//get the all edge of the rhs
-//   for(auto const & edge : rhs_edge){
-//     g.add_edge(edge);
-//   }
-//   //now we build the AdjacencyMultiDiGrap
-//   return MultiDiGraphView::create<AdjacencyMultiDiGraph>(g);
-
-// }
 
 }

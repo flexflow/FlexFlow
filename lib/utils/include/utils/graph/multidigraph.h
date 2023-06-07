@@ -168,7 +168,6 @@ private:
 private:
   std::unique_ptr<IMultiDiGraph> ptr;
   std::shared_ptr<IMultiDiGraph const> ro_ptr;
-
 };
 
 

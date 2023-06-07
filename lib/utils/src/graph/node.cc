@@ -2,7 +2,6 @@
 #include <sstream>
 #include "utils/containers.h"
 
-
 namespace FlexFlow {
 
 NodeQuery::NodeQuery(std::unordered_set<Node> const &nodes)

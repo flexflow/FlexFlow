@@ -16,8 +16,7 @@
 namespace FlexFlow {
 
 std::vector<Node> add_nodes(Graph &, int);
-std::unordered_set<Node> get_nodes(GraphView const &);//TODO
-std::unordered_set<Node> get_nodes(IGraphView const &g);
+std::unordered_set<Node> get_nodes(GraphView const &);
 
 std::unordered_set<Node> query_nodes(GraphView const &, std::unordered_set<Node> const &);
 
@@ -86,11 +85,11 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
 std::unordered_map<Node, std::unordered_set<Node>> get_predecessors(MultiDiGraphView const &, std::unordered_set<Node> const &);
 std::unordered_map<Node, std::unordered_set<Node>> get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
-//return the set of nodes with incoming edges
+//return the set of nodes without incoming edges
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 
-//return the set of nodes with nogoing edges
+//return the set of nodes without outgoing edges
 std::unordered_set<Node> get_sinks(DiGraphView const &);
 std::unordered_set<Node> get_sinks(MultiDiGraphView const &);
 
