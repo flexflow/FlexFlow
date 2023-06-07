@@ -43,3 +43,6 @@
 - [ ] `MultiDiSubgraphView::query_nodes(NodeQuery const&) const`(lib/utils/include/utils/graph/undirected.h)
 - [ ] ` std::unordered_set<Edge> UndirectedGraphView::query_edges(EdgeQuery const &) const `(lib/utils/include/utils/graph/undirected.h)
 - [&#x2714;] ` OutputMultiDiEdge::OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &, std::size_t const &)`(lib/utils/include/utils/graph/open_graph_interfaces.h)
+- [ &#x2714;] ` InputMultiDiEdge::InputMultiDiEdge `lib/utils/include/utils/graph/open_graph_interfaces.h
+- [&#x2714;] `AdjacencyMultiDiGraph::AdjacencyMultiDiGraph(unsigned long ` lib/utils/include/utils/graph/adjacency_multidigraph.h
+- [ ] `MultiDiInput::MultiDiInput(FlexFlow::Node const&, unsigned long)` (lib/utils/include/utils/graph/labelled_graph_interfaces.h)

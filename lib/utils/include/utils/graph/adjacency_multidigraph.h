@@ -42,7 +42,9 @@ private:
       std::unordered_map<Node,
         std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>>;
 
-  AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
+  AdjacencyMultiDiGraph(std::size_t next_node_idx_, ContentsType const & adjacency_)
+  : next_node_idx(next_node_idx_), adjacency(adjacency_)
+  {}
 
 public:
   ContentsType get_adjacency(){
