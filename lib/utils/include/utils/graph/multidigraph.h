@@ -98,8 +98,9 @@ public:
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
+  //TODO
   operator maybe_owned_ref<IMultiDiGraphView const>() const {
-    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
+    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr.get());
   }
 
   IMultiDiGraphView const *unsafe() const {

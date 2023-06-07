@@ -2,7 +2,7 @@
 -  [&#x2714;] std::unordered_set<Node> get_sources(DiGraphView const &);(lib/utils/include/utils/graph/algorithms.h)
 - [&#x2714;] std::unordered_set<Node> get_sources(MultiDiGraphView const &);  (lib/utils/include/utils/graph/algorithms.h)
 - [&#x2714;]  ` get_sinks ` lib/utils/include/utils/graph/algorithms.h
-- [ ] all `view_as_joined method(lib/utils/include/utils/graph/views.h)`
+- [ ] all `view_as_joined method` (lib/utils/include/utils/graph/views.h)
 - [&#x2714;] ` MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &, MultiDiEdgeQuery const &) `( lib/utils/include/utils/graph/multidigraph.h)
 - [&#x2714;] ` JoinNodeKey::operator== `(lib/utils/include/utils/graph/views.h)
 - [&#x2714;] ` JoinNodeKey(Node const &, LRDirection) `(lib/utils/include/utils/graph/views.h)
@@ -11,10 +11,10 @@
 - [&#x2714;] `query_intersection(DirectedEdgeQuery const& ` (lib/utils/include/utils/graph/digraph.h)
 - [&#x2714;] ` DiGraphView(std::shared_ptr<IDiGraphView const>  ` (lib/utils/include/utils/graph/digraph.h)
 - [&#x2714;] ` AdjacencyDiGraph(std::size_t, ContentsType)` (lib/utils/include/utils/graph/adjacency_digraph.h)
-- [ ]  ` operator maybe_owned_ref<IUndirectedGraphView const>() const` (lib/utils/include/utils/graph/undirected.h)
+- [&#x2714;]  ` operator maybe_owned_ref<IUndirectedGraphView const>() const` (lib/utils/include/utils/graph/undirected.h)
 - [ ] ` MultiDiGraphView unsafe(IMultiDiGraphView const &) ` (lib/utils/include/utils/graph/multidigraph.h)
 - [&#x2714;] `InputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &, std::size_t const &)` （lib/utils/include/utils/graph/open_graph_interfaces.h）
-- [ ] `   operator maybe_owned_ref<IMultiDiGraphView const>() const ` (lib/utils/include/utils/graph/multidigraph.h)
+- [&#x2714;] `   operator maybe_owned_ref<IMultiDiGraphView const>() const ` (lib/utils/include/utils/graph/multidigraph.h)
 - [ ] ` tl::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &)` (lib/utils/include/utils/graph/algorithms.h)
 - [&#x2714;] `  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>) ` (lib/utils/include/utils/graph/undirected.h)
 - [ ] `    std::vector<std::unordered_set<Node>> get_weakly_connected_components(DiGraphView const &) `(lib/utils/include/utils/graph/algorithms.h) 
@@ -22,7 +22,7 @@
 - [&#x2714;] ` NodeQuery query_intersection(NodeQuery const &, NodeQuery const &) ` (lib/utils/include/utils/graph/node.h)
 - [ ] `   operator UndirectedGraphView() const` (lib/utils/include/utils/graph/adjacency_multidigraph.h)
 - [&#x2714;]  `   SplitASTNode(SplitType)` (lib/utils/src/graph/serialparallel_internal.h)
-- [ ]  `    operator maybe_owned_ref<IUndirectedGraphView const>() const`(lib/utils/src/graph/serialparallel_internal.h)
+- [&#x2714;]  `    operator maybe_owned_ref<IUndirectedGraphView const>() const`(lib/utils/src/graph/serialparallel_internal.h)
 - [ ]  ` std::unordered_set<Node> get_nodes(GraphView const &)` (lib/utils/include/utils/graph/algorithms.h)
 - [&#x2714;] `  std::size_t operator()(::FlexFlow::JoinNodeKey const &) const`(lib/utils/include/utils/graph/views.h)
 - [ ] `MultiDiGraphView unsafe_view_as_multidigraph(DiGraphView const &)`(lib/utils/include/utils/graph/conversions.h)
@@ -45,4 +45,4 @@
 - [&#x2714;] ` OutputMultiDiEdge::OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &, std::size_t const &)`(lib/utils/include/utils/graph/open_graph_interfaces.h)
 - [ &#x2714;] ` InputMultiDiEdge::InputMultiDiEdge `lib/utils/include/utils/graph/open_graph_interfaces.h
 - [&#x2714;] `AdjacencyMultiDiGraph::AdjacencyMultiDiGraph(unsigned long ` lib/utils/include/utils/graph/adjacency_multidigraph.h
-- [ ] `MultiDiInput::MultiDiInput(FlexFlow::Node const&, unsigned long)` (lib/utils/include/utils/graph/labelled_graph_interfaces.h)
+- [&#x2714;] `MultiDiInput::MultiDiInput(FlexFlow::Node const&, unsigned long)` (lib/utils/include/utils/graph/labelled_graph_interfaces.h)

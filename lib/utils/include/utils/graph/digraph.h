@@ -69,8 +69,9 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
+  //TODO
   operator maybe_owned_ref<IDiGraphView const>() const {
-    return maybe_owned_ref<IDiGraphView const>(this->ptr);
+    return maybe_owned_ref<IDiGraphView const>(this->ptr.get());
   }
 
   IDiGraphView const *unsafe() const {

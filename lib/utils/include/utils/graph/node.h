@@ -56,8 +56,9 @@ struct GraphView {
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
 
+  //TODO
   operator maybe_owned_ref<IGraphView const>() const {
-    return maybe_owned_ref<IGraphView const>(this->ptr);
+    return maybe_owned_ref<IGraphView const>(this->ptr.get());
   }
 
   IGraphView const *unsafe() const {
