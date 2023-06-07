@@ -7,6 +7,8 @@
 #include "utils/visitable.h"
 #include "utils/unique.h"
 #include "utils/maybe_owned_ref.h"
+#include "utils/type_traits.h"
+#include "cow_ptr_t.h"
 
 namespace FlexFlow {
 
@@ -58,29 +60,17 @@ struct IMultiDiGraphView : public IGraphView {
   virtual ~IMultiDiGraphView();
 };
 
-template <typename T>
-struct dep_tracked_ref {
-  dep_tracked_ref() = delete;
-  dep_tracked_ref(dep_tracked_ref const &);
-
-  constexpr operator T& () const noexcept { return *_ptr; }
-  constexpr T& get() const noexcept { return *_ptr; }
-private:
-  explicit dep_tracked_ref(T &ref)
-    : _ptr(&ref) 
-  { }
-
-  friend struct DependencyOwner;
-  T *_ptr;
-};
-
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value, RC_COPY_VIRTUAL_MSG);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
   virtual void remove_edge(Edge const &) = 0;
 
-  virtual IMultiDiGraph *clone() const = 0;
+  virtual std::unordered_set<Node> query_nodes(NodeQuery const &query) const override {
+    return static_cast<IMultiDiGraphView const *>(this)->query_nodes(query);
+  }
+
+  virtual IMultiDiGraph *clone() const override = 0;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraph>::value, RC_COPY_VIRTUAL_MSG);
@@ -156,10 +146,8 @@ private:
   MultiDiGraph(std::unique_ptr<IMultiDiGraph>);
 
 private:
-  std::unique_ptr<IMultiDiGraph> ptr;
-  std::shared_ptr<IMultiDiGraph const> ro_ptr;
+  cow_ptr_t<IMultiDiGraph> ptr;
 };
-
 
 static_assert(std::is_copy_constructible<MultiDiGraph>::value, "");
 static_assert(std::is_move_constructible<MultiDiGraph>::value, "");

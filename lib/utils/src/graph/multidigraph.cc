@@ -73,7 +73,7 @@ void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
 }
 
 MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) 
-  : ptr(other.ptr->clone())
+  : ptr(other.ptr)
 { }
 
 MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
@@ -88,23 +88,23 @@ void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
 }
 
 Node MultiDiGraph::add_node() {
-  return this->ptr->add_node();
+  return this->ptr.mutable_ref().add_node();
 }
 
 void MultiDiGraph::add_node_unsafe(Node const &n) {
-  return this->ptr->add_node_unsafe(n);
+  return this->ptr.mutable_ref().add_node_unsafe(n);
 }
 
 void MultiDiGraph::remove_node_unsafe(Node const &n) {
-  return this->ptr->remove_node_unsafe(n);
+  return this->ptr.mutable_ref().remove_node_unsafe(n);
 }
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
-  return this->ptr->add_edge(e);
+  return this->ptr.mutable_ref().add_edge(e);
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
-  return this->ptr->remove_edge(e);
+  return this->ptr.mutable_ref().remove_edge(e);
 }
 
 std::unordered_set<MultiDiEdge> MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
