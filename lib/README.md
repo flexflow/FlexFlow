@@ -12,7 +12,7 @@ This directory contains the core C++ code that underlies FlexFlow, organized int
 - `utils`:
 
 ```mermaid
-%%{init: {"fontFamily": "monospace"}}%%
+%%{init: {'fontFamily': 'monospace'}}%%
 sequenceDiagram
     participant U as User
     participant P as ../python
