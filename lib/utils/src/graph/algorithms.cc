@@ -23,9 +23,9 @@ std::unordered_set<Node> get_nodes(IGraphView const &g) {
   return g.query_nodes({});
 }
 
-// std::unordered_set<Node> get_nodes(GraphView const & g){
-//   return g.query_nodes({});
-// }
+std::unordered_set<Node> get_nodes(GraphView const & g){
+  return g.unsafe()->query_nodes({});
+}
 
 std::unordered_set<Node> query_nodes(IGraphView const &g, std::unordered_set<Node> const &nodes) {
   return g.query_nodes({nodes});
@@ -88,6 +88,11 @@ void remove_node_if_unused(UndirectedGraph &g, Node const &n) {
 
   g.remove_node_unsafe(n);
 }
+
+std::size_t num_nodes(GraphView const & g) {
+  return get_nodes(g).size();
+}
+
 
 std::size_t num_nodes(IGraphView const &g) {
   return get_nodes(g).size();

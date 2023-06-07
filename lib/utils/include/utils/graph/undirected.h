@@ -61,7 +61,9 @@ public:
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const & query) const {
+    return ptr->query_edges(query);
+  }
 
   //TODO
   operator maybe_owned_ref<IUndirectedGraphView const>() const {

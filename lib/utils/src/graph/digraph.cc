@@ -35,6 +35,10 @@ bool DiGraphView::operator!=(DiGraphView const &other) const {
   return ptr != other.ptr;
 }
 
+// std::unordered_set<Edge> DiGraphView::query_edges(EdgeQuery const & query) const {
+//   return ptr->query_edges(query);
+// }
+
 DiGraph::DiGraph(DiGraph const &other)
   : ptr(other.ptr->clone())
 { }

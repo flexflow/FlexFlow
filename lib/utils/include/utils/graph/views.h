@@ -54,7 +54,7 @@ public:
   MultiDiSubgraphView() = delete;
   explicit MultiDiSubgraphView(maybe_owned_ref<IMultiDiGraphView const>, std::unordered_set<Node> const &);
 
-  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override; //TODO
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override; //TODO 
 private:
   maybe_owned_ref<IMultiDiGraphView const> g;

@@ -108,7 +108,9 @@ public:
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const & query) const {
+    return ptr->query_edges(query);
+  }
 
   template <typename T, typename ...Args>
   static 
