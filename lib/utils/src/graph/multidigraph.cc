@@ -93,6 +93,30 @@ void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
+Node MultiDiGraph::add_node() {
+  return this->ptr.mutable_ref().add_node();
+}
+
+void MultiDiGraph::add_node_unsafe(Node const &n) {
+  return this->ptr.mutable_ref().add_node_unsafe(n);
+}
+
+void MultiDiGraph::remove_node_unsafe(Node const &n) {
+  return this->ptr.mutable_ref().remove_node_unsafe(n);
+}
+
+void MultiDiGraph::add_edge(MultiDiEdge const &e) {
+  return this->ptr.mutable_ref().add_edge(e);
+}
+
+void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
+  return this->ptr.mutable_ref().remove_edge(e);
+}
+
+std::unordered_set<MultiDiEdge> MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
+
 MultiDiGraph::operator MultiDiGraphView() const{
   return MultiDiGraphView(this->ro_ptr);
 }

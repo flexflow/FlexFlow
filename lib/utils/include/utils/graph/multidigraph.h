@@ -166,8 +166,9 @@ private:
   MultiDiGraph(std::unique_ptr<IMultiDiGraph>);
 
 private:
-  std::unique_ptr<IMultiDiGraph> ptr;
-  std::shared_ptr<IMultiDiGraph const> ro_ptr;
+  // std::unique_ptr<IMultiDiGraph> ptr;
+  // std::shared_ptr<IMultiDiGraph const> ro_ptr;
+  cow_ptr_t<IMultiDiGraph> ptr;
 };
 
 

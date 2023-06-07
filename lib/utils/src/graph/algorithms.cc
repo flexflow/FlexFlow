@@ -453,11 +453,6 @@ tl::optional<Node> imm_post_dominator(MultiDiGraphView const &g, Node const &n) 
   return get_imm_post_dominators(g).at(n);
 }
 
-// tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const &nodes){
-
-// }
-
-
 std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e) {
   return { OutputMultiDiEdge{{e.dst.value(), e.dstIdx}, e.src, e.srcIdx}, InputMultiDiEdge{{e.src.value(), e.srcIdx}, e.dst, e.dstIdx} };
 }

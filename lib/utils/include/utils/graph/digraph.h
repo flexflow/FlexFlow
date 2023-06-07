@@ -68,9 +68,7 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   
-  std::unordered_set<Edge> query_edges(EdgeQuery const & query) const {
-    return ptr->query_edges(query);
-  }
+  std::unordered_set<Edge> query_edges(EdgeQuery const & query) const;
 
   //TODO
   operator maybe_owned_ref<IDiGraphView const>() const {
@@ -87,7 +85,6 @@ public:
   create(Args &&... args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
-  DiGraphView(std::unique_ptr<IDiGraphView> const );
 
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr):ptr(ptr){}

@@ -8,7 +8,7 @@
 - [&#x2714;] ` JoinNodeKey(Node const &, LRDirection) `(lib/utils/include/utils/graph/views.h)
 - [ ] `UndirectedGraphView::operator GraphView&() ` (lib/utils/include/utils/graph/digraph.h)
 - [&#x2714;] ` unsafe_view_as_flipped(DiGraphView const&)` (lib/utils/include/utils/graph/views.h)
-- [&#x2714;] `query_intersection(DirectedEdgeQuery const& ` (lib/utils/include/utils/graph/digraph.h)
+- [] `query_intersection(DirectedEdgeQuery const& ` (lib/utils/include/utils/graph/digraph.h)
 - [&#x2714;] ` DiGraphView(std::shared_ptr<IDiGraphView const>  ` (lib/utils/include/utils/graph/digraph.h)
 - [&#x2714;] ` AdjacencyDiGraph(std::size_t, ContentsType)` (lib/utils/include/utils/graph/adjacency_digraph.h)
 - [&#x2714;]  ` operator maybe_owned_ref<IUndirectedGraphView const>() const` (lib/utils/include/utils/graph/undirected.h)
