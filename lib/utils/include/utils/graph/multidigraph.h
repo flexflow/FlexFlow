@@ -127,7 +127,7 @@ private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 
-MultiDiGraphView unsafe(IMultiDiGraphView const &);
+MultiDiGraphView unsafe(IMultiDiGraphView const & g);//TODO
 
 struct MultiDiGraph {
 public:

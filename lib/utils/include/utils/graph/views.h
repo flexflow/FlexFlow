@@ -55,7 +55,7 @@ public:
   explicit MultiDiSubgraphView(maybe_owned_ref<IMultiDiGraphView const>, std::unordered_set<Node> const &);
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
-  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override; //TODO 
 private:
   maybe_owned_ref<IMultiDiGraphView const> g;
   std::unordered_set<Node> subgraph_nodes;
@@ -90,7 +90,9 @@ struct JoinNodeKey {
 namespace std {
 template <>
 struct hash<::FlexFlow::JoinNodeKey> {
-  std::size_t operator()(::FlexFlow::JoinNodeKey const &) const;
+  std::size_t operator()(::FlexFlow::JoinNodeKey const & key) const{
+      return std::hash<size_t>{}(static_cast<size_t>(key.node));
+    }//TODO
 };
 }
 
@@ -259,8 +261,8 @@ MultiDiGraphView view_as_joined(MultiDiGraphView const &, MultiDiGraphView const
 DiGraphView unsafe_view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);
 DiGraphView view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);
 
-DiGraphView unsafe_view_as_contracted(DiGraphView const &, Node const &from, Node const &into);
-DiGraphView view_as_contracted(DiGraphView const &, Node const &from, Node const &into);
+DiGraphView unsafe_view_as_contracted(DiGraphView const &, Node const &from, Node const &into);//TODO
+DiGraphView view_as_contracted(DiGraphView const &, Node const &from, Node const &into);//TODO
 
 DiGraphView unsafe_view_as_contracted(DiGraphView const &, std::unordered_map<Node, Node> const &);
 DiGraphView view_as_contracted(DiGraphView const &, std::unordered_map<Node, Node> const &);

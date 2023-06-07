@@ -16,7 +16,8 @@
 namespace FlexFlow {
 
 std::vector<Node> add_nodes(Graph &, int);
-std::unordered_set<Node> get_nodes(GraphView const &);
+std::unordered_set<Node> get_nodes(GraphView const &);//TODO
+std::unordered_set<Node> get_nodes(IGraphView const &g);
 
 std::unordered_set<Node> query_nodes(GraphView const &, std::unordered_set<Node> const &);
 
@@ -32,7 +33,7 @@ void contract_node(MultiDiGraph &, Node const &);
 void contract_node(DiGraph &, Node const &);
 void contract_node(UndirectedGraph &, Node const &);
 
-std::size_t num_nodes(GraphView const &);
+std::size_t num_nodes(GraphView const &);//TODO
 bool empty(GraphView const &);
 
 void add_edges(MultiDiGraph &, std::vector<MultiDiEdge> const &);
@@ -125,7 +126,7 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &);
 std::vector<MultiDiEdge> get_edge_topological_ordering(MultiDiGraphView const &);
 
 std::vector<std::unordered_set<Node>> get_weakly_connected_components(MultiDiGraphView const &);
-std::vector<std::unordered_set<Node>> get_weakly_connected_components(DiGraphView const &);
+std::vector<std::unordered_set<Node>> get_weakly_connected_components(DiGraphView const &);//TODO 
 std::vector<std::unordered_set<Node>> get_connected_components(UndirectedGraphView const &);
 
 std::unordered_set<DirectedEdge> get_transitive_reduction_delta(DiGraphView const &);

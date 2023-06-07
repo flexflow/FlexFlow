@@ -20,9 +20,14 @@ struct SplitASTNode;
 using SplitAST = mpark::variant<SplitASTNode, Node>;
 
 struct SplitASTNode {
-  SplitASTNode(SplitType);
-  SplitASTNode(SplitType, SplitAST const &, SplitAST const &);
-  SplitASTNode(SplitType, std::vector<SplitAST> const &);
+  SplitASTNode(SplitType type_):type(type_){}
+  
+  SplitASTNode(SplitType type_, SplitAST const & lhs, SplitAST const & rhs): type(type_){
+    children.push_back(lhs);
+    children.push_back(rhs);//one is left children, another is right children
+  }
+
+  SplitASTNode(SplitType type_, std::vector<SplitAST> const & children_): type(type_), children(children_){}
 
   std::vector<SplitAST> children;
   SplitType type;

@@ -23,6 +23,10 @@ std::unordered_set<Node> get_nodes(IGraphView const &g) {
   return g.query_nodes({});
 }
 
+// std::unordered_set<Node> get_nodes(GraphView const & g){
+//   return g.query_nodes({});
+// }
+
 std::unordered_set<Node> query_nodes(IGraphView const &g, std::unordered_set<Node> const &nodes) {
   return g.query_nodes({nodes});
 }
@@ -437,6 +441,11 @@ tl::optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
 tl::optional<Node> imm_post_dominator(MultiDiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
 }
+
+// tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const &nodes){
+
+// }
+
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e) {
   return { OutputMultiDiEdge{{e.dst.value(), e.dstIdx}, e.src, e.srcIdx}, InputMultiDiEdge{{e.src.value(), e.srcIdx}, e.dst, e.dstIdx} };

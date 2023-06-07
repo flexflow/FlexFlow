@@ -17,7 +17,8 @@ struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
 
 struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
   OutputMultiDiEdge() = delete;
-  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &, std::size_t const &);
+  OutputMultiDiEdge(std::pair<std::size_t , std::size_t> const & uid_, Node const & src_, std::size_t const & srcIdx_)
+  :uid(uid_),src(src_), srcIdx(srcIdx_){}
 
   std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple output edges from different sources resulting from a graph cut
   Node src;

@@ -27,6 +27,14 @@ DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs, DirectedEdgeQ
   return DirectedEdgeQuery(srcs_t1, dsts_t1);
 }
 
+bool DiGraphView::operator==(DiGraphView const &other) const {
+  return ptr == other.ptr;
+}
+
+bool DiGraphView::operator!=(DiGraphView const &other) const {
+  return ptr != other.ptr;
+}
+
 DiGraph::DiGraph(DiGraph const &other)
   : ptr(other.ptr->clone())
 { }

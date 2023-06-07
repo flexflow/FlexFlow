@@ -76,15 +76,15 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
   return MultiDiEdgeQuery{};
 }
 
-// MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &, MultiDiEdgeQuery const &){
-//   assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
+MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs, MultiDiEdgeQuery const &rhs){
+  assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
 
-//   tl::optional<std::unordered_set<Node>> srcs_t1 = intersection(*lhs.srcs, *rhs.srcs);
-//   tl::optional<std::unordered_set<Node>> dsts_t1 = intersection(*lhs.dsts, *rhs.dsts);
+  tl::optional<std::unordered_set<Node>> srcs = intersection(*lhs.srcs, *rhs.srcs);
+  tl::optional<std::unordered_set<Node>> dsts = intersection(*lhs.dsts, *rhs.dsts);
   
-//   //TODO, how to set srcIdxs, dstIdxs
-//   // return MultiDiEdgeQuery()
-// }
+  //TODO, how to set srcIdxs, dstIdxs
+  return MultiDiEdgeQuery(srcs, dsts);
+}
 
 
 void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {

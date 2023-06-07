@@ -43,7 +43,7 @@ static_assert(is_rc_copy_virtual_compliant<ILabelledMultiDiGraph<int, int>>::val
 struct MultiDiOutput : public use_visitable_cmp<MultiDiOutput> {
 public:
   MultiDiOutput() = delete;
-  MultiDiOutput(Node const &, size_t);
+  MultiDiOutput(Node const & node_, size_t idx_):node(node_), idx(idx_){} 
 
 public:
   Node node;
