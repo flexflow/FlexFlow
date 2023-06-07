@@ -141,5 +141,36 @@ flowchart TD
     J -->|compiles to| K
 ```
 
+The primary difference between the different `TaskInvocation` types is which argument types they support.
+The full list of argument types is:
+- tensor slots
+  - `OpTensorSpec`: a reference to a input, output, or weight tensor attched to the given operator. 
+  - `ParallelTensorSpec`: a reference (via `parallel_tensor_guid_t`) to a parallel tensor somewhere in the PCG.
+- argument slots
+  - `OpArgRefSpec`: an argument that should be filled in during the compilation process from `OpTaskInvocation` to `TaskInvocation`. For those familiar with `Reader` monads, this is roughly analogous
+  - `ConcreteArgSpec`: a concrete value
+  - `IndexArgSpec`: a set of concrete values, each of which should be sent to a different Index Task
+  - `CheckedTypedFuture`: a legion future whose value should be passed into the task
+  - `CheckedTypedFutureMap`: a set of legion futures, each of which should have its value sent to a different Index Task (conceptually, `IndexArgSpec` + `CheckedTypedFuture`)
+  - `ArgRefSpec`: an argument that should be filled in during the compilation process from `TaskInvocation` to `ExecutableTaskInvocation`. For those familiar with `Reader` monads, this is roughly analogous
+  - `TaskInvocationSpec`: a nested task invocation which should be launched and have its resulting `Future` passed into the given task
+  - `IndexTaskInvocationSpec`: (currently not implemented, may or may not be necessary)
+
+The supported argument types for each invocation type are:
+- `OpTaskInvocation`
+  - `OpTensorSpec`, `OpArgRefSpec`, `ConcreteArgSpec`, `IndexArgSpec`, `CheckedTypedFuture`, `CheckedTypedFutureMap`, `ArgRefSpec`, `TaskInvocationSpec`, `IndexTaskInvocationSpec`
+- `TaskInvocation`
+  - `ParallelTensorSpec`, `ConcreteArgSpec`, `CheckedTypedFuture`, `ArgRefSpec`, `TaskInvocationSpec`
+- `IndexTaskInvocation`
+  - `ParallelTensorSpec`, `ConcreteArgSpec`, `IndexArgSpec`, `CheckedTypedFuture`, `CheckedTypedFutureMap`, `ArgRefSpec`, `TaskInvocationSpec`, `IndexTaskInvocationSpec`
+- `ExecutableTaskInvocation`
+  - `ParallelTensorSpec`, `ConcreteArgSpec`, `CheckedTypedFuture`, `TaskInvocationSpec`
+- `ExecutableIndexTaskInvocation`
+  - `ParallelTensorSpec`, `ConcreteArgSpec`, `IndexArgSpec`, `CheckedTypedFuture`, `CheckedTypedFutureMap`, `TaskInvocationSpec`, `IndexTaskInvocationSpec`
+- `TensorlessTaskInvocation`
+  - `ConcreteArgSpec`, `CheckedTypedFuture`, `TaskInvocationSpec`
+- `TensorlessIndexTaskInvocation`
+  - `ConcreteArgSpec`, `IndexArgSpec`, `CheckedTypedFuture`, `CheckedTypedFutureMap`, `TaskInvocationSpec`, `IndexTaskInvocationSpec`
+
 [^1]: i.e., not tensor-sized
 [^2]: Types must either be serializable ([serialization.h](../serialization.h)) or device-specific ([device\_specific\_arg.h](./device-specific-arg.h))
