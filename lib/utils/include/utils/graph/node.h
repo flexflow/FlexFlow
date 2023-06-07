@@ -54,7 +54,7 @@ struct GraphView {
 
   friend void swap(GraphView &, GraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
+  std::unordered_set<Node> query_nodes(NodeQuery const & query) ;
 
   //TODO
   operator maybe_owned_ref<IGraphView const>() const {

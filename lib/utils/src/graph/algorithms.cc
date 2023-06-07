@@ -2,6 +2,7 @@
 #include "utils/graph/conversions.h"
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <algorithm>
 #include <iostream>
@@ -10,6 +11,7 @@
 #include <cassert>
 #include <valarray>
 #include "utils/graph/views.h"
+#include "tl/optional.hpp"
 
 namespace FlexFlow {
 
@@ -96,6 +98,10 @@ std::size_t num_nodes(GraphView const & g) {
 
 std::size_t num_nodes(IGraphView const &g) {
   return get_nodes(g).size();
+}
+
+bool empty(GraphView const &g){
+  return num_nodes(g) == 0; 
 }
 
 bool empty(IGraphView const &g) {
@@ -488,7 +494,11 @@ UndirectedGraphView join(UndirectedGraphView const &lhs, UndirectedGraphView con
   return view_as_joined(lhs, rhs);
 }
 
+// DiGraphView view_as_joined(DiGraphView const &lhs, DiGraphView const &rhs) {
+//   // return tl::nullopt; //TODO
 
+
+// }
 // DiGraphView view_as_joined(DiGraphView const &lhs, DiGraphView const &rhs) {
 //   //TODO we should use the lhs->ptr, rhs->ptr
 //   //lhs->ptr: IDiGraphView, and the IDigraph->(IDiGraphView, IGraph), AdjacencyDiGraph ->IDiGraph
