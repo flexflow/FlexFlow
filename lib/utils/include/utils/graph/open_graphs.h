@@ -24,7 +24,7 @@ public:
 
   //TODO
   operator maybe_owned_ref<IOpenMultiDiGraphView const>() const {
-    return maybe_owned_ref<IOpenMultiDiGraphView const>(this->ptr.get());
+    return maybe_owned_ref<IOpenMultiDiGraphView const>(this->ptr);
   }
 
   IOpenMultiDiGraphView const *unsafe() const {
@@ -96,7 +96,7 @@ public:
 
   //TODO
   operator maybe_owned_ref<IUpwardOpenMultiDiGraphView const>() const {
-    return maybe_owned_ref<IUpwardOpenMultiDiGraphView const>(this->ptr.get());
+    return maybe_owned_ref<IUpwardOpenMultiDiGraphView const>(this->ptr);
   }
 
   IUpwardOpenMultiDiGraphView const *unsafe() const {
@@ -168,7 +168,7 @@ public:
 
   //TODO
   operator maybe_owned_ref<IDownwardOpenMultiDiGraphView const>() const {
-    return maybe_owned_ref<IDownwardOpenMultiDiGraphView const>(this->ptr.get());
+    return maybe_owned_ref<IDownwardOpenMultiDiGraphView const>(this->ptr);
   }
 
   IDownwardOpenMultiDiGraphView const *unsafe() const {

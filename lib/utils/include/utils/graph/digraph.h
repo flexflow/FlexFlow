@@ -71,7 +71,7 @@ public:
 
   //TODO
   operator maybe_owned_ref<IDiGraphView const>() const {
-    return maybe_owned_ref<IDiGraphView const>(this->ptr.get());
+    return maybe_owned_ref<IDiGraphView const>(this->ptr);
   }
 
   IDiGraphView const *unsafe() const {

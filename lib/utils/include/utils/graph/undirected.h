@@ -65,7 +65,7 @@ public:
 
   //TODO
   operator maybe_owned_ref<IUndirectedGraphView const>() const {
-    return maybe_owned_ref<IUndirectedGraphView const>(this->ptr.get());
+    return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
   }
 
   IUndirectedGraphView const *unsafe() const {

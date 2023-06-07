@@ -58,7 +58,7 @@ struct GraphView {
 
   //TODO
   operator maybe_owned_ref<IGraphView const>() const {
-    return maybe_owned_ref<IGraphView const>(this->ptr.get());
+    return maybe_owned_ref<IGraphView const>(this->ptr);
   }
 
   IGraphView const *unsafe() const {

@@ -100,7 +100,7 @@ public:
 
   //TODO
   operator maybe_owned_ref<IMultiDiGraphView const>() const {
-    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr.get());
+    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
   }
 
   IMultiDiGraphView const *unsafe() const {
