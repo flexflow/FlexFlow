@@ -65,16 +65,16 @@ flowchart TD
     E(" ")
     F(" ")
 
-    A -->|"(fa:fa-square, fa:fa-star)"| B
-    B -->|"(fa:fa-circle, fa:fa-star)"| C
-    C -->|"(fa:fa-heart, fa:fa-play)"| D
-    D -->|"(fa:fa-circle, fa:fa-square)"| A
-    B -->|"(fa:fa-star, fa:fa-circle)"| E 
-    E -->|"(fa:fa-square, fa:fa-square)"| B
-    D -->|"(fa:fa-circle, fa:fa-circle)"| A
-    A -->|"(fa:fa-circle, fa:fa-square)"| E
-    D -->|"(fa:fa-square, fa:fa-circle)"| D 
-    E -->|"(fa:fa-square, fa:fa-square)"| E
+    A -->|"(&#x25A0, &#x2605)"| B
+    B -->|"(&#x25CF, &#x2605)"| C
+    C -->|"(&#x2665, &#x25B2)"| D
+    D -->|"(&#x25CF, &#x25A0)"| A
+    B -->|"(&#x2605, &#x25CF)"| E 
+    E -->|"(&#x25A0, &#x25A0)"| B
+    D -->|"(&#x25CF, &#x25CF)"| A
+    A -->|"(&#x25CF, &#x25A0)"| E
+    D -->|"(&#x25A0, &#x25CF)"| D 
+    E -->|"(&#x25A0, &#x25A0)"| E
 ```
 or visualized a different way,
 ```mermaid
