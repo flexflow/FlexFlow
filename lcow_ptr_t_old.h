@@ -53,29 +53,30 @@ struct cow_ptr_t {
     return this->get();
   }
 
-  std::shared_ptr<T const> get_shared_ptr() const {
-    if (this->has_unique_access()) {
-      this->set_shared(shared_t(this->get_unique()));
-    }
-    return this->get_shared();
+std::shared_ptr<T const> get_shared_ptr() const {
+  if (this->has_unique_access()) {
+    auto clone_unique = [](const unique_t& ptr) -> unique_t {
+      return make_unique<T>(*ptr);
+    };
+
+    unique_t uniquePtr = clone_unique(this->get_unique());
+    this->set_shared(std::make_shared<T const>(std::move(uniquePtr)));
   }
+  return this->get_shared();
+}
 
 T* mutable_ptr() const {
   if (this->has_unique_access()) {
     return this->get_unique().get();
   } else {
-    auto shared = this->get_shared();
-    this->set_unique(unique_t(shared->clone()));
-    if (auto ptr = mpark::get_if<unique_t>(&this->ptr)) {
-      return ptr->get();
-    }
-    return nullptr;
+    this->set_unique(unique_t(this->get_shared()->clone()));
+    return this->get_unique().get();
   }
 }
 
-  T &mutable_ref() const {
-    return *this->mutable_ptr();
-  }
+T& mutable_ref() const {
+  return *mutable_ptr();
+}
 
   bool has_unique_access() const { 
     return holds_alternative<unique_t>(this->ptr);
@@ -95,34 +96,25 @@ T* mutable_ptr() const {
     swap(lhs.ptr, rhs.ptr);
   }
 private:
-  void set_shared(shared_t ptr) const {
-    this->ptr = variant<
-    std::unique_ptr<T>,
-    std::shared_ptr<T const>
-  >(std::move(ptr));
-  }
 
- void set_unique(std::unique_ptr<T> ptr)  const{
-  this->ptr = variant<
-    std::unique_ptr<T>,
-    std::shared_ptr<T const>
-  >(std::move(ptr));
+void set_shared(shared_t ptr) const {
+    this->ptr = variant<shared_t>(std::move(ptr));
 }
 
-std::unique_ptr<T> get_unique() const {
-  if (auto ptr = mpark::get_if<unique_t>(&this->ptr)) {
-    return std::move(*ptr);
+
+  void set_unique(unique_t ptr) {
+    this->ptr =  variant<unique_t>(std::move(ptr));
+    // this->ptr = variant<std::shared_ptr<T const>>(std::move(ptr));
+    //this->ptr = variant<unique_t>(std::move(ptr));
   }
-  return nullptr;
+
+std::unique_ptr<T> const& get_unique() const {
+  return std::get<std::unique_ptr<T>>(this->ptr);
 }
 
-std::shared_ptr<T const> get_shared() const {
-  if (auto ptr = mpark::get_if<shared_t>(&this->ptr)) {
-    return *ptr;
-  }
-  return nullptr;
+std::shared_ptr<T const> const& get_shared() const {
+  return std::get<std::shared_ptr<T const>>(this->ptr);
 }
-
   mutable variant<
     std::unique_ptr<T>,
     std::shared_ptr<T const>
