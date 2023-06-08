@@ -32,9 +32,16 @@ The `conda` environment can be created and activated as:
 ```
 conda env create -f conda/environment.yml
 conda activate flexflow
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
 ```
 
 ## 4. Configuring the FlexFlow build
+To start off, create a build directory: in the root directory of the cloned FlexFlow repository, run 
+```
+mkdir build
+cd build
+```
+
 You can configure a FlexFlow build by running the `config/config.linux` file in the build folder. If you do not want to build with the default options, you can set your configurations by passing (or exporting) the relevant environment variables. We recommend that you spend some time familiarizing with the available options by scanning the `config/config.linux` file. In particular, the main parameters are:
 
 1. `CUDA_DIR` is used to specify the directory of CUDA. It is only required when CMake can not automatically detect the installation directory of CUDA.
@@ -47,20 +54,37 @@ You can configure a FlexFlow build by running the `config/config.linux` file in 
 8. `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
 9. `FF_USE_{NCCL,LEGION,ALL}_PRECOMPILED_LIBRARY`, controls whether to build FlexFlow using a pre-compiled version of the Legion, NCCL (if `FF_USE_NCCL` is `ON`), or both libraries . By default, `FF_USE_NCCL_PRECOMPILED_LIBRARY` and `FF_USE_LEGION_PRECOMPILED_LIBRARY` are both set to `ON`, allowing you to build FlexFlow faster. If you want to build Legion and NCCL from source, set them to `OFF`.
 
-More options are available in cmake, please run `ccmake` and search for options starting with FF. 
+For more options, run `ccmake ..` or `cmake -LH ..` from the build directory. 
+You will likely only need to modify options starting with `FF_` or `CMAKE_`, though it is not impossible that in strange situtations other options may be necessary.
 
 ## 5. Build FlexFlow
 You can build FlexFlow in three ways: with CMake, with Make, and with `pip`. We recommend that you use the CMake building system as it will automatically build all C++ dependencies inlcuding NCCL and Legion. 
 
 ### Building FlexFlow with CMake
+
+**NOTE: In repo-refactor this is currently the only supported build system. Make and pip currently likely don't work.**
+
+**NOTE: In repo-refactor, currently FF_USE_PYTHON should be set to OFF**
+
 To build FlexFlow with CMake, go to the FlexFlow home directory, and run
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release #... any additional options ...
 ```
-mkdir build
-cd build
-../config/config.linux
+or 
+```bash
+ccmake ..
+```
+to use the TUI/GUI provided by CMake.
+
+Once either has completed, then run 
+```
 make -j N
 ```
-where N is the desired number of threads to use for the build.
+where N is the desired number of threads to use for the build. 
+To build with all cores available on the system, run 
+```
+make -j $(nproc)
+```
 
 ### Building FlexFlow with pip
 To build Flexflow with `pip`, run `pip install .` from the FlexFlow home directory. This command will build FlexFlow, and also install the Python interface as a Python module.
