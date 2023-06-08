@@ -60,7 +60,7 @@ struct cow_ptr_t {
     return this->get_shared();
   }
 
-T* mutable_ptr() const {
+  T* mutable_ptr() const {
   if (this->has_unique_access()) {
     return this->get_unique().get();
   } else {
@@ -109,14 +109,14 @@ private:
   >(std::move(ptr));
 }
 
-std::unique_ptr<T> get_unique() const {
+ std::unique_ptr<T> get_unique() const {
   if (auto ptr = mpark::get_if<unique_t>(&this->ptr)) {
     return std::move(*ptr);
   }
   return nullptr;
 }
 
-std::shared_ptr<T const> get_shared() const {
+ std::shared_ptr<T const> get_shared() const {
   if (auto ptr = mpark::get_if<shared_t>(&this->ptr)) {
     return *ptr;
   }
