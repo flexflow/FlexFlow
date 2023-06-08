@@ -22,8 +22,7 @@ BMMTestMeta get_test_meta(const std::string file_path) {
 }
 
 void top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions,
-                    Context ctx,
+                    std::vector<PhysicalRegion> const &regions, Context ctx,
                     Runtime *runtime) {
   // std::cout<< "test framework launched" << std::endl;
   auto test_meta = get_test_meta("test_meta.txt");
@@ -33,34 +32,32 @@ void top_level_task(Task const *task,
   // create input tensor
   Tensor dense_input1;
   {
-    int const dims[3] = {
-        test_meta.d, test_meta.k, test_meta.m}; // target shape (d,k,m)
+    int const dims[3] = {test_meta.d, test_meta.k,
+                         test_meta.m}; // target shape (d,k,m)
     // HACK: have to pass "batch_matmul" 3-dimensional strategy string id to
     // tell FF to distribute this tensor correctly
     dense_input1 = ff.create_tensor<3>(dims, "batch_matmul", DT_FLOAT);
   }
   Tensor dense_input2;
   {
-    int const dims[3] = {
-        test_meta.d, test_meta.k, test_meta.n}; // shape (n,k,d)
+    int const dims[3] = {test_meta.d, test_meta.k,
+                         test_meta.n}; // shape (n,k,d)
     // HACK: have to pass "batch_matmul" 3-dimensional strategy string id to
     // tell FF to distribute this tensor correctly
     dense_input2 = ff.create_tensor<3>(dims, "batch_matmul", DT_FLOAT);
   }
   // build batch matmul layer
-  Tensor batch_matmul_ret = ff.batch_matmul("batch_matmul",
-                                            dense_input1,
-                                            dense_input2,
-                                            true /* trans_a */,
-                                            false /* trans_b */);
+  Tensor batch_matmul_ret =
+      ff.batch_matmul("batch_matmul", dense_input1, dense_input2,
+                      true /* trans_a */, false /* trans_b */);
   // load inputs tensors and output gradients tensors for testing
   auto input1_file_path = "test_input1.txt";
   auto input2_file_path = "test_input2.txt";
   auto output_grad_file_path = "test_output_grad.txt";
   initialize_tensor_from_file(input1_file_path, dense_input1, ff, "float", 3);
   initialize_tensor_from_file(input2_file_path, dense_input2, ff, "float", 3);
-  initialize_tensor_gradient_from_file(
-      output_grad_file_path, batch_matmul_ret, ff, "float", 3);
+  initialize_tensor_gradient_from_file(output_grad_file_path, batch_matmul_ret,
+                                       ff, "float", 3);
   // run forward and backward to produce results
   ff.init_layers();
   ff.forward();

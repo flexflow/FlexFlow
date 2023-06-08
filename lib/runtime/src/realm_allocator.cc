@@ -11,11 +11,8 @@ void *RealmAllocator::allocate(size_t size) {
   Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                  Realm::Point<1, coord_t>(size - 1));
   this->instances.emplace_back();
-  Realm::RegionInstance::create_instance(this->instances.back(),
-                                         this->memory,
-                                         bounds,
-                                         {sizeof(char)},
-                                         0,
+  Realm::RegionInstance::create_instance(this->instances.back(), this->memory,
+                                         bounds, {sizeof(char)}, 0,
                                          Realm::ProfilingRequestSet())
       .wait();
   return this->instances.back().pointer_untyped(0, sizeof(char));

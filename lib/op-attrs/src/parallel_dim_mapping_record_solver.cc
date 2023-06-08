@@ -7,20 +7,15 @@ namespace FlexFlow {
 
 std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
-    std::vector<std::tuple<int, MappingOperation, int>> mappings,
-    int input_idx,
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx,
     int weight_idx) {
 
   std::vector<ParallelDimMappingRecord> output;
-  std::transform(mappings.cbegin(),
-                 mappings.cend(),
-                 output.begin(),
+  std::transform(mappings.cbegin(), mappings.cend(), output.begin(),
                  [&](std::tuple<int, MappingOperation, int> const &mapping) {
-                   return construct_weight_parallel_dims(std::get<0>(mapping),
-                                                         std::get<2>(mapping),
-                                                         input_idx,
-                                                         weight_idx,
-                                                         std::get<1>(mapping));
+                   return construct_weight_parallel_dims(
+                       std::get<0>(mapping), std::get<2>(mapping), input_idx,
+                       weight_idx, std::get<1>(mapping));
                  });
   return output;
 }
@@ -159,12 +154,11 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
 /*   return true; */
 /* } */
 
-std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
-    std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) {
+std::vector<ParallelDimMappingRecord>
+construct_weight_parallel_dims(std::vector<std::pair<int, int>> mappings,
+                               int input_idx, int weight_idx) {
   std::vector<ParallelDimMappingRecord> output;
-  std::transform(mappings.cbegin(),
-                 mappings.cend(),
-                 output.begin(),
+  std::transform(mappings.cbegin(), mappings.cend(), output.begin(),
                  [&](std::pair<int, int> const &mapping) {
                    return construct_weight_parallel_dims(
                        mapping.first, mapping.second, input_idx, weight_idx);
@@ -173,11 +167,8 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
 }
 
 void construct_weight_parallel_dims(
-    std::vector<ParallelDimMappingRecord> &records,
-    int input_dim,
-    int weight_dim,
-    int input_idx,
-    int weight_idx,
+    std::vector<ParallelDimMappingRecord> &records, int input_dim,
+    int weight_dim, int input_idx, int weight_idx,
     tl::optional<MappingOperation> operation) {
   records.push_back(ParallelDimMappingRecord::input_weight_record(
       input_idx, input_dim, weight_idx, weight_dim, operation));
@@ -214,35 +205,26 @@ void construct_weight_parallel_dims(
 
 void construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
-    std::vector<std::tuple<int, MappingOperation, int>> mappings,
-    int input_idx,
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx,
     int output_idx) {
   for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
-    construct_output_parallel_dims(std::get<0>(mapping),
-                                   std::get<2>(mapping),
-                                   input_idx,
-                                   output_idx,
-                                   std::get<1>(mapping));
+    construct_output_parallel_dims(std::get<0>(mapping), std::get<2>(mapping),
+                                   input_idx, output_idx, std::get<1>(mapping));
   }
 }
 
 void construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
-    std::vector<std::pair<int, int>> mappings,
-    int input_idx,
-    int output_idx) {
+    std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx) {
   for (std::pair<int, int> const &mapping : mappings) {
-    construct_output_parallel_dims(
-        mapping.first, mapping.second, input_idx, output_idx);
+    construct_output_parallel_dims(mapping.first, mapping.second, input_idx,
+                                   output_idx);
   }
 }
 
 void construct_output_parallel_dims(
-    std::vector<ParallelDimMappingRecord> &records,
-    int input_dim,
-    int output_dim,
-    int input_idx,
-    int output_idx,
+    std::vector<ParallelDimMappingRecord> &records, int input_dim,
+    int output_dim, int input_idx, int output_idx,
     tl::optional<MappingOperation> operation) {
   records.push_back(ParallelDimMappingRecord::input_output_record(
       input_idx, input_dim, output_idx, output_dim, operation));

@@ -27,9 +27,7 @@ namespace FlexFlow {
 
 class FFShardingFunctor : public Legion::ShardingFunctor {
 public:
-  FFShardingFunctor(int gpus_per_node,
-                    int cpus_per_node,
-                    int num_nodes,
+  FFShardingFunctor(int gpus_per_node, int cpus_per_node, int num_nodes,
                     MachineView const &mv);
 
 public:
@@ -53,14 +51,12 @@ struct InstanceCreationLog {
 };
 
 void register_sharding_functor(Legion::Runtime *, FFShardingFunctor *);
-void register_sharding_functor(Legion::Runtime *,
-                               std::size_t,
+void register_sharding_functor(Legion::Runtime *, std::size_t,
                                FFShardingFunctor *);
 std::vector<MachineView> starting_at_all_devices(MachineView const &,
                                                  int total_num_cpus,
                                                  int total_num_gpus);
-device_id_t get_device_index(MachineView const &,
-                             Legion::DomainPoint const &,
+device_id_t get_device_index(MachineView const &, Legion::DomainPoint const &,
                              Legion::Domain const &);
 
 struct NodesConfig {
@@ -81,23 +77,19 @@ private:
 
 class FFMapper : public Legion::Mapping::NullMapper {
 public:
-  FFMapper(Legion::Mapping::MapperRuntime *rt,
-           Legion::Machine machine,
+  FFMapper(Legion::Mapping::MapperRuntime *rt, Legion::Machine machine,
            Legion::Processor local,
            char const *mapper_name, // const std::string& strategyFile,
-           bool _enable_control_replication,
-           bool _log_instance_creation);
+           bool _enable_control_replication, bool _log_instance_creation);
   ~FFMapper();
   virtual char const *get_mapper_name(void) const;
   virtual MapperSyncModel get_mapper_sync_model(void) const;
 
 public:
-  static void update_mappers(Legion::Machine machine,
-                             Legion::Runtime *rt,
+  static void update_mappers(Legion::Machine machine, Legion::Runtime *rt,
                              std::set<Legion::Processor> const &local_procs);
   static void register_sharding_functors(Legion::Runtime *runtime,
-                                         Legion::Machine machine,
-                                         int argv,
+                                         Legion::Machine machine, int argv,
                                          char **argc);
   virtual void select_task_options(const Legion::Mapping::MapperContext ctx,
                                    Legion::Task const &task,
@@ -107,12 +99,10 @@ public:
                            PremapTaskInput const &input,
                            PremapTaskOutput &output);
   virtual void slice_task(const Legion::Mapping::MapperContext ctx,
-                          Legion::Task const &task,
-                          SliceTaskInput const &input,
+                          Legion::Task const &task, SliceTaskInput const &input,
                           SliceTaskOutput &output);
   virtual void map_task(const Legion::Mapping::MapperContext ctx,
-                        Legion::Task const &task,
-                        MapTaskInput const &input,
+                        Legion::Task const &task, MapTaskInput const &input,
                         MapTaskOutput &output);
   virtual void map_replicate_task(const Legion::Mapping::MapperContext ctx,
                                   Legion::Task const &task,
@@ -124,21 +114,17 @@ public:
                                    SelectVariantInput const &input,
                                    SelectVariantOutput &output);
   virtual void postmap_task(const Legion::Mapping::MapperContext ctx,
-                            Legion::Task const &task,
-                            PostMapInput const &input,
+                            Legion::Task const &task, PostMapInput const &input,
                             PostMapOutput &output);
   virtual void select_task_sources(const Legion::Mapping::MapperContext ctx,
                                    Legion::Task const &task,
                                    SelectTaskSrcInput const &input,
                                    SelectTaskSrcOutput &output);
-  virtual void
-      create_task_temporary_instance(const Legion::Mapping::MapperContext ctx,
-                                     Legion::Task const &task,
-                                     CreateTaskTemporaryInput const &input,
-                                     CreateTaskTemporaryOutput &output);
+  virtual void create_task_temporary_instance(
+      const Legion::Mapping::MapperContext ctx, Legion::Task const &task,
+      CreateTaskTemporaryInput const &input, CreateTaskTemporaryOutput &output);
   virtual void speculate(const Legion::Mapping::MapperContext ctx,
-                         Legion::Task const &task,
-                         SpeculativeOutput &output);
+                         Legion::Task const &task, SpeculativeOutput &output);
   virtual void report_profiling(const Legion::Mapping::MapperContext ctx,
                                 Legion::Task const &task,
                                 TaskProfilingInfo const &input);
@@ -150,38 +136,33 @@ public:
 public: // Inline mapping calls
   virtual void map_inline(const Legion::Mapping::MapperContext ctx,
                           Legion::InlineMapping const &inline_op,
-                          MapInlineInput const &input,
-                          MapInlineOutput &output);
+                          MapInlineInput const &input, MapInlineOutput &output);
   virtual void select_inline_sources(const Legion::Mapping::MapperContext ctx,
                                      Legion::InlineMapping const &inline_op,
                                      SelectInlineSrcInput const &input,
                                      SelectInlineSrcOutput &output);
   virtual void
-      create_inline_temporary_instance(const Legion::Mapping::MapperContext ctx,
-                                       Legion::InlineMapping const &inline_op,
-                                       CreateInlineTemporaryInput const &input,
-                                       CreateInlineTemporaryOutput &output);
+  create_inline_temporary_instance(const Legion::Mapping::MapperContext ctx,
+                                   Legion::InlineMapping const &inline_op,
+                                   CreateInlineTemporaryInput const &input,
+                                   CreateInlineTemporaryOutput &output);
   virtual void report_profiling(const Legion::Mapping::MapperContext ctx,
                                 Legion::InlineMapping const &inline_op,
                                 InlineProfilingInfo const &input);
 
 public: // Copy mapping calls
   virtual void map_copy(const Legion::Mapping::MapperContext ctx,
-                        Legion::Copy const &copy,
-                        MapCopyInput const &input,
+                        Legion::Copy const &copy, MapCopyInput const &input,
                         MapCopyOutput &output);
   virtual void select_copy_sources(const Legion::Mapping::MapperContext ctx,
                                    Legion::Copy const &copy,
                                    SelectCopySrcInput const &input,
                                    SelectCopySrcOutput &output);
-  virtual void
-      create_copy_temporary_instance(const Legion::Mapping::MapperContext ctx,
-                                     Legion::Copy const &copy,
-                                     CreateCopyTemporaryInput const &input,
-                                     CreateCopyTemporaryOutput &output);
+  virtual void create_copy_temporary_instance(
+      const Legion::Mapping::MapperContext ctx, Legion::Copy const &copy,
+      CreateCopyTemporaryInput const &input, CreateCopyTemporaryOutput &output);
   virtual void speculate(const Legion::Mapping::MapperContext ctx,
-                         Legion::Copy const &copy,
-                         SpeculativeOutput &output);
+                         Legion::Copy const &copy, SpeculativeOutput &output);
   virtual void report_profiling(const Legion::Mapping::MapperContext ctx,
                                 Legion::Copy const &copy,
                                 CopyProfilingInfo const &input);
@@ -192,18 +173,17 @@ public: // Copy mapping calls
 
 public: // Close mapping calls
   virtual void map_close(const Legion::Mapping::MapperContext ctx,
-                         Legion::Close const &close,
-                         MapCloseInput const &input,
+                         Legion::Close const &close, MapCloseInput const &input,
                          MapCloseOutput &output);
   virtual void select_close_sources(const Legion::Mapping::MapperContext ctx,
                                     Legion::Close const &close,
                                     SelectCloseSrcInput const &input,
                                     SelectCloseSrcOutput &output);
   virtual void
-      create_close_temporary_instance(const Legion::Mapping::MapperContext ctx,
-                                      Legion::Close const &close,
-                                      CreateCloseTemporaryInput const &input,
-                                      CreateCloseTemporaryOutput &output);
+  create_close_temporary_instance(const Legion::Mapping::MapperContext ctx,
+                                  Legion::Close const &close,
+                                  CreateCloseTemporaryInput const &input,
+                                  CreateCloseTemporaryOutput &output);
   virtual void report_profiling(const Legion::Mapping::MapperContext ctx,
                                 Legion::Close const &close,
                                 CloseProfilingInfo const &input);
@@ -237,11 +217,11 @@ public: // Release mapping calls
                                       Legion::Release const &release,
                                       SelectReleaseSrcInput const &input,
                                       SelectReleaseSrcOutput &output);
-  virtual void create_release_temporary_instance(
-      const Legion::Mapping::MapperContext ctx,
-      Legion::Release const &release,
-      CreateReleaseTemporaryInput const &input,
-      CreateReleaseTemporaryOutput &output);
+  virtual void
+  create_release_temporary_instance(const Legion::Mapping::MapperContext ctx,
+                                    Legion::Release const &release,
+                                    CreateReleaseTemporaryInput const &input,
+                                    CreateReleaseTemporaryOutput &output);
   virtual void speculate(const Legion::Mapping::MapperContext ctx,
                          Legion::Release const &release,
                          SpeculativeOutput &output);
@@ -255,19 +235,19 @@ public: // Release mapping calls
 
 public: // Partition mapping calls
   virtual void
-      select_partition_projection(const Legion::Mapping::MapperContext ctx,
-                                  Legion::Partition const &partition,
-                                  SelectPartitionProjectionInput const &input,
-                                  SelectPartitionProjectionOutput &output);
+  select_partition_projection(const Legion::Mapping::MapperContext ctx,
+                              Legion::Partition const &partition,
+                              SelectPartitionProjectionInput const &input,
+                              SelectPartitionProjectionOutput &output);
   virtual void map_partition(const Legion::Mapping::MapperContext ctx,
                              Legion::Partition const &partition,
                              MapPartitionInput const &input,
                              MapPartitionOutput &output);
   virtual void
-      select_partition_sources(const Legion::Mapping::MapperContext ctx,
-                               Legion::Partition const &partition,
-                               SelectPartitionSrcInput const &input,
-                               SelectPartitionSrcOutput &output);
+  select_partition_sources(const Legion::Mapping::MapperContext ctx,
+                           Legion::Partition const &partition,
+                           SelectPartitionSrcInput const &input,
+                           SelectPartitionSrcOutput &output);
   virtual void create_partition_temporary_instance(
       const Legion::Mapping::MapperContext ctx,
       Legion::Partition const &partition,
@@ -336,22 +316,19 @@ private: // static inline methods
 
 private: // Default helper functions
   Legion::Memory
-      default_select_target_memory(Legion::Mapping::MapperContext ctx,
-                                   Legion::Processor target_proc,
-                                   Legion::RegionRequirement const &req);
+  default_select_target_memory(Legion::Mapping::MapperContext ctx,
+                               Legion::Processor target_proc,
+                               Legion::RegionRequirement const &req);
   bool default_make_instance(Legion::Mapping::MapperContext ctx,
                              Legion::Memory target_mem,
                              Legion::LayoutConstraintSet const &constraints,
                              Legion::Mapping::PhysicalInstance &result,
                              bool meets_constraints,
                              Legion::RegionRequirement const &req,
-                             bool &created,
-                             size_t *footprint);
-  Legion::LayoutConstraintID
-      default_select_layout_constraints(Legion::Mapping::MapperContext ctx,
-                                        Legion::Memory target_memory,
-                                        Legion::RegionRequirement const &req,
-                                        bool needs_field_constraint_check);
+                             bool &created, size_t *footprint);
+  Legion::LayoutConstraintID default_select_layout_constraints(
+      Legion::Mapping::MapperContext ctx, Legion::Memory target_memory,
+      Legion::RegionRequirement const &req, bool needs_field_constraint_check);
   void default_select_constraints(Legion::Mapping::MapperContext ctx,
                                   Legion::LayoutConstraintSet &constraints,
                                   Legion::Memory target_memory,
@@ -368,7 +345,7 @@ private:
   bool is_parameter_server_update_task(Legion::TaskID tid);
   bool is_initializer_task(Legion::TaskID tid);
   std::vector<Legion::Processor> const &
-      all_procs_by_kind(Legion::Processor::Kind kind);
+  all_procs_by_kind(Legion::Processor::Kind kind);
 
   void register_machine_view(Legion::MappingTagID, MachineView const &);
   void register_machine_view(MachineView const &);

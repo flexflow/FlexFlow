@@ -26,8 +26,7 @@ class FFModel;
 class RecompileState {
 public:
   RecompileState(std::function<bool(FFModel *)> _trigger_func,
-                 std::function<void(FFModel *)> _alter_func,
-                 FFModel *_ff);
+                 std::function<void(FFModel *)> _alter_func, FFModel *_ff);
   bool trigger();
   void alter();
 

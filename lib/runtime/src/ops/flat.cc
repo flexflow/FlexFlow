@@ -22,26 +22,19 @@ using namespace FlexFlow::Kernels::Flat;
 
 Tensor FFModel::flat(const Tensor input, char const *name) {
   assert(input->num_dims == 4);
-  Layer *flat = new Layer(this,
-                          OP_FLAT,
-                          DT_FLOAT,
-                          name,
-                          1 /*inputs*/,
-                          0 /*weights*/,
-                          1 /*outputs*/,
-                          input);
+  Layer *flat = new Layer(this, OP_FLAT, DT_FLOAT, name, 1 /*inputs*/,
+                          0 /*weights*/, 1 /*outputs*/, input);
   int dims[MAX_TENSOR_DIM];
   dims[1] = input->dims[3];
   dims[0] = input->dims[2] * input->dims[1] * input->dims[0];
-  flat->outputs[0] = create_tensor_legion_ordering(
-      2, dims, DT_FLOAT, flat, 0, true /*create_grad*/);
+  flat->outputs[0] = create_tensor_legion_ordering(2, dims, DT_FLOAT, flat, 0,
+                                                   true /*create_grad*/);
   layers.push_back(flat);
   return flat->outputs[0];
 }
 
 Op *Flat::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   return new Flat(model, inputs[0], layer->name);
 }
@@ -58,22 +51,16 @@ int FlatParams::output_size(ParallelTensorShape const &input,
 }
 
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
-    : Op(model,
-         OP_FLAT,
-         _input->data_type,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         _input) {
+    : Op(model, OP_FLAT, _input->data_type, name, 1 /*inputs*/, 0 /*weights*/,
+         1 /*outputs*/, _input) {
   assert(_input->num_dims == FlatInput::NUMDIM);
 
   Flat::construct_output_mappings(*this->parallel_dims_mapping);
 
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int output_ndims;
-  this->get_params().solve_dims(
-      this->inputs[0]->get_shape(), output_dims, &output_ndims);
+  this->get_params().solve_dims(this->inputs[0]->get_shape(), output_dims,
+                                &output_ndims);
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_ndims, output_dims, _input->data_type, this);
@@ -81,9 +68,7 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
   assert(check_output_input_weight_parallel_dims());
 }
 
-Flat::Flat(FFModel &model,
-           FlatParams const &params,
-           const ParallelTensor input,
+Flat::Flat(FFModel &model, FlatParams const &params, const ParallelTensor input,
            char const *name)
     : Flat(model, input, name) {}
 
@@ -94,25 +79,17 @@ void Flat::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(FLAT_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Flat)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(FLAT_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Flat)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -121,8 +98,7 @@ void Flat::init(FFModel const &ff) {
 
 PerDeviceOpState *Flat::init_task(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime) {
+                                  Context ctx, Runtime *runtime) {
   FFHandler handler = *((FFHandler const *)task->local_args);
   FlatMeta *m = new FlatMeta(handler);
   return m;
@@ -133,25 +109,16 @@ void Flat::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(FLAT_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  IndexLauncher launcher(FLAT_FWD_TASK_ID, parallel_is, TaskArgument(NULL, 0),
+                         argmap, Predicate::TRUE_PRED, false /*must*/,
+                         0 /*mapper_id*/, outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -161,23 +128,19 @@ void Flat::forward(FFModel const &ff) {
   regions[1](O): output
 */
 void Flat::forward_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions,
-                        Context ctx,
+                        std::vector<PhysicalRegion> const &regions, Context ctx,
                         Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   TensorAccessorR<float, FlatInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, FlatOutput::NUMDIM> acc_output(regions[1],
-                                                        task->regions[1],
-                                                        FID_DATA,
-                                                        ctx,
-                                                        runtime,
-                                                        false /*readOutput*/);
+  TensorAccessorW<float, FlatOutput::NUMDIM> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false /*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
 
-  forward_kernel_wrapper(
-      acc_input.ptr, acc_output.ptr, acc_input.rect.volume());
+  forward_kernel_wrapper(acc_input.ptr, acc_output.ptr,
+                         acc_input.rect.volume());
   // checkCUDA(cudaDeviceSynchronize());
 }
 
@@ -186,25 +149,16 @@ void Flat::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(FLAT_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  IndexLauncher launcher(FLAT_BWD_TASK_ID, parallel_is, TaskArgument(NULL, 0),
+                         argmap, Predicate::TRUE_PRED, false /*must*/,
+                         0 /*mapper_id*/, outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -215,26 +169,21 @@ void Flat::backward(FFModel const &ff) {
 */
 void Flat::backward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
+                         Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorW<float, FlatInput::NUMDIM> acc_input_grad(regions[0],
-                                                           task->regions[0],
-                                                           FID_DATA,
-                                                           ctx,
-                                                           runtime,
-                                                           true /*readOutput*/);
+  TensorAccessorW<float, FlatInput::NUMDIM> acc_input_grad(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime,
+      true /*readOutput*/);
   TensorAccessorR<float, FlatOutput::NUMDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
-  backward_kernel_wrapper(
-      acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+  backward_kernel_wrapper(acc_input_grad.ptr, acc_output_grad.ptr,
+                          acc_input_grad.rect.volume());
 }
 
-Domain Flat::get_input_tensor_shape(ParallelConfig const &pc,
-                                    int input_idx,
+Domain Flat::get_input_tensor_shape(ParallelConfig const &pc, int input_idx,
                                     int part_idx) const {
   assert(input_idx < numInputs);
   assert(pc.nDims == 3);
@@ -254,12 +203,9 @@ Domain Flat::get_input_tensor_shape(ParallelConfig const &pc,
   return d;
 }
 
-void Flat::serialize(Legion::Serializer &sez) const {
-  return;
-}
+void Flat::serialize(Legion::Serializer &sez) const { return; }
 
-bool Flat::measure_operator_cost(Simulator *sim,
-                                 MachineView const &mv,
+bool Flat::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -305,12 +251,9 @@ bool Flat::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     log_measure.debug(
         "[Measure Flat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+        name, cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    log_measure.debug("[Measure Flat] name(%s) forward_time(%.4lf)\n",
-                      name,
+    log_measure.debug("[Measure Flat] name(%s) forward_time(%.4lf)\n", name,
                       cost_metrics.forward_time);
   }
 
@@ -324,16 +267,13 @@ FlatParams Flat::get_params() const {
 
 using PCG::Node;
 /*static*/
-Node Flat::deserialize(FFModel &ff,
-                       Legion::Deserializer &dez,
-                       ParallelTensor inputs[],
-                       int num_inputs) {
+Node Flat::deserialize(FFModel &ff, Legion::Deserializer &dez,
+                       ParallelTensor inputs[], int num_inputs) {
   assert(num_inputs == 1);
   return ff.get_or_create_node<Flat>(inputs[0], {});
 }
 
-Op *Flat::materialize(FFModel &ff,
-                      ParallelTensor inputs[],
+Op *Flat::materialize(FFModel &ff, ParallelTensor inputs[],
                       int num_inputs) const {
   assert(num_inputs == 1);
   return new Flat(ff, inputs[0], this->name);

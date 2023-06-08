@@ -7,15 +7,13 @@
 
 float randf();
 
-template <typename T>
-T select_random(std::vector<T> const &values) {
+template <typename T> T select_random(std::vector<T> const &values) {
   return values[std::rand() % values.size()];
 }
 
 template <typename T>
 T select_random_determistic(std::vector<T> const &values,
-                            std::vector<float> const &weights,
-                            float value) {
+                            std::vector<float> const &weights, float value) {
   if (values.empty()) {
     throw std::invalid_argument("Values list must not be empty.");
   }

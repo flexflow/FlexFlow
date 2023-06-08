@@ -26,9 +26,7 @@ public:
     return maybe_owned_ref<IOpenMultiDiGraphView const>(this->ptr);
   }
 
-  IOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
+  IOpenMultiDiGraphView const *unsafe() const { return this->ptr.get(); }
 
   template <typename T, typename... Args>
   static
@@ -70,7 +68,7 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value,
                                  OpenMultiDiGraph>::type
-      create() {
+  create() {
     return OpenMultiDiGraph(make_unique<T>());
   }
 
@@ -102,15 +100,13 @@ public:
     return maybe_owned_ref<IUpwardOpenMultiDiGraphView const>(this->ptr);
   }
 
-  IUpwardOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
+  IUpwardOpenMultiDiGraphView const *unsafe() const { return this->ptr.get(); }
 
   template <typename T, typename... Args>
   static typename std::enable_if<
       std::is_base_of<IUpwardOpenMultiDiGraphView, T>::value,
       UpwardOpenMultiDiGraphView>::type
-      create(Args &&...args) {
+  create(Args &&...args) {
     return UpwardOpenMultiDiGraphView(
         std::make_shared<T>(std::forward<Args>(args)...));
   }
@@ -148,7 +144,7 @@ public:
   static typename std::enable_if<
       std::is_base_of<IUpwardOpenMultiDiGraph, T>::value,
       UpwardOpenMultiDiGraph>::type
-      create() {
+  create() {
     return UpwardOpenMultiDiGraph(make_unique<T>());
   }
 
@@ -188,7 +184,7 @@ public:
   static typename std::enable_if<
       std::is_base_of<IDownwardOpenMultiDiGraphView, T>::value,
       DownwardOpenMultiDiGraphView>::type
-      create(Args &&...args) {
+  create(Args &&...args) {
     return DownwardOpenMultiDiGraphView(
         std::make_shared<T>(std::forward<Args>(args)...));
   }
@@ -226,7 +222,7 @@ public:
   static typename std::enable_if<
       std::is_base_of<IDownwardOpenMultiDiGraph, T>::value,
       DownwardOpenMultiDiGraph>::type
-      create() {
+  create() {
     return DownwardOpenMultiDiGraph(make_unique<T>());
   }
 

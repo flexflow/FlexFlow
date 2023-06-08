@@ -34,8 +34,8 @@ ffError_t ffEventSynchronize(ffEvent_t &e) {
 #endif
 }
 
-ffError_t
-    ffEventElapsedTime(float *elapsed, ffEvent_t &start, ffEvent_t &stop) {
+ffError_t ffEventElapsedTime(float *elapsed, ffEvent_t &start,
+                             ffEvent_t &stop) {
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   return cudaEventElapsedTime(elapsed, start, stop);
 #elif defined(FF_USE_HIP_ROCM)

@@ -40,13 +40,9 @@ using namespace FlexFlow::Kernels::Aggregate;
 DataDependencies get_data_dependencies(AggregateAttrs const &attrs,
                                        TaskSignature const &sig) {
   DataDependencies deps;
-  return pointwise_data_dependence({GATE_PREDS,
-                                    GATE_ASSIGN,
-                                    TRUE_GATE_ASSIGN,
-                                    FULL_GATE_GRADIENTS,
-                                    EXP_PREDS},
-                                   {},
-                                   {OUTPUT});
+  return pointwise_data_dependence({GATE_PREDS, GATE_ASSIGN, TRUE_GATE_ASSIGN,
+                                    FULL_GATE_GRADIENTS, EXP_PREDS},
+                                   {}, {OUTPUT});
 }
 
 // OpTaskInvocation init(AggregateAttrs const &attrs) {
@@ -146,25 +142,16 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   int k = (int)(gate_assign.shape[0]);
 
-  return profile(forward_kernel,
-                 enable_profiling,
-                 "[Aggregate] forward_time = %.2lfms\n",
-                 per_device_state,
-                 exp_preds.data(),
-                 gate_assign.get_float_ptr(),
-                 gate_pred.get_float_ptr(),
-                 output.get_float_ptr(),
-                 n,
-                 k,
-                 rows,
-                 batch_size,
-                 out_dim);
+  return profile(forward_kernel, enable_profiling,
+                 "[Aggregate] forward_time = %.2lfms\n", per_device_state,
+                 exp_preds.data(), gate_assign.get_float_ptr(),
+                 gate_pred.get_float_ptr(), output.get_float_ptr(), n, k, rows,
+                 batch_size, out_dim);
 }
 
 static void forward_task(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime) {
+                         Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   forward_task_impl(acc);
 }
@@ -226,29 +213,18 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
       acc_exp_grads);
   assert(exp_grads.size() == n);
 
-  return profile(backward_kernel,
-                 enable_profiling,
-                 "[Aggregate] backward_time = %.2lfms\n",
-                 &per_device_state,
-                 exp_preds.data(),
-                 exp_grads.data(),
-                 gate_assign.get_float_ptr(),
-                 true_gate_assign.get_float_ptr(),
-                 gate_pred.get_float_ptr(),
-                 full_gate_grad.get_float_ptr(),
-                 output_grad.get_float_ptr(),
-                 n,
-                 k,
-                 rows,
-                 lambda_bal,
-                 batch_size,
-                 out_dim);
+  return profile(backward_kernel, enable_profiling,
+                 "[Aggregate] backward_time = %.2lfms\n", &per_device_state,
+                 exp_preds.data(), exp_grads.data(),
+                 gate_assign.get_float_ptr(), true_gate_assign.get_float_ptr(),
+                 gate_pred.get_float_ptr(), full_gate_grad.get_float_ptr(),
+                 output_grad.get_float_ptr(), n, k, rows, lambda_bal,
+                 batch_size, out_dim);
 }
 
 static void backward_task(Legion::Task const *task,
                           std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime) {
+                          Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   backward_task_impl(acc);
 }
@@ -417,8 +393,7 @@ static void backward_task(Legion::Task const *task,
 //   return true;
 // }
 
-template <>
-void register_task<AGGREGATE_FWD_TASK_ID>() {
+template <> void register_task<AGGREGATE_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_untrainable_input_slot(GATE_PREDS);
@@ -432,8 +407,7 @@ void register_task<AGGREGATE_FWD_TASK_ID>() {
   register_task(AGGREGATE_FWD_TASK_ID, "Aggregate Fwd", fwd, forward_task);
 }
 
-template <>
-void register_task<AGGREGATE_BWD_TASK_ID>() {
+template <> void register_task<AGGREGATE_BWD_TASK_ID>() {
   OpTaskSignature bwd(OpTaskType::BWD);
 
   OpTaskSignature bwd =
@@ -448,15 +422,14 @@ void register_task<AGGREGATE_BWD_TASK_ID>() {
 }
 
 CostMetrics
-    measure_operator_cost(SimEnvFactory const &sim,
-                          AggregateAttrs const &attrs,
-                          InputParallelTensorDesc const &gate_preds,
-                          InputParallelTensorDesc const &gate_assign,
-                          InputParallelTensorDesc const &true_gate_assign,
-                          InputParallelTensorDesc const &full_gate_gradients,
-                          InputVariadicParallelTensorDesc const &exp_preds,
-                          ProfilingSettings const &settings,
-                          MachineView const &mv) {
+measure_operator_cost(SimEnvFactory const &sim, AggregateAttrs const &attrs,
+                      InputParallelTensorDesc const &gate_preds,
+                      InputParallelTensorDesc const &gate_assign,
+                      InputParallelTensorDesc const &true_gate_assign,
+                      InputParallelTensorDesc const &full_gate_gradients,
+                      InputVariadicParallelTensorDesc const &exp_preds,
+                      ProfilingSettings const &settings,
+                      MachineView const &mv) {
   auto env = sim.new_environment();
 
   SimTaskBinding fwd_binding;
@@ -464,12 +437,9 @@ CostMetrics
   fwd_binding.bind(GATE_ASSIGN, gate_assign);
   fwd_binding.bind(EXP_PREDS, exp_preds);
 
-  ParallelTensorShape output_shape = get_output_shape(attrs,
-                                                      gate_preds.shape,
-                                                      gate_assign.shape,
-                                                      true_gate_assign.shape,
-                                                      full_gate_gradients.shape,
-                                                      exp_preds.shapes);
+  ParallelTensorShape output_shape = get_output_shape(
+      attrs, gate_preds.shape, gate_assign.shape, true_gate_assign.shape,
+      full_gate_gradients.shape, exp_preds.shapes);
   fwd_binding.bind(OUTPUT, output_shape);
 
   fwd_binding.bind_arg(PROFILING, settings);

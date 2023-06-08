@@ -18,9 +18,7 @@ public:
     return n;
   }
 
-  NodeLabel &at(Node const &n) override {
-    return this->node_map.at(n);
-  }
+  NodeLabel &at(Node const &n) override { return this->node_map.at(n); }
 
   NodeLabel const &at(Node const &n) const override {
     return this->node_map.at(n);
@@ -43,9 +41,7 @@ struct UnorderedLabelledMultiDiGraph
     return label;
   }
 
-  EdgeLabel &at(MultiDiEdge const &n) override {
-    return this->edge_map.at(n);
-  }
+  EdgeLabel &at(MultiDiEdge const &n) override { return this->edge_map.at(n); }
 
   EdgeLabel const &at(MultiDiEdge const &n) const override {
     return this->edge_map.at(n);
@@ -82,14 +78,10 @@ private:
   std::unordered_map<MultiDiOutput, OutputLabel> output_map;
 };
 
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
+template <typename NodeLabel, typename EdgeLabel,
+          typename InputLabel = EdgeLabel, typename OutputLabel = InputLabel>
 struct UnorderedLabelledOpenMultiDiGraph
-    : public ILabelledOpenMultiDiGraph<NodeLabel,
-                                       EdgeLabel,
-                                       InputLabel,
+    : public ILabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel,
                                        OutputLabel>,
       public UnorderedLabelledMultiDiGraph<NodeLabel, EdgeLabel> {
 public:
@@ -107,9 +99,7 @@ public:
     return this->input_map.at(e);
   }
 
-  InputLabel &at(InputMultiDiEdge const &e) {
-    return this->input_map.at(e);
-  }
+  InputLabel &at(InputMultiDiEdge const &e) { return this->input_map.at(e); }
 
   OutputLabel const &at(OutputMultiDiEdge const &e) const {
     return this->output_map.at(e);

@@ -7,8 +7,7 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<NOOP_INIT_TASK_ID>();
+template <> void register_task<NOOP_INIT_TASK_ID>();
 
 OpTaskInvocation init(NoopAttrs const &);
 OpTaskInvocation forward(NoopAttrs const &);

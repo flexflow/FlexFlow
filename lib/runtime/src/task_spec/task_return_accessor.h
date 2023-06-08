@@ -8,10 +8,8 @@
 
 namespace FlexFlow {
 
-template <typename T>
-struct TypedFuture;
-template <typename T>
-struct TypedFutureMap;
+template <typename T> struct TypedFuture;
+template <typename T> struct TypedFutureMap;
 struct CheckedTypedFuture;
 struct CheckedTypedFutureMap;
 
@@ -19,11 +17,9 @@ struct TaskReturnAccessor {
   TaskReturnAccessor(optional<std::type_index>, Legion::Future const &);
   TaskReturnAccessor(optional<std::type_index>, Legion::FutureMap const &);
 
-  template <typename T>
-  TypedFuture<T> get_returned_future() const;
+  template <typename T> TypedFuture<T> get_returned_future() const;
 
-  template <typename T>
-  TypedFutureMap<T> get_returned_future_map() const;
+  template <typename T> TypedFutureMap<T> get_returned_future_map() const;
 
   CheckedTypedFuture get_returned_future() const;
   CheckedTypedFutureMap get_returned_future_map() const;

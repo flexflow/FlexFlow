@@ -13,12 +13,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<NCCL_GETUNIQUEID_TASK_ID>();
-template <>
-void register_task<NCCL_INIT_COMMS_TASK_ID>();
-template <>
-void register_task<FF_INIT_TASK_ID>();
+template <> void register_task<NCCL_GETUNIQUEID_TASK_ID>();
+template <> void register_task<NCCL_INIT_COMMS_TASK_ID>();
+template <> void register_task<FF_INIT_TASK_ID>();
 
 struct LegionConfig : public use_visitable_cmp<LegionConfig> {
   LegionConfig();
@@ -107,8 +104,8 @@ struct NcclCommunicators {
   std::unordered_map<MachineView, ncclComm_t *> view_to_comms;
 };
 
-std::vector<MachineView>
-    get_all_machine_views(int num_nodes, int gpus_per_node, int cpus_per_node);
+std::vector<MachineView> get_all_machine_views(int num_nodes, int gpus_per_node,
+                                               int cpus_per_node);
 RuntimeBacking initialize_runtime(LegionConfig const &);
 NcclCommunicators initialize_nccl_communicator(LegionConfig const &);
 
@@ -117,11 +114,7 @@ NcclCommunicators initialize_nccl_communicator(LegionConfig const &);
 VISITABLE_STRUCT_EMPTY(::FlexFlow::OperatorLegionBacking);
 VISITABLE_STRUCT(::FlexFlow::LegionConfig, context, runtime, field_space);
 VISITABLE_STRUCT(::FlexFlow::MachineViewBacking, mapping_id, parallel_is);
-VISITABLE_STRUCT(::FlexFlow::ParallelTensorBacking,
-                 region,
-                 region_grad,
-                 part,
-                 part_grad,
-                 physical_region);
+VISITABLE_STRUCT(::FlexFlow::ParallelTensorBacking, region, region_grad, part,
+                 part_grad, physical_region);
 
 #endif

@@ -41,7 +41,7 @@ enum Slots {
 }
 
 TaskInvocation
-    init(DropoutAttrs const &attrs) {
+init(DropoutAttrs const &attrs) {
   TaskBinding binding;
 
   binding.bind_arg(ATTRS, attrs);
@@ -77,22 +77,14 @@ TaskInvocation forward(DropoutAttrs const &attrs) {
   return {DROPOUT_BWD_TASK_ID, binding};
 }
 
-Tensor FFModel::dropout(const Tensor input,
-                        float rate,
-                        unsigned long long seed,
+Tensor FFModel::dropout(const Tensor input, float rate, unsigned long long seed,
                         char const *name) {
   // seed = 0 is preserved as None, so we use a random seed
   if (seed == 0) {
     seed = std::rand();
   }
-  Layer *dropout = new Layer(this,
-                             OP_DROPOUT,
-                             DT_FLOAT,
-                             name,
-                             1 /*inputs*/,
-                             0 /*weights*/,
-                             1 /*outputs*/,
-                             input);
+  Layer *dropout = new Layer(this, OP_DROPOUT, DT_FLOAT, name, 1 /*inputs*/,
+                             0 /*weights*/, 1 /*outputs*/, input);
   int numdims = input->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdims; i++) {
@@ -107,8 +99,7 @@ Tensor FFModel::dropout(const Tensor input,
 }
 
 Op *Dropout::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("seed", value);
@@ -125,19 +116,10 @@ DropoutParams Dropout::get_params() const {
   return params;
 }
 
-Dropout::Dropout(FFModel &model,
-                 const ParallelTensor _input,
-                 float _rate,
-                 unsigned long long _seed,
-                 char const *name)
-    : Op(model,
-         OP_DROPOUT,
-         DT_FLOAT,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         _input),
+Dropout::Dropout(FFModel &model, const ParallelTensor _input, float _rate,
+                 unsigned long long _seed, char const *name)
+    : Op(model, OP_DROPOUT, DT_FLOAT, name, 1 /*inputs*/, 0 /*weights*/,
+         1 /*outputs*/, _input),
       rate(_rate), seed(_seed) {
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -149,15 +131,12 @@ Dropout::Dropout(FFModel &model,
       _input->num_dims, dims, DT_FLOAT, this);
 }
 
-Dropout::Dropout(FFModel &model,
-                 Dropout const &other,
+Dropout::Dropout(FFModel &model, Dropout const &other,
                  const ParallelTensor input)
     : Dropout(model, input, other.rate, other.seed, other.name) {}
 
-Dropout::Dropout(FFModel &model,
-                 DropoutParams const &params,
-                 const ParallelTensor input,
-                 char const *name)
+Dropout::Dropout(FFModel &model, DropoutParams const &params,
+                 const ParallelTensor input, char const *name)
     : Dropout(model, input, params.rate, params.seed, name) {}
 
 // void Dropout::init(FFModel const &ff) {
@@ -194,8 +173,7 @@ Dropout::Dropout(FFModel &model,
 
 static PerDeviceOpState *init_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
-                                   Context ctx,
-                                   Runtime *runtime) {
+                                   Context ctx, Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
   auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
@@ -255,8 +233,7 @@ static PerDeviceOpState *init_task(Task const *task,
 
 static void forward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
+                         Context ctx, Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   auto per_device_state =
@@ -265,12 +242,9 @@ static void forward_task(Task const *task,
   auto input = acc.get_tensor<READ_ONLY>(INPUT);
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  profile(backward_kernel,
-          enable_profiling,
-          "[Dropout] forward_time = %.2lfms\n",
-          per_device_state,
-          input.get_float_ptr(),
-          output.get_float_ptr())
+  profile(backward_kernel, enable_profiling,
+          "[Dropout] forward_time = %.2lfms\n", per_device_state,
+          input.get_float_ptr(), output.get_float_ptr())
   // // float alpha = 1.0f, beta = 0.0f;
   // assert(regions.size() == 2);
   // assert(task->regions.size() == 2);
@@ -318,8 +292,7 @@ static void forward_task(Task const *task,
 */
 static void backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                          Context ctx, Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state =
@@ -329,12 +302,9 @@ static void backward_task(Task const *task,
   auto input_grad = acc.get_tensor<READ_WRITE>(INPUT_GRAD);
   auto output_grad = acc.get_tensor<READ_ONLY>(OUTPUT_GRAD);
 
-  profile(backward_kernel,
-          enable_profiling,
-          "[Dropout] backward_time = %.2lfms\n",
-          &per_device_state,
-          output_grad.get_float_ptr(),
-          input_grad.get_float_ptr())
+  profile(backward_kernel, enable_profiling,
+          "[Dropout] backward_time = %.2lfms\n", &per_device_state,
+          output_grad.get_float_ptr(), input_grad.get_float_ptr())
 
   // // float alpha = 1.0f, beta = 0.0f;
   // assert(regions.size() == 2);
@@ -369,8 +339,7 @@ static void backward_task(Task const *task,
 //   return ff.get_or_create_node<Dropout>(inputs[0], params);
 // }
 
-bool Dropout::measure_operator_cost(Simulator *sim,
-                                    MachineView const &mv,
+bool Dropout::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -380,12 +349,9 @@ bool Dropout::measure_operator_cost(Simulator *sim,
     return false;
   }
   assert(sub_input.get_domain() == sub_output.get_domain());
-  DropoutPerDeviceState *m = new DropoutPerDeviceState(sim->handler,
-                                                       this->profiling,
-                                                       this->rate,
-                                                       this->seed,
-                                                       sim->memory,
-                                                       sub_output.get_domain());
+  DropoutPerDeviceState *m = new DropoutPerDeviceState(
+      sim->handler, this->profiling, this->rate, this->seed, sim->memory,
+      sub_output.get_domain());
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -424,12 +390,9 @@ bool Dropout::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf(
         "[Measure Dropout] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+        name, cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    printf("[Measure Dropout] name(%s) forward_time(%.4lf)\n",
-           name,
+    printf("[Measure Dropout] name(%s) forward_time(%.4lf)\n", name,
            cost_metrics.forward_time);
   }
   // Free dropoutmeta
@@ -437,8 +400,7 @@ bool Dropout::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-template <>
-void register_task<DROPOUT_INIT_TASK_ID>() {
+template <> void register_task<DROPOUT_INIT_TASK_ID>() {
   TaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<DropoutAttrs>(ATTRS);
@@ -448,8 +410,7 @@ void register_task<DROPOUT_INIT_TASK_ID>() {
   register_task(DROPOUT_INIT_TASK_ID, "Dropout Init", init, init_task);
 }
 
-template <>
-void register_task<DROPOUT_FWD_TASK_ID>() {
+template <> void register_task<DROPOUT_FWD_TASK_ID>() {
   TaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<DropoutAttrs>(ATTRS);
@@ -462,8 +423,7 @@ void register_task<DROPOUT_FWD_TASK_ID>() {
   register_task(DROPOUT_FWD_TASK_ID, "Dropout Fwd", fwd, forward_task);
 }
 
-template <>
-void register_task<DROPOUT_BWD_TASK_ID>() {
+template <> void register_task<DROPOUT_BWD_TASK_ID>() {
   TaskSignature bwd(OpTaskType::BWD);
 
   bwd.add_arg_slot<DropoutAttrs>(ATTRS);

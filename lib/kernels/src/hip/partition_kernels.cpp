@@ -27,31 +27,23 @@ namespace Kernels {
 namespace Repartition {
 
 tempate<DataType T> struct ForwardKernel {
-  void operator()(hipStream_t stream,
-                  RepartitionPerDeviceState const *m,
+  void operator()(hipStream_t stream, RepartitionPerDeviceState const *m,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
-    checkCUDA(hipMemcpyAsync(output.get<T>(),
-                             input.get<T>(),
+    checkCUDA(hipMemcpyAsync(output.get<T>(), input.get<T>(),
                              input.shape.num_elements() * sizeof(T),
-                             hipMemcpyDeviceToDevice,
-                             stream));
+                             hipMemcpyDeviceToDevice, stream));
   }
 }
 
 tempate<DataType T> struct BackwardKernel {
-  void operator()(hipStream_t stream,
-                  RepartitionPerDeviceState const *m,
+  void operator()(hipStream_t stream, RepartitionPerDeviceState const *m,
                   GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorW const &input_grad) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(add_kernel<T>),
                        GET_BLOCKS(input_grad.shape.num_elements()),
-                       CUDA_NUM_THREADS,
-                       0,
-                       stream,
-                       input_grad.get<T>(),
-                       output_grad.get<T>(),
-                       input_grad.shape.num_elements());
+                       CUDA_NUM_THREADS, 0, stream, input_grad.get<T>(),
+                       output_grad.get<T>(), input_grad.shape.num_elements());
   }
 }
 
@@ -62,12 +54,11 @@ void forward_kernel(hipStream_t stream,
   DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output)
 }
 
-void backward_kernel(hipStream_t stream,
-                     RepartitionPerDeviceState const *m,
+void backward_kernel(hipStream_t stream, RepartitionPerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad) {
-  DataTypeDispatch1<BackwardKernel>{}(
-      m->data_type, stream, m, input_grad, output_grad)
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, input_grad,
+                                      output_grad)
 }
 
 } // namespace Repartition

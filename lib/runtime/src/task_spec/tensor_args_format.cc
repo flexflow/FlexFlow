@@ -14,8 +14,8 @@ bool includes_tensor(ExecutableTensorSpec const &spec,
 }
 
 std::unordered_set<slot_id>
-    get_tensor_slots(ExecutableTaskBinding const &binding,
-                     parallel_tensor_guid_t const &guid) {
+get_tensor_slots(ExecutableTaskBinding const &binding,
+                 parallel_tensor_guid_t const &guid) {
   std::unordered_set<slot_id> results;
   for (auto const &kv : binding.tensor_bindings) {
     slot_id slot = kv.first;
@@ -38,7 +38,7 @@ Permissions get_tensor_permissions(TaskSignature const &sig,
 }
 
 std::vector<parallel_tensor_guid_t>
-    as_vector(ExecutableTensorSpec const &spec) {
+as_vector(ExecutableTensorSpec const &spec) {
   if (is_variadic(spec)) {
     return get_variadic(spec);
   } else {
@@ -78,10 +78,7 @@ TensorArgsFormat process_tensor_args(TaskSignature const &sig,
     }
   }
 
-  return {region_idxs,
-          privs_map,
-          datatypes,
-          nonvariadic_slot_to_tensor,
+  return {region_idxs, privs_map, datatypes, nonvariadic_slot_to_tensor,
           variadic_slot_to_tensor};
 }
 

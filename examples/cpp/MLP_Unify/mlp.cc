@@ -22,18 +22,14 @@ using namespace FlexFlow;
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+                              Context ctx, Runtime *runtime) {
   FFConfig ffConfig;
-  fprintf(stderr,
-          "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
-          ffConfig.batchSize,
-          ffConfig.workersPerNode,
-          ffConfig.numNodes);
+  fprintf(stderr, "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
+          ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   FFModel ff(ffConfig);
 
-  std::vector<int> hidden_dims = {
-      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
+  std::vector<int> hidden_dims = {8192, 8192, 8192, 8192,
+                                  8192, 8192, 8192, 8192};
   Tensor input1, input2;
   {
     int const dims[] = {ffConfig.batchSize, 1024};
@@ -85,8 +81,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
-         run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          ffConfig.batchSize * 128 * ffConfig.epochs / run_time);
 }
 

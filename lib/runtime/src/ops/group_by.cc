@@ -38,21 +38,10 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-void FFModel::group_by(const Tensor input,
-                       const Tensor assign,
-                       Tensor *outputs,
-                       int n,
-                       float alpha,
-                       char const *name) {
-  Layer *li = new Layer(this,
-                        OP_GROUP_BY,
-                        DT_FLOAT,
-                        name,
-                        2 /*inputs*/,
-                        0 /*weights*/,
-                        n /*outputs*/,
-                        input,
-                        assign);
+void FFModel::group_by(const Tensor input, const Tensor assign, Tensor *outputs,
+                       int n, float alpha, char const *name) {
+  Layer *li = new Layer(this, OP_GROUP_BY, DT_FLOAT, name, 2 /*inputs*/,
+                        0 /*weights*/, n /*outputs*/, input, assign);
   {
     int k = assign->dims[0];
     int num_dims = input->num_dims;
@@ -80,8 +69,7 @@ void FFModel::group_by(const Tensor input,
 }
 
 Op *Group_by::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value1;
   layer->get_int_property("n", value1);
@@ -109,21 +97,11 @@ bool operator==(Group_byParams const &lhs, Group_byParams const &rhs) {
   return lhs.n == rhs.n && lhs.alpha == rhs.alpha;
 }
 
-Group_by::Group_by(FFModel &model,
-                   const ParallelTensor _input,
-                   const ParallelTensor _assign,
-                   int _n,
-                   float _alpha,
+Group_by::Group_by(FFModel &model, const ParallelTensor _input,
+                   const ParallelTensor _assign, int _n, float _alpha,
                    char const *name)
-    : Op(model,
-         OP_GROUP_BY,
-         _input->data_type,
-         name,
-         2 /*inputs*/,
-         0 /*weights*/,
-         _n /*outputs*/,
-         _input,
-         _assign),
+    : Op(model, OP_GROUP_BY, _input->data_type, name, 2 /*inputs*/,
+         0 /*weights*/, _n /*outputs*/, _input, _assign),
       n(_n), alpha(_alpha) {
   assert(_input->dims[1] == _assign->dims[1]);
   assert(n > 0);
@@ -148,18 +126,15 @@ Group_by::Group_by(FFModel &model,
   numWeights = 0;
 }
 
-Group_by::Group_by(FFModel &model,
-                   Group_by const &other,
-                   const ParallelTensor input,
-                   const ParallelTensor assign)
+Group_by::Group_by(FFModel &model, Group_by const &other,
+                   const ParallelTensor input, const ParallelTensor assign)
     : Group_by(model, input, assign, other.n, other.alpha, other.name) {}
 
-Group_by::Group_by(FFModel &model,
-                   Group_byParams const &params,
+Group_by::Group_by(FFModel &model, Group_byParams const &params,
                    std::pair<ParallelTensor, ParallelTensor> const &inputs,
                    char const *name)
-    : Group_by(
-          model, inputs.first, inputs.second, params.n, params.alpha, name) {}
+    : Group_by(model, inputs.first, inputs.second, params.n, params.alpha,
+               name) {}
 
 void Group_by::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -168,36 +143,26 @@ void Group_by::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(GROUP_BY_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Group_by)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(GROUP_BY_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Group_by)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // data
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // assign
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[1]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[1]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
   // output
   for (int i = 0; i < n; i++) {
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i + 2, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
@@ -206,10 +171,9 @@ void Group_by::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *
-    Group_by::init_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions,
-                        Context ctx,
-                        Runtime *runtime) {
+Group_by::init_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions, Context ctx,
+                    Runtime *runtime) {
   Group_by *gb = (Group_by *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   GroupByMeta *m = new GroupByMeta(handle, gb->n);
@@ -222,37 +186,27 @@ void Group_by::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Group_by)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Group_by)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // data
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
 
   // assign
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[1]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[1]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
   // output
   for (int i = 0; i < n; i++) {
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i + 2, FID_DATA);
   }
 
@@ -261,8 +215,7 @@ void Group_by::forward(FFModel const &ff) {
 
 void Group_by::forward_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                            Context ctx, Runtime *runtime) {
   // Get n, alpha
   Group_by const *gb = (Group_by *)task->args;
   int n = gb->n;
@@ -308,15 +261,9 @@ void Group_by::forward_task(Task const *task,
     assert(output_cols == input_cols);
   }
 
-  Group_by::forward_kernel_wrapper(m,
-                                   acc_input.ptr(rect_input),
-                                   acc_assign.ptr(rect_assign),
-                                   outputs,
-                                   n,
-                                   k,
-                                   alpha,
-                                   batch_size,
-                                   data_dim);
+  Group_by::forward_kernel_wrapper(m, acc_input.ptr(rect_input),
+                                   acc_assign.ptr(rect_assign), outputs, n, k,
+                                   alpha, batch_size, data_dim);
 }
 
 void Group_by::backward(FFModel const &ff) {
@@ -324,38 +271,28 @@ void Group_by::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(GROUP_BY_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Group_by)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(GROUP_BY_BWD_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Group_by)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
 
   // input_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
 
   // assign
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[1]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[1]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
   // output grad
   for (int i = 0; i < n; i++) {
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part_grad,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region_grad));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->part_grad, 0 /*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, outputs[i]->region_grad));
     launcher.add_field(i + 2, FID_DATA);
   }
 
@@ -364,8 +301,7 @@ void Group_by::backward(FFModel const &ff) {
 
 void Group_by::backward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+                             Context ctx, Runtime *runtime) {
   // Get n, alpha
   GroupByMeta const *m = *((GroupByMeta **)task->local_args);
   Group_by const *gb = (Group_by *)task->args;
@@ -407,15 +343,9 @@ void Group_by::backward_task(Task const *task,
     assert(output_cols == input_cols);
   }
 
-  Group_by::backward_kernel_wrapper(m,
-                                    acc_input_grad.ptr(rect_input_grad),
-                                    acc_assign.ptr(rect_assign),
-                                    output_grads,
-                                    n,
-                                    k,
-                                    alpha,
-                                    batch_size,
-                                    data_dim);
+  Group_by::backward_kernel_wrapper(m, acc_input_grad.ptr(rect_input_grad),
+                                    acc_assign.ptr(rect_assign), output_grads,
+                                    n, k, alpha, batch_size, data_dim);
 }
 
 void Group_by::serialize(Legion::Serializer &sez) const {
@@ -423,10 +353,8 @@ void Group_by::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->alpha);
 }
 
-Node Group_by::deserialize(FFModel &ff,
-                           Legion::Deserializer &dez,
-                           ParallelTensor inputs[],
-                           int num_inputs) {
+Node Group_by::deserialize(FFModel &ff, Legion::Deserializer &dez,
+                           ParallelTensor inputs[], int num_inputs) {
   assert(num_inputs == 2);
   int n;
   float alpha;
@@ -439,15 +367,13 @@ Node Group_by::deserialize(FFModel &ff,
                                          params);
 }
 
-Op *Group_by::materialize(FFModel &ff,
-                          ParallelTensor inputs[],
+Op *Group_by::materialize(FFModel &ff, ParallelTensor inputs[],
                           int num_inputs) const {
   Group_byParams params = get_params();
   return new Group_by(ff, params, {inputs[0], inputs[1]}, this->name);
 }
 
-bool Group_by::measure_operator_cost(Simulator *sim,
-                                     MachineView const &mv,
+bool Group_by::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                      CostMetrics &cost_metrics) const {
   assert(numOutputs <= MAX_NUM_OUTPUTS);
   ParallelTensorBase sub_input, sub_assign;
@@ -498,20 +424,12 @@ bool Group_by::measure_operator_cost(Simulator *sim,
   int data_dim = in_domain.hi()[0] - in_domain.lo()[0] + 1;
 
   forward = [&] {
-    forward_kernel_wrapper(m,
-                           input_ptr,
-                           assign_ptr,
-                           output_ptrs,
-                           n,
-                           k,
-                           alpha,
-                           batch_size,
-                           data_dim);
+    forward_kernel_wrapper(m, input_ptr, assign_ptr, output_ptrs, n, k, alpha,
+                           batch_size, data_dim);
   };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  log_measure.debug("[Measure GroupBy] name(%s) forward_time(%.4lf)\n",
-                    name,
+  log_measure.debug("[Measure GroupBy] name(%s) forward_time(%.4lf)\n", name,
                     cost_metrics.forward_time);
 
   cost_metrics.backward_time = 0.0f; // not implemented for MOE

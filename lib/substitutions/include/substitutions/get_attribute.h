@@ -47,7 +47,7 @@ tl::optional<OperatorAttributeValue> get_attribute(LayerNormAttrs const &p,
 tl::optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p,
                                                    OperatorAttributeKey);
 tl::optional<OperatorAttributeValue>
-    get_attribute(MultiHeadAttentionAttrs const &p, OperatorAttributeKey);
+get_attribute(MultiHeadAttentionAttrs const &p, OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(Pool2DAttrs const &p,
                                                    OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(ReduceAttrs const &p,
@@ -69,7 +69,7 @@ tl::optional<OperatorAttributeValue> get_attribute(TopKAttrs const &p,
 tl::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
                                                    OperatorAttributeKey);
 tl::optional<OperatorAttributeValue>
-    get_attribute(FusedParallelOpAttrs const &p, OperatorAttributeKey);
+get_attribute(FusedParallelOpAttrs const &p, OperatorAttributeKey);
 
 } // namespace substitutions
 } // namespace FlexFlow

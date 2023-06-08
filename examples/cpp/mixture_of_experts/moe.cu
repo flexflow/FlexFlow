@@ -18,18 +18,14 @@
 
 void DataLoader::load_input(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                            Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<float, 3> acc_full_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 3> acc_batch_input(regions[1],
-                                            task->regions[1],
-                                            FID_DATA,
-                                            ctx,
-                                            runtime,
+  TensorAccessorR<float, 3> acc_full_input(regions[0], task->regions[0],
+                                           FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 3> acc_batch_input(regions[1], task->regions[1],
+                                            FID_DATA, ctx, runtime,
                                             false /*readOutput*/);
 
   coord_t batch_size =
@@ -51,19 +47,15 @@ void DataLoader::load_input(Task const *task,
 
 void DataLoader::load_label(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                            Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
   TensorAccessorR<int, LABEL_DIM + 2> acc_full_label(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<int, LABEL_DIM + 2> acc_batch_label(regions[1],
-                                                      task->regions[1],
-                                                      FID_DATA,
-                                                      ctx,
-                                                      runtime,
-                                                      false /*readOutput*/);
+  TensorAccessorW<int, LABEL_DIM + 2> acc_batch_label(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false /*readOutput*/);
   coord_t batch_size =
       acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   // FIXME: currently assume continous indices

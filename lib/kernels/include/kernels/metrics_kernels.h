@@ -5,19 +5,13 @@
 
 namespace FlexFlow {
 
-void update_metrics_sparse_label_kernel(ffStream_t,
-                                        MetricsAttrs const &,
+void update_metrics_sparse_label_kernel(ffStream_t, MetricsAttrs const &,
                                         float const *logit_ptr,
-                                        int const *label_ptr,
-                                        int num_samples,
-                                        int num_classes,
-                                        PerfMetrics &perf_zc);
-void update_metrics_label_kernel(ffStream_t,
-                                 MetricsAttrs const &,
-                                 float const *logit_ptr,
-                                 float const *label_ptr,
-                                 int num_samples,
-                                 int num_classes,
+                                        int const *label_ptr, int num_samples,
+                                        int num_classes, PerfMetrics &perf_zc);
+void update_metrics_label_kernel(ffStream_t, MetricsAttrs const &,
+                                 float const *logit_ptr, float const *label_ptr,
+                                 int num_samples, int num_classes,
                                  PerfMetrics &perf_zc);
 
 } // namespace FlexFlow

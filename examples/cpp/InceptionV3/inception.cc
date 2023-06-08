@@ -122,8 +122,7 @@ Tensor InceptionE(FFModel &ff, Tensor input) {
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+                              Context ctx, Runtime *runtime) {
   FFConfig ffConfig;
   /* { */
   /* const InputArgs &command_args = HighLevelRuntime::get_input_args(); */
@@ -131,9 +130,7 @@ void FlexFlow::top_level_task(Task const *task,
   /* int argc = command_args.argc; */
   /* parse_input_args(argv, argc, inceptionConfig); */
   log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                ffConfig.batchSize,
-                ffConfig.workersPerNode,
-                ffConfig.numNodes);
+                ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   /* } */
   FFModel ff(ffConfig);
 
@@ -225,8 +222,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
-         run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          8192 * ffConfig.epochs / run_time);
 }
 

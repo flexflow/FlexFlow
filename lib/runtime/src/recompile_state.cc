@@ -25,9 +25,7 @@ RecompileState::RecompileState(std::function<bool(FFModel *)> _trigger_func,
   recompilations = 0;
 }
 
-bool RecompileState::trigger() {
-  return trigger_func(ff);
-}
+bool RecompileState::trigger() { return trigger_func(ff); }
 
 void RecompileState::alter() {
   if (recompilations == 0) {

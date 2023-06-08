@@ -29,8 +29,8 @@ struct SplitASTNode {
 SplitAST sp_decomposition(DiGraphView const &g);
 SplitAST parallel_decomposition(DiGraphView const &g);
 
-std::unordered_set<Node>
-    from_source_to_sink(DiGraphView const &, Node const &src, Node const &sink);
+std::unordered_set<Node> from_source_to_sink(DiGraphView const &,
+                                             Node const &src, Node const &sink);
 
 mpark::variant<Serial, Parallel, Node> to_final_ast(SplitAST const &);
 SplitAST flatten_ast(SplitAST const &ast);

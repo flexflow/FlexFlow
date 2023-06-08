@@ -16,9 +16,7 @@ void swap(OpenMultiDiGraph &lhs, OpenMultiDiGraph &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-Node OpenMultiDiGraph::add_node() {
-  return this->ptr->add_node();
-}
+Node OpenMultiDiGraph::add_node() { return this->ptr->add_node(); }
 
 void OpenMultiDiGraph::add_node_unsafe(Node const &n) {
   return this->ptr->add_node_unsafe(n);
@@ -37,7 +35,7 @@ void OpenMultiDiGraph::remove_edge(OpenMultiDiEdge const &e) {
 }
 
 std::unordered_set<OpenMultiDiEdge>
-    OpenMultiDiGraph::query_edges(OpenMultiDiEdgeQuery const &q) const {
+OpenMultiDiGraph::query_edges(OpenMultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
@@ -49,7 +47,7 @@ UpwardOpenMultiDiGraph::UpwardOpenMultiDiGraph(
     : ptr(other.ptr->clone()) {}
 
 UpwardOpenMultiDiGraph &
-    UpwardOpenMultiDiGraph::operator=(UpwardOpenMultiDiGraph other) {
+UpwardOpenMultiDiGraph::operator=(UpwardOpenMultiDiGraph other) {
   swap(*this, other);
   return *this;
 }
@@ -60,9 +58,7 @@ void swap(UpwardOpenMultiDiGraph &lhs, UpwardOpenMultiDiGraph &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-Node UpwardOpenMultiDiGraph::add_node() {
-  return this->ptr->add_node();
-}
+Node UpwardOpenMultiDiGraph::add_node() { return this->ptr->add_node(); }
 
 void UpwardOpenMultiDiGraph::add_node_unsafe(Node const &n) {
   return this->ptr->add_node_unsafe(n);
@@ -80,8 +76,8 @@ void UpwardOpenMultiDiGraph::remove_edge(UpwardOpenMultiDiEdge const &e) {
   return this->ptr->remove_edge(e);
 }
 
-std::unordered_set<UpwardOpenMultiDiEdge> UpwardOpenMultiDiGraph::query_edges(
-    UpwardOpenMultiDiEdgeQuery const &q) const {
+std::unordered_set<UpwardOpenMultiDiEdge>
+UpwardOpenMultiDiGraph::query_edges(UpwardOpenMultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
@@ -94,7 +90,7 @@ DownwardOpenMultiDiGraph::DownwardOpenMultiDiGraph(
     : ptr(other.ptr->clone()) {}
 
 DownwardOpenMultiDiGraph &
-    DownwardOpenMultiDiGraph::operator=(DownwardOpenMultiDiGraph other) {
+DownwardOpenMultiDiGraph::operator=(DownwardOpenMultiDiGraph other) {
   swap(*this, other);
   return *this;
 }
@@ -105,9 +101,7 @@ void swap(DownwardOpenMultiDiGraph &lhs, DownwardOpenMultiDiGraph &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-Node DownwardOpenMultiDiGraph::add_node() {
-  return this->ptr->add_node();
-}
+Node DownwardOpenMultiDiGraph::add_node() { return this->ptr->add_node(); }
 
 void DownwardOpenMultiDiGraph::add_node_unsafe(Node const &n) {
   return this->ptr->add_node_unsafe(n);
@@ -126,8 +120,8 @@ void DownwardOpenMultiDiGraph::remove_edge(DownwardOpenMultiDiEdge const &e) {
 }
 
 std::unordered_set<DownwardOpenMultiDiEdge>
-    DownwardOpenMultiDiGraph::query_edges(
-        DownwardOpenMultiDiEdgeQuery const &q) const {
+DownwardOpenMultiDiGraph::query_edges(
+    DownwardOpenMultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 

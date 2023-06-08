@@ -17,8 +17,7 @@ std::vector<TaskInvocation> forward(TrainingPCG const &training) {
 
 TaskInvocation compute_metrics(TrainingPCG const &training,
                                PerfMetrics const &all_metrics) {
-  return compute_and_update_metrics(training.metrics,
-                                    all_metrics,
+  return compute_and_update_metrics(training.metrics, all_metrics,
                                     training.logit_tensor,
                                     training.label_tensor);
 }

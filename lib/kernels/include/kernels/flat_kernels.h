@@ -14,14 +14,10 @@ public:
 namespace Kernels {
 namespace Flat {
 
-void forward_kernel(ffStream_t stream,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    size_t num_elements);
-void backward_kernel(ffStream_t stream,
-                     float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     size_t num_elements);
+void forward_kernel(ffStream_t stream, float const *input_ptr,
+                    float *output_ptr, size_t num_elements);
+void backward_kernel(ffStream_t stream, float *input_grad_ptr,
+                     float const *output_grad_ptr, size_t num_elements);
 
 } // namespace Flat
 } // namespace Kernels

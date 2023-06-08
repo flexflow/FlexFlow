@@ -7,13 +7,12 @@
 
 namespace FlexFlow {
 
-template <typename NodeLabel>
-struct INodeLabelledMultiDiGraph {
+template <typename NodeLabel> struct INodeLabelledMultiDiGraph {
 public:
   INodeLabelledMultiDiGraph() = default;
   INodeLabelledMultiDiGraph(INodeLabelledMultiDiGraph const &) = delete;
   INodeLabelledMultiDiGraph &
-      operator=(INodeLabelledMultiDiGraph const &) = delete;
+  operator=(INodeLabelledMultiDiGraph const &) = delete;
   virtual ~INodeLabelledMultiDiGraph() {}
 
   virtual Node add_node(NodeLabel const &) = 0;
@@ -92,10 +91,8 @@ static_assert(
     is_rc_copy_virtual_compliant<IOutputLabelledMultiDiGraph<int, int>>::value,
     RC_COPY_VIRTUAL_MSG);
 
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
+template <typename NodeLabel, typename EdgeLabel,
+          typename InputLabel = EdgeLabel, typename OutputLabel = InputLabel>
 struct ILabelledOpenMultiDiGraph
     : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel> {
 public:

@@ -262,8 +262,7 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 
 static void forward_task(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime) {
+                         Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   forward_task_impl(acc);
 }
@@ -302,18 +301,10 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
       acc_exp_preds);
   assert(exp_preds.size() == n);
 
-  profile(forward_kernel,
-          enable_profiling,
-          "[AggregateSpec] forward_time = %.2lfms\n",
-          &per_device_state,
-          exp_preds.data(),
-          gate_assign.get_int32_ptr(),
-          output.get_float_ptr(),
-          n,
-          k,
-          rows,
-          batch_size,
-          out_dim);
+  profile(forward_kernel, enable_profiling,
+          "[AggregateSpec] forward_time = %.2lfms\n", &per_device_state,
+          exp_preds.data(), gate_assign.get_int32_ptr(), output.get_float_ptr(),
+          n, k, rows, batch_size, out_dim);
 }
 
 // ArgumentMap argmap;
@@ -384,8 +375,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 static void backward_task(Legion::Task const *task,
                           std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime) {
+                          Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   backward_task_impl(acc);
 }
@@ -430,34 +420,23 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
 
   assert(acc_exp_grads.size() == n);
 
-  profile(backward_kernel,
-          enable_profiling,
-          "[AggregateSpec] backward_time = %.2lfms\n",
-          &per_device_state,
-          get_float_ptrs(acc_exp_grads).data(),
-          get_int32_ptr(gate_assign),
-          get_int32_ptr(true_gate_assign),
-          get_float_ptr(gate_pred),
-          get_float_ptr(full_gate_grad),
-          get_float_ptr(output_grad),
-          n,
-          k,
-          rows,
-          lambda_bal,
-          batch_size,
-          out_dim);
+  profile(backward_kernel, enable_profiling,
+          "[AggregateSpec] backward_time = %.2lfms\n", &per_device_state,
+          get_float_ptrs(acc_exp_grads).data(), get_int32_ptr(gate_assign),
+          get_int32_ptr(true_gate_assign), get_float_ptr(gate_pred),
+          get_float_ptr(full_gate_grad), get_float_ptr(output_grad), n, k, rows,
+          lambda_bal, batch_size, out_dim);
 }
 
 ConstMetrics
-    measure_operator_cost(SimEnvFactory const &sim,
-                          AggregateSpecAttrs const &attrs,
-                          InputParallelTensorDesc const &gate_preds,
-                          InputParallelTensorDesc const &gate_assign,
-                          InputParallelTensorDesc const &true_gate_assign,
-                          InputParallelTensorDesc const &full_gate_gradients,
-                          InputVariadicParallelTensorDesc const &exp_preds,
-                          ProfilingSettings const &settings,
-                          MachineView const &mv) const {
+measure_operator_cost(SimEnvFactory const &sim, AggregateSpecAttrs const &attrs,
+                      InputParallelTensorDesc const &gate_preds,
+                      InputParallelTensorDesc const &gate_assign,
+                      InputParallelTensorDesc const &true_gate_assign,
+                      InputParallelTensorDesc const &full_gate_gradients,
+                      InputVariadicParallelTensorDesc const &exp_preds,
+                      ProfilingSettings const &settings,
+                      MachineView const &mv) const {
   auto env = sim.new_environment();
 
   SimTaskBinding fwd_binding;
@@ -465,12 +444,9 @@ ConstMetrics
   fwd_binding.bind(GATE_ASSIGN, gate_assign);
   fwd_binding.bind(EXP_PREDS, exp_preds);
 
-  ParallelTensorShape output_shape = get_output_shape(attrs,
-                                                      gate_preds.shape,
-                                                      gate_assign.shape,
-                                                      true_gate_assign.shape,
-                                                      full_gate_gradients.shape,
-                                                      exp_preds.shapes);
+  ParallelTensorShape output_shape = get_output_shape(
+      attrs, gate_preds.shape, gate_assign.shape, true_gate_assign.shape,
+      full_gate_gradients.shape, exp_preds.shapes);
   fwd_binding.bind(OUTPUT, output_shape);
 
   fwd_binding.bind_arg(PROFILING, settings);
@@ -503,8 +479,7 @@ ConstMetrics
 //   init_task);
 // }
 
-template <>
-void register_task<AGG_SPEC_FWD_TASK_ID>() {
+template <> void register_task<AGG_SPEC_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
@@ -519,8 +494,7 @@ void register_task<AGG_SPEC_FWD_TASK_ID>() {
   register_task(AGG_SPEC_FWD_TASK_ID, "AggregateSpec Fwd", fwd, forward_task);
 }
 
-template <>
-void register_task() {
+template <> void register_task() {
   OpTaskSignature bwd(OpTaskType::BWD);
 
   bwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);

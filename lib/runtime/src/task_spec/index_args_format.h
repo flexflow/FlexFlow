@@ -20,9 +20,9 @@ public:
 
 IndexArgsFormat process_index_args(TensorlessTaskBinding const &,
                                    Legion::Domain const &);
-ConcreteArgsFormat process_index_args_for_point(
-    std::unordered_map<slot_id, IndexArgSpec> const &,
-    Legion::DomainPoint const &);
+ConcreteArgsFormat
+process_index_args_for_point(std::unordered_map<slot_id, IndexArgSpec> const &,
+                             Legion::DomainPoint const &);
 ConcreteArgSpec resolve_index_arg(IndexArgSpec const &,
                                   Legion::DomainPoint const &);
 

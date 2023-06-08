@@ -104,187 +104,186 @@ std::string get_operator_type_name(Op op);
 
 namespace fmt {
 
-template <>
-struct formatter<::FlexFlow::Op> : formatter<string_view> {
+template <> struct formatter<::FlexFlow::Op> : formatter<string_view> {
   template <typename FormatContext>
   auto format(::FlexFlow::Op ot, FormatContext &ctx) -> decltype(ctx.out()) {
     using namespace FlexFlow;
 
     string_view name = "unknown";
     switch (ot) {
-      case Op::CONV2D:
-        name = "Conv2D";
-      case Op::DROPOUT:
-        name = "Dropout";
-      case Op::LINEAR:
-        name = "Dense";
-      case Op::BATCHMATMUL:
-        name = "BatchMatMul";
-      case Op::POOL2D:
-        name = "Pool2D";
-      case Op::SCALAR_MULTIPLY:
-        name = "ScalarMultiply";
-      case Op::SCALAR_ADD:
-        name = "ScalarAdd";
-      case Op::SCALAR_FLOOR_DIV:
-        name = "ScalarFloorDiv";
-      case Op::SCALAR_TRUE_DIV:
-        name = "ScalarTrueDiv";
-      case Op::SCALAR_SUB:
-        name = "ScalarSub";
-      case Op::RELU:
-        name = "ReLU";
-      case Op::SIGMOID:
-        name = "Sigmoid";
-      case Op::TANH:
-        name = "Tanh";
-      case Op::ELU:
-        name = "Elu";
-      case Op::FLAT:
-        name = "Flat";
-      case Op::SOFTMAX:
-        name = "Softmax";
-      case Op::BATCHNORM:
-        name = "BatchNorm";
-      case Op::CONCAT:
-        name = "Concat";
-      case Op::SPLIT:
-        name = "Split";
-      case Op::EMBEDDING:
-        name = "Embedding";
-      case Op::GATHER:
-        name = "Gather";
-      case Op::GROUP_BY:
-        name = "Group_by";
-      case Op::CACHE:
-        name = "Cache";
-      case Op::AGGREGATE:
-        name = "Aggregate cooperation";
-      case Op::AGG_SPEC:
-        name = "Aggregate specification";
-      case Op::RESHAPE:
-        name = "Reshape";
-      case Op::REVERSE:
-        name = "Reverse";
-      case Op::TRANSPOSE:
-        name = "Transpose";
-      case Op::EW_ADD:
-        name = "Add";
-      case Op::EW_MUL:
-        name = "Mul";
-      case Op::MATMUL:
-        name = "Matmul";
-      case Op::MUL:
-        name = "Mul";
-      case Op::ENLARGE:
-        name = "Enlarge";
-      case Op::SQUEEZE:
-        name = "Squeeze";
-      case Op::UNSQUEEZE:
-        name = "Unsqueeze";
-      case Op::EW_SUB:
-        name = "Sub";
-      case Op::EW_DIV:
-        name = "Div";
-      case Op::EW_EQUAL:
-        name = "Equal";
-      case Op::EW_GREATER:
-        name = "Greater";
-      case Op::EW_LESS:
-        name = "Less";
-      case Op::EW_MAX:
-        name = "Max";
-      case Op::EW_MIN:
-        name = "Min";
-      case Op::REDUCE_ARGMAX:
-        name = "ReduceArgMax";
-      case Op::REDUCE_ARGMIN:
-        name = "ReduceArgMin";
-      case Op::REDUCE_MAX:
-        name = "ReduceMax";
-      case Op::REDUCE_MEAN:
-        name = "ReduceMean";
-      case Op::REDUCE_MIN:
-        name = "ReduceMin";
-      case Op::REDUCE_PROD:
-        name = "ReduceProd";
-      case Op::REDUCE_SUM:
-        name = "ReduceSum";
-      case Op::PAD:
-        name = "Pad";
-      case Op::SHAPE:
-        name = "Shape";
-      case Op::SIZE:
-        name = "Size";
-      case Op::TOPK:
-        name = "TopK";
-      case Op::WHERE:
-        name = "Where";
-      case Op::CEIL:
-        name = "Ceil";
-      case Op::CAST:
-        name = "Cast";
-      case Op::EXP:
-        name = "Exp";
-      case Op::SIN:
-        name = "Sin";
-      case Op::COS:
-        name = "Cos";
-      case Op::ROUND:
-        name = "Round";
-      case Op::LOG:
-        name = "Log";
-      case Op::LOGICAL_NOT:
-        name = "LogicalNot";
-      case Op::SQRT:
-        name = "Sqrt";
-      case Op::LEAKYRELU:
-        name = "LeakyReLU";
-      case Op::SLICE:
-        name = "Slice";
-      case Op::RESIZE:
-        name = "Resize";
-      case Op::PRELU:
-        name = "PReLU";
-      case Op::MULTIHEAD_ATTENTION:
-        name = "MultiHeadAttention";
-      case Op::INPUT:
-        name = "Input";
-      case Op::WEIGHT:
-        name = "Weight";
-      case Op::NOOP:
-        name = "NoOp";
-      case Op::FUSED:
-        name = "FusedOp";
-      case Op::RSQRT:
-        name = "Rsqrt";
-      case Op::POW:
-        name = "Pow";
-      case Op::MEAN:
-        name = "Mean";
-      case Op::LAYERNORM:
-        name = "LayerNorm";
-      case Op::IDENTITY:
-        name = "Identity";
-      // Parallel Ops
-      case Op::REPARTITION:
-        name = "Repartition";
-      case Op::COMBINE:
-        name = "Combine";
-      case Op::REPLICATE:
-        name = "Replicate";
-      case Op::REDUCTION:
-        name = "Reduction";
-      case Op::PIPELINE:
-        name = "Pipeline";
-      case Op::FUSED_PARALLEL:
-        name = "FusedParallelOp";
-      case Op::GELU:
-        name = "GeLU";
-      case Op::BROADCAST:
-        name = "Broadcast";
-      case Op::BATCH:
-        name = "Batch";
+    case Op::CONV2D:
+      name = "Conv2D";
+    case Op::DROPOUT:
+      name = "Dropout";
+    case Op::LINEAR:
+      name = "Dense";
+    case Op::BATCHMATMUL:
+      name = "BatchMatMul";
+    case Op::POOL2D:
+      name = "Pool2D";
+    case Op::SCALAR_MULTIPLY:
+      name = "ScalarMultiply";
+    case Op::SCALAR_ADD:
+      name = "ScalarAdd";
+    case Op::SCALAR_FLOOR_DIV:
+      name = "ScalarFloorDiv";
+    case Op::SCALAR_TRUE_DIV:
+      name = "ScalarTrueDiv";
+    case Op::SCALAR_SUB:
+      name = "ScalarSub";
+    case Op::RELU:
+      name = "ReLU";
+    case Op::SIGMOID:
+      name = "Sigmoid";
+    case Op::TANH:
+      name = "Tanh";
+    case Op::ELU:
+      name = "Elu";
+    case Op::FLAT:
+      name = "Flat";
+    case Op::SOFTMAX:
+      name = "Softmax";
+    case Op::BATCHNORM:
+      name = "BatchNorm";
+    case Op::CONCAT:
+      name = "Concat";
+    case Op::SPLIT:
+      name = "Split";
+    case Op::EMBEDDING:
+      name = "Embedding";
+    case Op::GATHER:
+      name = "Gather";
+    case Op::GROUP_BY:
+      name = "Group_by";
+    case Op::CACHE:
+      name = "Cache";
+    case Op::AGGREGATE:
+      name = "Aggregate cooperation";
+    case Op::AGG_SPEC:
+      name = "Aggregate specification";
+    case Op::RESHAPE:
+      name = "Reshape";
+    case Op::REVERSE:
+      name = "Reverse";
+    case Op::TRANSPOSE:
+      name = "Transpose";
+    case Op::EW_ADD:
+      name = "Add";
+    case Op::EW_MUL:
+      name = "Mul";
+    case Op::MATMUL:
+      name = "Matmul";
+    case Op::MUL:
+      name = "Mul";
+    case Op::ENLARGE:
+      name = "Enlarge";
+    case Op::SQUEEZE:
+      name = "Squeeze";
+    case Op::UNSQUEEZE:
+      name = "Unsqueeze";
+    case Op::EW_SUB:
+      name = "Sub";
+    case Op::EW_DIV:
+      name = "Div";
+    case Op::EW_EQUAL:
+      name = "Equal";
+    case Op::EW_GREATER:
+      name = "Greater";
+    case Op::EW_LESS:
+      name = "Less";
+    case Op::EW_MAX:
+      name = "Max";
+    case Op::EW_MIN:
+      name = "Min";
+    case Op::REDUCE_ARGMAX:
+      name = "ReduceArgMax";
+    case Op::REDUCE_ARGMIN:
+      name = "ReduceArgMin";
+    case Op::REDUCE_MAX:
+      name = "ReduceMax";
+    case Op::REDUCE_MEAN:
+      name = "ReduceMean";
+    case Op::REDUCE_MIN:
+      name = "ReduceMin";
+    case Op::REDUCE_PROD:
+      name = "ReduceProd";
+    case Op::REDUCE_SUM:
+      name = "ReduceSum";
+    case Op::PAD:
+      name = "Pad";
+    case Op::SHAPE:
+      name = "Shape";
+    case Op::SIZE:
+      name = "Size";
+    case Op::TOPK:
+      name = "TopK";
+    case Op::WHERE:
+      name = "Where";
+    case Op::CEIL:
+      name = "Ceil";
+    case Op::CAST:
+      name = "Cast";
+    case Op::EXP:
+      name = "Exp";
+    case Op::SIN:
+      name = "Sin";
+    case Op::COS:
+      name = "Cos";
+    case Op::ROUND:
+      name = "Round";
+    case Op::LOG:
+      name = "Log";
+    case Op::LOGICAL_NOT:
+      name = "LogicalNot";
+    case Op::SQRT:
+      name = "Sqrt";
+    case Op::LEAKYRELU:
+      name = "LeakyReLU";
+    case Op::SLICE:
+      name = "Slice";
+    case Op::RESIZE:
+      name = "Resize";
+    case Op::PRELU:
+      name = "PReLU";
+    case Op::MULTIHEAD_ATTENTION:
+      name = "MultiHeadAttention";
+    case Op::INPUT:
+      name = "Input";
+    case Op::WEIGHT:
+      name = "Weight";
+    case Op::NOOP:
+      name = "NoOp";
+    case Op::FUSED:
+      name = "FusedOp";
+    case Op::RSQRT:
+      name = "Rsqrt";
+    case Op::POW:
+      name = "Pow";
+    case Op::MEAN:
+      name = "Mean";
+    case Op::LAYERNORM:
+      name = "LayerNorm";
+    case Op::IDENTITY:
+      name = "Identity";
+    // Parallel Ops
+    case Op::REPARTITION:
+      name = "Repartition";
+    case Op::COMBINE:
+      name = "Combine";
+    case Op::REPLICATE:
+      name = "Replicate";
+    case Op::REDUCTION:
+      name = "Reduction";
+    case Op::PIPELINE:
+      name = "Pipeline";
+    case Op::FUSED_PARALLEL:
+      name = "FusedParallelOp";
+    case Op::GELU:
+      name = "GeLU";
+    case Op::BROADCAST:
+      name = "Broadcast";
+    case Op::BATCH:
+      name = "Batch";
     }
     return formatter<string_view>::format(name, ctx);
   }

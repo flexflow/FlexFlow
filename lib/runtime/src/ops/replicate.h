@@ -7,12 +7,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<REPLICATE_INIT_TASK_ID>();
-template <>
-void register_task<REPLICATE_FWD_TASK_ID>();
-template <>
-void register_task<REPLICATE_BWD_TASK_ID>();
+template <> void register_task<REPLICATE_INIT_TASK_ID>();
+template <> void register_task<REPLICATE_FWD_TASK_ID>();
+template <> void register_task<REPLICATE_BWD_TASK_ID>();
 
 OpTaskInvocation init(ReplicateAttrs const &);
 OpTaskInvocation forward(ReplicateAttrs const &);

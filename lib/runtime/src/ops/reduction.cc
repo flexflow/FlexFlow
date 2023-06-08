@@ -47,10 +47,8 @@ ReductionParams Reduction::get_params() const {
   return params;
 }
 
-Reduction::Reduction(FFModel &model,
-                     const ParallelTensor _input,
-                     int _reduction_legion_dim,
-                     int _reduction_degree,
+Reduction::Reduction(FFModel &model, const ParallelTensor _input,
+                     int _reduction_legion_dim, int _reduction_degree,
                      char const *name)
     : ParallelOp(model, OP_REDUCTION, name, _input),
       reduction_dim(_reduction_legion_dim),
@@ -65,41 +63,29 @@ Reduction::Reduction(FFModel &model,
   dims[reduction_dim].degree /= reduction_degree;
   dims[reduction_dim].size /= reduction_degree;
   ParallelTensorBase::update_parallel_ids(numdim, dims);
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims,
+                                                            DT_FLOAT, this);
 }
 
-Reduction::Reduction(FFModel &model,
-                     ReductionParams const &params,
-                     ParallelTensor const input,
-                     char const *name)
-    : Reduction(model,
-                input,
-                params.reduction_legion_dim,
-                params.reduction_degree,
-                name) {}
+Reduction::Reduction(FFModel &model, ReductionParams const &params,
+                     ParallelTensor const input, char const *name)
+    : Reduction(model, input, params.reduction_legion_dim,
+                params.reduction_degree, name) {}
 
 void Reduction::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);
   assert(inputs[0]->part != LogicalPartition::NO_PART);
   // input_lp is a disjoint partition
-  ff.create_disjoint_partition(outputs[0]->num_dims,
-                               outputs[0]->dims,
-                               outputs[0]->parallel_is,
-                               inputs[0]->region,
+  ff.create_disjoint_partition(outputs[0]->num_dims, outputs[0]->dims,
+                               outputs[0]->parallel_is, inputs[0]->region,
                                input_lp);
   // output_grad_lp is an aliased partitioning along the replica dim
-  ff.create_aliased_partition(inputs[0]->num_dims,
-                              inputs[0]->dims,
-                              reduction_dim,
-                              inputs[0]->parallel_is,
-                              outputs[0]->region_grad,
-                              output_grad_lp);
+  ff.create_aliased_partition(inputs[0]->num_dims, inputs[0]->dims,
+                              reduction_dim, inputs[0]->parallel_is,
+                              outputs[0]->region_grad, output_grad_lp);
 }
 
-void Reduction::init(FFModel const &ff) {
-  forward(ff);
-}
+void Reduction::init(FFModel const &ff) { forward(ff); }
 
 void Reduction::forward(FFModel const &ff) {
   ArgumentMap argmap;
@@ -107,22 +93,16 @@ void Reduction::forward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(REDUCTION_FWD_TASK_ID,
-                         outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REDUCTION_FWD_TASK_ID, outputs[0]->parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(RegionRequirement(
       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -133,31 +113,22 @@ void Reduction::backward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(REDUCTION_BWD_TASK_ID,
-                         inputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REDUCTION_BWD_TASK_ID, inputs[0]->parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          inputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(output_grad_lp,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(output_grad_lp, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Reduction::measure_operator_cost(Simulator *sim,
-                                      MachineView const &pc,
+bool Reduction::measure_operator_cost(Simulator *sim, MachineView const &pc,
                                       CostMetrics &cost_metrics) const {
   cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.0f;
@@ -172,14 +143,14 @@ bool Reduction::measure_operator_cost(Simulator *sim,
 
 bool Reduction::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-    case PM_REDUCTION_DIM:
-      *value = reduction_dim;
-      return true;
-    case PM_REDUCTION_DEGREE:
-      *value = reduction_degree;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
+  case PM_REDUCTION_DIM:
+    *value = reduction_dim;
+    return true;
+  case PM_REDUCTION_DEGREE:
+    *value = reduction_degree;
+    return true;
+  default:
+    return Op::get_int_parameter(para, value);
   }
 }
 
@@ -196,8 +167,7 @@ bool Reduction::append_parallel_op_info(
 /*static*/
 void Reduction::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+                             Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Domain input_domain = runtime->get_index_space_domain(
@@ -221,8 +191,7 @@ void Reduction::forward_task(Task const *task,
 
 void Reduction::backward_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+                              Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Domain output_grad_domain = runtime->get_index_space_domain(
@@ -235,8 +204,8 @@ void Reduction::backward_task(Task const *task,
   float *input_grad_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  backward_kernel<float>(
-      output_grad_ptr, input_grad_ptr, output_grad_domain.get_volume());
+  backward_kernel<float>(output_grad_ptr, input_grad_ptr,
+                         output_grad_domain.get_volume());
 }
 
 }; // namespace FlexFlow

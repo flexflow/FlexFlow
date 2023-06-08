@@ -8,8 +8,7 @@ namespace FlexFlow {
 
 class ReducePerDeviceState : public PerDeviceOpState {
 public:
-  ReducePerDeviceState(FFHandler handler,
-                       Reduce const *rd,
+  ReducePerDeviceState(FFHandler handler, Reduce const *rd,
                        Legion::Domain const &input_domain);
   ~ReducePerDeviceState(void);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -35,14 +34,11 @@ void backward_kernel_wrapper(ReducePerDeviceState const *m,
 
 namespace Internal {
 
-void forward_kernel(ReducePerDeviceState const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    ffStream_t stream);
+void forward_kernel(ReducePerDeviceState const *m, float const *input_ptr,
+                    float *output_ptr, ffStream_t stream);
 
 void backward_kernel(ReducePerDeviceState const *m,
-                     float const *output_grad_ptr,
-                     float *input_grad_ptr,
+                     float const *output_grad_ptr, float *input_grad_ptr,
                      ffStream_t stream);
 } // namespace Internal
 } // namespace Reduce

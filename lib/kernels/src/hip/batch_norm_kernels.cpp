@@ -35,80 +35,40 @@ using Legion::Task;
 namespace Kernels {
 namespace BatchNorm {
 
-void forward_kernel(hipStream_t stream,
-                    BatchNormPerDeviceState *m,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    float const *scale_ptr,
-                    float const *bias_ptr) {
+void forward_kernel(hipStream_t stream, BatchNormPerDeviceState *m,
+                    float const *input_ptr, float *output_ptr,
+                    float const *scale_ptr, float const *bias_ptr) {
 
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
   // coord_t numChannels = m->numChannels;
   checkCUDNN(miopenBatchNormalizationForwardTraining(
-      m->handle.dnn,
-      m->mode,
-      &alpha,
-      &beta,
-      m->inputTensor,
-      input_ptr,
-      m->outputTensor,
-      output_ptr,
-      m->biasTensor,
+      m->handle.dnn, m->mode, &alpha, &beta, m->inputTensor, input_ptr,
+      m->outputTensor, output_ptr, m->biasTensor,
       static_cast<void *>(const_cast<float *>(scale_ptr)),
-      static_cast<void *>(const_cast<float *>(bias_ptr)),
-      1.0,
-      m->runningMean,
-      m->runningVar,
-      MIOPEN_BN_MIN_EPSILON,
-      m->saveMean,
-      m->saveVar));
+      static_cast<void *>(const_cast<float *>(bias_ptr)), 1.0, m->runningMean,
+      m->runningVar, MIOPEN_BN_MIN_EPSILON, m->saveMean, m->saveVar));
 }
 
-void backward_kernel(hipStream_t stream,
-                     BatchNormPerDeviceState *m,
-                     float const *input_ptr,
-                     float *output_grad_ptr,
-                     float const *output_ptr,
-                     float *input_grad_ptr,
-                     float const *scale_ptr,
-                     float *scale_grad_ptr,
-                     float *bias_grad_ptr,
-                     size_t numElements) {
+void backward_kernel(hipStream_t stream, BatchNormPerDeviceState *m,
+                     float const *input_ptr, float *output_grad_ptr,
+                     float const *output_ptr, float *input_grad_ptr,
+                     float const *scale_ptr, float *scale_grad_ptr,
+                     float *bias_grad_ptr, size_t numElements) {
 
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
   if (m->relu) {
-    hipLaunchKernelGGL(reluBackward,
-                       GET_BLOCKS(numElements),
-                       CUDA_NUM_THREADS,
-                       0,
-                       stream,
-                       output_grad_ptr,
-                       output_ptr,
-                       numElements);
+    hipLaunchKernelGGL(reluBackward, GET_BLOCKS(numElements), CUDA_NUM_THREADS,
+                       0, stream, output_grad_ptr, output_ptr, numElements);
   }
-  checkCUDNN(miopenBatchNormalizationBackward(m->handle.dnn,
-                                              m->mode,
-                                              &alpha,
-                                              &alpha,
-                                              &alpha,
-                                              &alpha,
-                                              m->inputTensor,
-                                              input_ptr,
-                                              m->outputTensor,
-                                              output_grad_ptr,
-                                              m->inputTensor,
-                                              input_grad_ptr,
-                                              m->biasTensor,
-                                              scale_ptr,
-                                              scale_grad_ptr,
-                                              bias_grad_ptr,
-                                              MIOPEN_BN_MIN_EPSILON,
-                                              m->saveMean,
-                                              m->saveVar));
+  checkCUDNN(miopenBatchNormalizationBackward(
+      m->handle.dnn, m->mode, &alpha, &alpha, &alpha, &alpha, m->inputTensor,
+      input_ptr, m->outputTensor, output_grad_ptr, m->inputTensor,
+      input_grad_ptr, m->biasTensor, scale_ptr, scale_grad_ptr, bias_grad_ptr,
+      MIOPEN_BN_MIN_EPSILON, m->saveMean, m->saveVar));
 }
 
 } // namespace BatchNorm
@@ -116,10 +76,8 @@ void backward_kernel(hipStream_t stream,
 
 BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
                                                  BatchNorm const *bn,
-                                                 Memory gpu_mem,
-                                                 int output_n,
-                                                 int output_c,
-                                                 int output_h,
+                                                 Memory gpu_mem, int output_n,
+                                                 int output_c, int output_h,
                                                  int output_w)
     : PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
@@ -131,12 +89,12 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
   // #if HIPDNN_VERSION >= 7000
   //   mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
   // #endif
-  fprintf(
-      stderr, "output(%d,%d,%d,%d)\n", output_n, output_c, output_h, output_w);
-  checkCUDNN(miopenSet4dTensorDescriptor(
-      inputTensor, miopenFloat, output_n, output_c, output_h, output_w));
-  checkCUDNN(miopenSet4dTensorDescriptor(
-      outputTensor, miopenFloat, output_n, output_c, output_h, output_w));
+  fprintf(stderr, "output(%d,%d,%d,%d)\n", output_n, output_c, output_h,
+          output_w);
+  checkCUDNN(miopenSet4dTensorDescriptor(inputTensor, miopenFloat, output_n,
+                                         output_c, output_h, output_w));
+  checkCUDNN(miopenSet4dTensorDescriptor(outputTensor, miopenFloat, output_n,
+                                         output_c, output_h, output_w));
   checkCUDNN(
       miopenSet4dTensorDescriptor(biasTensor, miopenFloat, 1, output_c, 1, 1));
   // allocate memory for runningMean, runningVar, saveMean, saveVar
@@ -159,27 +117,15 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
     saveVar = (float *)saveMean + output_c;
     hipStream_t stream;
 
-    hipLaunchKernelGGL(assign_kernel,
-                       GET_BLOCKS(output_c),
-                       CUDA_NUM_THREADS,
-                       0,
-                       stream,
-                       runningMean,
-                       output_c,
-                       0.0f);
-    hipLaunchKernelGGL(assign_kernel,
-                       GET_BLOCKS(output_c),
-                       CUDA_NUM_THREADS,
-                       0,
-                       stream,
-                       runningVar,
-                       output_c,
-                       0.0f);
+    hipLaunchKernelGGL(assign_kernel, GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0,
+                       stream, runningMean, output_c, 0.0f);
+    hipLaunchKernelGGL(assign_kernel, GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0,
+                       stream, runningVar, output_c, 0.0f);
   }
   if (relu) {
     checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
-    checkCUDNN(miopenSetActivationDescriptor(
-        actiDesc, miopenActivationRELU, 0.0, 0.0, 0.0));
+    checkCUDNN(miopenSetActivationDescriptor(actiDesc, miopenActivationRELU,
+                                             0.0, 0.0, 0.0));
   }
 }
 

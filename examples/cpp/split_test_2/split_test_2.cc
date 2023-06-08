@@ -12,22 +12,19 @@ using FlexFlow::PCG::Node;
 LegionRuntime::Logger::Category log_app("split_test_2");
 
 void top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions,
-                    Context ctx,
+                    std::vector<PhysicalRegion> const &regions, Context ctx,
                     Runtime *runtime) {
   FFConfig ffConfig;
   log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                ffConfig.batchSize,
-                ffConfig.workersPerNode,
-                ffConfig.numNodes);
+                ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   FFModel ff(ffConfig);
 
   Tensor input;
   {
     int const dims[] = {ffConfig.batchSize, 4, 32, 32};
     input = ff.create_tensor<4>(dims, DT_FLOAT);
-    log_app.print(
-        "input size: %d %d %d %d", dims[0], dims[1], dims[2], dims[3]);
+    log_app.print("input size: %d %d %d %d", dims[0], dims[1], dims[2],
+                  dims[3]);
   }
 
   Tensor t, t1, t2;

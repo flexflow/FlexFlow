@@ -6,14 +6,11 @@
 
 namespace FlexFlow {
 
-template <typename T>
-struct TypedFutureMap {
+template <typename T> struct TypedFutureMap {
   explicit TypedFutureMap(Legion::FutureMap const &future_map)
       : future_map(future_map) {}
 
-  T get(Legion::DomainPoint const &p) {
-    return future_map.get_result<T>(p);
-  }
+  T get(Legion::DomainPoint const &p) { return future_map.get_result<T>(p); }
 
 public:
   Legion::FutureMap future_map;
@@ -23,8 +20,7 @@ struct CheckedTypedFutureMap {
 public:
   CheckedTypedFutureMap() = delete;
 
-  template <typename T>
-  TypedFutureMap<T> get() {
+  template <typename T> TypedFutureMap<T> get() {
     assert(matches<T>(this->type));
 
     return {this->future_map};

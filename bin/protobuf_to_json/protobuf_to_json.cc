@@ -99,24 +99,23 @@ enum class ParamType {
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
-    ParamType,
-    {{ParamType::PM_OP_TYPE, "PM_OP_TYPE"},
-     {ParamType::PM_NUM_INPUTS, "PM_NUM_INPUTS"},
-     {ParamType::PM_NUM_OUTPUTS, "PM_NUM_OUTPUTS"},
-     {ParamType::PM_GROUP, "PM_GROUP"},
-     {ParamType::PM_KERNEL_H, "PM_KERNEL_H"},
-     {ParamType::PM_KERNEL_W, "PM_KERNEL_W"},
-     {ParamType::PM_STRIDE_H, "PM_STRIDE_H"},
-     {ParamType::PM_STRIDE_W, "PM_STRIDE_W"},
-     {ParamType::PM_PAD, "PM_PAD"},
-     {ParamType::PM_ACTI, "PM_ACTI"},
-     {ParamType::PM_NUMDIM, "PM_NUMDIM"},
-     {ParamType::PM_AXIS, "PM_AXIS"},
-     {ParamType::PM_PERM, "PM_PERM"},
-     {ParamType::PM_OUTSHUFFLE, "PM_OUTSHUFFLE"},
-     {ParamType::PM_MERGE_GCONV_COUNT, "PM_MERGE_GCONV_COUNT"},
-     {ParamType::PM_PARALLEL_DIM, "PM_PARALLEL_DIM"},
-     {ParamType::PM_PARALLEL_DEGREE, "PM_PARALLEL_DEGREE"}})
+    ParamType, {{ParamType::PM_OP_TYPE, "PM_OP_TYPE"},
+                {ParamType::PM_NUM_INPUTS, "PM_NUM_INPUTS"},
+                {ParamType::PM_NUM_OUTPUTS, "PM_NUM_OUTPUTS"},
+                {ParamType::PM_GROUP, "PM_GROUP"},
+                {ParamType::PM_KERNEL_H, "PM_KERNEL_H"},
+                {ParamType::PM_KERNEL_W, "PM_KERNEL_W"},
+                {ParamType::PM_STRIDE_H, "PM_STRIDE_H"},
+                {ParamType::PM_STRIDE_W, "PM_STRIDE_W"},
+                {ParamType::PM_PAD, "PM_PAD"},
+                {ParamType::PM_ACTI, "PM_ACTI"},
+                {ParamType::PM_NUMDIM, "PM_NUMDIM"},
+                {ParamType::PM_AXIS, "PM_AXIS"},
+                {ParamType::PM_PERM, "PM_PERM"},
+                {ParamType::PM_OUTSHUFFLE, "PM_OUTSHUFFLE"},
+                {ParamType::PM_MERGE_GCONV_COUNT, "PM_MERGE_GCONV_COUNT"},
+                {ParamType::PM_PARALLEL_DIM, "PM_PARALLEL_DIM"},
+                {ParamType::PM_PARALLEL_DEGREE, "PM_PARALLEL_DEGREE"}})
 
 enum class ActivationMode {
   AC_MODE_NONE = 0,
@@ -129,15 +128,13 @@ enum class PaddingMode { PD_MODE_SAME = 0, PD_MODE_VALID = 1 };
 
 // partial specialization (full specialization works too)
 namespace nlohmann {
-template <>
-struct adl_serializer<gs::Tensor> {
+template <> struct adl_serializer<gs::Tensor> {
   static void to_json(json &j, gs::Tensor const &t) {
     j = json{{"_t", "Tensor"}, {"opId", t.opid()}, {"tsId", t.tsid()}};
   }
 };
 
-template <>
-struct adl_serializer<gs::Parameter> {
+template <> struct adl_serializer<gs::Parameter> {
   static void to_json(json &j, gs::Parameter const &p) {
     j = json{
         {"_t", "Parameter"},
@@ -145,14 +142,14 @@ struct adl_serializer<gs::Parameter> {
     };
     ParamType key = static_cast<ParamType>(p.key());
     switch (key) {
-      case ParamType::PM_ACTI:
-        j["value"] = static_cast<ActivationMode>(p.value());
-        break;
-      case ParamType::PM_PAD:
-        j["value"] = static_cast<PaddingMode>(p.value());
-        break;
-      default:
-        j["value"] = p.value();
+    case ParamType::PM_ACTI:
+      j["value"] = static_cast<ActivationMode>(p.value());
+      break;
+    case ParamType::PM_PAD:
+      j["value"] = static_cast<PaddingMode>(p.value());
+      break;
+    default:
+      j["value"] = p.value();
     }
   }
 };
@@ -169,8 +166,7 @@ struct adl_serializer<::google::protobuf::RepeatedPtrField<T>> {
   }
 };
 
-template <>
-struct adl_serializer<gs::Operator> {
+template <> struct adl_serializer<gs::Operator> {
   static void to_json(json &j, gs::Operator const &o) {
     j = json{
         {"_t", "Operator"},
@@ -181,8 +177,7 @@ struct adl_serializer<gs::Operator> {
   }
 };
 
-template <>
-struct adl_serializer<gs::MapOutput> {
+template <> struct adl_serializer<gs::MapOutput> {
   static void to_json(json &j, gs::MapOutput const &m) {
     j = json{{"_t", "MapOutput"},
              {"srcOpId", m.srcopid()},
@@ -192,8 +187,7 @@ struct adl_serializer<gs::MapOutput> {
   }
 };
 
-template <>
-struct adl_serializer<gs::Rule> {
+template <> struct adl_serializer<gs::Rule> {
   static void to_json(json &j, gs::Rule const &r) {
     j = json{{"_t", "Rule"},
              {"srcOp", r.srcop()},
@@ -202,8 +196,7 @@ struct adl_serializer<gs::Rule> {
   }
 };
 
-template <>
-struct adl_serializer<gs::RuleCollection> {
+template <> struct adl_serializer<gs::RuleCollection> {
   static void to_json(json &j, gs::RuleCollection const &c) {
     j = json{{"_t", "RuleCollection"}, {"rule", c.rule()}};
     for (int i = 0; i < j["rule"].size(); ++i) {

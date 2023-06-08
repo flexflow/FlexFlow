@@ -14,17 +14,13 @@ struct ArgTypeRuntimeTag {
     this->serialize_f(sez, ptr);
   }
 
-  template <typename T>
-  bool matches() const {
+  template <typename T> bool matches() const {
     return matches<T>(this->type_idx);
   }
 
-  std::type_index get_type_idx() const {
-    return this->type_idx;
-  }
+  std::type_index get_type_idx() const { return this->type_idx; }
 
-  template <typename T>
-  static ArgTypeRuntimeTag create() {
+  template <typename T> static ArgTypeRuntimeTag create() {
     std::function<void(Legion::Serializer &, void const *)> serialize_func =
         [](Legion::Serializer &sez, void const *t) {
           ff_task_serialize(sez, *static_cast<T const *>(t));

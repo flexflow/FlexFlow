@@ -37,9 +37,7 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
 // =============================================================================
 
 // Score: Running average over sample ratio of which experts are corr. cached
-float moe_score(float *cached_score,
-                void const *input,
-                void const *cached,
+float moe_score(float *cached_score, void const *input, void const *cached,
                 int vol) {
   float gamma = 0.99f;
   *cached_score *= gamma;
@@ -97,42 +95,31 @@ void moe_alter(FFModel *ff) {
 }
 #endif // DEADCODE
 
-Tensor create_moe_encoder(FFModel *model,
-                          MoeConfig const *moeConfig,
+Tensor create_moe_encoder(FFModel *model, MoeConfig const *moeConfig,
                           Tensor const &input) {
   std::vector<int> axes = {0, 1};
   Tensor x = input;
   for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
     x = model->layer_norm(
-        model->add(model->multihead_attention(x,
-                                              x,
-                                              x,
-                                              moeConfig->hidden_size,
+        model->add(model->multihead_attention(x, x, x, moeConfig->hidden_size,
                                               moeConfig->num_attention_heads,
                                               moeConfig->attention_kdim,
                                               moeConfig->attention_vdim),
                    x),
-        axes,
-        true,
-        1e-05);
-    x = model->layer_norm(model->add(model->moe(x,
-                                                moeConfig->num_exp,
-                                                moeConfig->num_select,
-                                                moeConfig->hidden_size,
-                                                moeConfig->alpha,
-                                                moeConfig->lambda),
-                                     x),
-                          axes,
-                          true,
-                          1e-05);
+        axes, true, 1e-05);
+    x = model->layer_norm(
+        model->add(model->moe(x, moeConfig->num_exp, moeConfig->num_select,
+                              moeConfig->hidden_size, moeConfig->alpha,
+                              moeConfig->lambda),
+                   x),
+        axes, true, 1e-05);
   }
   return x;
 }
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+                              Context ctx, Runtime *runtime) {
   FFConfig ffConfig;
   MoeConfig moeConfig;
   {
@@ -141,8 +128,7 @@ void FlexFlow::top_level_task(Task const *task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, moeConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                  ffConfig.batchSize,
-                  ffConfig.workersPerNode,
+                  ffConfig.batchSize, ffConfig.workersPerNode,
                   ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
@@ -156,12 +142,8 @@ void FlexFlow::top_level_task(Task const *task,
   //-----------------------------------------------------------------
 
   // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
-  Tensor t = ff.moe(input,
-                    moeConfig.num_exp,
-                    moeConfig.num_select,
-                    moeConfig.hidden_size,
-                    moeConfig.alpha,
-                    moeConfig.lambda);
+  Tensor t = ff.moe(input, moeConfig.num_exp, moeConfig.num_select,
+                    moeConfig.hidden_size, moeConfig.alpha, moeConfig.lambda);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   //-----------------------------------------------------------------
@@ -225,14 +207,11 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
-         run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          TRAIN_SAMPLES * ffConfig.epochs / run_time);
 }
 
-DataLoader::DataLoader(FFModel &ff,
-                       MoeConfig const &moe,
-                       ParallelTensor input,
+DataLoader::DataLoader(FFModel &ff, MoeConfig const &moe, ParallelTensor input,
                        ParallelTensor label) {
   num_samples = NUM_SAMPLES;
 
@@ -282,8 +261,8 @@ DataLoader::DataLoader(FFModel &ff,
     // replace batch size with number of samples
     dims[LABEL_DIM].size = num_samples;
 
-    full_label = ff.create_parallel_tensor_legion_ordering(
-        LABEL_DIM + 2, dims, DT_INT32);
+    full_label = ff.create_parallel_tensor_legion_ordering(LABEL_DIM + 2, dims,
+                                                           DT_INT32);
     ff.map_tensor(full_label, NULL /*parallel_op*/);
   }
 
@@ -295,18 +274,14 @@ DataLoader::DataLoader(FFModel &ff,
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(MoeConfig *)));
   // regions[0]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_input->region, WRITE_ONLY, EXCLUSIVE,
+                        full_input->region, MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
-  launcher.add_region_requirement(RegionRequirement(full_label->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_label->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_label->region, WRITE_ONLY, EXCLUSIVE,
+                        full_label->region, MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_task(ctx, launcher);
@@ -411,8 +386,7 @@ void read_mnist(float *input_ptr, int *label_ptr) {
 
 void DataLoader::load_entire_dataset(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+                                     Context ctx, Runtime *runtime) {
   // const MoeConfig* conf = *((MoeConfig**)task->args);
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
@@ -467,26 +441,17 @@ void DataLoader::next_batch(FFModel &ff) {
       }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
-                           batch_input->parallel_is,
-                           TaskArgument(NULL, 0),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, batch_input->parallel_is,
+                           TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                           false /*must*/, 0 /*mapper_id*/,
                            batch_input->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_input->region,
-                                                      MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input->region, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, full_input->region, MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_input->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_input->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -516,35 +481,24 @@ void DataLoader::next_batch(FFModel &ff) {
       }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,
-                           batch_label->parallel_is,
-                           TaskArgument(NULL, 0),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, batch_label->parallel_is,
+                           TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                           false /*must*/, 0 /*mapper_id*/,
                            batch_label->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(full_label->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_label->region,
-                                                      MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_label->region, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, full_label->region, MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_label->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_label->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   next_index += ff.config.batchSize;
 }
 
-void DataLoader::reset() {
-  next_index = 0;
-}
+void DataLoader::reset() { next_index = 0; }
 
 void FlexFlow::register_custom_tasks() {
   // Load entire dataset

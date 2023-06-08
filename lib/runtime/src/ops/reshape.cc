@@ -46,52 +46,36 @@ bool ReshapeParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
-Tensor FFModel::reshape(const Tensor input,
-                        std::vector<int> const &shape,
+Tensor FFModel::reshape(const Tensor input, std::vector<int> const &shape,
                         char const *name) {
-  Layer *reshape = new Layer(this,
-                             OP_RESHAPE,
-                             DT_FLOAT,
-                             name,
-                             1 /*inputs*/,
-                             0 /*weights*/,
-                             1 /*outputs*/,
-                             input);
+  Layer *reshape = new Layer(this, OP_RESHAPE, DT_FLOAT, name, 1 /*inputs*/,
+                             0 /*weights*/, 1 /*outputs*/, input);
   int dims[MAX_TENSOR_DIM];
   int numdim = shape.size();
   for (int i = 0; i < numdim; i++) {
     assert(shape[i] > 0);
     dims[i] = shape[i];
   }
-  reshape->outputs[0] = create_tensor(
-      numdim, dims, input->data_type, reshape, 0, true /*create_grad*/);
+  reshape->outputs[0] = create_tensor(numdim, dims, input->data_type, reshape,
+                                      0, true /*create_grad*/);
   reshape->add_int_vector_property("shape", shape);
   layers.push_back(reshape);
   return reshape->outputs[0];
 }
 
 Op *Reshape::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   std::vector<int> shape;
   layer->get_int_vector_property("shape", shape);
   return new Reshape(model, layer->layer_guid, inputs[0], shape, layer->name);
 }
 
-Reshape::Reshape(FFModel &model,
-                 LayerID const &_layer_guid,
-                 const ParallelTensor input,
-                 std::vector<int> const &_shape,
+Reshape::Reshape(FFModel &model, LayerID const &_layer_guid,
+                 const ParallelTensor input, std::vector<int> const &_shape,
                  char const *name)
-    : Op(model,
-         OP_RESHAPE,
-         input->data_type,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         input) {
+    : Op(model, OP_RESHAPE, input->data_type, name, 1 /*inputs*/, 0 /*weights*/,
+         1 /*outputs*/, input) {
   layer_guid = _layer_guid;
   shape_length = _shape.size();
   assert(shape_length <= MAX_TENSOR_DIM);
@@ -135,10 +119,8 @@ Reshape::Reshape(FFModel &model,
   assert(outputs[0]->get_volume() == inputs[0]->get_volume());
 }
 
-Reshape::Reshape(FFModel &model,
-                 ReshapeParams const &params,
-                 const ParallelTensor input,
-                 char const *name)
+Reshape::Reshape(FFModel &model, ReshapeParams const &params,
+                 const ParallelTensor input, char const *name)
     : Reshape(model, params.layer_guid, input, params.shape, name) {}
 
 void Reshape::init(FFModel const &ff) {
@@ -148,25 +130,17 @@ void Reshape::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(RESHAPE_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Reshape)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(RESHAPE_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Reshape)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -175,8 +149,7 @@ void Reshape::init(FFModel const &ff) {
 
 PerDeviceOpState *Reshape::init_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+                                     Context ctx, Runtime *runtime) {
   Reshape const *reshape = (Reshape *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   ReshapeMeta *m = new ReshapeMeta(handle);
@@ -189,33 +162,24 @@ void Reshape::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(RESHAPE_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(RESHAPE_FWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Reshape::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                           Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Reshape* reshape = (const Reshape*) task->args;
@@ -260,27 +224,19 @@ void Reshape::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(RESHAPE_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(RESHAPE_BWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // regions[0](I): output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[3](I/O): input0_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -298,8 +254,7 @@ ReshapeParams Reshape::get_params() const {
 
 void Reshape::backward_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                            Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Reshape* reshape = (const Reshape*) task->args;
@@ -315,36 +270,35 @@ void Reshape::backward_task(Task const *task,
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float *in_grad_ptr = helperGetTensorPointerRW<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    backward_kernel_wrapper<float>(
-        in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
+    backward_kernel_wrapper<float>(in_grad_ptr, out_grad_ptr,
+                                   in_grad_domain.get_volume());
   } else if (m->data_type == DT_DOUBLE) {
     double const *out_grad_ptr = helperGetTensorPointerRO<double>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double *in_grad_ptr = helperGetTensorPointerRW<double>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    backward_kernel_wrapper<double>(
-        in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
+    backward_kernel_wrapper<double>(in_grad_ptr, out_grad_ptr,
+                                    in_grad_domain.get_volume());
   } else if (m->data_type == DT_INT32) {
     int32_t const *out_grad_ptr = helperGetTensorPointerRO<int32_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t *in_grad_ptr = helperGetTensorPointerRW<int32_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    backward_kernel_wrapper<int32_t>(
-        in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
+    backward_kernel_wrapper<int32_t>(in_grad_ptr, out_grad_ptr,
+                                     in_grad_domain.get_volume());
   } else if (m->data_type == DT_INT64) {
     int64_t const *out_grad_ptr = helperGetTensorPointerRO<int64_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t *in_grad_ptr = helperGetTensorPointerRW<int64_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    backward_kernel_wrapper<int64_t>(
-        in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
+    backward_kernel_wrapper<int64_t>(in_grad_ptr, out_grad_ptr,
+                                     in_grad_domain.get_volume());
   } else {
     assert(false && "Unsupported data type in Reshape backward");
   }
 }
 
-bool Reshape::measure_operator_cost(Simulator *sim,
-                                    MachineView const &mv,
+bool Reshape::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -392,12 +346,9 @@ bool Reshape::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf(
         "[Measure Reshape] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+        name, cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    printf("[Measure Reshape] name(%s) forward_time(%.4lf)\n",
-           name,
+    printf("[Measure Reshape] name(%s) forward_time(%.4lf)\n", name,
            cost_metrics.forward_time);
   }
   return true;
@@ -413,10 +364,8 @@ void Reshape::serialize(Legion::Serializer &sez) const {
 
 using PCG::Node;
 
-Node Reshape::deserialize(FFModel &ff,
-                          Legion::Deserializer &dez,
-                          ParallelTensor inputs[],
-                          int num_inputs) {
+Node Reshape::deserialize(FFModel &ff, Legion::Deserializer &dez,
+                          ParallelTensor inputs[], int num_inputs) {
   assert(num_inputs == 1);
   size_t shape_length;
   std::vector<int> shape;
@@ -436,8 +385,7 @@ Node Reshape::deserialize(FFModel &ff,
   return ff.get_or_create_node<Reshape>(inputs[0], params);
 }
 
-Op *Reshape::materialize(FFModel &ff,
-                         ParallelTensor inputs[],
+Op *Reshape::materialize(FFModel &ff, ParallelTensor inputs[],
                          int num_inputs) const {
   assert(num_inputs == 1);
   std::vector<int> shape;

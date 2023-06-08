@@ -28,7 +28,7 @@ struct Parallel {
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 
 SerialParallelDecomposition
-    get_serial_parallel_decomposition(DiGraphView const &);
+get_serial_parallel_decomposition(DiGraphView const &);
 
 } // namespace FlexFlow
 

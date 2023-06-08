@@ -7,12 +7,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<ELEMENTUNARY_INIT_TASK_ID>();
-template <>
-void register_task<ELEMENTUNARY_FWD_TASK_ID>();
-template <>
-void register_task<ELEMENTUNARY_BWD_TASK_ID>();
+template <> void register_task<ELEMENTUNARY_INIT_TASK_ID>();
+template <> void register_task<ELEMENTUNARY_FWD_TASK_ID>();
+template <> void register_task<ELEMENTUNARY_BWD_TASK_ID>();
 
 OpTaskInvocation init(ElementUnaryAttrs const &);
 OpTaskInvocation forward(ElementUnaryAttrs const &);

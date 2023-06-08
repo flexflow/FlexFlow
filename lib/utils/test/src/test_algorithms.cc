@@ -103,17 +103,16 @@ TEST_CASE("traversal") {
 TEST_CASE("bfs") {
   AdjacencyDiGraph g;
   std::vector<Node> const n = add_nodes(g, 7);
-  add_edges(g,
-            {
-                {n[0], n[1]},
-                {n[0], n[2]},
-                {n[1], n[6]},
-                {n[2], n[3]},
-                {n[3], n[4]},
-                {n[4], n[5]},
-                {n[5], n[6]},
-                {n[6], n[0]},
-            });
+  add_edges(g, {
+                   {n[0], n[1]},
+                   {n[0], n[2]},
+                   {n[1], n[6]},
+                   {n[2], n[3]},
+                   {n[3], n[4]},
+                   {n[4], n[5]},
+                   {n[5], n[6]},
+                   {n[6], n[0]},
+               });
 
   std::vector<Node> ordering = bfs_ordering(g, {n[0]});
   auto CHECK_BEFORE = [&](int l, int r) {
@@ -140,13 +139,12 @@ TEST_CASE("bfs") {
 TEST_CASE("topological_ordering") {
   AdjacencyDiGraph g;
   std::vector<Node> const n = add_nodes(g, 6);
-  add_edges(g,
-            {{n[0], n[1]},
-             {n[0], n[2]},
-             {n[1], n[5]},
-             {n[2], n[3]},
-             {n[3], n[4]},
-             {n[4], n[5]}});
+  add_edges(g, {{n[0], n[1]},
+                {n[0], n[2]},
+                {n[1], n[5]},
+                {n[2], n[3]},
+                {n[3], n[4]},
+                {n[4], n[5]}});
 
   std::vector<Node> ordering = topological_ordering(g);
   auto CHECK_BEFORE = [&](int l, int r) {

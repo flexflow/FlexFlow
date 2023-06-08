@@ -2,17 +2,16 @@
 
 namespace FlexFlow {
 
-static void add_pointwise_data_dependency(DataDependencies &deps,
-                                          slot_id input,
+static void add_pointwise_data_dependency(DataDependencies &deps, slot_id input,
                                           slot_id output) {
   deps.add_data_dependency(
       input, output, [](std::vector<int> const &coords) { return coords; });
 }
 
 DataDependencies
-    pointwise_data_dependence(std::vector<slot_id> const &input_slots,
-                              std::vector<slot_id> const &weight_slots,
-                              std::vector<slot_id> const &output_slots) {
+pointwise_data_dependence(std::vector<slot_id> const &input_slots,
+                          std::vector<slot_id> const &weight_slots,
+                          std::vector<slot_id> const &output_slots) {
   DataDependencies deps;
   for (slot_id output_slot : output_slots) {
     for (slot_id input_slot : input_slots) {

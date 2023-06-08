@@ -22,9 +22,7 @@ public:
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::ParallelOpInfo,
-                 op_type,
-                 parallel_dim,
+VISITABLE_STRUCT(::FlexFlow::ParallelOpInfo, op_type, parallel_dim,
                  parallel_degree);
 MAKE_VISIT_HASHABLE(::FlexFlow::ParallelOpInfo);
 

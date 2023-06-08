@@ -33,17 +33,12 @@ struct DLRMConfig {
 
 class SingleDataLoader {
 public:
-  SingleDataLoader(FlexFlow::FFModel &ff,
-                   FlexFlow::ParallelTensor input,
-                   FlexFlow::ParallelTensor full_input_,
-                   int num_samples_,
+  SingleDataLoader(FlexFlow::FFModel &ff, FlexFlow::ParallelTensor input,
+                   FlexFlow::ParallelTensor full_input_, int num_samples_,
                    DataType datatype_);
 
-  SingleDataLoader(FlexFlow::FFModel &ff,
-                   FlexFlow::ParallelTensor input,
-                   void *full_input_ptr,
-                   int num_samples_,
-                   DataType datatype_);
+  SingleDataLoader(FlexFlow::FFModel &ff, FlexFlow::ParallelTensor input,
+                   void *full_input_ptr, int num_samples_, DataType datatype_);
 
   void next_batch(FlexFlow::FFModel &);
 
@@ -56,8 +51,7 @@ public:
   template <typename DT>
   static void load_input(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
+                         Legion::Context ctx, Legion::Runtime *runtime);
   // template<typename DT, int NDIM>
   // static void load_input_with_dim(
   //     const Legion::Task *task,
@@ -67,26 +61,22 @@ public:
   template <typename DT>
   static void load_entire_dataset_from_numpy(
       Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
+      std::vector<Legion::PhysicalRegion> const &regions, Legion::Context ctx,
       Legion::Runtime *runtime);
   template <typename DT, int NDIM>
   static void load_entire_dataset_from_numpy_with_dim(
       Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
+      std::vector<Legion::PhysicalRegion> const &regions, Legion::Context ctx,
       Legion::Runtime *runtime);
   template <typename DT>
   static void index_load_entire_dataset_from_numpy(
       Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
+      std::vector<Legion::PhysicalRegion> const &regions, Legion::Context ctx,
       Legion::Runtime *runtime);
   template <typename DT, int NDIM>
   static void index_load_entire_dataset_from_numpy_with_dim(
       Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
+      std::vector<Legion::PhysicalRegion> const &regions, Legion::Context ctx,
       Legion::Runtime *runtime);
 
 private:
@@ -94,10 +84,8 @@ private:
   void next_batch_xd_launcher(FlexFlow::FFModel &ff, int task_id);
 
   template <int NDIM>
-  void index_loader_xd_launcher(FlexFlow::FFModel &ff,
-                                int task_id,
-                                void *full_input_ptr,
-                                size_t size_per_sample);
+  void index_loader_xd_launcher(FlexFlow::FFModel &ff, int task_id,
+                                void *full_input_ptr, size_t size_per_sample);
 
 public:
   int num_samples, next_index;

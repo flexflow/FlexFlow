@@ -20,7 +20,7 @@ struct Allocator {
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IAllocator, T>::value,
                                  Allocator>::type
-      create(Args &&...args) {
+  create(Args &&...args) {
     return Allocator(std::make_shared<T>(std::forward<Args>(args)...));
   }
 

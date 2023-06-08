@@ -7,12 +7,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<ATTENTION_INIT_TASK_ID>();
-template <>
-void register_task<ATTENTION_FWD_TASK_ID>();
-template <>
-void register_task<ATTENTION_BWD_TASK_ID>();
+template <> void register_task<ATTENTION_INIT_TASK_ID>();
+template <> void register_task<ATTENTION_FWD_TASK_ID>();
+template <> void register_task<ATTENTION_BWD_TASK_ID>();
 
 OpTaskInvocation init(MultiHeadAttentionAttrs const &);
 OpTaskInvocation forward(MultiHeadAttentionAttrs const &);

@@ -16,22 +16,16 @@ public:
 
 namespace Kernels {
 namespace Embedding {
-void forward_kernel(ffStream_t stream,
-                    EmbeddingPerDeviceState const *m,
+void forward_kernel(ffStream_t stream, EmbeddingPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
-                    GenericTensorAccessorR const &weight,
-                    int in_dim,
-                    int out_dim,
-                    int batch_size);
-void backward_kernel(ffStream_t stream,
-                     EmbeddingPerDeviceState const *m,
+                    GenericTensorAccessorR const &weight, int in_dim,
+                    int out_dim, int batch_size);
+void backward_kernel(ffStream_t stream, EmbeddingPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorR const &output,
-                     GenericTensorAccessorW const &weight_grad,
-                     int in_dim,
-                     int out_dim,
-                     int batch_size);
+                     GenericTensorAccessorW const &weight_grad, int in_dim,
+                     int out_dim, int batch_size);
 
 void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p);
 void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p);

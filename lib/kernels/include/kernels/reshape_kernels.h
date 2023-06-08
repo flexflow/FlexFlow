@@ -16,13 +16,11 @@ public:
 namespace Kernels {
 namespace Reshape {
 
-void forward_kernel(ffStream_t stream,
-                    ReshapePerDeviceState const *m,
+void forward_kernel(ffStream_t stream, ReshapePerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
-void backward_kernel(ffStream_t stream,
-                     ReshapePerDeviceState const *m,
+void backward_kernel(ffStream_t stream, ReshapePerDeviceState const *m,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output);
 

@@ -10,34 +10,28 @@ namespace FlexFlow {
 class UtilityTasks {
 public:
   static FFHandler
-      init_cuda_task(Legion::Task const *task,
-                     std::vector<Legion::PhysicalRegion> const &regions,
-                     Legion::Context ctx,
-                     Legion::Runtime *runtime);
+  init_cuda_task(Legion::Task const *task,
+                 std::vector<Legion::PhysicalRegion> const &regions,
+                 Legion::Context ctx, Legion::Runtime *runtime);
   static void dummy_task(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
+                         Legion::Context ctx, Legion::Runtime *runtime);
   static void
-      init_images_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+  init_images_task(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
+                   Legion::Context ctx, Legion::Runtime *runtime);
   static void
-      init_labels_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+  init_labels_task(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
+                   Legion::Context ctx, Legion::Runtime *runtime);
   static void
-      load_images_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+  load_images_task(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
+                   Legion::Context ctx, Legion::Runtime *runtime);
   static void
-      normalize_images_task(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
+  normalize_images_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx, Legion::Runtime *runtime);
 };
 
 } // namespace FlexFlow

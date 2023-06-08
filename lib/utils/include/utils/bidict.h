@@ -5,12 +5,10 @@
 
 namespace FlexFlow {
 
-template <typename L, typename R>
-struct bidict {
+template <typename L, typename R> struct bidict {
   bidict() : fwd_map{}, bwd_map{} {}
 
-  template <typename InputIt>
-  bidict(InputIt first, InputIt last) {
+  template <typename InputIt> bidict(InputIt first, InputIt last) {
     for (auto it = first; it != last; it++) {
       fwd_map[it->first] = it->second;
       bwd_map[it->second] = it->first;
@@ -42,12 +40,8 @@ struct bidict {
     bwd_map.insert({r, l});
   }
 
-  R const &at_l(L const &l) const {
-    return fwd_map.at(l);
-  }
-  L const &at_r(R const &r) const {
-    return bwd_map.at(r);
-  }
+  R const &at_l(L const &l) const { return fwd_map.at(l); }
+  L const &at_r(R const &r) const { return bwd_map.at(r); }
 
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;
   using value_type = std::pair<L, R>;
@@ -111,25 +105,15 @@ struct bidict {
   /*   return this->cend(); */
   /* } */
 
-  const_iterator cbegin() const {
-    return this->fwd_map.cbegin();
-  }
+  const_iterator cbegin() const { return this->fwd_map.cbegin(); }
 
-  const_iterator begin() const {
-    return this->cbegin();
-  }
+  const_iterator begin() const { return this->cbegin(); }
 
-  const_iterator cend() const {
-    return this->fwd_map.cend();
-  }
+  const_iterator cend() const { return this->fwd_map.cend(); }
 
-  const_iterator end() const {
-    return this->cend();
-  }
+  const_iterator end() const { return this->cend(); }
 
-  bidict<R, L> reversed() const {
-    return bidict<R, L>(bwd_map, fwd_map);
-  }
+  bidict<R, L> reversed() const { return bidict<R, L>(bwd_map, fwd_map); }
 
 private:
   bidict(std::unordered_map<L, R> const &fwd_map,

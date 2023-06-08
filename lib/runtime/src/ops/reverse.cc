@@ -44,18 +44,10 @@ Tensor FFModel::reverse(const Tensor input, int axis, char const *name) {
 #endif
 }
 
-Reverse::Reverse(FFModel &model,
-                 const ParallelTensor input,
-                 int _axis,
+Reverse::Reverse(FFModel &model, const ParallelTensor input, int _axis,
                  char const *name)
-    : Op(model,
-         OP_REVERSE,
-         input->data_type,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         input),
+    : Op(model, OP_REVERSE, input->data_type, name, 1 /*inputs*/, 0 /*weights*/,
+         1 /*outputs*/, input),
       axis(_axis) {
   numOutputs = 1;
   int numdim = input->num_dims;
@@ -73,33 +65,24 @@ void Reverse::init(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(REVERSE_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Reverse)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REVERSE_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Reverse)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 PerDeviceOpState *Reverse::init_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+                                     Context ctx, Runtime *runtime) {
   return NULL;
 }
 
@@ -107,33 +90,24 @@ void Reverse::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(REVERSE_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Reverse)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REVERSE_FWD_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Reverse)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Reverse::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                           Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Reverse const *reverse = (Reverse const *)task->args;
@@ -144,8 +118,8 @@ void Reverse::forward_task(Task const *task,
   assert(out_domain == in_domain);
   float const *in_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *out_ptr = helperGetTensorPointerWO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  float *out_ptr = helperGetTensorPointerWO<float>(regions[1], task->regions[1],
+                                                   FID_DATA, ctx, runtime);
   int axis = in_domain.get_dim() - reverse->axis - 1;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < out_domain.get_dim(); i++) {
@@ -159,47 +133,34 @@ void Reverse::forward_task(Task const *task,
   }
   int output_size = out_domain.get_volume();
 
-  forward_kernel_wrapper(in_ptr,
-                         out_ptr,
-                         num_out_blks,
-                         reverse_dim_size,
-                         in_blk_size,
-                         output_size);
+  forward_kernel_wrapper(in_ptr, out_ptr, num_out_blks, reverse_dim_size,
+                         in_blk_size, output_size);
 }
 
 void Reverse::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(REVERSE_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Reverse)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REVERSE_BWD_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Reverse)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // regions[0](I): output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input0_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Reverse::backward_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                            Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Reverse const *reverse = (Reverse const *)task->args;
@@ -225,16 +186,12 @@ void Reverse::backward_task(Task const *task,
     }
   }
 
-  backward_kernel_wrapper(out_grad_ptr,
-                          in_grad_ptr,
-                          num_out_blks,
-                          reverse_dim_size,
-                          in_blk_size,
+  backward_kernel_wrapper(out_grad_ptr, in_grad_ptr, num_out_blks,
+                          reverse_dim_size, in_blk_size,
                           in_grad_domain.get_volume());
 }
 
-bool Reverse::measure_operator_cost(Simulator *sim,
-                                    MachineView const &mv,
+bool Reverse::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -266,11 +223,8 @@ bool Reverse::measure_operator_cost(Simulator *sim,
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(input_ptr,
-                           output_ptr,
-                           num_out_blks,
-                           reverse_dim_size,
-                           in_blk_size,
+    forward_kernel_wrapper(input_ptr, output_ptr, num_out_blks,
+                           reverse_dim_size, in_blk_size,
                            sub_output.get_volume());
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
@@ -286,11 +240,8 @@ bool Reverse::measure_operator_cost(Simulator *sim,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
-      backward_kernel_wrapper(output_grad_ptr,
-                              input_grad_ptr,
-                              num_out_blks,
-                              reverse_dim_size,
-                              in_blk_size,
+      backward_kernel_wrapper(output_grad_ptr, input_grad_ptr, num_out_blks,
+                              reverse_dim_size, in_blk_size,
                               sub_input.get_volume());
     };
   }
@@ -300,12 +251,9 @@ bool Reverse::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf(
         "[Measure Reverse] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+        name, cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    printf("[Measure Reverse] name(%s) forward_time(%.4lf)\n",
-           name,
+    printf("[Measure Reverse] name(%s) forward_time(%.4lf)\n", name,
            cost_metrics.forward_time);
   }
 

@@ -18,8 +18,7 @@ public:
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::BatchMatmulAttrs,
-                 a_seq_length_dim,
+VISITABLE_STRUCT(::FlexFlow::BatchMatmulAttrs, a_seq_length_dim,
                  b_seq_length_dim);
 MAKE_VISIT_HASHABLE(::FlexFlow::BatchMatmulAttrs);
 

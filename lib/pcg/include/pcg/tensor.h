@@ -10,8 +10,7 @@ namespace FlexFlow {
 
 struct Tensor : public use_visitable_cmp<Tensor> {
   Tensor() = delete;
-  Tensor(TensorShape const &,
-         CreateGrad create_gradients,
+  Tensor(TensorShape const &, CreateGrad create_gradients,
          optional<Initializer const &> initializer = nullopt,
          optional<ParamSync> sync_type = nullopt);
 
@@ -33,12 +32,8 @@ using Parameter = Tensor;
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::Tensor,
-                 dims,
-                 data_type,
-                 initializer,
-                 create_gradients,
-                 sync_type);
+VISITABLE_STRUCT(::FlexFlow::Tensor, dims, data_type, initializer,
+                 create_gradients, sync_type);
 
 namespace FlexFlow {
 static_assert(is_well_behaved_value_type<Tensor>::value, "");

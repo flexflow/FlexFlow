@@ -36,9 +36,8 @@ enum class SourceSettings { INCLUDE_SOURCE_NODES, EXCLUDE_SOURCE_NODES };
 
 enum class SinkSettings { INCLUDE_SINK_NODES, EXCLUDE_SINK_NODES };
 
-std::unordered_set<Node> from_source_to_sink(DiGraphView const &g,
-                                             Node const &src,
-                                             Node const &sink) {
+std::unordered_set<Node>
+from_source_to_sink(DiGraphView const &g, Node const &src, Node const &sink) {
   assert(contains(get_dominators(g, sink), src));
 
   std::vector<Node> bfs = get_bfs_ordering(g, {src});
@@ -50,11 +49,9 @@ std::unordered_set<Node> from_source_to_sink(DiGraphView const &g,
 }
 
 std::unordered_set<Node>
-    from_source_to_sink(DiGraphView const &g,
-                        std::unordered_set<Node> const &srcs,
-                        std::unordered_set<Node> const &sinks,
-                        SourceSettings include_src,
-                        SinkSettings include_sink) {
+from_source_to_sink(DiGraphView const &g, std::unordered_set<Node> const &srcs,
+                    std::unordered_set<Node> const &sinks,
+                    SourceSettings include_src, SinkSettings include_sink) {
   assert(is_acyclic(g));
 
   Node contracted_src = get_first(srcs);
@@ -82,12 +79,10 @@ std::unordered_set<Node>
   return result;
 }
 
-DiGraphView
-    unsafe_source_to_sink_subgraph(DiGraphView const &g,
-                                   std::unordered_set<Node> const &srcs,
-                                   std::unordered_set<Node> const &sinks,
-                                   SourceSettings include_src,
-                                   SinkSettings include_sink) {
+DiGraphView unsafe_source_to_sink_subgraph(
+    DiGraphView const &g, std::unordered_set<Node> const &srcs,
+    std::unordered_set<Node> const &sinks, SourceSettings include_src,
+    SinkSettings include_sink) {
   return unsafe_view_subgraph(
       g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
 }
@@ -104,15 +99,11 @@ SplitAST sp_decomposition(DiGraphView const &g) {
   if (bottleneck.has_value()) {
     return SplitASTNode(SplitType::SERIAL,
                         sp_decomposition(unsafe_source_to_sink_subgraph(
-                            g,
-                            sources,
-                            {bottleneck.value()},
+                            g, sources, {bottleneck.value()},
                             SourceSettings::INCLUDE_SOURCE_NODES,
                             SinkSettings::INCLUDE_SINK_NODES)),
                         sp_decomposition(unsafe_source_to_sink_subgraph(
-                            g,
-                            {bottleneck.value()},
-                            sinks,
+                            g, {bottleneck.value()}, sinks,
                             SourceSettings::EXCLUDE_SOURCE_NODES,
                             SinkSettings::INCLUDE_SINK_NODES)));
   } else {
@@ -160,14 +151,10 @@ struct FlattenAST {
     return result;
   }
 
-  SplitAST operator()(Node const &ast_node) {
-    return ast_node;
-  }
+  SplitAST operator()(Node const &ast_node) { return ast_node; }
 };
 
-SplitAST flatten_ast(SplitAST const &ast) {
-  return visit(FlattenAST{}, ast);
-}
+SplitAST flatten_ast(SplitAST const &ast) { return visit(FlattenAST{}, ast); }
 
 struct ToFinalAST {
   variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
@@ -196,9 +183,7 @@ struct ToFinalAST {
     }
   }
 
-  variant<Serial, Parallel, Node> operator()(Node const &node) {
-    return node;
-  }
+  variant<Serial, Parallel, Node> operator()(Node const &node) { return node; }
 };
 
 variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {

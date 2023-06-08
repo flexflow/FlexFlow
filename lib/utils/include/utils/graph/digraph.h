@@ -76,14 +76,12 @@ public:
     return maybe_owned_ref<IDiGraphView const>(this->ptr);
   }
 
-  IDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
+  IDiGraphView const *unsafe() const { return this->ptr.get(); }
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
                                  DiGraphView>::type
-      create(Args &&...args) {
+  create(Args &&...args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
@@ -134,7 +132,7 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IDiGraph, T>::value,
                                  DiGraph>::type
-      create() {
+  create() {
     return DiGraph(make_unique<T>());
   }
 

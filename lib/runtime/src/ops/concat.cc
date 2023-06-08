@@ -59,16 +59,10 @@ ConcatParams Concat::get_params() const {
   return params;
 }
 
-Tensor
-    FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
-  Layer *concat = new Layer(this,
-                            OP_CONCAT,
-                            DT_FLOAT,
-                            name,
-                            n /*inputs*/,
-                            0 /*weights*/,
-                            1 /*outputs*/,
-                            tensors);
+Tensor FFModel::concat(int n, Tensor const *tensors, int axis,
+                       char const *name) {
+  Layer *concat = new Layer(this, OP_CONCAT, DT_FLOAT, name, n /*inputs*/,
+                            0 /*weights*/, 1 /*outputs*/, tensors);
   int numdim = tensors[0]->num_dims;
   // Making sure axis is between [0, numdim)
   axis = (axis % numdim + numdim) % numdim;
@@ -95,29 +89,19 @@ Tensor
 }
 
 Op *Concat::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("legion_axis", value);
   int legion_axis = value;
-  return new Concat(
-      model, inputs.size(), inputs.data(), legion_axis, layer->name);
+  return new Concat(model, inputs.size(), inputs.data(), legion_axis,
+                    layer->name);
 }
 
-Concat::Concat(FFModel &model,
-               int _n,
-               ParallelTensor const *_tensors,
-               int _legion_axis,
-               char const *name)
-    : Op(model,
-         OP_CONCAT,
-         DT_FLOAT,
-         name,
-         _n /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         _tensors),
+Concat::Concat(FFModel &model, int _n, ParallelTensor const *_tensors,
+               int _legion_axis, char const *name)
+    : Op(model, OP_CONCAT, DT_FLOAT, name, _n /*inputs*/, 0 /*weights*/,
+         1 /*outputs*/, _tensors),
       legion_axis(_legion_axis) {
   int num_dim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -143,10 +127,8 @@ Concat::Concat(FFModel &model,
       num_dim, dims, inputs[0]->data_type, this);
 }
 
-Concat::Concat(FFModel &model,
-               ConcatParams const &params,
-               std::vector<ParallelTensor> const &inputs,
-               char const *name)
+Concat::Concat(FFModel &model, ConcatParams const &params,
+               std::vector<ParallelTensor> const &inputs, char const *name)
     : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
 static OpTaskSignature get_init_task_signature() {
@@ -265,8 +247,7 @@ void Concat::init(FFModel const &ff) {
 
 PerDeviceOpState *Concat::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+                                    Context ctx, Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -317,8 +298,7 @@ void Concat::forward(FFModel const &ff) {
 */
 void Concat::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                          Context ctx, Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   // Concat const *cc = (Concat *)task->args;
   ConcatPerDeviceState const *m = *((ConcatPerDeviceState **)task->local_args);
@@ -348,13 +328,8 @@ void Concat::forward_task(Task const *task,
   //        DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx,
   //        runtime);
   //  }
-  profile(forward_kernel,
-          m->profiling,
-          "[Concat] forward_time = %.2lfms\n",
-          m,
-          output,
-          inputs,
-          attrs.n)
+  profile(forward_kernel, m->profiling, "[Concat] forward_time = %.2lfms\n", m,
+          output, inputs, attrs.n)
 }
 
 void Concat::backward(FFModel const &ff) {
@@ -398,8 +373,7 @@ void Concat::backward(FFModel const &ff) {
 */
 void Concat::backward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                           Context ctx, Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   // Concat const *cc = (Concat *)task->args;
   ConcatPerDeviceState const *m = *((ConcatPerDeviceState **)task->local_args);
@@ -431,27 +405,21 @@ void Concat::backward_task(Task const *task,
   //       runtime);
   // }
 
-  profile(backward_kernel,
-          m->profiling,
-          "[Concat] backward_time = %.2lfms\n",
-          m,
-          output_grad,
-          input_grads,
-          attrs.n)
+  profile(backward_kernel, m->profiling, "[Concat] backward_time = %.2lfms\n",
+          m, output_grad, input_grads, attrs.n)
 }
 
 bool Concat::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-    case PM_AXIS:
-      *value = legion_axis;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
+  case PM_AXIS:
+    *value = legion_axis;
+    return true;
+  default:
+    return Op::get_int_parameter(para, value);
   }
 }
 
-bool Concat::measure_operator_cost(Simulator *sim,
-                                   MachineView const &mv,
+bool Concat::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   assert(numInputs <= MAX_NUM_INPUTS);
   ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
@@ -516,8 +484,8 @@ bool Concat::measure_operator_cost(Simulator *sim,
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    GenericTensorAccessorR output_grad_acc(
-        DT_FLOAT, out_domain, output_grad_ptr);
+    GenericTensorAccessorR output_grad_acc(DT_FLOAT, out_domain,
+                                           output_grad_ptr);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
@@ -537,12 +505,9 @@ bool Concat::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf(
         "[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+        name, cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    printf("[Measure Concat] name(%s) forward_time(%.4lf)\n",
-           name,
+    printf("[Measure Concat] name(%s) forward_time(%.4lf)\n", name,
            cost_metrics.forward_time);
   }
 

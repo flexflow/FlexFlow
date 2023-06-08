@@ -52,19 +52,11 @@ SplitParams Split::get_params() const {
   return params;
 }
 
-void FFModel::split(const Tensor input,
-                    Tensor *outputs,
-                    std::vector<int> const &splits,
-                    int axis,
+void FFModel::split(const Tensor input, Tensor *outputs,
+                    std::vector<int> const &splits, int axis,
                     char const *name) {
-  Layer *split = new Layer(this,
-                           OP_SPLIT,
-                           DT_FLOAT,
-                           name,
-                           1 /*inputs*/,
-                           0 /*weights*/,
-                           splits.size() /*outputs*/,
-                           input);
+  Layer *split = new Layer(this, OP_SPLIT, DT_FLOAT, name, 1 /*inputs*/,
+                           0 /*weights*/, splits.size() /*outputs*/, input);
   int numdim = input->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
@@ -81,8 +73,7 @@ void FFModel::split(const Tensor input,
 }
 
 Op *Split::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("legion_axis", value);
@@ -95,19 +86,10 @@ Op *Split::create_operator_from_layer(
   return new Split(model, inputs[0], splits, legion_axis, layer->name);
 }
 
-Split::Split(FFModel &model,
-             const ParallelTensor input,
-             std::vector<int> const &splits,
-             int _legion_axis,
-             char const *name)
-    : Op(model,
-         OP_SPLIT,
-         input->data_type,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         splits.size() /*outputs*/,
-         input),
+Split::Split(FFModel &model, const ParallelTensor input,
+             std::vector<int> const &splits, int _legion_axis, char const *name)
+    : Op(model, OP_SPLIT, input->data_type, name, 1 /*inputs*/, 0 /*weights*/,
+         splits.size() /*outputs*/, input),
       legion_axis(_legion_axis), splits(splits) {
   numOutputs = splits.size();
   // Note that we use the Legion dim ordering
@@ -132,10 +114,8 @@ Split::Split(FFModel &model,
   assert(split_size == input->dims[legion_axis].size);
 }
 
-Split::Split(FFModel &model,
-             SplitParams const &params,
-             const ParallelTensor input,
-             char const *name)
+Split::Split(FFModel &model, SplitParams const &params,
+             const ParallelTensor input, char const *name)
     : Split(model, input, params.splits, params.legion_axis, name) {}
 
 void Split::init(FFModel const &ff) {
@@ -144,26 +124,18 @@ void Split::init(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(SPLIT_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Split)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(SPLIT_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Split)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numOutputs; i++) {
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -171,8 +143,7 @@ void Split::init(FFModel const &ff) {
 
 PerDeviceOpState *Split::init_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
-                                   Context ctx,
-                                   Runtime *runtime) {
+                                   Context ctx, Runtime *runtime) {
   return NULL;
 }
 
@@ -180,34 +151,24 @@ void Split::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(SPLIT_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Split)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(SPLIT_FWD_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Split)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numOutputs; i++) {
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
-void calc_block_size(coord_t &num_blks,
-                     coord_t &blk_size,
-                     Domain const &domain,
+void calc_block_size(coord_t &num_blks, coord_t &blk_size, Domain const &domain,
                      int axis) {
   num_blks = 1;
   blk_size = 1;
@@ -222,8 +183,7 @@ void calc_block_size(coord_t &num_blks,
 
 void Split::forward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
+                         Context ctx, Runtime *runtime) {
   Split const *split = (Split *)task->args;
   assert(regions.size() == split->numOutputs + 1);
   assert(task->regions.size() == split->numOutputs + 1);
@@ -241,8 +201,8 @@ void Split::forward_task(Task const *task,
     out_ptr[i] = helperGetTensorPointerWO<float>(
         regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
     coord_t out_num_blks;
-    calc_block_size(
-        out_num_blks, out_blk_size[i], out_domain, split->legion_axis);
+    calc_block_size(out_num_blks, out_blk_size[i], out_domain,
+                    split->legion_axis);
     assert(out_num_blks == num_blks);
     for (int j = 0; j < out_domain.get_dim(); j++) {
       if (j != split->legion_axis) {
@@ -254,34 +214,26 @@ void Split::forward_task(Task const *task,
   }
   assert(total_volume == in_domain.get_volume());
 
-  forward_kernel_wrapper(
-      out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
+  forward_kernel_wrapper(out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks,
+                         split->numOutputs);
 }
 
 void Split::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(SPLIT_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Split)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(SPLIT_BWD_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Split)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numOutputs; i++) {
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part_grad,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region_grad));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->part_grad, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, outputs[i]->region_grad));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -289,8 +241,7 @@ void Split::backward(FFModel const &ff) {
 
 void Split::backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                          Context ctx, Runtime *runtime) {
   Split const *split = (Split *)task->args;
   assert(regions.size() == split->numOutputs + 1);
   assert(task->regions.size() == split->numOutputs + 1);
@@ -308,8 +259,8 @@ void Split::backward_task(Task const *task,
     out_grad_ptr[i] = helperGetTensorPointerRO<float>(
         regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
     coord_t out_num_blks;
-    calc_block_size(
-        out_num_blks, out_blk_size[i], out_grad_domain, split->legion_axis);
+    calc_block_size(out_num_blks, out_blk_size[i], out_grad_domain,
+                    split->legion_axis);
     assert(out_num_blks == num_blks);
     for (int j = 0; j < out_grad_domain.get_dim(); j++) {
       if (j != split->legion_axis) {
@@ -321,16 +272,11 @@ void Split::backward_task(Task const *task,
   }
   assert(total_volume == in_grad_domain.get_volume());
 
-  backward_kernel_wrapper(in_grad_ptr,
-                          out_grad_ptr,
-                          out_blk_size,
-                          in_blk_size,
-                          num_blks,
-                          split->numOutputs);
+  backward_kernel_wrapper(in_grad_ptr, out_grad_ptr, out_blk_size, in_blk_size,
+                          num_blks, split->numOutputs);
 }
 
-bool Split::measure_operator_cost(Simulator *sim,
-                                  MachineView const &mv,
+bool Split::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                   CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output[MAX_NUM_OUTPUTS], sub_input;
   for (int i = 0; i < numOutputs; i++) {
@@ -369,8 +315,8 @@ bool Split::measure_operator_cost(Simulator *sim,
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(
-        output_ptr, input_ptr, out_blk_size, in_blk_size, num_blks, numOutputs);
+    forward_kernel_wrapper(output_ptr, input_ptr, out_blk_size, in_blk_size,
+                           num_blks, numOutputs);
   };
   // Assume backward has the same cost as forward
   backward = forward;
@@ -379,15 +325,11 @@ bool Split::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure Split] name(%s) num_elements(%zu) forward_time(%.4lf) "
            "backward_time(%.4lf)\n",
-           name,
-           sub_input.get_volume(),
-           cost_metrics.forward_time,
+           name, sub_input.get_volume(), cost_metrics.forward_time,
            cost_metrics.backward_time);
   } else {
     printf("[Measure Split] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
-           name,
-           sub_input.get_volume(),
-           cost_metrics.forward_time);
+           name, sub_input.get_volume(), cost_metrics.forward_time);
   }
   return true;
 }

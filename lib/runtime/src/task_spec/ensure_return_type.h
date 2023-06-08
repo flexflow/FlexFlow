@@ -15,8 +15,7 @@ RetType internal_ensure_return_type(InvocType const &invocation) {
   if (signature_return_type.value() != asserted_return_type) {
     throw mk_runtime_error("Task {} does not have asserted return type "
                            "(asserted type {}, signature type {})",
-                           get_name(invocation.task_id),
-                           asserted_return_type,
+                           get_name(invocation.task_id), asserted_return_type,
                            signature_return_type.value());
   }
 
@@ -31,10 +30,10 @@ TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &invocation) {
 
 template <typename T>
 TypedIndexTaskInvocation<T>
-    ensure_return_type(IndexTaskInvocation const &invocation) {
+ensure_return_type(IndexTaskInvocation const &invocation) {
   return internal_ensure_return_type<IndexTaskInvocation,
-                                     TypedIndexTaskInvocation<T>,
-                                     T>(invocation);
+                                     TypedIndexTaskInvocation<T>, T>(
+      invocation);
 }
 
 } // namespace FlexFlow

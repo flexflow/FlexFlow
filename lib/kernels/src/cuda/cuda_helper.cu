@@ -33,42 +33,30 @@ cudaError_t get_legion_stream(cudaStream_t *stream) {
 using FlexFlow::get_legion_stream;
 
 __global__ void scale_kernel(float *ptr, coord_t size, float a, float b) {
-  CUDA_KERNEL_LOOP(i, size) {
-    ptr[i] = (b - a) * ptr[i] + a;
-  }
+  CUDA_KERNEL_LOOP(i, size) { ptr[i] = (b - a) * ptr[i] + a; }
 }
 
 __global__ void ones_kernel(float *ptr, coord_t size) {
-  CUDA_KERNEL_LOOP(i, size) {
-    ptr[i] = 1.0f;
-  }
+  CUDA_KERNEL_LOOP(i, size) { ptr[i] = 1.0f; }
 }
 
 template <typename DT>
 __global__ void assign_kernel(DT *ptr, coord_t size, DT value) {
-  CUDA_KERNEL_LOOP(i, size) {
-    ptr[i] = value;
-  }
+  CUDA_KERNEL_LOOP(i, size) { ptr[i] = value; }
 }
 
 template <typename DT>
 __global__ void copy_kernel(DT *dst, const DT *src, coord_t size) {
-  CUDA_KERNEL_LOOP(i, size) {
-    dst[i] = src[i];
-  }
+  CUDA_KERNEL_LOOP(i, size) { dst[i] = src[i]; }
 }
 
 template <typename DT>
 __global__ void reluBackward(DT *grad_ptr, const DT *output, size_t n) {
-  CUDA_KERNEL_LOOP(i, n) {
-    grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0;
-  }
+  CUDA_KERNEL_LOOP(i, n) { grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0; }
 }
 
-__host__ void relu_backward_kernel(DataType data_type,
-                                   void *output_grad_ptr,
-                                   void const *output_ptr,
-                                   size_t output_size,
+__host__ void relu_backward_kernel(DataType data_type, void *output_grad_ptr,
+                                   void const *output_ptr, size_t output_size,
                                    cudaStream_t stream) {
   if (data_type == DT_FLOAT) {
     reluBackward<float>
@@ -85,18 +73,16 @@ __host__ void relu_backward_kernel(DataType data_type,
 }
 
 template <typename DT>
-__global__ void
-    sigmoid_backward_function(DT *grad_ptr, const DT *output, size_t n) {
+__global__ void sigmoid_backward_function(DT *grad_ptr, const DT *output,
+                                          size_t n) {
   CUDA_KERNEL_LOOP(i, n) {
     grad_ptr[i] = grad_ptr[i] * output[i] * (1.0f - output[i]);
   }
 }
 
-__host__ void sigmoid_backward_kernel(DataType data_type,
-                                      void *output_grad_ptr,
+__host__ void sigmoid_backward_kernel(DataType data_type, void *output_grad_ptr,
                                       void const *output_ptr,
-                                      size_t output_size,
-                                      cudaStream_t stream) {
+                                      size_t output_size, cudaStream_t stream) {
   if (data_type == DT_FLOAT) {
     sigmoid_backward_function<float>
         <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
@@ -111,9 +97,7 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
   }
 }
 
-__global__ void gelu_forward_kernel(size_t size,
-                                    float const B,
-                                    float const C,
+__global__ void gelu_forward_kernel(size_t size, float const B, float const C,
                                     float *input) {
   CUDA_KERNEL_LOOP(i, size) {
     float const in = input[i];
@@ -122,32 +106,24 @@ __global__ void gelu_forward_kernel(size_t size,
   }
 }
 
-__global__ void
-    apply_add(float *data_ptr, float const *replica_ptr, size_t size) {
-  CUDA_KERNEL_LOOP(i, size) {
-    data_ptr[i] += replica_ptr[i];
-  }
+__global__ void apply_add(float *data_ptr, float const *replica_ptr,
+                          size_t size) {
+  CUDA_KERNEL_LOOP(i, size) { data_ptr[i] += replica_ptr[i]; }
 }
 
 template <typename T>
-__global__ void
-    apply_add_with_scale(T *data_ptr, T const *grad_ptr, size_t size, T scale) {
-  CUDA_KERNEL_LOOP(i, size) {
-    data_ptr[i] += grad_ptr[i] * scale;
-  }
+__global__ void apply_add_with_scale(T *data_ptr, T const *grad_ptr,
+                                     size_t size, T scale) {
+  CUDA_KERNEL_LOOP(i, size) { data_ptr[i] += grad_ptr[i] * scale; }
 }
 
 template <typename T>
 __global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size) {
-  CUDA_KERNEL_LOOP(i, size) {
-    data_ptr[i] += grad_ptr[i];
-  }
+  CUDA_KERNEL_LOOP(i, size) { data_ptr[i] += grad_ptr[i]; }
 }
 
-__global__ void add_with_stride(float *output,
-                                float const *input,
-                                int num_blocks,
-                                int output_blk_size,
+__global__ void add_with_stride(float *output, float const *input,
+                                int num_blocks, int output_blk_size,
                                 int input_blk_size) {
   int min_blk_size = min(output_blk_size, input_blk_size);
   CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size) {
@@ -159,10 +135,8 @@ __global__ void add_with_stride(float *output,
   }
 }
 
-__global__ void copy_with_stride(float *output,
-                                 float const *input,
-                                 int num_blocks,
-                                 int output_blk_size,
+__global__ void copy_with_stride(float *output, float const *input,
+                                 int num_blocks, int output_blk_size,
                                  int input_blk_size) {
   int min_blk_size = min(output_blk_size, input_blk_size);
   CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size) {
@@ -174,10 +148,8 @@ __global__ void copy_with_stride(float *output,
   }
 }
 
-__host__ void updateGAS(float *para_ptr,
-                        float const *grad_ptr,
-                        size_t replica_size,
-                        int num_replica,
+__host__ void updateGAS(float *para_ptr, float const *grad_ptr,
+                        size_t replica_size, int num_replica,
                         float learning_rate) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -189,24 +161,21 @@ __host__ void updateGAS(float *para_ptr,
   }
   // Step 2: scale the first replica
   float scale_factor = 1.0f / num_replica * (-learning_rate);
-  apply_add_with_scale<<<GET_BLOCKS(replica_size),
-                         CUDA_NUM_THREADS,
-                         0,
-                         stream>>>(
-      para_ptr, grad_ptr, replica_size, scale_factor);
+  apply_add_with_scale<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS, 0,
+                         stream>>>(para_ptr, grad_ptr, replica_size,
+                                   scale_factor);
 }
 
 template <typename T>
-__host__ void
-    print_tensor(T const *ptr, size_t num_elements, char const *prefix) {
+__host__ void print_tensor(T const *ptr, size_t num_elements,
+                           char const *prefix) {
   // device synchronize to make sure the data are ready
   // checkCUDA(cudaDeviceSynchronize());
   T *host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr,
-                          sizeof(T) * num_elements,
+  checkCUDA(cudaHostAlloc(&host_ptr, sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
+  checkCUDA(cudaMemcpy(host_ptr, ptr, sizeof(T) * num_elements,
+                       cudaMemcpyDeviceToHost));
   // checkCUDA(cudaDeviceSynchronize());
   int idx = 0;
   printf("%s", prefix);
@@ -221,8 +190,8 @@ __host__ void
 }
 
 cudnnStatus_t
-    cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
-                                           ArrayShape const &shape) {
+cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
+                                       ArrayShape const &shape) {
   ArrayShape flipped = shape.reversed_dim_order();
 
   if (flipped.get_dim() == 5) {
@@ -233,74 +202,70 @@ cudnnStatus_t
   assert(flipped.get_dim() > 0);
   assert(flipped.get_dim() < 4);
 
-  return cudnnSetTensor4dDescriptor(tensor,
-                                    CUDNN_TENSOR_NCHW,
-                                    CUDNN_DATA_FLOAT,
-                                    flipped.at_maybe(0).value_or(1),
-                                    flipped.at_maybe(1).value_or(2),
-                                    flipped.at_maybe(2).value_or(3),
-                                    flipped.at_maybe(3).value_or(3));
+  return cudnnSetTensor4dDescriptor(
+      tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
+      flipped.at_maybe(0).value_or(1), flipped.at_maybe(1).value_or(2),
+      flipped.at_maybe(2).value_or(3), flipped.at_maybe(3).value_or(3));
 }
 
 cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
-    case DT_FLOAT:
-      return CUDNN_DATA_FLOAT;
-    case DT_DOUBLE:
-      return CUDNN_DATA_DOUBLE;
-    case DT_INT32:
-      return CUDNN_DATA_INT32;
-    default:
-      assert(false && "Unsupported cudnn data type");
+  case DT_FLOAT:
+    return CUDNN_DATA_FLOAT;
+  case DT_DOUBLE:
+    return CUDNN_DATA_DOUBLE;
+  case DT_INT32:
+    return CUDNN_DATA_INT32;
+  default:
+    assert(false && "Unsupported cudnn data type");
   }
   return CUDNN_DATA_FLOAT;
 }
 
 cudaDataType_t ff_to_cuda_datatype(DataType type) {
   switch (type) {
-    case DT_FLOAT:
-      return CUDA_R_32F;
-    case DT_DOUBLE:
-      return CUDA_R_64F;
-    case DT_INT32:
-      return CUDA_R_32I;
-    default:
-      assert(false && "Unspoorted cuda data type");
+  case DT_FLOAT:
+    return CUDA_R_32F;
+  case DT_DOUBLE:
+    return CUDA_R_64F;
+  case DT_INT32:
+    return CUDA_R_32I;
+  default:
+    assert(false && "Unspoorted cuda data type");
   }
   return CUDA_R_32F;
 }
 
-template __global__ void
-    assign_kernel<half>(half *ptr, coord_t size, half value);
-template __global__ void
-    assign_kernel<float>(float *ptr, coord_t size, float value);
-template __global__ void
-    assign_kernel<double>(double *ptr, coord_t size, double value);
-template __global__ void
-    assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
-template __global__ void
-    assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
+template __global__ void assign_kernel<half>(half *ptr, coord_t size,
+                                             half value);
+template __global__ void assign_kernel<float>(float *ptr, coord_t size,
+                                              float value);
+template __global__ void assign_kernel<double>(double *ptr, coord_t size,
+                                               double value);
+template __global__ void assign_kernel<int32_t>(int32_t *ptr, coord_t size,
+                                                int32_t value);
+template __global__ void assign_kernel<int64_t>(int64_t *ptr, coord_t size,
+                                                int64_t value);
 
-template __global__ void
-    add_kernel<float>(float *dst, float const *src, size_t size);
-template __global__ void
-    add_kernel<double>(double *dst, double const *src, size_t size);
-template __global__ void
-    add_kernel<int32_t>(int32_t *dst, int32_t const *src, size_t size);
-template __global__ void
-    add_kernel<int64_t>(int64_t *dst, int64_t const *src, size_t size);
+template __global__ void add_kernel<float>(float *dst, float const *src,
+                                           size_t size);
+template __global__ void add_kernel<double>(double *dst, double const *src,
+                                            size_t size);
+template __global__ void add_kernel<int32_t>(int32_t *dst, int32_t const *src,
+                                             size_t size);
+template __global__ void add_kernel<int64_t>(int64_t *dst, int64_t const *src,
+                                             size_t size);
 
-template __global__ void
-    copy_kernel<float>(float *dst, float const *src, coord_t size);
-template __global__ void
-    copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
-template __global__ void
-    copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
+template __global__ void copy_kernel<float>(float *dst, float const *src,
+                                            coord_t size);
+template __global__ void copy_kernel<int32_t>(int32_t *dst, int32_t const *src,
+                                              coord_t size);
+template __global__ void copy_kernel<int64_t>(int64_t *dst, int64_t const *src,
+                                              coord_t size);
 
 template __global__ void apply_add_with_scale<float>(float *data_ptr,
                                                      float const *grad_ptr,
-                                                     size_t size,
-                                                     float scale);
+                                                     size_t size, float scale);
 template __global__ void apply_add_with_scale<double>(double *data_ptr,
                                                       double const *grad_ptr,
                                                       size_t size,
@@ -314,11 +279,11 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
                                                        size_t size,
                                                        int64_t scale);
 
-template __host__ void
-    print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+template __host__ void print_tensor<float>(float const *ptr, size_t rect,
+                                           char const *prefix);
+template __host__ void print_tensor<double>(double const *ptr, size_t rect,
+                                            char const *prefix);
+template __host__ void print_tensor<int32_t>(int32_t const *ptr, size_t rect,
+                                             char const *prefix);
+template __host__ void print_tensor<int64_t>(int64_t const *ptr, size_t rect,
+                                             char const *prefix);

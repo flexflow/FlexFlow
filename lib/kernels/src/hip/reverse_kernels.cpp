@@ -24,48 +24,26 @@ using Legion::coord_t;
 namespace Kernels {
 namespace Reverse {
 
-void forward_kernel(hipStream_t stream,
-                    float const *in_ptr,
-                    float *out_ptr,
-                    coord_t num_out_blks,
-                    coord_t reverse_dim_size,
-                    coord_t in_blk_size,
-                    coord_t output_size) {
+void forward_kernel(hipStream_t stream, float const *in_ptr, float *out_ptr,
+                    coord_t num_out_blks, coord_t reverse_dim_size,
+                    coord_t in_blk_size, coord_t output_size) {
 
-  hipLaunchKernelGGL(reverse_forward_kernel,
-                     GET_BLOCKS(output_size),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     in_ptr,
-                     out_ptr,
-                     num_out_blks,
-                     reverse_dim_size,
-                     in_blk_size);
+  hipLaunchKernelGGL(reverse_forward_kernel, GET_BLOCKS(output_size),
+                     CUDA_NUM_THREADS, 0, stream, in_ptr, out_ptr, num_out_blks,
+                     reverse_dim_size, in_blk_size);
 }
 
-void backward_kernel(hipStream_t stream,
-                     float const *out_grad_ptr,
-                     float *in_grad_ptr,
-                     coord_t num_out_blks,
-                     coord_t reverse_dim_size,
-                     coord_t in_blk_size,
+void backward_kernel(hipStream_t stream, float const *out_grad_ptr,
+                     float *in_grad_ptr, coord_t num_out_blks,
+                     coord_t reverse_dim_size, coord_t in_blk_size,
                      coord_t input_size) {
 
-  hipLaunchKernelGGL(reverse_forward_kernel,
-                     GET_BLOCKS(input_size),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     out_grad_ptr,
-                     in_grad_ptr,
-                     num_out_blks,
-                     reverse_dim_size,
-                     in_blk_size);
+  hipLaunchKernelGGL(reverse_forward_kernel, GET_BLOCKS(input_size),
+                     CUDA_NUM_THREADS, 0, stream, out_grad_ptr, in_grad_ptr,
+                     num_out_blks, reverse_dim_size, in_blk_size);
 }
 
-__global__ void reverse_forward_kernel(float const *in_ptr,
-                                       float *out_ptr,
+__global__ void reverse_forward_kernel(float const *in_ptr, float *out_ptr,
                                        coord_t num_out_blks,
                                        coord_t reverse_dim_size,
                                        coord_t in_blk_size) {

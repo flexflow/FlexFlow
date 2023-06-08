@@ -3,8 +3,7 @@
 namespace FlexFlow {
 
 TensorUseDescription::TensorUseDescription(TensorUseType const &type,
-                                           Layer const *layer,
-                                           int idx)
+                                           Layer const *layer, int idx)
     : type(type), layer(layer), idx(idx) {}
 
 std::vector<TensorUseDescription> TensorUses::at(Tensor const &tensor) const {

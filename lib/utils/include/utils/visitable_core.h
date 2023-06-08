@@ -7,8 +7,7 @@
   namespace visit_struct {                                                     \
   namespace traits {                                                           \
                                                                                \
-  template <>                                                                  \
-  struct visitable<STRUCT_NAME, void> {                                        \
+  template <> struct visitable<STRUCT_NAME, void> {                            \
                                                                                \
     using this_type = STRUCT_NAME;                                             \
                                                                                \
@@ -23,8 +22,8 @@
                                                    S &&struct_instance) {}     \
                                                                                \
     template <typename V, typename S1, typename S2>                            \
-    VISIT_STRUCT_CXX14_CONSTEXPR static void                                   \
-        apply(V &&visitor, S1 &&s1, S2 &&s2) {}                                \
+    VISIT_STRUCT_CXX14_CONSTEXPR static void apply(V &&visitor, S1 &&s1,       \
+                                                   S2 &&s2) {}                 \
                                                                                \
     template <typename V>                                                      \
     VISIT_STRUCT_CXX14_CONSTEXPR static void visit_pointers(V &&visitor) {}    \
@@ -50,8 +49,7 @@ namespace FlexFlow {
 template <typename T>
 using is_visitable = ::visit_struct::traits::is_visitable<T>;
 
-template <typename... Args>
-struct tuple_prepend;
+template <typename... Args> struct tuple_prepend;
 
 template <typename T, typename... Args>
 struct tuple_prepend<T, std::tuple<Args...>> {
@@ -62,8 +60,7 @@ struct visit_as_tuple_helper;
 
 template <typename T, int i>
 struct visit_as_tuple_helper<
-    T,
-    i,
+    T, i,
     typename std::enable_if<(
         i < visit_struct::traits::visitable<T>::field_count)>::type> {
   using type = typename tuple_prepend<
@@ -73,8 +70,7 @@ struct visit_as_tuple_helper<
 
 template <typename T, int i>
 struct visit_as_tuple_helper<
-    T,
-    i,
+    T, i,
     typename std::enable_if<(
         i == visit_struct::traits::visitable<T>::field_count)>::type> {
   using type = std::tuple<>;

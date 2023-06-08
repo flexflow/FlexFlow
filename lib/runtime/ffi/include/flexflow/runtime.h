@@ -45,39 +45,38 @@ typedef enum {
 
 char *flexflow_runtime_get_error_string(flexflow_runtime_error_t);
 
-flexflow_runtime_error_t flexflow_config_parse_argv(int *argc,
-                                                    char **argv,
+flexflow_runtime_error_t flexflow_config_parse_argv(int *argc, char **argv,
                                                     bool remove_used,
                                                     flexflow_config_t *out);
 flexflow_runtime_error_t flexflow_set_config(flexflow_config_t);
 flexflow_runtime_error_t flexflow_get_config(flexflow_config_t *);
 
-flexflow_runtime_error_t flexflow_model_config_parse_argv(
-    int *argc, char **argv, bool remove_used, flexflow_model_config_t *out);
+flexflow_runtime_error_t
+flexflow_model_config_parse_argv(int *argc, char **argv, bool remove_used,
+                                 flexflow_model_config_t *out);
 
 flexflow_runtime_error_t
     flexflow_computation_graph_set_model_config(flexflow_computation_graph_t,
                                                 flexflow_model_config_t);
 flexflow_runtime_error_t
-    flexflow_computation_graph_get_model_config(flexflow_computation_graph_t,
-                                                flexflow_model_config_t *out);
-flexflow_runtime_error_t flexflow_computation_graph_compile(
-    flexflow_computation_graph_t,
-    flexflow_optimizer_t,
-    flexflow_model_compilation_result_t *out);
+flexflow_computation_graph_get_model_config(flexflow_computation_graph_t,
+                                            flexflow_model_config_t *out);
+flexflow_runtime_error_t
+flexflow_computation_graph_compile(flexflow_computation_graph_t,
+                                   flexflow_optimizer_t,
+                                   flexflow_model_compilation_result_t *out);
 
 flexflow_runtime_error_t flexflow_model_compilation_result_get_pcg(
     flexflow_model_compilation_result_t,
     flexflow_parallel_computation_graph_t *out);
 flexflow_runtime_error_t
-    flexflow_model_compilation_result_get_parallel_tensor_for_tensor(
-        flexflow_model_compilation_result_t,
-        flexflow_tensor_t,
-        flexflow_parallel_tensor_t *);
+flexflow_model_compilation_result_get_parallel_tensor_for_tensor(
+    flexflow_model_compilation_result_t, flexflow_tensor_t,
+    flexflow_parallel_tensor_t *);
 
 flexflow_runtime_error_t
-    flexflow_start_training(flexflow_model_compilation_result_t,
-                            flexflow_model_training_instance_t *);
+flexflow_start_training(flexflow_model_compilation_result_t,
+                        flexflow_model_training_instance_t *);
 flexflow_runtime_error_t flexflow_model_training_instance_forward(
     flexflow_model_training_instance_t);
 flexflow_runtime_error_t flexflow_model_training_instance_backward(
@@ -86,28 +85,21 @@ flexflow_runtime_error_t
     flexflow_stop_training(flexflow_model_training_instance_t);
 
 flexflow_runtime_error_t
-    flexflow_get_tensor_float(flexflow_model_training_instance_t,
-                              flexflow_tensor_t,
-                              float *data,
-                              bool get_gradients);
+flexflow_get_tensor_float(flexflow_model_training_instance_t, flexflow_tensor_t,
+                          float *data, bool get_gradients);
 flexflow_runtime_error_t
-    flexflow_get_tensor_double(flexflow_model_training_instance_t,
-                               flexflow_tensor_t,
-                               float *data,
-                               bool get_gradients);
+flexflow_get_tensor_double(flexflow_model_training_instance_t,
+                           flexflow_tensor_t, float *data, bool get_gradients);
 flexflow_runtime_error_t
-    flexflow_get_tensor_int32(flexflow_model_training_instance_t,
-                              flexflow_tensor_t,
-                              int32_t *data,
-                              bool get_gradients);
+flexflow_get_tensor_int32(flexflow_model_training_instance_t, flexflow_tensor_t,
+                          int32_t *data, bool get_gradients);
 flexflow_runtime_error_t
-    flexflow_get_tensor_int64(flexflow_model_training_instance_t,
-                              flexflow_tensor_t,
-                              int64_t *data,
-                              bool get_gradients);
+flexflow_get_tensor_int64(flexflow_model_training_instance_t, flexflow_tensor_t,
+                          int64_t *data, bool get_gradients);
 
-flexflow_runtime_error_t flexflow_set_tensor_int(
-    flexflow_model_training_instance_t, flexflow_tensor_t, int32_t *data);
+flexflow_runtime_error_t
+flexflow_set_tensor_int(flexflow_model_training_instance_t, flexflow_tensor_t,
+                        int32_t *data);
 
 FLEXFLOW_FFI_END();
 

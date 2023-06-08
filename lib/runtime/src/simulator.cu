@@ -51,9 +51,7 @@ using Legion::TaskLauncher;
 typedef Realm::Point<1, coord_t> Point1;
 typedef Realm::Rect<1, coord_t> Rect1;
 
-Simulator::Simulator(FFModel const *model,
-                     FFHandler _handler,
-                     Memory _memory,
+Simulator::Simulator(FFModel const *model, FFHandler _handler, Memory _memory,
                      MachineModel *machine)
     : memory(_memory), handler(_handler), offset(0), warmup_times(5),
       repeat_times(10), computationMode(model->config.computationMode) {
@@ -61,11 +59,8 @@ Simulator::Simulator(FFModel const *model,
   Rect1 bounds(Point1(0), Point1(0));
   std::vector<size_t> field_sizes;
   field_sizes.push_back(model->config.simulator_work_space_size);
-  Realm::RegionInstance::create_instance(simulatorInst,
-                                         memory,
-                                         bounds,
-                                         field_sizes,
-                                         0,
+  Realm::RegionInstance::create_instance(simulatorInst, memory, bounds,
+                                         field_sizes, 0,
                                          Realm::ProfilingRequestSet())
       .wait();
   base_ptr = (char *)simulatorInst.pointer_untyped(0, sizeof(char));
@@ -116,10 +111,9 @@ Simulator::~Simulator(void) {
 }
 
 __host__ void
-    Simulator::strategy_search_task(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+Simulator::strategy_search_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx, Runtime *runtime) {
   // This method should no longer be used
   assert(false);
 }

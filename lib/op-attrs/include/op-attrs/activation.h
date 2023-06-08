@@ -11,8 +11,7 @@ enum class Activation { RELU, SIGMOID, TANH, GELU };
 
 namespace fmt {
 
-template <>
-struct formatter<::FlexFlow::Activation> : formatter<string_view> {
+template <> struct formatter<::FlexFlow::Activation> : formatter<string_view> {
   template <typename FormatContext>
   auto format(::FlexFlow::Activation a, FormatContext &ctx) const
       -> decltype(ctx.out()) {
@@ -20,18 +19,18 @@ struct formatter<::FlexFlow::Activation> : formatter<string_view> {
 
     string_view name = "unknown";
     switch (a) {
-      case Activation::RELU:
-        name = "ReLU";
-        break;
-      case Activation::SIGMOID:
-        name = "Sigmoid";
-        break;
-      case Activation::TANH:
-        name = "Tanh";
-        break;
-      case Activation::GELU:
-        name = "GeLU";
-        break;
+    case Activation::RELU:
+      name = "ReLU";
+      break;
+    case Activation::SIGMOID:
+      name = "Sigmoid";
+      break;
+    case Activation::TANH:
+      name = "Tanh";
+      break;
+    case Activation::GELU:
+      name = "GeLU";
+      break;
     }
     return formatter<string_view>::format(name, ctx);
   }

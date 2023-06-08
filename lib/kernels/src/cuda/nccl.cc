@@ -14,8 +14,8 @@ ncclUniqueId generate_unique_id() {
 #endif
 }
 
-ncclComm_t
-    create_comm_raw(ncclUniqueId const &unique_id, int num_ranks, int my_rank) {
+ncclComm_t create_comm_raw(ncclUniqueId const &unique_id, int num_ranks,
+                           int my_rank) {
 #ifdef FF_USE_NCCL
   ncclComm_t ncclComm;
   assert(my_rank < num_ranks);

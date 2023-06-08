@@ -10,13 +10,8 @@ namespace FlexFlow {
 struct MultiHeadAttentionAttrs : use_visitable_cmp<MultiHeadAttentionAttrs> {
 public:
   MultiHeadAttentionAttrs() = delete;
-  MultiHeadAttentionAttrs(int embed_dim,
-                          int num_heads,
-                          int kdim,
-                          int vdim,
-                          float dropout,
-                          bool bias,
-                          bool add_bias_kv,
+  MultiHeadAttentionAttrs(int embed_dim, int num_heads, int kdim, int vdim,
+                          float dropout, bool bias, bool add_bias_kv,
                           bool add_zero_attn);
 
 public:
@@ -31,8 +26,7 @@ struct MultiHeadAttentionInputs
 public:
   MultiHeadAttentionInputs() = delete;
 
-  MultiHeadAttentionInputs(TensorType const &query,
-                           TensorType const &key,
+  MultiHeadAttentionInputs(TensorType const &query, TensorType const &key,
                            TensorType const &value)
       : query(query), key(key), value(value) {}
 
@@ -64,26 +58,19 @@ int get_num_samples(MultiHeadAttentionInputs<ParallelTensorShape> const &);
 TensorShape get_weights_shape(MultiHeadAttentionAttrs const &,
                               MultiHeadAttentionInputs<TensorShape> const &);
 ParallelTensorShape
-    get_weights_shape(MultiHeadAttentionAttrs const &,
-                      MultiHeadAttentionInputs<ParallelTensorShape> const &);
+get_weights_shape(MultiHeadAttentionAttrs const &,
+                  MultiHeadAttentionInputs<ParallelTensorShape> const &);
 
 ParallelTensorShape
-    get_output_shape(MultiHeadAttentionAttrs const &,
-                     MultiHeadAttentionInputs<ParallelTensorShape> const &);
+get_output_shape(MultiHeadAttentionAttrs const &,
+                 MultiHeadAttentionInputs<ParallelTensorShape> const &);
 TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                              MultiHeadAttentionInputs<TensorShape> const &);
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::MultiHeadAttentionAttrs,
-                 embed_dim,
-                 num_heads,
-                 kdim,
-                 vdim,
-                 dropout,
-                 bias,
-                 add_bias_kv,
-                 add_zero_attn);
+VISITABLE_STRUCT(::FlexFlow::MultiHeadAttentionAttrs, embed_dim, num_heads,
+                 kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn);
 MAKE_VISIT_HASHABLE(::FlexFlow::MultiHeadAttentionAttrs);
 
 namespace FlexFlow {

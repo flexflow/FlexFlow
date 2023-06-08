@@ -16,8 +16,7 @@ struct eq_visitor {
   }
 };
 
-template <typename T>
-bool visit_eq(T const &lhs, T const &rhs) {
+template <typename T> bool visit_eq(T const &lhs, T const &rhs) {
   static_assert(is_visitable<T>::value, "Type must be visitable");
   static_assert(elements_satisfy<is_equal_comparable, T>::value,
                 "Values must be comparable via operator==");
@@ -36,8 +35,7 @@ struct neq_visitor {
   }
 };
 
-template <typename T>
-bool visit_neq(T const &lhs, T const &rhs) {
+template <typename T> bool visit_neq(T const &lhs, T const &rhs) {
   static_assert(is_visitable<T>::value, "Type must be visitable");
   static_assert(elements_satisfy<is_neq_comparable, T>::value,
                 "Values must be comparable via operator!=");
@@ -56,8 +54,7 @@ struct lt_visitor {
   }
 };
 
-template <typename T>
-bool visit_lt(T const &t1, T const &t2) {
+template <typename T> bool visit_lt(T const &t1, T const &t2) {
   static_assert(is_visitable<T>::value, "Type must be visitable");
   static_assert(elements_satisfy<is_lt_comparable, T>::value,
                 "Values must be comparable via operator<");
@@ -70,14 +67,12 @@ bool visit_lt(T const &t1, T const &t2) {
 struct hash_visitor {
   std::size_t result = 0;
 
-  template <typename T>
-  void operator()(char const *, T const &t1) {
+  template <typename T> void operator()(char const *, T const &t1) {
     hash_combine(result, t1);
   }
 };
 
-template <typename T>
-std::size_t visit_hash(T const &t) {
+template <typename T> std::size_t visit_hash(T const &t) {
   static_assert(is_visitable<T>::value, "Type must be visitable");
   static_assert(elements_satisfy<is_hashable, T>::value,
                 "Values must be hashable");
@@ -87,8 +82,7 @@ std::size_t visit_hash(T const &t) {
   return vis.result;
 }
 
-template <typename T>
-struct use_visitable_eq {
+template <typename T> struct use_visitable_eq {
   friend bool operator==(T const &lhs, T const &rhs) {
     return visit_eq(lhs, rhs);
   }
@@ -98,32 +92,26 @@ struct use_visitable_eq {
   }
 };
 
-template <typename T>
-struct use_visitable_cmp : use_visitable_eq<T> {
+template <typename T> struct use_visitable_cmp : use_visitable_eq<T> {
   friend bool operator<(T const &lhs, T const &rhs) {
     return visit_lt(lhs, rhs);
   }
 };
 
-template <typename T>
-struct use_visitable_hash {
-  std::size_t operator()(T const &t) const {
-    return visit_hash(t);
-  }
+template <typename T> struct use_visitable_hash {
+  std::size_t operator()(T const &t) const { return visit_hash(t); }
 };
 } // namespace FlexFlow
 
 namespace rc {
 
 struct gen_visitor {
-  template <typename Member>
-  auto operator()(Member const &m) -> Gen<Member> {
+  template <typename Member> auto operator()(Member const &m) -> Gen<Member> {
     return gen::set(m);
   }
 };
 
-template <typename T>
-Gen<T> build_visitable(T const &t) {
+template <typename T> Gen<T> build_visitable(T const &t) {
   static_assert(::FlexFlow::is_visitable<T>::value, "Type must be visitable");
 
   gen_visitor vis;
@@ -132,11 +120,8 @@ Gen<T> build_visitable(T const &t) {
 
 template <typename T>
 struct Arbitrary<
-    T,
-    typename std::enable_if<::FlexFlow::is_visitable<T>::value>::type> {
-  static Gen<T> arbitrary() {
-    return build_visitable<T>();
-  }
+    T, typename std::enable_if<::FlexFlow::is_visitable<T>::value>::type> {
+  static Gen<T> arbitrary() { return build_visitable<T>(); }
 };
 
 } // namespace rc

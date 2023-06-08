@@ -5,10 +5,8 @@ using namespace Legion;
 namespace FlexFlow {
 
 template <int NDIM, int TDIM>
-void map_linear_weight(ParallelTensor weight,
-                       Op const *op,
-                       LegionConfig const &config,
-                       CompMode computationMode) {
+void map_linear_weight(ParallelTensor weight, Op const *op,
+                       LegionConfig const &config, CompMode computationMode) {
   using namespace Legion;
 
   assert(op->op_type == OP_LINEAR);
@@ -23,17 +21,17 @@ void map_linear_weight(ParallelTensor weight,
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (weight->data_type) {
-    case DT_FLOAT:
-      allocator.allocate_field(sizeof(float), FID_DATA);
-      break;
-    case DT_DOUBLE:
-      allocator.allocate_field(sizeof(double), FID_DATA);
-      break;
-    case DT_INT32:
-      allocator.allocate_field(sizeof(int), FID_DATA);
-      break;
-    default:
-      assert(false);
+  case DT_FLOAT:
+    allocator.allocate_field(sizeof(float), FID_DATA);
+    break;
+  case DT_DOUBLE:
+    allocator.allocate_field(sizeof(double), FID_DATA);
+    break;
+  case DT_INT32:
+    allocator.allocate_field(sizeof(int), FID_DATA);
+    break;
+  default:
+    assert(false);
   }
   int out_channels = weight->dims[weight->num_dims - 1].size;
   // Step 1: forward region and partition
@@ -138,10 +136,8 @@ void map_linear_weight(ParallelTensor weight,
 }
 
 template <int NDIM>
-void map_conv_weight(ParallelTensor weight,
-                     Op const *op,
-                     LegionConfig const &config,
-                     CompMode computationMode) {
+void map_conv_weight(ParallelTensor weight, Op const *op,
+                     LegionConfig const &config, CompMode computationMode) {
   using namespace Legion;
 
   Context ctx = config.lg_ctx;
@@ -156,17 +152,17 @@ void map_conv_weight(ParallelTensor weight,
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (weight->data_type) {
-    case DT_FLOAT:
-      allocator.allocate_field(sizeof(float), FID_DATA);
-      break;
-    case DT_DOUBLE:
-      allocator.allocate_field(sizeof(double), FID_DATA);
-      break;
-    case DT_INT32:
-      allocator.allocate_field(sizeof(int), FID_DATA);
-      break;
-    default:
-      assert(false);
+  case DT_FLOAT:
+    allocator.allocate_field(sizeof(float), FID_DATA);
+    break;
+  case DT_DOUBLE:
+    allocator.allocate_field(sizeof(double), FID_DATA);
+    break;
+  case DT_INT32:
+    allocator.allocate_field(sizeof(int), FID_DATA);
+    break;
+  default:
+    assert(false);
   }
   // Step 1: forward region and partition
   int out_channels = weight->dims[weight->num_dims - 1].size;
@@ -259,10 +255,8 @@ void map_conv_weight(ParallelTensor weight,
 }
 
 template <int NDIM>
-void map_weight_with_dim(ParallelTensor &weight,
-                         Op const *parallel_op,
-                         LegionConfig const &config,
-                         CompMode computationMode) {
+void map_weight_with_dim(ParallelTensor &weight, Op const *parallel_op,
+                         LegionConfig const &config, CompMode computationMode) {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if (weight->owner_op == NULL) {
@@ -274,43 +268,41 @@ void map_weight_with_dim(ParallelTensor &weight,
   assert(parallel_op != NULL);
   int tdim = parallel_op->outputs[0]->num_dims;
   switch (parallel_op->op_type) {
-    case OP_LINEAR:
-    case OP_EMBEDDING:
-    case OP_MULTIHEAD_ATTENTION: {
-      switch (tdim) {
+  case OP_LINEAR:
+  case OP_EMBEDDING:
+  case OP_MULTIHEAD_ATTENTION: {
+    switch (tdim) {
 #define DIMFUNC(TDIM)                                                          \
   case TDIM: {                                                                 \
-    map_linear_weight<NDIM, TDIM>(                                             \
-        weight, parallel_op, config, computationMode);                         \
+    map_linear_weight<NDIM, TDIM>(weight, parallel_op, config,                 \
+                                  computationMode);                            \
     break;                                                                     \
   }
-        LEGION_FOREACH_N(DIMFUNC)
+      LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-        default: {
-          assert(false);
-        }
-      }
-      break;
-    }
-    case OP_CONV2D:
-    case OP_BATCHNORM: {
-      map_conv_weight<NDIM>(weight, parallel_op, config, computationMode);
-      break;
-    }
     default: {
-      fprintf(stderr,
-              "FlexFlow currently does not support this weight"
-              "type (%d). Report the error to the FlexFlow team.\n",
-              parallel_op->op_type);
-      assert(false && "Unsupported type for mapping weight");
+      assert(false);
     }
+    }
+    break;
+  }
+  case OP_CONV2D:
+  case OP_BATCHNORM: {
+    map_conv_weight<NDIM>(weight, parallel_op, config, computationMode);
+    break;
+  }
+  default: {
+    fprintf(stderr,
+            "FlexFlow currently does not support this weight"
+            "type (%d). Report the error to the FlexFlow team.\n",
+            parallel_op->op_type);
+    assert(false && "Unsupported type for mapping weight");
+  }
   }
 }
 
-void map_weight(ParallelTensor &weight,
-                Op const *op,
-                LegionConfig const &config,
-                CompMode computationMode) {
+void map_weight(ParallelTensor &weight, Op const *op,
+                LegionConfig const &config, CompMode computationMode) {
   switch (weight->num_dims) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
@@ -319,21 +311,18 @@ void map_weight(ParallelTensor &weight,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      // Unsupported dim
-      assert(false);
-    }
+  default: {
+    // Unsupported dim
+    assert(false);
+  }
   }
 }
 
 template <int NDIM, int TDIM>
 void create_data_parallel_partition_with_diff_dims(
-    ParallelTensor const &tensor,
-    Legion::IndexSpaceT<TDIM> const &part_is,
-    Legion::LogicalPartition &part_fwd,
-    Legion::LogicalPartition &part_bwd,
-    LegionConfig const &config,
-    CompMode computationMode) {
+    ParallelTensor const &tensor, Legion::IndexSpaceT<TDIM> const &part_is,
+    Legion::LogicalPartition &part_fwd, Legion::LogicalPartition &part_bwd,
+    LegionConfig const &config, CompMode computationMode) {
   using namespace Legion;
 
   assert(tensor->num_dims == NDIM);
@@ -435,11 +424,9 @@ void create_disjoint_partition(ParallelTensor const &tensor,
 
 template <int NDIM, int TDIM>
 void create_aliased_partition_with_dim2(
-    const ParallelDim dims[],
-    int aliased_dim,
+    const ParallelDim dims[], int aliased_dim,
     Legion::IndexSpaceT<TDIM> const &part_is,
-    Legion::LogicalRegion const &region,
-    Legion::LogicalPartition &part,
+    Legion::LogicalRegion const &region, Legion::LogicalPartition &part,
     LegionConfig const &config) {
   using namespace Legion;
 
@@ -474,8 +461,7 @@ void create_aliased_partition_with_dim2(
   part = runtime->get_logical_partition(ctx, region, ip);
 }
 
-void create_aliased_partition(int num_dims,
-                              const ParallelDim dims[],
+void create_aliased_partition(int num_dims, const ParallelDim dims[],
                               int aliased_dim,
                               Legion::IndexSpace const &part_is,
                               Legion::LogicalRegion const &region,
@@ -495,17 +481,15 @@ void create_aliased_partition(int num_dims,
   }
     LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false && "Unsupported NDIM/TDIM");
+  default:
+    assert(false && "Unsupported NDIM/TDIM");
   }
 }
 
 template <int NDIM, int TDIM>
 void create_disjoint_partition_with_dim2(
-    const ParallelDim dims[],
-    Legion::IndexSpaceT<TDIM> const &part_is,
-    Legion::LogicalRegion const &region,
-    Legion::LogicalPartition &part,
+    const ParallelDim dims[], Legion::IndexSpaceT<TDIM> const &part_is,
+    Legion::LogicalRegion const &region, Legion::LogicalPartition &part,
     LegionConfig const &config) {
   using namespace Legion;
 
@@ -537,8 +521,7 @@ void create_disjoint_partition_with_dim2(
   part = runtime->get_logical_partition(ctx, region, ip);
 }
 
-void create_disjoint_partition(int num_dims,
-                               const ParallelDim dims[],
+void create_disjoint_partition(int num_dims, const ParallelDim dims[],
                                Legion::IndexSpace const &part_is,
                                Legion::LogicalRegion const &region,
                                Legion::LogicalPartition &part,
@@ -557,16 +540,14 @@ void create_disjoint_partition(int num_dims,
   }
     LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false && "Unsupported NDIM/TDIM");
+  default:
+    assert(false && "Unsupported NDIM/TDIM");
   }
 }
 
 template <int NDIM, int TDIM>
-void map_tensor_with_dim2(ParallelTensor &tensor,
-                          Op const *parallel_op,
-                          LegionConfig const &config,
-                          IndexSpaceManager &is_mgr,
+void map_tensor_with_dim2(ParallelTensor &tensor, Op const *parallel_op,
+                          LegionConfig const &config, IndexSpaceManager &is_mgr,
                           CompMode computationMode) {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
@@ -585,23 +566,23 @@ void map_tensor_with_dim2(ParallelTensor &tensor,
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (tensor->data_type) {
-    case DT_HALF:
-      allocator.allocate_field(sizeof(half), FID_DATA);
-      break;
-    case DT_FLOAT:
-      allocator.allocate_field(sizeof(float), FID_DATA);
-      break;
-    case DT_DOUBLE:
-      allocator.allocate_field(sizeof(double), FID_DATA);
-      break;
-    case DT_INT32:
-      allocator.allocate_field(sizeof(int32_t), FID_DATA);
-      break;
-    case DT_INT64:
-      allocator.allocate_field(sizeof(int64_t), FID_DATA);
-      break;
-    default:
-      assert(false);
+  case DT_HALF:
+    allocator.allocate_field(sizeof(half), FID_DATA);
+    break;
+  case DT_FLOAT:
+    allocator.allocate_field(sizeof(float), FID_DATA);
+    break;
+  case DT_DOUBLE:
+    allocator.allocate_field(sizeof(double), FID_DATA);
+    break;
+  case DT_INT32:
+    allocator.allocate_field(sizeof(int32_t), FID_DATA);
+    break;
+  case DT_INT64:
+    allocator.allocate_field(sizeof(int64_t), FID_DATA);
+    break;
+  default:
+    assert(false);
   }
 
   Point<NDIM> hi;
@@ -654,10 +635,8 @@ void map_tensor_with_dim2(ParallelTensor &tensor,
 
 // Map tensor using parallelization strategies described in parallel_op
 template <int NDIM>
-void map_tensor_with_dim(ParallelTensor &tensor,
-                         Op const *parallel_op,
-                         LegionConfig const &config,
-                         IndexSpaceManager &is_mgr,
+void map_tensor_with_dim(ParallelTensor &tensor, Op const *parallel_op,
+                         LegionConfig const &config, IndexSpaceManager &is_mgr,
                          CompMode computationMode) {
   tensor->parallel_is = is_mgr.get_or_create_task_is(tensor->get_shape());
   assert(tensor->owner_op != NULL);
@@ -668,22 +647,20 @@ void map_tensor_with_dim(ParallelTensor &tensor,
   switch (task_domain.get_dim()) {
 #define DIMFUNC(TDIM)                                                          \
   case TDIM: {                                                                 \
-    map_tensor_with_dim2<NDIM, TDIM>(                                          \
-        tensor, parallel_op, config, is_mgr, computationMode);                 \
+    map_tensor_with_dim2<NDIM, TDIM>(tensor, parallel_op, config, is_mgr,      \
+                                     computationMode);                         \
     break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      assert(false && "Unsupported Task Dim");
-    }
+  default: {
+    assert(false && "Unsupported Task Dim");
+  }
   }
 }
 
-void map_tensor(ParallelTensor &tensor,
-                Op const *op,
-                LegionConfig const &config,
-                IndexSpaceManager &is_mgr,
+void map_tensor(ParallelTensor &tensor, Op const *op,
+                LegionConfig const &config, IndexSpaceManager &is_mgr,
                 CompMode computationMode) {
   switch (tensor->num_dims) {
 #define DIMFUNC(NDIM)                                                          \
@@ -693,10 +670,10 @@ void map_tensor(ParallelTensor &tensor,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      // Unsupported dim
-      assert(false);
-    }
+  default: {
+    // Unsupported dim
+    assert(false);
+  }
   }
 }
 

@@ -26,35 +26,25 @@ ReshapePerDeviceState::ReshapePerDeviceState(FFHandler handler)
 namespace Kernels {
 namespace Reshape {
 
-template <DataType T>
-struct ForwardKernel {
-  void operator()(hipStream_t stream,
-                  GenericTensorAccessorR const &input,
+template <DataType T> struct ForwardKernel {
+  void operator()(hipStream_t stream, GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
-    checkCUDA(hipMemcpyAsync(output.get<T>(),
-                             input.get<T>(),
+    checkCUDA(hipMemcpyAsync(output.get<T>(), input.get<T>(),
                              input.shape.num_elements() * sizeof(T),
-                             hipMemcpyDeviceToDevice,
-                             stream));
+                             hipMemcpyDeviceToDevice, stream));
   }
 }
 
 template <DataType T>
 struct BackwardKernel {
-  void operator()(hipStream_t stream,
-                  ReshapePerDeviceState const *m,
+  void operator()(hipStream_t stream, ReshapePerDeviceState const *m,
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     float alpha = 1.0f;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<T>),
-                       GET_BLOCKS(input.shape.num_elements()),
-                       CUDA_NUM_THREADS,
-                       0,
-                       stream,
-                       input.get<T>(),
-                       output.get<T>(),
-                       input.shape.num_elements(),
-                       (T)alpha);
+                       GET_BLOCKS(input.shape.num_elements()), CUDA_NUM_THREADS,
+                       0, stream, input.get<T>(), output.get<T>(),
+                       input.shape.num_elements(), (T)alpha);
   }
 }
 
@@ -65,8 +55,7 @@ void forward_kernel(hipStream_t stream,
   DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output);
 }
 
-void backward_kernel(hipStream_t stream,
-                     ReshapePerDeviceState const *m,
+void backward_kernel(hipStream_t stream, ReshapePerDeviceState const *m,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output) {
   DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, input, output);

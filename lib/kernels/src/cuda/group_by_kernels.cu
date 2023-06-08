@@ -27,14 +27,11 @@ namespace Kernels {
 namespace GroupBy {
 
 __global__ void
-    gb_forward_kernel(float const *input,
-                      int const *exp_assign,
-                      float **outputs,
-                      int n,       // num experts
-                      int k,       // chosen experts
-                      float alpha, // factor additional memory assigned
-                      int batch_size,
-                      int data_dim) {
+gb_forward_kernel(float const *input, int const *exp_assign, float **outputs,
+                  int n,       // num experts
+                  int k,       // chosen experts
+                  float alpha, // factor additional memory assigned
+                  int batch_size, int data_dim) {
   __shared__ float *chosen_exp_preds[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
@@ -66,14 +63,12 @@ __global__ void
 }
 
 __global__ void
-    gb_backward_kernel(float *input_grad,
-                       int const *exp_assign,
-                       float **output_grads,
-                       int n,       // num experts
-                       int k,       // chosen experts
-                       float alpha, // factor additional memory assigned
-                       int batch_size,
-                       int data_dim) {
+gb_backward_kernel(float *input_grad, int const *exp_assign,
+                   float **output_grads,
+                   int n,       // num experts
+                   int k,       // chosen experts
+                   float alpha, // factor additional memory assigned
+                   int batch_size, int data_dim) {
   __shared__ float *chosen_exp_grads[MAX_K * MAX_BATCH_SIZE];
   assert(k <= MAX_K);
   assert(batch_size <= MAX_BATCH_SIZE);
@@ -107,60 +102,39 @@ __global__ void
   }
 }
 
-void forward_kernel(cudaStream_t stream,
-                    GroupByPerDeviceState const *m,
-                    float const *input,
-                    int const *exp_assign,
-                    float **outputs,
+void forward_kernel(cudaStream_t stream, GroupByPerDeviceState const *m,
+                    float const *input, int const *exp_assign, float **outputs,
                     int n,       // num experts
                     int k,       // chosen experts
                     float alpha, // factor additional memory assigned
-                    int batch_size,
-                    int data_dim) {
+                    int batch_size, int data_dim) {
   // TODO: why cublas/cudnn stream is needed here?
 
   // call forward kernel
-  cudaMemcpyAsync(m->dev_region_ptrs,
-                  outputs,
-                  n * sizeof(float *),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  cudaMemcpyAsync(m->dev_region_ptrs, outputs, n * sizeof(float *),
+                  cudaMemcpyHostToDevice, stream);
 
   gb_forward_kernel<<<GET_BLOCKS(batch_size * k * data_dim),
                       min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
-                      0,
-                      stream>>>(
-      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
+                      0, stream>>>(input, exp_assign, m->dev_region_ptrs, n, k,
+                                   alpha, batch_size, data_dim);
 }
 
-void backward_kernel(cudaStream_t stream,
-                     GroupByPerDeviceState const *m,
-                     float *input_grad,
-                     int const *exp_assign,
+void backward_kernel(cudaStream_t stream, GroupByPerDeviceState const *m,
+                     float *input_grad, int const *exp_assign,
                      float **output_grads,
                      int n,       // num experts
                      int k,       // chosen experts
                      float alpha, // factor additional memory assigned
-                     int batch_size,
-                     int data_dim) {
+                     int batch_size, int data_dim) {
 
   // call forward kernel
-  cudaMemcpyAsync(m->dev_region_ptrs,
-                  output_grads,
-                  n * sizeof(float *),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  cudaMemcpyAsync(m->dev_region_ptrs, output_grads, n * sizeof(float *),
+                  cudaMemcpyHostToDevice, stream);
   gb_backward_kernel<<<GET_BLOCKS(batch_size * k * data_dim),
                        min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
-                       0,
-                       stream>>>(input_grad,
-                                 exp_assign,
-                                 m->dev_region_ptrs,
-                                 n,
-                                 k,
-                                 alpha,
-                                 batch_size,
-                                 data_dim);
+                       0, stream>>>(input_grad, exp_assign, m->dev_region_ptrs,
+                                    n, k, alpha, batch_size, data_dim);
 }
 
 } // namespace GroupBy

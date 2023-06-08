@@ -7,12 +7,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<REVERSE_INIT_TASK_ID>();
-template <>
-void register_task<REVERSE_FWD_TASK_ID>();
-template <>
-void register_task<REVERSE_BWD_TASK_ID>();
+template <> void register_task<REVERSE_INIT_TASK_ID>();
+template <> void register_task<REVERSE_FWD_TASK_ID>();
+template <> void register_task<REVERSE_BWD_TASK_ID>();
 
 OpTaskInvocation init(ReverseAttrs const &);
 OpTaskInvocation forward(ReverseAttrs const &);

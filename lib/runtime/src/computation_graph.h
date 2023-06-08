@@ -6,8 +6,7 @@
 
 namespace FlexFlow {
 
-template <typename T>
-using or_error_msg = expected<T, std::string>;
+template <typename T> using or_error_msg = expected<T, std::string>;
 
 struct TensorSourceInfo {
   Layer layer;

@@ -23,11 +23,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<LOSS_BWD_TASK_ID>();
+template <> void register_task<LOSS_BWD_TASK_ID>();
 
-TaskInvocation backward(LossAttrs const &,
-                        parallel_tensor_guid_t logit,
+TaskInvocation backward(LossAttrs const &, parallel_tensor_guid_t logit,
                         parallel_tensor_guid_t label);
 
 } // namespace FlexFlow

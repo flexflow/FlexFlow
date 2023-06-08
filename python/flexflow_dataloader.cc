@@ -21,10 +21,8 @@
 using namespace Legion;
 using namespace FlexFlow;
 
-SingleDataLoader::SingleDataLoader(FFModel &ff,
-                                   ParallelTensor input,
-                                   ParallelTensor full_input_,
-                                   int num_samples_,
+SingleDataLoader::SingleDataLoader(FFModel &ff, ParallelTensor input,
+                                   ParallelTensor full_input_, int num_samples_,
                                    DataType datatype_) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -55,8 +53,8 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
   int task_id = -1;
   if (datatype == DT_FLOAT) {
@@ -72,11 +70,9 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   // TODO: Use index launcher instead of task launcher
   TaskLauncher launcher(task_id, TaskArgument(NULL, 0));
   // regions[0]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_input->region, WRITE_ONLY, EXCLUSIVE,
+                        full_input->region, MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[2]: full_input_
   launcher.add_region_requirement(RegionRequirement(
@@ -88,10 +84,8 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   next_batch(ff);
 }
 
-SingleDataLoader::SingleDataLoader(FFModel &ff,
-                                   ParallelTensor input,
-                                   void *full_input_ptr,
-                                   int num_samples_,
+SingleDataLoader::SingleDataLoader(FFModel &ff, ParallelTensor input,
+                                   void *full_input_ptr, int num_samples_,
                                    DataType datatype_) {
   num_samples = num_samples_;
   datatype = datatype_;
@@ -129,22 +123,21 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   case DIM: {                                                                  \
     full_input = ff.create_parallel_tensor<DIM>(dims, datatype);               \
     ff.map_tensor(full_input, NULL);                                           \
-    index_loader_xd_launcher<DIM>(                                             \
-        ff, task_id, full_input_ptr, size_per_sample);                         \
+    index_loader_xd_launcher<DIM>(ff, task_id, full_input_ptr,                 \
+                                  size_per_sample);                            \
     break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
   reset();
   next_batch(ff);
 }
 
 template <int NDIM>
-void SingleDataLoader::index_loader_xd_launcher(FFModel &ff,
-                                                int task_id,
+void SingleDataLoader::index_loader_xd_launcher(FFModel &ff, int task_id,
                                                 void *full_input_ptr,
                                                 size_t size_per_sample) {
   Context ctx = ff.config.lg_ctx;
@@ -170,12 +163,9 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel &ff,
   // Load entire dataset
   IndexLauncher launcher(task_id, task_is, TaskArgument(NULL, 0), argmap);
   // regions[0]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input->part,
-                                                    0,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_input->part, 0, WRITE_ONLY, EXCLUSIVE,
+                        full_input->region, MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   FutureMap fu = runtime->execute_index_space(ctx, launcher);
   fu.wait_all_results();
@@ -190,20 +180,16 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel &ff,
   // Load entire dataset
   TaskLauncher launcher(task_id, TaskArgument(&meta, sizeof(IndexLoadArg)));
   // regions[0]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_input->region, WRITE_ONLY, EXCLUSIVE,
+                        full_input->region, MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   Future fu = runtime->execute_task(ctx, launcher);
   fu.wait();
 #endif
 }
 
-void SingleDataLoader::reset() {
-  next_index = 0;
-}
+void SingleDataLoader::reset() { next_index = 0; }
 
 void SingleDataLoader::next_batch(FFModel &ff) {
   int task_id = -1;
@@ -223,8 +209,8 @@ void SingleDataLoader::next_batch(FFModel &ff) {
     break;
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
 }
 
@@ -249,26 +235,17 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
       }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(task_id,
-                           batch_input->parallel_is,
-                           TaskArgument(NULL, 0),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
+    IndexLauncher launcher(task_id, batch_input->parallel_is,
+                           TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                           false /*must*/, 0 /*mapper_id*/,
                            batch_input->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_input->region,
-                                                      MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input->region, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, full_input->region, MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_input->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_input->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -291,26 +268,16 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
     for (PointInRectIterator<NDIM> it(rect); it(); it++) {
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(task_id,
-                           task_is,
-                           TaskArgument(NULL, 0),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
-                           FFConfig::get_hash_id(""));
-    launcher.add_region_requirement(RegionRequirement(full_input->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_input->region,
-                                                      MAP_TO_ZC_MEMORY));
+    IndexLauncher launcher(task_id, task_is, TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false /*must*/,
+                           0 /*mapper_id*/, FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input->part, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, full_input->region, MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_input->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_input->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
     next_index +=
@@ -322,9 +289,7 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
 // Task body
 template <typename DT>
 void SingleDataLoader::load_entire_dataset_from_numpy(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
@@ -333,20 +298,18 @@ void SingleDataLoader::load_entire_dataset_from_numpy(
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return load_entire_dataset_from_numpy_with_dim<DT, DIM>(                   \
-        task, regions, ctx, runtime);
+    return load_entire_dataset_from_numpy_with_dim<DT, DIM>(task, regions,     \
+                                                            ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
 }
 
 template <typename DT, int NDIM>
 void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
@@ -363,12 +326,8 @@ void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(
   DT *input_ptr = acc_input.ptr(rect_input.lo);
   const DT *input_ptr_ = acc_input_.ptr(rect_input_.lo);
   printf("Load entire dataset: ptr input_ %p %lu %lu, input %p %lu %lu\n",
-         input_ptr_,
-         (uintptr_t)input_ptr_,
-         rect_input_.volume(),
-         input_ptr,
-         (uintptr_t)input_ptr,
-         rect_input.volume());
+         input_ptr_, (uintptr_t)input_ptr_, rect_input_.volume(), input_ptr,
+         (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == rect_input_.volume());
   memcpy(input_ptr, input_ptr_, sizeof(DT) * rect_input.volume());
   for (int i = 0; i < 32; i++) {
@@ -380,9 +339,7 @@ void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(
 // Task body
 template <typename DT>
 void SingleDataLoader::index_load_entire_dataset_from_numpy(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == regions.size());
@@ -395,16 +352,14 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy(
         task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
 }
 
 template <typename DT, int NDIM>
 void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == regions.size());
@@ -425,14 +380,8 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(
 
   printf("Index load entire dataset: ptr input_head_ %p, idx %d, input_ %p %lu "
          "%lu, input %p %lu %lu\n",
-         input_ptr_head_,
-         meta->idx,
-         input_ptr_,
-         (uintptr_t)input_ptr_,
-         volume,
-         input_ptr,
-         (uintptr_t)input_ptr,
-         rect_input.volume());
+         input_ptr_head_, meta->idx, input_ptr_, (uintptr_t)input_ptr_, volume,
+         input_ptr, (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == volume);
   memcpy(input_ptr, input_ptr_, sizeof(DT) * volume);
   for (int i = 0; i < 32; i++) {
@@ -543,32 +492,20 @@ template void SingleDataLoader::index_loader_xd_launcher<2>(
 template void SingleDataLoader::index_loader_xd_launcher<4>(
     FFModel &ff, int task_id, void *full_input_ptr, size_t size_per_sample);
 template void SingleDataLoader::load_entire_dataset_from_numpy<float>(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::load_entire_dataset_from_numpy<int32_t>(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::load_entire_dataset_from_numpy<int64_t>(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::index_load_entire_dataset_from_numpy<float>(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::index_load_entire_dataset_from_numpy<int32_t>(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::index_load_entire_dataset_from_numpy<int64_t>(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
+    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
     Runtime *runtime);

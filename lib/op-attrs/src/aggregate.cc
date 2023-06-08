@@ -6,17 +6,15 @@ namespace FlexFlow {
 AggregateAttrs::AggregateAttrs(int _n, float _lambda_bal)
     : n(_n), lambda_bal(_lambda_bal) {}
 
-DataType get_datatype(AggregateAttrs const &) {
-  return DataType::FLOAT;
-}
+DataType get_datatype(AggregateAttrs const &) { return DataType::FLOAT; }
 
 ParallelTensorShape
-    get_output_shape(AggregateAttrs const &attrs,
-                     ParallelTensorShape const &gate_preds,
-                     ParallelTensorShape const &gate_assign,
-                     ParallelTensorShape const &true_gate_assign,
-                     ParallelTensorShape const &full_gate_gradients,
-                     std::vector<ParallelTensorShape> const &exp_preds) {
+get_output_shape(AggregateAttrs const &attrs,
+                 ParallelTensorShape const &gate_preds,
+                 ParallelTensorShape const &gate_assign,
+                 ParallelTensorShape const &true_gate_assign,
+                 ParallelTensorShape const &full_gate_gradients,
+                 std::vector<ParallelTensorShape> const &exp_preds) {
   ParallelTensorShape output_shape = exp_preds.at(0);
   output_shape.data_type = DataType::FLOAT;
   ff_dim_t idx = ff_dim_t(gate_preds.dims.num_dims() - 1);

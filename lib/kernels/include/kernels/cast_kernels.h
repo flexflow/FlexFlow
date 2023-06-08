@@ -17,13 +17,11 @@ public:
 namespace Kernels {
 namespace Cast {
 
-void forward_kernel(ffStream_t stream,
-                    CastPerDeviceState const *,
+void forward_kernel(ffStream_t stream, CastPerDeviceState const *,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
-void backward_kernel(ffStream_t stream,
-                     CastPerDeviceState const *,
+void backward_kernel(ffStream_t stream, CastPerDeviceState const *,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &output);
 

@@ -18,12 +18,12 @@ public:
 };
 
 ParallelTensorShape
-    get_output_shape(AggregateSpecAttrs const &,
-                     ParallelTensorShape const &gate_preds,
-                     ParallelTensorShape const &gate_assign,
-                     ParallelTensorShape const &true_gate_assign,
-                     ParallelTensorShape const &gate_gradients_full,
-                     std::vector<ParallelTensorShape> const &exp_preds);
+get_output_shape(AggregateSpecAttrs const &,
+                 ParallelTensorShape const &gate_preds,
+                 ParallelTensorShape const &gate_assign,
+                 ParallelTensorShape const &true_gate_assign,
+                 ParallelTensorShape const &gate_gradients_full,
+                 std::vector<ParallelTensorShape> const &exp_preds);
 
 } // namespace FlexFlow
 

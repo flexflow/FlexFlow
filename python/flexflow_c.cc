@@ -81,8 +81,7 @@ void flexflow_config_destroy(flexflow_config_t handle_) {
   delete handle;
 }
 
-void flexflow_config_parse_args(flexflow_config_t handle_,
-                                char **argv,
+void flexflow_config_parse_args(flexflow_config_t handle_, char **argv,
                                 int argc) {
   FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
   handle->parse_args(argv, argc);
@@ -178,10 +177,8 @@ void flexflow_model_update(flexflow_model_t handle_) {
   handle->update();
 }
 
-void flexflow_model_compile(flexflow_model_t handle_,
-                            enum LossType loss_type,
-                            int *metrics,
-                            int nb_metrics,
+void flexflow_model_compile(flexflow_model_t handle_, enum LossType loss_type,
+                            int *metrics, int nb_metrics,
                             enum CompMode comp_mode) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<MetricsType> metrics_vec;
@@ -235,8 +232,7 @@ flexflow_tensor_t flexflow_model_add_cos(flexflow_model_t handle_,
 flexflow_tensor_t flexflow_model_add_add(flexflow_model_t handle_,
                                          const flexflow_tensor_t x_,
                                          const flexflow_tensor_t y_,
-                                         bool inplace_a,
-                                         char const *name) {
+                                         bool inplace_a, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor y = FFCObjectWrapper::unwrap_const(y_);
@@ -254,8 +250,8 @@ flexflow_tensor_t flexflow_model_add_subtract(flexflow_model_t handle_,
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor y = FFCObjectWrapper::unwrap_const(y_);
   Tensor tensor = handle->subtract(x, y, inplace_a, name);
-  DEBUG_PRINT(
-      "[Subtract] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  DEBUG_PRINT("[Subtract] new Tensor %p, x %p, y %p, name %s", tensor, x, y,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -268,30 +264,28 @@ flexflow_tensor_t flexflow_model_add_multiply(flexflow_model_t handle_,
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor y = FFCObjectWrapper::unwrap_const(y_);
   Tensor tensor = handle->multiply(x, y, inplace_a, name);
-  DEBUG_PRINT(
-      "[Multiply] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  DEBUG_PRINT("[Multiply] new Tensor %p, x %p, y %p, name %s", tensor, x, y,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle_,
                                             const flexflow_tensor_t x_,
                                             const flexflow_tensor_t y_,
-                                            bool inplace_a,
-                                            char const *name) {
+                                            bool inplace_a, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor y = FFCObjectWrapper::unwrap_const(y_);
   Tensor tensor = handle->divide(x, y, inplace_a, name);
-  DEBUG_PRINT(
-      "[Divide] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  DEBUG_PRINT("[Divide] new Tensor %p, x %p, y %p, name %s", tensor, x, y,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle_,
                                          const flexflow_tensor_t x_,
                                          const flexflow_tensor_t y_,
-                                         bool inplace_a,
-                                         char const *name) {
+                                         bool inplace_a, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor y = FFCObjectWrapper::unwrap_const(y_);
@@ -303,8 +297,7 @@ flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle_,
 flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle_,
                                          const flexflow_tensor_t x_,
                                          const flexflow_tensor_t y_,
-                                         bool inplace_a,
-                                         char const *name) {
+                                         bool inplace_a, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor y = FFCObjectWrapper::unwrap_const(y_);
@@ -315,9 +308,7 @@ flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle_,
 
 flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
                                                 const flexflow_tensor_t input_,
-                                                int *axes,
-                                                int n,
-                                                bool keepdims,
+                                                int *axes, int n, bool keepdims,
                                                 char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -326,11 +317,8 @@ flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
     axes_vec.push_back(axes[i]);
   }
   Tensor tensor = handle->reduce_sum(input, axes_vec, keepdims, name);
-  DEBUG_PRINT("[ReduceSum] new Tensor %p, input %p, n %d, name %s",
-              tensor,
-              input,
-              n,
-              name);
+  DEBUG_PRINT("[ReduceSum] new Tensor %p, input %p, n %d, name %s", tensor,
+              input, n, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -351,19 +339,14 @@ flexflow_tensor_t flexflow_model_add_pow(flexflow_model_t handle_,
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->pow(input, exponent, name);
-  DEBUG_PRINT("[Pow] new Tensor %p, input %p, exponent %f, name %s",
-              tensor,
-              input,
-              exponent,
-              name);
+  DEBUG_PRINT("[Pow] new Tensor %p, input %p, exponent %f, name %s", tensor,
+              input, exponent, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_mean(flexflow_model_t handle_,
                                           const flexflow_tensor_t input_,
-                                          int *dims,
-                                          int n,
-                                          bool keepdims,
+                                          int *dims, int n, bool keepdims,
                                           char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -381,87 +364,43 @@ flexflow_tensor_t flexflow_model_add_mean(flexflow_model_t handle_,
     cbuffer_ptr += num_digits + 1;
   }
   Tensor tensor = handle->mean(input, dims_vec, keepdims, name);
-  DEBUG_PRINT("%s, new Tensor %p, keepdims %d, name %s",
-              cbuffer,
-              tensor,
-              keepdims,
-              name);
+  DEBUG_PRINT("%s, new Tensor %p, keepdims %d, name %s", cbuffer, tensor,
+              keepdims, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t
-    flexflow_model_add_conv2d(flexflow_model_t handle_,
-                              const flexflow_tensor_t input_,
-                              int out_channels,
-                              int kernel_h,
-                              int kernel_w,
-                              int stride_h,
-                              int stride_w,
-                              int padding_h,
-                              int padding_w,
-                              enum ActiMode activation /* AC_MODE_NONE */,
-                              int groups,
-                              bool use_bias /* True */,
-                              flexflow_op_t shared_op_,
-                              flexflow_initializer_t kernel_initializer_,
-                              flexflow_initializer_t bias_initializer_,
-                              char const *name) {
+flexflow_tensor_t flexflow_model_add_conv2d(
+    flexflow_model_t handle_, const flexflow_tensor_t input_, int out_channels,
+    int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h,
+    int padding_w, enum ActiMode activation /* AC_MODE_NONE */, int groups,
+    bool use_bias /* True */, flexflow_op_t shared_op_,
+    flexflow_initializer_t kernel_initializer_,
+    flexflow_initializer_t bias_initializer_, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap_const(input_);
   Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  Tensor tensor = handle->conv2d(input,
-                                 out_channels,
-                                 kernel_h,
-                                 kernel_w,
-                                 stride_h,
-                                 stride_w,
-                                 padding_h,
-                                 padding_w,
-                                 activation,
-                                 groups,
-                                 use_bias,
-                                 shared_op,
-                                 kernel_initializer,
-                                 bias_initializer,
-                                 name);
+  Tensor tensor = handle->conv2d(input, out_channels, kernel_h, kernel_w,
+                                 stride_h, stride_w, padding_h, padding_w,
+                                 activation, groups, use_bias, shared_op,
+                                 kernel_initializer, bias_initializer, name);
   DEBUG_PRINT(
       "[Conv2d] new Tensor 4D %p (%d, %d, %d, %d), input %p, out_channels %d, "
       "kernel(%d, %d), stride(%d, %d), padding(%d, %d), activation %d, "
       "use_bias %d, shared_op %p, kernel_init %p, bias_init %p, name %s",
-      tensor,
-      tensor->dims[0],
-      tensor->dims[1],
-      tensor->dims[2],
-      tensor->dims[3],
-      input,
-      out_channels,
-      kernel_h,
-      kernel_w,
-      stride_h,
-      stride_w,
-      padding_h,
-      padding_w,
-      activation,
-      use_bias,
-      shared_op,
-      kernel_initializer,
-      bias_initializer,
-      name);
+      tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2],
+      tensor->dims[3], input, out_channels, kernel_h, kernel_w, stride_h,
+      stride_w, padding_h, padding_w, activation, use_bias, shared_op,
+      kernel_initializer, bias_initializer, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t
-    flexflow_model_add_embedding(flexflow_model_t handle_,
-                                 const flexflow_tensor_t input_,
-                                 int num_entires,
-                                 int out_dim,
-                                 enum AggrMode aggr,
-                                 flexflow_op_t shared_op_,
-                                 flexflow_initializer_t kernel_initializer_,
-                                 char const *name) {
+flexflow_tensor_t flexflow_model_add_embedding(
+    flexflow_model_t handle_, const flexflow_tensor_t input_, int num_entires,
+    int out_dim, enum AggrMode aggr, flexflow_op_t shared_op_,
+    flexflow_initializer_t kernel_initializer_, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap_const(input_);
   Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
@@ -469,99 +408,51 @@ flexflow_tensor_t
       FFCObjectWrapper::unwrap(kernel_initializer_);
   // TODO: update the flexflow_c and Python API to support other data types
   // Currently we assume it's float
-  Tensor tensor = handle->embedding(input,
-                                    num_entires,
-                                    out_dim,
-                                    aggr,
-                                    DT_FLOAT,
-                                    shared_op,
-                                    kernel_initializer,
-                                    name);
+  Tensor tensor = handle->embedding(input, num_entires, out_dim, aggr, DT_FLOAT,
+                                    shared_op, kernel_initializer, name);
   DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entires %d, out_dim "
               "%d, aggr %d, shared_op %p, kernel_init %p, name %s",
-              tensor,
-              input,
-              num_entires,
-              out_dim,
-              aggr,
-              shared_op,
-              kernel_initializer,
-              name);
+              tensor, input, num_entires, out_dim, aggr, shared_op,
+              kernel_initializer, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t
-    flexflow_model_add_pool2d(flexflow_model_t handle_,
-                              flexflow_tensor_t input_,
-                              int kernel_h,
-                              int kernel_w,
-                              int stride_h,
-                              int stride_w,
-                              int padding_h,
-                              int padding_w,
-                              enum PoolType type /* POOL_MAX */,
-                              enum ActiMode activation /* AC_MODE_NONE */,
-                              char const *name) {
+flexflow_tensor_t flexflow_model_add_pool2d(
+    flexflow_model_t handle_, flexflow_tensor_t input_, int kernel_h,
+    int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w,
+    enum PoolType type /* POOL_MAX */,
+    enum ActiMode activation /* AC_MODE_NONE */, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor tensor = handle->pool2d(input,
-                                 kernel_h,
-                                 kernel_w,
-                                 stride_h,
-                                 stride_w,
-                                 padding_h,
-                                 padding_w,
-                                 type,
-                                 activation,
-                                 name);
+  Tensor tensor = handle->pool2d(input, kernel_h, kernel_w, stride_h, stride_w,
+                                 padding_h, padding_w, type, activation, name);
   DEBUG_PRINT(
       "[Pool2d] new Tensor 4D %p (%d, %d, %d, %d), input %p, kernel(%d, %d), "
       "stride(%d, %d), padding(%d, %d), pool %d, activation %d, name %s",
-      tensor,
-      tensor->dims[0],
-      tensor->dims[1],
-      tensor->dims[2],
-      tensor->dims[3],
-      input,
-      kernel_h,
-      kernel_w,
-      stride_h,
-      stride_w,
-      padding_h,
-      padding_w,
-      type,
-      activation,
-      name);
+      tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2],
+      tensor->dims[3], input, kernel_h, kernel_w, stride_h, stride_w, padding_h,
+      padding_w, type, activation, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_batch_norm(flexflow_model_t handle_,
                                                 const flexflow_tensor_t input_,
-                                                bool relu,
-                                                char const *name) {
+                                                bool relu, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->batch_norm(input, relu, name);
   DEBUG_PRINT("[BatchNorm] new Tensor 4D %p (%d, %d, %d, %d), input %p, relu "
               "%d, name %s",
-              tensor,
-              tensor->dims[0],
-              tensor->dims[1],
-              tensor->dims[2],
-              tensor->dims[3],
-              input,
-              relu,
-              name);
+              tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2],
+              tensor->dims[3], input, relu, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
                                                 const flexflow_tensor_t input_,
-                                                int n,
-                                                int *axes,
+                                                int n, int *axes,
                                                 bool elementwise_affine,
-                                                float eps,
-                                                char const *name) {
+                                                float eps, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
   std::vector<int> axes_vec;
@@ -572,11 +463,7 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
       handle->layer_norm(input, axes_vec, elementwise_affine, eps, name);
   DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps "
               "%f, name %s",
-              tensor,
-              input,
-              elementwise_affine,
-              eps,
-              name);
+              tensor, input, elementwise_affine, eps, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -595,58 +482,33 @@ flexflow_tensor_t flexflow_model_add_batch_matmul(flexflow_model_t handle_,
 }
 
 flexflow_tensor_t flexflow_model_add_dense(
-    flexflow_model_t handle_,
-    const flexflow_tensor_t input_,
-    int out_dim,
-    enum ActiMode activation /* AC_MODE_NONE */,
-    bool use_bias /* true */,
-    enum DataType data_type /*DT_FLOAT*/,
-    flexflow_op_t shared_op_,
+    flexflow_model_t handle_, const flexflow_tensor_t input_, int out_dim,
+    enum ActiMode activation /* AC_MODE_NONE */, bool use_bias /* true */,
+    enum DataType data_type /*DT_FLOAT*/, flexflow_op_t shared_op_,
     flexflow_initializer_t kernel_initializer_,
     flexflow_initializer_t bias_initializer_,
     enum RegularizerMode kernel_reg_type /* REG_MODE_NONE */,
-    float kernel_reg_lambda,
-    char const *name) {
+    float kernel_reg_lambda, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap_const(input_);
   Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  Tensor tensor = handle->dense(input,
-                                out_dim,
-                                activation,
-                                use_bias,
-                                data_type,
-                                shared_op,
-                                kernel_initializer,
-                                bias_initializer,
-                                kernel_reg_type,
-                                kernel_reg_lambda,
-                                name);
+  Tensor tensor = handle->dense(input, out_dim, activation, use_bias, data_type,
+                                shared_op, kernel_initializer, bias_initializer,
+                                kernel_reg_type, kernel_reg_lambda, name);
   DEBUG_PRINT("[Dense] new Tensor 2D %p (%d, %d, %d, %d), input %p, out_dim "
               "%d, activation %d, use_bias %d, shared_op %p, kernel_init %p, "
               "bias_init %p, name %s",
-              tensor,
-              tensor->dims[0],
-              tensor->dims[1],
-              tensor->dims[2],
-              tensor->dims[3],
-              input,
-              out_dim,
-              activation,
-              use_bias,
-              shared_op,
-              kernel_initializer,
-              bias_initializer,
-              name);
+              tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2],
+              tensor->dims[3], input, out_dim, activation, use_bias, shared_op,
+              kernel_initializer, bias_initializer, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t flexflow_model_add_concat(flexflow_model_t handle_,
-                                            int n,
-                                            flexflow_tensor_t *input_,
-                                            int axis,
+flexflow_tensor_t flexflow_model_add_concat(flexflow_model_t handle_, int n,
+                                            flexflow_tensor_t *input_, int axis,
                                             char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor;
@@ -670,11 +532,8 @@ flexflow_tensor_t flexflow_model_add_concat(flexflow_model_t handle_,
 }
 
 void flexflow_model_add_split(flexflow_model_t handle_,
-                              flexflow_tensor_t input_,
-                              int n,
-                              flexflow_tensor_t *outputs_,
-                              int *split,
-                              int axis,
+                              flexflow_tensor_t input_, int n,
+                              flexflow_tensor_t *outputs_, int *split, int axis,
                               char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -708,45 +567,38 @@ flexflow_tensor_t flexflow_model_add_flat(flexflow_model_t handle_,
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->flat(input, name);
-  DEBUG_PRINT(
-      "[Flat] new Tensor 4D %p, input %p, name %s", tensor, input, name);
+  DEBUG_PRINT("[Flat] new Tensor 4D %p, input %p, name %s", tensor, input,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_gather(flexflow_model_t handle_,
                                             const flexflow_tensor_t input_,
                                             const flexflow_tensor_t index_,
-                                            int dim,
-                                            char const *name) {
+                                            int dim, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor index = FFCObjectWrapper::unwrap(index_);
   Tensor tensor = handle->gather(input, index, dim, name);
   DEBUG_PRINT("[Gather] new Tensor %p, input %p, index %p, dim %d name %s",
-              tensor,
-              input,
-              index,
-              dim,
-              name);
+              tensor, input, index, dim, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_softmax(flexflow_model_t handle_,
                                              const flexflow_tensor_t input_,
-                                             int dim,
-                                             char const *name) {
+                                             int dim, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->softmax(input, dim, name);
-  DEBUG_PRINT(
-      "[Softmax] new Tensor %p, input %p, name %s", tensor, input, name);
+  DEBUG_PRINT("[Softmax] new Tensor %p, input %p, name %s", tensor, input,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_transpose(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
-                                               int n,
-                                               int *perm,
+                                               int n, int *perm,
                                                char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -755,18 +607,14 @@ flexflow_tensor_t flexflow_model_add_transpose(flexflow_model_t handle_,
     perm_vec.push_back(perm[i]);
   }
   Tensor tensor = handle->transpose(input, perm_vec, name);
-  DEBUG_PRINT("[Transpose] new Tensor %p, input %p, n %d, name %s",
-              tensor,
-              input,
-              n,
-              name);
+  DEBUG_PRINT("[Transpose] new Tensor %p, input %p, n %d, name %s", tensor,
+              input, n, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_reshape(flexflow_model_t handle_,
                                              const flexflow_tensor_t input_,
-                                             int n,
-                                             int *shape,
+                                             int n, int *shape,
                                              char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -775,43 +623,30 @@ flexflow_tensor_t flexflow_model_add_reshape(flexflow_model_t handle_,
     shape_vec.push_back(shape[i]);
   }
   Tensor tensor = handle->reshape(input, shape_vec, name);
-  DEBUG_PRINT("[Reshape] new Tensor %p, input %p, n %d, name %s",
-              tensor,
-              input,
-              n,
-              name);
+  DEBUG_PRINT("[Reshape] new Tensor %p, input %p, n %d, name %s", tensor, input,
+              n, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_reverse(flexflow_model_t handle_,
                                              const flexflow_tensor_t input_,
-                                             int axis,
-                                             char const *name) {
+                                             int axis, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->reverse(input, axis, name);
-  DEBUG_PRINT("[Reverse] new Tensor %p, input %p, axis %d, name %s",
-              tensor,
-              input,
-              axis,
-              name);
+  DEBUG_PRINT("[Reverse] new Tensor %p, input %p, axis %d, name %s", tensor,
+              input, axis, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t
-    flexflow_model_add_scalar_multiply(flexflow_model_t handle_,
-                                       const flexflow_tensor_t input_,
-                                       float const scalar,
-                                       bool inplace,
-                                       char const *name) {
+flexflow_tensor_t flexflow_model_add_scalar_multiply(
+    flexflow_model_t handle_, const flexflow_tensor_t input_,
+    float const scalar, bool inplace, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->scalar_multiply(input, scalar, inplace, name);
   DEBUG_PRINT("[Scalar multiply] new Tensor %p, input %p, scalar %f, name %s",
-              tensor,
-              input,
-              scalar,
-              name);
+              tensor, input, scalar, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -824,10 +659,7 @@ flexflow_tensor_t flexflow_model_add_scalar_add(flexflow_model_t handle_,
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->scalar_add(input, scalar, inplace, name);
   DEBUG_PRINT("[Scalar addition] new Tensor %p, input %p, scalar %f, name %s",
-              tensor,
-              input,
-              scalar,
-              name);
+              tensor, input, scalar, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -841,28 +673,19 @@ flexflow_tensor_t flexflow_model_add_scalar_sub(flexflow_model_t handle_,
   Tensor tensor = handle->scalar_sub(input, scalar, inplace, name);
   DEBUG_PRINT(
       "[Scalar subtraction] new Tensor %p, input %p, scalar %f, name %s",
-      tensor,
-      input,
-      scalar,
-      name);
+      tensor, input, scalar, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t
-    flexflow_model_add_scalar_truediv(flexflow_model_t handle_,
-                                      const flexflow_tensor_t input_,
-                                      float const scalar,
-                                      bool inplace,
-                                      char const *name) {
+flexflow_tensor_t flexflow_model_add_scalar_truediv(
+    flexflow_model_t handle_, const flexflow_tensor_t input_,
+    float const scalar, bool inplace, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->scalar_truediv(input, scalar, inplace, name);
   DEBUG_PRINT(
       "[Scalar true division] new Tensor %p, input %p, scalar %f, name %s",
-      tensor,
-      input,
-      scalar,
-      name);
+      tensor, input, scalar, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -882,15 +705,14 @@ flexflow_tensor_t flexflow_model_add_identity(flexflow_model_t handle_,
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->identity(input, name);
-  DEBUG_PRINT(
-      "[Identity] new Tensor %p, input %p, name %s", tensor, input, name);
+  DEBUG_PRINT("[Identity] new Tensor %p, input %p, name %s", tensor, input,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_relu(flexflow_model_t handle_,
                                           const flexflow_tensor_t input_,
-                                          bool inplace,
-                                          char const *name) {
+                                          bool inplace, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->relu(input, name);
@@ -904,8 +726,8 @@ flexflow_tensor_t flexflow_model_add_sigmoid(flexflow_model_t handle_,
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->sigmoid(input, name);
-  DEBUG_PRINT(
-      "[Sigmoid] new Tensor %p, input %p, name %s", tensor, input, name);
+  DEBUG_PRINT("[Sigmoid] new Tensor %p, input %p, name %s", tensor, input,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -921,8 +743,7 @@ flexflow_tensor_t flexflow_model_add_tanh(flexflow_model_t handle_,
 
 flexflow_tensor_t flexflow_model_add_elu(flexflow_model_t handle_,
                                          const flexflow_tensor_t input_,
-                                         bool inplace,
-                                         char const *name) {
+                                         bool inplace, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->elu(input, name);
@@ -939,64 +760,30 @@ flexflow_tensor_t flexflow_model_add_dropout(flexflow_model_t handle_,
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->dropout(input, rate, seed, name);
   DEBUG_PRINT("[Dropout] new Tensor %p, input %p, rate %f, seed %lld, name %s",
-              tensor,
-              input,
-              rate,
-              seed,
-              name);
+              tensor, input, rate, seed, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
 flexflow_tensor_t flexflow_model_add_multihead_attention(
-    flexflow_model_t handle_,
-    const flexflow_tensor_t query_,
-    const flexflow_tensor_t key_,
-    const flexflow_tensor_t value_,
-    int embed_dim,
-    int num_heads,
-    int kdim,
-    int vdim,
-    float dropout,
-    bool bias,
-    bool add_bias_kv,
-    bool add_zero_attn,
-    flexflow_initializer_t kernel_initializer_,
-    char const *name) {
+    flexflow_model_t handle_, const flexflow_tensor_t query_,
+    const flexflow_tensor_t key_, const flexflow_tensor_t value_, int embed_dim,
+    int num_heads, int kdim, int vdim, float dropout, bool bias,
+    bool add_bias_kv, bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_, char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor query = FFCObjectWrapper::unwrap(query_);
   Tensor key = FFCObjectWrapper::unwrap(key_);
   Tensor value = FFCObjectWrapper::unwrap(value_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
-  Tensor tensor = handle->multihead_attention(query,
-                                              key,
-                                              value,
-                                              embed_dim,
-                                              num_heads,
-                                              kdim,
-                                              vdim,
-                                              dropout,
-                                              bias,
-                                              add_bias_kv,
-                                              add_zero_attn,
-                                              kernel_initializer,
-                                              name);
+  Tensor tensor = handle->multihead_attention(
+      query, key, value, embed_dim, num_heads, kdim, vdim, dropout, bias,
+      add_bias_kv, add_zero_attn, kernel_initializer, name);
   DEBUG_PRINT("[MultiHeadAttention] new Tensor %p, query %p, key %p, value %p, "
               "embed_dim %d, num_heads %d, kdim %d, vdim %d, dropout %f, bias "
               "%d, add_bias_kv %d, add_zero_attn %d, kernel_init %p, name %s",
-              tensor,
-              query,
-              key,
-              value,
-              embed_dim,
-              num_heads,
-              kdim,
-              vdim,
-              dropout,
-              bias,
-              add_bias_kv,
-              add_zero_attn,
-              kernel_initializer,
+              tensor, query, key, value, embed_dim, num_heads, kdim, vdim,
+              dropout, bias, add_bias_kv, add_zero_attn, kernel_initializer,
               name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1039,12 +826,11 @@ flexflow_tensor_t flexflow_model_get_parameter_by_id(flexflow_model_t handle_,
 }
 
 flexflow_perf_metrics_t
-    flexflow_model_get_perf_metrics(flexflow_model_t handle_) {
+flexflow_model_get_perf_metrics(flexflow_model_t handle_) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   PerfMetrics *perf_metrics = new PerfMetrics();
   *perf_metrics = handle->current_metrics.get_result<PerfMetrics>();
-  DEBUG_PRINT("[Model] create PerfMetrics %p, train_correct %d",
-              perf_metrics,
+  DEBUG_PRINT("[Model] create PerfMetrics %p, train_correct %d", perf_metrics,
               perf_metrics->train_correct);
   return FFCObjectWrapper::wrap(perf_metrics);
 }
@@ -1053,8 +839,7 @@ flexflow_perf_metrics_t
 // Tensor
 // -----------------------------------------------------------------------
 
-flexflow_tensor_t flexflow_tensor_create(flexflow_model_t model_,
-                                         int num_dims,
+flexflow_tensor_t flexflow_tensor_create(flexflow_model_t model_, int num_dims,
                                          int const *dims,
                                          enum DataType data_type,
                                          bool create_grad /* true */) {
@@ -1062,46 +847,26 @@ flexflow_tensor_t flexflow_tensor_create(flexflow_model_t model_,
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   if (num_dims == 1) {
     tensor = model->create_tensor<1>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 1D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 1D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 2) {
     tensor = model->create_tensor<2>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 3) {
     tensor = model->create_tensor<3>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 4) {
     tensor = model->create_tensor<4>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
 #if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
     tensor = model->create_tensor<5>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3],
-                tensor->dims[4]);
+    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor,
+                tensor->dims[0], tensor->dims[1], tensor->dims[2],
+                tensor->dims[3], tensor->dims[4]);
 #endif
   } else {
     assert(0);
@@ -1112,61 +877,39 @@ flexflow_tensor_t flexflow_tensor_create(flexflow_model_t model_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
-void flexflow_tensor_map(flexflow_model_t model_,
-                         flexflow_tensor_t tensor_,
+void flexflow_tensor_map(flexflow_model_t model_, flexflow_tensor_t tensor_,
                          flexflow_op_t op_) {
   assert(false);
 }
 
 flexflow_tensor_t flexflow_constant_create(flexflow_model_t model_,
-                                           int num_dims,
-                                           int const *dims,
+                                           int num_dims, int const *dims,
                                            float value,
                                            enum DataType data_type) {
   Tensor tensor;
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   if (num_dims == 1) {
     tensor = model->create_constant<1>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 1D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 1D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 2) {
     tensor = model->create_constant<2>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 3) {
     tensor = model->create_constant<3>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 4) {
     tensor = model->create_constant<4>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3]);
+    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->dims[0],
+                tensor->dims[1], tensor->dims[2], tensor->dims[3]);
 #if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
     tensor = model->create_constant<5>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)",
-                tensor,
-                tensor->dims[0],
-                tensor->dims[1],
-                tensor->dims[2],
-                tensor->dims[3],
-                tensor->dims[4]);
+    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor,
+                tensor->dims[0], tensor->dims[1], tensor->dims[2],
+                tensor->dims[3], tensor->dims[4]);
 #endif
   } else {
     assert(0);
@@ -1233,21 +976,15 @@ int flexflow_tensor_get_num_dims(flexflow_tensor_t handle_) {
 
 int flexflow_tensor_get_dim(flexflow_tensor_t handle_, int legion_axis) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]",
-              handle->dims[3],
-              handle->dims[2],
-              handle->dims[1],
-              handle->dims[0]);
+  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]", handle->dims[3],
+              handle->dims[2], handle->dims[1], handle->dims[0]);
   return handle->dims[legion_axis];
 }
 
 int *flexflow_tensor_get_dims(flexflow_tensor_t handle_) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]",
-              handle->dims[3],
-              handle->dims[2],
-              handle->dims[1],
-              handle->dims[0]);
+  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]", handle->dims[3],
+              handle->dims[2], handle->dims[1], handle->dims[0]);
   return &(handle->dims[0]);
 }
 
@@ -1263,8 +1000,7 @@ flexflow_op_t flexflow_tensor_get_owner_op(flexflow_tensor_t handle_) {
 
 void flexflow_tensor_attach_raw_ptr(flexflow_tensor_t handle_,
                                     flexflow_model_t model_,
-                                    flexflow_config_t config_,
-                                    void *raw_ptr,
+                                    flexflow_config_t config_, void *raw_ptr,
                                     bool column_major) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
@@ -1272,8 +1008,7 @@ void flexflow_tensor_attach_raw_ptr(flexflow_tensor_t handle_,
   ParallelTensor ptensor;
   model->get_parallel_tensor_from_tensor(handle, ptensor);
   ptensor->attach_raw_ptr(*config, raw_ptr, column_major);
-  DEBUG_PRINT("[Tensor] attach numpy array: ptr %p, column_major %d",
-              raw_ptr,
+  DEBUG_PRINT("[Tensor] attach numpy array: ptr %p, column_major %d", raw_ptr,
               column_major);
 }
 
@@ -1293,10 +1028,8 @@ bool flexflow_tensor_is_mapped(flexflow_tensor_t handle_) {
 }
 
 bool flexflow_tensor_set_tensor_float(flexflow_tensor_t handle_,
-                                      flexflow_model_t model_,
-                                      int num_dim,
-                                      int *dims,
-                                      float const *data) {
+                                      flexflow_model_t model_, int num_dim,
+                                      int *dims, float const *data) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   std::vector<int> dims_vec;
@@ -1307,8 +1040,7 @@ bool flexflow_tensor_set_tensor_float(flexflow_tensor_t handle_,
 }
 
 bool flexflow_tensor_get_tensor_float(flexflow_tensor_t handle_,
-                                      flexflow_model_t model_,
-                                      float *data,
+                                      flexflow_model_t model_, float *data,
                                       bool get_gradients) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
@@ -1316,10 +1048,8 @@ bool flexflow_tensor_get_tensor_float(flexflow_tensor_t handle_,
 }
 
 bool flexflow_tensor_set_tensor_int(flexflow_tensor_t handle_,
-                                    flexflow_model_t model_,
-                                    int num_dim,
-                                    int *dims,
-                                    int const *data) {
+                                    flexflow_model_t model_, int num_dim,
+                                    int *dims, int const *data) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   std::vector<int> dims_vec;
@@ -1330,8 +1060,7 @@ bool flexflow_tensor_set_tensor_int(flexflow_tensor_t handle_,
 }
 
 bool flexflow_tensor_get_tensor_int(flexflow_tensor_t handle_,
-                                    flexflow_model_t model_,
-                                    int *data,
+                                    flexflow_model_t model_, int *data,
                                     bool get_gradients) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
@@ -1339,10 +1068,8 @@ bool flexflow_tensor_get_tensor_int(flexflow_tensor_t handle_,
 }
 
 bool flexflow_tensor_set_tensor_int64(flexflow_tensor_t handle_,
-                                      flexflow_model_t model_,
-                                      int num_dim,
-                                      int *dims,
-                                      int64_t const *data) {
+                                      flexflow_model_t model_, int num_dim,
+                                      int *dims, int64_t const *data) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   std::vector<int> dims_vec;
@@ -1353,8 +1080,7 @@ bool flexflow_tensor_set_tensor_int64(flexflow_tensor_t handle_,
 }
 
 bool flexflow_tensor_get_tensor_int64(flexflow_tensor_t handle_,
-                                      flexflow_model_t model_,
-                                      int64_t *data,
+                                      flexflow_model_t model_, int64_t *data,
                                       bool get_gradients) {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
@@ -1363,8 +1089,7 @@ bool flexflow_tensor_get_tensor_int64(flexflow_tensor_t handle_,
 
 bool flexflow_model_get_output_tensor_float(flexflow_model_t model_,
                                             flexflow_tensor_t handle_,
-                                            float *data,
-                                            bool get_gradients) {
+                                            float *data, bool get_gradients) {
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   return handle->get_output_parallel_tensor<float>(model, data, get_gradients);
@@ -1409,11 +1134,10 @@ flexflow_parameter_get_weights_float(
 // -----------------------------------------------------------------------
 
 flexflow_sgd_optimizer_t
-    flexflow_sgd_optimizer_create(flexflow_model_t model_,
-                                  double lr,       /* 0.01f */
-                                  double momentum, /* 0.0f */
-                                  bool nesterov,   /* false */
-                                  double weight_decay /* 0.0f */) {
+flexflow_sgd_optimizer_create(flexflow_model_t model_, double lr, /* 0.01f */
+                              double momentum,                    /* 0.0f */
+                              bool nesterov,                      /* false */
+                              double weight_decay /* 0.0f */) {
   FFModel const *model = FFCObjectWrapper::unwrap_const(model_);
   SGDOptimizer *optimizer =
       new SGDOptimizer(model, lr, momentum, nesterov, weight_decay);
@@ -1438,12 +1162,10 @@ void flexflow_sgd_optimizer_set_lr(flexflow_sgd_optimizer_t handle_,
 // -----------------------------------------------------------------------
 
 flexflow_adam_optimizer_t
-    flexflow_adam_optimizer_create(flexflow_model_t model_,
-                                   double alpha /*0.001f*/,
-                                   double beta1 /*0.9f*/,
-                                   double beta2 /*0.999f*/,
-                                   double weight_decay /*0.0f*/,
-                                   double epsilon /*1e-8*/) {
+flexflow_adam_optimizer_create(flexflow_model_t model_, double alpha /*0.001f*/,
+                               double beta1 /*0.9f*/, double beta2 /*0.999f*/,
+                               double weight_decay /*0.0f*/,
+                               double epsilon /*1e-8*/) {
   FFModel const *model = FFCObjectWrapper::unwrap_const(model_);
   AdamOptimizer *optimizer =
       new AdamOptimizer(model, alpha, beta1, beta2, weight_decay, epsilon);
@@ -1476,7 +1198,7 @@ flexflow_initializer_t flexflow_initializer_create_null() {
 // -----------------------------------------------------------------------
 
 flexflow_glorot_uniform_initializer_t
-    flexflow_glorot_uniform_initializer_create(int seed) {
+flexflow_glorot_uniform_initializer_create(int seed) {
   GlorotUniform *initializer = new GlorotUniform(seed);
   DEBUG_PRINT("[GlorotUniform] new %p", initializer);
   return FFCObjectWrapper::wrap(initializer);
@@ -1510,7 +1232,7 @@ void flexflow_zero_initializer_destroy(flexflow_zero_initializer_t handle_) {
 // -----------------------------------------------------------------------
 
 flexflow_uniform_initializer_t
-    flexflow_uniform_initializer_create(int seed, float min, float max) {
+flexflow_uniform_initializer_create(int seed, float min, float max) {
   UniformInitializer *initializer = new UniformInitializer(seed, min, max);
   DEBUG_PRINT("[UniformInitializer] new %p", initializer);
   return FFCObjectWrapper::wrap(initializer);
@@ -1528,7 +1250,7 @@ void flexflow_uniform_initializer_destroy(
 // -----------------------------------------------------------------------
 
 flexflow_norm_initializer_t
-    flexflow_norm_initializer_create(int seed, float mean, float stddev) {
+flexflow_norm_initializer_create(int seed, float mean, float stddev) {
   NormInitializer *initializer = new NormInitializer(seed, mean, stddev);
   DEBUG_PRINT("[NormInitializer] new %p", initializer);
   return FFCObjectWrapper::wrap(initializer);
@@ -1569,7 +1291,7 @@ void flexflow_net_config_destroy(flexflow_net_config_t handle_) {
 }
 
 char const *
-    flexflow_net_config_get_dataset_path(flexflow_net_config_t handle_) {
+flexflow_net_config_get_dataset_path(flexflow_net_config_t handle_) {
   NetConfig *handle = FFCObjectWrapper::unwrap(handle_);
   char const *cstr = handle->dataset_path.c_str();
   return cstr;
@@ -1589,14 +1311,14 @@ void flexflow_dlrm_config_destroy(flexflow_dlrm_config_t handle_) {
 }
 
 char const *
-    flexflow_dlrm_config_get_dataset_path(flexflow_dlrm_config_t handle_) {
+flexflow_dlrm_config_get_dataset_path(flexflow_dlrm_config_t handle_) {
   DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
   char const *cstr = handle->dataset_path.c_str();
   return cstr;
 }
 
-char const *flexflow_dlrm_config_get_arch_interaction_op(
-    flexflow_dlrm_config_t handle_) {
+char const *
+flexflow_dlrm_config_get_arch_interaction_op(flexflow_dlrm_config_t handle_) {
   DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
   char const *cstr = handle->arch_interaction_op.c_str();
   return cstr;
@@ -1660,32 +1382,23 @@ int *flexflow_dlrm_config_get_embedding_size(flexflow_dlrm_config_t handle_) {
 // Single Dataloader
 // -----------------------------------------------------------------------
 
-flexflow_single_dataloader_t
-    flexflow_single_dataloader_create(flexflow_model_t ffmodel_,
-                                      flexflow_tensor_t input_,
-                                      flexflow_tensor_t full_input_,
-                                      int num_samples,
-                                      enum DataType data_type) {
+flexflow_single_dataloader_t flexflow_single_dataloader_create(
+    flexflow_model_t ffmodel_, flexflow_tensor_t input_,
+    flexflow_tensor_t full_input_, int num_samples, enum DataType data_type) {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
   assert(input->parallel_tensor != nullptr);
   assert(full_input->parallel_tensor != nullptr);
   SingleDataLoader *dataloader =
-      new SingleDataLoader(*ffmodel,
-                           input->parallel_tensor,
-                           full_input->parallel_tensor,
-                           num_samples,
-                           data_type);
+      new SingleDataLoader(*ffmodel, input->parallel_tensor,
+                           full_input->parallel_tensor, num_samples, data_type);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
-flexflow_single_dataloader_t
-    flexflow_single_dataloader_create2(flexflow_model_t ffmodel_,
-                                       flexflow_tensor_t input_,
-                                       void *full_input_ptr,
-                                       int num_samples,
-                                       enum DataType data_type) {
+flexflow_single_dataloader_t flexflow_single_dataloader_create2(
+    flexflow_model_t ffmodel_, flexflow_tensor_t input_, void *full_input_ptr,
+    int num_samples, enum DataType data_type) {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   assert(input->parallel_tensor != nullptr);
@@ -1925,11 +1638,9 @@ void begin_flexflow_task(int argc, char **argv) {
   // Get the runtime now that we've started it
   Runtime *runtime = Runtime::get_runtime();
   // Then we can bind make this thread into an implicit top-level task
-  ctx = runtime->begin_implicit_task(PYTHON_TOP_LEVEL_TASK_ID,
-                                     0 /*mapper id*/,
-                                     Processor::LOC_PROC,
-                                     "flexflow_top_level_task",
-                                     true /*control replicable*/);
+  ctx = runtime->begin_implicit_task(
+      PYTHON_TOP_LEVEL_TASK_ID, 0 /*mapper id*/, Processor::LOC_PROC,
+      "flexflow_top_level_task", true /*control replicable*/);
 }
 
 void finish_flexflow_task() {

@@ -28,10 +28,8 @@ namespace MultiHeadAttention {
 
 void forward_kernel(hipStream_t stream,
                     MultiHeadAttentionPerDeviceState const *m,
-                    float const *query_ptr,
-                    float const *key_ptr,
-                    float const *value_ptr,
-                    float const *weight_ptr,
+                    float const *query_ptr, float const *key_ptr,
+                    float const *value_ptr, float const *weight_ptr,
                     float *output_ptr) {
 #if 0
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
@@ -48,14 +46,10 @@ void forward_kernel(hipStream_t stream,
 
 void backward_kernel(hipStream_t stream,
                      MultiHeadAttentionPerDeviceState const *m,
-                     float const *query_ptr,
-                     float *query_grad_ptr,
-                     float const *key_ptr,
-                     float *key_grad_ptr,
-                     float const *value_ptr,
-                     float *value_grad_ptr,
-                     float const *weight_ptr,
-                     float *weight_grad_ptr,
+                     float const *query_ptr, float *query_grad_ptr,
+                     float const *key_ptr, float *key_grad_ptr,
+                     float const *value_ptr, float *value_grad_ptr,
+                     float const *weight_ptr, float *weight_grad_ptr,
                      float const *output_grad_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -80,11 +74,8 @@ void backward_kernel(hipStream_t stream,
 } // namespace Kernels
 
 MultiHeadAttentionPerDeviceState::MultiHeadAttentionPerDeviceState(
-    FFHandler handler,
-    MultiHeadAttention const *attn,
-    Memory gpu_mem,
-    int num_samples,
-    int num_heads)
+    FFHandler handler, MultiHeadAttention const *attn, Memory gpu_mem,
+    int num_samples, int num_heads)
     : PerDeviceOpState(handler) {
   hipStream_t stream;
 

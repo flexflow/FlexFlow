@@ -3,10 +3,10 @@
 
 namespace FlexFlow {
 
-TaskArgumentsFormat create_serializable_format(
-    ConcreteArgsFormat const &concrete_args_format,
-    FutureArgsFormat const &future_args_format,
-    optional<IndexArgsFormat> const &index_args_format) {
+TaskArgumentsFormat
+create_serializable_format(ConcreteArgsFormat const &concrete_args_format,
+                           FutureArgsFormat const &future_args_format,
+                           optional<IndexArgsFormat> const &index_args_format) {
   TaskArgumentsFormat result;
   for (auto const &kv : concrete_args_format.fmts) {
     result.insert(kv);
@@ -19,15 +19,13 @@ TaskArgumentsFormat create_serializable_format(
 }
 
 Legion::TaskArgument
-    as_task_argument(ConcreteArgsFormat const &concrete_args_format,
-                     FutureArgsFormat const &future_args_format,
-                     optional<TensorArgsFormat> const &tensor_args_format,
-                     optional<IndexArgsFormat> const &index_args_format) {
+as_task_argument(ConcreteArgsFormat const &concrete_args_format,
+                 FutureArgsFormat const &future_args_format,
+                 optional<TensorArgsFormat> const &tensor_args_format,
+                 optional<IndexArgsFormat> const &index_args_format) {
   TaskArgumentsFormat serializable_format =
-      create_serializable_format(concrete_args_format,
-                                 future_args_format,
-                                 tensor_args_format,
-                                 index_args_format);
+      create_serializable_format(concrete_args_format, future_args_format,
+                                 tensor_args_format, index_args_format);
   *(concrete_args_format.reserved_bytes_for_fmt) = serializable_format;
   return Legion::TaskArgument(concrete_args_format.sez.get_buffer(),
                               concrete_args_format.sez.get_used_bytes());
@@ -37,10 +35,10 @@ using GenericTaskLauncher =
     variant<Legion::TaskLauncher, Legion::IndexTaskLauncher>;
 
 GenericTaskLauncher
-    compile_to_launcher(TensorlessTaskInvocation const &invocation,
-                        ParallelComputationGraph const &pcg,
-                        RuntimeBacking const &backing,
-                        EnableProfiling enable_profiling) {
+compile_to_launcher(TensorlessTaskInvocation const &invocation,
+                    ParallelComputationGraph const &pcg,
+                    RuntimeBacking const &backing,
+                    EnableProfiling enable_profiling) {
   TaskSignature sig = get_signature(invocation.task_id);
   TensorlessTaskBinding binding = invocation.binding;
   /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg,
@@ -66,14 +64,10 @@ GenericTaskLauncher
         process_index_args(binding, backing.get_domain(mv_backing.parallel_is));
     Legion::TaskArgument task_arg = as_task_argument(
         concrete_args_format, future_args_format, nullopt, index_args_format);
-    Legion::IndexTaskLauncher launcher(invocation.task_id,
-                                       mv_backing.parallel_is,
-                                       task_arg,
-                                       as_argument_map(index_args_format),
-                                       Legion::Predicate::TRUE_PRED,
-                                       false /*must*/,
-                                       0 /*mapper_id*/,
-                                       mv_backing.mapping_id.value());
+    Legion::IndexTaskLauncher launcher(
+        invocation.task_id, mv_backing.parallel_is, task_arg,
+        as_argument_map(index_args_format), Legion::Predicate::TRUE_PRED,
+        false /*must*/, 0 /*mapper_id*/, mv_backing.mapping_id.value());
     /* return TaskReturnAccessor(sig.get_return_type(), returned_future); */
     return launcher;
   } else {

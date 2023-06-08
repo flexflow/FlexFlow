@@ -7,12 +7,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<EMBED_INIT_TASK_ID>();
-template <>
-void register_task<EMBED_FWD_TASK_ID>();
-template <>
-void register_task<EMBED_BWD_TASK_ID>();
+template <> void register_task<EMBED_INIT_TASK_ID>();
+template <> void register_task<EMBED_FWD_TASK_ID>();
+template <> void register_task<EMBED_BWD_TASK_ID>();
 
 OpTaskInvocation init(EmbeddingAttrs const &);
 OpTaskInvocation forward(EmbeddingAttrs const &);

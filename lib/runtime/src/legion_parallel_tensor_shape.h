@@ -53,8 +53,7 @@ std::ostream &operator<<(std::ostream &, LegionParallelTensorShape const &);
 
 namespace std {
 
-template <>
-struct hash<::FlexFlow::LegionParallelTensorShape> {
+template <> struct hash<::FlexFlow::LegionParallelTensorShape> {
   size_t operator()(::FlexFlow::LegionParallelTensorShape const &) const;
 };
 

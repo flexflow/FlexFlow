@@ -31,20 +31,11 @@ B: (batch, k, m)
 O: (batch, n, m)
 O = A * B
 */
-void forward_kernel(hipStream_t stream,
-                    BatchMatmulPerDeviceState const *meta,
-                    float *o_ptr,
-                    float const *a_ptr,
-                    float const *b_ptr,
-                    float const *c_ptr,
-                    int m,
-                    int n,
-                    int k,
-                    int batch,
-                    hipStream_t stream,
-                    int a_seq_length_dim,
-                    int b_seq_length_dim,
-                    int seq_length) {
+void forward_kernel(hipStream_t stream, BatchMatmulPerDeviceState const *meta,
+                    float *o_ptr, float const *a_ptr, float const *b_ptr,
+                    float const *c_ptr, int m, int n, int k, int batch,
+                    hipStream_t stream, int a_seq_length_dim,
+                    int b_seq_length_dim, int seq_length) {
   checkCUDA(hipblasSetStream(meta->handle.blas, stream));
   checkCUDNN(miopenSetStream(meta->handle.dnn, stream));
 
@@ -80,24 +71,9 @@ void forward_kernel(hipStream_t stream,
   }
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
-                                       HIPBLAS_OP_N,
-                                       HIPBLAS_OP_N,
-                                       m,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       b_ptr,
-                                       ldb,
-                                       strideB,
-                                       a_ptr,
-                                       lda,
-                                       strideA,
-                                       &beta,
-                                       o_ptr,
-                                       ldo,
-                                       strideO,
-                                       batch));
+  checkCUDA(hipblasSgemmStridedBatched(
+      meta->handle.blas, HIPBLAS_OP_N, HIPBLAS_OP_N, m, n, k, &alpha, b_ptr,
+      ldb, strideB, a_ptr, lda, strideA, &beta, o_ptr, ldo, strideO, batch));
   // current assume c is null
   assert(c_ptr == NULL);
 }
@@ -109,18 +85,10 @@ O, OGrad: (batch, n, m)
 AGrad = OGrad * B^T
 BGrad = A^T * OGrad
 */
-void backward_kernel(hipStream_t stream,
-                     BatchMatmulPerDeviceState const *meta,
-                     float const *o_ptr,
-                     float const *o_grad_ptr,
-                     float const *a_ptr,
-                     float *a_grad_ptr,
-                     float const *b_ptr,
-                     float *b_grad_ptr,
-                     float *c_grad_ptr,
-                     int m,
-                     int n,
-                     int k,
+void backward_kernel(hipStream_t stream, BatchMatmulPerDeviceState const *meta,
+                     float const *o_ptr, float const *o_grad_ptr,
+                     float const *a_ptr, float *a_grad_ptr, float const *b_ptr,
+                     float *b_grad_ptr, float *c_grad_ptr, int m, int n, int k,
                      int batch) {
   checkCUDA(hipblasSetStream(meta->handle.blas, stream));
   checkCUDNN(miopenSetStream(meta->handle.dnn, stream));
@@ -129,42 +97,14 @@ void backward_kernel(hipStream_t stream,
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
-                                       HIPBLAS_OP_T,
-                                       HIPBLAS_OP_N,
-                                       k,
-                                       n,
-                                       m,
-                                       &alpha,
-                                       b_ptr,
-                                       m,
-                                       b_stride,
-                                       o_grad_ptr,
-                                       m,
-                                       o_stride,
-                                       &alpha,
-                                       a_grad_ptr,
-                                       k,
-                                       a_stride,
-                                       batch));
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
-                                       HIPBLAS_OP_N,
-                                       HIPBLAS_OP_T,
-                                       m,
-                                       k,
-                                       n,
-                                       &alpha,
-                                       o_grad_ptr,
-                                       m,
-                                       o_stride,
-                                       a_ptr,
-                                       k,
-                                       a_stride,
-                                       &alpha,
-                                       b_grad_ptr,
-                                       m,
-                                       b_stride,
-                                       batch));
+  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas, HIPBLAS_OP_T,
+                                       HIPBLAS_OP_N, k, n, m, &alpha, b_ptr, m,
+                                       b_stride, o_grad_ptr, m, o_stride,
+                                       &alpha, a_grad_ptr, k, a_stride, batch));
+  checkCUDA(hipblasSgemmStridedBatched(
+      meta->handle.blas, HIPBLAS_OP_N, HIPBLAS_OP_T, m, k, n, &alpha,
+      o_grad_ptr, m, o_stride, a_ptr, k, a_stride, &alpha, b_grad_ptr, m,
+      b_stride, batch));
   assert(c_grad_ptr == NULL);
 }
 

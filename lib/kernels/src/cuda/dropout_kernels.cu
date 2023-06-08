@@ -23,8 +23,7 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::Memory;
 
-DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
-                                             float rate,
+DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler, float rate,
                                              unsigned long long seed,
                                              bool profiling,
                                              Domain const &output_domain)
@@ -56,8 +55,8 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
   }
   // checkCUDA(cudaMalloc(&dropoutStates, dropoutStateSize));
   // checkCUDA(cudaMalloc(&reserveSpace, reserveSpaceSize));
-  checkCUDNN(cudnnSetDropoutDescriptor(
-      dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed));
+  checkCUDNN(cudnnSetDropoutDescriptor(dropoutDesc, handle.dnn, rate,
+                                       dropoutStates, dropoutStateSize, seed));
 }
 
 DropoutPerDeviceState::~DropoutPerDeviceState(void) {
@@ -70,36 +69,22 @@ DropoutPerDeviceState::~DropoutPerDeviceState(void) {
 namespace Kernels {
 namespace Dropout {
 
-void forward_kernel(cudaStream_t stream,
-                    DropoutPerDeviceState *m,
-                    float const *input_ptr,
-                    float *output_ptr) {
+void forward_kernel(cudaStream_t stream, DropoutPerDeviceState *m,
+                    float const *input_ptr, float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(cudnnDropoutForward(m->handle.dnn,
-                                 m->dropoutDesc,
-                                 m->inputTensor,
-                                 input_ptr,
-                                 m->outputTensor,
-                                 output_ptr,
-                                 m->reserveSpace,
-                                 m->reserveSpaceSize));
+  checkCUDNN(cudnnDropoutForward(m->handle.dnn, m->dropoutDesc, m->inputTensor,
+                                 input_ptr, m->outputTensor, output_ptr,
+                                 m->reserveSpace, m->reserveSpaceSize));
 }
 
-void backward_kernel(cudaStream_t stream,
-                     DropoutPerDeviceState *m,
-                     float const *output_grad_ptr,
-                     float *input_grad_ptr) {
+void backward_kernel(cudaStream_t stream, DropoutPerDeviceState *m,
+                     float const *output_grad_ptr, float *input_grad_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(cudnnDropoutBackward(m->handle.dnn,
-                                  m->dropoutDesc,
-                                  m->outputTensor,
-                                  output_grad_ptr,
-                                  m->inputTensor,
-                                  input_grad_ptr,
-                                  m->reserveSpace,
-                                  m->reserveSpaceSize));
+  checkCUDNN(cudnnDropoutBackward(
+      m->handle.dnn, m->dropoutDesc, m->outputTensor, output_grad_ptr,
+      m->inputTensor, input_grad_ptr, m->reserveSpace, m->reserveSpaceSize));
 }
 
 } // namespace Dropout

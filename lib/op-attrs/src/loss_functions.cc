@@ -18,13 +18,12 @@ LossFunction get_loss_type(OtherLossAttrs const &attrs) {
   return attrs.loss_type;
 }
 LossFunction
-    get_loss_type(SparseCategoricalCrossEntropyLossAttrs const &attrs) {
+get_loss_type(SparseCategoricalCrossEntropyLossAttrs const &attrs) {
   return LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY;
 }
 
 struct GetLossFunction {
-  template <typename T>
-  LossFunction operator()(T const &t) {
+  template <typename T> LossFunction operator()(T const &t) {
     return get_loss_type(t);
   }
 };

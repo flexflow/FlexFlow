@@ -11,10 +11,8 @@
 class FFStrategy {
 public:
   FFStrategy(int _gpus_per_node, int _embs_per_node, int _num_nodes);
-  bool add_conv_config(std::string const &name,
-                       std::string const &device_type,
-                       int num_par_n,
-                       int num_par_c,
+  bool add_conv_config(std::string const &name, std::string const &device_type,
+                       int num_par_n, int num_par_c,
                        std::string const &input_memory,
                        std::string const &output_memory);
   FFProtoBuf::Op_DeviceType to_device_type(std::string const &name) {
@@ -38,12 +36,10 @@ public:
     }
     return FFProtoBuf::Op_MemoryType_FBM;
   }
-  bool add_embed_config(std::string const &name,
-                        std::string const &device_type,
+  bool add_embed_config(std::string const &name, std::string const &device_type,
                         std::string const &input_memory_type,
                         std::string const &weight_memory_type,
-                        std::string const &output_memory_type,
-                        int gpu_id);
+                        std::string const &output_memory_type, int gpu_id);
   bool add_concat_config(std::string const &name,
                          std::string const &device_type,
                          std::string const &input_memory_type,
@@ -62,13 +58,10 @@ public:
                          std::string const &input_memory_type,
                          std::string const &weight_memory_type,
                          std::string const &output_memory_type,
-                         int num_parts_channel,
-                         int num_parts_sample,
+                         int num_parts_channel, int num_parts_sample,
                          std::vector<int> const &device_ids);
-  bool add_mse_config(std::string const &name,
-                      std::string const &device_type,
-                      std::string const &input_memory_type,
-                      int num_parts_batch,
+  bool add_mse_config(std::string const &name, std::string const &device_type,
+                      std::string const &input_memory_type, int num_parts_batch,
                       std::vector<int> const &device_ids);
   bool add_transpose_config(std::string const &name,
                             std::string const &device_type,
@@ -179,8 +172,7 @@ bool FFStrategy::add_linear_config(std::string const &name,
                                    std::string const &input_memory_type,
                                    std::string const &weight_memory_type,
                                    std::string const &output_memory_type,
-                                   int num_parts_channel,
-                                   int num_parts_sample,
+                                   int num_parts_channel, int num_parts_sample,
                                    std::vector<int> const &device_ids) {
   FFProtoBuf::Op *op = strategy.add_ops();
   op->set_name(name);
@@ -218,11 +210,8 @@ void FFStrategy::export_file(std::string const &output) {
   strategy.SerializeToOstream(&outputFile);
 }
 
-void parse_input_args(char **argv,
-                      int argc,
-                      int &gpus_per_node,
-                      int &embs_per_node,
-                      int &num_nodes) {
+void parse_input_args(char **argv, int argc, int &gpus_per_node,
+                      int &embs_per_node, int &num_nodes) {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--gpu")) {
       gpus_per_node = std::atoi(argv[++i]);
@@ -250,10 +239,7 @@ int main(int argc, char **argv) {
   // Embedding
   for (int i = 0; i < num_nodes * embs_per_node; i++) {
     std::string name = "embedding" + std::to_string(i);
-    strategy.add_embed_config(name,
-                              "GPU",
-                              "FBM" /*input*/,
-                              "FBM" /*weight*/,
+    strategy.add_embed_config(name, "GPU", "FBM" /*input*/, "FBM" /*weight*/,
                               "FBM" /*output*/,
                               i % (gpus_per_node * num_nodes));
   }
@@ -262,36 +248,25 @@ int main(int argc, char **argv) {
     for (int i = 0; i < num_nodes; i++) {
       device_ids.push_back(i * gpus_per_node);
     }
-    strategy.add_concat_config("concat",
-                               "GPU",
-                               "FBM" /*input*/,
-                               "FBM" /*output*/,
-                               num_nodes,
-                               device_ids);
+    strategy.add_concat_config("concat", "GPU", "FBM" /*input*/,
+                               "FBM" /*output*/, num_nodes, device_ids);
   }
   {
     std::vector<int> device_ids;
     for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
     }
-    strategy.add_batch_matmul_config("batch_matmul",
-                                     "GPU",
-                                     "FBM" /*input1*/,
-                                     "FBM" /*input2*/,
-                                     "FBM" /*output*/,
-                                     num_nodes * gpus_per_node,
-                                     device_ids);
+    strategy.add_batch_matmul_config("batch_matmul", "GPU", "FBM" /*input1*/,
+                                     "FBM" /*input2*/, "FBM" /*output*/,
+                                     num_nodes * gpus_per_node, device_ids);
   }
   {
     std::vector<int> device_ids;
     for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
     }
-    strategy.add_transpose_config("transpose",
-                                  "GPU",
-                                  "FBM" /*input*/,
-                                  "FBM" /*output*/,
-                                  num_nodes * gpus_per_node,
+    strategy.add_transpose_config("transpose", "GPU", "FBM" /*input*/,
+                                  "FBM" /*output*/, num_nodes * gpus_per_node,
                                   device_ids);
   }
   {
@@ -299,25 +274,17 @@ int main(int argc, char **argv) {
     for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
     }
-    strategy.add_linear_config("linear",
-                               "GPU",
-                               "FBM" /*input*/,
-                               "FBM" /*weight*/,
-                               "FBM" /*output*/,
-                               1,
-                               num_nodes * gpus_per_node,
-                               device_ids);
+    strategy.add_linear_config("linear", "GPU", "FBM" /*input*/,
+                               "FBM" /*weight*/, "FBM" /*output*/, 1,
+                               num_nodes * gpus_per_node, device_ids);
   }
   {
     std::vector<int> device_ids;
     for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
     }
-    strategy.add_mse_config("mse_loss",
-                            "GPU",
-                            "FBM" /*input*/,
-                            num_nodes * gpus_per_node,
-                            device_ids);
+    strategy.add_mse_config("mse_loss", "GPU", "FBM" /*input*/,
+                            num_nodes * gpus_per_node, device_ids);
   }
   std::string output = "dlrm_strategy_emb_" + std::to_string(embs_per_node) +
                        "_gpu_" + std::to_string(gpus_per_node) + "_node_" +

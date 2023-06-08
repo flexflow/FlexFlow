@@ -10,11 +10,8 @@ LegionRuntime::Logger::Category log_app("linear_test");
 struct LinearTestMeta {
   int batch_size, i_dim, num_channels, dense_projection_o_dim,
       dense_projection_i_dim;
-  LinearTestMeta(int _batch_size,
-                 int _i_dim,
-                 int _num_channels,
-                 int _dense_projection_o_dim,
-                 int _dense_projection_i_dim) {
+  LinearTestMeta(int _batch_size, int _i_dim, int _num_channels,
+                 int _dense_projection_o_dim, int _dense_projection_i_dim) {
     batch_size = _batch_size, num_channels = _num_channels, i_dim = _i_dim,
     dense_projection_o_dim = _dense_projection_o_dim,
     dense_projection_i_dim = _dense_projection_i_dim;
@@ -27,16 +24,12 @@ LinearTestMeta get_test_meta(const std::string file_path) {
       dense_projection_i_dim;
   myfile >> batch_size >> i_dim >> num_channels >> dense_projection_o_dim >>
       dense_projection_i_dim;
-  return LinearTestMeta(batch_size,
-                        i_dim,
-                        num_channels,
-                        dense_projection_o_dim,
+  return LinearTestMeta(batch_size, i_dim, num_channels, dense_projection_o_dim,
                         dense_projection_i_dim);
 }
 
 void top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions,
-                    Context ctx,
+                    std::vector<PhysicalRegion> const &regions, Context ctx,
                     Runtime *runtime) {
   std::cout << "test framework launched" << std::endl;
   auto test_meta = get_test_meta("test_meta.txt");
@@ -50,16 +43,16 @@ void top_level_task(Task const *task,
   {
     int const dims[2] = {test_meta.dense_projection_o_dim,
                          test_meta.dense_projection_i_dim};
-    weights = ff.create_linear_weight<2>(
-        dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    weights = ff.create_linear_weight<2>(dims, (IndexSpaceT<2>)task_is,
+                                         DT_FLOAT, kernel_initializer);
     auto weights_file_path = "test_kernel1.txt";
     initialize_tensor_from_file(weights_file_path, weights, ff, "float", 2);
   }
   Tensor bias;
   {
     int const dims[1] = {test_meta.dense_projection_o_dim};
-    bias = ff.create_linear_weight<1>(
-        dims, (IndexSpaceT<2>)task_is, DT_FLOAT, bias_initializer);
+    bias = ff.create_linear_weight<1>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT,
+                                      bias_initializer);
     auto bias_file_path = "test_bias1.txt";
     initialize_tensor_from_file(bias_file_path, bias, ff, "float", 1);
   }
@@ -74,25 +67,18 @@ void top_level_task(Task const *task,
     dense_projection = ff.create_tensor<2>(dims, "", DT_FLOAT);
     // dense_projection = ff.create_linear_weight<2>(dims,
     // (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
-    initialize_tensor_from_file(
-        dense_projection_file_path, dense_projection, ff, "float", 2);
+    initialize_tensor_from_file(dense_projection_file_path, dense_projection,
+                                ff, "float", 2);
   }
 
   auto output_grad_file_path = "test_output_grad.txt";
 
   // build transpose layer
-  Tensor ret = ff.dense("",
-                        dense_projection,
-                        test_meta.dense_projection_o_dim,
-                        AC_MODE_NONE,
-                        true,
-                        NULL,
-                        NULL,
-                        &weights,
-                        NULL);
+  Tensor ret = ff.dense("", dense_projection, test_meta.dense_projection_o_dim,
+                        AC_MODE_NONE, true, NULL, NULL, &weights, NULL);
   // init gradient
-  initialize_tensor_gradient_from_file(
-      output_grad_file_path, ret, ff, "float", 2);
+  initialize_tensor_gradient_from_file(output_grad_file_path, ret, ff, "float",
+                                       2);
 
   /*
   TODO
@@ -110,8 +96,8 @@ void top_level_task(Task const *task,
     ff.update();
   }
 
-  initialize_tensor_from_file(
-      dense_projection_file_path, dense_projection, ff, "float", 2);
+  initialize_tensor_from_file(dense_projection_file_path, dense_projection, ff,
+                              "float", 2);
   ff.forward();
   // dump results to file for python validation
   dump_region_to_file(ff, ret.region, "output.txt", 2);

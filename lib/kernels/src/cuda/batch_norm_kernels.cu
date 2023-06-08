@@ -91,44 +91,24 @@ namespace BatchNorm {
 
 /* namespace Internal { */
 
-void forward_kernel(cudaStream_t stream,
-                    BatchNormPerDeviceState const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    float const *scale_ptr,
-                    float const *bias_ptr) {
+void forward_kernel(cudaStream_t stream, BatchNormPerDeviceState const *m,
+                    float const *input_ptr, float *output_ptr,
+                    float const *scale_ptr, float const *bias_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnBatchNormalizationForwardTraining(m->handle.dnn,
-                                                    m->mode,
-                                                    &alpha,
-                                                    &beta,
-                                                    m->inputTensor,
-                                                    input_ptr,
-                                                    m->outputTensor,
-                                                    output_ptr,
-                                                    m->biasTensor,
-                                                    scale_ptr,
-                                                    bias_ptr,
-                                                    1.0,
-                                                    m->runningMean,
-                                                    m->runningVar,
-                                                    CUDNN_BN_MIN_EPSILON,
-                                                    m->saveMean,
-                                                    m->saveVar));
+  checkCUDNN(cudnnBatchNormalizationForwardTraining(
+      m->handle.dnn, m->mode, &alpha, &beta, m->inputTensor, input_ptr,
+      m->outputTensor, output_ptr, m->biasTensor, scale_ptr, bias_ptr, 1.0,
+      m->runningMean, m->runningVar, CUDNN_BN_MIN_EPSILON, m->saveMean,
+      m->saveVar));
 }
 
-void backward_kernel(cudaStream_t stream,
-                     BatchNormPerDeviceState *m,
-                     float const *input_ptr,
-                     float *output_grad_ptr,
-                     float const *output_ptr,
-                     float *input_grad_ptr,
-                     float const *scale_ptr,
-                     float *scale_grad_ptr,
-                     float *bias_grad_ptr,
-                     size_t numElements) {
+void backward_kernel(cudaStream_t stream, BatchNormPerDeviceState *m,
+                     float const *input_ptr, float *output_grad_ptr,
+                     float const *output_ptr, float *input_grad_ptr,
+                     float const *scale_ptr, float *scale_grad_ptr,
+                     float *bias_grad_ptr, size_t numElements) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -136,39 +116,19 @@ void backward_kernel(cudaStream_t stream,
     reluBackward<<<GET_BLOCKS(numElements), CUDA_NUM_THREADS, 0, stream>>>(
         output_grad_ptr, output_ptr, numElements);
   }
-  checkCUDNN(cudnnBatchNormalizationBackward(m->handle.dnn,
-                                             m->mode,
-                                             &alpha,
-                                             &alpha,
-                                             &alpha,
-                                             &alpha,
-                                             m->inputTensor,
-                                             input_ptr,
-                                             m->outputTensor,
-                                             output_grad_ptr,
-                                             m->inputTensor,
-                                             input_grad_ptr,
-                                             m->biasTensor,
-                                             scale_ptr,
-                                             scale_grad_ptr,
-                                             bias_grad_ptr,
-                                             CUDNN_BN_MIN_EPSILON,
-                                             m->saveMean,
-                                             m->saveVar));
+  checkCUDNN(cudnnBatchNormalizationBackward(
+      m->handle.dnn, m->mode, &alpha, &alpha, &alpha, &alpha, m->inputTensor,
+      input_ptr, m->outputTensor, output_grad_ptr, m->inputTensor,
+      input_grad_ptr, m->biasTensor, scale_ptr, scale_grad_ptr, bias_grad_ptr,
+      CUDNN_BN_MIN_EPSILON, m->saveMean, m->saveVar));
 }
 
 } // namespace BatchNorm
 } // namespace Kernels
 
 BatchNormPerDeviceState::BatchNormPerDeviceState(
-    FFHandler handler,
-    std::unique_ptr<IAllocator> allocator,
-    int output_n,
-    int output_c,
-    int output_h,
-    int output_w,
-    bool relu,
-    bool profiling)
+    FFHandler handler, std::unique_ptr<IAllocator> allocator, int output_n,
+    int output_c, int output_h, int output_w, bool relu, bool profiling)
     : PerDeviceOpState(handler), relu(relu), profiling(profiling),
       allocator(std::move(allocator)) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
@@ -178,24 +138,16 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(
 #if CUDNN_VERSION >= 7000
   mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #endif
-  fprintf(
-      stderr, "output(%d,%d,%d,%d)\n", output_n, output_c, output_h, output_w);
-  checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        output_n,
-                                        output_c,
-                                        output_h,
-                                        output_w));
-  checkCUDNN(cudnnSetTensor4dDescriptor(outputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        output_n,
-                                        output_c,
-                                        output_h,
-                                        output_w));
-  checkCUDNN(cudnnSetTensor4dDescriptor(
-      biasTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, output_c, 1, 1));
+  fprintf(stderr, "output(%d,%d,%d,%d)\n", output_n, output_c, output_h,
+          output_w);
+  checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor, CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT, output_n, output_c,
+                                        output_h, output_w));
+  checkCUDNN(cudnnSetTensor4dDescriptor(outputTensor, CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT, output_n, output_c,
+                                        output_h, output_w));
+  checkCUDNN(cudnnSetTensor4dDescriptor(biasTensor, CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT, 1, output_c, 1, 1));
   // allocate memory for runningMean, runningVar, saveMean, saveVar
   {
     size_t totalSize = sizeof(float) * output_c * 4;
@@ -212,8 +164,8 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(
   }
   if (relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
-    checkCUDNN(cudnnSetActivationDescriptor(
-        actiDesc, CUDNN_ACTIVATION_RELU, CUDNN_PROPAGATE_NAN, 0.0));
+    checkCUDNN(cudnnSetActivationDescriptor(actiDesc, CUDNN_ACTIVATION_RELU,
+                                            CUDNN_PROPAGATE_NAN, 0.0));
   }
 }
 

@@ -34,11 +34,8 @@ namespace ffc {
 
 struct TNConstraint {
   TNConstraint(Compare comp, TNParameter para, DIMParameter dim, int value);
-  TNConstraint(Compare comp,
-               TNParameter para1,
-               DIMParameter dim1,
-               TNParameter para2,
-               DIMParameter dim2);
+  TNConstraint(Compare comp, TNParameter para1, DIMParameter dim1,
+               TNParameter para2, DIMParameter dim2);
   bool singlePara;
   Compare comp;
   TNParameter para1, para2;
@@ -55,7 +52,7 @@ struct TensorX {
   TensorX(void) : op(NULL), idx(0) {}
   TensorX(OpX *_op, int _idx) : op(_op), idx(_idx) {}
   tl::optional<opmeta::ParallelTensorShape>
-      to_tensor(GraphXfer const *xfer) const;
+  to_tensor(GraphXfer const *xfer) const;
   OpX *op;
   int idx;
 
@@ -100,18 +97,15 @@ struct TensorXCompare {
 /*   std::vector<TNConstraint> tnConstraints; */
 /* }; */
 
-OpX *create_opx(substitutions::Operator const &op,
-                int parallel_degree,
+OpX *create_opx(substitutions::Operator const &op, int parallel_degree,
                 TensorX const &input1 = TensorX::NO_TX,
                 TensorX const &input2 = TensorX::NO_TX,
                 TensorX const &input3 = TensorX::NO_TX,
                 TensorX const &input4 = TensorX::NO_TX);
-void create_xfer(GraphXfer &xfer,
-                 substitutions::Rule const &r,
+void create_xfer(GraphXfer &xfer, substitutions::Rule const &r,
                  int parallel_degree);
 std::vector<GraphXfer *>
-    create_xfers(substitutions::RuleCollection const &rules,
-                 int parallel_degree);
+create_xfers(substitutions::RuleCollection const &rules, int parallel_degree);
 
 class GraphCompare {
 public:
@@ -233,32 +227,28 @@ struct SubstitutionMatch {
 };
 
 std::unordered_set<SubstitutionMatch>
-    find_matches(SubstitutionPattern const &pattern,
-                 ParallelComputationGraph const &pcg);
+find_matches(SubstitutionPattern const &pattern,
+             ParallelComputationGraph const &pcg);
 
 class GraphSearchHelper {
 public:
   GraphSearchHelper();
-  void graph_optimize(size_t budget,
-                      bool only_data_parallel,
+  void graph_optimize(size_t budget, bool only_data_parallel,
                       std::unique_ptr<Graph> &best_graph,
                       std::unordered_map<Node, MachineView> &optimal_views);
-  void graph_optimize_no_split(
-      size_t budget,
-      bool only_data_parallel,
-      std::unique_ptr<Graph> &best_graph,
-      std::unordered_map<Node, MachineView> &optimal_views);
+  void
+  graph_optimize_no_split(size_t budget, bool only_data_parallel,
+                          std::unique_ptr<Graph> &best_graph,
+                          std::unordered_map<Node, MachineView> &optimal_views);
 
 private:
   template <typename T>
   T generic_sequence_optimize(
-      Graph const *graph,
-      Node const &sink_node,
+      Graph const *graph, Node const &sink_node,
       tl::optional<ParallelTensorShape> const &output_shape,
       tl::optional<ParallelTensorShape> const &input_shape);
 
-  float sequence_optimize(Graph const *graph,
-                          Node const &sink_node,
+  float sequence_optimize(Graph const *graph, Node const &sink_node,
                           tl::optional<ParallelTensorShape> const &output_shape,
                           tl::optional<ParallelTensorShape> const &input_shape);
 
@@ -268,8 +258,7 @@ private:
       std::unique_ptr<Graph> const &post_graph,
       tl::optional<ParallelTensorShape> const &output_shape,
       tl::optional<ParallelTensorShape> const &input_shape,
-      Node const &sink_node,
-      Node const &bottleneck,
+      Node const &sink_node, Node const &bottleneck,
       ParallelTensorShape const &bottleneck_output_shape);
   void generate_all_pcg_xfers();
   void load_graph_substitutions(std::vector<GraphXfer *> &xfers) const;
@@ -277,11 +266,11 @@ private:
   void subgraph_optimize(Graph *subgraph);
 
   std::unique_ptr<Graph>
-      base_optimize(Graph const *,
-                    SimplificationSettings const &simplification_settings);
+  base_optimize(Graph const *,
+                SimplificationSettings const &simplification_settings);
 
   std::vector<ParallelTensorShape>
-      possible_split_output_tensor_shapes(Node const &) const;
+  possible_split_output_tensor_shapes(Node const &) const;
 
   void find_rewrite_matches(Graph const *graph,
                             std::vector<GraphXferMatch> &matches) const;
@@ -291,8 +280,7 @@ private:
   template <typename T>
   tl::optional<T> try_get_cost_from_cache(size_t hash) const;
 
-  template <typename T>
-  void try_cache_result(size_t hash, T const &value);
+  template <typename T> void try_cache_result(size_t hash, T const &value);
 
   template <typename T>
   T get_optimal_cost(std::unique_ptr<Graph> optimized) const;

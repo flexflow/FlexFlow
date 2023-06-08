@@ -22,16 +22,11 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<PS_PREFETCH_TASK_ID>();
-template <>
-void register_task<SGD_UPD_PS_TASK_ID>();
-template <>
-void register_task<SGD_UPD_NCCL_TASK_ID>();
-template <>
-void register_task<ADAM_UPD_PS_TASK_ID>();
-template <>
-void register_task<ADAM_UPD_NCCL_TASK_ID>();
+template <> void register_task<PS_PREFETCH_TASK_ID>();
+template <> void register_task<SGD_UPD_PS_TASK_ID>();
+template <> void register_task<SGD_UPD_NCCL_TASK_ID>();
+template <> void register_task<ADAM_UPD_PS_TASK_ID>();
+template <> void register_task<ADAM_UPD_NCCL_TASK_ID>();
 
 /* class Optimizer { */
 /* public: */
@@ -63,14 +58,8 @@ std::vector<TaskInvocation> update(SGDOptimizer const &,
 struct AdamOptimizer : public use_visitable_cmp<AdamOptimizer> {
 public:
   AdamOptimizer() = delete;
-  AdamOptimizer(double alpha,
-                double beta1,
-                double beta2,
-                double weight_decay,
-                double epsilon,
-                double alpha_t,
-                double beta_t,
-                double beta2_t);
+  AdamOptimizer(double alpha, double beta1, double beta2, double weight_decay,
+                double epsilon, double alpha_t, double beta_t, double beta2_t);
 
 public:
   double alpha;

@@ -57,10 +57,8 @@ ReplicateParams Replicate::get_params() const {
   return params;
 }
 
-Replicate::Replicate(FFModel &model,
-                     const ParallelTensor _input,
-                     int _replicate_legion_dim,
-                     int _replicate_degree,
+Replicate::Replicate(FFModel &model, const ParallelTensor _input,
+                     int _replicate_legion_dim, int _replicate_degree,
                      char const *name)
     : ParallelOp(model, OP_REPLICATE, name, _input),
       replicate_dim(_replicate_legion_dim),
@@ -73,37 +71,27 @@ Replicate::Replicate(FFModel &model,
   dims[replicate_dim].size *= replicate_degree;
   dims[replicate_dim].degree *= replicate_degree;
   ParallelTensorBase::update_parallel_ids(numdim, dims);
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims,
+                                                            DT_FLOAT, this);
   // inputs[0]->print("Replicate::input");
   // outputs[0]->print("Replicate::output");
 }
 
-Replicate::Replicate(FFModel &model,
-                     ReplicateParams const &params,
-                     ParallelTensor const input,
-                     char const *name)
-    : Replicate(model,
-                input,
-                params.replicate_legion_dim,
-                params.replicate_degree,
-                name) {}
+Replicate::Replicate(FFModel &model, ReplicateParams const &params,
+                     ParallelTensor const input, char const *name)
+    : Replicate(model, input, params.replicate_legion_dim,
+                params.replicate_degree, name) {}
 
 void Replicate::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);
   assert(inputs[0]->part != LogicalPartition::NO_PART);
   // input_lp is an aliased partitioning along the replica dim
-  ff.create_aliased_partition(outputs[0]->num_dims,
-                              outputs[0]->dims,
-                              replicate_dim,
-                              outputs[0]->parallel_is,
-                              inputs[0]->region,
-                              input_lp);
+  ff.create_aliased_partition(outputs[0]->num_dims, outputs[0]->dims,
+                              replicate_dim, outputs[0]->parallel_is,
+                              inputs[0]->region, input_lp);
   // output_grad_lp is a disjoint partition
-  ff.create_disjoint_partition(inputs[0]->num_dims,
-                               inputs[0]->dims,
-                               inputs[0]->parallel_is,
-                               outputs[0]->region_grad,
+  ff.create_disjoint_partition(inputs[0]->num_dims, inputs[0]->dims,
+                               inputs[0]->parallel_is, outputs[0]->region_grad,
                                output_grad_lp);
 }
 
@@ -114,22 +102,16 @@ void Replicate::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(REPLICATE_FWD_TASK_ID,
-                         outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REPLICATE_FWD_TASK_ID, outputs[0]->parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(RegionRequirement(
       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -140,22 +122,16 @@ void Replicate::forward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(REPLICATE_FWD_TASK_ID,
-                         outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REPLICATE_FWD_TASK_ID, outputs[0]->parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(RegionRequirement(
       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -166,31 +142,22 @@ void Replicate::backward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(REPLICATE_BWD_TASK_ID,
-                         inputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REPLICATE_BWD_TASK_ID, inputs[0]->parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          inputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(output_grad_lp,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(output_grad_lp, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Replicate::measure_operator_cost(Simulator *sim,
-                                      MachineView const &pc,
+bool Replicate::measure_operator_cost(Simulator *sim, MachineView const &pc,
                                       CostMetrics &cost_metrics) const {
   cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.0f;
@@ -205,14 +172,14 @@ bool Replicate::measure_operator_cost(Simulator *sim,
 
 bool Replicate::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-    case PM_REPLICATE_DIM:
-      *value = replicate_dim;
-      return true;
-    case PM_REPLICATE_DEGREE:
-      *value = replicate_degree;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
+  case PM_REPLICATE_DIM:
+    *value = replicate_dim;
+    return true;
+  case PM_REPLICATE_DEGREE:
+    *value = replicate_degree;
+    return true;
+  default:
+    return Op::get_int_parameter(para, value);
   }
 }
 
@@ -228,8 +195,7 @@ bool Replicate::append_parallel_op_info(
 
 void Replicate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+                             Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Domain input_domain = runtime->get_index_space_domain(
@@ -252,8 +218,7 @@ void Replicate::forward_task(Task const *task,
 
 void Replicate::backward_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+                              Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Domain output_grad_domain = runtime->get_index_space_domain(
@@ -272,8 +237,8 @@ void Replicate::backward_task(Task const *task,
   float *input_grad_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  backward_kernel<float>(
-      output_grad_ptr, input_grad_ptr, num_elements, num_replicas);
+  backward_kernel<float>(output_grad_ptr, input_grad_ptr, num_elements,
+                         num_replicas);
 }
 
 }; // namespace FlexFlow

@@ -30,7 +30,7 @@ void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
 }
 
 std::unordered_set<MultiDiEdge>
-    AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   std::unordered_set<MultiDiEdge> result;
   for (auto const &kv : this->adjacency) {
     Node src = kv.first;
@@ -59,7 +59,7 @@ std::unordered_set<MultiDiEdge>
 }
 
 std::unordered_set<Node>
-    AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
+AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
   std::unordered_set<Node> result;
   for (auto const &kv : this->adjacency) {
     if (!query.nodes.has_value() ||

@@ -21,8 +21,7 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
-                                           Reduce const *rd,
+ReducePerDeviceState::ReducePerDeviceState(FFHandler handler, Reduce const *rd,
                                            Domain const &input_domain)
     : op_type(rd->op_type), PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
@@ -30,21 +29,18 @@ ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   cudnnReduceTensorOp_t reduce_op;
   switch (rd->op_type) {
-    case OP_REDUCE_SUM:
-      reduce_op = CUDNN_REDUCE_TENSOR_ADD;
-      break;
-    case OP_REDUCE_MEAN:
-      reduce_op = CUDNN_REDUCE_TENSOR_AVG;
-      break;
-    default:
-      assert(false);
+  case OP_REDUCE_SUM:
+    reduce_op = CUDNN_REDUCE_TENSOR_ADD;
+    break;
+  case OP_REDUCE_MEAN:
+    reduce_op = CUDNN_REDUCE_TENSOR_AVG;
+    break;
+  default:
+    assert(false);
   }
-  checkCUDNN(cudnnSetReduceTensorDescriptor(reduceDesc,
-                                            reduce_op,
-                                            CUDNN_DATA_FLOAT,
-                                            CUDNN_PROPAGATE_NAN,
-                                            CUDNN_REDUCE_TENSOR_NO_INDICES,
-                                            CUDNN_32BIT_INDICES));
+  checkCUDNN(cudnnSetReduceTensorDescriptor(
+      reduceDesc, reduce_op, CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN,
+      CUDNN_REDUCE_TENSOR_NO_INDICES, CUDNN_32BIT_INDICES));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
   Domain output_domain = input_domain;
   for (size_t i = 0; i < rd->num_axes; i++) {
@@ -67,50 +63,34 @@ ReducePerDeviceState::~ReducePerDeviceState(void) {
 namespace Kernels {
 namespace Reduce {
 
-void forward_kernel(cudaStream_t stream,
-                    ReducePerDeviceState const *m,
-                    float const *input_ptr,
-                    float *output_ptr) {
+void forward_kernel(cudaStream_t stream, ReducePerDeviceState const *m,
+                    float const *input_ptr, float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnReduceTensor(m->handle.dnn,
-                               m->reduceDesc,
-                               nullptr /*indices*/,
-                               0 /*indicesSizeInBytes*/,
-                               m->handle.workSpace,
-                               m->handle.workSpaceSize,
-                               &alpha,
-                               m->inputTensor,
-                               input_ptr,
-                               &beta,
-                               m->outputTensor,
-                               output_ptr));
+  checkCUDNN(cudnnReduceTensor(
+      m->handle.dnn, m->reduceDesc, nullptr /*indices*/,
+      0 /*indicesSizeInBytes*/, m->handle.workSpace, m->handle.workSpaceSize,
+      &alpha, m->inputTensor, input_ptr, &beta, m->outputTensor, output_ptr));
 };
 
-void backward_kernel(cudaStream_t stream,
-                     ReducePerDeviceState const *m,
-                     float const *output_grad_ptr,
-                     float *input_grad_ptr) {
+void backward_kernel(cudaStream_t stream, ReducePerDeviceState const *m,
+                     float const *output_grad_ptr, float *input_grad_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0, beta = 1.0f;
   switch (m->op_type) {
-    case OP_REDUCE_SUM:
-      alpha = 1.0f;
-      break;
-    case OP_REDUCE_MEAN:
-      // When the output is the average of multiple input elements
-      // we need to scale the gradients by 1.0 / reduction_size
-      alpha = 1.0f / m->reduction_size;
-      break;
-    default:
-      assert(false);
+  case OP_REDUCE_SUM:
+    alpha = 1.0f;
+    break;
+  case OP_REDUCE_MEAN:
+    // When the output is the average of multiple input elements
+    // we need to scale the gradients by 1.0 / reduction_size
+    alpha = 1.0f / m->reduction_size;
+    break;
+  default:
+    assert(false);
   }
-  checkCUDNN(cudnnAddTensor(m->handle.dnn,
-                            &alpha,
-                            m->outputTensor,
-                            output_grad_ptr,
-                            &beta,
-                            m->inputTensor,
+  checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->outputTensor,
+                            output_grad_ptr, &beta, m->inputTensor,
                             input_grad_ptr));
 }
 

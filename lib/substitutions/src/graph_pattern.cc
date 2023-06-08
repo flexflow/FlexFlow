@@ -40,7 +40,7 @@ GraphSplit split_pattern(IOpenMultiDiGraphView const &pattern) {
 
 std::pair<std::unique_ptr<IOpenMultiDiGraphView>,
           std::unique_ptr<IOpenMultiDiGraphView>>
-    apply_split(IOpenMultiDiGraphView const &pattern, GraphSplit const &split) {
+apply_split(IOpenMultiDiGraphView const &pattern, GraphSplit const &split) {
   return {unsafe_view_as_subgraph(pattern, split.first),
           unsafe_view_as_subgraph(pattern, split.second)};
 }
@@ -58,8 +58,7 @@ std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &pattern_edge) {
 }
 
 bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
-    get_edge_splits(IOpenMultiDiGraphView const &pattern,
-                    GraphSplit const &split) {
+get_edge_splits(IOpenMultiDiGraphView const &pattern, GraphSplit const &split) {
   auto prefix = split.first;
   auto postfix = split.second;
 
@@ -176,20 +175,16 @@ bool pattern_matches(IOpenMultiDiGraphView const &pattern,
   auto subpatterns = apply_split(pattern, split);
   auto submatches = apply_split(pattern, match, split);
 
-  return pattern_matches(*subpatterns.first,
-                         graph,
-                         submatches.prefix_submatch,
+  return pattern_matches(*subpatterns.first, graph, submatches.prefix_submatch,
                          additional_criterion) &&
-         pattern_matches(*subpatterns.second,
-                         graph,
-                         submatches.postfix_submatch,
-                         additional_criterion);
+         pattern_matches(*subpatterns.second, graph,
+                         submatches.postfix_submatch, additional_criterion);
 }
 
 tl::optional<DiGraphPatternMatch>
-    get_candidate_singleton_match(IOpenMultiDiGraphView const &pattern,
-                                  IMultiDiGraphView const &graph,
-                                  Node const &graph_node) {
+get_candidate_singleton_match(IOpenMultiDiGraphView const &pattern,
+                              IMultiDiGraphView const &graph,
+                              Node const &graph_node) {
   assert(is_singleton_pattern(pattern));
 
   Node pattern_node = get_only(get_nodes(pattern));
@@ -222,8 +217,7 @@ tl::optional<DiGraphPatternMatch>
 }
 
 tl::optional<DiGraphPatternMatch> unsplit_matches(
-    DiGraphPatternMatch const &prefix,
-    DiGraphPatternMatch const &postfix,
+    DiGraphPatternMatch const &prefix, DiGraphPatternMatch const &postfix,
     bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>> const
         &edge_splits) {
   DiGraphPatternMatch result;
@@ -259,9 +253,9 @@ tl::optional<DiGraphPatternMatch> unsplit_matches(
 
 template <typename F>
 std::unordered_set<DiGraphPatternMatch>
-    find_pattern_matches(IOpenMultiDiGraphView const &pattern,
-                         IMultiDiGraph const &graph,
-                         F const &additional_criterion) {
+find_pattern_matches(IOpenMultiDiGraphView const &pattern,
+                     IMultiDiGraph const &graph,
+                     F const &additional_criterion) {
   std::unordered_set<DiGraphPatternMatch> matches;
   if (is_singleton_pattern(pattern)) {
     for (Node const &graph_node : get_nodes(graph)) {

@@ -45,19 +45,11 @@ ReduceParams Reduce::get_params() const {
   return params;
 }
 
-Tensor FFModel::reduce_sum(OperatorType op,
-                           const Tensor input,
-                           std::vector<int> const &_axes,
-                           bool keepdims,
+Tensor FFModel::reduce_sum(OperatorType op, const Tensor input,
+                           std::vector<int> const &_axes, bool keepdims,
                            char const *name) {
-  Layer *rd = new Layer(this,
-                        op,
-                        DT_FLOAT,
-                        name,
-                        1 /*input*/,
-                        0 /*weights*/,
-                        1 /*outputs*/,
-                        input);
+  Layer *rd = new Layer(this, op, DT_FLOAT, name, 1 /*input*/, 0 /*weights*/,
+                        1 /*outputs*/, input);
   // Use Legion indexing to store axes
   std::vector<int> axes;
   for (size_t i = 0; i < _axes.size(); i++) {
@@ -87,62 +79,46 @@ Tensor FFModel::reduce_sum(OperatorType op,
     }
     assert(numdim + axes.size() == input->num_dims);
   }
-  rd->outputs[0] = create_tensor_legion_ordering(
-      numdim, dims, input->data_type, rd, 0, true /*create_grad*/);
+  rd->outputs[0] = create_tensor_legion_ordering(numdim, dims, input->data_type,
+                                                 rd, 0, true /*create_grad*/);
   rd->add_int_vector_property("legion_axes", axes);
   rd->add_int_property("keepdims", keepdims);
   layers.push_back(rd);
   return rd->outputs[0];
 }
 
-Tensor FFModel::reduce_sum(const Tensor input,
-                           std::vector<int> const &_axes,
-                           bool keepdims,
-                           char const *name) {
+Tensor FFModel::reduce_sum(const Tensor input, std::vector<int> const &_axes,
+                           bool keepdims, char const *name) {
   return this->reduce(OP_REDUCE_SUM, input, _axes, keepdims, name);
 }
 
-Tensor FFModel::reduce_mean(const Tensor input,
-                            std::vector<int> const &_axes,
-                            bool keepdims,
-                            char const *name) {
+Tensor FFModel::reduce_mean(const Tensor input, std::vector<int> const &_axes,
+                            bool keepdims, char const *name) {
   return this->reduce(OP_REDUCE_MEAN, input, _axes, keepdims, name);
 }
 
 Op *Reduce::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   std::vector<int> axes;
   long long value;
   layer->get_int_vector_property("legion_axes", axes);
   layer->get_int_property("keepdims", value);
   bool keepdims = value;
-  return new Reduce(
-      model, layer->op_type, inputs[0], axes, keepdims, layer->name);
+  return new Reduce(model, layer->op_type, inputs[0], axes, keepdims,
+                    layer->name);
 }
 
-Reduce::Reduce(FFModel &model,
-               ReduceParams const &params,
-               const ParallelTensor input,
-               char const *name)
+Reduce::Reduce(FFModel &model, ReduceParams const &params,
+               const ParallelTensor input, char const *name)
     : Reduce(model, params.op_type, input, params.axes, params.keepdims, name) {
 }
 
-Reduce::Reduce(FFModel &model,
-               OperatorType _op_type,
-               const ParallelTensor input,
-               std::vector<int> const &_axes,
-               bool _keepdims,
-               char const *name)
-    : Op(model,
-         _op_type,
-         input->data_type,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         input),
+Reduce::Reduce(FFModel &model, OperatorType _op_type,
+               const ParallelTensor input, std::vector<int> const &_axes,
+               bool _keepdims, char const *name)
+    : Op(model, _op_type, input->data_type, name, 1 /*inputs*/, 0 /*weights*/,
+         1 /*outputs*/, input),
       num_axes(_axes.size()), keepdims(_keepdims) {
   for (size_t i = 0; i < num_axes; i++) {
     axes[i] = _axes[i];
@@ -188,25 +164,17 @@ void Reduce::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(REDUCE_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Reduce)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REDUCE_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Reduce)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -215,8 +183,7 @@ void Reduce::init(FFModel const &ff) {
 
 PerDeviceOpState *Reduce::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+                                    Context ctx, Runtime *runtime) {
   Reduce *rd = (Reduce *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -232,33 +199,24 @@ void Reduce::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(REDUCE_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(nullptr, false),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REDUCE_FWD_TASK_ID, parallel_is,
+                         TaskArgument(nullptr, false), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Reduce::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                          Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   ReduceMeta const *m = *((ReduceMeta **)task->local_args);
@@ -275,35 +233,26 @@ void Reduce::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(REDUCE_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(nullptr, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(REDUCE_BWD_TASK_ID, parallel_is,
+                         TaskArgument(nullptr, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // regions[0](I): output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Reduce::backward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                           Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   ReduceMeta const *m = *((ReduceMeta **)task->local_args);
@@ -314,8 +263,7 @@ void Reduce::backward_task(Task const *task,
   backward_kernel_wrapper(m, output_grad, input_grad);
 }
 
-bool Reduce::measure_operator_cost(Simulator *sim,
-                                   MachineView const &mv,
+bool Reduce::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -329,14 +277,14 @@ bool Reduce::measure_operator_cost(Simulator *sim,
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorR input_acc(
-      inputs[0]->data_type, sub_input.get_domain(), input_ptr);
+  GenericTensorAccessorR input_acc(inputs[0]->data_type, sub_input.get_domain(),
+                                   input_ptr);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorW output_acc(
-      outputs[0]->data_type, sub_output.get_domain(), output_ptr);
+  GenericTensorAccessorW output_acc(outputs[0]->data_type,
+                                    sub_output.get_domain(), output_ptr);
 
   assert(m->profiling == false);
 
@@ -368,12 +316,9 @@ bool Reduce::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure Reduce] name(%s) forward_time(%.4lf) "
            "backward_time(%.4lf)\n",
-           name,
-           cost_metrics.forward_time,
-           cost_metrics.backward_time);
+           name, cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    printf("[Measure Reduce] name(%s) forward_time(%.4lf)\n",
-           name,
+    printf("[Measure Reduce] name(%s) forward_time(%.4lf)\n", name,
            cost_metrics.forward_time);
   }
 
@@ -391,10 +336,8 @@ void Reduce::serialize(Legion::Serializer &sez) const {
 }
 
 using PCG::Node;
-Node Reduce::deserialize(FFModel &ff,
-                         Legion::Deserializer &dez,
-                         ParallelTensor inputs[],
-                         int num_inputs) {
+Node Reduce::deserialize(FFModel &ff, Legion::Deserializer &dez,
+                         ParallelTensor inputs[], int num_inputs) {
   assert(num_inputs == 1);
   OperatorType op_type;
   size_t axes_size;
@@ -411,8 +354,7 @@ Node Reduce::deserialize(FFModel &ff,
   return ff.get_or_create_node<Reduce>(inputs[0], {axes, op_type, keepdims});
 }
 
-Op *Reduce::materialize(FFModel &ff,
-                        ParallelTensor inputs[],
+Op *Reduce::materialize(FFModel &ff, ParallelTensor inputs[],
                         int num_inputs) const {
   ReduceParams params = get_params();
   return new Reduce(ff, params, inputs[0], this->name);

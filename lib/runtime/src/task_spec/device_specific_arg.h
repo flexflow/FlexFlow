@@ -7,14 +7,12 @@
 
 namespace FlexFlow {
 
-template <typename T>
-struct DeviceSpecificArg {
+template <typename T> struct DeviceSpecificArg {
   T *get(TaskArgumentAccessor const &accessor) const {
     if (accessor.get_device_idx() != this->device_idx) {
       throw mk_runtime_error("Invalid access to DeviceSpecificArg: attempted "
                              "device_idx {} != correct device_idx {})",
-                             accessor.get_device_idx(),
-                             this->device_idx);
+                             accessor.get_device_idx(), this->device_idx);
     }
   }
 

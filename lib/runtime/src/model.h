@@ -41,31 +41,24 @@ MachineView get_basic_data_parallel_machine_view(MachineSpecification const &);
 class FFModel {
 public:
   FFModel() = delete;
-  FFModel(FFConfig const &,
-          ComputationGraph const &,
-          TrainingPCG const &,
-          Optimizer const &,
-          RuntimeBacking const &,
-          EnableProfiling const &,
-          SimEnvFactory const &,
-          TensorMapping const &);
+  FFModel(FFConfig const &, ComputationGraph const &, TrainingPCG const &,
+          Optimizer const &, RuntimeBacking const &, EnableProfiling const &,
+          SimEnvFactory const &, TensorMapping const &);
 
   TaskReturnAccessor execute(operator_guid_t, OpTaskInvocation const &) const;
   std::vector<TaskReturnAccessor>
-      execute(std::vector<TaskInvocation> const &) const;
+  execute(std::vector<TaskInvocation> const &) const;
   TaskReturnAccessor execute(TaskInvocation const &) const;
   TaskReturnAccessor execute(ExecutableTaskInvocation const &) const;
   std::vector<TaskReturnAccessor>
-      execute(std::vector<ExecutableTaskInvocation> const &) const;
+  execute(std::vector<ExecutableTaskInvocation> const &) const;
 
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
-  void compile(LossFunction loss_type,
-               std::vector<Metric> const &metrics,
+  void compile(LossFunction loss_type, std::vector<Metric> const &metrics,
                ComputationMode comp_mode = ComputationMode::TRAINING);
-  void compile(Optimizer const &optimizer,
-               LossFunction loss_type,
+  void compile(Optimizer const &optimizer, LossFunction loss_type,
                std::vector<Metric> const &metrics,
                ComputationMode comp_mode = ComputationMode::TRAINING);
 
@@ -107,8 +100,7 @@ TypedFuture<PerfMetrics> compute_metrics(FFModel const &);
 void recompile_on_condition(FFModel const &, RecompileState &r);
 template <typename T>
 void set_tensor(FFModel const &, TensorDims const &, T const *);
-template <typename T>
-void get_tensor(FFModel const &, tensor_guid_t, T *data);
+template <typename T> void get_tensor(FFModel const &, tensor_guid_t, T *data);
 
 ExecutableTaskInvocation resolve(TaskInvocation const &,
                                  EnableProfiling enable_profiling,
@@ -116,13 +108,11 @@ ExecutableTaskInvocation resolve(TaskInvocation const &,
 
 void top_level_task(Legion::Task const *task,
                     std::vector<Legion::PhysicalRegion> const &regions,
-                    Legion::Context ctx,
-                    Legion::Runtime *runtime);
+                    Legion::Context ctx, Legion::Runtime *runtime);
 
 void data_load_task(Legion::Task const *task,
                     std::vector<Legion::PhysicalRegion> const &regions,
-                    Legion::Context ctx,
-                    Legion::Runtime *runtime);
+                    Legion::Context ctx, Legion::Runtime *runtime);
 
 void register_custom_tasks();
 

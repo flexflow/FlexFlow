@@ -79,11 +79,9 @@ DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 struct TaskArgumentAccessor {
   TaskArgumentAccessor(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+                       Legion::Context ctx, Legion::Runtime *runtime);
 
-  template <typename T>
-  T const &get_argument(slot_id slot) const {
+  template <typename T> T const &get_argument(slot_id slot) const {
     TaskArgumentFormat arg_fmt = this->args_fmt.args.at(slot);
     std::type_index actual_type = arg_fmt.type;
     std::type_index requested_type = {typeid(T)};
@@ -91,8 +89,7 @@ struct TaskArgumentAccessor {
     if (actual_type != requested_type) {
       throw mk_runtime_error(
           "Type mismatch in argument access (\"{}\" != \"{}\")",
-          actual_type.name(),
-          requested_type.name());
+          actual_type.name(), requested_type.name());
     }
 
     void *start_ptr = &((std::uint8_t *)this->task->args)[arg_fmt.start];
@@ -101,30 +98,23 @@ struct TaskArgumentAccessor {
     return ff_task_deserialize<T>(dez);
   }
 
-  template <typename T>
-  optional<T> get_optional_argument(slot_id) const;
+  template <typename T> optional<T> get_optional_argument(slot_id) const;
 
-  template <typename T>
-  std::vector<T> get_variadic_argument(slot_id) const;
+  template <typename T> std::vector<T> get_variadic_argument(slot_id) const;
 
   template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV>
-      get_generic_accessor(region_idx_t const &idx) const {
+  get_generic_accessor(region_idx_t const &idx) const {
     auto tensor_privs = get_permissions(this->args_fmt, idx);
     if (tensor_privs != PRIV) {
       throw mk_runtime_error(
-          "Privilege mismatch while accessing tensor: {} != {}",
-          tensor_privs,
+          "Privilege mismatch while accessing tensor: {} != {}", tensor_privs,
           PRIV);
     }
 
     return helperGetGenericTensorAccessor<PRIV>(
-        get_datatype(this->args_fmt, idx),
-        regions[idx.value()],
-        task->regions[idx.value()],
-        FID_DATA,
-        ctx,
-        runtime);
+        get_datatype(this->args_fmt, idx), regions[idx.value()],
+        task->regions[idx.value()], FID_DATA, ctx, runtime);
   }
 
   template <Permissions PRIV>
@@ -142,7 +132,7 @@ struct TaskArgumentAccessor {
 
   template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>>
-      get_variadic_tensor(slot_id slot) const {
+  get_variadic_tensor(slot_id slot) const {
     std::vector<privilege_mode_to_accessor<PRIV>> result;
 
     auto argument_format =
@@ -156,7 +146,7 @@ struct TaskArgumentAccessor {
 
   template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>>
-      get_variadic_tensor_grad(slot_id slot) const {
+  get_variadic_tensor_grad(slot_id slot) const {
     return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES);
   }
 

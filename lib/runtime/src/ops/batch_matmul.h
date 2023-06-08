@@ -8,12 +8,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<BATCHMATMUL_INIT_TASK_ID>();
-template <>
-void register_task<BATCHMATMUL_FWD_TASK_ID>();
-template <>
-void register_task<BATCHMATMUL_BWD_TASK_ID>();
+template <> void register_task<BATCHMATMUL_INIT_TASK_ID>();
+template <> void register_task<BATCHMATMUL_FWD_TASK_ID>();
+template <> void register_task<BATCHMATMUL_BWD_TASK_ID>();
 
 OpTaskInvocation init(BatchMatmulAttrs const &);
 OpTaskInvocation forward(BatchMatmulAttrs const &);

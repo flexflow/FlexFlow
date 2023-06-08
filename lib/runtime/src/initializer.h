@@ -28,21 +28,15 @@ namespace FlexFlow {
 
 struct parallel_tensor_guid_t;
 
-template <>
-void register_task<GLOROT_INIT_TASK_ID>();
-template <>
-void register_task<ZERO_INIT_TASK_ID>();
-template <>
-void register_task<UNIFORM_INIT_TASK_ID>();
-template <>
-void register_task<NORMAL_INIT_TASK_ID>();
-template <>
-void register_task<CONSTANT_INIT_TASK_ID>();
+template <> void register_task<GLOROT_INIT_TASK_ID>();
+template <> void register_task<ZERO_INIT_TASK_ID>();
+template <> void register_task<UNIFORM_INIT_TASK_ID>();
+template <> void register_task<NORMAL_INIT_TASK_ID>();
+template <> void register_task<CONSTANT_INIT_TASK_ID>();
 
 TaskInvocation apply_initializer(GlorotUniform const &,
                                  parallel_tensor_guid_t const &,
-                                 ParallelTensor const &,
-                                 TensorShape const &);
+                                 ParallelTensor const &, TensorShape const &);
 TaskInvocation apply_initializer(ZeroInitializer const &,
                                  parallel_tensor_guid_t const &,
                                  ParallelTensor const &);

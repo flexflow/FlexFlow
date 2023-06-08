@@ -7,12 +7,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<REDUCE_INIT_TASK_ID>();
-template <>
-void register_task<REDUCE_FWD_TASK_ID>();
-template <>
-void register_task<REDUCE_BWD_TASK_ID>();
+template <> void register_task<REDUCE_INIT_TASK_ID>();
+template <> void register_task<REDUCE_FWD_TASK_ID>();
+template <> void register_task<REDUCE_BWD_TASK_ID>();
 
 OpTaskInvocation init(ReduceAttrs const &);
 OpTaskInvocation forward(ReduceAttrs const &);

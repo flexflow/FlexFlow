@@ -18,8 +18,8 @@ public:
 };
 
 template <typename F, typename... Ts>
-optional<float>
-    profiling_wrapper(F const &f, bool enable_profiling, Ts &&...ts) {
+optional<float> profiling_wrapper(F const &f, bool enable_profiling,
+                                  Ts &&...ts) {
   if (enable_profiling) {
     ProfilingSettings settings = {0, 1};
     return profiling_wrapper<F, Ts...>(f, settings, std::forward<Ts>(ts)...);
@@ -32,8 +32,7 @@ optional<float>
 }
 
 template <typename F, typename... Ts>
-optional<float> profiling_wrapper(F const &f,
-                                  ProfilingSettings const &settings,
+optional<float> profiling_wrapper(F const &f, ProfilingSettings const &settings,
                                   Ts &&...ts) {
   ffStream_t stream;
   checkCUDA(get_legion_stream(&stream));

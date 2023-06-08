@@ -30,73 +30,52 @@ namespace TopK {
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
 
-template <typename T>
-struct Entry {
+template <typename T> struct Entry {
   int index;
   T value;
 };
 
-template <typename T>
-struct LinearData {
+template <typename T> struct LinearData {
   typedef Entry<T> Entry;
 
-  __device__ Entry &operator[](std::size_t index) const {
-    return data[index];
-  }
+  __device__ Entry &operator[](std::size_t index) const { return data[index]; }
 
-  __device__ int get_index(int i) const {
-    return data[i].index;
-  }
-  __device__ T get_value(int i) const {
-    return data[i].value;
-  }
+  __device__ int get_index(int i) const { return data[i].index; }
+  __device__ T get_value(int i) const { return data[i].value; }
 
   Entry *const data;
 };
 
-template <typename T>
-struct IndirectLinearData {
+template <typename T> struct IndirectLinearData {
   typedef Entry<T> Entry;
 
-  __device__ Entry &operator[](std::size_t index) const {
-    return data[index];
-  }
+  __device__ Entry &operator[](std::size_t index) const { return data[index]; }
 
   __device__ int get_index(int i) const {
     return backing_data[data[i].index].index;
   }
-  __device__ T get_value(int i) const {
-    return data[i].value;
-  }
+  __device__ T get_value(int i) const { return data[i].value; }
 
   Entry *const data;
   Entry *const backing_data;
 };
 
-template <typename T>
-struct StridedData {
+template <typename T> struct StridedData {
   typedef Entry<T> Entry;
 
   __device__ Entry &operator[](std::size_t index) const {
     return data[index * blockDim.x + threadIdx.x];
   }
 
-  __device__ int get_index(int i) const {
-    return (*this)[i].index;
-  }
-  __device__ T get_value(int i) const {
-    return (*this)[i].value;
-  }
+  __device__ int get_index(int i) const { return (*this)[i].index; }
+  __device__ T get_value(int i) const { return (*this)[i].value; }
 
   Entry *const data;
 };
 
 // A heap of Entry<T> that can either work as a min-heap or as a max-heap.
-template <HeapType heapType,
-          PreferIndices preferIndices,
-          template <typename>
-          class Data,
-          typename T>
+template <HeapType heapType, PreferIndices preferIndices,
+          template <typename> class Data, typename T>
 struct IndexedHeap {
   typedef typename Data<T>::Entry Entry;
   Data<T> const data;
@@ -119,9 +98,7 @@ struct IndexedHeap {
     }
   }
 
-  __device__ void assign(int i, Entry const &entry) {
-    data[i] = entry;
-  }
+  __device__ void assign(int i, Entry const &entry) { data[i] = entry; }
 
   __device__ void push_up(int i) {
     int child = i;
@@ -142,9 +119,7 @@ struct IndexedHeap {
     data[a] = tmp;
   }
 
-  __device__ void push_root_down(int k) {
-    push_down(0, k);
-  }
+  __device__ void push_root_down(int k) { push_down(0, k); }
 
   // MAX-HEAPIFY in Cormen
   __device__ void push_down(int node, int k) {
@@ -195,18 +170,13 @@ struct IndexedHeap {
     push_root_down(k);
   }
 
-  __device__ Entry const &root() {
-    return data[0];
-  }
+  __device__ Entry const &root() { return data[0]; }
 };
 
-template <HeapType heapType,
-          PreferIndices preferIndices,
-          template <typename>
-          class Data,
-          typename T>
+template <HeapType heapType, PreferIndices preferIndices,
+          template <typename> class Data, typename T>
 __device__ IndexedHeap<heapType, preferIndices, Data, T>
-    make_indexed_heap(typename Data<T>::Entry *data) {
+make_indexed_heap(typename Data<T>::Entry *data) {
   return IndexedHeap<heapType, preferIndices, Data, T>{Data<T>{data}};
 }
 
@@ -216,12 +186,9 @@ __device__ IndexedHeap<heapType, preferIndices, Data, T>
 // access elements in `heap_entries`. If sorted=true, the elements will be
 // sorted at the end.
 template <typename T, template <typename> class Data = LinearData>
-__device__ void heapTopK(T const *__restrict__ input,
-                         int length,
-                         int k,
+__device__ void heapTopK(T const *__restrict__ input, int length, int k,
                          Entry<T> *__restrict__ heap_entries,
-                         bool sorted = false,
-                         int start_index = 0,
+                         bool sorted = false, int start_index = 0,
                          int step_size = 1) {
   assert(k <= length);
 
@@ -266,11 +233,9 @@ __device__ void heapTopK(T const *__restrict__ input,
 // to top_k_indices.
 // `top_k_heap` is used as temporary storage for the merge heap.
 template <typename T>
-__device__ void mergeShards(int num_shards,
-                            int k,
+__device__ void mergeShards(int num_shards, int k,
                             Entry<T> *__restrict__ entries,
-                            Entry<T> *__restrict__ top_k_heap,
-                            T *top_k_values,
+                            Entry<T> *__restrict__ top_k_heap, T *top_k_values,
                             int *top_k_indices) {
   // If k < num_shards, we can use a min-heap with k elements to get the top k
   // of the sorted blocks.
@@ -280,10 +245,9 @@ __device__ void mergeShards(int num_shards,
 
   // Min-heap part.
   {
-    auto min_heap = IndexedHeap<HeapType::kMinHeap,
-                                PreferIndices::kHigher,
-                                IndirectLinearData,
-                                T>{IndirectLinearData<T>{top_k_heap, entries}};
+    auto min_heap = IndexedHeap<HeapType::kMinHeap, PreferIndices::kHigher,
+                                IndirectLinearData, T>{
+        IndirectLinearData<T>{top_k_heap, entries}};
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
       min_heap.assign(slot, {slot, entries[slot].value});
@@ -309,10 +273,9 @@ __device__ void mergeShards(int num_shards,
   // Max-part.
   {
     // Turn the min-heap into a max-heap in-place.
-    auto max_heap = IndexedHeap<HeapType::kMaxHeap,
-                                PreferIndices::kLower,
-                                IndirectLinearData,
-                                T>{IndirectLinearData<T>{top_k_heap, entries}};
+    auto max_heap = IndexedHeap<HeapType::kMaxHeap, PreferIndices::kLower,
+                                IndirectLinearData, T>{
+        IndirectLinearData<T>{top_k_heap, entries}};
     // Heapify into a max heap.
     max_heap.build(heap_size);
 
@@ -341,11 +304,8 @@ __device__ void mergeShards(int num_shards,
 
 template <typename T>
 __global__ void topk_forward_kernel(T const *__restrict__ input,
-                                    size_t shared_memory_size,
-                                    int length,
-                                    int k,
-                                    bool sorted,
-                                    T *__restrict__ output,
+                                    size_t shared_memory_size, int length,
+                                    int k, bool sorted, T *__restrict__ output,
                                     int *__restrict__ indices) {
   __shared__ char shared_memory[48 << 10];
   int const batch_index = blockIdx.x;
@@ -353,32 +313,22 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
   int const thread_index = threadIdx.x;
   int const thread_count = blockDim.x;
   Entry<T> *shared_entries = (Entry<T> *)shared_memory;
-  heapTopK<T, StridedData>(
-      batch_input, length, k, shared_entries, true, thread_index, thread_count);
+  heapTopK<T, StridedData>(batch_input, length, k, shared_entries, true,
+                           thread_index, thread_count);
   __syncthreads();
   if (thread_index == 0) {
     int const offset = batch_index * k;
     auto batch_output = output + offset;
     auto batch_indices = indices + offset;
     Entry<T> *top_k_heap = shared_entries + thread_count * k;
-    mergeShards(thread_count,
-                k,
-                shared_entries,
-                top_k_heap,
-                batch_output,
+    mergeShards(thread_count, k, shared_entries, top_k_heap, batch_output,
                 batch_indices);
   }
 }
 
-void forward_kernel(hipStream_t stream,
-                    TopKPerDeviceState const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    int *indices_ptr,
-                    size_t batch_size,
-                    int length,
-                    int k,
-                    bool sorted) {
+void forward_kernel(hipStream_t stream, TopKPerDeviceState const *m,
+                    float const *input_ptr, float *output_ptr, int *indices_ptr,
+                    size_t batch_size, int length, int k, bool sorted) {
   // Adopted from TensorFlow's TopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
@@ -398,27 +348,16 @@ void forward_kernel(hipStream_t stream,
   size_t num_blocks = batch_size;
   assert(num_shards >= (size_t)k);
   num_shards = k;
-  hipLaunchKernelGGL(topk_forward_kernel,
-                     num_blocks,
-                     num_shards,
-                     0,
-                     stream,
-                     input_ptr,
-                     shared_memory_size,
-                     length,
-                     k,
-                     sorted,
-                     output_ptr,
-                     indices_ptr);
+  hipLaunchKernelGGL(topk_forward_kernel, num_blocks, num_shards, 0, stream,
+                     input_ptr, shared_memory_size, length, k, sorted,
+                     output_ptr, indices_ptr);
 }
 
 template <typename T>
 __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
                                      int const *__restrict__ indices_ptr,
                                      T *__restrict__ in_grad_ptr,
-                                     size_t batch_size,
-                                     int length,
-                                     int k) {
+                                     size_t batch_size, int length, int k) {
   coord_t size = (coord_t)batch_size * k;
   CUDA_KERNEL_LOOP(i, size) {
     coord_t batch_idx = i / k;
@@ -427,25 +366,12 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
   }
 }
 
-void backward_kernel(hipStream_t stream,
-                     TopKPerDeviceState const *m,
-                     float const *value_grad_ptr,
-                     int const *indices_ptr,
-                     float *in_grad_ptr,
-                     size_t batch_size,
-                     int length,
-                     int k) {
-  hipLaunchKernelGGL(topk_backward_kernel,
-                     GET_BLOCKS(batch_size * k),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     value_grad_ptr,
-                     indices_ptr,
-                     in_grad_ptr,
-                     batch_size,
-                     length,
-                     k);
+void backward_kernel(hipStream_t stream, TopKPerDeviceState const *m,
+                     float const *value_grad_ptr, int const *indices_ptr,
+                     float *in_grad_ptr, size_t batch_size, int length, int k) {
+  hipLaunchKernelGGL(topk_backward_kernel, GET_BLOCKS(batch_size * k),
+                     CUDA_NUM_THREADS, 0, stream, value_grad_ptr, indices_ptr,
+                     in_grad_ptr, batch_size, length, k);
 }
 
 } // namespace TopK

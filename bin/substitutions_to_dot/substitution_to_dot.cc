@@ -59,26 +59,26 @@ int main(int argc, char **argv) {
   auto label_map = [](std::string const &name, Node const &n) {
     std::string color;
     switch (std::get<0>(n)) {
-      case NodeType::SRC_INPUT_TENSOR:
-        color = "green";
-        break;
-      case NodeType::DST_INPUT_TENSOR:
-        color = "brown";
-        break;
-      case NodeType::SRC:
-        color = "blue";
-        break;
-      case NodeType::DST:
-        color = "red";
-        break;
-      case NodeType::SRC_OUTPUT_TENSOR:
-        color = "yellow";
-        break;
-      case NodeType::DST_OUTPUT_TENSOR:
-        color = "purple";
-        break;
-      default:
-        assert(false);
+    case NodeType::SRC_INPUT_TENSOR:
+      color = "green";
+      break;
+    case NodeType::DST_INPUT_TENSOR:
+      color = "brown";
+      break;
+    case NodeType::SRC:
+      color = "blue";
+      break;
+    case NodeType::DST:
+      color = "red";
+      break;
+    case NodeType::SRC_OUTPUT_TENSOR:
+      color = "yellow";
+      break;
+    case NodeType::DST_OUTPUT_TENSOR:
+      color = "purple";
+      break;
+    default:
+      assert(false);
     }
     std::map<std::string, std::string> m{{"color", color}, {"label", name}};
     return m;

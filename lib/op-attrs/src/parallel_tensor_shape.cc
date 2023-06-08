@@ -33,8 +33,6 @@ bool is_valid(ParallelTensorDims const &dims) {
   return all_of(dims, [](ParallelDim const &d) { return is_valid(d); });
 }
 
-bool is_valid(ParallelTensorShape const &shape) {
-  return is_valid(shape.dims);
-}
+bool is_valid(ParallelTensorShape const &shape) { return is_valid(shape.dims); }
 
 } // namespace FlexFlow

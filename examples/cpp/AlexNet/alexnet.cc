@@ -39,8 +39,7 @@ void parse_input_args(char **argv, int argc, AlexNetConfig &config) {
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+                              Context ctx, Runtime *runtime) {
   FFConfig ffConfig;
   AlexNetConfig alexnetConfig;
   {
@@ -49,8 +48,7 @@ void FlexFlow::top_level_task(Task const *task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, alexnetConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                  ffConfig.batchSize,
-                  ffConfig.workersPerNode,
+                  ffConfig.batchSize, ffConfig.workersPerNode,
                   ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
@@ -132,8 +130,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
-         run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          data_loader.num_samples * ffConfig.epochs / run_time);
 }
 
@@ -148,10 +145,8 @@ size_t get_file_size(std::string const &filename) {
   return filesize;
 }
 
-DataLoader::DataLoader(FFModel &ff,
-                       AlexNetConfig const *alexnet,
-                       ParallelTensor input,
-                       ParallelTensor label) {
+DataLoader::DataLoader(FFModel &ff, AlexNetConfig const *alexnet,
+                       ParallelTensor input, ParallelTensor label) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   num_samples = 0;
@@ -207,18 +202,14 @@ DataLoader::DataLoader(FFModel &ff,
   TaskLauncher launcher(FlexFlow::CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(alexnet, sizeof(AlexNetConfig)));
   // regions[0]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_input->region, WRITE_ONLY, EXCLUSIVE,
+                        full_input->region, MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
-  launcher.add_region_requirement(RegionRequirement(full_label->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_label->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_label->region, WRITE_ONLY, EXCLUSIVE,
+                        full_label->region, MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
   reset();
@@ -229,14 +220,9 @@ __inline__ int calc_offset(int c, int y, int x, int yscale, int xscale) {
   return (c * yscale * xscale + y * xscale + x);
 }
 
-void nearest_neigh(unsigned char *image,
-                   unsigned char *buffer,
-                   int height,
-                   int width,
-                   int orig_height,
-                   int orig_width,
-                   float height_scale,
-                   float width_scale) {
+void nearest_neigh(unsigned char *image, unsigned char *buffer, int height,
+                   int width, int orig_height, int orig_width,
+                   float height_scale, float width_scale) {
   for (int y = 0; y < height; y++) {
     int y0 =
         std::min(static_cast<int>(roundf(y * height_scale)), orig_height - 1);
@@ -254,8 +240,7 @@ void nearest_neigh(unsigned char *image,
 
 void DataLoader::load_entire_dataset(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+                                     Context ctx, Runtime *runtime) {
   AlexNetConfig const *alexnet = (AlexNetConfig *)task->args;
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
@@ -278,8 +263,8 @@ void DataLoader::load_entire_dataset(Task const *task,
     }
     return;
   }
-  log_app.print(
-      "Start loading %d samples from %s\n", num_samples, alexnet->dataset_path);
+  log_app.print("Start loading %d samples from %s\n", num_samples,
+                alexnet->dataset_path);
   int height = rect_input.hi[1] - rect_input.lo[1] + 1;
   int width = rect_input.hi[0] - rect_input.lo[0] + 1;
   int origHeight = 32;
@@ -296,14 +281,8 @@ void DataLoader::load_entire_dataset(Task const *task,
       log_app.print("Loaded %ld samples", i + 1);
     }
     label_ptr[i] = buffer[0];
-    nearest_neigh(image,
-                  buffer + 1,
-                  height,
-                  width,
-                  origHeight,
-                  origWidth,
-                  heightScale,
-                  widthScale);
+    nearest_neigh(image, buffer + 1, height, width, origHeight, origWidth,
+                  heightScale, widthScale);
     off_t input_offset = i * 3 * height * width;
     off_t image_offset = 0;
     for (off_t h = 0; h < 3 * height * width; h++) {
@@ -311,8 +290,7 @@ void DataLoader::load_entire_dataset(Task const *task,
           static_cast<float>(image[image_offset++]) / 255;
     }
   }
-  log_app.print("Finish loading %d samples from %s\n",
-                num_samples,
+  log_app.print("Finish loading %d samples from %s\n", num_samples,
                 alexnet->dataset_path);
   fclose(file);
 }
@@ -336,25 +314,16 @@ void DataLoader::next_batch(FFModel &ff) {
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_1,
-                           batch_input->parallel_is,
-                           TaskArgument(NULL, 0),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
-                           batch_input->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(full_input->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_input->region,
-                                                      MAP_TO_ZC_MEMORY));
+                           batch_input->parallel_is, TaskArgument(NULL, 0),
+                           argmap, Predicate::TRUE_PRED, false /*must*/,
+                           0 /*mapper_id*/, batch_input->machine_view.hash());
+    launcher.add_region_requirement(
+        RegionRequirement(full_input->region, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, full_input->region, MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_input->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_input->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -374,34 +343,23 @@ void DataLoader::next_batch(FFModel &ff) {
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2,
-                           batch_label->parallel_is,
-                           TaskArgument(NULL, 0),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
-                           batch_label->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(full_label->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_label->region,
-                                                      MAP_TO_ZC_MEMORY));
+                           batch_label->parallel_is, TaskArgument(NULL, 0),
+                           argmap, Predicate::TRUE_PRED, false /*must*/,
+                           0 /*mapper_id*/, batch_label->machine_view.hash());
+    launcher.add_region_requirement(
+        RegionRequirement(full_label->region, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, full_label->region, MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_label->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_label->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   next_index += ff.config.batchSize;
 }
 
-void DataLoader::reset() {
-  next_index = 0;
-}
+void DataLoader::reset() { next_index = 0; }
 
 void FlexFlow::register_custom_tasks() {
   // Load entire dataset

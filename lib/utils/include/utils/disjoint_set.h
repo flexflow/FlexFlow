@@ -8,8 +8,7 @@
 
 namespace FlexFlow {
 
-template <typename T>
-class m_disjoint_set {
+template <typename T> class m_disjoint_set {
 public:
   void m_union(T const *l, T const *r) {
     this->add_node_if_missing(l);
@@ -39,8 +38,7 @@ private:
   std::unordered_map<T const *, T const *> mapping;
 };
 
-template <typename T, typename Compare = std::less<T>>
-class disjoint_set {
+template <typename T, typename Compare = std::less<T>> class disjoint_set {
 public:
   void m_union(T const &l, T const &r) {
     this->nodes.insert(l);

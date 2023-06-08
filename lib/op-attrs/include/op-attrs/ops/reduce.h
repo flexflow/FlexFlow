@@ -11,8 +11,7 @@ namespace FlexFlow {
 
 struct ReduceAttrs : public use_visitable_cmp<ReduceAttrs> {
 public:
-  ReduceAttrs(stack_vector<ff_dim_t, MAX_TENSOR_DIM> const &axes,
-              Op op_type,
+  ReduceAttrs(stack_vector<ff_dim_t, MAX_TENSOR_DIM> const &axes, Op op_type,
               bool keepdims);
 
 public:

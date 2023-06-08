@@ -15,16 +15,14 @@ using GenericTaskLauncher =
     variant<Legion::TaskLauncher, Legion::IndexTaskLauncher>;
 
 TaskArgumentsFormat
-    create_serializable_format(ConcreteArgsFormat const &,
-                               FutureArgsFormat const &,
-                               optional<TensorArgsFormat> const & = nullopt,
-                               optional<IndexArgsFormat> const & = nullopt);
+create_serializable_format(ConcreteArgsFormat const &, FutureArgsFormat const &,
+                           optional<TensorArgsFormat> const & = nullopt,
+                           optional<IndexArgsFormat> const & = nullopt);
 
 Legion::TaskArgument
-    as_task_argument(ConcreteArgsFormat const &,
-                     FutureArgsFormat const &,
-                     optional<TensorArgsFormat> const & = nullopt,
-                     optional<IndexArgsFormat> const & = nullopt);
+as_task_argument(ConcreteArgsFormat const &, FutureArgsFormat const &,
+                 optional<TensorArgsFormat> const & = nullopt,
+                 optional<IndexArgsFormat> const & = nullopt);
 
 Legion::ArgumentMap as_argument_map(IndexArgsFormat const &);
 void add_futures(GenericTaskLauncher const &, FutureArgsFormat const &);
@@ -36,15 +34,12 @@ Legion::FutureMap execute_task(Legion::IndexTaskLauncher const &,
 
 TaskReturnAccessor execute(ExecutableTaskInvocation const &,
                            ParallelComputationGraph const &,
-                           RuntimeBacking const &,
+                           RuntimeBacking const &, EnableProfiling);
+TaskReturnAccessor execute(TensorlessTaskInvocation const &,
+                           TensorArgsFormat const &, RuntimeBacking const &,
                            EnableProfiling);
 TaskReturnAccessor execute(TensorlessTaskInvocation const &,
-                           TensorArgsFormat const &,
-                           RuntimeBacking const &,
-                           EnableProfiling);
-TaskReturnAccessor execute(TensorlessTaskInvocation const &,
-                           RuntimeBacking const &,
-                           EnableProfiling);
+                           RuntimeBacking const &, EnableProfiling);
 
 } // namespace FlexFlow
 

@@ -8,8 +8,7 @@ namespace FlexFlow {
 
 struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
   InputMultiDiEdge() = delete;
-  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const &,
-                   Node const &,
+  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &,
                    std::size_t const &);
 
   std::pair<std::size_t, std::size_t>
@@ -21,8 +20,7 @@ struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
 
 struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
   OutputMultiDiEdge() = delete;
-  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &,
-                    Node const &,
+  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &,
                     std::size_t const &);
 
   std::pair<std::size_t, std::size_t>
@@ -91,7 +89,7 @@ static_assert(is_hashable<OpenMultiDiEdge>::value,
 
 struct IOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<OpenMultiDiEdge>
-      query_edges(OpenMultiDiEdgeQuery const &) const = 0;
+  query_edges(OpenMultiDiEdgeQuery const &) const = 0;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IOpenMultiDiGraphView>::value,
@@ -99,7 +97,7 @@ static_assert(is_rc_copy_virtual_compliant<IOpenMultiDiGraphView>::value,
 
 struct IDownwardOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<DownwardOpenMultiDiEdge>
-      query_edges(DownwardOpenMultiDiEdgeQuery const &) const = 0;
+  query_edges(DownwardOpenMultiDiEdgeQuery const &) const = 0;
 };
 
 static_assert(
@@ -108,7 +106,7 @@ static_assert(
 
 struct IUpwardOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<UpwardOpenMultiDiEdge>
-      query_edges(UpwardOpenMultiDiEdgeQuery const &) const = 0;
+  query_edges(UpwardOpenMultiDiEdgeQuery const &) const = 0;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IUpwardOpenMultiDiGraphView>::value,

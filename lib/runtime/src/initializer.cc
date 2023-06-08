@@ -100,8 +100,7 @@ TaskInvocation apply_initializer(ConstantInitializer const &initializer,
 
 static void glorot_init_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx,
-                             Legion::Runtime *runtime) {
+                             Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<GlorotUniform>(INITIALIZER);
@@ -160,18 +159,16 @@ static void zero_init_task_impl(TaskArgumentAccessor const &acc,
 }
 
 static void
-    zero_init_task_cpu(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime) {
+zero_init_task_cpu(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
+                   Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return zero_init_task_impl(acc, TaskLocation::CPU);
 }
 
 static void zero_init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime) {
+                           Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return zero_init_task_impl(acc, TaskLocation::GPU);
 }
@@ -217,15 +214,14 @@ static void uniform_init_task_impl(TaskArgumentAccessor const &acc) {
   auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<UniformInitializer>(INITIALIZER);
 
-  uniform_init_kernel(
-      tensor, initializer.seed, initializer.min_val, initializer.max_val);
+  uniform_init_kernel(tensor, initializer.seed, initializer.min_val,
+                      initializer.max_val);
 }
 
 static void
-    uniform_init_task(Legion::Task const *task,
-                      std::vector<Legion::PhysicalRegion> const &regions,
-                      Legion::Context ctx,
-                      Legion::Runtime *runtime) {
+uniform_init_task(Legion::Task const *task,
+                  std::vector<Legion::PhysicalRegion> const &regions,
+                  Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return uniform_init_task_impl(acc);
 }
@@ -234,14 +230,13 @@ static void norm_init_task_impl(TaskArgumentAccessor const &acc) {
   auto tensor = acc.get_tensor<Permissions::WO>(TENSOR);
   auto initializer = acc.get_argument<NormInitializer>(INITIALIZER);
 
-  norm_init_kernel(
-      tensor, initializer.seed, initializer.mean, initializer.stddev);
+  norm_init_kernel(tensor, initializer.seed, initializer.mean,
+                   initializer.stddev);
 }
 
 static void norm_init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime) {
+                           Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return norm_init_task_impl(acc);
 }
@@ -255,19 +250,17 @@ static void constant_init_task_impl(TaskArgumentAccessor const &acc,
 }
 
 static void
-    constant_init_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime) {
+constant_init_task(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
+                   Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return constant_init_task_impl(acc, TaskLocation::GPU);
 }
 
 static void
-    constant_init_task_cpu(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime) {
+constant_init_task_cpu(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx, Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return constant_init_task_impl(acc, TaskLocation::CPU);
 }
@@ -380,8 +373,7 @@ static void
 //   }
 // }
 
-template <>
-void register_task<GLOROT_INIT_TASK_ID>() {
+template <> void register_task<GLOROT_INIT_TASK_ID>() {
   TaskSignature sig;
   sig.add_slot(TENSOR, {SlotType::TENSOR, Permissions::WO});
   sig.add_arg_slot<GlorotUniform>(INITIALIZER);
@@ -390,47 +382,38 @@ void register_task<GLOROT_INIT_TASK_ID>() {
   register_task(GLOROT_INIT_TASK_ID, "Glorot Init", sig, glorot_init_task);
 }
 
-template <>
-void register_task<ZERO_INIT_TASK_ID>() {
+template <> void register_task<ZERO_INIT_TASK_ID>() {
   TaskSignature sig;
   sig.add_slot(TENSOR, {SlotType::TENSOR, Permissions::WO});
 
-  register_task(
-      ZERO_INIT_TASK_ID, "Zero Init", sig, zero_init_task, zero_init_task_cpu);
+  register_task(ZERO_INIT_TASK_ID, "Zero Init", sig, zero_init_task,
+                zero_init_task_cpu);
 }
 
-template <>
-void register_task<UNIFORM_INIT_TASK_ID>() {
+template <> void register_task<UNIFORM_INIT_TASK_ID>() {
   TaskSignature sig;
   sig.add_slot(TENSOR, {SlotType::TENSOR, Permissions::WO});
   sig.add_arg_slot<UniformInitializer>(INITIALIZER);
 
-  register_task(UNIFORM_INIT_TASK_ID,
-                "Uniform Distribution Init",
-                sig,
+  register_task(UNIFORM_INIT_TASK_ID, "Uniform Distribution Init", sig,
                 uniform_init_task);
 }
 
-template <>
-void register_task<NORMAL_INIT_TASK_ID>() {
+template <> void register_task<NORMAL_INIT_TASK_ID>() {
   TaskSignature sig;
   sig.add_slot(TENSOR, {SlotType::TENSOR, Permissions::WO});
   sig.add_arg_slot<NormInitializer>(INITIALIZER);
 
-  register_task(
-      NORMAL_INIT_TASK_ID, "Normal Distribution Init", sig, norm_init_task);
+  register_task(NORMAL_INIT_TASK_ID, "Normal Distribution Init", sig,
+                norm_init_task);
 }
 
-template <>
-void register_task<CONSTANT_INIT_TASK_ID>() {
+template <> void register_task<CONSTANT_INIT_TASK_ID>() {
   TaskSignature sig;
   sig.add_slot(TENSOR, {SlotType::TENSOR, Permissions::WO});
   sig.add_arg_slot<ConstantInitializer>(INITIALIZER);
 
-  register_task(CONSTANT_INIT_TASK_ID,
-                "Constant Init",
-                sig,
-                constant_init_task,
+  register_task(CONSTANT_INIT_TASK_ID, "Constant Init", sig, constant_init_task,
                 constant_init_task_cpu);
 }
 

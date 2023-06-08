@@ -20,18 +20,9 @@ namespace FlexFlow {
 namespace Kernels {
 namespace MultiHeadAttention {
 
-void init_kernel(MHAPerDeviceState *m,
-                 int num_samples,
-                 int num_heads,
-                 int qSize,
-                 int kSize,
-                 int vSize,
-                 int qProjSize,
-                 int kProjSize,
-                 int vProjSize,
-                 int oProjSize,
-                 int qoSeqLength,
-                 int kvSeqLength,
+void init_kernel(MHAPerDeviceState *m, int num_samples, int num_heads,
+                 int qSize, int kSize, int vSize, int qProjSize, int kProjSize,
+                 int vProjSize, int oProjSize, int qoSeqLength, int kvSeqLength,
                  bool add_bias_kv) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -59,31 +50,15 @@ void init_kernel(MHAPerDeviceState *m,
   } else {
     math_type = CUDNN_TENSOR_OP_MATH;
   }
-  checkCUDNN(cudnnSetAttnDescriptor(m->attnDesc,
-                                    attnMode,
-                                    num_heads,
-                                    1.0f /*smScalar*/,
-                                    CUDNN_DATA_FLOAT,
-                                    CUDNN_DATA_FLOAT,
-                                    math_type,
-                                    NULL /*attnDropoutDesc*/,
-                                    NULL /*postDropoutDesc*/,
-                                    qSize,
-                                    kSize,
-                                    vSize,
-                                    qProjSize,
-                                    kProjSize,
-                                    vProjSize,
-                                    oProjSize,
-                                    qoSeqLength,
-                                    kvSeqLength,
-                                    num_samples,
-                                    maxBeamSize));
+  checkCUDNN(cudnnSetAttnDescriptor(
+      m->attnDesc, attnMode, num_heads, 1.0f /*smScalar*/, CUDNN_DATA_FLOAT,
+      CUDNN_DATA_FLOAT, math_type, NULL /*attnDropoutDesc*/,
+      NULL /*postDropoutDesc*/, qSize, kSize, vSize, qProjSize, kProjSize,
+      vProjSize, oProjSize, qoSeqLength, kvSeqLength, num_samples,
+      maxBeamSize));
   size_t workSpaceSize;
-  checkCUDNN(cudnnGetMultiHeadAttnBuffers(m->handle.dnn,
-                                          m->attnDesc,
-                                          &m->weightSize,
-                                          &workSpaceSize,
+  checkCUDNN(cudnnGetMultiHeadAttnBuffers(m->handle.dnn, m->attnDesc,
+                                          &m->weightSize, &workSpaceSize,
                                           &m->reserveSpaceSize));
   assert(workSpaceSize <= m->handle.workSpaceSize);
   // printf("weightSize(%zu) workSpaceSize(%zu) reserveSpaceSize(%zu)\n",
@@ -107,14 +82,9 @@ void init_kernel(MHAPerDeviceState *m,
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
     dimA[CUDNN_SEQDATA_TIME_DIM] = qoSeqLength;
     dimA[CUDNN_SEQDATA_VECT_DIM] = qSize;
-    checkCUDNN(cudnnSetSeqDataDescriptor(m->qDesc,
-                                         CUDNN_DATA_FLOAT,
-                                         CUDNN_SEQDATA_DIM_COUNT,
-                                         dimA,
-                                         axes,
-                                         num_samples,
-                                         qoSeqArray,
-                                         NULL));
+    checkCUDNN(cudnnSetSeqDataDescriptor(m->qDesc, CUDNN_DATA_FLOAT,
+                                         CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+                                         num_samples, qoSeqArray, NULL));
   }
   // Set kDesc
   {
@@ -122,14 +92,9 @@ void init_kernel(MHAPerDeviceState *m,
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
     dimA[CUDNN_SEQDATA_TIME_DIM] = kvSeqLength;
     dimA[CUDNN_SEQDATA_VECT_DIM] = kSize;
-    checkCUDNN(cudnnSetSeqDataDescriptor(m->kDesc,
-                                         CUDNN_DATA_FLOAT,
-                                         CUDNN_SEQDATA_DIM_COUNT,
-                                         dimA,
-                                         axes,
-                                         num_samples,
-                                         kvSeqArray,
-                                         NULL));
+    checkCUDNN(cudnnSetSeqDataDescriptor(m->kDesc, CUDNN_DATA_FLOAT,
+                                         CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+                                         num_samples, kvSeqArray, NULL));
   }
   // Set vDesc
   {
@@ -137,14 +102,9 @@ void init_kernel(MHAPerDeviceState *m,
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
     dimA[CUDNN_SEQDATA_TIME_DIM] = kvSeqLength;
     dimA[CUDNN_SEQDATA_VECT_DIM] = vSize;
-    checkCUDNN(cudnnSetSeqDataDescriptor(m->vDesc,
-                                         CUDNN_DATA_FLOAT,
-                                         CUDNN_SEQDATA_DIM_COUNT,
-                                         dimA,
-                                         axes,
-                                         num_samples,
-                                         kvSeqArray,
-                                         NULL));
+    checkCUDNN(cudnnSetSeqDataDescriptor(m->vDesc, CUDNN_DATA_FLOAT,
+                                         CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+                                         num_samples, kvSeqArray, NULL));
   }
   // Set oDesc
   {
@@ -152,29 +112,20 @@ void init_kernel(MHAPerDeviceState *m,
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
     dimA[CUDNN_SEQDATA_TIME_DIM] = qoSeqLength;
     dimA[CUDNN_SEQDATA_VECT_DIM] = oProjSize;
-    checkCUDNN(cudnnSetSeqDataDescriptor(m->oDesc,
-                                         CUDNN_DATA_FLOAT,
-                                         CUDNN_SEQDATA_DIM_COUNT,
-                                         dimA,
-                                         axes,
-                                         num_samples,
-                                         qoSeqArray,
-                                         NULL));
+    checkCUDNN(cudnnSetSeqDataDescriptor(m->oDesc, CUDNN_DATA_FLOAT,
+                                         CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+                                         num_samples, qoSeqArray, NULL));
   }
   // allocate memory for the seqArray and reserve space
   {
     size_t totalSize = m->reserveSpaceSize + sizeof(int) * num_samples * 2;
 
     m->devQoSeqArray = (int *)m->gpu_alloc(totalSize);
-    checkCUDA(cudaMemcpy(m->devQoSeqArray,
-                         qoSeqArray,
-                         sizeof(int) * num_samples,
-                         cudaMemcpyHostToDevice));
+    checkCUDA(cudaMemcpy(m->devQoSeqArray, qoSeqArray,
+                         sizeof(int) * num_samples, cudaMemcpyHostToDevice));
     m->devKvSeqArray = m->devQoSeqArray + num_samples;
-    checkCUDA(cudaMemcpy(m->devKvSeqArray,
-                         kvSeqArray,
-                         sizeof(int) * num_samples,
-                         cudaMemcpyHostToDevice));
+    checkCUDA(cudaMemcpy(m->devKvSeqArray, kvSeqArray,
+                         sizeof(int) * num_samples, cudaMemcpyHostToDevice));
     m->reserveSpace = m->devKvSeqArray + num_samples;
   }
   // allocate memory for loWinIdx/hiWinIdx
@@ -266,113 +217,51 @@ void init_kernel(MHAPerDeviceState *m,
 
 /* namespace Internal { */
 
-void forward_kernel(cudaStream_t stream,
-                    MHAPerDeviceState *m,
-                    float const *query_ptr,
-                    float const *key_ptr,
-                    float const *value_ptr,
-                    float const *weight_ptr,
+void forward_kernel(cudaStream_t stream, MHAPerDeviceState *m,
+                    float const *query_ptr, float const *key_ptr,
+                    float const *value_ptr, float const *weight_ptr,
                     float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
-                                       m->attnDesc,
-                                       -1,
-                                       m->loWinIdx,
-                                       m->hiWinIdx,
-                                       m->devQoSeqArray,
-                                       m->devKvSeqArray,
-                                       m->qDesc,
-                                       query_ptr,
-                                       nullptr /*residual*/,
-                                       m->kDesc,
-                                       key_ptr,
-                                       m->vDesc,
-                                       value_ptr,
-                                       m->oDesc,
-                                       output_ptr,
-                                       m->weightSize,
-                                       weight_ptr,
-                                       m->handle.workSpaceSize,
-                                       m->handle.workSpace,
-                                       m->reserveSpaceSize,
-                                       m->reserveSpace));
+  checkCUDNN(cudnnMultiHeadAttnForward(
+      m->handle.dnn, m->attnDesc, -1, m->loWinIdx, m->hiWinIdx,
+      m->devQoSeqArray, m->devKvSeqArray, m->qDesc, query_ptr,
+      nullptr /*residual*/, m->kDesc, key_ptr, m->vDesc, value_ptr, m->oDesc,
+      output_ptr, m->weightSize, weight_ptr, m->handle.workSpaceSize,
+      m->handle.workSpace, m->reserveSpaceSize, m->reserveSpace));
 }
 
-void backward_kernel(cudaStream_t stream,
-                     MHAPerDeviceState *m,
-                     float const *query_ptr,
-                     float *query_grad_ptr,
-                     float const *key_ptr,
-                     float *key_grad_ptr,
-                     float const *value_ptr,
-                     float *value_grad_ptr,
-                     float const *weight_ptr,
-                     float *weight_grad_ptr,
+void backward_kernel(cudaStream_t stream, MHAPerDeviceState *m,
+                     float const *query_ptr, float *query_grad_ptr,
+                     float const *key_ptr, float *key_grad_ptr,
+                     float const *value_ptr, float *value_grad_ptr,
+                     float const *weight_ptr, float *weight_grad_ptr,
                      float const *output_grad_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
-                                            m->attnDesc,
-                                            m->loWinIdx,
-                                            m->hiWinIdx,
-                                            m->devQoSeqArray,
-                                            m->devKvSeqArray,
-                                            m->oDesc,
-                                            output_grad_ptr,
-                                            m->qDesc,
-                                            query_grad_ptr,
-                                            query_ptr,
-                                            m->kDesc,
-                                            key_grad_ptr,
-                                            key_ptr,
-                                            m->vDesc,
-                                            value_grad_ptr,
-                                            value_ptr,
-                                            m->weightSize,
-                                            weight_ptr,
-                                            m->handle.workSpaceSize,
-                                            m->handle.workSpace,
-                                            m->reserveSpaceSize,
-                                            m->reserveSpace));
-  checkCUDNN(cudnnMultiHeadAttnBackwardWeights(m->handle.dnn,
-                                               m->attnDesc,
-                                               CUDNN_WGRAD_MODE_ADD,
-                                               m->qDesc,
-                                               query_ptr,
-                                               m->kDesc,
-                                               key_ptr,
-                                               m->vDesc,
-                                               value_ptr,
-                                               m->oDesc,
-                                               output_grad_ptr,
-                                               m->weightSize,
-                                               weight_ptr,
-                                               weight_grad_ptr,
-                                               m->handle.workSpaceSize,
-                                               m->handle.workSpace,
-                                               m->reserveSpaceSize,
-                                               m->reserveSpace));
+  checkCUDNN(cudnnMultiHeadAttnBackwardData(
+      m->handle.dnn, m->attnDesc, m->loWinIdx, m->hiWinIdx, m->devQoSeqArray,
+      m->devKvSeqArray, m->oDesc, output_grad_ptr, m->qDesc, query_grad_ptr,
+      query_ptr, m->kDesc, key_grad_ptr, key_ptr, m->vDesc, value_grad_ptr,
+      value_ptr, m->weightSize, weight_ptr, m->handle.workSpaceSize,
+      m->handle.workSpace, m->reserveSpaceSize, m->reserveSpace));
+  checkCUDNN(cudnnMultiHeadAttnBackwardWeights(
+      m->handle.dnn, m->attnDesc, CUDNN_WGRAD_MODE_ADD, m->qDesc, query_ptr,
+      m->kDesc, key_ptr, m->vDesc, value_ptr, m->oDesc, output_grad_ptr,
+      m->weightSize, weight_ptr, weight_grad_ptr, m->handle.workSpaceSize,
+      m->handle.workSpace, m->reserveSpaceSize, m->reserveSpace));
 }
 
 /* } // namespace Internal */
 } // namespace MultiHeadAttention
 } // namespace Kernels
 
-MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,
-                                     Memory gpu_mem,
-                                     int num_samples,
-                                     int num_heads,
-                                     int qSize,
-                                     int kSize,
-                                     int vSize,
-                                     int qProjSize,
-                                     int kProjSize,
-                                     int vProjSize,
-                                     int oProjSize,
-                                     int qoSeqLength,
-                                     int kvSeqLength,
-                                     bool add_bias_kv)
+MHAPerDeviceState::MHAPerDeviceState(FFHandler handler, Memory gpu_mem,
+                                     int num_samples, int num_heads, int qSize,
+                                     int kSize, int vSize, int qProjSize,
+                                     int kProjSize, int vProjSize,
+                                     int oProjSize, int qoSeqLength,
+                                     int kvSeqLength, bool add_bias_kv)
     : PerDeviceOpState(handler) {}
 
 MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,

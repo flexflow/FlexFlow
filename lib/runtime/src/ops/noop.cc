@@ -38,16 +38,9 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-NoOp::NoOp(FFModel &model,
-           OperatorType _type,
-           const ParallelTensor _output,
+NoOp::NoOp(FFModel &model, OperatorType _type, const ParallelTensor _output,
            char const *_name)
-    : Op(model,
-         _type,
-         DT_NONE,
-         _name,
-         0 /*inputs*/,
-         0 /*weights*/,
+    : Op(model, _type, DT_NONE, _name, 0 /*inputs*/, 0 /*weights*/,
          1 /*outputs*/),
       input_tensor_guid(0) {
   // NOOP takes one input and has one output
@@ -61,17 +54,9 @@ NoOp::NoOp(FFModel &model,
   outputs[0]->owner_idx = 0;
 }
 
-NoOp::NoOp(FFModel &model,
-           OperatorType _type,
-           size_t _input_tensor_guid,
-           const ParallelTensor _output,
-           char const *_name)
-    : Op(model,
-         _type,
-         DT_NONE,
-         _name,
-         0 /*inputs*/,
-         0 /*weights*/,
+NoOp::NoOp(FFModel &model, OperatorType _type, size_t _input_tensor_guid,
+           const ParallelTensor _output, char const *_name)
+    : Op(model, _type, DT_NONE, _name, 0 /*inputs*/, 0 /*weights*/,
          1 /*outputs*/),
       input_tensor_guid(_input_tensor_guid) {
   // NOOP takes one input and has one output
@@ -87,8 +72,7 @@ NoOp::NoOp(FFModel &model,
 
 PerDeviceOpState *NoOp::init_task(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime) {
+                                  Context ctx, Runtime *runtime) {
   FFHandler handle = *((FFHandler const *)task->local_args);
   PerDeviceOpState *m = new PerDeviceOpState(handle);
   return m;
@@ -103,19 +87,13 @@ void NoOp::init(FFModel const &ff) {
     Context ctx = ff.config.lg_ctx;
     ArgumentMap argmap;
     IndexLauncher launcher(
-        CONSTANT_INIT_TASK_ID,
-        parallel_is,
-        TaskArgument(initializer, sizeof(ConstantInitializer)),
-        argmap,
-        Predicate::TRUE_PRED,
-        false /*must*/,
-        0 /*mapper_id*/,
+        CONSTANT_INIT_TASK_ID, parallel_is,
+        TaskArgument(initializer, sizeof(ConstantInitializer)), argmap,
+        Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
         outputs[0]->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_INPUT) {
@@ -136,19 +114,13 @@ void NoOp::init(FFModel const &ff) {
     Context ctx = ff.config.lg_ctx;
     ArgumentMap argmap;
     IndexLauncher launcher(
-        CONSTANT_INIT_TASK_ID,
-        parallel_is,
-        TaskArgument(initializer, sizeof(ConstantInitializer)),
-        argmap,
-        Predicate::TRUE_PRED,
-        false /*must*/,
-        0 /*mapper_id*/,
+        CONSTANT_INIT_TASK_ID, parallel_is,
+        TaskArgument(initializer, sizeof(ConstantInitializer)), argmap,
+        Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
         outputs[0]->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_WEIGHT) {
@@ -156,13 +128,9 @@ void NoOp::init(FFModel const &ff) {
     Context ctx = ff.config.lg_ctx;
     Runtime *runtime = ff.config.lg_hlr;
     set_argumentmap_for_init(ff, argmap);
-    IndexLauncher launcher(NOOP_INIT_TASK_ID,
-                           parallel_is,
-                           TaskArgument(NULL, 0),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
+    IndexLauncher launcher(NOOP_INIT_TASK_ID, parallel_is,
+                           TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                           false /*must*/, 0 /*mapper_id*/,
                            outputs[0]->machine_view.hash());
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     fm.wait_all_results();
@@ -174,8 +142,7 @@ void NoOp::forward(FFModel const &ff) {}
 
 void NoOp::backward(FFModel const &ff) {}
 
-bool NoOp::measure_operator_cost(Simulator *sim,
-                                 MachineView const &mv,
+bool NoOp::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;

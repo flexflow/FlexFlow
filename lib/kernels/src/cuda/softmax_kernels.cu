@@ -34,34 +34,22 @@ SoftmaxPerDeviceState::SoftmaxPerDeviceState(FFHandler handler,
 namespace Kernels {
 namespace Softmax {
 
-void forward_kernel(cudaStream_t stream,
-                    SoftmaxPerDeviceState const *m,
-                    float const *input_ptr,
-                    float *output_ptr) {
+void forward_kernel(cudaStream_t stream, SoftmaxPerDeviceState const *m,
+                    float const *input_ptr, float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
-                                 CUDNN_SOFTMAX_ACCURATE,
-                                 CUDNN_SOFTMAX_MODE_CHANNEL,
-                                 &alpha,
-                                 m->inputTensor,
-                                 input_ptr,
-                                 &beta,
-                                 m->inputTensor,
-                                 output_ptr));
+  checkCUDNN(cudnnSoftmaxForward(
+      m->handle.dnn, CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &alpha,
+      m->inputTensor, input_ptr, &beta, m->inputTensor, output_ptr));
 }
 
-void backward_kernel(cudaStream_t stream,
-                     float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     size_t num_elements) {
+void backward_kernel(cudaStream_t stream, float *input_grad_ptr,
+                     float const *output_grad_ptr, size_t num_elements) {
 
-  checkCUDA(cudaMemcpyAsync(input_grad_ptr,
-                            output_grad_ptr,
+  checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
                             num_elements * sizeof(float),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
+                            cudaMemcpyDeviceToDevice, stream));
 }
 
 } // namespace Softmax

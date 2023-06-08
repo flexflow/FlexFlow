@@ -41,18 +41,15 @@ struct TaskSignature {
 
   void add_slot(slot_id, ParallelTensorSlotSpec const &);
 
-  template <typename T>
-  void add_arg_slot(slot_id name) {
+  template <typename T> void add_arg_slot(slot_id name) {
     static_assert(is_serializable<T>, "Argument type must be serializable");
 
     this->task_arg_types.insert({name, type_index<T>()});
   }
 
-  template <typename T>
-  void add_return_value();
+  template <typename T> void add_return_value();
 
-  template <typename T>
-  void add_variadic_arg_slot(slot_id name);
+  template <typename T> void add_variadic_arg_slot(slot_id name);
 
   optional<ParallelTensorSlotSpec> get_slot(slot_id) const;
   optional<std::type_index> get_arg_slot(slot_id) const;
@@ -80,17 +77,12 @@ TaskSignature get_signature(task_id_t);
 std::string get_name(task_id_t);
 
 template <typename F>
-void register_task(task_id_t,
-                   std::string const &name,
-                   TaskSignature const &,
+void register_task(task_id_t, std::string const &name, TaskSignature const &,
                    F const &func);
 
 template <typename F>
-void register_task(task_id_t,
-                   std::string const &name,
-                   TaskSignature const &,
-                   F const &func,
-                   F const &cpu_func);
+void register_task(task_id_t, std::string const &name, TaskSignature const &,
+                   F const &func, F const &cpu_func);
 
 } // namespace FlexFlow
 

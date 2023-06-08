@@ -28,7 +28,7 @@ constexpr int WEIGHT_IDX = 1;
 } // namespace Bias
 
 static std::vector<ParallelDimMappingRecord>
-    construct_output_mappings(ParallelTensorShape const &input_shape) {
+construct_output_mappings(ParallelTensorShape const &input_shape) {
   return construct_output_parallel_dims(
       {{Input::CHANNEL, MappingOperation::REPLICATE, Output::REPLICA},
        {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
@@ -38,37 +38,33 @@ static std::vector<ParallelDimMappingRecord>
 }
 
 static std::vector<ParallelDimMappingRecord>
-    construct_kernel_mappings(ParallelTensorShape const &input_shape) {
+construct_kernel_mappings(ParallelTensorShape const &input_shape) {
   return construct_weight_parallel_dims(
       {
           {Input::REPLICA, MappingOperation::PARTITION, Kernel::CHANNEL_OUT},
           {Input::SAMPLE, MappingOperation::REPLICATE, Kernel::REPLICA},
           {Input::CHANNEL, MappingOperation::PARTITION, Kernel::CHANNEL_IN},
-          {Input::HEIGHT,
-           MappingOperation::REPLICATE,
+          {Input::HEIGHT, MappingOperation::REPLICATE,
            Kernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work
                             // here
-          {Input::WIDTH,
-           MappingOperation::REPLICATE,
+          {Input::WIDTH, MappingOperation::REPLICATE,
            Kernel::WIDTH}, // same as above
       },
-      0,
-      Kernel::WEIGHT_IDX);
+      0, Kernel::WEIGHT_IDX);
 }
 
 static std::vector<ParallelDimMappingRecord>
-    construct_bias_mappings(ParallelTensorShape const &input_shape) {
+construct_bias_mappings(ParallelTensorShape const &input_shape) {
   return construct_weight_parallel_dims({{Input::REPLICA, Bias::REPLICA_1},
                                          {Input::SAMPLE, Bias::REPLICA_2},
                                          {Input::CHANNEL, Bias::CHANNEL},
                                          {Input::HEIGHT, Bias::REPLICA_3},
                                          {Input::WIDTH, Bias::REPLICA_4}},
-                                        0,
-                                        Bias::WEIGHT_IDX);
+                                        0, Bias::WEIGHT_IDX);
 }
 
 std::vector<ParallelDimMappingRecord>
-    construct_mappings(ParallelTensorShape const &input_shape, bool use_bias) {
+construct_mappings(ParallelTensorShape const &input_shape, bool use_bias) {
   std::vector<ParallelDimMappingRecord> mappings =
       concat(construct_output_mappings(input_shape),
              construct_kernel_mappings(input_shape));

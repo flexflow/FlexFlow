@@ -7,8 +7,7 @@ namespace FlexFlow {
 namespace PCG {
 namespace Utils {
 
-template <typename BaseStructure>
-struct ReverseStructure {
+template <typename BaseStructure> struct ReverseStructure {
   using graph_type = typename BaseStructure::graph_type;
   using G = graph_type;
   using vertex_type = typename BaseStructure::vertex_type;
@@ -47,8 +46,7 @@ struct ReverseStructure {
   BaseStructure base;
 };
 
-template <typename NotReversed, typename Reversed>
-struct UndirectedEdge {
+template <typename NotReversed, typename Reversed> struct UndirectedEdge {
   union Edge {
     NotReversed not_reversed;
     Reversed reversed;
@@ -171,8 +169,7 @@ struct UndirectedStructure {
 template <typename G, typename Structure = GraphStructure<G>>
 struct invalid_node;
 
-template <typename G,
-          typename BaseStructure = GraphStructure<G>,
+template <typename G, typename BaseStructure = GraphStructure<G>,
           typename Invalid = invalid_node<G, BaseStructure>>
 struct MultisourceGraphStructure {
   using graph_type = typename BaseStructure::graph_type;

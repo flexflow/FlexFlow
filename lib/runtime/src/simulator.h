@@ -42,10 +42,7 @@ public:
     DEVICE_MEM,
     DEVICE_COMM,
   };
-  Device(std::string const &name,
-         DeviceType type,
-         int node_id,
-         int socket_id,
+  Device(std::string const &name, DeviceType type, int node_id, int socket_id,
          int device_id);
   std::string name;
   DeviceType type;
@@ -62,11 +59,8 @@ public:
   };
   CompDevType comp_type;
   size_t capacity;
-  CompDevice(std::string const &name,
-             CompDevType comp_type,
-             int node_id,
-             int socket_id,
-             int device_id);
+  CompDevice(std::string const &name, CompDevType comp_type, int node_id,
+             int socket_id, int device_id);
 };
 
 class MemDevice : public Device {
@@ -79,12 +73,8 @@ public:
   };
   MemDevType mem_type;
   size_t capacity;
-  MemDevice(std::string const &name,
-            MemDevType mem_type,
-            int node_id,
-            int socket_id,
-            int device_id,
-            size_t capacity);
+  MemDevice(std::string const &name, MemDevType mem_type, int node_id,
+            int socket_id, int device_id, size_t capacity);
 };
 
 class CommDevice : public Device {
@@ -104,13 +94,8 @@ public:
   CommDevType comm_type;
   float latency;
   float bandwidth;
-  CommDevice(std::string const &name,
-             CommDevType comm_type,
-             int node_id,
-             int socket_id,
-             int device_id,
-             float latency,
-             float bandwidth);
+  CommDevice(std::string const &name, CommDevType comm_type, int node_id,
+             int socket_id, int device_id, float latency, float bandwidth);
 };
 
 typedef std::vector<CommDevice *> Route;
@@ -126,9 +111,7 @@ class NetworkRoutingStrategy;
  */
 class NominalCommDevice : public CommDevice {
 public:
-  NominalCommDevice(std::string const &name,
-                    int device_id,
-                    int nnode,
+  NominalCommDevice(std::string const &name, int device_id, int nnode,
                     NetworkRoutingStrategy *routing);
   /* pick one of the weighted ECMP path */
   Route expand_to_physical() const;
@@ -184,12 +167,8 @@ public:
   int get_num_gpus() const;
   float get_intra_node_gpu_bandwidth() const;
   float get_inter_node_gpu_bandwidth() const;
-  float get_intra_node_gpu_latency() const {
-    return 0;
-  }
-  float get_inter_node_gpu_latency() const {
-    return 0;
-  }
+  float get_intra_node_gpu_latency() const { return 0; }
+  float get_inter_node_gpu_latency() const { return 0; }
   std::vector<CommDevice *> get_comm_path(MemDevice *src_mem,
                                           MemDevice *tar_mem);
   std::string to_string() const;
@@ -243,12 +222,8 @@ public:
   int get_num_gpus() const;
   float get_intra_node_gpu_bandwidth() const;
   float get_inter_node_gpu_bandwidth() const;
-  float get_intra_node_gpu_latency() const {
-    return membus_latency;
-  }
-  float get_inter_node_gpu_latency() const {
-    return nic_latency;
-  }
+  float get_intra_node_gpu_latency() const { return membus_latency; }
+  float get_inter_node_gpu_latency() const { return nic_latency; }
   std::vector<CommDevice *> get_comm_path(MemDevice *src_mem,
                                           MemDevice *tar_mem);
   std::string to_string() const;
@@ -316,11 +291,10 @@ private:
   void attach_nvlink(MemDevice *src_mem, MemDevice *tar_mem, CommDevice *comm);
   // return a list of specific communication devices based on the descriptions
   // of a communication path
-  void add_comm_path(
-      std::vector<CommDevice::CommDevType> const &comm_device_list,
-      MemDevice *src_mem,
-      MemDevice *tar_mem,
-      std::vector<CommDevice *> &ret);
+  void
+  add_comm_path(std::vector<CommDevice::CommDevType> const &comm_device_list,
+                MemDevice *src_mem, MemDevice *tar_mem,
+                std::vector<CommDevice *> &ret);
 };
 
 /**
@@ -329,8 +303,7 @@ private:
 class WeightedShortestPathRoutingStrategy : public NetworkRoutingStrategy {
 public:
   WeightedShortestPathRoutingStrategy(
-      ConnectionMatrix const &c,
-      std::map<size_t, CommDevice *> const &devmap,
+      ConnectionMatrix const &c, std::map<size_t, CommDevice *> const &devmap,
       int total_devs);
   virtual EcmpRoutes get_routes(int src_node, int dst_node);
   virtual std::vector<EcmpRoutes> get_routes_from_src(int src_node);
@@ -347,8 +320,7 @@ public:
 class ShortestPathNetworkRoutingStrategy : public NetworkRoutingStrategy {
 public:
   ShortestPathNetworkRoutingStrategy(
-      ConnectionMatrix const &c,
-      std::map<size_t, CommDevice *> const &devmap,
+      ConnectionMatrix const &c, std::map<size_t, CommDevice *> const &devmap,
       int total_devs);
   virtual EcmpRoutes get_routes(int src_node, int dst_node);
   virtual std::vector<EcmpRoutes> get_routes_from_src(int src_node);
@@ -369,8 +341,8 @@ public:
 class NetworkTopologyGenerator {
 public:
   virtual ConnectionMatrix generate_topology() const = 0;
-  static void
-      print_conn_matrix(ConnectionMatrix const &conn, int nnode, int nswitch) {
+  static void print_conn_matrix(ConnectionMatrix const &conn, int nnode,
+                                int nswitch) {
     int nnwdevs = nnode + nswitch;
     for (int i = 0; i < nnwdevs; i++) {
       if (i == nnode) {
@@ -466,37 +438,23 @@ public:
    * Constructor. A network topology specified as above needs to be provided
    * in the form of a single vector.
    */
-  NetworkedMachineModel(int num_nodes,
-                        int num_gpus_per_node,
-                        int num_switches,
-                        float network_latency,
-                        std::vector<int> const &topology,
-                        size_t capacity,
-                        float link_bandwidth);
+  NetworkedMachineModel(int num_nodes, int num_gpus_per_node, int num_switches,
+                        float network_latency, std::vector<int> const &topology,
+                        size_t capacity, float link_bandwidth);
   ~NetworkedMachineModel();
   int get_version() const;
   CompDevice *get_gpu(int device_id) const;
   MemDevice *get_gpu_fb_mem(int devicd_id) const;
   int get_num_gpus() const;
-  int get_num_nodes() const {
-    return num_nodes;
-  }
-  int get_total_devs() const {
-    return num_nodes + num_switches;
-  }
-  int get_num_switches() const {
-    return num_switches;
-  }
+  int get_num_nodes() const { return num_nodes; }
+  int get_total_devs() const { return num_nodes + num_switches; }
+  int get_num_switches() const { return num_switches; }
   float get_intra_node_gpu_bandwidth() const;
   float get_inter_node_gpu_bandwidth() const;
   float get_link_bandwidth() const;
   float get_link_bandwidth(int src, int dst) const;
-  float get_intra_node_gpu_latency() const {
-    return 0;
-  }
-  float get_inter_node_gpu_latency() const {
-    return network_latency;
-  }
+  float get_intra_node_gpu_latency() const { return 0; }
+  float get_inter_node_gpu_latency() const { return network_latency; }
   void set_routing_strategy(NetworkRoutingStrategy *rs);
   std::vector<CommDevice *> get_comm_path(MemDevice *src_mem,
                                           MemDevice *tar_mem);
@@ -609,12 +567,10 @@ public:
   SimTask *new_update_task();
   SimTask *new_comm_task();
   SimTask *new_nominal_comm_task();
-  SimTask *new_comm_task(std::string const &name,
-                         CommDevice *comm_device,
+  SimTask *new_comm_task(std::string const &name, CommDevice *comm_device,
                          size_t message_size);
   SimTask *new_nominal_comm_task(std::string const &name,
-                                 CommDevice *comm_device,
-                                 size_t message_size);
+                                 CommDevice *comm_device, size_t message_size);
   SimTask *new_forward_task(operator_guid_t const &, int idx);
   SimTask *new_allreduce_task(operator_guid_t const &,
                               std::vector<int> const &node_ids,
@@ -639,27 +595,22 @@ using ProfilingRecordKey = std::tuple<PCGOperatorAttrs, MachineView>;
 class Simulator {
 public:
   static constexpr float MAXIMUM_TASK_RUN_TIME = 1e7;
-  Simulator(FFModel const *model,
-            PerDeviceFFHandle const &handle,
-            Legion::Memory memory,
-            MachineModel *machine);
+  Simulator(FFModel const *model, PerDeviceFFHandle const &handle,
+            Legion::Memory memory, MachineModel *machine);
   ~Simulator(void);
   void free_all();
   void *allocate(size_t num_elements, DataType type);
-  void add_task_dependencies_with_xfer(SimTask *src_task,
-                                       SimTask *dst_task,
+  void add_task_dependencies_with_xfer(SimTask *src_task, SimTask *dst_task,
                                        size_t message_size,
                                        bool force_zero_cost = false);
   CostMetrics measure_operator_cost(operator_guid_t const &,
                                     MachineView const &view);
-  float estimate_xfer_cost(operator_guid_t const &,
-                           int input_idx,
+  float estimate_xfer_cost(operator_guid_t const &, int input_idx,
                            MachineView const &source_view,
                            MachineView const &sink_view);
   float
-      default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
-                                 int tensor_ndims,
-                                 MachineView const &view);
+  default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
+                             int tensor_ndims, MachineView const &view);
   float default_estimate_sync_cost(ParallelTensorShape const &tensor_shape,
                                    MachineView const &view,
                                    int num_replicate_dims);
@@ -667,10 +618,9 @@ public:
                                    MachineView const &view,
                                    int num_replicate_dims);
   static void
-      strategy_search_task(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime);
+  strategy_search_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx, Legion::Runtime *runtime);
 
 public:
   Realm::RegionInstance simulatorInst;
@@ -701,13 +651,12 @@ public:
   int max_num_segments; // simulation could be slow if the number of segments
                         // are too large
 private:
-  float estimate_repartition_xfer_cost(
-      int repartition_dim,
-      int repartition_degree,
-      ParallelTensorShape const &input_tensor_shape,
-      ParallelTensorShape const &output_tensor_shape,
-      MachineView const &source_view,
-      MachineView const &target_view) const;
+  float
+  estimate_repartition_xfer_cost(int repartition_dim, int repartition_degree,
+                                 ParallelTensorShape const &input_tensor_shape,
+                                 ParallelTensorShape const &output_tensor_shape,
+                                 MachineView const &source_view,
+                                 MachineView const &target_view) const;
 };
 
 } // namespace FlexFlow

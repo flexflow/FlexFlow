@@ -9,25 +9,20 @@ using namespace Legion;
 
 template <typename DT, int dim>
 TensorAccessorR<DT, dim>::TensorAccessorR(PhysicalRegion region,
-                                          RegionRequirement req,
-                                          FieldID fid,
-                                          Context ctx,
-                                          Runtime *runtime) {
+                                          RegionRequirement req, FieldID fid,
+                                          Context ctx, Runtime *runtime) {
   AccessorRO<DT, dim> const acc(region, fid);
   rect = runtime->get_index_space_domain(ctx, req.region.get_index_space());
   assert(acc.accessor.is_dense_arbitrary(rect));
   ptr = acc.ptr(rect);
 }
 
-template <typename DT, int dim>
-TensorAccessorR<DT, dim>::TensorAccessorR() {}
+template <typename DT, int dim> TensorAccessorR<DT, dim>::TensorAccessorR() {}
 
 template <typename DT, int dim>
 TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
-                                          RegionRequirement req,
-                                          FieldID fid,
-                                          Context ctx,
-                                          Runtime *runtime,
+                                          RegionRequirement req, FieldID fid,
+                                          Context ctx, Runtime *runtime,
                                           bool readOutput) {
   rect = runtime->get_index_space_domain(ctx, req.region.get_index_space());
   if (readOutput) {
@@ -45,15 +40,11 @@ TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
   }
 }
 
-template <typename DT, int dim>
-TensorAccessorW<DT, dim>::TensorAccessorW() {}
+template <typename DT, int dim> TensorAccessorW<DT, dim>::TensorAccessorW() {}
 
 template <typename DT>
-const DT *helperGetTensorPointerRO(PhysicalRegion region,
-                                   RegionRequirement req,
-                                   FieldID fid,
-                                   Context ctx,
-                                   Runtime *runtime) {
+const DT *helperGetTensorPointerRO(PhysicalRegion region, RegionRequirement req,
+                                   FieldID fid, Context ctx, Runtime *runtime) {
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   switch (domain.get_dim()) {
@@ -64,97 +55,79 @@ const DT *helperGetTensorPointerRO(PhysicalRegion region,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      fprintf(stderr, "Unsupported accessor dimension");
-      assert(false);
-      return NULL;
-    }
+  default: {
+    fprintf(stderr, "Unsupported accessor dimension");
+    assert(false);
+    return NULL;
+  }
   }
 }
 
 template <typename DT>
-DT *helperGetTensorPointerRW(PhysicalRegion region,
-                             RegionRequirement req,
-                             FieldID fid,
-                             Context ctx,
-                             Runtime *runtime) {
+DT *helperGetTensorPointerRW(PhysicalRegion region, RegionRequirement req,
+                             FieldID fid, Context ctx, Runtime *runtime) {
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    TensorAccessorW<DT, DIM> acc(                                              \
-        region, req, fid, ctx, runtime, true /*readOutput*/);                  \
+    TensorAccessorW<DT, DIM> acc(region, req, fid, ctx, runtime,               \
+                                 true /*readOutput*/);                         \
     return acc.ptr;                                                            \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      fprintf(stderr, "Unsupported accessor dimension");
-      assert(false);
-      return NULL;
-    }
+  default: {
+    fprintf(stderr, "Unsupported accessor dimension");
+    assert(false);
+    return NULL;
+  }
   }
 }
 
 template <typename DT>
-DT *helperGetTensorPointerWO(PhysicalRegion region,
-                             RegionRequirement req,
-                             FieldID fid,
-                             Context ctx,
-                             Runtime *runtime) {
+DT *helperGetTensorPointerWO(PhysicalRegion region, RegionRequirement req,
+                             FieldID fid, Context ctx, Runtime *runtime) {
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    TensorAccessorW<DT, DIM> acc(                                              \
-        region, req, fid, ctx, runtime, false /*readOutput*/);                 \
+    TensorAccessorW<DT, DIM> acc(region, req, fid, ctx, runtime,               \
+                                 false /*readOutput*/);                        \
     return acc.ptr;                                                            \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      fprintf(stderr, "Unsupported accessor dimension");
-      assert(false);
-      return NULL;
-    }
+  default: {
+    fprintf(stderr, "Unsupported accessor dimension");
+    assert(false);
+    return NULL;
+  }
   }
 }
 
-template <DataType DT>
-struct GetTensorPointerWOFunctor {
-  void *operator()(PhysicalRegion region,
-                   RegionRequirement req,
-                   FieldID fid,
-                   Context ctx,
-                   Runtime *runtime) const {
-    return (void *)helperGetTensorPointerWO<real_type<DT>>(
-        region, req, fid, ctx, runtime);
+template <DataType DT> struct GetTensorPointerWOFunctor {
+  void *operator()(PhysicalRegion region, RegionRequirement req, FieldID fid,
+                   Context ctx, Runtime *runtime) const {
+    return (void *)helperGetTensorPointerWO<real_type<DT>>(region, req, fid,
+                                                           ctx, runtime);
   }
 };
 
-template <DataType DT>
-struct GetTensorPointerROFunctor {
-  void const *operator()(PhysicalRegion region,
-                         RegionRequirement req,
-                         FieldID fid,
-                         Context ctx,
-                         Runtime *runtime) const {
+template <DataType DT> struct GetTensorPointerROFunctor {
+  void const *operator()(PhysicalRegion region, RegionRequirement req,
+                         FieldID fid, Context ctx, Runtime *runtime) const {
     return (void const *)helperGetTensorPointerRO<real_type<DT>>(
         region, req, fid, ctx, runtime);
   }
 };
 
-template <DataType DT>
-struct GetTensorPointerRWFUnctor {
-  void *operator()(PhysicalRegion region,
-                   RegionRequirement req,
-                   FieldID fid,
-                   Context ctx,
-                   Runtime *runtime) const {
-    return (void *)helperGetTensorPointerRW<real_type<DT>>(
-        region, req, fid, ctx, runtime);
+template <DataType DT> struct GetTensorPointerRWFUnctor {
+  void *operator()(PhysicalRegion region, RegionRequirement req, FieldID fid,
+                   Context ctx, Runtime *runtime) const {
+    return (void *)helperGetTensorPointerRW<real_type<DT>>(region, req, fid,
+                                                           ctx, runtime);
   }
 };
 
@@ -172,12 +145,10 @@ static ArrayShape to_array_shape(Legion::Domain const &domain) {
   return {dimension_sizes};
 }
 
-GenericTensorAccessorR getGenericTensorAccessorRO(DataType datatype,
-                                                  Legion::PhysicalRegion region,
-                                                  Legion::RegionRequirement req,
-                                                  Legion::FieldID fid,
-                                                  Legion::Context ctx,
-                                                  Legion::Runtime *runtime) {
+GenericTensorAccessorR
+getGenericTensorAccessorRO(DataType datatype, Legion::PhysicalRegion region,
+                           Legion::RegionRequirement req, Legion::FieldID fid,
+                           Legion::Context ctx, Legion::Runtime *runtime) {
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   void const *ptr = DataTypeDispatch1<GetTensorPointerROFunctor>{}(
@@ -185,13 +156,10 @@ GenericTensorAccessorR getGenericTensorAccessorRO(DataType datatype,
   return GenericTensorAccessorR(datatype, to_array_shape(domain), ptr);
 }
 
-GenericTensorAccessorW
-    helperGetGenericTensorAccessorWO(DataType datatype,
-                                     Legion::PhysicalRegion region,
-                                     Legion::RegionRequirement req,
-                                     Legion::FieldID fid,
-                                     Legion::Context ctx,
-                                     Legion::Runtime *runtime) {
+GenericTensorAccessorW helperGetGenericTensorAccessorWO(
+    DataType datatype, Legion::PhysicalRegion region,
+    Legion::RegionRequirement req, Legion::FieldID fid, Legion::Context ctx,
+    Legion::Runtime *runtime) {
 
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
@@ -200,13 +168,10 @@ GenericTensorAccessorW
   return GenericTensorAccessorW(datatype, to_array_shape(domain), ptr);
 }
 
-GenericTensorAccessorW
-    helperGetGenericTensorAccessorRW(DataType datatype,
-                                     Legion::PhysicalRegion region,
-                                     Legion::RegionRequirement req,
-                                     Legion::FieldID fid,
-                                     Legion::Context ctx,
-                                     Legion::Runtime *runtime) {
+GenericTensorAccessorW helperGetGenericTensorAccessorRW(
+    DataType datatype, Legion::PhysicalRegion region,
+    Legion::RegionRequirement req, Legion::FieldID fid, Legion::Context ctx,
+    Legion::Runtime *runtime) {
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   void *ptr = DataTypeDispatch1<GetTensorPointerRWFUnctor>{}(

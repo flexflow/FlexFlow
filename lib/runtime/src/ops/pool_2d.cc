@@ -24,25 +24,12 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Tensor FFModel::pool2d(const Tensor input,
-                       int kernelH,
-                       int kernelW,
-                       int strideH,
-                       int strideW,
-                       int paddingH,
-                       int paddingW,
-                       PoolType type,
-                       ActiMode activation,
-                       char const *name) {
+Tensor FFModel::pool2d(const Tensor input, int kernelH, int kernelW,
+                       int strideH, int strideW, int paddingH, int paddingW,
+                       PoolType type, ActiMode activation, char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
-  Layer *pool = new Layer(this,
-                          OP_POOL2D,
-                          DT_FLOAT,
-                          name,
-                          1 /*inputs*/,
-                          0 /*weights*/,
-                          1 /*outputs*/,
-                          input);
+  Layer *pool = new Layer(this, OP_POOL2D, DT_FLOAT, name, 1 /*inputs*/,
+                          0 /*weights*/, 1 /*outputs*/, input);
   int numdims = 4;
   int dims[MAX_TENSOR_DIM];
   dims[3] = input->dims[3];
@@ -63,25 +50,15 @@ Tensor FFModel::pool2d(const Tensor input,
   return pool->outputs[0];
 
 #ifdef DEACODE
-  Pool2D *pool = new Pool2D(*this,
-                            input,
-                            kernelH,
-                            kernelW,
-                            strideH,
-                            strideW,
-                            paddingH,
-                            paddingW,
-                            type,
-                            activation,
-                            name);
+  Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW, strideH, strideW,
+                            paddingH, paddingW, type, activation, name);
   layers.push_back(pool);
   return pool->outputs[0];
 #endif
 }
 
 Op *Pool2D::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("kernel_h", value);
@@ -100,17 +77,8 @@ Op *Pool2D::create_operator_from_layer(
   PoolType type = (PoolType)value;
   layer->get_int_property("activation", value);
   ActiMode activation = (ActiMode)value;
-  return new Pool2D(model,
-                    inputs[0],
-                    kernelH,
-                    kernelW,
-                    strideH,
-                    strideW,
-                    paddingH,
-                    paddingW,
-                    type,
-                    activation,
-                    layer->name);
+  return new Pool2D(model, inputs[0], kernelH, kernelW, strideH, strideW,
+                    paddingH, paddingW, type, activation, layer->name);
 }
 
 Pool2DParams Pool2D::get_params() const {
@@ -154,37 +122,16 @@ int Pool2DParams::output_size(ParallelTensorShape const &input,
 }
 
 Pool2D::Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input)
-    : Pool2D(model,
-             input,
-             other.kernel_h,
-             other.kernel_w,
-             other.stride_h,
-             other.stride_w,
-             other.padding_h,
-             other.padding_w,
-             other.pool_type,
-             other.activation,
-             other.name) {}
+    : Pool2D(model, input, other.kernel_h, other.kernel_w, other.stride_h,
+             other.stride_w, other.padding_h, other.padding_w, other.pool_type,
+             other.activation, other.name) {}
 
-Pool2D::Pool2D(FFModel &model,
-               const ParallelTensor _input,
-               int _kernel_h,
-               int _kernel_w,
-               int _stride_h,
-               int _stride_w,
-               int _padding_h,
-               int _padding_w,
-               PoolType _type,
-               ActiMode _activation,
+Pool2D::Pool2D(FFModel &model, const ParallelTensor _input, int _kernel_h,
+               int _kernel_w, int _stride_h, int _stride_w, int _padding_h,
+               int _padding_w, PoolType _type, ActiMode _activation,
                char const *name)
-    : Op(model,
-         OP_POOL2D,
-         _input->data_type,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         _input),
+    : Op(model, OP_POOL2D, _input->data_type, name, 1 /*inputs*/, 0 /*weights*/,
+         1 /*outputs*/, _input),
       kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
       stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w),
       pool_type(_type), activation(_activation) {
@@ -194,28 +141,18 @@ Pool2D::Pool2D(FFModel &model,
 
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int output_ndims;
-  this->get_params().solve_dims(
-      this->inputs[0]->get_shape(), output_dims, &output_ndims);
+  this->get_params().solve_dims(this->inputs[0]->get_shape(), output_dims,
+                                &output_ndims);
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_ndims, output_dims, DT_FLOAT, this);
 }
 
-Pool2D::Pool2D(FFModel &model,
-               Pool2DParams const &params,
-               const ParallelTensor input,
-               char const *name)
-    : Pool2D(model,
-             input,
-             params.kernel_h,
-             params.kernel_w,
-             params.stride_h,
-             params.stride_w,
-             params.padding_h,
-             params.padding_w,
-             params.pool_type,
-             params.activation,
-             name) {}
+Pool2D::Pool2D(FFModel &model, Pool2DParams const &params,
+               const ParallelTensor input, char const *name)
+    : Pool2D(model, input, params.kernel_h, params.kernel_w, params.stride_h,
+             params.stride_w, params.padding_h, params.padding_w,
+             params.pool_type, params.activation, name) {}
 
 void Pool2D::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -224,25 +161,17 @@ void Pool2D::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher init_launcher(POOL2D_INIT_TASK_ID,
-                              parallel_is,
-                              TaskArgument(this, sizeof(Pool2D)),
-                              argmap,
-                              Predicate::TRUE_PRED,
-                              false /*must*/,
-                              0 /*mapper_id*/,
-                              outputs[0]->machine_view.hash());
-  init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                         0 /*projection id*/,
-                                                         READ_ONLY,
-                                                         EXCLUSIVE,
-                                                         inputs[0]->region));
+  IndexLauncher init_launcher(POOL2D_INIT_TASK_ID, parallel_is,
+                              TaskArgument(this, sizeof(Pool2D)), argmap,
+                              Predicate::TRUE_PRED, false /*must*/,
+                              0 /*mapper_id*/, outputs[0]->machine_view.hash());
+  init_launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
-  init_launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                         0 /*projection id*/,
-                                                         WRITE_DISCARD,
-                                                         EXCLUSIVE,
-                                                         outputs[0]->region));
+  init_launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_DISCARD,
+                        EXCLUSIVE, outputs[0]->region));
   init_launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -255,8 +184,7 @@ void Pool2D::init(FFModel const &ff) {
 */
 PerDeviceOpState *Pool2D::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+                                    Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Pool2D const *pool = (Pool2D *)task->args;
@@ -266,12 +194,9 @@ PerDeviceOpState *Pool2D::init_task(Task const *task,
   std::strcpy(m->op_name, pool->name);
   TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(regions[1],
-                                                          task->regions[1],
-                                                          FID_DATA,
-                                                          ctx,
-                                                          runtime,
-                                                          false /*readOutput*/);
+  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false /*readOutput*/);
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
@@ -282,16 +207,10 @@ PerDeviceOpState *Pool2D::init_task(Task const *task,
   int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
   int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
 
-  printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n",
-         input_n,
-         input_c,
-         input_h,
-         input_w);
-  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n",
-         output_n,
-         output_c,
-         output_h,
-         output_w);
+  printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n", input_n, input_c,
+         input_h, input_w);
+  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n", output_n, output_c,
+         output_h, output_w);
 
   int pad_h =
       ((output_h - 1) * pool->stride_h + pool->kernel_h - input_h + 1) / 2;
@@ -304,22 +223,9 @@ PerDeviceOpState *Pool2D::init_task(Task const *task,
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
   }
 
-  init_kernel(m,
-              input_w,
-              input_h,
-              input_c,
-              input_n,
-              output_w,
-              output_h,
-              output_c,
-              output_n,
-              pad_h,
-              pad_w,
-              pool->kernel_h,
-              pool->kernel_w,
-              pool->stride_h,
-              pool->stride_w,
-              pool->pool_type);
+  init_kernel(m, input_w, input_h, input_c, input_n, output_w, output_h,
+              output_c, output_n, pad_h, pad_w, pool->kernel_h, pool->kernel_w,
+              pool->stride_h, pool->stride_w, pool->pool_type);
   return m;
 }
 
@@ -328,25 +234,16 @@ void Pool2D::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(POOL2D_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  IndexLauncher launcher(POOL2D_FWD_TASK_ID, parallel_is, TaskArgument(NULL, 0),
+                         argmap, Predicate::TRUE_PRED, false /*must*/,
+                         0 /*mapper_id*/, outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_DISCARD,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_DISCARD,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -358,20 +255,16 @@ void Pool2D::forward(FFModel const &ff) {
 */
 void Pool2D::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                          Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Pool2D* pool = (Pool2D*) task->args;
   Pool2DMeta const *m = *((Pool2DMeta **)task->local_args);
   TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(regions[1],
-                                                          task->regions[1],
-                                                          FID_DATA,
-                                                          ctx,
-                                                          runtime,
-                                                          false /*readOutput*/);
+  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false /*readOutput*/);
 
   forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
 }
@@ -381,41 +274,28 @@ void Pool2D::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(POOL2D_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+  IndexLauncher launcher(POOL2D_BWD_TASK_ID, parallel_is, TaskArgument(NULL, 0),
+                         argmap, Predicate::TRUE_PRED, false /*must*/,
+                         0 /*mapper_id*/, outputs[0]->machine_view.hash());
   // regions[0](I): input
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I): output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -429,8 +309,7 @@ void Pool2D::backward(FFModel const &ff) {
 */
 void Pool2D::backward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                           Context ctx, Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // const Pool2D* pool = (Pool2D*) task->args;
@@ -438,21 +317,14 @@ void Pool2D::backward_task(Task const *task,
   TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Pool2DInput::NUMDIM> acc_input_grad(
-      regions[1],
-      task->regions[1],
-      FID_DATA,
-      ctx,
-      runtime,
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
       true /*readOutput*/);
   TensorAccessorR<float, Pool2DOutput::NUMDIM> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   TensorAccessorR<float, Pool2DOutput::NUMDIM> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
-  backward_kernel_wrapper(m,
-                          acc_input.ptr,
-                          acc_input_grad.ptr,
-                          acc_output.ptr,
+  backward_kernel_wrapper(m, acc_input.ptr, acc_input_grad.ptr, acc_output.ptr,
                           acc_output_grad.ptr);
 }
 
@@ -467,8 +339,7 @@ void Pool2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->activation);
 }
 
-bool Pool2D::measure_operator_cost(Simulator *sim,
-                                   MachineView const &mv,
+bool Pool2D::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -489,22 +360,9 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
   Pool2DMeta *m = sim->pool2d_meta;
 
-  init_kernel(m,
-              input_w,
-              input_h,
-              input_c,
-              input_n,
-              output_w,
-              output_h,
-              output_c,
-              output_n,
-              pad_h,
-              pad_w,
-              this->kernel_h,
-              this->kernel_w,
-              this->stride_h,
-              this->stride_w,
-              this->pool_type);
+  init_kernel(m, input_w, input_h, input_c, input_n, output_w, output_h,
+              output_c, output_n, pad_h, pad_w, this->kernel_h, this->kernel_w,
+              this->stride_h, this->stride_w, this->pool_type);
   // allocate tensors in simulator
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -532,8 +390,8 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
-      backward_kernel_wrapper(
-          m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr);
+      backward_kernel_wrapper(m, input_ptr, input_grad_ptr, output_ptr,
+                              output_grad_ptr);
     };
   }
 
@@ -543,38 +401,16 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
     log_measure.debug("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d "
                       "%d %d %d) stride(%d %d) padding(%d %d) "
                       "forward_time(%.4lf) backward_time(%.4lf)\n",
-                      name,
-                      input_n,
-                      input_c,
-                      input_h,
-                      input_w,
-                      output_n,
-                      output_c,
-                      output_h,
-                      output_w,
-                      stride_h,
-                      stride_w,
-                      padding_h,
-                      padding_w,
-                      cost_metrics.forward_time,
+                      name, input_n, input_c, input_h, input_w, output_n,
+                      output_c, output_h, output_w, stride_h, stride_w,
+                      padding_h, padding_w, cost_metrics.forward_time,
                       cost_metrics.backward_time);
   } else {
     log_measure.debug(
         "[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) "
         "stride(%d %d) padding(%d %d) forward_time(%.4lf)\n",
-        name,
-        input_n,
-        input_c,
-        input_h,
-        input_w,
-        output_n,
-        output_c,
-        output_h,
-        output_w,
-        stride_h,
-        stride_w,
-        padding_h,
-        padding_w,
+        name, input_n, input_c, input_h, input_w, output_n, output_c, output_h,
+        output_w, stride_h, stride_w, padding_h, padding_w,
         cost_metrics.forward_time);
   }
 
@@ -583,10 +419,8 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
 
 using PCG::Node;
 /*static*/
-Node Pool2D::deserialize(FFModel &ff,
-                         Legion::Deserializer &dez,
-                         ParallelTensor inputs[],
-                         int num_inputs) {
+Node Pool2D::deserialize(FFModel &ff, Legion::Deserializer &dez,
+                         ParallelTensor inputs[], int num_inputs) {
   assert(num_inputs == 1);
 
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;

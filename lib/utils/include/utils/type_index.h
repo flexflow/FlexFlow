@@ -6,13 +6,11 @@
 
 namespace FlexFlow {
 
-template <typename T>
-std::type_index type_index() {
+template <typename T> std::type_index type_index() {
   return std::type_index(typeid(T));
 }
 
-template <typename T>
-bool matches(std::type_index idx) {
+template <typename T> bool matches(std::type_index idx) {
   return idx == type_index<T>();
 }
 
@@ -20,8 +18,7 @@ bool matches(std::type_index idx) {
 
 namespace fmt {
 
-template <>
-struct formatter<::std::type_index> : formatter<std::string> {
+template <> struct formatter<::std::type_index> : formatter<std::string> {
   template <typename FormatContext>
   auto format(std::type_index const &type_idx, FormatContext &ctx) const
       -> decltype(ctx.out()) {

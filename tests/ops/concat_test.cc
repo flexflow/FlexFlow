@@ -10,11 +10,8 @@ LegionRuntime::Logger::Category log_app("concat_test");
 struct ConcatTestMeta {
   int batch_size, i_dim, num_channels, projected_num_channels,
       dense_projection_i_dim;
-  ConcatTestMeta(int _batch_size,
-                 int _i_dim,
-                 int _num_channels,
-                 int _projected_num_channels,
-                 int _dense_projection_i_dim) {
+  ConcatTestMeta(int _batch_size, int _i_dim, int _num_channels,
+                 int _projected_num_channels, int _dense_projection_i_dim) {
     batch_size = _batch_size, num_channels = _num_channels, i_dim = _i_dim,
     projected_num_channels = _projected_num_channels,
     dense_projection_i_dim = _dense_projection_i_dim;
@@ -27,16 +24,12 @@ ConcatTestMeta get_test_meta(const std::string file_path) {
       dense_projection_i_dim;
   myfile >> batch_size >> i_dim >> num_channels >> projected_num_channels >>
       dense_projection_i_dim;
-  return ConcatTestMeta(batch_size,
-                        i_dim,
-                        num_channels,
-                        projected_num_channels,
+  return ConcatTestMeta(batch_size, i_dim, num_channels, projected_num_channels,
                         dense_projection_i_dim);
 }
 
 void top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions,
-                    Context ctx,
+                    std::vector<PhysicalRegion> const &regions, Context ctx,
                     Runtime *runtime) {
   std::cout << "test framework launched" << std::endl;
   auto test_meta = get_test_meta("test_meta.txt");
@@ -57,8 +50,8 @@ void top_level_task(Task const *task,
     dense_embeddings[i] = ff.create_tensor<2>(dims, "", DT_FLOAT);
     // init tensor is checked, nothing wrong in init tensor
     // dense_embeddings[i] also checked, it's correct
-    initialize_tensor_from_file(
-        dense_embedding_file_path, dense_embeddings[i], ff, "float", 2);
+    initialize_tensor_from_file(dense_embedding_file_path, dense_embeddings[i],
+                                ff, "float", 2);
   }
 
   for (int i = 0; i < sparse_embedding_channels; i++) {
@@ -66,8 +59,8 @@ void top_level_task(Task const *task,
     sparse_embeddings[i] = ff.create_tensor<2>(dims, "", DT_FLOAT);
     // init tensor is checked, nothing wrong in init tensor
     // sparse_embeddings[i] also checked, it's correct
-    initialize_tensor_from_file(
-        sparse_embedding_file_path, sparse_embeddings[i], ff, "float", 2);
+    initialize_tensor_from_file(sparse_embedding_file_path,
+                                sparse_embeddings[i], ff, "float", 2);
     // std::ostringstream stringStream;
     // stringStream << "sparse_embedding" << i << "_output.txt";
     // std::string copyOfStr = stringStream.str();
@@ -80,11 +73,10 @@ void top_level_task(Task const *task,
   std::vector<Tensor> sparse_embeddings_v(
       sparse_embeddings, sparse_embeddings + sparse_embedding_channels);
   std::vector<Tensor> embeddings;
-  embeddings.insert(embeddings.begin(),
-                    sparse_embeddings_v.begin(),
+  embeddings.insert(embeddings.begin(), sparse_embeddings_v.begin(),
                     sparse_embeddings_v.end());
-  embeddings.insert(
-      embeddings.end(), dense_embeddings_v.begin(), dense_embeddings_v.end());
+  embeddings.insert(embeddings.end(), dense_embeddings_v.begin(),
+                    dense_embeddings_v.end());
 
   auto ret =
       ff.concat("concat_input", test_meta.num_channels, &embeddings[0], 1);
@@ -92,8 +84,8 @@ void top_level_task(Task const *task,
   // load inputs tensors and output gradients tensors for testing
   // use output for output grad (testing only)
   auto output_grad_file_path = "test_output_grad.txt";
-  initialize_tensor_gradient_from_file(
-      output_grad_file_path, ret, ff, "float", 2);
+  initialize_tensor_gradient_from_file(output_grad_file_path, ret, ff, "float",
+                                       2);
 
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   // run forward and backward to produce results

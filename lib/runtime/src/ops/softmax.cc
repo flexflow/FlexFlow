@@ -51,51 +51,35 @@ SoftmaxParams Softmax::get_params() const {
 }
 
 Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
-  Layer *sm = new Layer(this,
-                        OP_SOFTMAX,
-                        DT_FLOAT,
-                        name,
-                        1 /*inputs*/,
-                        0 /*weights*/,
-                        1 /*outputs*/,
-                        _input);
+  Layer *sm = new Layer(this, OP_SOFTMAX, DT_FLOAT, name, 1 /*inputs*/,
+                        0 /*weights*/, 1 /*outputs*/, _input);
   int numdims = _input->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdims; i++) {
     dims[i] = _input->dims[i];
   }
-  sm->outputs[0] = create_tensor_legion_ordering(
-      numdims, dims, DT_FLOAT, sm, 0, true /*create_grad*/);
+  sm->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT, sm, 0,
+                                                 true /*create_grad*/);
   sm->add_int_property("softmax_dim", dim);
   layers.push_back(sm);
   return sm->outputs[0];
 }
 
 Op *Softmax::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
+    FFModel &model, Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("softmax_dim", value);
   int dim = (int)value;
-  return new Softmax(model,
-                     inputs[0],
+  return new Softmax(model, inputs[0],
                      (inputs[0]->num_dims - 1 - dim) % inputs[0]->num_dims,
                      layer->name);
 }
 
-Softmax::Softmax(FFModel &model,
-                 const ParallelTensor _input,
-                 int _dim,
+Softmax::Softmax(FFModel &model, const ParallelTensor _input, int _dim,
                  char const *name)
-    : Op(model,
-         OP_SOFTMAX,
-         _input->data_type,
-         name,
-         1 /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         _input),
+    : Op(model, OP_SOFTMAX, _input->data_type, name, 1 /*inputs*/,
+         0 /*weights*/, 1 /*outputs*/, _input),
       dim(_dim) {
   // Currently assume we always perform softmax along the inner most dim
   assert(dim == 0);
@@ -107,10 +91,8 @@ Softmax::Softmax(FFModel &model,
   outputs[0] = model.create_parallel_tensor(numdim, dims, DT_FLOAT, this);
 }
 
-Softmax::Softmax(FFModel &model,
-                 SoftmaxParams const &params,
-                 const ParallelTensor input,
-                 char const *name)
+Softmax::Softmax(FFModel &model, SoftmaxParams const &params,
+                 const ParallelTensor input, char const *name)
     : Softmax(model, input, params.dim, name) {}
 
 void Softmax::init(FFModel const &ff) {
@@ -120,25 +102,17 @@ void Softmax::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(SOFTMAX_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Softmax)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(SOFTMAX_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Softmax)), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_DISCARD,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_DISCARD,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -151,8 +125,7 @@ void Softmax::init(FFModel const &ff) {
  */
 PerDeviceOpState *Softmax::init_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+                                     Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Softmax const *softmax = (Softmax *)task->args;
@@ -191,33 +164,24 @@ void Softmax::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(SOFTMAX_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(SOFTMAX_FWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                        EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                           Context ctx, Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (in_domain.get_dim()) {
@@ -226,8 +190,8 @@ void Softmax::forward_task(Task const *task,
     return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
 }
 
@@ -238,19 +202,15 @@ void Softmax::forward_task(Task const *task,
 template <int NDIM>
 void Softmax::forward_task_with_dim(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+                                    Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Softmax* softmax = (Softmax*) task->args;
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  TensorAccessorR<float, NDIM> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, NDIM> acc_output(regions[1],
-                                          task->regions[1],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
+  TensorAccessorR<float, NDIM> acc_input(regions[0], task->regions[0], FID_DATA,
+                                         ctx, runtime);
+  TensorAccessorW<float, NDIM> acc_output(regions[1], task->regions[1],
+                                          FID_DATA, ctx, runtime,
                                           false /*readOutput*/);
 
   forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
@@ -261,33 +221,24 @@ void Softmax::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(SOFTMAX_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+  IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
+                        EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::backward_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                            Context ctx, Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (in_domain.get_dim()) {
@@ -296,8 +247,8 @@ void Softmax::backward_task(Task const *task,
     return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
 }
 
@@ -311,39 +262,34 @@ void Softmax::backward_task(Task const *task,
 template <int NDIM>
 void Softmax::backward_task_with_dim(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+                                     Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Softmax* softmax = (Softmax*) task->args;
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  TensorAccessorW<float, NDIM> acc_input_grad(regions[0],
-                                              task->regions[0],
-                                              FID_DATA,
-                                              ctx,
-                                              runtime,
+  TensorAccessorW<float, NDIM> acc_input_grad(regions[0], task->regions[0],
+                                              FID_DATA, ctx, runtime,
                                               true /*readOutput*/);
-  TensorAccessorR<float, NDIM> acc_output_grad(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, NDIM> acc_output_grad(regions[1], task->regions[1],
+                                               FID_DATA, ctx, runtime);
   // make sure the image indices match!
   assert(acc_input_grad.rect == acc_output_grad.rect);
 
-  backward_kernel_wrapper(
-      m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+  backward_kernel_wrapper(m, acc_input_grad.ptr, acc_output_grad.ptr,
+                          acc_input_grad.rect.volume());
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-    case PM_SOFTMAX_DIM:
-      *value = dim;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
+  case PM_SOFTMAX_DIM:
+    *value = dim;
+    return true;
+  default:
+    return Op::get_int_parameter(para, value);
   }
 }
 
-bool Softmax::measure_operator_cost(Simulator *sim,
-                                    MachineView const &mv,
+bool Softmax::measure_operator_cost(Simulator *sim, MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -378,8 +324,8 @@ bool Softmax::measure_operator_cost(Simulator *sim,
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     backward = [&] {
-      backward_kernel_wrapper(
-          m, input_grad_ptr, output_grad_ptr, sub_output.get_volume());
+      backward_kernel_wrapper(m, input_grad_ptr, output_grad_ptr,
+                              sub_output.get_volume());
     };
   }
 
@@ -388,16 +334,12 @@ bool Softmax::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     log_measure.debug("[Measure Softmax] name(%s) num_elements(%zu) "
                       "forward_time(%.4lf) backward_time(%.4lf)\n",
-                      name,
-                      sub_output.get_volume(),
-                      cost_metrics.forward_time,
+                      name, sub_output.get_volume(), cost_metrics.forward_time,
                       cost_metrics.backward_time);
   } else {
     log_measure.debug(
         "[Measure Softmax] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
-        name,
-        sub_output.get_volume(),
-        cost_metrics.forward_time);
+        name, sub_output.get_volume(), cost_metrics.forward_time);
   }
   // Free softmaxmeta
   delete m;

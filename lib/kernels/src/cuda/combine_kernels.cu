@@ -26,23 +26,17 @@ CombinePerDeviceState::CombinePerDeviceState(FFHandler handler)
 namespace Kernels {
 namespace Combine {
 
-template <DataType DT>
-struct ForwardKernel {
-  void operator()(ffStream_t stream,
-                  GenericTensorAccessorR const &input,
+template <DataType DT> struct ForwardKernel {
+  void operator()(ffStream_t stream, GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
-    checkCUDA(cudaMemcpyAsync(output.get<DT>(),
-                              input.get<DT>(),
+    checkCUDA(cudaMemcpyAsync(output.get<DT>(), input.get<DT>(),
                               input.shape.get_volume() * size_of(DT),
-                              cudaMemcpyDeviceToDevice,
-                              stream));
+                              cudaMemcpyDeviceToDevice, stream));
   }
 };
 
-template <DataType DT>
-struct BackwardKernel {
-  void operator()(ffStream_t stream,
-                  GenericTensorAccessorR const &output_grad,
+template <DataType DT> struct BackwardKernel {
+  void operator()(ffStream_t stream, GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorW const &input_grad) {
     size_t num_elements = output_grad.shape.get_volume();
     add_kernel<real_type<DT>>
@@ -51,19 +45,17 @@ struct BackwardKernel {
   }
 };
 
-void forward_kernel(ffStream_t stream,
-                    CombinePerDeviceState const *m,
+void forward_kernel(ffStream_t stream, CombinePerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
   DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, input, output);
 }
 
-void backward_kernel(ffStream_t stream,
-                     CombinePerDeviceState const *m,
+void backward_kernel(ffStream_t stream, CombinePerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad) {
-  DataTypeDispatch1<BackwardKernel>{}(
-      m->data_type, stream, output_grad, input_grad);
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, output_grad,
+                                      input_grad);
 }
 
 } // namespace Combine

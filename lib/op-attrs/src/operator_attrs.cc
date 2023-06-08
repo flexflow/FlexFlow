@@ -83,7 +83,7 @@ namespace FlexFlow {
 template <typename T>
 typename std::enable_if<(is_streamable<T>::value &&
                          !is_fmtable<T>::value)>::type
-    as_dot(T const &t, RecordFormatter &r) {
+as_dot(T const &t, RecordFormatter &r) {
   std::ostringstream oss;
   oss << t;
   r << oss;
@@ -91,19 +91,14 @@ typename std::enable_if<(is_streamable<T>::value &&
 
 template <typename T>
 typename std::enable_if<(is_fmtable<T>::value)>::type
-    as_dot(T const &t, RecordFormatter &r) {
+as_dot(T const &t, RecordFormatter &r) {
   r << fmt::to_string(t);
 }
-void as_dot(int x, RecordFormatter &r) {
-  r << std::to_string(x);
-}
+void as_dot(int x, RecordFormatter &r) { r << std::to_string(x); }
 
-void as_dot(std::string const &s, RecordFormatter &r) {
-  r << s;
-}
+void as_dot(std::string const &s, RecordFormatter &r) { r << s; }
 
-template <typename T>
-void as_dot(std::vector<T> const &x, RecordFormatter &r) {
+template <typename T> void as_dot(std::vector<T> const &x, RecordFormatter &r) {
   RecordFormatter rr;
   for (T const &t : x) {
     as_dot(t, r);
@@ -126,18 +121,14 @@ struct as_dot_visitor {
 
   RecordFormatter &result;
 
-  template <typename T>
-  void operator()(char const *name, T const &t) {
+  template <typename T> void operator()(char const *name, T const &t) {
     RecordFormatter kv;
     kv << name;
     as_dot(t, result);
     result << kv;
   }
 
-  template <typename T>
-  void operator()(T const &t) {
-    as_dot(t, result);
-  }
+  template <typename T> void operator()(T const &t) { as_dot(t, result); }
 
   /* template <typename V> */
   /* void operator()(const char *name, std::vector<V> const &t) { */
@@ -153,20 +144,18 @@ struct as_dot_visitor {
 
 template <typename T>
 typename std::enable_if<is_visitable<T>::value>::type
-    as_dot(T const &t, RecordFormatter &r) {
+as_dot(T const &t, RecordFormatter &r) {
   as_dot_visitor vis(r);
   visit_struct::for_each(t, vis);
 }
 
 struct AsDot {
-  template <typename T>
-  RecordFormatter operator()(T const &t) {
+  template <typename T> RecordFormatter operator()(T const &t) {
     return as_dot(t);
   }
 };
 
-template <typename... Args>
-RecordFormatter as_dot(variant<Args...> const &o) {
+template <typename... Args> RecordFormatter as_dot(variant<Args...> const &o) {
   return mpark::visit(AsDot{}, o);
 }
 
@@ -177,16 +166,12 @@ struct IsValidFunctor {
   std::vector<ParallelTensorShape> const &input_shapes;
 
   bool operator()(AggregateAttrs const &attrs) {
-    return is_valid(attrs,
-                    input_shapes.at(0),
-                    input_shapes.at(1),
-                    input_shapes.at(2),
-                    input_shapes.at(3),
+    return is_valid(attrs, input_shapes.at(0), input_shapes.at(1),
+                    input_shapes.at(2), input_shapes.at(3),
                     subvec(input_shapes, 4, nullopt));
   }
 
-  template <typename T>
-  bool operator()(T const &) {
+  template <typename T> bool operator()(T const &) {
     return true; // TODO FIXME @lockshaw
   }
 };

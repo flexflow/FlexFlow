@@ -8,19 +8,14 @@ namespace FlexFlow {
 
 namespace Kernels {
 namespace Split {
-void forward_kernel(ffStream_t stream,
-                    float **out_ptrs,
-                    float const *in_ptr,
+void forward_kernel(ffStream_t stream, float **out_ptrs, float const *in_ptr,
                     Legion::coord_t const *out_blk_sizes,
-                    Legion::coord_t in_blk_size,
-                    Legion::coord_t num_blks,
+                    Legion::coord_t in_blk_size, Legion::coord_t num_blks,
                     int numOutputs);
-void backward_kernel(ffStream_t stream,
-                     float *in_grad_ptr,
+void backward_kernel(ffStream_t stream, float *in_grad_ptr,
                      float const **out_grad_ptr,
                      Legion::coord_t const *out_blk_sizes,
-                     Legion::coord_t in_blk_size,
-                     Legion::coord_t num_blks,
+                     Legion::coord_t in_blk_size, Legion::coord_t num_blks,
                      int numOutputs);
 
 } // namespace Split

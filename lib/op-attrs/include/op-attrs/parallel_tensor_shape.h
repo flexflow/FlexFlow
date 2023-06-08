@@ -45,7 +45,7 @@ bool is_valid(ParallelTensorShape const &);
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &);
 std::vector<TensorShape>
-    get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
+get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
 
 } // namespace FlexFlow
 

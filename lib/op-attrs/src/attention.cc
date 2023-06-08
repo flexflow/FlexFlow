@@ -10,17 +10,11 @@ namespace FlexFlow {
 /*   return is_valid; */
 /* } */
 
-int get_qProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.kdim;
-}
+int get_qProjSize(MultiHeadAttentionAttrs const &attrs) { return attrs.kdim; }
 
-int get_vProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.vdim;
-}
+int get_vProjSize(MultiHeadAttentionAttrs const &attrs) { return attrs.vdim; }
 
-int get_kProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.kdim;
-}
+int get_kProjSize(MultiHeadAttentionAttrs const &attrs) { return attrs.kdim; }
 
 int get_oProjSize(MultiHeadAttentionAttrs const &attrs) {
   return attrs.embed_dim;
@@ -39,8 +33,8 @@ int get_vSize(TensorShape const &value_shape) {
 }
 
 TensorShape
-    get_weights_shape(MultiHeadAttentionAttrs const &attrs,
-                      MultiHeadAttentionInputs<TensorShape> const &inputs) {
+get_weights_shape(MultiHeadAttentionAttrs const &attrs,
+                  MultiHeadAttentionInputs<TensorShape> const &inputs) {
   size_t qParas = get_qProjSize(attrs) * get_qSize(inputs);
   size_t kParas = get_kProjSize(attrs) * get_kSize(inputs);
   size_t vParas = get_vProjSize(attrs) * get_vSize(inputs);
@@ -73,8 +67,7 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
                              TensorShape const &key_shape,
                              TensorShape const &value_shape) {
   ParallelTensorShape parallel_shape =
-      get_output_shape(attrs,
-                       static_cast<ParallelTensorShape>(query_shape),
+      get_output_shape(attrs, static_cast<ParallelTensorShape>(query_shape),
                        static_cast<ParallelTensorShape>(key_shape),
                        static_cast<ParallelTensorShape>(value_shape));
   return get_tensor_shape_unsafe(parallel_shape);

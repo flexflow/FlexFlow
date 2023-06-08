@@ -23,8 +23,7 @@ std::unordered_set<typename Structure::vertex_type> nodes(G const &g) {
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
-bool has_edge(G const &g,
-              typename Structure::vertex_type const &src,
+bool has_edge(G const &g, typename Structure::vertex_type const &src,
               typename Structure::vertex_type const &dst) {
   Structure s;
 
@@ -39,14 +38,14 @@ bool has_edge(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::edge_type>
-    outgoing_edges(G const &g, typename Structure::vertex_type const &n) {
+outgoing_edges(G const &g, typename Structure::vertex_type const &n) {
   Structure s;
   return s.get_outgoing_edges(g, n);
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::pair<typename Structure::vertex_type, typename Structure::vertex_type>
-    get_basic_edge(G const &g, typename Structure::edge_type const &e) {
+get_basic_edge(G const &g, typename Structure::edge_type const &e) {
   Structure s;
 
   return {s.get_src(g, e), s.get_dst(g, e)};
@@ -71,8 +70,7 @@ std::vector<typename Structure::edge_type> get_edges(G const &g) {
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
-void successors(G const &g,
-                typename Structure::vertex_type const &node,
+void successors(G const &g, typename Structure::vertex_type const &node,
                 std::unordered_set<typename Structure::vertex_type> *succ) {
   Structure s;
   for (auto const &edge : s.get_outgoing_edges(g, node)) {
@@ -82,7 +80,7 @@ void successors(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::vertex_type>
-    successors(G const &g, typename Structure::vertex_type const &node) {
+successors(G const &g, typename Structure::vertex_type const &node) {
   // using N = typename Structure::vertex_type;
 
   std::unordered_set<typename Structure::vertex_type> succ;
@@ -93,7 +91,7 @@ std::unordered_set<typename Structure::vertex_type>
 
 template <typename G, typename Structure = GraphStructure<G>>
 tl::optional<typename Structure::vertex_type>
-    successor(G const &g, typename Structure::vertex_type const &node) {
+successor(G const &g, typename Structure::vertex_type const &node) {
   auto succs = successors<G, Structure>(g, node);
   if (succs.size() == 1) {
     return *succs.begin();
@@ -103,8 +101,7 @@ tl::optional<typename Structure::vertex_type>
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
-void predecessors(G const &g,
-                  typename Structure::vertex_type const &node,
+void predecessors(G const &g, typename Structure::vertex_type const &node,
                   std::unordered_set<typename Structure::vertex_type> *pred) {
   Structure s;
   for (auto const &edge : s.get_incoming_edges(g, node)) {
@@ -114,7 +111,7 @@ void predecessors(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::vertex_type>
-    predecessors(G const &g, typename Structure::vertex_type const &node) {
+predecessors(G const &g, typename Structure::vertex_type const &node) {
   // using N = typename Structure::vertex_type;
 
   std::unordered_set<typename Structure::vertex_type> pred;
@@ -125,7 +122,7 @@ std::unordered_set<typename Structure::vertex_type>
 
 template <typename G, typename Structure = GraphStructure<G>>
 tl::optional<typename Structure::vertex_type>
-    predecessor(G const &g, typename Structure::vertex_type const &node) {
+predecessor(G const &g, typename Structure::vertex_type const &node) {
   auto preds = predecessors<G, Structure>(g, node);
   if (preds.size() == 1) {
     return *preds.begin();
@@ -206,7 +203,7 @@ void topo_sort(G const &g,
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    std::unordered_set<typename Structure::vertex_type>>
-    dominators(G const &g) {
+dominators(G const &g) {
   using N = typename Structure::vertex_type;
   // using E = typename Structure::edge_type;
 
@@ -244,14 +241,14 @@ std::unordered_map<typename Structure::vertex_type,
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    std::unordered_set<typename Structure::vertex_type>>
-    post_dominators(G const &g) {
+post_dominators(G const &g) {
   return dominators<G, ReverseStructure<Structure>>(g);
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    typename Structure::vertex_type>
-    imm_dominators(G const &g) {
+imm_dominators(G const &g) {
   using N = typename Structure::vertex_type;
   // using E = typename Structure::edge_type;
 
@@ -291,10 +288,8 @@ std::unordered_map<typename Structure::vertex_type,
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
-void dfs(G const &g,
-         typename Structure::vertex_type const &n,
-         std::function<void(G const &,
-                            Structure const &,
+void dfs(G const &g, typename Structure::vertex_type const &n,
+         std::function<void(G const &, Structure const &,
                             typename Structure::vertex_type const &,
                             typename Structure::vertex_type const &)> const
              &visitor) {
@@ -335,15 +330,13 @@ void dfs(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::vertex_type>
-    descendants(G const &g, typename Structure::vertex_type const &n) {
+descendants(G const &g, typename Structure::vertex_type const &n) {
   using N = typename Structure::vertex_type;
   using E = typename Structure::edge_type;
 
   std::unordered_set<N> descendants;
 
-  auto dfs_visitor = [&](G const &gg,
-                         Structure const &ss,
-                         N const &dfs_src,
+  auto dfs_visitor = [&](G const &gg, Structure const &ss, N const &dfs_src,
                          N const &current_node) {
     descendants.insert(current_node);
   };
@@ -355,7 +348,7 @@ std::unordered_set<typename Structure::vertex_type>
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::vector<std::unordered_set<typename Structure::vertex_type>>
-    weakly_connected_components(G const &g) {
+weakly_connected_components(G const &g) {
   using N = typename Structure::vertex_type;
   using E = typename Structure::edge_type;
 
@@ -378,7 +371,7 @@ std::vector<std::unordered_set<typename Structure::vertex_type>>
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    typename Structure::vertex_type>
-    imm_post_dominators(G const &g) {
+imm_post_dominators(G const &g) {
   return imm_dominators<G, ReverseStructure<Structure>>(g);
 }
 
@@ -396,11 +389,8 @@ BasicGraph<typename Structure::vertex_type> transitive_reduction(G const &g) {
 
   std::unordered_set<std::pair<N, N>> to_delete;
 
-  auto dfs_visitor = [&](N const &src,
-                         G const &gg,
-                         Structure const &ss,
-                         N const &dfs_src,
-                         N const &nn) {
+  auto dfs_visitor = [&](N const &src, G const &gg, Structure const &ss,
+                         N const &dfs_src, N const &nn) {
     if (nn != dfs_src && to_delete.find({src, nn}) == to_delete.end() &&
         has_edge<G, Structure>(gg, src, nn)) {
       to_delete.insert({src, nn});
@@ -409,10 +399,10 @@ BasicGraph<typename Structure::vertex_type> transitive_reduction(G const &g) {
 
   for (N const &n : nodes) {
     /* auto n_dfs_visitor = std::bind(dfs_visitor, n); */
-    auto n_dfs_visitor =
-        [&](G const &gg, Structure const &ss, N const &dfs_src, N const &nn) {
-          return dfs_visitor(n, gg, ss, dfs_src, nn);
-        };
+    auto n_dfs_visitor = [&](G const &gg, Structure const &ss, N const &dfs_src,
+                             N const &nn) {
+      return dfs_visitor(n, gg, ss, dfs_src, nn);
+    };
 
     for (N const &child : successors<G, Structure>(g, n)) {
       dfs<G, Structure>(g, child, n_dfs_visitor);
@@ -430,19 +420,15 @@ BasicGraph<typename Structure::vertex_type> transitive_reduction(G const &g) {
   return reduction;
 }
 
-template <typename N>
-void inplace_transitive_reduction(BasicGraph<N> &g) {
+template <typename N> void inplace_transitive_reduction(BasicGraph<N> &g) {
   using Structure = GraphStructure<BasicGraph<N>>;
   using G = BasicGraph<N>;
   using E = std::pair<N, N>;
 
   std::unordered_set<E> to_delete;
 
-  auto dfs_visitor = [&](N const &src,
-                         G const &gg,
-                         Structure const &ss,
-                         N const &dfs_src,
-                         N const &nn) {
+  auto dfs_visitor = [&](N const &src, G const &gg, Structure const &ss,
+                         N const &dfs_src, N const &nn) {
     if (nn != dfs_src && to_delete.find({src, nn}) == to_delete.end() &&
         has_edge(gg, src, nn)) {
       to_delete.insert({src, nn});
@@ -450,10 +436,10 @@ void inplace_transitive_reduction(BasicGraph<N> &g) {
   };
 
   for (N const &n : g.nodes) {
-    auto n_dfs_visitor =
-        [&](G const &gg, Structure const &ss, N const &dfs_src, N const &nn) {
-          return dfs_visitor(n, gg, ss, dfs_src, nn);
-        };
+    auto n_dfs_visitor = [&](G const &gg, Structure const &ss, N const &dfs_src,
+                             N const &nn) {
+      return dfs_visitor(n, gg, ss, dfs_src, nn);
+    };
 
     for (N const &child : successors(g, n)) {
       dfs<G, Structure>(g, child, n_dfs_visitor);
@@ -467,8 +453,7 @@ void inplace_transitive_reduction(BasicGraph<N> &g) {
 
 template <typename G, typename Structure = GraphStructure<G>>
 void export_as_dot(
-    DotFile<typename Structure::vertex_type> &dotfile,
-    G const &g,
+    DotFile<typename Structure::vertex_type> &dotfile, G const &g,
     std::function<RecordFormatter(typename Structure::vertex_type)> const
         &pretty) {
   using N = typename Structure::vertex_type;
