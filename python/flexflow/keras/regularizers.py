@@ -13,11 +13,24 @@
 # limitations under the License.
 #
 
-from . import optimizers
-from . import initializers
-from . import regularizers
-from . import datasets
-from . import utils
-from . import models
-from . import layers
-from . import backend
+from flexflow.type import RegularizerMode
+
+
+class Regularizer(object):
+  def __init__(self):
+    self.type: RegularizerMode = None
+    self._lambda: float = 0.0
+    
+
+class L1(Regularizer):
+  def __init__(self, l1):
+    super(Regularizer, self).__init__() 
+    self.type = RegularizerMode.REG_MODE_L1
+    self._lambda = l1
+
+    
+class L2(Regularizer):
+  def __init__(self, l2):
+    super(Regularizer, self).__init__() 
+    self.type = RegularizerMode.REG_MODE_L2
+    self._lambda = l2

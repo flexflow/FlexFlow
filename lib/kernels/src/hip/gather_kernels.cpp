@@ -31,16 +31,21 @@ struct ForwardKernel {
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &index,
                             GenericTensorAccessorW const &output,
-                            size_t stride, size_t dim_size) {
+                            size_t stride,
+                            size_t input_size,
+                            size_t output_size) {
     handle_unimplemented_hip_kernel(OP_GATHER);
-}
+  }
+};
 
 void forward_kernel(hipStream_t stream, GatherPerDeviceState const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &index,
                             GenericTensorAccessorW const &output,
-                            size_t stride, size_t dim_size) {
-  DataTypeDispatch1<ForwardKernel>{}(m->index_data_type, stream, m, input, index, output, stride, dim_size);
+                            size_t stride,
+                            size_t input_size,
+                            size_t output_size) {
+  DataTypeDispatch1<ForwardKernel>{}(m->index_data_type, stream, m, input, index, output, stride, input_size, output_size);
 }
 
 template <DataType IndexType>
@@ -49,18 +54,23 @@ struct BackwardKernel {
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorR const &index,
                              GenericTensorAccessorW const &input_grad,
-                             size_t stride, size_t dim_size) {
+                             size_t stride,
+                             size_t input_size,
+                             size_t output_size) {
     handle_unimplemented_hip_kernel(OP_GATHER);
-}
+  }
+};
 
 void backward_kernel(hipStream_t stream, GatherPerDeviceState const *m,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorR const &index,
                              GenericTensorAccessorW const &input_grad,
-                             size_t stride, size_t dim_size) {
-  DataTypeDispatch1<BackwardKernel>{}(m->index_data_type, stream, m, output_grad, index, input_grad, stride, dim_size);
+                             size_t stride,
+                             size_t input_size,
+                             size_t output_size) {
+  DataTypeDispatch1<BackwardKernel>{}(m->index_data_type, stream, m, output_grad, index, input_grad, stride, input_size, output_size);
 }
 
-} // namespace Gather
-} // namespace Kernels
-} // namespace FlexFlow
+}
+}
+}

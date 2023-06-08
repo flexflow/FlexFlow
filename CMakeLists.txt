@@ -16,6 +16,16 @@ set(FF_MAX_NUM_TASK_REGIONS "20" CACHE STRING
 set(FF_MAX_NUM_TASK_ARGUMENTS "5" CACHE STRING
   "Maximum number of arguments that can be declared in a TaskSignature")
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
+option(FF_USE_PREBUILT_NCCL "Enable use of NCCL pre-compiled library, if available" ON)
+option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if available" ON)
+option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
+option(FF_USE_PYTHON "Enable Python" ON)
+option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
+
+set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
+set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
+set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
+set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
 
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
 set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")

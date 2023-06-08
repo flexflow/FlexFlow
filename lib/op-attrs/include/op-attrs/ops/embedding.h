@@ -15,7 +15,7 @@ enum class AggregateOp {
   AVG,
 };
 
-struct EmbeddingAttrs : use_visitable_cmp<EmbeddingAttrs> {
+struct EmbeddingAttrs : public use_visitable_cmp<EmbeddingAttrs> {
 public:
   EmbeddingAttrs() = delete;
   EmbeddingAttrs(int num_entries, int out_channels, AggregateOp aggr, DataType data_type);

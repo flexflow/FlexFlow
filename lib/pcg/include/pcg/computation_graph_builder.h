@@ -82,6 +82,7 @@ public:
                 bool use_bias = true,
                 optional<Initializer const &> kernel_initializer = nullopt,
                 optional<Initializer const &> bias_initializer = nullopt,
+                optional<Regularizer const &> kernel_regularizer = nullopt,
                 optional<std::string> const &name = nullopt);
   // Add a dropout layer
   Tensor dropout(Tensor const &input,
