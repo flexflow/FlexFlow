@@ -31,11 +31,28 @@ BeamSearchBatchConfig::BeamSearchBatchConfig() : BatchConfig() {
   current_iteration = 0;
 }
 
+BeamSearchBatchConfig::BeamSearchBatchConfig(int model_id) : BatchConfig() {
+  this->model_id = model_id;
+  std::cout << "==================\n"
+            << "Register Batch Config with Model " << this->model_id
+            << std::endl;
+  current_iteration = 0;
+}
+
 BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
                                              size_t target_iterations)
     : BatchConfig() {
   this->beam_width = beam_width;
   this->target_iterations = target_iterations;
+  current_iteration = 0;
+}
+
+BeamSearchBatchConfig::BeamSearchBatchConfig(BeamSearchBatchConfig const &other,
+                                             int model_id)
+    : BatchConfig() {
+  this->beam_width = other.beam_width;
+  this->target_iterations = other.target_iterations;
+  this->model_id = model_id;
   current_iteration = 0;
 }
 
