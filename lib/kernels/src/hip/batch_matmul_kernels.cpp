@@ -19,7 +19,8 @@
 
 namespace FlexFlow {
 
-BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
+BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace BatchMatmul {
@@ -30,7 +31,8 @@ B: (batch, k, m)
 O: (batch, n, m)
 O = A * B
 */
-void forward_kernel(hipStream_t stream, BatchMatmulPerDeviceState const *meta,
+void forward_kernel(hipStream_t stream,
+                    BatchMatmulPerDeviceState const *meta,
                     float *o_ptr,
                     float const *a_ptr,
                     float const *b_ptr,

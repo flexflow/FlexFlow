@@ -1,6 +1,6 @@
 #include "ffr/config.h"
 
-void parse(char** argv, int argc, FFConfig& ffconfig) {
+void parse(char **argv, int argc, FFConfig &ffconfig) {
   for (int i = 1; i < argc; i++) {
     if ((!strcmp(argv[i], "-e")) || (!strcmp(argv[i], "--epochs"))) {
       ffconfig.epochs = atoi(argv[++i]);
@@ -155,7 +155,7 @@ void parse(char** argv, int argc, FFConfig& ffconfig) {
   }
 }
 
-int main(char** argv, int argc) {
+int main(char **argv, int argc) {
   FFConfig ffconfig;
   parse(argv, argc, ffconfig);
   return 0;

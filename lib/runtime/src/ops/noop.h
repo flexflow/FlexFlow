@@ -1,13 +1,14 @@
 #ifndef _FLEXFLOW_NOOP_H
 #define _FLEXFLOW_NOOP_H
 
-#include "op_task_invocation.h"
-#include "op-attrs/ops/noop.h"
 #include "op-attrs/ops/input.h"
+#include "op-attrs/ops/noop.h"
+#include "op_task_invocation.h"
 
 namespace FlexFlow {
 
-template <> void register_task<NOOP_INIT_TASK_ID>();
+template <>
+void register_task<NOOP_INIT_TASK_ID>();
 
 OpTaskInvocation init(NoopAttrs const &);
 OpTaskInvocation forward(NoopAttrs const &);
@@ -35,7 +36,8 @@ OpTaskInvocation backward(InputAttrs const &);
 /*                              MachineView const &pc, */
 /*                              CostMetrics &cost_metrics) const override; */
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 
@@ -51,6 +53,6 @@ OpTaskInvocation backward(InputAttrs const &);
 /*   size_t input_tensor_guid; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

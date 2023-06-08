@@ -41,17 +41,17 @@ struct ForwardKernel {
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
                   size_t num_replicas) {
-  
-  size_t total_elements = input.shape.num_elements() * num_replicas;
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(reduction_forward_kernel<T>),
-                     GET_BLOCKS(total_elements),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     input.get<T>(),
-                     output.get<T>(),
-                     input.shape.num_elements(),
-                     num_replicas);
+
+    size_t total_elements = input.shape.num_elements() * num_replicas;
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(reduction_forward_kernel<T>),
+                       GET_BLOCKS(total_elements),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       input.get<T>(),
+                       output.get<T>(),
+                       input.shape.num_elements(),
+                       num_replicas);
   }
 }
 
@@ -61,10 +61,10 @@ struct BackwardKernel {
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     checkCUDA(hipMemcpyAsync(input.get<T>(),
-                              output.get<T>(),
-                              input.shape.num_elements() * sizeof(T),
-                              hipMemcpyDeviceToDevice,
-                              stream));
+                             output.get<T>(),
+                             input.shape.num_elements() * sizeof(T),
+                             hipMemcpyDeviceToDevice,
+                             stream));
   }
 }
 
@@ -72,7 +72,8 @@ void forward_kernel(hipStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     size_t num_replicas) {
-  DataTypeDispatch1<ForwardKernel>{}(input->data_type, stream, input, output, num_replicas);
+  DataTypeDispatch1<ForwardKernel>{}(
+      input->data_type, stream, input, output, num_replicas);
 }
 
 void backward_kernel(hipStream_t stream,

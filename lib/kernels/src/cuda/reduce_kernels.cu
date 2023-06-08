@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/reduce_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/reduce_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -22,8 +22,8 @@ using Legion::coord_t;
 using Legion::Domain;
 
 ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
-                       Reduce const *rd,
-                       Domain const &input_domain)
+                                           Reduce const *rd,
+                                           Domain const &input_domain)
     : op_type(rd->op_type), PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
@@ -68,9 +68,9 @@ namespace Kernels {
 namespace Reduce {
 
 void forward_kernel(cudaStream_t stream,
-                            ReducePerDeviceState const *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
+                    ReducePerDeviceState const *m,
+                    float const *input_ptr,
+                    float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnReduceTensor(m->handle.dnn,
@@ -87,11 +87,10 @@ void forward_kernel(cudaStream_t stream,
                                output_ptr));
 };
 
-
 void backward_kernel(cudaStream_t stream,
-                             ReducePerDeviceState const *m,
-                             float const *output_grad_ptr,
-                             float *input_grad_ptr) {
+                     ReducePerDeviceState const *m,
+                     float const *output_grad_ptr,
+                     float *input_grad_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0, beta = 1.0f;
   switch (m->op_type) {

@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_COMBINE_H
 #define _FLEXFLOW_COMBINE_H
 
+#include "op-attrs/ops/combine.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/combine.h"
 
 namespace FlexFlow {
 
-template <> void register_task<COMBINE_INIT_TASK_ID>();
-template <> void register_task<COMBINE_FWD_TASK_ID>();
-template <> void register_task<COMBINE_BWD_TASK_ID>();
+template <>
+void register_task<COMBINE_INIT_TASK_ID>();
+template <>
+void register_task<COMBINE_FWD_TASK_ID>();
+template <>
+void register_task<COMBINE_BWD_TASK_ID>();
 
 OpTaskInvocation init(CombineAttrs const &);
 OpTaskInvocation forward(CombineAttrs const &);
@@ -39,21 +42,25 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   bool append_parallel_op_info( */
 /*       std::vector<ParallelOpInfo> &parallel_ops) const override; */
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   template <typename T> */
 /*   static void */
 /*       forward_task_with_type(Legion::Task const *task, */
-/*                              std::vector<Legion::PhysicalRegion> const &regions, */
+/*                              std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                              Legion::Context ctx, */
 /*                              Legion::Runtime *runtime); */
 /*   template <typename T> */

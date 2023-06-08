@@ -45,7 +45,7 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(PROFILING, enable_profiling());
 
-  return { ATTENTION_INIT_TASK_ID, b };
+  return {ATTENTION_INIT_TASK_ID, b};
 }
 
 OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
@@ -58,7 +58,7 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
   b.bind(OUTPUT, param_tensor(0));
   b.bind_arg(PER_DEVICE_STATE, per_device_op_state<MHAPerDeviceState>());
 
-  return { ATTENTION_FWD_TASK_ID, b };
+  return {ATTENTION_FWD_TASK_ID, b};
 }
 
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
@@ -74,7 +74,7 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   b.bind_grad(WEIGHTS, param_tensor(0));
   b.bind_grad(OUTPUT, output_tensor(0));
 
-  return { ATTENTION_BWD_TASK_ID, b };
+  return {ATTENTION_BWD_TASK_ID, b};
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
@@ -84,7 +84,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   ParallelTensorShape const &value_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &mv) {
-  auto env = sim.new_environment(); 
+  auto env = sim.new_environment();
 
   auto query = allocate_input(env, query_shape);
   auto key = allocate_input(env, key_shape);
@@ -94,7 +94,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   auto key_grad = allocate_input_grad(env, key_shape);
   auto value_grad = allocate_input_grad(env, value_shape);
 
-  MultiHeadAttentionInputs<ParallelTensorShape> input_shapes = { query_shape, key_shape, value_shape };
+  MultiHeadAttentionInputs<ParallelTensorShape> input_shapes = {
+      query_shape, key_shape, value_shape};
 
   ParallelTensorShape weight_shape = get_weights_shape(attrs, input_shapes);
   auto weights = allocate_weight(env, weight_shape);
@@ -103,46 +104,43 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   auto output = allocate_output(env, output_shape);
   auto output_grad = allocate_output_grad(env, output_shape);
 
-  MHAPerDeviceState per_device_state = init_kernel(
-    get_ff_handle(env),
-    create_allocator(env),
-    get_num_samples(input_shapes),
-    attrs.num_heads,
-    get_qSize(input_shapes),
-    get_kSize(input_shapes),
-    get_vSize(input_shapes),
-    get_qProjSize(attrs),
-    get_kProjSize(attrs),
-    get_vProjSize(attrs),
-    get_oProjSize(attrs),
-    get_qoSeqLength(input_shapes),
-    get_kvSeqLength(input_shapes),
-    attrs.add_bias_kv
-  );
+  MHAPerDeviceState per_device_state =
+      init_kernel(get_ff_handle(env),
+                  create_allocator(env),
+                  get_num_samples(input_shapes),
+                  attrs.num_heads,
+                  get_qSize(input_shapes),
+                  get_kSize(input_shapes),
+                  get_vSize(input_shapes),
+                  get_qProjSize(attrs),
+                  get_kProjSize(attrs),
+                  get_vProjSize(attrs),
+                  get_oProjSize(attrs),
+                  get_qoSeqLength(input_shapes),
+                  get_kvSeqLength(input_shapes),
+                  attrs.add_bias_kv);
 
-  float forward_time = profiling_wrapper(
-    forward_kernel,
-    settings,
-    get_float_ptr(query),
-    get_float_ptr(key),
-    get_float_ptr(value),
-    get_float_ptr(weights),
-    get_float_ptr(output)
-  ).value();
+  float forward_time = profiling_wrapper(forward_kernel,
+                                         settings,
+                                         get_float_ptr(query),
+                                         get_float_ptr(key),
+                                         get_float_ptr(value),
+                                         get_float_ptr(weights),
+                                         get_float_ptr(output))
+                           .value();
 
-  float backward_time = profiling_wrapper(
-    backward_kernel,
-    settings,
-    get_float_ptr(query),
-    get_float_ptr(query_grad),
-    get_float_ptr(key),
-    get_float_ptr(key_grad),
-    get_float_ptr(value),
-    get_float_ptr(value_grad),
-    get_float_ptr(weights),
-    get_float_ptr(weights_grad),
-    get_float_ptr(output_grad)
-  ).value();
+  float backward_time = profiling_wrapper(backward_kernel,
+                                          settings,
+                                          get_float_ptr(query),
+                                          get_float_ptr(query_grad),
+                                          get_float_ptr(key),
+                                          get_float_ptr(key_grad),
+                                          get_float_ptr(value),
+                                          get_float_ptr(value_grad),
+                                          get_float_ptr(weights),
+                                          get_float_ptr(weights_grad),
+                                          get_float_ptr(output_grad))
+                            .value();
 
   float sync_time = default_estimate_sync_time(env);
 
@@ -239,11 +237,17 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
          _query,
          _key,
          _value),
-      attrs(_embed_dim, _num_heads, _kdim, _vdim, _dropout, _bias, _add_bias_kv, _add_zero_attn),
+      attrs(_embed_dim,
+            _num_heads,
+            _kdim,
+            _vdim,
+            _dropout,
+            _bias,
+            _add_bias_kv,
+            _add_zero_attn),
       qSize(_query->dims[0].size), kSize(_key->dims[0].size),
       vSize(_value->dims[0].size), qProjSize(_kdim),
-      qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
-{
+      qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -265,8 +269,8 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
     int qParas = this->qProjSize * this->qSize;
     int kParas = kProjSize(attrs) * this->kSize;
     int vParas = vProjSize(attrs) * this->vSize;
-    int oParas =
-        oProjSize(attrs) * (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
+    int oParas = oProjSize(attrs) *
+                 (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
     ParallelDim dims[3];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
@@ -326,9 +330,16 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
          _key,
          _value,
          _weight),
-      attrs(_embed_dim, _num_heads, _kdim, _vdim, _dropout, _bias, _add_bias_kv, _add_zero_attn),
+      attrs(_embed_dim,
+            _num_heads,
+            _kdim,
+            _vdim,
+            _dropout,
+            _bias,
+            _add_bias_kv,
+            _add_zero_attn),
       qSize(_query->dims[0].size), kSize(_key->dims[0].size),
-      vSize(_value->dims[0].size), qProjSize(_kdim), 
+      vSize(_value->dims[0].size), qProjSize(_kdim),
       qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
 // bias_initializer(_bias_initializer)
 {
@@ -352,8 +363,8 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
     int qParas = this->qProjSize * this->qSize;
     int kParas = kProjSize(attrs) * this->kSize;
     int vParas = vProjSize(attrs) * this->vSize;
-    int oParas =
-        oProjSize(attrs) * (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
+    int oParas = oProjSize(attrs) *
+                 (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
     ParallelDim dims[3];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
@@ -386,11 +397,10 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-
 static PerDeviceOpState *init_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                                   std::vector<PhysicalRegion> const &regions,
+                                   Context ctx,
+                                   Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
@@ -411,21 +421,21 @@ static PerDeviceOpState *init_task(Task const *task,
   int qoSeqLength = query.dims[legion_dim_t(1)];
 
   int num_samples = query.shape[2];
-  assert (qoSeqLength == query.shape[1]);
-  assert (qSize == query.shape[0]);
-  assert (num_samples == key.shape[2]);
-  assert (kvSeqLength == key.shape[1]);
-  assert (kSize == key.shape[0]);
-  assert (num_samples == value.shape[2]);
-  assert (kvSeqLength == value.shape[1]);
-  assert (vSize == value.shape[0]);
+  assert(qoSeqLength == query.shape[1]);
+  assert(qSize == query.shape[0]);
+  assert(num_samples == key.shape[2]);
+  assert(kvSeqLength == key.shape[1]);
+  assert(kSize == key.shape[0]);
+  assert(num_samples == value.shape[2]);
+  assert(kvSeqLength == value.shape[1]);
+  assert(vSize == value.shape[0]);
   int num_heads = weight.shape[1];
-  assert (num_samples == output.shape[2]);
-  assert (qoSeqLength == output.shape[1]);
-  assert (oProjSize(attrs) == output.shape[0]);
+  assert(num_samples == output.shape[2]);
+  assert(qoSeqLength == output.shape[1]);
+  assert(oProjSize(attrs) == output.shape[0]);
 
-  MHAPerDeviceState *m = new MHAPerDeviceState(handle, 
-                                               get_gpu_memory_allocator(task), 
+  MHAPerDeviceState *m = new MHAPerDeviceState(handle,
+                                               get_gpu_memory_allocator(task),
                                                num_samples,
                                                num_heads,
                                                qSize,
@@ -440,7 +450,7 @@ static PerDeviceOpState *init_task(Task const *task,
                                                attrs.add_bias_kv);
 
   m->profiling = profiling;
-  assert (weight.shape.get_volume() * sizeof(float) == m->weightSize);
+  assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
   return m;
 }
 
@@ -504,103 +514,101 @@ static void forward_task(Task const *task,
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
 
-  profile(
-    forward_kernel,
-    m->profiling,
-    "[MultiHeadAttention] forward_time = %.2lfms\n",
-    m,
-    query.get_float_ptr(),
-    key.get_float_ptr(),
-    value.get_float_ptr(),
-    weight.get_float_ptr(),
-    output.get_float_ptr()
-  );
+  profile(forward_kernel,
+          m->profiling,
+          "[MultiHeadAttention] forward_time = %.2lfms\n",
+          m,
+          query.get_float_ptr(),
+          key.get_float_ptr(),
+          value.get_float_ptr(),
+          weight.get_float_ptr(),
+          output.get_float_ptr());
 }
 
-//void MultiHeadAttention::backward(FFModel const &ff) {
-//  ArgumentMap argmap;
-//  Context ctx = ff.config.lg_ctx;
-//  Runtime *runtime = ff.config.lg_hlr;
-//  set_argumentmap_for_backward(ff, argmap);
-//  IndexLauncher launcher(ATTENTION_BWD_TASK_ID,
-//                         parallel_is,
-//                         TaskArgument(NULL, 0),
-//                         argmap,
-//                         Predicate::TRUE_PRED,
-//                         false /*must*/,
-//                         0 /*mapper_id*/,
-//                         outputs[0]->machine_view.hash());
-//  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-//                                                    0 /*projection id*/,
-//                                                    READ_ONLY,
-//                                                    EXCLUSIVE,
-//                                                    inputs[0]->region));
-//  launcher.add_field(0, FID_DATA);
-//  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-//                                                    0 /*projection id*/,
-//                                                    READ_ONLY,
-//                                                    EXCLUSIVE,
-//                                                    inputs[1]->region));
-//  launcher.add_field(1, FID_DATA);
-//  launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
-//                                                    0 /*projection id*/,
-//                                                    READ_ONLY,
-//                                                    EXCLUSIVE,
-//                                                    inputs[2]->region));
-//  launcher.add_field(2, FID_DATA);
-//  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-//                                                    0 /*projection id*/,
-//                                                    READ_ONLY,
-//                                                    EXCLUSIVE,
-//                                                    weights[0]->region));
-//  launcher.add_field(3, FID_DATA);
-//  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-//                                                    0 /*projection id*/,
-//                                                    READ_ONLY,
-//                                                    EXCLUSIVE,
-//                                                    outputs[0]->region_grad));
-//  launcher.add_field(4, FID_DATA);
-//  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-//                                                    0 /*projection id*/,
-//                                                    READ_WRITE,
-//                                                    EXCLUSIVE,
-//                                                    weights[0]->region_grad));
-//  launcher.add_field(5, FID_DATA);
-//  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-//                                                    0 /*projection id*/,
-//                                                    READ_WRITE,
-//                                                    EXCLUSIVE,
-//                                                    inputs[0]->region_grad));
-//  launcher.add_field(6, FID_DATA);
-//  int num_regions = 7;
-//  if (inputs[1]->region != inputs[0]->region) {
-//    // when key != query
-//    launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
-//                                                      0 /*projection id*/,
-//                                                      READ_WRITE,
-//                                                      EXCLUSIVE,
-//                                                      inputs[1]->region_grad));
-//    launcher.add_field(num_regions++, FID_DATA);
-//  }
-//  if ((inputs[2]->region != inputs[0]->region) &&
-//      (inputs[2]->region != inputs[1]->region)) {
-//    // when value != key and value != query
-//    launcher.add_region_requirement(RegionRequirement(inputs[2]->part_grad,
-//                                                      0 /*projection id*/,
-//                                                      READ_WRITE,
-//                                                      EXCLUSIVE,
-//                                                      inputs[2]->region_grad));
-//    launcher.add_field(num_regions++, FID_DATA);
-//  }
-//  runtime->execute_index_space(ctx, launcher);
-//}
+// void MultiHeadAttention::backward(FFModel const &ff) {
+//   ArgumentMap argmap;
+//   Context ctx = ff.config.lg_ctx;
+//   Runtime *runtime = ff.config.lg_hlr;
+//   set_argumentmap_for_backward(ff, argmap);
+//   IndexLauncher launcher(ATTENTION_BWD_TASK_ID,
+//                          parallel_is,
+//                          TaskArgument(NULL, 0),
+//                          argmap,
+//                          Predicate::TRUE_PRED,
+//                          false /*must*/,
+//                          0 /*mapper_id*/,
+//                          outputs[0]->machine_view.hash());
+//   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     inputs[0]->region));
+//   launcher.add_field(0, FID_DATA);
+//   launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     inputs[1]->region));
+//   launcher.add_field(1, FID_DATA);
+//   launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     inputs[2]->region));
+//   launcher.add_field(2, FID_DATA);
+//   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     weights[0]->region));
+//   launcher.add_field(3, FID_DATA);
+//   launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     outputs[0]->region_grad));
+//   launcher.add_field(4, FID_DATA);
+//   launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+//                                                     0 /*projection id*/,
+//                                                     READ_WRITE,
+//                                                     EXCLUSIVE,
+//                                                     weights[0]->region_grad));
+//   launcher.add_field(5, FID_DATA);
+//   launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+//                                                     0 /*projection id*/,
+//                                                     READ_WRITE,
+//                                                     EXCLUSIVE,
+//                                                     inputs[0]->region_grad));
+//   launcher.add_field(6, FID_DATA);
+//   int num_regions = 7;
+//   if (inputs[1]->region != inputs[0]->region) {
+//     // when key != query
+//     launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+//                                                       0 /*projection id*/,
+//                                                       READ_WRITE,
+//                                                       EXCLUSIVE,
+//                                                       inputs[1]->region_grad));
+//     launcher.add_field(num_regions++, FID_DATA);
+//   }
+//   if ((inputs[2]->region != inputs[0]->region) &&
+//       (inputs[2]->region != inputs[1]->region)) {
+//     // when value != key and value != query
+//     launcher.add_region_requirement(RegionRequirement(inputs[2]->part_grad,
+//                                                       0 /*projection id*/,
+//                                                       READ_WRITE,
+//                                                       EXCLUSIVE,
+//                                                       inputs[2]->region_grad));
+//     launcher.add_field(num_regions++, FID_DATA);
+//   }
+//   runtime->execute_index_space(ctx, launcher);
+// }
 
 static void backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
-  
+
   auto query = acc.get_tensor<READ_ONLY>(QUERY);
   auto key = acc.get_tensor<READ_ONLY>(KEY);
   auto value = acc.get_tensor<READ_ONLY>(VALUE);
@@ -613,30 +621,31 @@ static void backward_task(Task const *task,
   auto key_grad = acc.get_tensor_grad<READ_WRITE>(KEY);
   auto value_grad = acc.get_tensor_grad<READ_WRITE>(VALUE);
 
-  float *key_grad_ptr = (key_grad == query_grad) ? nullptr : key_grad.get_float_ptr();
-  float *value_grad_ptr = (value_grad == query_grad || value_grad == key_grad) ? nullptr : value_grad.get_float_ptr();
+  float *key_grad_ptr =
+      (key_grad == query_grad) ? nullptr : key_grad.get_float_ptr();
+  float *value_grad_ptr = (value_grad == query_grad || value_grad == key_grad)
+                              ? nullptr
+                              : value_grad.get_float_ptr();
 
-  assert (value_grad.shape == value.shape);
-  assert (key_grad.shape == key.shape);
+  assert(value_grad.shape == value.shape);
+  assert(key_grad.shape == key.shape);
 
-  assert (query_grad.shape == query.shape);
-  assert (weight_grad.shape.get_volume() == weight.shape.get_volume());
-  
-  profile(
-    backward_kernel,
-    m->profiling,
-    "[MultiHeadAttention] backward_time = %.2lfms\n",
-    m,
-    query.get_float_ptr(),
-    query_grad.get_float_ptr(),
-    key.get_float_ptr(),
-    key_grad_ptr,
-    value.get_float_ptr(),
-    value_grad_ptr,
-    weight.get_float_ptr(),
-    weight_grad.get_float_ptr(),
-    output_grad.get_float_ptr()
-  );
+  assert(query_grad.shape == query.shape);
+  assert(weight_grad.shape.get_volume() == weight.shape.get_volume());
+
+  profile(backward_kernel,
+          m->profiling,
+          "[MultiHeadAttention] backward_time = %.2lfms\n",
+          m,
+          query.get_float_ptr(),
+          query_grad.get_float_ptr(),
+          key.get_float_ptr(),
+          key_grad_ptr,
+          value.get_float_ptr(),
+          value_grad_ptr,
+          weight.get_float_ptr(),
+          weight_grad.get_float_ptr(),
+          output_grad.get_float_ptr());
 }
 
 bool MultiHeadAttention::measure_operator_cost(
@@ -664,7 +673,8 @@ bool MultiHeadAttention::measure_operator_cost(
     int qParas = qProjSize * qSize;
     int kParas = kProjSize(attrs) * kSize;
     int vParas = vProjSize(attrs) * vSize;
-    int oParas = oProjSize(attrs) * (vProjSize(attrs) > 0 ? vProjSize(attrs) : vSize);
+    int oParas =
+        oProjSize(attrs) * (vProjSize(attrs) > 0 ? vProjSize(attrs) : vSize);
     num_weights = attrs.num_heads * (qParas + kParas + vParas + oParas);
   }
   assert(sub_query.num_dims == 4);
@@ -695,8 +705,7 @@ bool MultiHeadAttention::measure_operator_cost(
 
   std::function<void()> forward, backward;
   forward = [&](ffStream_t stream) {
-    forward_kernel(
-        m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
+    forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *query_grad_ptr =
@@ -718,16 +727,17 @@ bool MultiHeadAttention::measure_operator_cost(
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&](ffStream_t stream) {
-      backward_kernel(stream, m,
-                              query_ptr,
-                              query_grad_ptr,
-                              key_ptr,
-                              key_grad_ptr,
-                              value_ptr,
-                              value_grad_ptr,
-                              weight_ptr,
-                              weight_grad_ptr,
-                              output_grad_ptr);
+      backward_kernel(stream,
+                      m,
+                      query_ptr,
+                      query_grad_ptr,
+                      key_ptr,
+                      key_grad_ptr,
+                      value_ptr,
+                      value_grad_ptr,
+                      weight_ptr,
+                      weight_grad_ptr,
+                      output_grad_ptr);
     };
   }
 
@@ -791,7 +801,8 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
   init.add_param_slot(WEIGHTS);
   init.add_output_slot(OUTPUT);
 
-  register_task(ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init, init_task);
+  register_task(
+      ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init, init_task);
 }
 
 template <>
@@ -826,4 +837,4 @@ void register_task<ATTENTION_BWD_TASK_ID>() {
   register_task(ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, bwd_task);
 }
 
-}
+} // namespace FlexFlow

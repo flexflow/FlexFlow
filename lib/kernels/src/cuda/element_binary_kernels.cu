@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "kernels/element_binary_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/element_binary_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
 
-ElementBinaryPerDeviceState::ElementBinaryPerDeviceState(FFHandler handler) : OpPerDeviceState(handler) {
+ElementBinaryPerDeviceState::ElementBinaryPerDeviceState(FFHandler handler)
+    : OpPerDeviceState(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&input1Tensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&input2Tensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));

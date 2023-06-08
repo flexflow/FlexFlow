@@ -20,37 +20,41 @@
 #include "legion.h"
 #include "types.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 class Tensor {
- public:
-  Tensor(Operator* op, DataType type, const size_t* dims, size_t num_dims);
-  Tensor(Operator* op, DataType type, const std::vector<size_t>& dims);
+public:
+  Tensor(Operator *op, DataType type, size_t const *dims, size_t num_dims);
+  Tensor(Operator *op, DataType type, std::vector<size_t> const &dims);
   virtual ~Tensor(void);
 
- public:
-  Operator* const owner;
+public:
+  Operator *const owner;
   const DataType type;
   const std::vector<size_t> bounds;
 
- public:
+public:
   Legion::LogicalRegion region[MAX_NUM_INSTANCES];
   Legion::LogicalPartition partition[MAX_NUM_INSTANCES];
 };
 
 class Weights : public Tensor {
- public:
-  Weights(Operator* op, DataType type, const size_t* dims, size_t num_dims);
-  Weights(Operator* op, DataType type, const std::vector<size_t>& dims);
+public:
+  Weights(Operator *op, DataType type, size_t const *dims, size_t num_dims);
+  Weights(Operator *op, DataType type, std::vector<size_t> const &dims);
   virtual ~Weights(void);
 
- public:
+public:
   Legion::Domain local_bounds[MAX_LOCAL_PROCS];
   Legion::Memory local_memory[MAX_LOCAL_PROCS];
-  void* local_allocation[MAX_LOCAL_PROCS];
+  void *local_allocation[MAX_LOCAL_PROCS];
   size_t local_strides[MAX_LOCAL_PROCS][LEGION_MAX_DIM];
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_TENSOR_H__
+#endif // __LEGION_TRITON_TENSOR_H__

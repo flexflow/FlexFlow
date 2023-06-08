@@ -3,10 +3,9 @@
 
 #include <stdexcept>
 
-class NotImplemented : public std::logic_error
-{
+class NotImplemented : public std::logic_error {
 public:
-    NotImplemented() : std::logic_error("Function not yet implemented") { };
+  NotImplemented() : std::logic_error("Function not yet implemented"){};
 };
 
 #endif // _FLEXFLOW_UTILS_NOT_IMPLEMENTED_EXCEPTION_H

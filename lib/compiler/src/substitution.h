@@ -15,11 +15,11 @@
 
 #ifndef _FLEXFLOW_SUBSTITUTION_H_
 #define _FLEXFLOW_SUBSTITUTION_H_
-#include <op-meta/op-meta.h>
 #include "graph.h"
 #include "substitutions/substitutions.h"
-#include "utils/recursive_logger.h"
 #include "tl/optional.hpp"
+#include "utils/recursive_logger.h"
+#include <op-meta/op-meta.h>
 #include <queue>
 
 namespace FlexFlow {
@@ -54,7 +54,8 @@ struct TensorX {
   static const TensorX NO_TX;
   TensorX(void) : op(NULL), idx(0) {}
   TensorX(OpX *_op, int _idx) : op(_op), idx(_idx) {}
-  tl::optional<opmeta::ParallelTensorShape> to_tensor(GraphXfer const *xfer) const;
+  tl::optional<opmeta::ParallelTensorShape>
+      to_tensor(GraphXfer const *xfer) const;
   OpX *op;
   int idx;
 
@@ -105,9 +106,12 @@ OpX *create_opx(substitutions::Operator const &op,
                 TensorX const &input2 = TensorX::NO_TX,
                 TensorX const &input3 = TensorX::NO_TX,
                 TensorX const &input4 = TensorX::NO_TX);
-void create_xfer(GraphXfer &xfer, substitutions::Rule const &r, int parallel_degree);
-std::vector<GraphXfer *> create_xfers(substitutions::RuleCollection const &rules,
-                                      int parallel_degree);
+void create_xfer(GraphXfer &xfer,
+                 substitutions::Rule const &r,
+                 int parallel_degree);
+std::vector<GraphXfer *>
+    create_xfers(substitutions::RuleCollection const &rules,
+                 int parallel_degree);
 
 class GraphCompare {
 public:
@@ -180,9 +184,12 @@ private:
 /*   OpX *create_repartition(TensorX const &input, */
 /*                           int repartition_dim, */
 /*                           int num_parts); */
-/*   OpX *create_replicate(TensorX const &input, int replicate_dim, int num_parts); */
-/*   OpX *create_reduction(TensorX const &input, int reduction_dim, int num_parts); */
-/*   OpX *create_combine(TensorX const &input, int combine_dim, int num_parts); */
+/*   OpX *create_replicate(TensorX const &input, int replicate_dim, int
+ * num_parts); */
+/*   OpX *create_reduction(TensorX const &input, int reduction_dim, int
+ * num_parts); */
+/*   OpX *create_combine(TensorX const &input, int combine_dim, int num_parts);
+ */
 /*   bool map_output(TensorX const &src, TensorX const &dst); */
 
 /*   Graph *create_new_graph(Graph const *graph, */
@@ -193,7 +200,8 @@ private:
 
 /*   void run(int depth, */
 /*            Graph *graph, */
-/*            std::priority_queue<Graph *, std::vector<Graph *>, GraphCompare> &, */
+/*            std::priority_queue<Graph *, std::vector<Graph *>, GraphCompare>
+ * &, */
 /*            std::unordered_set<size_t> &, */
 /*            float threshold, */
 /*            int maxNumOps, */
@@ -219,13 +227,14 @@ private:
 /*   std::vector<OpX *> dstOps; */
 /* }; */
 
-
 struct SubstitutionMatch {
   std::unordered_map<utils::Node, utils::Node> node_assignment;
   std::unordered_map<PatternEdge, utils::MultiDiEdge> edge_assignment;
 };
 
-std::unordered_set<SubstitutionMatch> find_matches(SubstitutionPattern const &pattern, ParallelComputationGraph const &pcg);
+std::unordered_set<SubstitutionMatch>
+    find_matches(SubstitutionPattern const &pattern,
+                 ParallelComputationGraph const &pcg);
 
 class GraphSearchHelper {
 public:
@@ -294,7 +303,7 @@ private:
   std::unique_ptr<RecursiveLogger> logger;
 };
 
-}
-}
+} // namespace ffc
+} // namespace FlexFlow
 
 #endif

@@ -20,7 +20,7 @@ enum class ParameterAttribute {
   STRIDE_W,           // Conv2D, Pool2D
   PADDING_H,          // Conv2D, Pool2D
   PADDING_W,          // Conv2D, Pool2D
-  ACTIVATION,               // Conv2D, Pool2D
+  ACTIVATION,         // Conv2D, Pool2D
   NUMDIM,             // Concat, Transpose
   AXIS,               // Concat, Split
   PERM,               // Transpose
@@ -60,8 +60,7 @@ struct OperatorAttributeConstraint {
   int value;
 };
 
-struct TensorConstraint { 
-};
+struct TensorConstraint {};
 
 struct Tensor {
   int opId;
@@ -96,7 +95,7 @@ struct SubstitutionCollection {
   std::vector<Substitution> substitutions;
 };
 
-}
-}
+} // namespace substitutions
+} // namespace FlexFlow
 
-#endif 
+#endif

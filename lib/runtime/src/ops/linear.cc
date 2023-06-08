@@ -1,8 +1,8 @@
 #include "linear.h"
-#include "layer.h"
 #include "kernels/linear_kernels.h"
-#include "utils/hash-utils.h"
+#include "layer.h"
 #include "legion/legion_utilities.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -259,9 +259,9 @@ void Linear::init(FFModel const &ff) {
   regions[2](I): bias
 */
 PerDeviceOpState *Linear::init_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (out_domain.get_dim()) {
@@ -277,10 +277,11 @@ PerDeviceOpState *Linear::init_task(Task const *task,
 }
 
 template <int NDIM>
-PerDeviceOpState *Linear::init_task_with_dim(Task const *task,
-                                   std::vector<PhysicalRegion> const &regions,
-                                   Context ctx,
-                                   Runtime *runtime) {
+PerDeviceOpState *
+    Linear::init_task_with_dim(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   assert(regions.size() == task->regions.size());
   assert(regions.size() == 2 || regions.size() == 3);
   Linear const *linear = (Linear *)task->args;
@@ -940,7 +941,6 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-
 /* void LinearParams::solve_dims(const ParallelTensor input, */
 /*                               ParallelDim output_dims[MAX_TENSOR_DIM], */
 /*                               int *output_ndims, */
@@ -983,10 +983,12 @@ LinearParams Linear::get_params() const {
 
 /*   std::vector<ParallelDimMappingRecord> mapping; */
 /*   this->construct_mappings(mapping, input_shape); */
-/*   this->mark_replica_dims(input_shape, output_dims, kernel_dims, bias_dims); */
+/*   this->mark_replica_dims(input_shape, output_dims, kernel_dims, bias_dims);
+ */
 
 /*   solve_parallel_dim_mappings( */
-/*       mapping, {input_shape.dims}, {kernel_dims, bias_dims}, {output_dims}); */
+/*       mapping, {input_shape.dims}, {kernel_dims, bias_dims}, {output_dims});
+ */
 
 /*   this->calculate_nonreplica_dim_sizes(input_shape, */
 /*                                        output_dims, */
@@ -1028,7 +1030,8 @@ LinearParams Linear::get_params() const {
 /*     for (int i = 1; i < input_shape.num_dims - 1; i++) { */
 /*       output_dims[i].size = input_shape.dims[i].size; */
 /*     } */
-/*     output_dims[dimension_names.at(OUTPUT_CHANNEL)].size = this->out_channels; */
+/*     output_dims[dimension_names.at(OUTPUT_CHANNEL)].size =
+ * this->out_channels; */
 /*     *output_ndims = num_dims; */
 /*   } */
 /*   if (kernel_dims != nullptr) { */
@@ -1040,7 +1043,8 @@ LinearParams Linear::get_params() const {
 /*     *kernel_ndims = num_dims; */
 /*   } */
 /*   if (bias_dims != nullptr) { */
-/*     bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size = this->out_channels; */
+/*     bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size =
+ * this->out_channels; */
 /*     *bias_ndims = num_dims; */
 /*   } */
 /* } */
@@ -1066,7 +1070,6 @@ LinearParams Linear::get_params() const {
 /*     } */
 /*   } */
 /* } */
-
 
 }; // namespace FlexFlow
 

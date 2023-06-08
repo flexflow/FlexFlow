@@ -16,24 +16,23 @@
 #include "strategy.h"
 #include <memory>
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 //
 // Mock implementation of the class with synthetic state,
 // will raise error if trying to invoke unintended methods
 //
-LayerStrategy::LayerStrategy(
-    Legion::ShardingID sid, Legion::MappingTagID tag, Legion::Runtime* runtime)
+LayerStrategy::LayerStrategy(Legion::ShardingID sid,
+                             Legion::MappingTagID tag,
+                             Legion::Runtime *runtime)
     : kind(Realm::Processor::Kind::LOC_PROC), sharding_function(nullptr),
-      tag(tag)
-{
-}
+      tag(tag) {}
 
 LayerStrategy::~LayerStrategy() {}
 
-bool
-LayerStrategy::is_local_processor(Realm::Processor proc) const
-{
+bool LayerStrategy::is_local_processor(Realm::Processor proc) const {
   for (size_t i = 0; i < nProcs; ++i) {
     if (local_processors[i] == proc) {
       return true;
@@ -42,20 +41,18 @@ LayerStrategy::is_local_processor(Realm::Processor proc) const
   return false;
 }
 
-unsigned
-LayerStrategy::find_local_offset(Realm::Processor proc) const
-{
-  for (unsigned idx = 0; idx < nProcs; idx++)
-    if (local_processors[idx] == proc)
+unsigned LayerStrategy::find_local_offset(Realm::Processor proc) const {
+  for (unsigned idx = 0; idx < nProcs; idx++) {
+    if (local_processors[idx] == proc) {
       return idx;
+    }
+  }
   throw std::invalid_argument("Getting offset for a non-local processor");
 }
 
-std::unique_ptr<LayerStrategy>
-CreateMockLayerStrategy(
-    const std::vector<Realm::Processor>& local_processors,
-    const std::vector<Realm::Processor>& global_processors)
-{
+std::unique_ptr<LayerStrategy> CreateMockLayerStrategy(
+    std::vector<Realm::Processor> const &local_processors,
+    std::vector<Realm::Processor> const &global_processors) {
   std::unique_ptr<LayerStrategy> ls(new LayerStrategy(0, 0, nullptr));
   ls->nProcs = local_processors.size();
   for (size_t i = 0; i < local_processors.size(); ++i) {
@@ -67,4 +64,6 @@ CreateMockLayerStrategy(
 
 PartitionStrategy::~PartitionStrategy() {}
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

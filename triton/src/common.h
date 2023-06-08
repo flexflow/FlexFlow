@@ -16,15 +16,15 @@
 #ifndef __LEGION_TRITON_COMMON_H__
 #define __LEGION_TRITON_COMMON_H__
 
-#include <string>
 #include "triton/core/tritonserver.h"
 #include "types.h"
+#include <string>
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-DataType
-ToDataType(const TRITONSERVER_DataType type)
-{
+DataType ToDataType(const TRITONSERVER_DataType type) {
   switch (type) {
     case TRITONSERVER_TYPE_FP16:
       return DT_HALF;
@@ -57,9 +57,7 @@ ToDataType(const TRITONSERVER_DataType type)
   }
 }
 
-TRITONSERVER_DataType
-ToTritonDataType(const DataType type)
-{
+TRITONSERVER_DataType ToTritonDataType(const DataType type) {
   switch (type) {
     case DT_HALF:
       return TRITONSERVER_TYPE_FP16;
@@ -91,9 +89,7 @@ ToTritonDataType(const DataType type)
   }
 }
 
-std::string
-DataTypeString(const DataType type)
-{
+std::string DataTypeString(const DataType type) {
   switch (type) {
     case DT_HALF:
       return "DT_HALF";
@@ -125,6 +121,8 @@ DataTypeString(const DataType type)
   }
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_COMMON_H__
+#endif // __LEGION_TRITON_COMMON_H__

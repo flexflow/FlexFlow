@@ -80,9 +80,9 @@ Combine::Combine(FFModel &model,
 }
 
 PerDeviceOpState *Combine::init_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   Combine *rep = (Combine *)task->args;
   // FFHandler handle = *((FFHandler *)task->local_args);
   // CombineMeta* m = new CombineMeta(handle);

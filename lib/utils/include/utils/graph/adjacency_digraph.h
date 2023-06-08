@@ -14,7 +14,8 @@ public:
   void remove_node_unsafe(Node const &) override;
   void add_edge(Edge const &) override;
   void remove_edge(Edge const &) override;
-  std::unordered_set<Edge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<Edge>
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   bool operator==(AdjacencyDiGraph const &) const;
@@ -23,6 +24,7 @@ public:
   AdjacencyDiGraph *clone() const override {
     return new AdjacencyDiGraph(this->next_node_idx, this->adjacency);
   }
+
 private:
   using ContentsType = std::unordered_map<Node, std::unordered_set<Node>>;
 
@@ -32,8 +34,9 @@ private:
   ContentsType adjacency;
 };
 
-static_assert(is_rc_copy_virtual_compliant<AdjacencyDiGraph>::value, RC_COPY_VIRTUAL_MSG);
+static_assert(is_rc_copy_virtual_compliant<AdjacencyDiGraph>::value,
+              RC_COPY_VIRTUAL_MSG);
 
-}
+} // namespace FlexFlow
 
 #endif

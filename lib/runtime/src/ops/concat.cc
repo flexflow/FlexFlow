@@ -15,9 +15,9 @@
 
 #include "concat.h"
 #include "kernels/concat_kernels.h"
+#include "legion/legion_utilities.h"
 #include "task_spec.h"
 #include "utils/hash-utils.h"
-#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 
@@ -264,9 +264,9 @@ void Concat::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *Concat::init_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -340,22 +340,21 @@ void Concat::forward_task(Task const *task,
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
   auto inputs = acc.get_variadic_tensor<READ_ONLY>(INPUTS);
 
-  //GenericTensorAccessorR inputs[MAX_NUM_INPUTS];
-  // for (int i = 0; i < attrs.n; i++) {
-  //   // inputs[i] = helperGetTensorPointerRO<float>(
-  //   //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
-  //   inputs[i] = helperGetGenericTensorAccessorRO(
-  //       DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
-  // }
-  profile (
-    forward_kernel,
-    m->profiling,
-    "[Concat] forward_time = %.2lfms\n",
-    m,
-    output,
-    inputs,
-    attrs.n
-  )
+  // GenericTensorAccessorR inputs[MAX_NUM_INPUTS];
+  //  for (int i = 0; i < attrs.n; i++) {
+  //    // inputs[i] = helperGetTensorPointerRO<float>(
+  //    //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+  //    inputs[i] = helperGetGenericTensorAccessorRO(
+  //        DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx,
+  //        runtime);
+  //  }
+  profile(forward_kernel,
+          m->profiling,
+          "[Concat] forward_time = %.2lfms\n",
+          m,
+          output,
+          inputs,
+          attrs.n)
 }
 
 void Concat::backward(FFModel const &ff) {
@@ -428,18 +427,17 @@ void Concat::backward_task(Task const *task,
   //   // input_grads[i] = helperGetTensorPointerRW<float>(
   //   //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   //   input_grads[i] = helperGetGenericTensorAccessorRW(
-  //       DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+  //       DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx,
+  //       runtime);
   // }
 
-  profile (
-    backward_kernel,
-    m->profiling,
-    "[Concat] backward_time = %.2lfms\n",
-    m,
-    output_grad,
-    input_grads,
-    attrs.n
-  )
+  profile(backward_kernel,
+          m->profiling,
+          "[Concat] backward_time = %.2lfms\n",
+          m,
+          output_grad,
+          input_grads,
+          attrs.n)
 }
 
 bool Concat::get_int_parameter(PMParameter para, int *value) const {
@@ -530,8 +528,7 @@ bool Concat::measure_operator_cost(Simulator *sim,
       return true;
     }
     backward = [&](ffStream_t stream) {
-      backward_kernel(stream,
-          m, output_grad_acc, input_grad_accs, numInputs);
+      backward_kernel(stream, m, output_grad_acc, input_grad_accs, numInputs);
     };
   }
 
@@ -553,4 +550,3 @@ bool Concat::measure_operator_cost(Simulator *sim,
 }
 
 }; // namespace FlexFlow
-

@@ -17,22 +17,23 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 ConcatArgs::ConcatArgs(void) : local_index(0), datatype(DT_NONE), axis(-1) {}
 
-Concat::Concat(
-    LegionModelState* model, const LayerStrategy* strategy, size_t inputs,
-    int ax, const char* name)
+Concat::Concat(LegionModelState *model,
+               LayerStrategy const *strategy,
+               size_t inputs,
+               int ax,
+               char const *name)
     : Operator(model, strategy, OperatorType::OP_CONCAT, name, inputs, 0, 1),
-      axis(ax)
-{
+      axis(ax) {
   assert(inputs > 0);
 }
 
-void
-Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
-{
+void Concat::Configure(std::vector<Tensor *> const &ins, Tensor *out) {
   assert(num_inputs == ins.size());
   inputs = ins;
   size_t axis_size = 0;
@@ -42,18 +43,20 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
     assert(inputs[idx]->type == out->type);
     assert(inputs[idx]->bounds.size() == dims);
     for (unsigned d = 0; d < dims; d++) {
-      if (d == axis)
+      if (d == axis) {
         axis_size += inputs[idx]->bounds[d];
-      else
+      } else {
         assert(inputs[idx]->bounds[d] == out->bounds[d]);
+      }
     }
   }
   assert(axis_size == out->bounds[axis]);
   outputs.push_back(out);
   // Figure out the output tiling domain
   std::vector<size_t> tile_sizes(dims);
-  for (unsigned d = 0; d < dims; d++)
+  for (unsigned d = 0; d < dims; d++) {
     tile_sizes[d] = (out->bounds[d] + strategy->dim[d] - 1) / strategy->dim[d];
+  }
   coord_t offset = 0;
   // Now compute the domains and transforms needed for constructing
   // the partitions for each of the inputs
@@ -75,9 +78,9 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
         offset += extent;
       } else {
         lo[d] = 0;
-        hi[d] = tile_sizes[d] - 1;  // make it inclusive
+        hi[d] = tile_sizes[d] - 1; // make it inclusive
         color_lo[d] = 0;
-        color_hi[d] = strategy->dim[d] - 1;  // make it inclusive
+        color_hi[d] = strategy->dim[d] - 1; // make it inclusive
       }
     }
     input_color_spaces[idx] = Domain(color_lo, color_hi);
@@ -85,17 +88,17 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
   }
   // The input transform is the same across all the inputs
   switch (dims) {
-#define DIMFUNC(N)                         \
-  case N: {                                \
-    Transform<N, N> transform;             \
-    for (int i = 0; i < N; i++)            \
-      for (int j = 0; j < N; j++)          \
-        if (i == j)                        \
-          transform[i][j] = tile_sizes[i]; \
-        else                               \
-          transform[i][j] = 0;             \
-    input_transform = transform;           \
-    break;                                 \
+#define DIMFUNC(N)                                                             \
+  case N: {                                                                    \
+    Transform<N, N> transform;                                                 \
+    for (int i = 0; i < N; i++)                                                \
+      for (int j = 0; j < N; j++)                                              \
+        if (i == j)                                                            \
+          transform[i][j] = tile_sizes[i];                                     \
+        else                                                                   \
+          transform[i][j] = 0;                                                 \
+    input_transform = transform;                                               \
+    break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -104,79 +107,71 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
   }
 }
 
-Domain
-Concat::GetBounds(Processor proc)
-{
+Domain Concat::GetBounds(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Concat::Load(Processor proc)
-{
+void Concat::Load(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Concat::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Concat::initialize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Runtime *runtime,
+                        Context ctx,
+                        MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Concat::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Concat::forward(LegionModelInstance *instance,
+                     unsigned const instance_index,
+                     Runtime *runtime,
+                     Context ctx,
+                     MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Concat::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Concat::finalize(LegionModelInstance *instance,
+                      unsigned const instance_index,
+                      Runtime *runtime,
+                      Context ctx,
+                      MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Concat::Free(Processor proc)
-{
+void Concat::Free(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-/*static*/ void
-Concat::PreregisterTaskVariants(void)
-{
+/*static*/ void Concat::PreregisterTaskVariants(void) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-/*static*/ void
-Concat::forward_cpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Concat::forward_cpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
 #ifdef LEGION_USE_CUDA
-/*static*/ void
-Concat::forward_gpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Concat::forward_gpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 #endif
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

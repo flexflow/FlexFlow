@@ -17,38 +17,38 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 Legion::ProjectionID Concat::filter_functor_id;
 
-LogicalRegion
-FilterProjectionFunctor::project(
-    LogicalPartition upper_bound, const DomainPoint& point,
-    const Domain& domain)
-{
+LogicalRegion FilterProjectionFunctor::project(LogicalPartition upper_bound,
+                                               DomainPoint const &point,
+                                               Domain const &domain) {
   // Check to see if the point is in the color space
   const Domain limits = runtime->get_index_partition_color_space(
       upper_bound.get_index_partition());
-  if (limits.contains(point))
+  if (limits.contains(point)) {
     return runtime->get_logical_subregion_by_color(upper_bound, point);
-  else
+  } else {
     return LogicalRegion::NO_REGION;
+  }
 }
 
 ConcatArgs::ConcatArgs(void) : local_index(0), datatype(DT_NONE), axis(-1) {}
 
-Concat::Concat(
-    LegionModelState* model, const LayerStrategy* strategy, size_t inputs,
-    int ax, const char* name)
+Concat::Concat(LegionModelState *model,
+               LayerStrategy const *strategy,
+               size_t inputs,
+               int ax,
+               char const *name)
     : Operator(model, strategy, OperatorType::OP_CONCAT, name, inputs, 0, 1),
-      axis(ax)
-{
+      axis(ax) {
   assert(inputs > 0);
 }
 
-void
-Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
-{
+void Concat::Configure(std::vector<Tensor *> const &ins, Tensor *out) {
   assert(num_inputs == ins.size());
   inputs = ins;
   size_t axis_size = 0;
@@ -58,18 +58,20 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
     assert(inputs[idx]->type == out->type);
     assert(inputs[idx]->bounds.size() == dims);
     for (unsigned d = 0; d < dims; d++) {
-      if (d == axis)
+      if (d == axis) {
         axis_size += inputs[idx]->bounds[d];
-      else
+      } else {
         assert(inputs[idx]->bounds[d] == out->bounds[d]);
+      }
     }
   }
   assert(axis_size == out->bounds[axis]);
   outputs.push_back(out);
   // Figure out the output tiling domain
   std::vector<size_t> tile_sizes(dims);
-  for (unsigned d = 0; d < dims; d++)
+  for (unsigned d = 0; d < dims; d++) {
     tile_sizes[d] = (out->bounds[d] + strategy->dim[d] - 1) / strategy->dim[d];
+  }
   coord_t offset = 0;
   // Now compute the domains and transforms needed for constructing
   // the partitions for each of the inputs
@@ -91,9 +93,9 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
         offset += extent;
       } else {
         lo[d] = 0;
-        hi[d] = tile_sizes[d] - 1;  // make it inclusive
+        hi[d] = tile_sizes[d] - 1; // make it inclusive
         color_lo[d] = 0;
-        color_hi[d] = strategy->dim[d] - 1;  // make it inclusive
+        color_hi[d] = strategy->dim[d] - 1; // make it inclusive
       }
     }
     input_color_spaces[idx] = Domain(color_lo, color_hi);
@@ -101,17 +103,17 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
   }
   // The input transform is the same across all the inputs
   switch (dims) {
-#define DIMFUNC(N)                         \
-  case N: {                                \
-    Transform<N, N> transform;             \
-    for (int i = 0; i < N; i++)            \
-      for (int j = 0; j < N; j++)          \
-        if (i == j)                        \
-          transform[i][j] = tile_sizes[i]; \
-        else                               \
-          transform[i][j] = 0;             \
-    input_transform = transform;           \
-    break;                                 \
+#define DIMFUNC(N)                                                             \
+  case N: {                                                                    \
+    Transform<N, N> transform;                                                 \
+    for (int i = 0; i < N; i++)                                                \
+      for (int j = 0; j < N; j++)                                              \
+        if (i == j)                                                            \
+          transform[i][j] = tile_sizes[i];                                     \
+        else                                                                   \
+          transform[i][j] = 0;                                                 \
+    input_transform = transform;                                               \
+    break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -120,9 +122,7 @@ Concat::Configure(const std::vector<Tensor*>& ins, Tensor* out)
   }
 }
 
-Domain
-Concat::GetBounds(Processor proc)
-{
+Domain Concat::GetBounds(Processor proc) {
   const size_t dims = outputs[0]->bounds.size();
   DomainPoint lo, hi;
   lo.dim = dims;
@@ -135,16 +135,15 @@ Concat::GetBounds(Processor proc)
   return strategy->find_local_domain(proc, global);
 }
 
-void
-Concat::Load(Processor proc)
-{
+void Concat::Load(Processor proc) {
   assert(proc.kind() == strategy->kind);
   assert(inputs[0]->bounds.size() == size_t(strategy->nDims));
   // If this processor is not used for this layer there is nothing to do
-  if (!strategy->is_local_processor(proc))
+  if (!strategy->is_local_processor(proc)) {
     return;
-  const unsigned local_index = strategy->find_local_offset(proc);
-  ConcatArgs& proc_args = args[local_index];
+  }
+  unsigned const local_index = strategy->find_local_offset(proc);
+  ConcatArgs &proc_args = args[local_index];
   proc_args.owner = this;
   proc_args.local_index = local_index;
   proc_args.bounds = GetBounds(proc);
@@ -152,39 +151,46 @@ Concat::Load(Processor proc)
   proc_args.axis = axis;
 }
 
-void
-Concat::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Concat::initialize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Runtime *runtime,
+                        Context ctx,
+                        MapperID mapper) {
   const Domain launch_domain = strategy->get_launch_domain();
   // Find or create the launch space domain
   IndexSpace launch_space = instance->find_or_create_index_space(launch_domain);
   // Also get the sharding function from the strategy
-  ShardingFunction* shardfn = strategy->sharding_function;
+  ShardingFunction *shardfn = strategy->sharding_function;
   // Construct a future map for the pass-by-value arguments
   std::map<DomainPoint, TaskArgument> values;
   for (Domain::DomainPointIterator itr(launch_domain); itr; itr++) {
     const Processor proc = shardfn->find_proc(itr.p, launch_domain);
-    if (!strategy->is_local_processor(proc))
+    if (!strategy->is_local_processor(proc)) {
       continue;
-    const unsigned local_index = strategy->find_local_offset(proc);
+    }
+    unsigned const local_index = strategy->find_local_offset(proc);
     values[itr.p] = TaskArgument(args + local_index, sizeof(ConcatArgs));
   }
   argmaps[instance_index] = runtime->construct_future_map(
       ctx, launch_space, values, true /*collective*/, shardfn->sharding_id);
 
-  IndexTaskLauncher& launcher = launchers[instance_index];
-  launcher = IndexTaskLauncher(
-      CONCAT_TASK_ID, launch_space, TaskArgument(NULL, 0),
-      ArgumentMap(argmaps[instance_index]), Predicate::TRUE_PRED,
-      false /*must*/, mapper, strategy->tag);
+  IndexTaskLauncher &launcher = launchers[instance_index];
+  launcher = IndexTaskLauncher(CONCAT_TASK_ID,
+                               launch_space,
+                               TaskArgument(NULL, 0),
+                               ArgumentMap(argmaps[instance_index]),
+                               Predicate::TRUE_PRED,
+                               false /*must*/,
+                               mapper,
+                               strategy->tag);
   LogicalRegion output_region = instance->create_tensor_region(outputs[0]);
   LogicalPartition output_part =
       instance->find_or_create_tiled_partition(outputs[0], strategy);
-  launcher.add_region_requirement(RegionRequirement(
-      output_part, 0 /*projection id*/, LEGION_WRITE_DISCARD, LEGION_EXCLUSIVE,
-      output_region));
+  launcher.add_region_requirement(RegionRequirement(output_part,
+                                                    0 /*projection id*/,
+                                                    LEGION_WRITE_DISCARD,
+                                                    LEGION_EXCLUSIVE,
+                                                    output_region));
   launcher.add_field(0, FID_DATA);
   assert(inputs.size() == input_color_spaces.size());
   assert(inputs.size() == input_extents.size());
@@ -193,94 +199,96 @@ Concat::initialize(
     IndexSpace input_color_space =
         instance->find_or_create_index_space(input_color_spaces[idx]);
     LogicalRegion input_region = inputs[idx]->region[instance_index];
-    IndexPartition index_part = instance->find_or_create_partition(
-        input_region.get_index_space(), input_color_space, input_transform,
-        input_extents[idx], LEGION_DISJOINT_COMPLETE_KIND);
-    LogicalPartition input_part = runtime->get_logical_partition_by_tree(
-        ctx, index_part, input_region.get_field_space(),
-        input_region.get_tree_id());
-    launcher.add_region_requirement(RegionRequirement(
-        input_part, filter_functor_id, LEGION_READ_ONLY, LEGION_EXCLUSIVE,
-        input_region));
+    IndexPartition index_part =
+        instance->find_or_create_partition(input_region.get_index_space(),
+                                           input_color_space,
+                                           input_transform,
+                                           input_extents[idx],
+                                           LEGION_DISJOINT_COMPLETE_KIND);
+    LogicalPartition input_part =
+        runtime->get_logical_partition_by_tree(ctx,
+                                               index_part,
+                                               input_region.get_field_space(),
+                                               input_region.get_tree_id());
+    launcher.add_region_requirement(RegionRequirement(input_part,
+                                                      filter_functor_id,
+                                                      LEGION_READ_ONLY,
+                                                      LEGION_EXCLUSIVE,
+                                                      input_region));
     launcher.add_field(idx + 1 /*include output*/, FID_DATA);
   }
 }
 
-void
-Concat::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Concat::forward(LegionModelInstance *instance,
+                     unsigned const instance_index,
+                     Runtime *runtime,
+                     Context ctx,
+                     MapperID mapper) {
   runtime->execute_index_space(ctx, launchers[instance_index]);
 }
 
-void
-Concat::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Concat::finalize(LegionModelInstance *instance,
+                      unsigned const instance_index,
+                      Runtime *runtime,
+                      Context ctx,
+                      MapperID mapper) {
   argmaps[instance_index] = FutureMap();
 }
 
-void
-Concat::Free(Processor proc)
-{
+void Concat::Free(Processor proc) {
   assert(proc.kind() == strategy->kind);
 }
 
-/*static*/ void
-Concat::PreregisterTaskVariants(void)
-{
+/*static*/ void Concat::PreregisterTaskVariants(void) {
   {
     // Register our special projection functor with the runtime
     filter_functor_id = Runtime::generate_static_projection_id();
-    Runtime::preregister_projection_functor(
-        filter_functor_id, new FilterProjectionFunctor);
+    Runtime::preregister_projection_functor(filter_functor_id,
+                                            new FilterProjectionFunctor);
   }
   {
     TaskVariantRegistrar cpu_registrar(CONCAT_TASK_ID, "Concat CPU");
     cpu_registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     cpu_registrar.set_leaf();
-    Runtime::preregister_task_variant<forward_cpu>(
-        cpu_registrar, "Concat Operator");
+    Runtime::preregister_task_variant<forward_cpu>(cpu_registrar,
+                                                   "Concat Operator");
   }
 #ifdef LEGION_USE_CUDA
   {
     TaskVariantRegistrar gpu_registrar(CONCAT_TASK_ID, "Concat GPU");
     gpu_registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     gpu_registrar.set_leaf();
-    Runtime::preregister_task_variant<forward_gpu>(
-        gpu_registrar, "Concat Operator");
+    Runtime::preregister_task_variant<forward_gpu>(gpu_registrar,
+                                                   "Concat Operator");
   }
 #endif
 }
 
-/*static*/ void
-Concat::forward_cpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Concat::forward_cpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(task->local_arglen == sizeof(ConcatArgs));
-  const ConcatArgs* args = (const ConcatArgs*)task->local_args;
+  ConcatArgs const *args = (ConcatArgs const *)task->local_args;
   assert(regions.size() >= 2);
   assert(regions.size() == task->regions.size());
-  uint8_t* output_ptr = nullptr;
+  uint8_t *output_ptr = nullptr;
   size_t total_elements = 1;
   size_t element_stride = sizeof_datatype(args->datatype);
   switch (args->bounds.get_dim()) {
-#define DIMFUNC(DIM)                                                          \
-  case DIM: {                                                                 \
-    const Rect<DIM> bounds = args->bounds;                                    \
-    output_ptr = (uint8_t*)TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access( \
-        args->datatype, bounds, regions[0]);                                  \
-    for (int d = DIM - 1; d >= 0; d--) {                                      \
-      element_stride *= ((bounds.hi[d] - bounds.lo[d]) + 1);                  \
-      if (d == args->axis)                                                    \
-        break;                                                                \
-    }                                                                         \
-    for (int d = 0; d < args->axis; d++)                                      \
-      total_elements *= ((bounds.hi[d] - bounds.lo[d]) + 1);                  \
-    break;                                                                    \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    const Rect<DIM> bounds = args->bounds;                                     \
+    output_ptr = (uint8_t *)TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access( \
+        args->datatype, bounds, regions[0]);                                   \
+    for (int d = DIM - 1; d >= 0; d--) {                                       \
+      element_stride *= ((bounds.hi[d] - bounds.lo[d]) + 1);                   \
+      if (d == args->axis)                                                     \
+        break;                                                                 \
+    }                                                                          \
+    for (int d = 0; d < args->axis; d++)                                       \
+      total_elements *= ((bounds.hi[d] - bounds.lo[d]) + 1);                   \
+    break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -290,20 +298,22 @@ Concat::forward_cpu(
   for (unsigned idx = 1; idx < regions.size(); idx++) {
     // Skip any regions which have been masked off for this point task
     LogicalRegion region = task->regions[idx].region;
-    if (!region.exists())
+    if (!region.exists()) {
       continue;
+    }
     const Domain input_domain =
         runtime->get_index_space_domain(region.get_index_space());
     assert(input_domain.get_dim() == args->bounds.get_dim());
-    const uint8_t* input_ptr = nullptr;
+    uint8_t const *input_ptr = nullptr;
     size_t element_size = sizeof_datatype(args->datatype);
     switch (input_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     const Rect<DIM> bounds = input_domain;                                     \
     assert(!bounds.empty());                                                   \
-    input_ptr = (const uint8_t*)TensorAccessor<LEGION_READ_ONLY, DIM>::access( \
-        args->datatype, bounds, regions[idx]);                                 \
+    input_ptr =                                                                \
+        (const uint8_t *)TensorAccessor<LEGION_READ_ONLY, DIM>::access(        \
+            args->datatype, bounds, regions[idx]);                             \
     for (int d = DIM - 1; d >= 0; d--) {                                       \
       element_size *= ((bounds.hi[d] - bounds.lo[d]) + 1);                     \
       if (d == args->axis)                                                     \
@@ -320,7 +330,7 @@ Concat::forward_cpu(
       default:
         abort();
     }
-    uint8_t* current_ptr = output_ptr;
+    uint8_t *current_ptr = output_ptr;
     for (size_t element = 0; element < total_elements; element++) {
       memcpy(current_ptr, input_ptr, element_size);
       input_ptr += element_size;
@@ -332,13 +342,12 @@ Concat::forward_cpu(
 }
 
 #ifdef LEGION_USE_CUDA
-/*static*/ void
-Concat::forward_gpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Concat::forward_gpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(task->local_arglen == sizeof(ConcatArgs));
-  const ConcatArgs* args = (const ConcatArgs*)task->local_args;
+  ConcatArgs const *args = (ConcatArgs const *)task->local_args;
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   ::cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream));
@@ -355,23 +364,23 @@ Concat::forward_gpu(
   }
   assert(regions.size() >= 2);
   assert(regions.size() == task->regions.size());
-  uint8_t* output_ptr = nullptr;
+  uint8_t *output_ptr = nullptr;
   size_t total_elements = 1;
   size_t element_stride = sizeof_datatype(args->datatype);
   switch (args->bounds.get_dim()) {
-#define DIMFUNC(DIM)                                                          \
-  case DIM: {                                                                 \
-    const Rect<DIM> bounds = args->bounds;                                    \
-    output_ptr = (uint8_t*)TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access( \
-        args->datatype, bounds, regions[0]);                                  \
-    for (int d = DIM - 1; d >= 0; d--) {                                      \
-      element_stride *= ((bounds.hi[d] - bounds.lo[d]) + 1);                  \
-      if (d == args->axis)                                                    \
-        break;                                                                \
-    }                                                                         \
-    for (int d = 0; d < args->axis; d++)                                      \
-      total_elements *= ((bounds.hi[d] - bounds.lo[d]) + 1);                  \
-    break;                                                                    \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    const Rect<DIM> bounds = args->bounds;                                     \
+    output_ptr = (uint8_t *)TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access( \
+        args->datatype, bounds, regions[0]);                                   \
+    for (int d = DIM - 1; d >= 0; d--) {                                       \
+      element_stride *= ((bounds.hi[d] - bounds.lo[d]) + 1);                   \
+      if (d == args->axis)                                                     \
+        break;                                                                 \
+    }                                                                          \
+    for (int d = 0; d < args->axis; d++)                                       \
+      total_elements *= ((bounds.hi[d] - bounds.lo[d]) + 1);                   \
+    break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -381,20 +390,22 @@ Concat::forward_gpu(
   for (unsigned idx = 1; idx < regions.size(); idx++) {
     // Skip any regions which have been masked off for this point task
     LogicalRegion region = task->regions[idx].region;
-    if (!region.exists())
+    if (!region.exists()) {
       continue;
+    }
     const Domain input_domain =
         runtime->get_index_space_domain(region.get_index_space());
     assert(input_domain.get_dim() == args->bounds.get_dim());
-    const uint8_t* input_ptr = nullptr;
+    uint8_t const *input_ptr = nullptr;
     size_t element_size = sizeof_datatype(args->datatype);
     switch (input_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     const Rect<DIM> bounds = input_domain;                                     \
     assert(!bounds.empty());                                                   \
-    input_ptr = (const uint8_t*)TensorAccessor<LEGION_READ_ONLY, DIM>::access( \
-        args->datatype, bounds, regions[idx]);                                 \
+    input_ptr =                                                                \
+        (const uint8_t *)TensorAccessor<LEGION_READ_ONLY, DIM>::access(        \
+            args->datatype, bounds, regions[idx]);                             \
     for (int d = DIM - 1; d >= 0; d--) {                                       \
       element_size *= ((bounds.hi[d] - bounds.lo[d]) + 1);                     \
       if (d == args->axis)                                                     \
@@ -417,19 +428,30 @@ Concat::forward_gpu(
       CHECK_CUDA(cudaMemcpyAsync(
           output_ptr, input_ptr, element_size, cudaMemcpyDeviceToDevice));
 #else
-      CHECK_CUDA(cudaMemcpyAsync(
-          output_ptr, input_ptr, element_size, cudaMemcpyDeviceToDevice,
-          stream));
+      CHECK_CUDA(cudaMemcpyAsync(output_ptr,
+                                 input_ptr,
+                                 element_size,
+                                 cudaMemcpyDeviceToDevice,
+                                 stream));
 #endif
     } else {
 #ifdef DISABLE_LEGION_CUDA_HIJACK
-      CHECK_CUDA(cudaMemcpy2DAsync(
-          output_ptr, element_stride, input_ptr, element_size, element_size,
-          total_elements, cudaMemcpyDeviceToDevice));
+      CHECK_CUDA(cudaMemcpy2DAsync(output_ptr,
+                                   element_stride,
+                                   input_ptr,
+                                   element_size,
+                                   element_size,
+                                   total_elements,
+                                   cudaMemcpyDeviceToDevice));
 #else
-      CHECK_CUDA(cudaMemcpy2DAsync(
-          output_ptr, element_stride, input_ptr, element_size, element_size,
-          total_elements, cudaMemcpyDeviceToDevice, stream));
+      CHECK_CUDA(cudaMemcpy2DAsync(output_ptr,
+                                   element_stride,
+                                   input_ptr,
+                                   element_size,
+                                   element_size,
+                                   total_elements,
+                                   cudaMemcpyDeviceToDevice,
+                                   stream));
 #endif
     }
     // Update the output ptr with the new offset for the next set of elements
@@ -446,11 +468,13 @@ Concat::forward_gpu(
     CHECK_CUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     CHECK_CUDA(cudaEventDestroy(t_start));
     CHECK_CUDA(cudaEventDestroy(t_end));
-    printf(
-        "%s [Concat] forward time (CF) = %.2fms\n",
-        args->owner->op_name.c_str(), elapsed);
+    printf("%s [Concat] forward time (CF) = %.2fms\n",
+           args->owner->op_name.c_str(),
+           elapsed);
   }
 }
 #endif
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

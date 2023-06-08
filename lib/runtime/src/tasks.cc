@@ -1,6 +1,5 @@
 #include "tasks.h";
 #include "legion.h"
-#include "runtime/config.h"
 #include "ops/aggregate.h"
 #include "ops/aggregate_spec.h"
 #include "ops/attention.h"
@@ -29,6 +28,7 @@
 #include "ops/split.h"
 #include "ops/topk.h"
 #include "ops/transpose.h"
+#include "runtime/config.h"
 
 using namespace Legion;
 
@@ -49,7 +49,8 @@ void register_flexflow_internal_tasks() {
                                    "ElementWiseUnary Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, ElementUnary::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *,
+                                      ElementUnary::init_task>(
         registrar, "ElementWiseUnary Init Task");
   }
   {
@@ -74,7 +75,8 @@ void register_flexflow_internal_tasks() {
                                    "ElementWiseBinary Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, ElementBinary::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *,
+                                      ElementBinary::init_task>(
         registrar, "ElementWiseBinary Init Task");
   }
   {
@@ -278,7 +280,8 @@ void register_flexflow_internal_tasks() {
                                    "Aggregate specification Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, AggregateSpec::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *,
+                                      AggregateSpec::init_task>(
         registrar, "Aggregate specification Init Task");
   }
   {
@@ -348,7 +351,8 @@ void register_flexflow_internal_tasks() {
                                    "BatchMatmul Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, BatchMatmul::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *,
+                                      BatchMatmul::init_task>(
         registrar, "BatchMatmul Init Task");
   }
   {
@@ -650,7 +654,8 @@ void register_flexflow_internal_tasks() {
                                    "MultiHeadAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, MultiHeadAttention::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *,
+                                      MultiHeadAttention::init_task>(
         registrar, "MultiHeadAttention Init Task");
   }
   {
@@ -706,7 +711,8 @@ void register_flexflow_internal_tasks() {
                                    "Repartition Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, Repartition::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *,
+                                      Repartition::init_task>(
         registrar, "Repartition init Task");
   }
   {
@@ -828,21 +834,19 @@ void register_flexflow_internal_tasks() {
   }
 #endif
   // Initializer
-  register_tasks<
-    GLOROT_INIT_TASK_ID,
-    ZERO_INIT_TASK_ID,
-    UNIFORM_INIT_TASK_ID,
-    NORMAL_INIT_TASK_ID,
-    CONSTANT_INIT_TASK_ID,
-    METRICS_COMP_TASK_ID,
-    UPDATE_METRICS_TASK_ID,
-    AGGREGATE_INIT_TASK_ID,
-    AGGREGATE_FWD_TASK_ID,
-    AGGREGATE_BWD_TASK_ID,
-    AGG_SPEC_INIT_TASK_ID,
-    AGG_SPEC_FWD_TASK_ID,
-    AGG_SPEC_BWD_TASK_ID
-  >();
+  register_tasks<GLOROT_INIT_TASK_ID,
+                 ZERO_INIT_TASK_ID,
+                 UNIFORM_INIT_TASK_ID,
+                 NORMAL_INIT_TASK_ID,
+                 CONSTANT_INIT_TASK_ID,
+                 METRICS_COMP_TASK_ID,
+                 UPDATE_METRICS_TASK_ID,
+                 AGGREGATE_INIT_TASK_ID,
+                 AGGREGATE_FWD_TASK_ID,
+                 AGGREGATE_BWD_TASK_ID,
+                 AGG_SPEC_INIT_TASK_ID,
+                 AGG_SPEC_FWD_TASK_ID,
+                 AGG_SPEC_BWD_TASK_ID>();
 
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID, "Zero Init");
@@ -933,4 +937,4 @@ void register_flexflow_internal_tasks() {
   }
 }
 
-}
+} // namespace FlexFlow

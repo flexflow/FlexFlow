@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_COW_PTR_T_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_COW_PTR_T_H
 
-#include <memory>
-#include "utils/variant.h"
-#include "utils/unique.h"
 #include "utils/type_traits.h"
+#include "utils/unique.h"
+#include "utils/variant.h"
+#include <memory>
 
 namespace FlexFlow {
 
@@ -23,10 +23,10 @@ struct cow_ptr_t {
     this->set_unique(make_unique<T>(val));
   }
   cow_ptr_t(cow_ptr_t const &other) {
-    this->set_shared(other.get_shared_ptr());  
+    this->set_shared(other.get_shared_ptr());
   }
   cow_ptr_t &operator=(cow_ptr_t other) {
-    swap(*this, other); 
+    swap(*this, other);
     return *this;
   }
 
@@ -60,24 +60,24 @@ struct cow_ptr_t {
     return this->get_shared();
   }
 
-  T* mutable_ptr() const {
-  if (this->has_unique_access()) {
-    return this->get_unique().get();
-  } else {
-    auto shared = this->get_shared();
-    this->set_unique(unique_t(shared->clone()));
-    if (auto ptr = mpark::get_if<unique_t>(&this->ptr)) {
-      return ptr->get();
+  T *mutable_ptr() const {
+    if (this->has_unique_access()) {
+      return this->get_unique().get();
+    } else {
+      auto shared = this->get_shared();
+      this->set_unique(unique_t(shared->clone()));
+      if (auto ptr = mpark::get_if<unique_t>(&this->ptr)) {
+        return ptr->get();
+      }
+      return nullptr;
     }
-    return nullptr;
   }
-}
 
   T &mutable_ref() const {
     return *this->mutable_ptr();
   }
 
-  bool has_unique_access() const { 
+  bool has_unique_access() const {
     return holds_alternative<unique_t>(this->ptr);
   }
 
@@ -94,41 +94,31 @@ struct cow_ptr_t {
 
     swap(lhs.ptr, rhs.ptr);
   }
+
 private:
   void set_shared(shared_t ptr) const {
-    this->ptr = variant<
-    std::unique_ptr<T>,
-    std::shared_ptr<T const>
-  >(std::move(ptr));
+    this->ptr =
+        variant<std::unique_ptr<T>, std::shared_ptr<T const>>(std::move(ptr));
   }
 
- void set_unique(std::unique_ptr<T> ptr)  const{
-  this->ptr = variant<
-    std::unique_ptr<T>,
-    std::shared_ptr<T const>
-  >(std::move(ptr));
-}
+  void set_unique(std::unique_ptr<T> ptr) const {
+    this->ptr =
+        variant<std::unique_ptr<T>, std::shared_ptr<T const>>(std::move(ptr));
+  }
 
- std::unique_ptr<T> get_unique() const {
-  if (auto ptr = mpark::get_if<unique_t>(&this->ptr)) {
+  std::unique_ptr<T> get_unique() const {
+    auto ptr = mpark::get_if<unique_t>(&this->ptr);
     return std::move(*ptr);
   }
-  return nullptr;
-}
 
- std::shared_ptr<T const> get_shared() const {
-  if (auto ptr = mpark::get_if<shared_t>(&this->ptr)) {
+  std::shared_ptr<T const> get_shared() const {
+    auto ptr = mpark::get_if<shared_t>(&this->ptr);
     return *ptr;
   }
-  return nullptr;
-}
 
-  mutable variant<
-    std::unique_ptr<T>,
-    std::shared_ptr<T const>
-  > ptr;
+  mutable variant<std::unique_ptr<T>, std::shared_ptr<T const>> ptr;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

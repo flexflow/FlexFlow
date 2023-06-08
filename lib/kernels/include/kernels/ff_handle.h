@@ -22,6 +22,6 @@ struct PerDeviceFFHandle {
 #endif
 };
 
-}
+} // namespace FlexFlow
 
 #endif

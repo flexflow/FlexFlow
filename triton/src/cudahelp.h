@@ -23,76 +23,76 @@
 #include "cudnn.h"
 #include "types.h"
 
-#define FatalError(s)                                                 \
-  do {                                                                \
-    std::stringstream _message;                                       \
-    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__; \
-    std::cerr << _message.str() << "\nAborting...\n";                 \
-    abort();                                                          \
+#define FatalError(s)                                                          \
+  do {                                                                         \
+    std::stringstream _message;                                                \
+    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;          \
+    std::cerr << _message.str() << "\nAborting...\n";                          \
+    abort();                                                                   \
   } while (0)
 
-#define CHECK_CUDNN(cmd)                              \
-  do {                                                \
-    cudnnStatus_t status = (cmd);                     \
-    if (status != CUDNN_STATUS_SUCCESS) {             \
-      std::stringstream _error;                       \
-      _error << "CUDNN failure (" << status           \
-             << "): " << cudnnGetErrorString(status); \
-      FatalError(_error.str());                       \
-    }                                                 \
+#define CHECK_CUDNN(cmd)                                                       \
+  do {                                                                         \
+    cudnnStatus_t status = (cmd);                                              \
+    if (status != CUDNN_STATUS_SUCCESS) {                                      \
+      std::stringstream _error;                                                \
+      _error << "CUDNN failure (" << status                                    \
+             << "): " << cudnnGetErrorString(status);                          \
+      FatalError(_error.str());                                                \
+    }                                                                          \
   } while (0)
 
-#define CHECK_CURAND(cmd)                     \
-  do {                                        \
-    curandStatus_t status = (cmd);            \
-    if (status != CURAND_STATUS_SUCCESS) {    \
-      std::stringstream _error;               \
-      _error << "CURAND failure: " << status; \
-      FatalError(_error.str());               \
-    }                                         \
+#define CHECK_CURAND(cmd)                                                      \
+  do {                                                                         \
+    curandStatus_t status = (cmd);                                             \
+    if (status != CURAND_STATUS_SUCCESS) {                                     \
+      std::stringstream _error;                                                \
+      _error << "CURAND failure: " << status;                                  \
+      FatalError(_error.str());                                                \
+    }                                                                          \
   } while (0)
 
-#define CHECK_CUDA(cmd)                              \
-  do {                                               \
-    cudaError_t status = (cmd);                      \
-    if (status != cudaSuccess) {                     \
-      std::stringstream _error;                      \
-      _error << "CUDA failure (" << status           \
-             << "): " << cudaGetErrorString(status); \
-      FatalError(_error.str());                      \
-    }                                                \
+#define CHECK_CUDA(cmd)                                                        \
+  do {                                                                         \
+    cudaError_t status = (cmd);                                                \
+    if (status != cudaSuccess) {                                               \
+      std::stringstream _error;                                                \
+      _error << "CUDA failure (" << status                                     \
+             << "): " << cudaGetErrorString(status);                           \
+      FatalError(_error.str());                                                \
+    }                                                                          \
   } while (0)
 
-#define CHECK_CUBLAS(cmd)                     \
-  do {                                        \
-    cublasStatus_t status = (cmd);            \
-    if (status != CUBLAS_STATUS_SUCCESS) {    \
-      std::stringstream _error;               \
-      _error << "CUBLAS failure: " << status; \
-      FatalError(_error.str());               \
-    }                                         \
+#define CHECK_CUBLAS(cmd)                                                      \
+  do {                                                                         \
+    cublasStatus_t status = (cmd);                                             \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
+      std::stringstream _error;                                                \
+      _error << "CUBLAS failure: " << status;                                  \
+      FatalError(_error.str());                                                \
+    }                                                                          \
   } while (0)
 
-#define CHECK_NCCL(cmd)                              \
-  do {                                               \
-    ncclResult_t status = (cmd);                     \
-    if (status != ncclSuccess) {                     \
-      std::stringstream _error;                      \
-      _error << "NCCL failure (" << status           \
-             << "): " << ncclGetErrorString(status); \
-      FatalError(_error.str());                      \
-    }                                                \
+#define CHECK_NCCL(cmd)                                                        \
+  do {                                                                         \
+    ncclResult_t status = (cmd);                                               \
+    if (status != ncclSuccess) {                                               \
+      std::stringstream _error;                                                \
+      _error << "NCCL failure (" << status                                     \
+             << "): " << ncclGetErrorString(status);                           \
+      FatalError(_error.str());                                                \
+    }                                                                          \
   } while (0)
 
 #ifndef THREADS_PER_BLOCK
 #define THREADS_PER_BLOCK 256
 #endif
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-inline cudnnDataType_t
-to_cudnn_datatype(DataType type)
-{
+inline cudnnDataType_t to_cudnn_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return CUDNN_DATA_HALF;
@@ -112,9 +112,7 @@ to_cudnn_datatype(DataType type)
   return CUDNN_DATA_FLOAT;
 }
 
-inline cudaDataType_t
-to_cuda_datatype(DataType type)
-{
+inline cudaDataType_t to_cuda_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return CUDA_R_16F;
@@ -140,8 +138,7 @@ to_cuda_datatype(DataType type)
 // CUDNN_DATA_UINT8 will be returned if the combination is not supported
 // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnOpTensor
 inline cudnnDataType_t
-to_op_tensor_comp_type(DataType input0, DataType input1, DataType output)
-{
+    to_op_tensor_comp_type(DataType input0, DataType input1, DataType output) {
   if (input0 != input1) {
     return CUDNN_DATA_UINT8;
   }
@@ -178,11 +175,11 @@ to_op_tensor_comp_type(DataType input0, DataType input1, DataType output)
   return CUDNN_DATA_UINT8;
 }
 
-inline cudnnStatus_t
-cudnnSetTensorDescriptorFromDomain(
-    cudnnTensorDescriptor_t tensor, Legion::Domain domain, DataType type,
-    cudnnTensorFormat_t format = CUDNN_TENSOR_NCHW)
-{
+inline cudnnStatus_t cudnnSetTensorDescriptorFromDomain(
+    cudnnTensorDescriptor_t tensor,
+    Legion::Domain domain,
+    DataType type,
+    cudnnTensorFormat_t format = CUDNN_TENSOR_NCHW) {
   int dims[4];
   switch (domain.get_dim()) {
     case 1: {
@@ -203,9 +200,13 @@ cudnnSetTensorDescriptorFromDomain(
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
-      return cudnnSetTensor4dDescriptor(
-          tensor, format, to_cudnn_datatype(type), 1, dims[0], dims[1],
-          dims[2]);
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        format,
+                                        to_cudnn_datatype(type),
+                                        1,
+                                        dims[0],
+                                        dims[1],
+                                        dims[2]);
     }
     case 4: {
       Legion::Rect<4> rect = domain;
@@ -213,9 +214,13 @@ cudnnSetTensorDescriptorFromDomain(
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
-      return cudnnSetTensor4dDescriptor(
-          tensor, format, to_cudnn_datatype(type), dims[0], dims[1], dims[2],
-          dims[3]);
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        format,
+                                        to_cudnn_datatype(type),
+                                        dims[0],
+                                        dims[1],
+                                        dims[2],
+                                        dims[3]);
     }
     default:
       abort();
@@ -223,6 +228,8 @@ cudnnSetTensorDescriptorFromDomain(
   return CUDNN_STATUS_BAD_PARAM;
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_CUDAHELP_H__
+#endif // __LEGION_TRITON_CUDAHELP_H__

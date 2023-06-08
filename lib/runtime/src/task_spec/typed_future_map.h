@@ -6,15 +6,15 @@
 
 namespace FlexFlow {
 
-template <typename T> 
+template <typename T>
 struct TypedFutureMap {
   explicit TypedFutureMap(Legion::FutureMap const &future_map)
-    : future_map(future_map)
-  { }
+      : future_map(future_map) {}
 
   T get(Legion::DomainPoint const &p) {
     return future_map.get_result<T>(p);
   }
+
 public:
   Legion::FutureMap future_map;
 };
@@ -25,19 +25,20 @@ public:
 
   template <typename T>
   TypedFutureMap<T> get() {
-    assert (matches<T>(this->type));
+    assert(matches<T>(this->type));
 
-    return { this->future_map };
+    return {this->future_map};
   }
 
   template <typename T>
   static CheckedTypedFutureMap create(TypedFutureMap<T> const &fm) {
     return CheckedTypedFutureMap(type_index<T>(), fm.future_map);
   }
+
 private:
-  CheckedTypedFutureMap(std::type_index const &type_idx, Legion::FutureMap const &future_map) 
-    : type(type_idx), future_map(future_map)
-  { }
+  CheckedTypedFutureMap(std::type_index const &type_idx,
+                        Legion::FutureMap const &future_map)
+      : type(type_idx), future_map(future_map) {}
 
   friend struct TaskReturnAccessor;
 
@@ -45,6 +46,6 @@ private:
   Legion::FutureMap future_map;
 };
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

@@ -2,8 +2,8 @@
 #define _FLEXFLOW_OP_META_SRC_PARELLEL_DIM_MAPPING_RECORD_H
 
 #include "tl/optional.hpp"
-#include <vector>
 #include "utils/visitable.h"
+#include <vector>
 
 namespace FlexFlow {
 
@@ -40,8 +40,16 @@ public:
   int output_idx, input_idx, weight_idx;
 };
 
-}
+} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::ParallelDimMappingRecord, type, operation, output_dim, input_dim, weight_dim, output_idx, input_idx, weight_idx);
+VISITABLE_STRUCT(::FlexFlow::ParallelDimMappingRecord,
+                 type,
+                 operation,
+                 output_dim,
+                 input_dim,
+                 weight_dim,
+                 output_idx,
+                 input_idx,
+                 weight_idx);
 
-#endif 
+#endif

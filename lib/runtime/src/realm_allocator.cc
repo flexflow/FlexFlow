@@ -4,9 +4,8 @@ using Legion::coord_t;
 
 namespace FlexFlow {
 
-RealmAllocator::RealmAllocator(Legion::Memory memory) 
-  : memory(memory), instances{} 
-{ }
+RealmAllocator::RealmAllocator(Legion::Memory memory)
+    : memory(memory), instances{} {}
 
 void *RealmAllocator::allocate(size_t size) {
   Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
@@ -17,7 +16,8 @@ void *RealmAllocator::allocate(size_t size) {
                                          bounds,
                                          {sizeof(char)},
                                          0,
-                                         Realm::ProfilingRequestSet()).wait();
+                                         Realm::ProfilingRequestSet())
+      .wait();
   return this->instances.back().pointer_untyped(0, sizeof(char));
 }
 
@@ -28,11 +28,12 @@ RealmAllocator::~RealmAllocator() {
 }
 
 std::unique_ptr<IAllocator> get_gpu_memory_allocator(Legion::Task const *task) {
-  Legion::Memory gpu_mem = Legion::Machine::MemoryQuery(Legion::Machine::get_machine())
-                       .only_kind(Legion::Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Legion::Memory gpu_mem =
+      Legion::Machine::MemoryQuery(Legion::Machine::get_machine())
+          .only_kind(Legion::Memory::GPU_FB_MEM)
+          .best_affinity_to(task->target_proc)
+          .first();
   return std::unique_ptr<IAllocator>(new RealmAllocator(gpu_mem));
 }
 
-}
+} // namespace FlexFlow

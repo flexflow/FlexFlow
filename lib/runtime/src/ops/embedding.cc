@@ -363,10 +363,11 @@ void Embedding::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-PerDeviceOpState *Embedding::init_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+PerDeviceOpState *
+    Embedding::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   Embedding const *embed = (Embedding *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   EmbeddingMeta *m = new EmbeddingMeta(handle, embed);

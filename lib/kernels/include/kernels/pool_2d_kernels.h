@@ -48,7 +48,6 @@ void backward_kernel(ffStream_t stream,
                      void const *output_ptr,
                      void const *output_grad_ptr);
 
-
 } // namespace Pool2D
 } // namespace Kernels
 } // namespace FlexFlow

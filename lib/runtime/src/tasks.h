@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_TASKS_H
 #define _FLEXFLOW_TASKS_H
 
-#include <string>
 #include "utils/optional.h"
+#include <string>
 
 namespace FlexFlow {
 
@@ -176,18 +176,22 @@ enum task_id_t {
 void register_flexflow_internal_tasks();
 
 template <typename F>
-void register_task(task_id_t, std::string const &name, F const &func, optional<F const &> cpu_func = nullopt);
+void register_task(task_id_t,
+                   std::string const &name,
+                   F const &func,
+                   optional<F const &> cpu_func = nullopt);
 
-template <task_id_t> void register_task();
+template <task_id_t>
+void register_task();
 
 void register_tasks();
 
-template <task_id_t id, task_id_t ...ids> 
+template <task_id_t id, task_id_t... ids>
 void register_tasks() {
   register_task<id>();
   register_tasks<ids...>();
 }
 
-}
+} // namespace FlexFlow
 
 #endif

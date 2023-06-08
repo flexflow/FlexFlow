@@ -15,9 +15,9 @@
 
 #include "batch_matmul.h"
 #include "kernels/batch_matmul_kernels.h"
-#include "tasks.h"
 #include "kernels/profiling.h"
 #include "legion/legion_utilities.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 
@@ -40,8 +40,7 @@ OpTaskInvocation init(BatchMatmulAttrs const &attrs) {
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(PROFILING, enable_profiling());
 
-  return { BATCHMATMUL_INIT_TASK_ID, b };
-
+  return {BATCHMATMUL_INIT_TASK_ID, b};
 }
 
 OpTaskInvocation forward(BatchMatmulAttrs const &attrs) {
@@ -51,15 +50,14 @@ OpTaskInvocation forward(BatchMatmulAttrs const &attrs) {
   b.bind(B_INPUT, input_tensor(1));
   b.bind(OUTPUT, output_tensor(0));
 
-  return { BATCHMATMUL_FWD_TASK_ID, b };
+  return {BATCHMATMUL_FWD_TASK_ID, b};
 }
 
 OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return { BATCHMATMUL_BWD_TASK_ID, b };
+  return {BATCHMATMUL_BWD_TASK_ID, b};
 }
-
 
 BatchMatmulParams BatchMatmul::get_params() const {
   BatchMatmulParams params;
@@ -284,16 +282,16 @@ void BatchMatmul::init(FFModel const &ff) {
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    //init_with_dim<DIM>(ff);  
-    this->execute_task(ff, BATCHMATMUL_INIT_TASK_ID, get_init_task_signature());                                                  
-    break;                                                                     \
+    // init_with_dim<DIM>(ff);
+    this->execute_task(ff, BATCHMATMUL_INIT_TASK_ID, get_init_task_signature());
+    break;
   }
-    LEGION_FOREACH_N(DIMFUNC)
+  LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
-  }
+  default:
+    assert(false);
 }
+} // namespace FlexFlow
 // /
 // template <int NDIM>
 // void BatchMatmul::init_with_dim(FFModel const &ff) {
@@ -330,10 +328,11 @@ void BatchMatmul::init(FFModel const &ff) {
 //   set_opmeta_from_futuremap(ff, fm);
 // }
 
-PerDeviceOpState *BatchMatmul::init_task(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
+PerDeviceOpState *
+    BatchMatmul::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
+                           Context ctx,
+                           Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<BatchMatmulAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -351,15 +350,15 @@ void BatchMatmul::forward(FFModel const &ff) {
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    //forward_with_dim<DIM>(ff);   
-    this->execute_task(ff, BATCHMATMUL_FWD_TASK_ID, get_fwd_task_signature());                                              
-    break;                                                                     \
+    // forward_with_dim<DIM>(ff);
+    this->execute_task(ff, BATCHMATMUL_FWD_TASK_ID, get_fwd_task_signature());
+    break;
   }
-    LEGION_FOREACH_N(DIMFUNC)
+  LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
-  }
+  default:
+    assert(false);
+}
 }
 
 // template <int NDIM>
@@ -398,7 +397,7 @@ void BatchMatmul::forward(FFModel const &ff) {
   regions[0](O): output
   regions[1](I): A
   regions[2](I): B
-  ////////////////////(optional) regions[3](I): C -- TODO: is C deprecated? 
+  ////////////////////(optional) regions[3](I): C -- TODO: is C deprecated?
   output = A * B  /////////+ C
 */
 void BatchMatmul::forward_task(Task const *task,
@@ -408,17 +407,18 @@ void BatchMatmul::forward_task(Task const *task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
 
-  OpTaskArgumentAccessor acc (task, regions, ctx, runtime);
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   // const BatchMatmul* bmm = (const BatchMatmul*) task->args;
   FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
   // BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
-  BatchMatmulPerDeviceState const *meta = *((BatchMatmulPerDeviceState **) task->local_args);
+  BatchMatmulPerDeviceState const *meta =
+      *((BatchMatmulPerDeviceState **)task->local_args);
 
   auto a_input = acc.get_tensor<READ_ONLY>(A_INPUT);
   auto b_input = acc.get_tensor<READ_ONLY>(B_INPUT);
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
-  
+
   int m = b_input.shape[0];
   assert(m == output.shape[0]);
   int n = a_input.shape[1];
@@ -426,8 +426,8 @@ void BatchMatmul::forward_task(Task const *task,
   int k = a_input.shape[0];
   assert(k == b_input.shape[1]);
 
-  assert(a_input.shape.size() == b_input.shape.size()); 
-  assert(a_input.shape.size() == output.shape.size()); 
+  assert(a_input.shape.size() == b_input.shape.size());
+  assert(a_input.shape.size() == output.shape.size());
   int batch = 1;
   for (int i = 2; i < a_input.shape.size(); i++) {
     int dim_size = a_input.shape[i];
@@ -435,8 +435,8 @@ void BatchMatmul::forward_task(Task const *task,
     assert(dim_size == output.shape[i]);
     batch *= dim_size;
   }
-  float *out_ptr = output.get_float_ptr();c
-  float const *a_ptr = a_input.get_float_ptr();
+  float *out_ptr = output.get_float_ptr();
+  c float const *a_ptr = a_input.get_float_ptr();
   float const *b_ptr = b_input.get_float_ptr();
   float const *c_ptr = NULL;
   // if (regions.size() == 4) {
@@ -447,19 +447,20 @@ void BatchMatmul::forward_task(Task const *task,
   //       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   // }
 
-  profile(forward_kernel, meta->profiling,
-            "[BatchMatmul] forward_time = %.2lfms\n",
-                         out_ptr,
-                         a_ptr,
-                         b_ptr,
-                         c_ptr,
-                         m,
-                         n,
-                         k,
-                         batch,
-                         meta->a_seq_length_dim,
-                         meta->b_seq_length_dim,
-                         iter_config->seq_length);
+  profile(forward_kernel,
+          meta->profiling,
+          "[BatchMatmul] forward_time = %.2lfms\n",
+          out_ptr,
+          a_ptr,
+          b_ptr,
+          c_ptr,
+          m,
+          n,
+          k,
+          batch,
+          meta->a_seq_length_dim,
+          meta->b_seq_length_dim,
+          iter_config->seq_length);
 }
 
 void BatchMatmul::backward(FFModel const &ff) {
@@ -566,11 +567,13 @@ __host__ void
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
-  BatchMatmulPerDeviceState const *meta = *((BatchMatmulPerDeviceState **)task->local_args);
+  BatchMatmulPerDeviceState const *meta =
+      *((BatchMatmulPerDeviceState **)task->local_args);
   // output domains
   auto output = acc.get_tensor<READ_ONLY>(OUTPUT);
   auto output_grad = acc.get_tensor<READ_WRITE>(OUTPUT_GRAD);
-  assert(output == output_grad);    // is this equivalent to checking `Domain` equality?
+  assert(output ==
+         output_grad); // is this equivalent to checking `Domain` equality?
   // A domains
   auto a_input = acc.get_tensor<READ_ONLY>(A_INPUT);
   auto a_input_grad = acc.get_tensor<READ_WRITE>(A_INPUT_GRAD);
@@ -579,7 +582,7 @@ __host__ void
   auto b_input = acc.get_tensor<READ_ONLY>(B_INPUT);
   auto b_input_grad = acc.get_tensor<READ_WRITE>(B_INPUT_GRAD);
   assert(b_input == b_input_grad);
-  
+
   // check dins
   int m = b_input.shape[0];
   assert(m == output.shape[0]);
@@ -608,25 +611,24 @@ __host__ void
 
   // TODO: add support for meta->a_seq_length_dim >= 0
   // or meta->b_seq_length_dim >= 0
-  assert((meta->a_seq_length_dim >= a_len) ||
-         (iter_config->seq_length == 0));
-  assert((meta->b_seq_length_dim >= b_len) ||
-         (iter_config->seq_length == 0));
+  assert((meta->a_seq_length_dim >= a_len) || (iter_config->seq_length == 0));
+  assert((meta->b_seq_length_dim >= b_len) || (iter_config->seq_length == 0));
 
-  profile(backward_kernel, meta->profiling,
+  profile(backward_kernel,
+          meta->profiling,
           "[BatchMatmul] backward_time = %.2lfms\n",
-                          meta,
-                          out_ptr,
-                          out_grad_ptr,
-                          a_ptr,
-                          a_grad_ptr,
-                          b_ptr,
-                          b_grad_ptr,
-                          c_grad_ptr,
-                          m,
-                          n,
-                          k,
-                          batch);
+          meta,
+          out_ptr,
+          out_grad_ptr,
+          a_ptr,
+          a_grad_ptr,
+          b_ptr,
+          b_grad_ptr,
+          c_grad_ptr,
+          m,
+          n,
+          k,
+          batch);
 }
 
 void BatchMatmul::print_layer(FFModel const &ff) {
@@ -709,18 +711,19 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&](ffStream_t stream) {
-      backward_kernel(stream, meta,
-                              out_ptr,
-                              out_grad_ptr,
-                              a_ptr,
-                              a_grad_ptr,
-                              b_ptr,
-                              b_grad_ptr,
-                              c_grad_ptr,
-                              m,
-                              n,
-                              k,
-                              batch);
+      backward_kernel(stream,
+                      meta,
+                      out_ptr,
+                      out_grad_ptr,
+                      a_ptr,
+                      a_grad_ptr,
+                      b_ptr,
+                      b_grad_ptr,
+                      c_grad_ptr,
+                      m,
+                      n,
+                      k,
+                      batch);
     };
   }
 
@@ -759,6 +762,5 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
 
   return true;
 }
-
-}; // namespace FlexFlow
-
+}
+; // namespace FlexFlow

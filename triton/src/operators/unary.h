@@ -19,12 +19,14 @@
 #include "operator.h"
 #include "tensor.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 class UnaryOperator;
 
 struct UnaryArgs : public OperatorArgs {
- public:
+public:
   UnaryArgs(void);
 #ifdef LEGION_USE_CUDA
   cudnnHandle_t cudnn;
@@ -46,50 +48,59 @@ struct UnaryArgs : public OperatorArgs {
 };
 
 class UnaryOperator : public Operator {
- public:
-  UnaryOperator(
-      LegionModelState* model, const LayerStrategy* strategy, OperatorType type,
-      const void* scalar, DataType scalar_type, bool inplace, const char* name);
+public:
+  UnaryOperator(LegionModelState *model,
+                LayerStrategy const *strategy,
+                OperatorType type,
+                void const *scalar,
+                DataType scalar_type,
+                bool inplace,
+                char const *name);
   virtual ~UnaryOperator(void);
 
-  void Configure(Tensor* input, Tensor* output);
+  void Configure(Tensor *input, Tensor *output);
   Legion::Domain GetBounds(Realm::Processor proc);
 
   virtual void Load(Realm::Processor processor) override;
-  virtual void initialize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void forward(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void finalize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
+  virtual void initialize(LegionModelInstance *instance,
+                          unsigned const instance_index,
+                          Legion::Runtime *runtime,
+                          Legion::Context ctx,
+                          Legion::MapperID mapper) override;
+  virtual void forward(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Legion::Runtime *runtime,
+                       Legion::Context ctx,
+                       Legion::MapperID mapper) override;
+  virtual void finalize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) override;
   virtual void Free(Realm::Processor processor) override;
 
- public:
+public:
   static void PreregisterTaskVariants(void);
-  static void forward_cpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+  static void forward_cpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 #ifdef LEGION_USE_CUDA
- public:
-  static void forward_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+public:
+  static void forward_gpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 
- protected:
+protected:
   static bool use_cudnn(OperatorType optype);
-  static void forward_kernel(
-      const UnaryArgs* args, ::cudaStream_t stream, const void* input_ptr,
-      void* output_ptr, size_t num_elements);
+  static void forward_kernel(UnaryArgs const *args,
+                             ::cudaStream_t stream,
+                             void const *input_ptr,
+                             void *output_ptr,
+                             size_t num_elements);
 #endif
- public:
+public:
   const DataType scalar_type;
   union {
     int8_t int8_value;
@@ -97,14 +108,16 @@ class UnaryOperator : public Operator {
     float float_value;
     double double_value;
   } scalar;
-  const bool inplace;
+  bool const inplace;
 
- protected:
+protected:
   UnaryArgs args[MAX_LOCAL_PROCS];
   Legion::FutureMap argmaps[MAX_NUM_INSTANCES];
   Legion::IndexTaskLauncher launchers[MAX_NUM_INSTANCES];
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_UNARY_H__
+#endif // __LEGION_TRITON_UNARY_H__

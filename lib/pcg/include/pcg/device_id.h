@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_DEVICE_ID_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_DEVICE_ID_H
 
+#include "device_type.h"
 #include "utils/strong_typedef.h"
 #include "utils/variant.h"
-#include "device_type.h"
 
 namespace FlexFlow {
 
@@ -24,7 +24,7 @@ cpu_id_t unwrap_cpu(device_id_t);
 
 device_id_t from_index(int, DeviceType);
 
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::gpu_id_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::gpu_id_t, "gpu_id");

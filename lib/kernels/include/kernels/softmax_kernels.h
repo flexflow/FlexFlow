@@ -9,8 +9,8 @@ namespace FlexFlow {
 class SoftmaxPerDeviceState : public PerDeviceOpState {
 public:
   SoftmaxPerDeviceState(FFHandler handle,
-              Softmax const *softmax,
-              Legion::Domain const &input_domain);
+                        Softmax const *softmax,
+                        Legion::Domain const &input_domain);
   ffTensorDescriptor_t inputTensor;
   bool profiling;
   int dim;
@@ -29,8 +29,8 @@ void backward_kernel(ffStream_t stream,
                      float const *output_grad_ptr,
                      size_t num_elements);
 
-}
-}
-}
+} // namespace Softmax
+} // namespace Kernels
+} // namespace FlexFlow
 
-#endif 
+#endif

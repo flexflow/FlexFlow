@@ -18,7 +18,8 @@
 
 namespace FlexFlow {
 
-Pool2DPerDeviceState::Pool2DPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {
+Pool2DPerDeviceState::Pool2DPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenCreatePoolingDescriptor(&poolDesc));
@@ -67,9 +68,10 @@ void init_kernel(Pool2DPerDeviceState *m,
       miopenSet4dTensorDescriptor(m->outputTensor, miopenFloat, n, c, h, w));
 }
 
-void forward_kernel(hipStream_t stream, Pool2DPerDeviceState const *m,
-                            void const *input_ptr,
-                            void *output_ptr) {
+void forward_kernel(hipStream_t stream,
+                    Pool2DPerDeviceState const *m,
+                    void const *input_ptr,
+                    void *output_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -98,12 +100,13 @@ void forward_kernel(hipStream_t stream, Pool2DPerDeviceState const *m,
   }
 }
 
-void backward_kernel(hipStream_t stream, Pool2DPerDeviceState const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void const *output_grad_ptr) {
-  
+void backward_kernel(hipStream_t stream,
+                     Pool2DPerDeviceState const *m,
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void const *output_grad_ptr) {
+
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;

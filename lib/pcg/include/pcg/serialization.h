@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_SERIALIZATION_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_SERIALIZATION_H
 
-#include "utils/json.h"
 #include "computation_graph.h"
-#include "parallel_computation_graph.h"
-#include "parallel_tensor.h"
 #include "layer.h"
 #include "machine_specification.h"
+#include "parallel_computation_graph.h"
+#include "parallel_tensor.h"
 #include "tensor_mapping.h"
+#include "utils/json.h"
 
 namespace FlexFlow {
 
@@ -53,6 +53,6 @@ void to_json(json &, TensorDims const &);
 void from_json(json const &, TensorMapping &);
 void to_json(json &, TensorMapping const &);
 
-}
+} // namespace FlexFlow
 
 #endif

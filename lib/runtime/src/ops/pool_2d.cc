@@ -1,7 +1,7 @@
 #include "pool_2d.h"
 #include "kernels/pool_2d_kernels.h"
-#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
+#include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Pool2D;
 
@@ -153,7 +153,6 @@ int Pool2DParams::output_size(ParallelTensorShape const &input,
   return Pool2DOutput::NUMDIM;
 }
 
-
 Pool2D::Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input)
     : Pool2D(model,
              input,
@@ -255,9 +254,9 @@ void Pool2D::init(FFModel const &ff) {
   regions[1]: output
 */
 PerDeviceOpState *Pool2D::init_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Pool2D const *pool = (Pool2D *)task->args;

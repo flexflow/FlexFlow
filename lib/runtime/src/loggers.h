@@ -5,15 +5,8 @@
 
 namespace FlexFlow {
 
-extern LegionRuntime::Logger::Category log_profile, 
-                                        log_measure,
-                                        log_sim,
-                                        log_ps_sim,
-                                        log_xfer_sim,
-                                        log_xfer_est,
-                                        log_metrics,
-                                        log_model,
-                                        log_mapper;
+extern LegionRuntime::Logger::Category log_profile, log_measure, log_sim,
+    log_ps_sim, log_xfer_sim, log_xfer_est, log_metrics, log_model, log_mapper;
 
 }
 

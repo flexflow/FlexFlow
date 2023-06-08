@@ -10,7 +10,7 @@ struct ff_dim_t : numerical_typedef<ff_dim_t, int> {
   using numerical_typedef::numerical_typedef;
 };
 
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::ff_dim_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::ff_dim_t, "ff_dim");

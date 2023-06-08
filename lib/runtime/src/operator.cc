@@ -491,7 +491,6 @@ void Op::construct_weight_parallel_dims(
   }
 }
 
-
 int Op::get_output_to_input_dim_mapping(const ParallelTensor output,
                                         int output_dim,
                                         const ParallelTensor input) {
@@ -696,7 +695,7 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      meta[idx++] = fm.get_result<PerDeviceOpState *>(*it);                              \
+      meta[idx++] = fm.get_result<PerDeviceOpState *>(*it);                    \
     }                                                                          \
     break;                                                                     \
   }
@@ -707,7 +706,8 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
 }
 
-void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) const {
+void Op::set_argumentmap_for_forward(FFModel const &ff,
+                                     ArgumentMap &argmap) const {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
@@ -717,8 +717,8 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) con
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      PerDeviceOpState *mp = meta[idx++];                                                \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
+      PerDeviceOpState *mp = meta[idx++];                                      \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));    \
     }                                                                          \
     break;                                                                     \
   }
@@ -739,8 +739,8 @@ void Op::set_argumentmap_for_backward(FFModel const &ff, ArgumentMap &argmap) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      PerDeviceOpState *mp = meta[idx++];                                                \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
+      PerDeviceOpState *mp = meta[idx++];                                      \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));    \
     }                                                                          \
     break;                                                                     \
   }
@@ -841,8 +841,6 @@ bool Op::get_weight_parameter(TNParameter tnp,
   return true;
 }
 
-
-
 size_t Op::get_params_hash() const {
   throw std::runtime_error(
       "No overload of get_params_hash defined for op type " +
@@ -850,32 +848,37 @@ size_t Op::get_params_hash() const {
 }
 
 void Op::require_input_tensor(IndexLauncher &launcher, int idx) const {
-  launcher.add_region_requirement(RegionRequirement(this->inputs.at(idx)->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    this->inputs.at(idx)->region));
+  launcher.add_region_requirement(
+      RegionRequirement(this->inputs.at(idx)->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        this->inputs.at(idx)->region));
 }
 
 void Op::require_output_tensor(Legion::IndexLauncher &launcher, int idx) const {
-  launcher.add_region_requirement(RegionRequirement(this->outputs.at(idx)->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    this->outputs.at(idx)->region));
+  launcher.add_region_requirement(
+      RegionRequirement(this->outputs.at(idx)->part,
+                        0 /*projection id*/,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        this->outputs.at(idx)->region));
 }
 
-void Op:require_weight_tensor(Legion::IndexLauncher &launcher, int idx) const {
-  launcher.add_region_requirement(RegionRequirement(this->weights.at(idx)->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    this->weights.at(idx)->region));
+void Op
+    : require_weight_tensor(Legion::IndexLauncher &launcher, int idx) const {
+  launcher.add_region_requirement(
+      RegionRequirement(this->weights.at(idx)->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        this->weights.at(idx)->region));
 }
 
-Legion::PrivilegeMode get_default_mode(Pass pass, TensorRole tensor_role, IsGrad is_grad) {
+Legion::PrivilegeMode
+    get_default_mode(Pass pass, TensorRole tensor_role, IsGrad is_grad) {
   if (pass == Pass::FWD) {
-    assert (is_grad == IsGrad::NO);
+    assert(is_grad == IsGrad::NO);
     if (tensor_role == TensorRole::INPUT || tensor_role == TensorRole::PARAM) {
       return READ_ONLY;
     } else {
@@ -886,7 +889,7 @@ Legion::PrivilegeMode get_default_mode(Pass pass, TensorRole tensor_role, IsGrad
       if (is_grad == IsGrad::NO) {
         return READ_ONLY;
       } else {
-        return READ_WRITE; 
+        return READ_WRITE;
       }
     } else {
       if (is_grad == IsGrad::NO) {
@@ -898,7 +901,8 @@ Legion::PrivilegeMode get_default_mode(Pass pass, TensorRole tensor_role, IsGrad
   }
 }
 
-OpTaskSpec Op::infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) const {
+OpTaskSpec Op::infer_bwd_spec(TaskID bwd_task_id,
+                              OpTaskSpec const &fwd_spec) const {
   OpTaskSpec bwd_spec(bwd_task_id, OpTaskType::BWD);
 
   for (auto const &kv : fwd_spec.get_slots()) {
@@ -911,7 +915,8 @@ OpTaskSpec Op::infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) co
     optional<TensorSpec const &> tensor = fwd_spec.in_slot(slot);
     if (tensor.has_value()) {
       bwd_spec.bind(slot, *tensor);
-      if (tensor->role == TensorRole::INPUT && !this->trainableInputs.at(tensor->idx)) {
+      if (tensor->role == TensorRole::INPUT &&
+          !this->trainableInputs.at(tensor->idx)) {
       } else {
         bwd_spec.bind_grad(slot, tensor->grad());
       }
@@ -922,7 +927,8 @@ OpTaskSpec Op::infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) co
 }
 
 void Op::infer_bwd_spec(OpTasksSpec &spec) const {
-  spec.set_bwd(this->infer_bwd_spec(spec.get_task_id(OpTaskType::BWD), spec.get_fwd()));
+  spec.set_bwd(
+      this->infer_bwd_spec(spec.get_task_id(OpTaskType::BWD), spec.get_fwd()));
 }
 
 bool Op::check_output_input_weight_same_parallel_is() const {
@@ -946,7 +952,6 @@ bool Op::check_output_input_weight_same_parallel_is() const {
   return true;
 }
 
-
 void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -954,17 +959,27 @@ void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
   this->set_argumentmap_for_forward(ff, argmap);
   TaskArgument task_arg;
 
-  IndexLauncher launcher(task_spec.get_task_id(), this->parallel_is, task_spec.get_argument(), argmap, Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/, get_std_hash(this->outputs.at(0)->machine_view));
+  IndexLauncher launcher(task_spec.get_task_id(),
+                         this->parallel_is,
+                         task_spec.get_argument(),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         get_std_hash(this->outputs.at(0)->machine_view));
 
   for (auto const &kv : task_spec.get_region_idxs()) {
     TensorSpec const &tensor_spec = kv.first;
     int region_idx = kv.second;
-    ParallelTensor const &parallel_tensor = this->get_parallel_tensor(tensor_spec.role, tensor_spec.idx);
+    ParallelTensor const &parallel_tensor =
+        this->get_parallel_tensor(tensor_spec.role, tensor_spec.idx);
 
-    if (tensor_spec.role == TensorRole::INPUT && tensor_spec.is_grad == IsGrad::YES && !this->trainableInputs.at(tensor_spec.idx)) {
+    if (tensor_spec.role == TensorRole::INPUT &&
+        tensor_spec.is_grad == IsGrad::YES &&
+        !this->trainableInputs.at(tensor_spec.idx)) {
       continue;
     }
-    launcher.add_region_requirement(RegionRequirement(parallel_tensor->part, 
+    launcher.add_region_requirement(RegionRequirement(parallel_tensor->part,
                                                       0 /*projection id*/,
                                                       tensor_spec.mode.value(),
                                                       EXCLUSIVE,
@@ -976,15 +991,18 @@ void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Op::execute_task(FFModel const &ff, TaskID task_id, OpTaskSignature const &signature) {
+void Op::execute_task(FFModel const &ff,
+                      TaskID task_id,
+                      OpTaskSignature const &signature) {
   if (signature.get_task_type() == OpTaskType::INIT) {
-    assert (this->check_output_input_weight_same_parallel_is());
+    assert(this->check_output_input_weight_same_parallel_is());
     this->parallel_is = outputs[0]->parallel_is;
   }
 
   OpTaskBinding binding = this->get_task_binding(signature.get_task_type());
 
-  OpTaskArgumentFormat task_arg_fmt = compile_task_invocation(signature, binding);
+  OpTaskArgumentFormat task_arg_fmt =
+      compile_task_invocation(signature, binding);
 
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -993,22 +1011,23 @@ void Op::execute_task(FFModel const &ff, TaskID task_id, OpTaskSignature const &
   this->set_argumentmap(signature.get_task_type(), ff, argmap);
   TaskArgument task_arg;
 
-  IndexLauncher launcher(task_id, 
-                         this->parallel_is, 
-                         binding.get_legion_task_arg(), 
-                         argmap, 
-                         Predicate::TRUE_PRED, 
-                         false /*must*/, 
-                         0 /*mapper_id*/, 
+  IndexLauncher launcher(task_id,
+                         this->parallel_is,
+                         binding.get_legion_task_arg(),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          get_std_hash(this->outputs.at(0)->machine_view));
 
   for (auto const &kv : get_region_idxs(task_arg_fmt)) {
     int region_idx = kv.second;
     TensorSpec const &tensor_spec = kv.second;
 
-    ParallelTensor const &parallel_tensor = this->get_parallel_tensor(tensor_spec);
+    ParallelTensor const &parallel_tensor =
+        this->get_parallel_tensor(tensor_spec);
 
-    launcher.add_region_requirement(RegionRequirement(parallel_tensor->part, 
+    launcher.add_region_requirement(RegionRequirement(parallel_tensor->part,
                                                       0 /*projection id*/,
                                                       tensor_spec.mode.value(),
                                                       EXCLUSIVE,
@@ -1039,11 +1058,15 @@ void Op::backward(FFModel const &ff) {
 
 OpTaskSignature get_signature(TaskID task_id) {
   switch (task_id) {
-    case AGGREGATE_INIT_TASK_ID: return get_signature<AGGREGATE_INIT_TASK_ID>();
-    case AGGREGATE_FWD_TASK_ID: return get_signature<AGGREGATE_FWD_TASK_ID>();
-    case AGGREGATE_BWD_TASK_ID: return get_signature<AGGREGATE_BWD_TASK_ID>();
-    case CONV2D_BWD_TASK_ID: return get_signature<CONV2D_BWD_TASK_ID>();
+    case AGGREGATE_INIT_TASK_ID:
+      return get_signature<AGGREGATE_INIT_TASK_ID>();
+    case AGGREGATE_FWD_TASK_ID:
+      return get_signature<AGGREGATE_FWD_TASK_ID>();
+    case AGGREGATE_BWD_TASK_ID:
+      return get_signature<AGGREGATE_BWD_TASK_ID>();
+    case CONV2D_BWD_TASK_ID:
+      return get_signature<CONV2D_BWD_TASK_ID>();
   }
 }
 
-}
+} // namespace FlexFlow

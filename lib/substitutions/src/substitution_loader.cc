@@ -76,5 +76,5 @@
 /*   return load_rule_collection(input); */
 /* } */
 
-/* } */ 
+/* } */
 /* } */

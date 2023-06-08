@@ -1,5 +1,3 @@
 #include "profiling.h"
 
-namespace FlexFlow {
-
-}
+namespace FlexFlow {}

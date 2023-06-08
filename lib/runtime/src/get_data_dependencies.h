@@ -13,13 +13,14 @@ struct DataCoord {
 
 struct DataDependencies {
   template <typename F>
-  void add_data_dependency(slot_id, slot_id, F const &) { }
+  void add_data_dependency(slot_id, slot_id, F const &) {}
 };
 
-DataDependencies pointwise_data_dependencies(std::vector<slot_id> const &input_slots,
-                                             std::vector<slot_id> const &weight_slots,
-                                             std::vector<slot_id> const &output_slots);
+DataDependencies
+    pointwise_data_dependencies(std::vector<slot_id> const &input_slots,
+                                std::vector<slot_id> const &weight_slots,
+                                std::vector<slot_id> const &output_slots);
 
-}
+} // namespace FlexFlow
 
 #endif

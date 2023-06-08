@@ -10,6 +10,7 @@ class GlorotUniform : public use_visitable_cmp<GlorotUniform> {
 public:
   GlorotUniform() = delete;
   GlorotUniform(int seed);
+
 public:
   int seed;
   /* float scale; */
@@ -24,6 +25,7 @@ public:
 class UniformInitializer : public use_visitable_cmp<UniformInitializer> {
 public:
   UniformInitializer(int seed, float min, float max);
+
 public:
   int seed;
   float min_val, max_val;
@@ -32,6 +34,7 @@ public:
 class NormInitializer : public use_visitable_cmp<NormInitializer> {
 public:
   NormInitializer(int seed, float mean, float stddev);
+
 public:
   int seed;
   float mean, stddev;
@@ -45,14 +48,12 @@ public:
   DataTypeValue value;
 };
 
-using Initializer = variant<
-  GlorotUniform,
-  ZeroInitializer,
-  UniformInitializer,
-  NormInitializer,
-  ConstantInitializer
->;
+using Initializer = variant<GlorotUniform,
+                            ZeroInitializer,
+                            UniformInitializer,
+                            NormInitializer,
+                            ConstantInitializer>;
 
-}
+} // namespace FlexFlow
 
 #endif

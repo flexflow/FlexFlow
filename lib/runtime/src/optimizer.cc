@@ -14,20 +14,12 @@
  */
 
 #include "optimizer.h"
-#include "task_signature.h"
 #include "kernels/optimizer_kernels.h"
+#include "task_signature.h"
 
 namespace FlexFlow {
 
-enum Slots {
-  TENSOR,
-  GRADIENT,
-  MOMENTUM_V,
-  OPTIMIZER,
-  HANDLE,
-  ADAM_M,
-  ADAM_W
-};
+enum Slots { TENSOR, GRADIENT, MOMENTUM_V, OPTIMIZER, HANDLE, ADAM_M, ADAM_W };
 
 using namespace Legion;
 
@@ -99,12 +91,12 @@ void SGDOptimizer::init(void) {
 TaskInvocation ps_prefetch_tensor(parallel_tensor_guid_t const &guid) {
   TaskBinding b(InvocationType::INDEX);
   b.bind(TENSOR, {guid});
-  return { PS_PREFETCH_TASK_ID, b };
+  return {PS_PREFETCH_TASK_ID, b};
 }
 
-std::vector<TaskInvocation> update(SGDOptimizer const &sgd, 
-                                   parallel_tensor_guid_t const &guid, 
-                                   ParallelTensor const &p, 
+std::vector<TaskInvocation> update(SGDOptimizer const &sgd,
+                                   parallel_tensor_guid_t const &guid,
+                                   ParallelTensor const &p,
                                    parallel_tensor_guid_t const &sgd_v) {
   TaskBinding b(get_invocation_type(p.sync_type));
   b.bind(TENSOR, {guid});
@@ -115,22 +107,19 @@ std::vector<TaskInvocation> update(SGDOptimizer const &sgd,
   b.bind_arg(OPTIMIZER, sgd);
   switch (p.sync_type) {
     case ParameterSyncType::PS:
-      return {
-        { SGD_UPD_PS_TASK_ID, b },
-        ps_prefetch_tensor(guid)
-      };
+      return {{SGD_UPD_PS_TASK_ID, b}, ps_prefetch_tensor(guid)};
     case ParameterSyncType::NCCL:
       b.bind_arg(HANDLE, ff_handle());
-      return { { SGD_UPD_NCCL_TASK_ID, b } };
+      return {{SGD_UPD_NCCL_TASK_ID, b}};
     default:
       throw mk_runtime_error("Unknown ParameterSyncType {}", p.sync_type);
-  } 
+  }
 }
 
-TaskInvocation update(AdamOptimizer const &adam, 
-                      parallel_tensor_guid_t const &guid, 
-                      ParallelTensor const &p, 
-                      parallel_tensor_guid_t const &adam_m, 
+TaskInvocation update(AdamOptimizer const &adam,
+                      parallel_tensor_guid_t const &guid,
+                      ParallelTensor const &p,
+                      parallel_tensor_guid_t const &adam_m,
                       parallel_tensor_guid_t const &adam_w) {
   TaskBinding b(get_invocation_type(p.sync_type));
   b.bind(TENSOR, {guid});
@@ -140,13 +129,10 @@ TaskInvocation update(AdamOptimizer const &adam,
   b.bind_arg(OPTIMIZER, adam);
   switch (p.sync_type) {
     case ParameterSyncType::PS:
-      return {
-        { ADAM_UPD_PS_TASK_ID, b },
-        ps_prefetch_tensor(guid)
-      };
+      return {{ADAM_UPD_PS_TASK_ID, b}, ps_prefetch_tensor(guid)};
     case ParameterSyncType::NCCL:
       b.bind_arg(HANDLE, ff_handle());
-      return { { ADAM_UPD_NCCL_TASK_ID, b } };
+      return {{ADAM_UPD_NCCL_TASK_ID, b}};
     default:
       throw mk_runtime_error("Unknown ParameterSyncType {}", p.sync_type);
   }
@@ -218,8 +204,8 @@ void SGDOptimizer::update(const ParallelTensor p) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      PerDeviceOpState *mp = p->owner_op->meta[idx++];                                   \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
+      PerDeviceOpState *mp = p->owner_op->meta[idx++];                         \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));    \
     }                                                                          \
     break;                                                                     \
   }
@@ -269,9 +255,9 @@ void SGDOptimizer::update(const ParallelTensor p) {
 }
 
 static void sgd_ps_update_task(Task const *task,
-                                  std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime) {
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   SGDOptimizer const *op = (SGDOptimizer *)task->args;
   if (op->momentum > 0.0f) {
     assert(regions.size() == 3);
@@ -330,9 +316,9 @@ static void sgd_ps_update_task(Task const *task,
 
 #ifdef FF_USE_NCCL
 static void sgd_nccl_update_task(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime) {
   SGDOptimizer const *op = (SGDOptimizer *)task->args;
   PerDeviceOpState const *meta = *((PerDeviceOpState **)task->local_args);
   // FFHandler handler = *((FFHandler*) task->local_args);
@@ -498,7 +484,7 @@ void AdamOptimizer::update(const ParallelTensor p) {
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       PerDeviceOpState *mp = p->owner_op->meta[idx++];                         \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));    \
     }                                                                          \
     break;                                                                     \
   }
@@ -553,14 +539,14 @@ void AdamOptimizer::update(const ParallelTensor p) {
 }
 
 static void adam_ps_update_task(Task const *task,
-                                   std::vector<PhysicalRegion> const &regions,
-                                   Context ctx,
-                                   Runtime *runtime) {
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  
+
   ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr, m_ptr);
 
   AdamOptimizer const *op = (AdamOptimizer *)task->args;
@@ -675,57 +661,68 @@ static void adam_nccl_update_task(Task const *task,
 template <>
 void register_task<PS_PREFETCH_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_ONLY });
+  sig.add_slot(TENSOR, {SlotType::TENSOR, READ_ONLY});
 
-  register_task(PS_PREFETCH_TASK_ID, "Weights Prefetch", sig, UtilityTasks::dummy_task);
+  register_task(
+      PS_PREFETCH_TASK_ID, "Weights Prefetch", sig, UtilityTasks::dummy_task);
 }
 
 template <>
 void register_task<SGD_UPD_PS_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
-  sig.add_slot(GRADIENT, { SlotType::TENSOR, READ_ONLY });
-  sig.add_slot(MOMENTUM_V, { SlotType::TENSOR, READ_WRITE }); 
+  sig.add_slot(TENSOR, {SlotType::TENSOR, READ_WRITE});
+  sig.add_slot(GRADIENT, {SlotType::TENSOR, READ_ONLY});
+  sig.add_slot(MOMENTUM_V, {SlotType::TENSOR, READ_WRITE});
   sig.add_arg_slot<SGDOptimizer>(OPTIMIZER);
 
-  register_task(SGD_UPD_PS_TASK_ID, "SGD Parameter Server Update Task", sig, sgd_ps_update_task);
+  register_task(SGD_UPD_PS_TASK_ID,
+                "SGD Parameter Server Update Task",
+                sig,
+                sgd_ps_update_task);
 }
 
 template <>
 void register_task<SGD_UPD_NCCL_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
-  sig.add_slot(GRADIENT, { SlotType::TENSOR< READ_ONLY });
-  sig.add_slot(MOMENTUM_V, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(TENSOR, {SlotType::TENSOR, READ_WRITE});
+  sig.add_slot(GRADIENT, {SlotType::TENSOR < READ_ONLY});
+  sig.add_slot(MOMENTUM_V, {SlotType::TENSOR, READ_WRITE});
   sig.add_arg_slot<SGDOptimizer>(OPTIMIZER);
   sig.add_arg_slot<PerDeviceFFHandle>(HANDLE);
 
-  register_task(SGD_UPD_NCCL_TASK_ID, "SGD NCCL Update Task", sig, sgd_nccl_update_task);
+  register_task(
+      SGD_UPD_NCCL_TASK_ID, "SGD NCCL Update Task", sig, sgd_nccl_update_task);
 }
 
 template <>
 void register_task<ADAM_UPD_PS_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
-  sig.add_slot(GRADIENT, { SlotType::TENSOR, READ_ONLY });
-  sig.add_slot(ADAM_W, { SlotType::TENSOR, READ_WRITE });
-  sig.add_slot(ADAM_M, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(TENSOR, {SlotType::TENSOR, READ_WRITE});
+  sig.add_slot(GRADIENT, {SlotType::TENSOR, READ_ONLY});
+  sig.add_slot(ADAM_W, {SlotType::TENSOR, READ_WRITE});
+  sig.add_slot(ADAM_M, {SlotType::TENSOR, READ_WRITE});
   sig.add_slot<AdamOptimizer>(OPTIMIZER);
 
-  register_task(ADAM_UPD_PS_TASK_ID, "Adam Parameter Server Update Task", sig, adam_ps_update_task);
+  register_task(ADAM_UPD_PS_TASK_ID,
+                "Adam Parameter Server Update Task",
+                sig,
+                adam_ps_update_task);
 }
 
 template <>
 void register_task<ADAM_UPD_NCCL_TASK_ID>() {
   TaskSignature sig;
-  sig.add_slot(TENSOR, { SlotType::TENSOR, READ_WRITE });
-  sig.add_slot(GRADIENT, { SlotType::TENSOR, READ_ONLY });
-  sig.add_slot(ADAM_W, { SlotType::TENSOR, READ_WRITE });
-  sig.add_slot(ADAM_M, { SlotType::TENSOR, READ_WRITE });
+  sig.add_slot(TENSOR, {SlotType::TENSOR, READ_WRITE});
+  sig.add_slot(GRADIENT, {SlotType::TENSOR, READ_ONLY});
+  sig.add_slot(ADAM_W, {SlotType::TENSOR, READ_WRITE});
+  sig.add_slot(ADAM_M, {SlotType::TENSOR, READ_WRITE});
   sig.add_slot<AdamOptimizer>(OPTIMIZER);
   sig.add_slot<PerDeviceFFHandle>(HANDLE);
 
-  register_task(ADAM_UPD_NCCL_TASK_ID, "Adam NCCL Update Task", sig, adam_nccl_update_task);
+  register_task(ADAM_UPD_NCCL_TASK_ID,
+                "Adam NCCL Update Task",
+                sig,
+                adam_nccl_update_task);
 }
 
-}
+} // namespace FlexFlow

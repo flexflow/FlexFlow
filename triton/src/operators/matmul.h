@@ -19,27 +19,32 @@
 #include "operator.h"
 #include "tensor.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 class MatMulProjectionFunctor : public Legion::ProjectionFunctor {
- public:
-  MatMulProjectionFunctor(
-      Legion::ProjectionID id, const Legion::DomainTransform& transform);
+public:
+  MatMulProjectionFunctor(Legion::ProjectionID id,
+                          Legion::DomainTransform const &transform);
 
- public:
-  inline Legion::DomainPoint transform(const Legion::DomainPoint& point) const
-  {
+public:
+  inline Legion::DomainPoint transform(Legion::DomainPoint const &point) const {
     return domain_transform * point;
   }
 
- public:
-  virtual bool is_functional(void) const override { return true; }
-  virtual unsigned get_depth(void) const override { return 0; }
-  virtual Legion::LogicalRegion project(
-      Legion::LogicalPartition upper_bound, const Legion::DomainPoint& point,
-      const Legion::Domain& domain) override;
+public:
+  virtual bool is_functional(void) const override {
+    return true;
+  }
+  virtual unsigned get_depth(void) const override {
+    return 0;
+  }
+  virtual Legion::LogicalRegion project(Legion::LogicalPartition upper_bound,
+                                        Legion::DomainPoint const &point,
+                                        Legion::Domain const &domain) override;
 
- public:
+public:
   const Legion::ProjectionID functor_id;
   const Legion::DomainTransform domain_transform;
 };
@@ -47,9 +52,9 @@ class MatMulProjectionFunctor : public Legion::ProjectionFunctor {
 class MatMul;
 
 struct MatMulArgs : public OperatorArgs {
- public:
+public:
   MatMulArgs(void);
-  MatMul* owner;
+  MatMul *owner;
   Legion::Domain in1_bounds, in2_bounds, out_bounds;
   DataType in1_datatype, in2_datatype, out_datatype;
 #ifdef LEGION_USE_CUDA
@@ -58,56 +63,60 @@ struct MatMulArgs : public OperatorArgs {
 };
 
 class MatMul : public Operator {
- public:
-  MatMul(
-      LegionModelState* model, const LayerStrategy* strategy, const char* name);
+public:
+  MatMul(LegionModelState *model,
+         LayerStrategy const *strategy,
+         char const *name);
 
-  void Configure(Tensor* in1, Tensor* in2, Tensor* output);
+  void Configure(Tensor *in1, Tensor *in2, Tensor *output);
   Legion::Domain GetIn1Bounds(Realm::Processor proc);
   Legion::Domain GetIn2Bounds(Realm::Processor proc);
   Legion::Domain GetOutBounds(Realm::Processor proc);
 
   virtual void Load(Realm::Processor processor) override;
-  virtual void initialize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void forward(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void finalize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
+  virtual void initialize(LegionModelInstance *instance,
+                          unsigned const instance_index,
+                          Legion::Runtime *runtime,
+                          Legion::Context ctx,
+                          Legion::MapperID mapper) override;
+  virtual void forward(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Legion::Runtime *runtime,
+                       Legion::Context ctx,
+                       Legion::MapperID mapper) override;
+  virtual void finalize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) override;
   virtual void Free(Realm::Processor processor) override;
 
   static void PreregisterTaskVariants(void);
 
-  static void forward_cpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+  static void forward_cpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 
 #ifdef LEGION_USE_CUDA
-  static void forward_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+  static void forward_gpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 #endif
- protected:
+protected:
   template <unsigned DIM>
-  void compute_in1_parameters(Tensor* in1, Tensor* out);
+  void compute_in1_parameters(Tensor *in1, Tensor *out);
   template <unsigned DIM>
-  void compute_in2_parameters(Tensor* in2, Tensor* out);
+  void compute_in2_parameters(Tensor *in2, Tensor *out);
 
- protected:
+protected:
   template <unsigned DIM>
   static void generate_all_functors(void);
   template <unsigned IDIM, unsigned ODIM>
   static void generate_specific_functors(void);
 
- protected:
+protected:
   MatMulArgs args[MAX_LOCAL_PROCS];
   MatMulProjectionFunctor *in1_proj, *in2_proj;
   Legion::DomainTransform in1_transform, in2_transform;
@@ -116,14 +125,16 @@ class MatMul : public Operator {
   Legion::FutureMap argmaps[MAX_NUM_INSTANCES];
   Legion::IndexTaskLauncher launchers[MAX_NUM_INSTANCES];
 
- public:
+public:
   // for looking up projection functor IDs
   // keys are <input dimensions,output dimensions,one-hot encoded broadcasting>
   typedef std::tuple<unsigned, unsigned, unsigned> FunctorKey;
-  typedef std::map<FunctorKey, MatMulProjectionFunctor*> FunctorTable;
+  typedef std::map<FunctorKey, MatMulProjectionFunctor *> FunctorTable;
   static FunctorTable in1_functors, in2_functors;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_MATMUL_H__
+#endif // __LEGION_TRITON_MATMUL_H__

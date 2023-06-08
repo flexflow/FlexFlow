@@ -26,6 +26,6 @@ public:
   RuntimeBacking runtime_backing;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

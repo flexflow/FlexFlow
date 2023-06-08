@@ -22,8 +22,8 @@ namespace FlexFlow {
 using Legion::Domain;
 
 SoftmaxPerDeviceState::SoftmaxPerDeviceState(FFHandler handler,
-                         Softmax const *softmax,
-                         Domain const &input_domain)
+                                             Softmax const *softmax,
+                                             Domain const &input_domain)
     : PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));

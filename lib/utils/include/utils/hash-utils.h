@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_HASH_UTILS_H
 #define _FLEXFLOW_HASH_UTILS_H
 
-#include <vector>
 #include <functional>
 #include <tuple>
 #include <type_traits>
+#include <vector>
 
 template <class T>
 std::size_t get_std_hash(T const &v) {
@@ -83,6 +83,6 @@ struct hash<std::vector<T>> {
     return seed;
   }
 };
-}
+} // namespace std
 
 #endif

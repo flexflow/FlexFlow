@@ -22,24 +22,30 @@
 #include "cudahelp.h"
 #endif
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 class FilterProjectionFunctor : public Legion::ProjectionFunctor {
- public:
-  virtual Legion::LogicalRegion project(
-      Legion::LogicalPartition upper_bound, const Legion::DomainPoint& point,
-      const Legion::Domain& domain) override;
+public:
+  virtual Legion::LogicalRegion project(Legion::LogicalPartition upper_bound,
+                                        Legion::DomainPoint const &point,
+                                        Legion::Domain const &domain) override;
 
- public:
-  virtual bool is_functional(void) const override { return true; }
-  virtual unsigned get_depth(void) const override { return 0; }
+public:
+  virtual bool is_functional(void) const override {
+    return true;
+  }
+  virtual unsigned get_depth(void) const override {
+    return 0;
+  }
 };
 
 struct ConcatArgs : public OperatorArgs {
- public:
+public:
   ConcatArgs(void);
 
- public:
+public:
   unsigned local_index;
   Legion::Domain bounds;
   DataType datatype;
@@ -47,50 +53,55 @@ struct ConcatArgs : public OperatorArgs {
 };
 
 class Concat : public Operator {
- public:
-  Concat(
-      LegionModelState* model, const LayerStrategy* strategy, size_t inputs,
-      int axis, const char* name);
+public:
+  Concat(LegionModelState *model,
+         LayerStrategy const *strategy,
+         size_t inputs,
+         int axis,
+         char const *name);
 
- public:
-  void Configure(const std::vector<Tensor*>& inputs, Tensor* output);
+public:
+  void Configure(std::vector<Tensor *> const &inputs, Tensor *output);
   Legion::Domain GetBounds(Realm::Processor proc);
 
- public:
+public:
   virtual void Load(Realm::Processor processor) override;
-  virtual void initialize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void forward(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void finalize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
+  virtual void initialize(LegionModelInstance *instance,
+                          unsigned const instance_index,
+                          Legion::Runtime *runtime,
+                          Legion::Context ctx,
+                          Legion::MapperID mapper) override;
+  virtual void forward(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Legion::Runtime *runtime,
+                       Legion::Context ctx,
+                       Legion::MapperID mapper) override;
+  virtual void finalize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) override;
   virtual void Free(Realm::Processor processor) override;
 
- public:
+public:
   static void PreregisterTaskVariants(void);
-  static void forward_cpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+  static void forward_cpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 #ifdef LEGION_USE_CUDA
- public:
+public:
   // Forward task for the GPU
-  static void forward_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+  static void forward_gpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 #endif
- public:
-  const int axis;
+public:
+  int const axis;
   static Legion::ProjectionID filter_functor_id;
 
- protected:
+protected:
   ConcatArgs args[MAX_LOCAL_PROCS];
   Legion::FutureMap argmaps[MAX_NUM_INSTANCES];
   Legion::IndexTaskLauncher launchers[MAX_NUM_INSTANCES];
@@ -99,6 +110,8 @@ class Concat : public Operator {
   Legion::DomainTransform input_transform;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_CONCAT_H__
+#endif // __LEGION_TRITON_CONCAT_H__

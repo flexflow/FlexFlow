@@ -15,12 +15,12 @@
 
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
-#include "op-attrs/param_sync.h"
 #include "legion.h"
-#include <cstring>
-#include "utils/optional.h"
+#include "op-attrs/param_sync.h"
 #include "utils/fmt.h"
+#include "utils/optional.h"
 #include "utils/visitable.h"
+#include <cstring>
 
 namespace FlexFlow {
 
@@ -65,6 +65,7 @@ public:
 
   FFConfig() = default;
   static Legion::MappingTagID get_hash_id(std::string const &pcname);
+
 public:
   int epochs = 1;
   int batchSize = 64;
@@ -74,7 +75,7 @@ public:
   float learningRate = 0.01f;
   float weightDecay = 0.0001f;
   size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
-  bool profiling = false; 
+  bool profiling = false;
   bool perform_fusion = false;
   size_t simulator_work_space_size = (size_t)2 * 1024 * 1024 * 1024; // 2GB
   size_t search_budget = -1;
@@ -114,14 +115,14 @@ enum FieldIDs {
   FID_DATA,
 };
 
-}
+} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::FFInitInfo, 
+VISITABLE_STRUCT(::FlexFlow::FFInitInfo,
                  workSpaceSize,
                  allowTensorOpMathConversion);
 MAKE_VISIT_HASHABLE(::FlexFlow::FFInitInfo);
 
-VISITABLE_STRUCT(::FlexFlow::FFConfig, 
+VISITABLE_STRUCT(::FlexFlow::FFConfig,
                  epochs,
                  batchSize,
                  numNodes,
@@ -160,19 +161,23 @@ namespace fmt {
 template <>
 struct formatter<::FlexFlow::ComputationMode> : formatter<string_view> {
   template <typename FormatContext>
-  auto format(::FlexFlow::ComputationMode m, FormatContext& ctx) const -> decltype(ctx.out()) {
+  auto format(::FlexFlow::ComputationMode m, FormatContext &ctx) const
+      -> decltype(ctx.out()) {
     using namespace FlexFlow;
 
     string_view name = "unknown";
     switch (m) {
-      case ComputationMode::TRAINING: name = "Training"; break;
-      case ComputationMode::INFERENCE: name = "Inference"; break;
+      case ComputationMode::TRAINING:
+        name = "Training";
+        break;
+      case ComputationMode::INFERENCE:
+        name = "Inference";
+        break;
     }
     return formatter<string_view>::format(name, ctx);
-  } 
-  
+  }
 };
 
-}
+} // namespace fmt
 
-#endif 
+#endif

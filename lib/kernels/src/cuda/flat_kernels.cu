@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
-#include "kernels/flat_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/flat_kernels.h"
 
 namespace FlexFlow {
 
 namespace Kernels {
 namespace Flat {
 
-void forward_kernel(cudaStream_t stream, float const *input_ptr,
-                            float *output_ptr,
-                            size_t num_elements) {
-  
-  
+void forward_kernel(cudaStream_t stream,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    size_t num_elements) {
+
   checkCUDA(cudaMemcpyAsync(output_ptr,
                             input_ptr,
                             num_elements * sizeof(float),
@@ -34,11 +34,11 @@ void forward_kernel(cudaStream_t stream, float const *input_ptr,
   // checkCUDA(cudaDeviceSynchronize());
 }
 
-void backward_kernel(cudaStream_t stream, float *input_grad_ptr,
-                             float const *output_grad_ptr,
-                             size_t num_elements) {
-  
-  
+void backward_kernel(cudaStream_t stream,
+                     float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     size_t num_elements) {
+
   float alpha = 1.0f;
   apply_add_with_scale<float>
       <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(

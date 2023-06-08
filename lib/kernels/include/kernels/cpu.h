@@ -3,10 +3,7 @@
 
 namespace FlexFlow {
 
-enum class TaskLocation {
-  CPU,
-  GPU
-};
+enum class TaskLocation { CPU, GPU };
 
 }
 

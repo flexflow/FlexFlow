@@ -17,33 +17,31 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-Softmax::Softmax(
-    LegionModelState* model, const LayerStrategy* strategy, unsigned dim,
-    const char* name)
+Softmax::Softmax(LegionModelState *model,
+                 LayerStrategy const *strategy,
+                 unsigned dim,
+                 char const *name)
     : Operator(model, strategy, OperatorType::OP_SOFTMAX, name, 1, 0, 1),
-      dim(dim)
-{
-}
+      dim(dim) {}
 
-void
-Softmax::Configure(Tensor* input, Tensor* output)
-{
+void Softmax::Configure(Tensor *input, Tensor *output) {
   assert(input != nullptr);
   assert(output != nullptr);
   assert(input->type == output->type);
   // Make sure that they have the same bounds
   assert(input->bounds.size() == output->bounds.size());
-  for (unsigned idx = 0; idx < input->bounds.size(); idx++)
+  for (unsigned idx = 0; idx < input->bounds.size(); idx++) {
     assert(input->bounds[idx] == output->bounds[idx]);
+  }
   inputs.push_back(input);
   outputs.push_back(output);
 }
 
-Domain
-Softmax::GetBounds(Processor proc)
-{
+Domain Softmax::GetBounds(Processor proc) {
   const size_t dims = outputs[0]->bounds.size();
   DomainPoint lo, hi;
   lo.dim = dims;
@@ -56,19 +54,18 @@ Softmax::GetBounds(Processor proc)
   return strategy->find_local_domain(proc, global);
 }
 
-void
-Softmax::Load(Processor proc)
-{
+void Softmax::Load(Processor proc) {
   assert(proc.kind() == strategy->kind);
   assert(inputs[0]->bounds.size() == size_t(strategy->nDims));
   // Make sure that we don't have any partitions along the dimension
   // on which we are going to perform the softmax computation
   assert(strategy->dim[dim] == 1);
   // If this processor is not used for this layer there is nothing to do
-  if (!strategy->is_local_processor(proc))
+  if (!strategy->is_local_processor(proc)) {
     return;
-  const unsigned local_index = strategy->find_local_offset(proc);
-  SoftmaxArgs& proc_args = args[local_index];
+  }
+  unsigned const local_index = strategy->find_local_offset(proc);
+  SoftmaxArgs &proc_args = args[local_index];
   proc_args.owner = this;
   proc_args.local_index = local_index;
   proc_args.bounds = GetBounds(proc);
@@ -192,33 +189,38 @@ Softmax::Load(Processor proc)
 #endif
 }
 
-void
-Softmax::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Softmax::initialize(LegionModelInstance *instance,
+                         unsigned const instance_index,
+                         Runtime *runtime,
+                         Context ctx,
+                         MapperID mapper) {
   const Domain launch_domain = strategy->get_launch_domain();
   // Find or create the launch space domain
   IndexSpace launch_space = instance->find_or_create_index_space(launch_domain);
   // Also get the sharding function from the strategy
-  ShardingFunction* shardfn = strategy->sharding_function;
+  ShardingFunction *shardfn = strategy->sharding_function;
   // Construct a future map for the pass-by-value arguments
   std::map<DomainPoint, TaskArgument> values;
   for (Domain::DomainPointIterator itr(launch_domain); itr; itr++) {
     const Processor proc = shardfn->find_proc(itr.p, launch_domain);
-    if (!strategy->is_local_processor(proc))
+    if (!strategy->is_local_processor(proc)) {
       continue;
-    const unsigned local_index = strategy->find_local_offset(proc);
+    }
+    unsigned const local_index = strategy->find_local_offset(proc);
     values[itr.p] = TaskArgument(args + local_index, sizeof(SoftmaxArgs));
   }
   argmaps[instance_index] = runtime->construct_future_map(
       ctx, launch_space, values, true /*collective*/, shardfn->sharding_id);
 
-  IndexTaskLauncher& launcher = launchers[instance_index];
-  launcher = IndexTaskLauncher(
-      SOFTMAX_TASK_ID, launch_space, TaskArgument(NULL, 0),
-      ArgumentMap(argmaps[instance_index]), Predicate::TRUE_PRED,
-      false /*must*/, mapper, strategy->tag);
+  IndexTaskLauncher &launcher = launchers[instance_index];
+  launcher = IndexTaskLauncher(SOFTMAX_TASK_ID,
+                               launch_space,
+                               TaskArgument(NULL, 0),
+                               ArgumentMap(argmaps[instance_index]),
+                               Predicate::TRUE_PRED,
+                               false /*must*/,
+                               mapper,
+                               strategy->tag);
   LogicalRegion input_region = inputs[0]->region[instance_index];
   assert(outputs.size() == 1);
   LogicalRegion output_region = instance->create_tensor_region(outputs[0]);
@@ -228,75 +230,75 @@ Softmax::initialize(
       instance->find_or_create_tiled_partition(inputs[0], strategy);
   LogicalPartition output_part =
       instance->find_or_create_tiled_partition(outputs[0], strategy);
-  launcher.add_region_requirement(RegionRequirement(
-      input_part, 0 /*projection id*/, LEGION_READ_ONLY, LEGION_EXCLUSIVE,
-      input_region));
+  launcher.add_region_requirement(RegionRequirement(input_part,
+                                                    0 /*projection id*/,
+                                                    LEGION_READ_ONLY,
+                                                    LEGION_EXCLUSIVE,
+                                                    input_region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(
-      output_part, 0 /*projection id*/, LEGION_WRITE_DISCARD, LEGION_EXCLUSIVE,
-      output_region));
+  launcher.add_region_requirement(RegionRequirement(output_part,
+                                                    0 /*projection id*/,
+                                                    LEGION_WRITE_DISCARD,
+                                                    LEGION_EXCLUSIVE,
+                                                    output_region));
   launcher.add_field(1, FID_DATA);
 }
 
-void
-Softmax::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Softmax::forward(LegionModelInstance *instance,
+                      unsigned const instance_index,
+                      Runtime *runtime,
+                      Context ctx,
+                      MapperID mapper) {
   runtime->execute_index_space(ctx, launchers[instance_index]);
 }
 
-void
-Softmax::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Softmax::finalize(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Runtime *runtime,
+                       Context ctx,
+                       MapperID mapper) {
   argmaps[instance_index] = FutureMap();
 }
 
-void
-Softmax::Free(Processor proc)
-{
+void Softmax::Free(Processor proc) {
   assert(proc.kind() == strategy->kind);
   // If this processor is not used for this layer there is nothing to do
-  if (!strategy->is_local_processor(proc))
+  if (!strategy->is_local_processor(proc)) {
     return;
+  }
 #ifdef LEGION_USE_CUDA
   if (proc.kind() == Processor::TOC_PROC) {
-    const unsigned local_index = strategy->find_local_offset(proc);
-    SoftmaxArgs& proc_args = args[local_index];
+    unsigned const local_index = strategy->find_local_offset(proc);
+    SoftmaxArgs &proc_args = args[local_index];
     CHECK_CUDNN(cudnnDestroyTensorDescriptor(proc_args.inputTensor));
     CHECK_CUDNN(cudnnDestroyTensorDescriptor(proc_args.outputTensor));
   }
 #endif
 }
 
-/*static*/ void
-Softmax::PreregisterTaskVariants(void)
-{
+/*static*/ void Softmax::PreregisterTaskVariants(void) {
   {
     TaskVariantRegistrar cpu_registrar(SOFTMAX_TASK_ID, "Softmax CPU");
     cpu_registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     cpu_registrar.set_leaf();
-    Runtime::preregister_task_variant<forward_cpu>(
-        cpu_registrar, "Softmax Operator");
+    Runtime::preregister_task_variant<forward_cpu>(cpu_registrar,
+                                                   "Softmax Operator");
   }
 #ifdef LEGION_USE_CUDA
   {
     TaskVariantRegistrar gpu_registrar(SOFTMAX_TASK_ID, "Softmax GPU");
     gpu_registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     gpu_registrar.set_leaf();
-    Runtime::preregister_task_variant<forward_gpu>(
-        gpu_registrar, "Softmax Operator");
+    Runtime::preregister_task_variant<forward_gpu>(gpu_registrar,
+                                                   "Softmax Operator");
   }
 #endif
 }
 
-/*static*/ void
-Softmax::forward_cpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Softmax::forward_cpu(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   // TODO: implement this
   assert(false);
 }
@@ -304,13 +306,12 @@ Softmax::forward_cpu(
 SoftmaxArgs::SoftmaxArgs(void) {}
 
 #ifdef LEGION_USE_CUDA
-/*static*/ void
-Softmax::forward_gpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Softmax::forward_gpu(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   assert(task->local_arglen == sizeof(SoftmaxArgs));
-  const SoftmaxArgs* args = (const SoftmaxArgs*)task->local_args;
+  SoftmaxArgs const *args = (SoftmaxArgs const *)task->local_args;
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   ::cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream));
@@ -328,19 +329,19 @@ Softmax::forward_gpu(
   }
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const void* input_ptr = nullptr;
-  void* output_ptr = nullptr;
+  void const *input_ptr = nullptr;
+  void *output_ptr = nullptr;
   size_t volume = 0;
   switch (args->bounds.get_dim()) {
-#define DIMFUNC(DIM)                                                \
-  case DIM: {                                                       \
-    const Rect<DIM> bounds = args->bounds;                          \
-    volume = bounds.volume();                                       \
-    input_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access(      \
-        args->datatype, bounds, regions[0]);                        \
-    output_ptr = TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access( \
-        args->datatype, bounds, regions[1]);                        \
-    break;                                                          \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    const Rect<DIM> bounds = args->bounds;                                     \
+    volume = bounds.volume();                                                  \
+    input_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access(                 \
+        args->datatype, bounds, regions[0]);                                   \
+    output_ptr = TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access(            \
+        args->datatype, bounds, regions[1]);                                   \
+    break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -349,9 +350,15 @@ Softmax::forward_gpu(
   }
   float alpha = 1.f, beta = 0.f;
   // TODO: can we get away with CUDNN_SOFTMAX_FAST for inference?
-  CHECK_CUDNN(cudnnSoftmaxForward(
-      args->cudnn, CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &alpha,
-      args->inputTensor, input_ptr, &beta, args->outputTensor, output_ptr));
+  CHECK_CUDNN(cudnnSoftmaxForward(args->cudnn,
+                                  CUDNN_SOFTMAX_ACCURATE,
+                                  CUDNN_SOFTMAX_MODE_CHANNEL,
+                                  &alpha,
+                                  args->inputTensor,
+                                  input_ptr,
+                                  &beta,
+                                  args->outputTensor,
+                                  output_ptr));
   if (args->profiling) {
 #ifdef DISABLE_LEGION_CUDA_HIJACK
     CHECK_CUDA(cudaEventRecord(t_end));
@@ -363,11 +370,13 @@ Softmax::forward_gpu(
     CHECK_CUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     CHECK_CUDA(cudaEventDestroy(t_start));
     CHECK_CUDA(cudaEventDestroy(t_end));
-    printf(
-        "%s [Softmax] forward time (CF) = %.2fms\n",
-        args->owner->op_name.c_str(), elapsed);
+    printf("%s [Softmax] forward time (CF) = %.2fms\n",
+           args->owner->op_name.c_str(),
+           elapsed);
   }
 }
 #endif
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

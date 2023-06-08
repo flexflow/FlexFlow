@@ -21,11 +21,12 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-TRITONSERVER_Error*
-LegionTritonRuntime::Create(Legion::TaskID ttid, LegionTritonRuntime** runtime)
-{
+TRITONSERVER_Error *LegionTritonRuntime::Create(Legion::TaskID ttid,
+                                                LegionTritonRuntime **runtime) {
   Machine machine = Machine::get_machine();
   // Find our local utility processor first
   Processor local_proc;
@@ -35,15 +36,17 @@ LegionTritonRuntime::Create(Legion::TaskID ttid, LegionTritonRuntime** runtime)
     query.only_kind(Processor::LOC_PROC /*CPU*/);
     query.local_address_space();
     size_t count = query.count();
-    if (count == 0)
-      return TRITONSERVER_ErrorNew(
-          TRITONSERVER_ERROR_UNKNOWN,
-          "Unable to find any Realm CPU processors");
+    if (count == 0) {
+      return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_UNKNOWN,
+                                   "Unable to find any Realm CPU processors");
+    }
     if (count > 1) {
       local_cpus.reserve(count);
       for (Machine::ProcessorQuery::iterator it = query.begin();
-           it != query.end(); it++)
+           it != query.end();
+           it++) {
         local_cpus.push_back(*it);
+      }
       local_proc = ProcessorGroup::create_group(local_cpus);
     } else {
       local_proc = query.first();
@@ -59,35 +62,46 @@ LegionTritonRuntime::Create(Legion::TaskID ttid, LegionTritonRuntime** runtime)
     std::map<AddressSpaceID, Processor> unique_spaces;
     all_cpus.reserve(query.count());
     for (Machine::ProcessorQuery::iterator it = query.begin();
-         it != query.end(); it++) {
+         it != query.end();
+         it++) {
       all_cpus.push_back(*it);
       AddressSpaceID space = it->address_space();
-      if (space == local_space)
+      if (space == local_space) {
         continue;
-      if (unique_spaces.find(space) != unique_spaces.end())
+      }
+      if (unique_spaces.find(space) != unique_spaces.end()) {
         continue;
+      }
       unique_spaces[space] = *it;
     }
     // plus one because we did not include oursevles
     remote_procs.resize(unique_spaces.size() + 1, Processor::NO_PROC);
-    for (auto it = unique_spaces.begin(); it != unique_spaces.end(); it++)
+    for (auto it = unique_spaces.begin(); it != unique_spaces.end(); it++) {
       remote_procs[it->first] = it->second;
+    }
   }
   {
     Machine::ProcessorQuery query(machine);
     query.only_kind(Processor::TOC_PROC /*GPU*/);
     all_gpus.reserve(query.count());
     for (Machine::ProcessorQuery::iterator it = query.begin();
-         it != query.end(); it++) {
+         it != query.end();
+         it++) {
       all_gpus.push_back(*it);
-      if (it->address_space() == local_space)
+      if (it->address_space() == local_space) {
         local_gpus.push_back(*it);
+      }
     }
   }
-  *runtime = new LegionTritonRuntime(
-      Runtime::get_runtime(), ttid, local_space, remote_procs.size(),
-      local_proc, std::move(remote_procs), std::move(all_cpus),
-      std::move(all_gpus), local_gpus);
+  *runtime = new LegionTritonRuntime(Runtime::get_runtime(),
+                                     ttid,
+                                     local_space,
+                                     remote_procs.size(),
+                                     local_proc,
+                                     std::move(remote_procs),
+                                     std::move(all_cpus),
+                                     std::move(all_gpus),
+                                     local_gpus);
   // Register our tasks with Realm for handling messages
   std::vector<Realm::Event> ready_events;
   Realm::ProfilingRequestSet no_requests;
@@ -97,81 +111,115 @@ LegionTritonRuntime::Create(Legion::TaskID ttid, LegionTritonRuntime** runtime)
   CodeDescriptor load_layer_desc(LegionTritonRuntime::LoadLayerTask);
   CodeDescriptor free_layer_desc(LegionTritonRuntime::FreeLayerTask);
   for (auto proc : local_cpus) {
-    Realm::Event registered = proc.register_task(
-        INSTANCE_CREATE_TASK_ID, message_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
-    if (registered.exists())
+    Realm::Event registered = proc.register_task(INSTANCE_CREATE_TASK_ID,
+                                                 message_desc,
+                                                 no_requests,
+                                                 runtime,
+                                                 sizeof(LegionTritonRuntime *));
+    if (registered.exists()) {
       ready_events.push_back(registered);
-    registered = proc.register_task(
-        CONTEXT_CREATE_TASK_ID, context_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
-    if (registered.exists())
+    }
+    registered = proc.register_task(CONTEXT_CREATE_TASK_ID,
+                                    context_desc,
+                                    no_requests,
+                                    runtime,
+                                    sizeof(LegionTritonRuntime *));
+    if (registered.exists()) {
       ready_events.push_back(registered);
-    registered = proc.register_task(
-        RUN_MODEL_INFERENCE_TASK_ID, inference_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
-    if (registered.exists())
+    }
+    registered = proc.register_task(RUN_MODEL_INFERENCE_TASK_ID,
+                                    inference_desc,
+                                    no_requests,
+                                    runtime,
+                                    sizeof(LegionTritonRuntime *));
+    if (registered.exists()) {
       ready_events.push_back(registered);
-    registered = proc.register_task(
-        LOAD_LAYER_TASK_ID, load_layer_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
-    if (registered.exists())
+    }
+    registered = proc.register_task(LOAD_LAYER_TASK_ID,
+                                    load_layer_desc,
+                                    no_requests,
+                                    runtime,
+                                    sizeof(LegionTritonRuntime *));
+    if (registered.exists()) {
       ready_events.push_back(registered);
-    registered = proc.register_task(
-        FREE_LAYER_TASK_ID, free_layer_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
-    if (registered.exists())
+    }
+    registered = proc.register_task(FREE_LAYER_TASK_ID,
+                                    free_layer_desc,
+                                    no_requests,
+                                    runtime,
+                                    sizeof(LegionTritonRuntime *));
+    if (registered.exists()) {
       ready_events.push_back(registered);
+    }
   }
   // also need to register layer tasks on GPUs as well
   CodeDescriptor init_cuda_desc(LegionTritonRuntime::InitCudaTask);
   unsigned gpu_index = 0;
   for (auto proc : local_gpus) {
-    Realm::Event registered = proc.register_task(
-        INIT_CUDALIBS_TASK_ID, init_cuda_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
+    Realm::Event registered = proc.register_task(INIT_CUDALIBS_TASK_ID,
+                                                 init_cuda_desc,
+                                                 no_requests,
+                                                 runtime,
+                                                 sizeof(LegionTritonRuntime *));
     // Also launch the task to initialize the cuda libraries
     registered = proc.spawn(
         INIT_CUDALIBS_TASK_ID, &gpu_index, sizeof(gpu_index), registered);
     gpu_index++;
-    if (!registered.exists())
+    if (!registered.exists()) {
       ready_events.push_back(registered);
-    registered = proc.register_task(
-        LOAD_LAYER_TASK_ID, load_layer_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
-    if (registered.exists())
+    }
+    registered = proc.register_task(LOAD_LAYER_TASK_ID,
+                                    load_layer_desc,
+                                    no_requests,
+                                    runtime,
+                                    sizeof(LegionTritonRuntime *));
+    if (registered.exists()) {
       ready_events.push_back(registered);
-    registered = proc.register_task(
-        FREE_LAYER_TASK_ID, free_layer_desc, no_requests, runtime,
-        sizeof(LegionTritonRuntime*));
-    if (registered.exists())
+    }
+    registered = proc.register_task(FREE_LAYER_TASK_ID,
+                                    free_layer_desc,
+                                    no_requests,
+                                    runtime,
+                                    sizeof(LegionTritonRuntime *));
+    if (registered.exists()) {
       ready_events.push_back(registered);
+    }
   }
   // Do a Realm barrier here to make sure everyone is done registering
   Realm::Runtime realm = Realm::Runtime::get_runtime();
-  if (!ready_events.empty())
+  if (!ready_events.empty()) {
     realm
-        .collective_spawn_by_kind(
-            Realm::Processor::LOC_PROC /*CPU*/,
-            Realm::Processor::TASK_ID_PROCESSOR_NOP, nullptr, 0,
-            true /*one per node*/, Realm::Event::merge_events(ready_events))
+        .collective_spawn_by_kind(Realm::Processor::LOC_PROC /*CPU*/,
+                                  Realm::Processor::TASK_ID_PROCESSOR_NOP,
+                                  nullptr,
+                                  0,
+                                  true /*one per node*/,
+                                  Realm::Event::merge_events(ready_events))
         .external_wait();
-  else
+  } else {
     realm
-        .collective_spawn_by_kind(
-            Realm::Processor::LOC_PROC /*CPU*/,
-            Realm::Processor::TASK_ID_PROCESSOR_NOP, nullptr, 0,
-            true /*one per node*/)
+        .collective_spawn_by_kind(Realm::Processor::LOC_PROC /*CPU*/,
+                                  Realm::Processor::TASK_ID_PROCESSOR_NOP,
+                                  nullptr,
+                                  0,
+                                  true /*one per node*/)
         .external_wait();
+  }
 
   return nullptr;
 }
 
 LegionTritonRuntime::LegionTritonRuntime(
-    Legion::Runtime* lg, Legion::TaskID ttid, Legion::AddressSpaceID rank,
-    size_t total, Processor local, std::vector<Processor>&& remote,
-    std::vector<Processor>&& cpus, std::vector<Processor>&& gpus,
-    const std::vector<Processor>& local_gpus, bool allowTensorOpMathConv)
+    Legion::Runtime *lg,
+    Legion::TaskID ttid,
+    Legion::AddressSpaceID rank,
+    size_t total,
+    Processor local,
+    std::vector<Processor> &&remote,
+    std::vector<Processor> &&cpus,
+    std::vector<Processor> &&gpus,
+    std::vector<Processor> const &local_gpus,
+    bool allowTensorOpMathConv)
     : legion_(lg), top_task_id_(ttid), rank_(rank), total_ranks_(total),
       local_proc_(local), local_sysmem_(FindLocalSysmem()),
       local_regmem_(FindLocalRegmem()), remote_procs_(std::move(remote)),
@@ -179,27 +227,26 @@ LegionTritonRuntime::LegionTritonRuntime(
       local_cpus_(FindLocal(rank_, all_cpus_)),
       local_gpus_(FindLocal(rank_, all_gpus_)),
       local_framebuffers_(FindLocalFramebuffers(local_gpus)),
-      allowTensorOpMathConversion_(allowTensorOpMathConv)
-{
+      allowTensorOpMathConversion_(allowTensorOpMathConv) {
   creation_barrier_ = Realm::Barrier::NO_BARRIER;
-  for (unsigned idx = 0; idx < local_gpus.size(); idx++)
+  for (unsigned idx = 0; idx < local_gpus.size(); idx++) {
     gpu_lookup_[local_gpus[idx]] = idx;
+  }
 }
 
 /*static*/ std::vector<Realm::Processor>
-LegionTritonRuntime::FindLocal(
-    AddressSpaceID local, const std::vector<Realm::Processor>& procs)
-{
+    LegionTritonRuntime::FindLocal(AddressSpaceID local,
+                                   std::vector<Realm::Processor> const &procs) {
   std::vector<Realm::Processor> result;
-  for (auto proc : procs)
-    if (proc.address_space() == local)
+  for (auto proc : procs) {
+    if (proc.address_space() == local) {
       result.push_back(proc);
+    }
+  }
   return result;
 }
 
-/*static*/ Realm::Memory
-LegionTritonRuntime::FindLocalSysmem(void)
-{
+/*static*/ Realm::Memory LegionTritonRuntime::FindLocalSysmem(void) {
   Machine machine = Machine::get_machine();
   Machine::MemoryQuery local_sysmem(machine);
   local_sysmem.local_address_space();
@@ -208,23 +255,21 @@ LegionTritonRuntime::FindLocalSysmem(void)
   return local_sysmem.first();
 }
 
-/*static*/ Realm::Memory
-LegionTritonRuntime::FindLocalRegmem(void)
-{
+/*static*/ Realm::Memory LegionTritonRuntime::FindLocalRegmem(void) {
   Machine machine = Machine::get_machine();
   Machine::MemoryQuery local_regmem(machine);
   local_regmem.local_address_space();
   local_regmem.only_kind(Memory::REGDMA_MEM);
   assert(local_regmem.count() <= 1);
-  if (local_regmem.count() == 0)
+  if (local_regmem.count() == 0) {
     return Memory::NO_MEMORY;
+  }
   return local_regmem.first();
 }
 
 /*static*/ std::vector<Realm::Memory>
-LegionTritonRuntime::FindLocalFramebuffers(
-    const std::vector<Realm::Processor>& gpus)
-{
+    LegionTritonRuntime::FindLocalFramebuffers(
+        std::vector<Realm::Processor> const &gpus) {
   Machine machine = Machine::get_machine();
   std::vector<Realm::Memory> framebuffers(gpus.size());
   for (unsigned idx = 0; idx < gpus.size(); idx++) {
@@ -238,29 +283,24 @@ LegionTritonRuntime::FindLocalFramebuffers(
   return framebuffers;
 }
 
-void
-LegionTritonRuntime::RecordModel(LegionModelState* model)
-{
+void LegionTritonRuntime::RecordModel(LegionModelState *model) {
   AutoLock<true> lock(lock_);
   models_.push_back(model);
 }
 
-void
-LegionTritonRuntime::RemoveModel(LegionModelState* model)
-{
+void LegionTritonRuntime::RemoveModel(LegionModelState *model) {
   AutoLock<true> lock(lock_);
   for (auto it = models_.begin(); it != models_.end(); it++) {
-    if ((*it) != model)
+    if ((*it) != model) {
       continue;
+    }
     models_.erase(it);
     break;
   }
 }
 
-void
-LegionTritonRuntime::RendezvousContextCreation(
-    LegionModelInstance* instance, Realm::UserEvent ready)
-{
+void LegionTritonRuntime::RendezvousContextCreation(
+    LegionModelInstance *instance, Realm::UserEvent ready) {
   // If we're not rank 0 send the message there
   if (rank_ > 0) {
     Serializer rez;
@@ -272,26 +312,29 @@ LegionTritonRuntime::RendezvousContextCreation(
     rez.serialize(local_proc_);
     rez.serialize(instance);
     rez.serialize(ready);
-    remote_procs_[0].spawn(
-        INSTANCE_CREATE_TASK_ID, rez.get_buffer(), rez.get_used_bytes(),
-        Realm::Event::NO_EVENT, INT_MAX /*high priority*/);
-  } else
-    HandleContextCreation(
-        instance->model_state_->name, instance->model_state_->version,
-        instance->index_, local_proc_, instance, ready);
+    remote_procs_[0].spawn(INSTANCE_CREATE_TASK_ID,
+                           rez.get_buffer(),
+                           rez.get_used_bytes(),
+                           Realm::Event::NO_EVENT,
+                           INT_MAX /*high priority*/);
+  } else {
+    HandleContextCreation(instance->model_state_->name,
+                          instance->model_state_->version,
+                          instance->index_,
+                          local_proc_,
+                          instance,
+                          ready);
+  }
 }
 
-unsigned
-LegionTritonRuntime::FindGPUIndex(Processor proc) const
-{
+unsigned LegionTritonRuntime::FindGPUIndex(Processor proc) const {
   std::map<Processor, unsigned>::const_iterator finder = gpu_lookup_.find(proc);
   assert(finder != gpu_lookup_.end());
   return finder->second;
 }
 
-const std::vector<Processor>&
-LegionTritonRuntime::FindAllProcessors(Processor::Kind kind)
-{
+std::vector<Processor> const &
+    LegionTritonRuntime::FindAllProcessors(Processor::Kind kind) {
   switch (kind) {
     case Processor::LOC_PROC:
       return all_cpus_;
@@ -303,9 +346,8 @@ LegionTritonRuntime::FindAllProcessors(Processor::Kind kind)
   return all_cpus_;
 }
 
-const std::vector<Processor>&
-LegionTritonRuntime::FindLocalProcessors(Processor::Kind kind)
-{
+std::vector<Processor> const &
+    LegionTritonRuntime::FindLocalProcessors(Processor::Kind kind) {
   switch (kind) {
     case Processor::LOC_PROC:
       return local_cpus_;
@@ -317,10 +359,8 @@ LegionTritonRuntime::FindLocalProcessors(Processor::Kind kind)
   return local_cpus_;
 }
 
-Memory
-LegionTritonRuntime::FindMemory(
-    TRITONSERVER_MemoryType type, uint64_t device_id)
-{
+Memory LegionTritonRuntime::FindMemory(TRITONSERVER_MemoryType type,
+                                       uint64_t device_id) {
   switch (type) {
     case TRITONSERVER_MEMORY_CPU: {
       assert(local_sysmem_.exists());
@@ -341,28 +381,30 @@ LegionTritonRuntime::FindMemory(
   return Memory::NO_MEMORY;
 }
 
-Realm::Event
-LegionTritonRuntime::LoadLayer(Processor proc, Operator* op)
-{
-  return proc.spawn(
-      LOAD_LAYER_TASK_ID, &op, sizeof(op), Realm::Event::NO_EVENT,
-      INT_MAX /*high priority*/);
+Realm::Event LegionTritonRuntime::LoadLayer(Processor proc, Operator *op) {
+  return proc.spawn(LOAD_LAYER_TASK_ID,
+                    &op,
+                    sizeof(op),
+                    Realm::Event::NO_EVENT,
+                    INT_MAX /*high priority*/);
 }
 
-Realm::Event
-LegionTritonRuntime::FreeLayer(Processor proc, Operator* op)
-{
-  return proc.spawn(
-      FREE_LAYER_TASK_ID, &op, sizeof(op), Realm::Event::NO_EVENT,
-      INT_MAX /*high priority*/);
+Realm::Event LegionTritonRuntime::FreeLayer(Processor proc, Operator *op) {
+  return proc.spawn(FREE_LAYER_TASK_ID,
+                    &op,
+                    sizeof(op),
+                    Realm::Event::NO_EVENT,
+                    INT_MAX /*high priority*/);
 }
 
-void
-LegionTritonRuntime::HandleContextCreation(
-    const std::string& name, uint64_t version, unsigned index,
-    Realm::Processor source, LegionModelInstance* instance,
-    Realm::UserEvent ready, bool external, bool need_lock)
-{
+void LegionTritonRuntime::HandleContextCreation(std::string const &name,
+                                                uint64_t version,
+                                                unsigned index,
+                                                Realm::Processor source,
+                                                LegionModelInstance *instance,
+                                                Realm::UserEvent ready,
+                                                bool external,
+                                                bool need_lock) {
   // Should only be here on rank 0
   assert(rank_ == 0);
   if (need_lock) {
@@ -380,8 +422,9 @@ LegionTritonRuntime::HandleContextCreation(
   // Now we've got the lock
   for (auto it = pending_contexts_.begin(); it != pending_contexts_.end();
        it++) {
-    if (!it->matches(name, version, index))
+    if (!it->matches(name, version, index)) {
       continue;
+    }
     assert(it->requests.find(source) == it->requests.end());
     it->requests[source] = std::make_pair(instance, ready);
     // If we've seen all the requests we know we're ready for the rendezvous
@@ -402,9 +445,7 @@ LegionTritonRuntime::HandleContextCreation(
   }
 }
 
-void
-LegionTritonRuntime::CreatePendingContext(const PendingContext& pending)
-{
+void LegionTritonRuntime::CreatePendingContext(PendingContext const &pending) {
   assert(pending.requests.size() == total_ranks_);
   // Get a barrier for coordinating ordering of the creations
   Realm::Barrier bar;
@@ -430,25 +471,27 @@ LegionTritonRuntime::CreatePendingContext(const PendingContext& pending)
     Serializer rez;
     rez.serialize(it->second.first);
     rez.serialize(bar);
-    it->first.spawn(
-        CONTEXT_CREATE_TASK_ID, rez.get_buffer(), rez.get_used_bytes(),
-        precondition, INT_MAX /*high priority*/);
+    it->first.spawn(CONTEXT_CREATE_TASK_ID,
+                    rez.get_buffer(),
+                    rez.get_used_bytes(),
+                    precondition,
+                    INT_MAX /*high priority*/);
     // We know the context will be ready when the barrier completes
     it->second.second.trigger(bar);
   }
 }
 
-/*static*/ void
-LegionTritonRuntime::InstanceMessageTask(
-    const void* args, size_t arglen, const void* data, size_t datalen,
-    Realm::Processor p)
-{
-  assert(datalen == sizeof(LegionTritonRuntime*));
-  LegionTritonRuntime* runtime = *((LegionTritonRuntime**)data);
+/*static*/ void LegionTritonRuntime::InstanceMessageTask(void const *args,
+                                                         size_t arglen,
+                                                         void const *data,
+                                                         size_t datalen,
+                                                         Realm::Processor p) {
+  assert(datalen == sizeof(LegionTritonRuntime *));
+  LegionTritonRuntime *runtime = *((LegionTritonRuntime **)data);
   Deserializer derez(args, arglen);
   size_t length;
   derez.deserialize(length);
-  std::string name((const char*)derez.get_current_pointer(), length);
+  std::string name((char const *)derez.get_current_pointer(), length);
   derez.advance_pointer(length);
   uint64_t version;
   derez.deserialize(version);
@@ -456,7 +499,7 @@ LegionTritonRuntime::InstanceMessageTask(
   derez.deserialize(index);
   Processor source;
   derez.deserialize(source);
-  LegionModelInstance* instance;
+  LegionModelInstance *instance;
   derez.deserialize(instance);
   Realm::UserEvent ready;
   derez.deserialize(ready);
@@ -466,15 +509,15 @@ LegionTritonRuntime::InstanceMessageTask(
       name, version, index, source, instance, ready, false /*external*/);
 }
 
-/*static*/ void
-LegionTritonRuntime::CreateContextTask(
-    const void* args, size_t arglen, const void* data, size_t datalen,
-    Realm::Processor p)
-{
-  assert(datalen == sizeof(LegionTritonRuntime*));
-  LegionTritonRuntime* runtime = *((LegionTritonRuntime**)data);
+/*static*/ void LegionTritonRuntime::CreateContextTask(void const *args,
+                                                       size_t arglen,
+                                                       void const *data,
+                                                       size_t datalen,
+                                                       Realm::Processor p) {
+  assert(datalen == sizeof(LegionTritonRuntime *));
+  LegionTritonRuntime *runtime = *((LegionTritonRuntime **)data);
   Deserializer derez(args, arglen);
-  LegionModelInstance* instance;
+  LegionModelInstance *instance;
   derez.deserialize(instance);
   Realm::Barrier barrier;
   derez.deserialize(barrier);
@@ -482,16 +525,18 @@ LegionTritonRuntime::CreateContextTask(
 
   // Create the context
   instance->CreateContext(
-      runtime->legion_, runtime->top_task_id_, runtime->rank_,
-      runtime->total_ranks_, barrier,
+      runtime->legion_,
+      runtime->top_task_id_,
+      runtime->rank_,
+      runtime->total_ranks_,
+      barrier,
       (runtime->InstanceOwner(instance->index_) == runtime->rank_));
   // Arrive on the barrier signaling that we are done
   barrier.arrive();
 }
 
 AddressSpaceID
-LegionTritonRuntime::InstanceOwner(unsigned instance_index) const
-{
+    LegionTritonRuntime::InstanceOwner(unsigned instance_index) const {
   // Round robin instances across the nodes so we get some load balance
   // of responsibilities for scheduling work on different instances
   // TODO: a better hasing scheme here for load balance that incorporates
@@ -499,11 +544,12 @@ LegionTritonRuntime::InstanceOwner(unsigned instance_index) const
   return (instance_index % total_ranks_);
 }
 
-LegionModelInstance*
-LegionTritonRuntime::FindModelInstance(
-    const std::string& model_name, uint64_t model_version,
-    unsigned instance_index, bool external, bool need_lock)
-{
+LegionModelInstance *
+    LegionTritonRuntime::FindModelInstance(std::string const &model_name,
+                                           uint64_t model_version,
+                                           unsigned instance_index,
+                                           bool external,
+                                           bool need_lock) {
   if (need_lock) {
     if (external) {
       AutoLock<true> lock(lock_, false /*exclusive*/);
@@ -516,10 +562,12 @@ LegionTritonRuntime::FindModelInstance(
     }
   }
   for (auto model : models_) {
-    if (model_name != model->name)
+    if (model_name != model->name) {
       continue;
-    if (model_version != model->version)
+    }
+    if (model_version != model->version) {
       continue;
+    }
     return model->FindInstance(instance_index, external);
   }
   // should never get here
@@ -527,16 +575,19 @@ LegionTritonRuntime::FindModelInstance(
   return NULL;
 }
 
-void
-LegionTritonRuntime::DistributeRunModel(
-    const std::string& model_name, uint64_t model_version,
-    unsigned instance_index, const std::vector<InputTensor>& inputs,
-    const std::vector<OutputTensor>& outputs,
-    std::vector<uint64_t>& compute_input_end_ns,
-    std::vector<uint64_t>& compute_output_start_ns, AddressSpaceID source,
-    LegionModelInstance* instance, Realm::Barrier barrier,
-    Realm::UserEvent pretrigger, Realm::UserEvent posttrigger)
-{
+void LegionTritonRuntime::DistributeRunModel(
+    std::string const &model_name,
+    uint64_t model_version,
+    unsigned instance_index,
+    std::vector<InputTensor> const &inputs,
+    std::vector<OutputTensor> const &outputs,
+    std::vector<uint64_t> &compute_input_end_ns,
+    std::vector<uint64_t> &compute_output_start_ns,
+    AddressSpaceID source,
+    LegionModelInstance *instance,
+    Realm::Barrier barrier,
+    Realm::UserEvent pretrigger,
+    Realm::UserEvent posttrigger) {
   Realm::Event precondition = Realm::Event::NO_EVENT;
   const AddressSpaceID owner_rank = InstanceOwner(instance_index);
   if (owner_rank != rank_) {
@@ -555,9 +606,11 @@ LegionTritonRuntime::DistributeRunModel(
       rez.serialize(pretrigger);
       rez.serialize(posttrigger);
       rez.serialize(rank_);
-      remote_procs_[owner_rank].spawn(
-          RUN_MODEL_INFERENCE_TASK_ID, rez.get_buffer(), rez.get_used_bytes(),
-          Realm::Event::NO_EVENT, INT_MAX);
+      remote_procs_[owner_rank].spawn(RUN_MODEL_INFERENCE_TASK_ID,
+                                      rez.get_buffer(),
+                                      rez.get_used_bytes(),
+                                      Realm::Event::NO_EVENT,
+                                      INT_MAX);
       precondition = pretrigger;
     } else {
       // This came from the broadcast node so we can just run it
@@ -568,9 +621,10 @@ LegionTritonRuntime::DistributeRunModel(
     }
   } else {
     assert(!barrier.exists());
-    if (instance == NULL)
+    if (instance == NULL) {
       instance = FindModelInstance(
           model_name, model_version, instance_index, (source == rank_));
+    }
     barrier = instance->GetExecutionBarrier(
         total_ranks_, precondition, (source == rank_));
     Serializer rez;
@@ -582,100 +636,122 @@ LegionTritonRuntime::DistributeRunModel(
     rez.serialize(rank_);
     // Broadcast out the request to all the other ranks
     for (AddressSpaceID rank = 0; rank < total_ranks_; rank++) {
-      if (rank == rank_)
+      if (rank == rank_) {
         continue;
+      }
       if (rank == source) {
         // No need to send a message back to the source
         assert(pretrigger.exists());
         assert(posttrigger.exists());
         pretrigger.trigger(precondition);
         barrier.arrive(1 /*count*/, posttrigger);
-      } else
-        remote_procs_[rank].spawn(
-            RUN_MODEL_INFERENCE_TASK_ID, rez.get_buffer(), rez.get_used_bytes(),
-            precondition, INT_MAX);
+      } else {
+        remote_procs_[rank].spawn(RUN_MODEL_INFERENCE_TASK_ID,
+                                  rez.get_buffer(),
+                                  rez.get_used_bytes(),
+                                  precondition,
+                                  INT_MAX);
+      }
     }
   }
   // Find the instance we are running
-  if (instance == NULL)
+  if (instance == NULL) {
     instance = FindModelInstance(
         model_name, model_version, instance_index, (source == rank_));
+  }
   // If we have a precondition, wait for that before we start the call
   if (precondition.exists()) {
-    if (source == rank_)
+    if (source == rank_) {
       precondition.external_wait();
-    else
+    } else {
       precondition.wait();
+    }
   }
   // Run the model
-  instance->RunModel(
-      inputs, outputs, compute_input_end_ns, compute_output_start_ns,
-      true /*distributed*/);
+  instance->RunModel(inputs,
+                     outputs,
+                     compute_input_end_ns,
+                     compute_output_start_ns,
+                     true /*distributed*/);
   if (!barrier.exists()) {
     assert(posttrigger.exists());
     posttrigger.trigger();
-  } else
+  } else {
     barrier.arrive();
+  }
 }
 
-/*static*/ void
-LegionTritonRuntime::PackRunModel(
-    Serializer& rez, const std::string& model_name, uint64_t model_version,
-    unsigned instance_index, const std::vector<InputTensor>& inputs,
-    const std::vector<OutputTensor>& outputs)
-{
+/*static*/ void LegionTritonRuntime::PackRunModel(
+    Serializer &rez,
+    std::string const &model_name,
+    uint64_t model_version,
+    unsigned instance_index,
+    std::vector<InputTensor> const &inputs,
+    std::vector<OutputTensor> const &outputs) {
   const size_t length = model_name.size();
   rez.serialize(length);
   rez.serialize(model_name.c_str(), length);
   rez.serialize(model_version);
   rez.serialize(instance_index);
   rez.serialize<size_t>(inputs.size());
-  for (auto& tensor : inputs) {
+  for (auto &tensor : inputs) {
     const size_t namelen = tensor.name_.size();
     rez.serialize(namelen);
     rez.serialize(tensor.name_.c_str(), namelen);
     rez.serialize<size_t>(tensor.buffers_.size());
-    for (auto ptr : tensor.buffers_) rez.serialize(ptr);
+    for (auto ptr : tensor.buffers_) {
+      rez.serialize(ptr);
+    }
     assert(tensor.buffers_.size() == tensor.buffer_locations_.size());
-    for (auto& loc : tensor.buffer_locations_) {
+    for (auto &loc : tensor.buffer_locations_) {
       rez.serialize(loc.first);
       rez.serialize(loc.second);
     }
     assert(tensor.buffers_.size() == tensor.buffer_memories_.size());
-    for (auto& mem : tensor.buffer_memories_) rez.serialize(mem);
+    for (auto &mem : tensor.buffer_memories_) {
+      rez.serialize(mem);
+    }
     rez.serialize<size_t>(tensor.strides_.size());
-    for (auto stride : tensor.strides_) rez.serialize(stride);
+    for (auto stride : tensor.strides_) {
+      rez.serialize(stride);
+    }
   }
   rez.serialize<size_t>(outputs.size());
-  for (auto& tensor : outputs) {
+  for (auto &tensor : outputs) {
     const size_t namelen = tensor.name_.size();
     rez.serialize(namelen);
     rez.serialize(tensor.name_.c_str(), namelen);
     rez.serialize<size_t>(tensor.buffers_.size());
-    for (auto ptr : tensor.buffers_) rez.serialize(ptr);
+    for (auto ptr : tensor.buffers_) {
+      rez.serialize(ptr);
+    }
     assert(tensor.buffers_.size() == tensor.buffer_locations_.size());
-    for (auto& loc : tensor.buffer_locations_) {
+    for (auto &loc : tensor.buffer_locations_) {
       rez.serialize(loc.first);
       rez.serialize(loc.second);
     }
     assert(tensor.buffers_.size() == tensor.buffer_memories_.size());
-    for (auto& mem : tensor.buffer_memories_) rez.serialize(mem);
+    for (auto &mem : tensor.buffer_memories_) {
+      rez.serialize(mem);
+    }
     rez.serialize<size_t>(tensor.strides_.size());
-    for (auto stride : tensor.strides_) rez.serialize(stride);
+    for (auto stride : tensor.strides_) {
+      rez.serialize(stride);
+    }
   }
 }
 
-/*static*/ void
-LegionTritonRuntime::RunModelInferenceTask(
-    const void* args, size_t arglen, const void* data, size_t datalen,
-    Realm::Processor p)
-{
-  assert(datalen == sizeof(LegionTritonRuntime*));
-  LegionTritonRuntime* runtime = *((LegionTritonRuntime**)data);
+/*static*/ void LegionTritonRuntime::RunModelInferenceTask(void const *args,
+                                                           size_t arglen,
+                                                           void const *data,
+                                                           size_t datalen,
+                                                           Realm::Processor p) {
+  assert(datalen == sizeof(LegionTritonRuntime *));
+  LegionTritonRuntime *runtime = *((LegionTritonRuntime **)data);
   Deserializer derez(args, arglen);
   size_t length;
   derez.deserialize(length);
-  std::string model_name((const char*)derez.get_current_pointer(), length);
+  std::string model_name((char const *)derez.get_current_pointer(), length);
   derez.advance_pointer(length);
   uint64_t model_version;
   derez.deserialize(model_version);
@@ -685,61 +761,67 @@ LegionTritonRuntime::RunModelInferenceTask(
   derez.deserialize(num_inputs);
   std::vector<InputTensor> inputs(num_inputs);
   for (unsigned idx1 = 0; idx1 < num_inputs; idx1++) {
-    InputTensor& tensor = inputs[idx1];
+    InputTensor &tensor = inputs[idx1];
     size_t namelen;
     derez.deserialize(namelen);
     tensor.name_ =
-        std::string((const char*)derez.get_current_pointer(), namelen);
+        std::string((char const *)derez.get_current_pointer(), namelen);
     derez.advance_pointer(namelen);
     size_t num_buffers;
     derez.deserialize(num_buffers);
     tensor.buffers_.resize(num_buffers);
-    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++)
+    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++) {
       derez.deserialize(tensor.buffers_[idx2]);
+    }
     tensor.buffer_locations_.resize(num_buffers);
     for (unsigned idx2 = 0; idx2 < num_buffers; idx2++) {
-      auto& pair = tensor.buffer_locations_[idx2];
+      auto &pair = tensor.buffer_locations_[idx2];
       derez.deserialize(pair.first);
       derez.deserialize(pair.second);
     }
     tensor.buffer_memories_.resize(num_buffers);
-    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++)
+    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++) {
       derez.deserialize(tensor.buffer_memories_[idx2]);
+    }
     size_t num_strides;
     derez.deserialize(num_strides);
     tensor.strides_.resize(num_strides);
-    for (unsigned idx2 = 0; idx2 < num_strides; idx2++)
+    for (unsigned idx2 = 0; idx2 < num_strides; idx2++) {
       derez.deserialize(tensor.strides_[idx2]);
+    }
   }
   size_t num_outputs;
   derez.deserialize(num_outputs);
   std::vector<OutputTensor> outputs(num_outputs);
   for (unsigned idx1 = 0; idx1 < num_outputs; idx1++) {
-    OutputTensor& tensor = outputs[idx1];
+    OutputTensor &tensor = outputs[idx1];
     size_t namelen;
     derez.deserialize(namelen);
     tensor.name_ =
-        std::string((const char*)derez.get_current_pointer(), namelen);
+        std::string((char const *)derez.get_current_pointer(), namelen);
     derez.advance_pointer(namelen);
     size_t num_buffers;
     derez.deserialize(num_buffers);
     tensor.buffers_.resize(num_buffers);
-    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++)
+    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++) {
       derez.deserialize(tensor.buffers_[idx2]);
+    }
     tensor.buffer_locations_.resize(num_buffers);
     for (unsigned idx2 = 0; idx2 < num_buffers; idx2++) {
-      auto& pair = tensor.buffer_locations_[idx2];
+      auto &pair = tensor.buffer_locations_[idx2];
       derez.deserialize(pair.first);
       derez.deserialize(pair.second);
     }
     tensor.buffer_memories_.resize(num_buffers);
-    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++)
+    for (unsigned idx2 = 0; idx2 < num_buffers; idx2++) {
       derez.deserialize(tensor.buffer_memories_[idx2]);
+    }
     size_t num_strides;
     derez.deserialize(num_strides);
     tensor.strides_.resize(num_strides);
-    for (unsigned idx2 = 0; idx2 < num_strides; idx2++)
+    for (unsigned idx2 = 0; idx2 < num_strides; idx2++) {
       derez.deserialize(tensor.strides_[idx2]);
+    }
   }
   Realm::Barrier barrier;
   derez.deserialize(barrier);
@@ -751,22 +833,30 @@ LegionTritonRuntime::RunModelInferenceTask(
   assert(!derez.get_remaining_bytes());
 
   std::vector<uint64_t> dummy_input_timing, dummy_output_timing;
-  runtime->DistributeRunModel(
-      model_name, model_version, instance_index, inputs, outputs,
-      dummy_input_timing, dummy_output_timing, source,
-      NULL /*unknown instance*/, barrier, pretrigger, posttrigger);
+  runtime->DistributeRunModel(model_name,
+                              model_version,
+                              instance_index,
+                              inputs,
+                              outputs,
+                              dummy_input_timing,
+                              dummy_output_timing,
+                              source,
+                              NULL /*unknown instance*/,
+                              barrier,
+                              pretrigger,
+                              posttrigger);
 }
 
-/*static*/ void
-LegionTritonRuntime::InitCudaTask(
-    const void* args, size_t arglen, const void* data, size_t datalen,
-    Realm::Processor p)
-{
+/*static*/ void LegionTritonRuntime::InitCudaTask(void const *args,
+                                                  size_t arglen,
+                                                  void const *data,
+                                                  size_t datalen,
+                                                  Realm::Processor p) {
 #ifdef LEGION_USE_CUDA
   assert(arglen == sizeof(unsigned));
-  const unsigned index = *((const unsigned*)args);
-  assert(datalen == sizeof(LegionTritonRuntime*));
-  LegionTritonRuntime* runtime = *((LegionTritonRuntime**)data);
+  unsigned const index = *((unsigned const *)args);
+  assert(datalen == sizeof(LegionTritonRuntime *));
+  LegionTritonRuntime *runtime = *((LegionTritonRuntime **)data);
   CHECK_CUDNN(cudnnCreate(&(runtime->cudnn[index])));
   CHECK_CUBLAS(cublasCreate(&(runtime->cublas[index])));
 #else
@@ -774,26 +864,28 @@ LegionTritonRuntime::InitCudaTask(
 #endif
 }
 
-/*static*/ void
-LegionTritonRuntime::LoadLayerTask(
-    const void* args, size_t arglen, const void* data, size_t datalen,
-    Realm::Processor p)
-{
-  assert(arglen == sizeof(Operator**));
-  assert(datalen == sizeof(LegionTritonRuntime*));
-  Operator* op = *((Operator**)args);
+/*static*/ void LegionTritonRuntime::LoadLayerTask(void const *args,
+                                                   size_t arglen,
+                                                   void const *data,
+                                                   size_t datalen,
+                                                   Realm::Processor p) {
+  assert(arglen == sizeof(Operator **));
+  assert(datalen == sizeof(LegionTritonRuntime *));
+  Operator *op = *((Operator **)args);
   op->Load(p);
 }
 
-/*static*/ void
-LegionTritonRuntime::FreeLayerTask(
-    const void* args, size_t arglen, const void* data, size_t datalen,
-    Realm::Processor p)
-{
-  assert(arglen == sizeof(Operator**));
-  assert(datalen == sizeof(LegionTritonRuntime*));
-  Operator* op = *((Operator**)args);
+/*static*/ void LegionTritonRuntime::FreeLayerTask(void const *args,
+                                                   size_t arglen,
+                                                   void const *data,
+                                                   size_t datalen,
+                                                   Realm::Processor p) {
+  assert(arglen == sizeof(Operator **));
+  assert(datalen == sizeof(LegionTritonRuntime *));
+  Operator *op = *((Operator **)args);
   op->Free(p);
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

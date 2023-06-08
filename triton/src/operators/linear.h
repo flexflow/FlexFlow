@@ -19,10 +19,12 @@
 #include "operator.h"
 #include "tensor.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 struct LinearArgs : public OperatorArgs {
- public:
+public:
   LinearArgs(size_t batch_size);
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
@@ -31,37 +33,48 @@ struct LinearArgs : public OperatorArgs {
 };
 
 class Linear : public Operator {
- public:
-  Linear(
-      LegionModelState* model, unsigned out_dim, ActivationMode activation,
-      bool use_bias, const char* name);
+public:
+  Linear(LegionModelState *model,
+         unsigned out_dim,
+         ActivationMode activation,
+         bool use_bias,
+         char const *name);
 
-  void configure(
-      Tensor* input, Weights* weights, Tensor* output, Weights* bias = NULL);
+  void configure(Tensor *input,
+                 Weights *weights,
+                 Tensor *output,
+                 Weights *bias = NULL);
 
-  virtual void initialize(LegionModelInstance* instance);
-  virtual void forward(LegionModelInstance* instance);
-  virtual void finalize(LegionModelInstance* instance);
+  virtual void initialize(LegionModelInstance *instance);
+  virtual void forward(LegionModelInstance *instance);
+  virtual void finalize(LegionModelInstance *instance);
 
-  static LinearArgs initialize_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
-  static void forward_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
-  static void forward_kernel(
-      const LinearArgs* args, const void* input_ptr, void* output_ptr,
-      const void* filter_ptr, const void* bias_ptr, unsigned in_dim,
-      unsigned out_dim, size_t batch_size);
+  static LinearArgs
+      initialize_gpu(Legion::Task const *task,
+                     std::vector<Legion::PhysicalRegion> const &regions,
+                     Legion::Context ctx,
+                     Legion::Runtime *runtime);
+  static void forward_gpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
+  static void forward_kernel(LinearArgs const *args,
+                             void const *input_ptr,
+                             void *output_ptr,
+                             void const *filter_ptr,
+                             void const *bias_ptr,
+                             unsigned in_dim,
+                             unsigned out_dim,
+                             size_t batch_size);
 
- public:
-  LegionModelState* const model;
-  const unsigned in_channels, out_channels;
-  const bool use_bias;
+public:
+  LegionModelState *const model;
+  unsigned const in_channels, out_channels;
+  bool const use_bias;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_LINEAR_H__
+#endif // __LEGION_TRITON_LINEAR_H__

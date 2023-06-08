@@ -35,10 +35,11 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-void inner_measure_operator_cost(Simulator *sim,
-                                     std::function<void(ffStream_t)> const &forward,
-                                     std::function<void(ffStream_t)> const &backward,
-                                     CostMetrics &cost_metrics) const {
+void inner_measure_operator_cost(
+    Simulator *sim,
+    std::function<void(ffStream_t)> const &forward,
+    std::function<void(ffStream_t)> const &backward,
+    CostMetrics &cost_metrics) const {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // measure forward time

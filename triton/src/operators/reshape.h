@@ -19,10 +19,12 @@
 #include "operator.h"
 #include "tensor.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 struct ReshapeArgs : public OperatorArgs {
- public:
+public:
   ReshapeArgs(void);
   Legion::Domain input_bounds;
   Legion::Domain output_bounds;
@@ -31,50 +33,56 @@ struct ReshapeArgs : public OperatorArgs {
 };
 
 class Reshape : public Operator {
- public:
-  Reshape(
-      LegionModelState* model, const LayerStrategy* strategy, const char* name);
+public:
+  Reshape(LegionModelState *model,
+          LayerStrategy const *strategy,
+          char const *name);
 
-  void Configure(Tensor* input, Tensor* output);
+  void Configure(Tensor *input, Tensor *output);
   Legion::Domain GetInputBounds(Realm::Processor proc);
   Legion::Domain GetOutputBounds(Realm::Processor proc);
 
   virtual void Load(Realm::Processor processor) override;
-  virtual void initialize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void forward(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void finalize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
+  virtual void initialize(LegionModelInstance *instance,
+                          unsigned const instance_index,
+                          Legion::Runtime *runtime,
+                          Legion::Context ctx,
+                          Legion::MapperID mapper) override;
+  virtual void forward(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Legion::Runtime *runtime,
+                       Legion::Context ctx,
+                       Legion::MapperID mapper) override;
+  virtual void finalize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) override;
   virtual void Free(Realm::Processor processor) override;
 
   static void PreregisterTaskVariants(void);
 
-  static void forward_cpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+  static void forward_cpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 
 #ifdef LEGION_USE_CUDA
-  static void forward_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
+  static void forward_gpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 #endif
- protected:
-  std::vector<std::vector<int> > input_groups;
-  std::vector<std::vector<int> > output_groups;
+protected:
+  std::vector<std::vector<int>> input_groups;
+  std::vector<std::vector<int>> output_groups;
   ReshapeArgs args[MAX_LOCAL_PROCS];
   Legion::FutureMap argmaps[MAX_NUM_INSTANCES];
   Legion::IndexTaskLauncher launchers[MAX_NUM_INSTANCES];
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_RESHAPE_H__
+#endif // __LEGION_TRITON_RESHAPE_H__

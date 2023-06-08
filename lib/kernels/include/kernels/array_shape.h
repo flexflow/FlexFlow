@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_KERNELS_ARRAY_SHAPE_H
 #define _FLEXFLOW_KERNELS_ARRAY_SHAPE_H
 
-#include <vector>
-#include <cstddef>
-#include "utils/stack_vector.h"
-#include "utils/optional.h"
-#include "utils/visitable.h"
 #include "legion_dim.h"
+#include "utils/optional.h"
+#include "utils/stack_vector.h"
+#include "utils/visitable.h"
+#include <cstddef>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -16,7 +16,8 @@ public:
   ArrayShape(std::vector<std::size_t> const &);
 
   /**
-   * @brief Alias of ArrayShape::num_elements for compatibility with Legion::Domain
+   * @brief Alias of ArrayShape::num_elements for compatibility with
+   * Legion::Domain
    */
   std::size_t get_volume() const;
 
@@ -37,9 +38,10 @@ public:
   optional<std::size_t> at_maybe(std::size_t) const;
 
   ArrayShape reversed_dim_order() const;
-  ArrayShape sub_shape(optional<legion_dim_t> start, optional<legion_dim_t> end);
+  ArrayShape sub_shape(optional<legion_dim_t> start,
+                       optional<legion_dim_t> end);
 };
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

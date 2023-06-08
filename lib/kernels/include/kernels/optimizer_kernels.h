@@ -5,10 +5,10 @@
 
 namespace FlexFlow {
 
-void sgd_ps_update_task_gpu(ffStream_t, 
+void sgd_ps_update_task_gpu(ffStream_t,
                             float lr,
                             float momentum,
-                            bool nesterov, 
+                            bool nesterov,
                             float weight_decay,
                             float const *weight_grad_ptr,
                             size_t size,
@@ -19,15 +19,14 @@ void sgd_ps_update_task_gpu(ffStream_t,
 void sgd_nccl_update_task_gpu(ffStream_t,
                               float lr,
                               float momentum,
-                              bool nesterov, 
-                              float weight_decay
-                              PerDeviceFFHandle const &,    
+                              bool nesterov,
+                              float weight_decay PerDeviceFFHandle const &,
                               float const *weight_grad_ptr,
                               size_t size,
                               float *weight_ptr,
                               float *sgd_v_ptr);
 
-void adam_ps_update_task_gpu(ffStream_t, 
+void adam_ps_update_task_gpu(ffStream_t,
                              float alpha_t,
                              float beta1,
                              float beta2,
@@ -38,7 +37,7 @@ void adam_ps_update_task_gpu(ffStream_t,
                              float *adam_v_ptr,
                              float *weight_ptr);
 
-void adam_nccl_update_task_gpu(ffStream_t, 
+void adam_nccl_update_task_gpu(ffStream_t,
                                float alpha_t,
                                float beta1,
                                float beta2,
@@ -50,6 +49,6 @@ void adam_nccl_update_task_gpu(ffStream_t,
                                float *adam_v_ptr,
                                float *weight_ptr);
 
-}
+} // namespace FlexFlow
 
 #endif

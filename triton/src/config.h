@@ -24,4 +24,4 @@
 // Maximum number of local processors that we need to handle in this process
 #define MAX_LOCAL_PROCS 16
 
-#endif  // __LEGION_TRITON_CONFIG_H__
+#endif // __LEGION_TRITON_CONFIG_H__

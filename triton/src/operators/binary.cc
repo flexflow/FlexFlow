@@ -17,28 +17,27 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-BinaryOperator::BinaryOperator(
-    LegionModelState* model, const LayerStrategy* strategy, OperatorType type,
-    bool inplace, const char* name)
-    : Operator(model, strategy, type, name, 2, 0, 1), inplace(inplace)
-{
-}
+BinaryOperator::BinaryOperator(LegionModelState *model,
+                               LayerStrategy const *strategy,
+                               OperatorType type,
+                               bool inplace,
+                               char const *name)
+    : Operator(model, strategy, type, name, 2, 0, 1), inplace(inplace) {}
 
-void
-BinaryOperator::Configure(Tensor* input0, Tensor* input1, Tensor* output)
-{
+void BinaryOperator::Configure(Tensor *input0, Tensor *input1, Tensor *output) {
   assert(input0 != nullptr);
   assert(input1 != nullptr);
   assert(output != nullptr);
   assert(input0->type == input1->type);
   assert(input0->type == output->type);
   // inplace can only be set to true in restricted op type (refer to FlexFlow)
-  assert(
-      !inplace ||
-      ((input0 == output) && ((op_type == OperatorType::OP_EW_ADD) ||
-                              (op_type == OperatorType::OP_EW_MUL))));
+  assert(!inplace ||
+         ((input0 == output) && ((op_type == OperatorType::OP_EW_ADD) ||
+                                 (op_type == OperatorType::OP_EW_MUL))));
   // Make sure that they have the same bounds.
   // Broadcasting is currently not supported
   assert(input0->bounds.size() == input1->bounds.size());
@@ -52,9 +51,7 @@ BinaryOperator::Configure(Tensor* input0, Tensor* input1, Tensor* output)
   outputs.push_back(output);
 }
 
-Domain
-BinaryOperator::GetBounds(Processor proc)
-{
+Domain BinaryOperator::GetBounds(Processor proc) {
   const size_t dims = outputs[0]->bounds.size();
   DomainPoint lo, hi;
   lo.dim = dims;
@@ -67,15 +64,14 @@ BinaryOperator::GetBounds(Processor proc)
   return strategy->find_local_domain(proc, global);
 }
 
-void
-BinaryOperator::Load(Realm::Processor proc)
-{
+void BinaryOperator::Load(Realm::Processor proc) {
   assert(proc.kind() == strategy->kind);
   // If this processor is not used for this layer there is nothing to do
-  if (!strategy->is_local_processor(proc))
+  if (!strategy->is_local_processor(proc)) {
     return;
-  const unsigned local_index = strategy->find_local_offset(proc);
-  BinaryArgs& proc_args = args[local_index];
+  }
+  unsigned const local_index = strategy->find_local_offset(proc);
+  BinaryArgs &proc_args = args[local_index];
   proc_args.owner = this;
   proc_args.op_type = op_type;
   proc_args.bounds = GetBounds(proc);
@@ -118,33 +114,38 @@ BinaryOperator::Load(Realm::Processor proc)
 #endif
 }
 
-void
-BinaryOperator::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void BinaryOperator::initialize(LegionModelInstance *instance,
+                                unsigned const instance_index,
+                                Legion::Runtime *runtime,
+                                Legion::Context ctx,
+                                Legion::MapperID mapper) {
   const Domain launch_domain = strategy->get_launch_domain();
   // Find or create the launch space domain
   IndexSpace launch_space = instance->find_or_create_index_space(launch_domain);
   // Also get the sharding function from the strategy
-  ShardingFunction* shardfn = strategy->sharding_function;
+  ShardingFunction *shardfn = strategy->sharding_function;
   // Construct a future map for the pass-by-value arguments
   std::map<DomainPoint, TaskArgument> values;
   for (Domain::DomainPointIterator itr(launch_domain); itr; itr++) {
     const Processor proc = shardfn->find_proc(itr.p, launch_domain);
-    if (!strategy->is_local_processor(proc))
+    if (!strategy->is_local_processor(proc)) {
       continue;
-    const unsigned local_index = strategy->find_local_offset(proc);
+    }
+    unsigned const local_index = strategy->find_local_offset(proc);
     values[itr.p] = TaskArgument(args + local_index, sizeof(BinaryArgs));
   }
   argmaps[instance_index] = runtime->construct_future_map(
       ctx, launch_space, values, true /*collective*/, shardfn->sharding_id);
 
-  IndexTaskLauncher& launcher = launchers[instance_index];
-  launcher = IndexTaskLauncher(
-      BINARY_TASK_ID, launch_space, TaskArgument(NULL, 0),
-      ArgumentMap(argmaps[instance_index]), Predicate::TRUE_PRED,
-      false /*must*/, mapper, strategy->tag);
+  IndexTaskLauncher &launcher = launchers[instance_index];
+  launcher = IndexTaskLauncher(BINARY_TASK_ID,
+                               launch_space,
+                               TaskArgument(NULL, 0),
+                               ArgumentMap(argmaps[instance_index]),
+                               Predicate::TRUE_PRED,
+                               false /*must*/,
+                               mapper,
+                               strategy->tag);
   LogicalRegion input0_region = inputs[0]->region[instance_index];
   LogicalRegion input1_region = inputs[1]->region[instance_index];
   LogicalPartition input0_part =
@@ -152,13 +153,17 @@ BinaryOperator::initialize(
   LogicalPartition input1_part =
       instance->find_or_create_tiled_partition(inputs[1], strategy);
   if (inplace) {
-    launcher.add_region_requirement(RegionRequirement(
-        input0_part, 0 /*projection id*/, LEGION_READ_WRITE, LEGION_EXCLUSIVE,
-        input0_region));
+    launcher.add_region_requirement(RegionRequirement(input0_part,
+                                                      0 /*projection id*/,
+                                                      LEGION_READ_WRITE,
+                                                      LEGION_EXCLUSIVE,
+                                                      input0_region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(
-        input1_part, 0 /*projection id*/, LEGION_READ_ONLY, LEGION_EXCLUSIVE,
-        input1_region));
+    launcher.add_region_requirement(RegionRequirement(input1_part,
+                                                      0 /*projection id*/,
+                                                      LEGION_READ_ONLY,
+                                                      LEGION_EXCLUSIVE,
+                                                      input1_region));
     launcher.add_field(1, FID_DATA);
   } else {
     // Create a logical region for the output data
@@ -168,49 +173,54 @@ BinaryOperator::initialize(
     LogicalPartition output_part =
         instance->find_or_create_tiled_partition(outputs[0], strategy);
 
-    launcher.add_region_requirement(RegionRequirement(
-        output_part, 0 /*projection id*/, LEGION_WRITE_DISCARD,
-        LEGION_EXCLUSIVE, output_region));
+    launcher.add_region_requirement(RegionRequirement(output_part,
+                                                      0 /*projection id*/,
+                                                      LEGION_WRITE_DISCARD,
+                                                      LEGION_EXCLUSIVE,
+                                                      output_region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(
-        input0_part, 0 /*projection id*/, LEGION_READ_ONLY, LEGION_EXCLUSIVE,
-        input0_region));
+    launcher.add_region_requirement(RegionRequirement(input0_part,
+                                                      0 /*projection id*/,
+                                                      LEGION_READ_ONLY,
+                                                      LEGION_EXCLUSIVE,
+                                                      input0_region));
     launcher.add_field(1, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(
-        input1_part, 0 /*projection id*/, LEGION_READ_ONLY, LEGION_EXCLUSIVE,
-        input1_region));
+    launcher.add_region_requirement(RegionRequirement(input1_part,
+                                                      0 /*projection id*/,
+                                                      LEGION_READ_ONLY,
+                                                      LEGION_EXCLUSIVE,
+                                                      input1_region));
     launcher.add_field(2, FID_DATA);
   }
 }
 
-void
-BinaryOperator::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void BinaryOperator::forward(LegionModelInstance *instance,
+                             unsigned const instance_index,
+                             Legion::Runtime *runtime,
+                             Legion::Context ctx,
+                             Legion::MapperID mapper) {
   runtime->execute_index_space(ctx, launchers[instance_index]);
 }
 
-void
-BinaryOperator::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void BinaryOperator::finalize(LegionModelInstance *instance,
+                              unsigned const instance_index,
+                              Legion::Runtime *runtime,
+                              Legion::Context ctx,
+                              Legion::MapperID mapper) {
   argmaps[instance_index] = FutureMap();
 }
 
-void
-BinaryOperator::Free(Realm::Processor proc)
-{
+void BinaryOperator::Free(Realm::Processor proc) {
   assert(proc.kind() == strategy->kind);
   // If this processor is not used for this layer there is nothing to do
-  if (!strategy->is_local_processor(proc))
+  if (!strategy->is_local_processor(proc)) {
     return;
+  }
 #ifdef LEGION_USE_CUDA
   if ((proc.kind() == Processor::TOC_PROC) &&
       use_cudnn(op_type, outputs[0]->type)) {
-    const unsigned local_index = strategy->find_local_offset(proc);
-    BinaryArgs& proc_args = args[local_index];
+    unsigned const local_index = strategy->find_local_offset(proc);
+    BinaryArgs &proc_args = args[local_index];
     CHECK_CUDNN(cudnnDestroyTensorDescriptor(proc_args.input0Tensor));
     CHECK_CUDNN(cudnnDestroyTensorDescriptor(proc_args.input1Tensor));
     CHECK_CUDNN(cudnnDestroyTensorDescriptor(proc_args.outputTensor));
@@ -219,45 +229,42 @@ BinaryOperator::Free(Realm::Processor proc)
 #endif
 }
 
-/*static*/ void
-BinaryOperator::PreregisterTaskVariants(void)
-{
+/*static*/ void BinaryOperator::PreregisterTaskVariants(void) {
   {
     TaskVariantRegistrar cpu_registrar(BINARY_TASK_ID, "Binary CPU");
     cpu_registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     cpu_registrar.set_leaf();
-    Runtime::preregister_task_variant<forward_cpu>(
-        cpu_registrar, "Binary Operator");
+    Runtime::preregister_task_variant<forward_cpu>(cpu_registrar,
+                                                   "Binary Operator");
   }
 #ifdef LEGION_USE_CUDA
   {
     TaskVariantRegistrar gpu_registrar(BINARY_TASK_ID, "Binary GPU");
     gpu_registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     gpu_registrar.set_leaf();
-    Runtime::preregister_task_variant<forward_gpu>(
-        gpu_registrar, "Binary Operator");
+    Runtime::preregister_task_variant<forward_gpu>(gpu_registrar,
+                                                   "Binary Operator");
   }
 #endif
 }
 
 /*static*/ void
-BinaryOperator::forward_cpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+    BinaryOperator::forward_cpu(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
   // TODO: implement this
   assert(false);
 }
 
 #ifdef LEGION_USE_CUDA
-/*static*/ void
-BinaryOperator::forward_gpu(
-    const Legion::Task* task,
-    const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-    Legion::Runtime* runtime)
-{
+/*static*/ void BinaryOperator::forward_gpu(
+    Legion::Task const *task,
+    std::vector<Legion::PhysicalRegion> const &regions,
+    Legion::Context ctx,
+    Legion::Runtime *runtime) {
   assert(task->local_arglen == sizeof(BinaryArgs));
-  const BinaryArgs* args = (const BinaryArgs*)task->local_args;
+  BinaryArgs const *args = (BinaryArgs const *)task->local_args;
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   ::cudaStream_t stream;
   CHECK_CUDA(cudaStreamCreate(&stream));
@@ -278,19 +285,19 @@ BinaryOperator::forward_gpu(
   if (args->inplace) {
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);
-    void* inout_ptr = nullptr;
-    const void* input1_ptr = nullptr;
+    void *inout_ptr = nullptr;
+    void const *input1_ptr = nullptr;
     size_t volume = 0;
     switch (args->bounds.get_dim()) {
-#define DIMFUNC(DIM)                                            \
-  case DIM: {                                                   \
-    const Rect<DIM> bounds = args->bounds;                      \
-    volume = bounds.volume();                                   \
-    inout_ptr = TensorAccessor<LEGION_READ_WRITE, DIM>::access( \
-        args->datatype, bounds, regions[0]);                    \
-    input1_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access( \
-        args->datatype, bounds, regions[1]);                    \
-    break;                                                      \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    const Rect<DIM> bounds = args->bounds;                                     \
+    volume = bounds.volume();                                                  \
+    inout_ptr = TensorAccessor<LEGION_READ_WRITE, DIM>::access(                \
+        args->datatype, bounds, regions[0]);                                   \
+    input1_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access(                \
+        args->datatype, bounds, regions[1]);                                   \
+    break;                                                                     \
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -301,22 +308,22 @@ BinaryOperator::forward_gpu(
   } else {
     assert(regions.size() == 3);
     assert(task->regions.size() == 3);
-    const void* input0_ptr = nullptr;
-    const void* input1_ptr = nullptr;
-    void* output_ptr = nullptr;
+    void const *input0_ptr = nullptr;
+    void const *input1_ptr = nullptr;
+    void *output_ptr = nullptr;
     size_t volume = 0;
     switch (args->bounds.get_dim()) {
-#define DIMFUNC(DIM)                                                \
-  case DIM: {                                                       \
-    const Rect<DIM> bounds = args->bounds;                          \
-    volume = bounds.volume();                                       \
-    output_ptr = TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access( \
-        args->datatype, bounds, regions[0]);                        \
-    input0_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access(     \
-        args->datatype, bounds, regions[1]);                        \
-    input1_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access(     \
-        args->datatype, bounds, regions[2]);                        \
-    break;                                                          \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    const Rect<DIM> bounds = args->bounds;                                     \
+    volume = bounds.volume();                                                  \
+    output_ptr = TensorAccessor<LEGION_WRITE_DISCARD, DIM>::access(            \
+        args->datatype, bounds, regions[0]);                                   \
+    input0_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access(                \
+        args->datatype, bounds, regions[1]);                                   \
+    input1_ptr = TensorAccessor<LEGION_READ_ONLY, DIM>::access(                \
+        args->datatype, bounds, regions[2]);                                   \
+    break;                                                                     \
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -336,15 +343,13 @@ BinaryOperator::forward_gpu(
     CHECK_CUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     CHECK_CUDA(cudaEventDestroy(t_start));
     CHECK_CUDA(cudaEventDestroy(t_end));
-    printf(
-        "%s [Binary] forward time (CF) = %.2fms\n",
-        args->owner->op_name.c_str(), elapsed);
+    printf("%s [Binary] forward time (CF) = %.2fms\n",
+           args->owner->op_name.c_str(),
+           elapsed);
   }
 }
 
-/*static*/ bool
-BinaryOperator::use_cudnn(OperatorType optype, DataType dtype)
-{
+/*static*/ bool BinaryOperator::use_cudnn(OperatorType optype, DataType dtype) {
   if (to_op_tensor_comp_type(dtype, dtype, dtype) != CUDNN_DATA_UINT8) {
     switch (optype) {
       case OperatorType::OP_EW_ADD:
@@ -360,4 +365,6 @@ BinaryOperator::use_cudnn(OperatorType optype, DataType dtype)
 
 #endif
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

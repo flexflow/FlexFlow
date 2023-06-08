@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_KERNELS_INCLUDE_KERNELS_NCCL_H
-#define _FLEXFLOW_KERNELS_INCLUDE_KERNELS_NCCL_H 
+#define _FLEXFLOW_KERNELS_INCLUDE_KERNELS_NCCL_H
 
 #ifdef FF_USE_NCCL
-#include <nccl.h>
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
+#include <nccl.h>
 
 #define checkNCCL(cmd)                                                         \
   do {                                                                         \
@@ -19,8 +19,8 @@
   } while (0)
 
 #else
-struct ncclUniqueId { };
-struct ncclComm_t { };
+struct ncclUniqueId {};
+struct ncclComm_t {};
 #endif
 
 namespace FlexFlow {
@@ -30,8 +30,8 @@ namespace NCCL {
 ncclUniqueId generate_unique_id();
 ncclComm_t create_comm(ncclUniqueId const &, int num_ranks, int my_rank);
 
-}
-}
-}
+} // namespace NCCL
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif

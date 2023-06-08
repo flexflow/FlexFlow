@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
+#include "op-attrs/ops/attention.h"
 #include "op_task_signature.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/attention.h"
 
 namespace FlexFlow {
 
-template <> void register_task<ATTENTION_INIT_TASK_ID>();
-template <> void register_task<ATTENTION_FWD_TASK_ID>();
-template <> void register_task<ATTENTION_BWD_TASK_ID>();
+template <>
+void register_task<ATTENTION_INIT_TASK_ID>();
+template <>
+void register_task<ATTENTION_FWD_TASK_ID>();
+template <>
+void register_task<ATTENTION_BWD_TASK_ID>();
 
 OpTaskInvocation init(MultiHeadAttentionAttrs const &);
 OpTaskInvocation forward(MultiHeadAttentionAttrs const &);
@@ -63,7 +66,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 /*                      bool allocate_weights); */
 /*   MultiHeadAttention(FFModel &model, */
 /*                      ParallelTensor const &query, */
-/*                      ParallelTensor const &key, */ 
+/*                      ParallelTensor const &key, */
 /*                      ParallelTensor const &value, */
 /*                      MultiHeadAttentionAttrs const &, */
 /*                      bool allocate_weights = false, */
@@ -71,26 +74,29 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 /*   void init(FFModel const &) override; */
 /*   void forward(FFModel const &) override; */
 /*   void backward(FFModel const &) override; */
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
 /*                              MachineView const &mv, */
 /*                              CostMetrics &cost_metrics) const override; */
-
 
 /*   OpTaskBinding get_init_task_binding() const override; */
 /*   TaskID get_init_task_id() const override; */
@@ -108,6 +114,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 /* template <> OpTaskSignature get_signature<ATTENTION_FWD_TASK_ID>(); */
 /* template <> OpTaskSignature get_signature<ATTENTION_BWD_TASK_ID>(); */
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -17,22 +17,24 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-MatMul::MatMul(
-    LegionModelState* model, const LayerStrategy* strategy, const char* name)
-    : Operator(model, strategy, OperatorType::OP_MATMUL, name, 2, 0, 1)
-{
-}
+MatMul::MatMul(LegionModelState *model,
+               LayerStrategy const *strategy,
+               char const *name)
+    : Operator(model, strategy, OperatorType::OP_MATMUL, name, 2, 0, 1) {}
 
 template <unsigned DIM>
-void
-MatMul::compute_in1_parameters(Tensor* in1, Tensor* out)
-{
+void MatMul::compute_in1_parameters(Tensor *in1, Tensor *out) {
   Rect<DIM> extent, colors;
   Transform<DIM, DIM> transform;
-  for (int i = 0; i < DIM; i++)
-    for (int j = 0; j < DIM; j++) transform[i][j] = 0;
+  for (int i = 0; i < DIM; i++) {
+    for (int j = 0; j < DIM; j++) {
+      transform[i][j] = 0;
+    }
+  }
   assert(out->bounds.size() >= in1->bounds.size());
   size_t dimoff = out->bounds.size() - in1->bounds.size();
   for (int i = 0; i < DIM; i++) {
@@ -58,13 +60,14 @@ MatMul::compute_in1_parameters(Tensor* in1, Tensor* out)
 }
 
 template <unsigned DIM>
-void
-MatMul::compute_in2_parameters(Tensor* in2, Tensor* out)
-{
+void MatMul::compute_in2_parameters(Tensor *in2, Tensor *out) {
   Rect<DIM> extent, colors;
   Transform<DIM, DIM> transform;
-  for (int i = 0; i < DIM; i++)
-    for (int j = 0; j < DIM; j++) transform[i][j] = 0;
+  for (int i = 0; i < DIM; i++) {
+    for (int j = 0; j < DIM; j++) {
+      transform[i][j] = 0;
+    }
+  }
   assert(out->bounds.size() >= in2->bounds.size());
   size_t dimoff = out->bounds.size() - in2->bounds.size();
   for (int i = 0; i < DIM; i++) {
@@ -89,9 +92,7 @@ MatMul::compute_in2_parameters(Tensor* in2, Tensor* out)
   in2_colors = colors;
 }
 
-void
-MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
-{
+void MatMul::Configure(Tensor *in1, Tensor *in2, Tensor *out) {
   assert(in1 != nullptr);
   assert(in2 != nullptr);
   assert(out != nullptr);
@@ -118,8 +119,9 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
       if (off <= in2_dim) {
         const size_t size = in2->bounds[in2_dim - off];
         assert((size == 1) || (size == out_size));
-        if (size == 1)
+        if (size == 1) {
           in2_broadcasts |= (1 << (off - 3));
+        }
       }
     }
 
@@ -127,7 +129,7 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
     Transform<1, 1> transform;
     transform[0][0] = 0;
     extent.lo[0] = 0;
-    extent.hi[0] = in1->bounds[0] - 1;  // inclusive
+    extent.hi[0] = in1->bounds[0] - 1; // inclusive
     colors.lo[0] = 0;
     colors.hi[0] = 0;
     in1_transform = transform;
@@ -135,10 +137,10 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
     in1_colors = colors;
 
     switch (in2->bounds.size()) {
-#define DIMFUNC(DIM)                       \
-  case DIM: {                              \
-    compute_in2_parameters<DIM>(in2, out); \
-    break;                                 \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    compute_in2_parameters<DIM>(in2, out);                                     \
+    break;                                                                     \
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -161,16 +163,17 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
       if (off <= in1_dim) {
         const size_t size = in1->bounds[in1_dim - off];
         assert((size == 1) || (size == out_size));
-        if (size == 1)
+        if (size == 1) {
           in1_broadcasts |= (1 << (off - 3));
+        }
       }
     }
 
     switch (in1->bounds.size()) {
-#define DIMFUNC(DIM)                       \
-  case DIM: {                              \
-    compute_in1_parameters<DIM>(in1, out); \
-    break;                                 \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    compute_in1_parameters<DIM>(in1, out);                                     \
+    break;                                                                     \
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -182,7 +185,7 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
     Transform<1, 1> transform;
     transform[0][0] = 0;
     extent.lo[0] = 0;
-    extent.hi[0] = in2->bounds[0] - 1;  // inclusive
+    extent.hi[0] = in2->bounds[0] - 1; // inclusive
     colors.lo[0] = 0;
     colors.hi[0] = 0;
     in2_transform = transform;
@@ -210,23 +213,25 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
       if (off <= in1_dim) {
         const size_t size = in1->bounds[in1_dim - off];
         assert((size == 1) || (size == out_size));
-        if (size == 1)
+        if (size == 1) {
           in1_broadcasts |= (1 << (off - 3));
+        }
       }
       if (off <= in2_dim) {
         const size_t size = in2->bounds[in2_dim - off];
         assert((size == 1) || (size == out_size));
-        if (size == 1)
+        if (size == 1) {
           in2_broadcasts |= (1 << (off - 3));
+        }
       }
     }
 
     // Finally fill in the input transforms, extents, and colors for the inputs
     switch (in1->bounds.size()) {
-#define DIMFUNC(DIM)                       \
-  case DIM: {                              \
-    compute_in1_parameters<DIM>(in1, out); \
-    break;                                 \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    compute_in1_parameters<DIM>(in1, out);                                     \
+    break;                                                                     \
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -235,10 +240,10 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
     }
 
     switch (in2->bounds.size()) {
-#define DIMFUNC(DIM)                       \
-  case DIM: {                              \
-    compute_in2_parameters<DIM>(in2, out); \
-    break;                                 \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    compute_in2_parameters<DIM>(in2, out);                                     \
+    break;                                                                     \
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -248,70 +253,60 @@ MatMul::Configure(Tensor* in1, Tensor* in2, Tensor* out)
   }
 
   // Hack so that we can access the tensors in the tests
-  auto vec_ptr = reinterpret_cast<std::vector<Tensor*>*>(model);
+  auto vec_ptr = reinterpret_cast<std::vector<Tensor *> *>(model);
   vec_ptr->emplace_back(in1);
   vec_ptr->emplace_back(in2);
   vec_ptr->emplace_back(out);
 }
 
-Domain
-MatMul::GetIn1Bounds(Processor proc)
-{
+Domain MatMul::GetIn1Bounds(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-Domain
-MatMul::GetIn2Bounds(Processor proc)
-{
+Domain MatMul::GetIn2Bounds(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-Domain
-MatMul::GetOutBounds(Processor proc)
-{
+Domain MatMul::GetOutBounds(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-MatMul::Load(Processor proc)
-{
+void MatMul::Load(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-MatMul::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void MatMul::initialize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Runtime *runtime,
+                        Context ctx,
+                        MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-MatMul::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void MatMul::forward(LegionModelInstance *instance,
+                     unsigned const instance_index,
+                     Runtime *runtime,
+                     Context ctx,
+                     MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-MatMul::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void MatMul::finalize(LegionModelInstance *instance,
+                      unsigned const instance_index,
+                      Runtime *runtime,
+                      Context ctx,
+                      MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-MatMul::Free(Processor proc)
-{
+void MatMul::Free(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
@@ -320,18 +315,15 @@ MatMul::Free(Processor proc)
 MatMul::FunctorTable MatMul::in1_functors;
 MatMul::FunctorTable MatMul::in2_functors;
 
-/*static*/ void
-MatMul::PreregisterTaskVariants(void)
-{
+/*static*/ void MatMul::PreregisterTaskVariants(void) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-/*static*/ void
-MatMul::forward_cpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void MatMul::forward_cpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
@@ -339,14 +331,15 @@ MatMul::forward_cpu(
 MatMulArgs::MatMulArgs(void) {}
 
 #ifdef LEGION_USE_CUDA
-/*static*/ void
-MatMul::forward_gpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void MatMul::forward_gpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 #endif
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

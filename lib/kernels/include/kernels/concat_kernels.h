@@ -9,7 +9,7 @@ namespace FlexFlow {
 
 class ConcatPerDeviceState : public PerDeviceOpState {
 public:
-  ConcatPerDeviceState(FFHandler handle) : PerDeviceOpState(handle) {};
+  ConcatPerDeviceState(FFHandler handle) : PerDeviceOpState(handle){};
   int legion_axis;
   char op_name[MAX_OPNAME];
 };
@@ -25,14 +25,14 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const *inputs,
                     int num_inputs);
 
-void backward_kernel(ffStream_t stream, 
-                     ConcatPerDeviceState const *m, 
+void backward_kernel(ffStream_t stream,
+                     ConcatPerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const *input_grads,
                      int num_inputs);
 
-}
-}
-}
+} // namespace Concat
+} // namespace Kernels
+} // namespace FlexFlow
 
-#endif 
+#endif

@@ -49,9 +49,9 @@ enum class Op {
   EW_DIV,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Div
   EW_EQUAL, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Equal
   EW_GREATER, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Greater
-  EW_LESS, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Less
-  EW_MAX,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Max
-  EW_MIN,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Min
+  EW_LESS,    // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Less
+  EW_MAX,     // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Max
+  EW_MIN,     // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Min
   REDUCE_ARGMAX, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMax
   REDUCE_ARGMIN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMin
   REDUCE_MAX, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMax
@@ -59,7 +59,7 @@ enum class Op {
   REDUCE_MIN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMin
   REDUCE_PROD, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceProd
   REDUCE_SUM, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceSum
-  PAD, // https://github.com/dmlc/tvm/blob/master/topi/python/topi/nn/pad.py
+  PAD,   // https://github.com/dmlc/tvm/blob/master/topi/python/topi/nn/pad.py
   SHAPE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Shape
   SIZE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
   TOPK,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
@@ -100,7 +100,7 @@ using OperatorType = Op;
 
 std::string get_operator_type_name(Op op);
 
-}
+} // namespace FlexFlow
 
 namespace fmt {
 
@@ -290,6 +290,6 @@ struct formatter<::FlexFlow::Op> : formatter<string_view> {
   }
 };
 
-}
+} // namespace fmt
 
 #endif

@@ -25,7 +25,6 @@
 #include "initializer.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/param_sync.h"
-#include "create_grad.h"
 
 namespace FlexFlow {
 
@@ -58,9 +57,14 @@ public:
 
 using ParallelParameter = ParallelTensor;
 
-}
+} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::ParallelTensor, dims, data_type, sync_type, initializer, create_gradients);
+VISITABLE_STRUCT(::FlexFlow::ParallelTensor,
+                 dims,
+                 data_type,
+                 sync_type,
+                 initializer,
+                 create_gradients);
 MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensor);
 
 namespace FlexFlow {

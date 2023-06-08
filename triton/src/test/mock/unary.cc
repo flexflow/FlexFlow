@@ -17,25 +17,31 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 UnaryArgs::UnaryArgs() {}
 
-UnaryOperator::UnaryOperator(
-    LegionModelState* model, const LayerStrategy* strategy, OperatorType type,
-    const void* scalar, DataType scalar_type, bool inplace, const char* name)
-    : Operator(
-          model, strategy, type, name, 1 /*inputs*/, 0 /*weights*/,
-          1 /*outputs*/),
-      scalar_type(scalar_type), inplace(inplace)
-{
-}
+UnaryOperator::UnaryOperator(LegionModelState *model,
+                             LayerStrategy const *strategy,
+                             OperatorType type,
+                             void const *scalar,
+                             DataType scalar_type,
+                             bool inplace,
+                             char const *name)
+    : Operator(model,
+               strategy,
+               type,
+               name,
+               1 /*inputs*/,
+               0 /*weights*/,
+               1 /*outputs*/),
+      scalar_type(scalar_type), inplace(inplace) {}
 
 UnaryOperator::~UnaryOperator() {}
 
-void
-UnaryOperator::Configure(Tensor* input, Tensor* output)
-{
+void UnaryOperator::Configure(Tensor *input, Tensor *output) {
   assert(input != nullptr);
   assert(output != nullptr);
   assert(input->type == scalar_type);
@@ -43,57 +49,54 @@ UnaryOperator::Configure(Tensor* input, Tensor* output)
   assert(!inplace || (input == output));
   // Make sure that they have the same bounds
   assert(input->bounds.size() == output->bounds.size());
-  for (unsigned idx = 0; idx < input->bounds.size(); idx++)
+  for (unsigned idx = 0; idx < input->bounds.size(); idx++) {
     assert(input->bounds[idx] == output->bounds[idx]);
+  }
 
   // Hack so that we can access the tensors in the tests
-  auto vec_ptr = reinterpret_cast<std::vector<Tensor*>*>(model);
+  auto vec_ptr = reinterpret_cast<std::vector<Tensor *> *>(model);
   vec_ptr->emplace_back(input);
   vec_ptr->emplace_back(output);
 }
 
-void
-UnaryOperator::Load(Realm::Processor processor)
-{
+void UnaryOperator::Load(Realm::Processor processor) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-UnaryOperator::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void UnaryOperator::initialize(LegionModelInstance *instance,
+                               unsigned const instance_index,
+                               Legion::Runtime *runtime,
+                               Legion::Context ctx,
+                               Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-UnaryOperator::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void UnaryOperator::forward(LegionModelInstance *instance,
+                            unsigned const instance_index,
+                            Legion::Runtime *runtime,
+                            Legion::Context ctx,
+                            Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-UnaryOperator::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void UnaryOperator::finalize(LegionModelInstance *instance,
+                             unsigned const instance_index,
+                             Legion::Runtime *runtime,
+                             Legion::Context ctx,
+                             Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-UnaryOperator::Free(Realm::Processor processor)
-{
+void UnaryOperator::Free(Realm::Processor processor) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-UnaryOperator::PreregisterTaskVariants()
-{
+void UnaryOperator::PreregisterTaskVariants() {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

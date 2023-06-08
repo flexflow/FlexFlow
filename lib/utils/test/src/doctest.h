@@ -1,16 +1,20 @@
 #include "doctest/doctest.h"
-#include <unordered_set>
-#include <unordered_map>
-#include <sstream>
-#include <vector>
 #include "utils/containers.h"
+#include <sstream>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
-namespace doctest
-{
+namespace doctest {
 
 template <typename InputIt, typename Stringifiable = std::string>
-std::string doctest_print_container(
-  InputIt first, InputIt last, std::string const &open, std::string const &delimiter, std::string const &close, std::function<Stringifiable(InputIt)> const &f) {
+std::string
+    doctest_print_container(InputIt first,
+                            InputIt last,
+                            std::string const &open,
+                            std::string const &delimiter,
+                            std::string const &close,
+                            std::function<Stringifiable(InputIt)> const &f) {
   if (first == last) {
     return open + "(empty)" + close;
   } else {
@@ -19,16 +23,22 @@ std::string doctest_print_container(
 }
 
 template <typename InputIt>
-std::string doctest_print_container(
-  InputIt first, InputIt last, std::string const &open, std::string const &delimiter, std::string const &close) {
-  return doctest_print_container<InputIt, decltype(*first)>(first, last, open, delimiter, close, [](InputIt ref) {
-    return *ref;
-  });
+std::string doctest_print_container(InputIt first,
+                                    InputIt last,
+                                    std::string const &open,
+                                    std::string const &delimiter,
+                                    std::string const &close) {
+  return doctest_print_container<InputIt, decltype(*first)>(
+      first, last, open, delimiter, close, [](InputIt ref) { return *ref; });
 }
 
 template <typename Container>
-std::string doctest_print_container(Container const &c, std::string const &open, std::string const &delimiter, std::string const &close) {
-  return doctest_print_container<decltype(c.cbegin())>(c.cbegin(), c.cend(), open, delimiter, close);
+std::string doctest_print_container(Container const &c,
+                                    std::string const &open,
+                                    std::string const &delimiter,
+                                    std::string const &close) {
+  return doctest_print_container<decltype(c.cbegin())>(
+      c.cbegin(), c.cend(), open, delimiter, close);
 }
 
 template <typename T>
@@ -57,4 +67,4 @@ struct StringMaker<std::vector<T>> {
     return doctest_print_container(vec, "[ ", ", ", " ]").c_str();
   }
 };
-}
+} // namespace doctest

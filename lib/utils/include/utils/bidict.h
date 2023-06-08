@@ -7,9 +7,7 @@ namespace FlexFlow {
 
 template <typename L, typename R>
 struct bidict {
-  bidict() 
-    : fwd_map{}, bwd_map{}
-  { }
+  bidict() : fwd_map{}, bwd_map{} {}
 
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {
@@ -37,7 +35,6 @@ struct bidict {
         break;
       }
     }
-
   }
 
   void equate(L const &l, R const &r) {
@@ -65,7 +62,8 @@ struct bidict {
   /*   using pointer = std::pair<L, R> const *; */
   /*   using reference = std::pair<L, R> const &; */
 
-  /*   explicit const_iterator(typename std::unordered_map<tl::optional<L>, tl::optional<R>>::const_iterator); */
+  /*   explicit const_iterator(typename std::unordered_map<tl::optional<L>,
+   * tl::optional<R>>::const_iterator); */
 
   /*   reference operator*() const { */
   /*     this->current = {this->it->first.value(), this->it->second.value()}; */
@@ -80,9 +78,9 @@ struct bidict {
   /*     return *this; */
   /*   } */
   /*   const_iterator operator++(int) { */
-  /*     auto tmp = *this; */ 
-  /*     ++(*this); */ 
-  /*     return tmp; */ 
+  /*     auto tmp = *this; */
+  /*     ++(*this); */
+  /*     return tmp; */
   /*   } */
 
   /*   bool operator==(const_iterator const &other) const { */
@@ -93,7 +91,8 @@ struct bidict {
   /*   } */
   /* private: */
   /*   mutable tl::optional<std::pair<L, R>> current; */
-  /*   typename std::unordered_map<tl::optional<L>, tl::optional<R>>::const_iterator it; */
+  /*   typename std::unordered_map<tl::optional<L>,
+   * tl::optional<R>>::const_iterator it; */
   /* }; */
 
   /* const_iterator cbegin() const { */
@@ -131,14 +130,16 @@ struct bidict {
   bidict<R, L> reversed() const {
     return bidict<R, L>(bwd_map, fwd_map);
   }
+
 private:
-  bidict(std::unordered_map<L, R> const &fwd_map, std::unordered_map<R, L> const &bwd_map) 
-    : fwd_map(fwd_map), bwd_map(bwd_map) { }
+  bidict(std::unordered_map<L, R> const &fwd_map,
+         std::unordered_map<R, L> const &bwd_map)
+      : fwd_map(fwd_map), bwd_map(bwd_map) {}
 
   std::unordered_map<L, R> fwd_map;
   std::unordered_map<R, L> bwd_map;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

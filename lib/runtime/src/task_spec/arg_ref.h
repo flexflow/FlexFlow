@@ -1,27 +1,21 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 #define _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 
-#include "utils/visitable.h"
-#include "utils/type_index.h"
 #include "arg_type_runtime_tag.h"
-#include "profiling.h"
 #include "kernels/ff_handle.h"
+#include "profiling.h"
+#include "utils/type_index.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
-enum class ArgRefType {
-  ENABLE_PROFILING,
-  FF_HANDLE,
-  PROFILING_SETTINGS
-};
+enum class ArgRefType { ENABLE_PROFILING, FF_HANDLE, PROFILING_SETTINGS };
 
 template <typename T>
 struct ArgRef : public use_visitable_cmp<ArgRef<T>> {
 public:
   ArgRef() = delete;
-  ArgRef(ArgRefType ref_type)
-    : ref_type(ref_type)
-  { }
+  ArgRef(ArgRefType ref_type) : ref_type(ref_type) {}
 
 public:
   ArgRefType ref_type;
@@ -50,20 +44,19 @@ public:
 
     return ArgRefSpec(ArgTypeRuntimeTag::create<T>(), r.ref_type);
   }
+
 private:
-  ArgRefSpec(ArgTypeRuntimeTag const &type_tag, ArgRefType ref_type) 
-    : type_tag(type_tag), ref_type(ref_type)
-  { }
+  ArgRefSpec(ArgTypeRuntimeTag const &type_tag, ArgRefType ref_type)
+      : type_tag(type_tag), ref_type(ref_type) {}
 
   ArgTypeRuntimeTag type_tag;
   ArgRefType ref_type;
 };
 
-
 ArgRef<EnableProfiling> enable_profiling();
 ArgRef<ProfilingSettings> profiling_settings();
 ArgRef<PerDeviceFFHandle> ff_handle();
 
-}
+} // namespace FlexFlow
 
 #endif

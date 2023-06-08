@@ -3,8 +3,8 @@
 
 #include "digraph.h"
 #include "multidigraph.h"
-#include "utils/variant.h"
 #include "utils/optional.h"
+#include "utils/variant.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -27,8 +27,9 @@ struct Parallel {
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 
-SerialParallelDecomposition get_serial_parallel_decomposition(DiGraphView const &);
+SerialParallelDecomposition
+    get_serial_parallel_decomposition(DiGraphView const &);
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

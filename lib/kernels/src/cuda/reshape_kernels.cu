@@ -13,40 +13,43 @@
  * limitations under the License.
  */
 
-#include "kernels/reshape_kernels.h"
 #include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"
+#include "kernels/reshape_kernels.h"
 
 namespace FlexFlow {
 
-ReshapePerDeviceState::ReshapePerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
+ReshapePerDeviceState::ReshapePerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace Reshape {
 
 template <DataType T>
 struct ForwardKernel {
-  void operator() (cudaStream_t stream,
-                    GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output) {
+  void operator()(cudaStream_t stream,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output) {
     checkCUDA(cudaMemcpyAsync(output.get<T>(),
-                            input.get<T>(),
-                            input.shape.num_elements() * sizeof(T),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
+                              input.get<T>(),
+                              input.shape.num_elements() * sizeof(T),
+                              cudaMemcpyDeviceToDevice,
+                              stream));
   }
 }
 
 template <DataType T>
 struct BackwardKernel {
-  void operator() (cudaStream_t stream,
+  void operator()(cudaStream_t stream,
                   ReshapePerDeviceState const *m,
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     float alpha = 1.0f;
-    apply_add_with_scale<T>
-      <<<GET_BLOCKS(input.shape.num_elements()), CUDA_NUM_THREADS, 0, stream>>>(
-          input.get<T>(), output.get<T>(), input.shape.num_elements(), (T)alpha);
+    apply_add_with_scale<T><<<GET_BLOCKS(input.shape.num_elements()),
+                              CUDA_NUM_THREADS,
+                              0,
+                              stream>>>(
+        input.get<T>(), output.get<T>(), input.shape.num_elements(), (T)alpha);
   }
 }
 

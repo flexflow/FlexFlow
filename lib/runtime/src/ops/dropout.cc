@@ -1,9 +1,9 @@
 #include "dropout.h"
-#include "utils/hash-utils.h"
 #include "kernels/dropout_kernels.h"
 #include "legion/legion_utilities.h"
 #include "task_invocation.h"
 #include "task_signature.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -40,14 +40,15 @@ enum Slots {
   PROFILING
 }
 
-TaskInvocation init(DropoutAttrs const &attrs) {
+TaskInvocation
+    init(DropoutAttrs const &attrs) {
   TaskBinding binding;
 
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(FF_HANDLE, ff_handle());
 
-  return { DROPOUT_INIT_TASK_ID, binding };
+  return {DROPOUT_INIT_TASK_ID, binding};
 }
 
 TaskInvocation forward(DropoutAttrs const &attrs) {
@@ -60,7 +61,7 @@ TaskInvocation forward(DropoutAttrs const &attrs) {
   binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
-  return { DROPOUT_FWD_TASK_ID, binding };
+  return {DROPOUT_FWD_TASK_ID, binding};
 }
 
 TaskInvocation forward(DropoutAttrs const &attrs) {
@@ -73,7 +74,7 @@ TaskInvocation forward(DropoutAttrs const &attrs) {
   binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
-  return { DROPOUT_BWD_TASK_ID, binding };
+  return {DROPOUT_BWD_TASK_ID, binding};
 }
 
 Tensor FFModel::dropout(const Tensor input,
@@ -123,7 +124,6 @@ DropoutParams Dropout::get_params() const {
   params.seed = this->seed;
   return params;
 }
-
 
 Dropout::Dropout(FFModel &model,
                  const ParallelTensor _input,
@@ -193,16 +193,17 @@ Dropout::Dropout(FFModel &model,
 // }
 
 static PerDeviceOpState *init_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                                   std::vector<PhysicalRegion> const &regions,
+                                   Context ctx,
+                                   Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
   auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
   auto handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
 
-  DropoutPerDeviceState *m = new DropoutPerDeviceState(handle, attrs.rate, attrs.seed, enable_profiling);
-  
+  DropoutPerDeviceState *m = new DropoutPerDeviceState(
+      handle, attrs.rate, attrs.seed, enable_profiling);
+
   // assert(regions.size() == 2);
   // assert(task->regions.size() == 2);
   // Dropout *dropout = (Dropout *)task->args;
@@ -216,9 +217,9 @@ static PerDeviceOpState *init_task(Task const *task,
   //                      .best_affinity_to(task->target_proc)
   //                      .first();
   // assert(input_domain == output_domain);
-  // DropoutMeta *m = new DropoutMeta(handle, 
-  //                                  dropout->profiling, 
-  //                                  dropout->rate, 
+  // DropoutMeta *m = new DropoutMeta(handle,
+  //                                  dropout->profiling,
+  //                                  dropout->rate,
   //                                  dropout->seed,
   //                                  gpu_mem, output_domain);
   return m;
@@ -253,24 +254,23 @@ static PerDeviceOpState *init_task(Task const *task,
 // }
 
 static void forward_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
-  auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
   auto input = acc.get_tensor<READ_ONLY>(INPUT);
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  profile(
-    backward_kernel,
-    enable_profiling,
-    "[Dropout] forward_time = %.2lfms\n",
-    per_device_state,
-    input.get_float_ptr(),
-    output.get_float_ptr()
-  )
+  profile(backward_kernel,
+          enable_profiling,
+          "[Dropout] forward_time = %.2lfms\n",
+          per_device_state,
+          input.get_float_ptr(),
+          output.get_float_ptr())
   // // float alpha = 1.0f, beta = 0.0f;
   // assert(regions.size() == 2);
   // assert(task->regions.size() == 2);
@@ -317,25 +317,24 @@ static void forward_task(Task const *task,
   regions[1](I): output_grad
 */
 static void backward_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
-  auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
 
   auto input_grad = acc.get_tensor<READ_WRITE>(INPUT_GRAD);
   auto output_grad = acc.get_tensor<READ_ONLY>(OUTPUT_GRAD);
 
-  profile(
-    backward_kernel,
-    enable_profiling,
-    "[Dropout] backward_time = %.2lfms\n",
-    &per_device_state,
-    output_grad.get_float_ptr(),
-    input_grad.get_float_ptr()
-  )
+  profile(backward_kernel,
+          enable_profiling,
+          "[Dropout] backward_time = %.2lfms\n",
+          &per_device_state,
+          output_grad.get_float_ptr(),
+          input_grad.get_float_ptr())
 
   // // float alpha = 1.0f, beta = 0.0f;
   // assert(regions.size() == 2);
@@ -381,10 +380,12 @@ bool Dropout::measure_operator_cost(Simulator *sim,
     return false;
   }
   assert(sub_input.get_domain() == sub_output.get_domain());
-  DropoutPerDeviceState *m =
-      new DropoutPerDeviceState(sim->handler, 
-                      this->profiling, this->rate, this->seed, 
-                      sim->memory, sub_output.get_domain());
+  DropoutPerDeviceState *m = new DropoutPerDeviceState(sim->handler,
+                                                       this->profiling,
+                                                       this->rate,
+                                                       this->seed,
+                                                       sim->memory,
+                                                       sub_output.get_domain());
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -398,7 +399,9 @@ bool Dropout::measure_operator_cost(Simulator *sim,
   assert(m->profiling == false);
 
   std::function<void()> forward, backward;
-  forward = [&](ffStream_t stream) { forward_kernel(stream, m, input_ptr, output_ptr); };
+  forward = [&](ffStream_t stream) {
+    forward_kernel(stream, m, input_ptr, output_ptr);
+  };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
