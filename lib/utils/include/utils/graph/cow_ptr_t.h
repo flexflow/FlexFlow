@@ -66,11 +66,9 @@ struct cow_ptr_t {
     } else {
       auto shared = this->get_shared();
       this->set_unique(unique_t(shared->clone()));
-      if (auto ptr = mpark::get_if<unique_t>(&this->ptr)) {
-        return ptr->get();
-      }
-      return nullptr;
-    }
+      auto ptr = mpark::get_if<unique_t>(&this->ptr);
+      return ptr->get();
+  }
   }
 
   T &mutable_ref() const {
