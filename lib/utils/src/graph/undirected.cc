@@ -37,7 +37,9 @@ void swap(UndirectedGraph &lhs, UndirectedGraph &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-Node UndirectedGraph::add_node() { return this->ptr->add_node(); }
+Node UndirectedGraph::add_node() {
+  return this->ptr->add_node();
+}
 
 void UndirectedGraph::add_node_unsafe(Node const &n) {
   return this->ptr->add_node_unsafe(n);
@@ -56,11 +58,16 @@ void UndirectedGraph::remove_edge(UndirectedEdge const &e) {
 }
 
 std::unordered_set<UndirectedEdge>
-UndirectedGraph::query_edges(UndirectedEdgeQuery const &q) const {
+    UndirectedGraph::query_edges(UndirectedEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
 UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
+std::unordered_set<UndirectedEdge> UndirectedGraphView::query_edges(UndirectedEdgeQuery const & query) const {
+    return ptr->query_edges(query);
+  }
+
 } // namespace FlexFlow
+

@@ -60,19 +60,22 @@ struct GraphView {
     return maybe_owned_ref<IGraphView const>(this->ptr);
   }
 
-  IGraphView const *unsafe() const { return this->ptr.get(); }
+  IGraphView const *unsafe() const {
+    return this->ptr.get();
+  }
 
   static GraphView unsafe(IGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
                                  GraphView>::type
-  create(Args &&...args) {
+      create(Args &&...args) {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
+  GraphView(std::shared_ptr<IGraphView const> ptr):ptr(ptr){}
 private:
-  GraphView(std::shared_ptr<IGraphView const>);
+  
 
 private:
   std::shared_ptr<IGraphView const> ptr;
@@ -83,6 +86,7 @@ static_assert(is_rc_copy_virtual_compliant<IGraphView>::value,
 
 struct IGraph : IGraphView {
   IGraph(IGraph const &) = delete;
+  IGraph()=default;
   IGraph &operator=(IGraph const &) = delete;
 
   virtual Node add_node() = 0;
@@ -110,7 +114,7 @@ public:
 
   template <typename T>
   static typename std::enable_if<std::is_base_of<IGraph, T>::value, Graph>::type
-  create() {
+      create() {
     return Graph(make_unique<T>());
   }
 

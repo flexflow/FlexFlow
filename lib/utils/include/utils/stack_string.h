@@ -7,7 +7,8 @@
 
 namespace FlexFlow {
 
-template <typename Char, size_t MAXSIZE> struct stack_basic_string {
+template <typename Char, size_t MAXSIZE>
+struct stack_basic_string {
   stack_basic_string() = default;
 
   stack_basic_string(Char const *c) : contents(c, c + std::strlen(c)) {}
@@ -23,9 +24,13 @@ template <typename Char, size_t MAXSIZE> struct stack_basic_string {
     return result;
   }
 
-  std::size_t size() const { return this->contents.size(); }
+  std::size_t size() const {
+    return this->contents.size();
+  }
 
-  std::size_t length() const { return this->size(); }
+  std::size_t length() const {
+    return this->size();
+  }
 
   friend bool operator==(stack_basic_string const &lhs,
                          stack_basic_string const &rhs) {
@@ -58,7 +63,7 @@ namespace std {
 template <typename Char, size_t MAXSIZE>
 struct hash<::FlexFlow::stack_basic_string<Char, MAXSIZE>> {
   size_t
-  operator()(::FlexFlow::stack_basic_string<Char, MAXSIZE> const &s) const {
+      operator()(::FlexFlow::stack_basic_string<Char, MAXSIZE> const &s) const {
     return get_std_hash(s.contents);
   }
 };

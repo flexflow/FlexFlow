@@ -10,11 +10,13 @@
 
 namespace FlexFlow {
 
-template <typename T, std::size_t MAXSIZE> struct stack_vector {
+template <typename T, std::size_t MAXSIZE>
+struct stack_vector {
 public:
   stack_vector() = default;
 
-  template <typename Iterator> stack_vector(Iterator start, Iterator end) {
+  template <typename Iterator>
+  stack_vector(Iterator start, Iterator end) {
     assert(end - start >= 0);
     assert(end - start <= MAXSIZE);
     for (; start < end; start++) {
@@ -22,7 +24,9 @@ public:
     }
   }
 
-  operator std::vector<T>() { return {this->begin(), this->end()}; }
+  operator std::vector<T>() {
+    return {this->begin(), this->end()};
+  }
 
   void push_back(T const &t) {
     assert(this->m_size < MAXSIZE);
@@ -30,7 +34,8 @@ public:
     this->m_size++;
   }
 
-  template <class... Args> void emplace_back(Args &&...args) {
+  template <class... Args>
+  void emplace_back(Args &&...args) {
     this->contents.emplace_back(std::forward<Args>(args)...);
   }
 
@@ -54,21 +59,27 @@ public:
     return this->contents[idx].value();
   }
 
-  T const &operator[](std::size_t idx) const { return this->at(idx); }
+  T const &operator[](std::size_t idx) const {
+    return this->at(idx);
+  }
 
-  T &operator[](std::size_t idx) { return this->at(idx); }
+  T &operator[](std::size_t idx) {
+    return this->at(idx);
+  }
 
-  template <bool IS_CONST> struct Iterator {
+  template <bool IS_CONST>
+  struct Iterator {
     using iterator_category = std::random_access_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = T;
     using reference = typename std::conditional<IS_CONST, T const &, T &>::type;
     using pointer = typename std::conditional<IS_CONST, T const *, T *>::type;
 
-    typename std::conditional<IS_CONST, optional<T> const *,
-                              optional<T> *>::type ptr;
+    typename std::conditional<IS_CONST, optional<T> const *, optional<T> *>::
+        type ptr;
 
-    Iterator(typename std::conditional<IS_CONST, optional<T> const *,
+    Iterator(typename std::conditional<IS_CONST,
+                                       optional<T> const *,
                                        optional<T> *>::type ptr)
         : ptr(ptr) {}
 
@@ -76,8 +87,12 @@ public:
               typename = typename std::enable_if<IS_CONST || !WAS_CONST>::type>
     Iterator(Iterator<WAS_CONST> const &rhs) : ptr(rhs.ptr) {}
 
-    reference operator*() const { return ptr->value(); }
-    pointer operator->() const { return &ptr->value(); }
+    reference operator*() const {
+      return ptr->value();
+    }
+    pointer operator->() const {
+      return &ptr->value();
+    }
 
     Iterator &operator++() {
       ptr++;
@@ -111,7 +126,9 @@ public:
       ptr += diff;
       return *this;
     }
-    Iterator operator+(difference_type diff) const { return {ptr + diff}; }
+    Iterator operator+(difference_type diff) const {
+      return {ptr + diff};
+    }
 
     friend Iterator operator+(difference_type diff, Iterator it) {
       return it + diff;
@@ -121,7 +138,9 @@ public:
       ptr -= diff;
       return *this;
     }
-    Iterator operator-(difference_type diff) const { return {ptr - diff}; }
+    Iterator operator-(difference_type diff) const {
+      return {ptr - diff};
+    }
 
     difference_type operator-(Iterator const &rhs) const {
       return this->ptr - rhs.ptr;
@@ -131,13 +150,21 @@ public:
       return this->ptr[diff].value();
     }
 
-    bool operator<(Iterator const &rhs) const { return this->ptr < rhs.ptr; }
+    bool operator<(Iterator const &rhs) const {
+      return this->ptr < rhs.ptr;
+    }
 
-    bool operator>(Iterator const &rhs) const { return this->ptr > rhs.ptr; }
+    bool operator>(Iterator const &rhs) const {
+      return this->ptr > rhs.ptr;
+    }
 
-    bool operator<=(Iterator const &rhs) const { return this->ptr <= rhs.ptr; }
+    bool operator<=(Iterator const &rhs) const {
+      return this->ptr <= rhs.ptr;
+    }
 
-    bool operator>=(Iterator const &rhs) const { return this->ptr >= rhs.ptr; }
+    bool operator>=(Iterator const &rhs) const {
+      return this->ptr >= rhs.ptr;
+    }
   };
 
   using iterator = Iterator<false>;
@@ -154,24 +181,34 @@ public:
     return iterator(ptr);
   }
 
-  const_iterator begin() const { return this->cbegin(); }
+  const_iterator begin() const {
+    return this->cbegin();
+  }
 
   const_iterator cbegin() const {
     optional<T> const *ptr = this->contents.data();
     return const_iterator(ptr);
   }
 
-  iterator end() { return this->begin() + this->m_size; }
+  iterator end() {
+    return this->begin() + this->m_size;
+  }
 
-  const_iterator end() const { return this->cend(); }
+  const_iterator end() const {
+    return this->cend();
+  }
 
-  const_iterator cend() const { return this->cbegin() + this->m_size; }
+  const_iterator cend() const {
+    return this->cbegin() + this->m_size;
+  }
 
   reverse_iterator rbegin() {
     return std::reverse_iterator<iterator>(this->end());
   }
 
-  const_reverse_iterator rbegin() const { return this->crbegin(); }
+  const_reverse_iterator rbegin() const {
+    return this->crbegin();
+  }
 
   const_reverse_iterator crbegin() const {
     return std::reverse_iterator<const_iterator>(this->cend());
@@ -181,7 +218,9 @@ public:
     return std::reverse_iterator<iterator>(this->begin());
   }
 
-  const_reverse_iterator rend() const { return this->crend(); }
+  const_reverse_iterator rend() const {
+    return this->crend();
+  }
 
   const_reverse_iterator crend() const {
     return std::reverse_iterator<const_iterator>(this->cbegin());
@@ -216,7 +255,9 @@ public:
     return (this->m_size < other.m_size);
   }
 
-  std::size_t size() const { return this->m_size; }
+  std::size_t size() const {
+    return this->m_size;
+  }
 
 private:
   std::size_t m_size = 0;

@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-struct UndirectedEdge : public use_visitable_cmp<UndirectedEdge> {
+struct UndirectedEdge : use_visitable_cmp<UndirectedEdge> {
 public:
   UndirectedEdge() = delete;
   UndirectedEdge(Node src, Node dst);
@@ -43,8 +43,8 @@ struct IUndirectedGraphView : public IGraphView {
   IUndirectedGraphView &operator=(IUndirectedGraphView const &) = delete;
 
   virtual std::unordered_set<Edge>
-  query_edges(UndirectedEdgeQuery const &) const = 0;
-  virtual ~IUndirectedGraphView();
+      query_edges(UndirectedEdgeQuery const &) const = 0;
+  virtual ~IUndirectedGraphView()=default;
 
 protected:
   IUndirectedGraphView() = default;
@@ -72,7 +72,9 @@ public:
     return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
   }
 
-  IUndirectedGraphView const *unsafe() const { return this->ptr.get(); }
+  IUndirectedGraphView const *unsafe() const {
+    return this->ptr.get();
+  }
 
   template <typename T, typename... Args>
   static
@@ -83,9 +85,11 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr):ptr(ptr){}
+  
 private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>);
-
+  
+  
   friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
 
 private:
@@ -111,7 +115,9 @@ public:
 
   UndirectedGraph &operator=(UndirectedGraph);
 
-  operator UndirectedGraphView() const;
+  operator UndirectedGraphView() const {
+    return UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>(ptr->clone()));
+  }
 
   friend void swap(UndirectedGraph &, UndirectedGraph &);
 
@@ -127,7 +133,7 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IUndirectedGraph, T>::value,
                                  UndirectedGraph>::type
-  create() {
+      create() {
     return UndirectedGraph(make_unique<T>());
   }
 

@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-template <typename K, typename V, std::size_t MAXSIZE> struct stack_map {
+template <typename K, typename V, std::size_t MAXSIZE>
+struct stack_map {
   stack_map() = default;
 
   V &operator[](K const &k) {
@@ -27,7 +28,9 @@ template <typename K, typename V, std::size_t MAXSIZE> struct stack_map {
     }
   }
 
-  V &at(K const &k) { return this->contents.at(get_idx(k).value()).second; }
+  V &at(K const &k) {
+    return this->contents.at(get_idx(k).value()).second;
+  }
 
   V const &at(K const &k) const {
     return this->contents.at(get_idx(k).value()).second;
@@ -42,17 +45,29 @@ template <typename K, typename V, std::size_t MAXSIZE> struct stack_map {
   using key_type = K;
   using mapped_type = V;
 
-  iterator begin() { return this->contents.begin(); }
+  iterator begin() {
+    return this->contents.begin();
+  }
 
-  const_iterator begin() const { return this->cbegin(); }
+  const_iterator begin() const {
+    return this->cbegin();
+  }
 
-  const_iterator cbegin() const { return this->contents.cbegin(); }
+  const_iterator cbegin() const {
+    return this->contents.cbegin();
+  }
 
-  iterator end() { return this->contents.end(); }
+  iterator end() {
+    return this->contents.end();
+  }
 
-  const_iterator end() const { return this->cend(); }
+  const_iterator end() const {
+    return this->cend();
+  }
 
-  const_iterator cend() const { return this->contents.cend(); }
+  const_iterator cend() const {
+    return this->contents.cend();
+  }
 
 private:
   optional<size_t> get_idx(K const &k) const {

@@ -9,7 +9,8 @@
 namespace FlexFlow {
 
 // derived from https://www.foonathan.net/2016/10/strong-typedefs/
-template <typename Tag, typename T> class strong_typedef {
+template <typename Tag, typename T>
+class strong_typedef {
 public:
   strong_typedef() = delete;
 
@@ -19,9 +20,13 @@ public:
       std::is_nothrow_move_constructible<T>::value)
       : value_(std::move(value)) {}
 
-  explicit operator T &() noexcept { return value_; }
+  explicit operator T &() noexcept {
+    return value_;
+  }
 
-  explicit operator T const &() const noexcept { return value_; }
+  explicit operator T const &() const noexcept {
+    return value_;
+  }
 
   friend void swap(strong_typedef &a, strong_typedef &b) noexcept {
     using std::swap;
@@ -40,9 +45,12 @@ public:
     return lhs.value() < rhs.value();
   }
 
-  T const &value() const noexcept { return value_; }
+  T const &value() const noexcept {
+    return value_;
+  }
 
-  template <typename F> strong_typedef fmap(F const &f) {
+  template <typename F>
+  strong_typedef fmap(F const &f) {
     static_assert(
         std::is_same<decltype(std::declval<F>()(std::declval<T const &>())),
                      T>::value,
@@ -181,7 +189,8 @@ struct numerical_typedef : strong_typedef<StrongTypedef, T> {
 
 #define MAKE_TYPEDEF_PRINTABLE(TYPEDEF_NAME, TYPEDEF_SHORTNAME)                \
   namespace fmt {                                                              \
-  template <> struct formatter<TYPEDEF_NAME> : formatter<::std::string> {      \
+  template <>                                                                  \
+  struct formatter<TYPEDEF_NAME> : formatter<::std::string> {                  \
     template <typename FormatContext>                                          \
     auto format(TYPEDEF_NAME const &x, FormatContext &ctx) const               \
         -> decltype(ctx.out()) {                                               \

@@ -14,24 +14,24 @@ namespace FlexFlow {
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &);
 std::unordered_set<UndirectedEdge>
-to_undirected_edges(std::unordered_set<DirectedEdge> const &);
+    to_undirected_edges(std::unordered_set<DirectedEdge> const &);
 UndirectedEdge to_undirected_edge(MultiDiEdge const &);
 std::unordered_set<UndirectedEdge>
-to_undirected_edges(std::unordered_set<MultiDiEdge> const &);
+    to_undirected_edges(std::unordered_set<MultiDiEdge> const &);
 
 std::unordered_set<DirectedEdge> to_directed_edges(UndirectedEdge const &);
 std::unordered_set<DirectedEdge>
-to_directed_edges(std::unordered_set<UndirectedEdge> const &);
+    to_directed_edges(std::unordered_set<UndirectedEdge> const &);
 DirectedEdge to_directed_edge(MultiDiEdge const &);
 std::unordered_set<DirectedEdge>
-to_directed_edges(std::unordered_set<MultiDiEdge> const &);
+    to_directed_edges(std::unordered_set<MultiDiEdge> const &);
 
 std::unordered_set<MultiDiEdge> to_multidigraph_edges(UndirectedEdge const &);
 std::unordered_set<MultiDiEdge>
-to_multidigraph_edges(std::unordered_set<UndirectedEdge> const &);
+    to_multidigraph_edges(std::unordered_set<UndirectedEdge> const &);
 MultiDiEdge to_multidigraph_edge(DirectedEdge const &);
 std::unordered_set<MultiDiEdge>
-to_multidigraph_edges(std::unordered_set<DirectedEdge> const &);
+    to_multidigraph_edges(std::unordered_set<DirectedEdge> const &);
 
 template <typename Undirected>
 Undirected to_undirected(IDiGraphView const &directed) {
@@ -68,7 +68,7 @@ public:
       std::shared_ptr<IDiGraphView const> const &);
 
   std::unordered_set<UndirectedEdge>
-  query_edges(UndirectedEdgeQuery const &) const override;
+      query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -84,7 +84,7 @@ public:
   explicit ViewDiGraphAsMultiDiGraph(std::shared_ptr<IDiGraphView> const &);
 
   std::unordered_set<MultiDiEdge>
-  query_edges(MultiDiEdgeQuery const &) const override;
+      query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -101,7 +101,7 @@ public:
       std::shared_ptr<IMultiDiGraphView const> const &);
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -117,7 +117,7 @@ public:
   explicit ViewOpenMultiDiGraphAsMultiDiGraph(IOpenMultiDiGraph const &);
 
   std::unordered_set<MultiDiEdge>
-  query_edges(MultiDiEdgeQuery const &) const override;
+      query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:

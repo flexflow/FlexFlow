@@ -48,7 +48,8 @@ struct checked_dfs_iterator {
   using pointer = Node const *;
   using reference = Node const &;
 
-  checked_dfs_iterator(DiGraphView const &g, std::vector<Node> const &,
+  checked_dfs_iterator(DiGraphView const &g,
+                       std::vector<Node> const &,
                        std::unordered_set<Node> const &);
   checked_dfs_iterator(DiGraphView const &g,
                        std::unordered_set<Node> const &starting_points);
@@ -73,7 +74,8 @@ struct bfs_iterator {
   using pointer = Node const *;
   using reference = Node const &;
 
-  bfs_iterator(DiGraphView const &, std::queue<Node> const &,
+  bfs_iterator(DiGraphView const &,
+               std::queue<Node> const &,
                std::unordered_set<Node> const &);
   bfs_iterator(DiGraphView const &,
                std::unordered_set<Node> const &starting_points);

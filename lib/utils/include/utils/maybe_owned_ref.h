@@ -6,10 +6,11 @@
 
 namespace FlexFlow {
 
-template <typename T> struct maybe_owned_ref {
+template <typename T>
+struct maybe_owned_ref {
   maybe_owned_ref() = delete;
-  maybe_owned_ref(T *);
-  maybe_owned_ref(std::shared_ptr<T>);
+  maybe_owned_ref(T* ptr): _ptr(std::shared_ptr<T>(ptr)){};
+  maybe_owned_ref(std::shared_ptr<T> ptr):_ptr(ptr){}
 
   T &get() const {
     if (holds_alternative<T *>(this->_ptr)) {
@@ -19,7 +20,9 @@ template <typename T> struct maybe_owned_ref {
     }
   }
 
-  operator T &() const { return this->get(); }
+  operator T &() const {
+    return this->get();
+  }
 
 private:
   variant<T *, std::shared_ptr<T>> _ptr;

@@ -46,8 +46,7 @@ public:
   IDiGraphView &operator=(IDiGraphView const &) = delete;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IDiGraphView();
-
+  virtual ~IDiGraphView()=default;
 protected:
   IDiGraphView() = default;
 };
@@ -62,7 +61,9 @@ public:
 
   DiGraphView() = delete;
 
-  operator GraphView() const;
+  operator GraphView() const {
+    return GraphView(this->ptr);
+  }
 
   friend void swap(DiGraphView &, DiGraphView &);
 
@@ -76,18 +77,21 @@ public:
     return maybe_owned_ref<IDiGraphView const>(this->ptr);
   }
 
-  IDiGraphView const *unsafe() const { return this->ptr.get(); }
+  IDiGraphView const *unsafe() const {
+    return this->ptr.get();
+  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
                                  DiGraphView>::type
-  create(Args &&...args) {
+      create(Args &&...args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
-  DiGraphView(std::shared_ptr<IDiGraphView const>);
+  DiGraphView(std::shared_ptr<IDiGraphView const> ptr):ptr(ptr){}
 
+private:
+  
   friend DiGraphView unsafe(IDiGraphView const &);
 
 private:
@@ -116,7 +120,7 @@ public:
   DiGraph &operator=(DiGraph);
 
   operator DiGraphView() const;
-
+  
   friend void swap(DiGraph &, DiGraph &);
 
   Node add_node();
@@ -132,7 +136,7 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IDiGraph, T>::value,
                                  DiGraph>::type
-  create() {
+      create() {
     return DiGraph(make_unique<T>());
   }
 

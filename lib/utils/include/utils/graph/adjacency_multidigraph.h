@@ -21,13 +21,18 @@ public:
     return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
   }
 
+  AdjacencyMultiDiGraph()=default;
+  ~AdjacencyMultiDiGraph()=default;
+
 private:
   using ContentsType = std::unordered_map<
-      Node, std::unordered_map<
-                Node, std::unordered_map<std::size_t,
-                                         std::unordered_set<std::size_t>>>>;
+      Node,
+      std::unordered_map<
+          Node,
+          std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>>;
 
-  AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
+  AdjacencyMultiDiGraph(std::size_t next_node_idx, ContentsType const & adjacency)
+  : next_node_idx(next_node_idx), adjacency(adjacency){}
 
 private:
   std::size_t next_node_idx = 0;

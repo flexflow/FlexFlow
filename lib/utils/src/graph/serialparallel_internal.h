@@ -18,9 +18,14 @@ struct SplitASTNode;
 using SplitAST = mpark::variant<SplitASTNode, Node>;
 
 struct SplitASTNode {
-  SplitASTNode(SplitType);
-  SplitASTNode(SplitType, SplitAST const &, SplitAST const &);
-  SplitASTNode(SplitType, std::vector<SplitAST> const &);
+  SplitASTNode(SplitType type):type(type){}
+
+  SplitASTNode(SplitType type, SplitAST const & lhs, SplitAST const & rhs): type(type){
+    children.push_back(lhs);
+    children.push_back(rhs);//one is left children, another is right children
+  }
+
+  SplitASTNode(SplitType type, std::vector<SplitAST> const & children): type(type), children(children){}
 
   std::vector<SplitAST> children;
   SplitType type;
@@ -29,8 +34,8 @@ struct SplitASTNode {
 SplitAST sp_decomposition(DiGraphView const &g);
 SplitAST parallel_decomposition(DiGraphView const &g);
 
-std::unordered_set<Node> from_source_to_sink(DiGraphView const &,
-                                             Node const &src, Node const &sink);
+std::unordered_set<Node>
+    from_source_to_sink(DiGraphView const &, Node const &src, Node const &sink);
 
 mpark::variant<Serial, Parallel, Node> to_final_ast(SplitAST const &);
 SplitAST flatten_ast(SplitAST const &ast);
