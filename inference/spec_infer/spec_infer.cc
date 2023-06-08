@@ -204,14 +204,16 @@ void FlexFlow::top_level_task(Task const *task,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
                               ffconfig.workersPerNode * ffconfig.numNodes,
-                              TREE_VERIFY_MODE);
+                              TREE_VERIFY_MODE,
+                              use_full_precision);
   } else if (model_types.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
                           ffconfig.workersPerNode * ffconfig.numNodes,
-                          TREE_VERIFY_MODE);
+                          TREE_VERIFY_MODE,
+                          use_full_precision);
   } else {
     assert(false && "Invalid LLM model type passed (or no type was passed).");
   }
@@ -233,14 +235,16 @@ void FlexFlow::top_level_task(Task const *task,
                                 file_paths.ssm_config_file_paths[ssm_id],
                                 file_paths.ssm_weight_file_paths[ssm_id],
                                 1,
-                                BEAM_SEARCH_MODE);
+                                BEAM_SEARCH_MODE,
+                                use_full_precision);
     } else if (model_types.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,
                             im,
                             file_paths.ssm_config_file_paths[ssm_id],
                             file_paths.ssm_weight_file_paths[ssm_id],
                             1,
-                            BEAM_SEARCH_MODE);
+                            BEAM_SEARCH_MODE,
+                            use_full_precision);
     } else {
       assert(false && "Invalid SSM model type passed.");
     }
