@@ -98,7 +98,9 @@ struct InferenceResult {
 class BeamSearchBatchConfig : public BatchConfig {
 public:
   BeamSearchBatchConfig();
+  BeamSearchBatchConfig(int model_id);
   BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
+  BeamSearchBatchConfig(BeamSearchBatchConfig const &other, int model_id);
   InferenceMode get_mode() const;
 
   ~BeamSearchBatchConfig();
@@ -112,6 +114,8 @@ public:
   size_t target_iterations;
   static int const MAX_BEAM_WIDTH = 1;
   static int const MAX_BEAM_DEPTH = 8;
+
+  int model_id;
 
   struct BeamSearchPerRequestInfo {
     int beam_size;

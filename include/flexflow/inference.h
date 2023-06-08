@@ -53,6 +53,8 @@ struct Request {
   int max_sequence_length;
   int initial_len;
   std::vector<BatchConfig::TokenId> tokens;
+
+  std::vector<struct BeamTree> beam_trees;
 };
 
 // store the result of beam search
@@ -83,6 +85,11 @@ public:
                  std::string output_filepath = "");
   RequestManager();
   size_t get_num_processed_requests();
+
+  int register_new_model(FFModel *model);
+
+  FFModel *get_model(int model_id);
+
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
@@ -95,10 +102,11 @@ public:
 
   BeamSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
-                              InferenceResult const &result);
+                              InferenceResult const &result,
+                              int model_id);
 
-  TreeVerifyBatchConfig
-      prepare_next_batch_verify(BeamSearchBatchConfig const &old_bc);
+  TreeVerifyBatchConfig prepare_next_batch_verify(
+      std::vector<BeamSearchBatchConfig> const &old_batches);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
@@ -111,6 +119,13 @@ public:
                          int request_index,
                          int token_start_offset);
 
+  // remove guid after put the cached tree in request
+  std::vector<std::pair<BatchConfig::TokenId, int>> merge_dfs_trees(
+      std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>>
+          input_trees,
+      int root_depth,
+      RequestGuid guid);
+
   std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
       size_t guid,
       std::vector<std::pair<BatchConfig::TokenId, int>> const
@@ -118,10 +133,6 @@ public:
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
   int get_requests_init_length(BeamSearchBatchConfig const &old_bc);      
-
-  // TreeVerifyBatchConfig
-  //     convert_beam_to_tree_batch_config(BeamSearchBatchConfig const
-  //     &beam_bc);
 
   static void
       load_tokens_task(Legion::Task const *task,
@@ -143,17 +154,17 @@ private:
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
 
-  struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
-
+  // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
                      std::vector<std::pair<BatchConfig::TokenId, int>>>
-      dfs_tree_inputs_map;
-
-  // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
-  // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
-  // Committed Tokens
+      dfs_tree_inputs;
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
+
+  // Multi-model support
+  int num_ssms;
+  std::vector<FFModel *> models;
+
   // Performance profiling
   size_t num_processed_requests;
 
