@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
 
+#include "kernels/accessor.h"
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/accessor.h"
 
 namespace FlexFlow {
 

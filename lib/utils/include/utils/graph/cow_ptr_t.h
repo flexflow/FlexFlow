@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_COW_PTR_T_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_COW_PTR_T_H
 
-#include <memory>
-#include "utils/variant.h"
-#include "utils/unique.h"
 #include "utils/type_traits.h"
+#include "utils/unique.h"
+#include "utils/variant.h"
+#include <memory>
 
 namespace FlexFlow {
 
@@ -23,10 +23,10 @@ struct cow_ptr_t {
     this->set_unique(make_unique<T>(val));
   }
   cow_ptr_t(cow_ptr_t const &other) {
-    this->set_shared(other.get_shared_ptr());  
+    this->set_shared(other.get_shared_ptr());
   }
   cow_ptr_t &operator=(cow_ptr_t other) {
-    swap(*this, other); 
+    swap(*this, other);
     return *this;
   }
 
@@ -72,7 +72,7 @@ struct cow_ptr_t {
     return *this->mutable_ptr();
   }
 
-  bool has_unique_access() const { 
+  bool has_unique_access() const {
     return holds_alternative<unique_t>(this->ptr);
   }
 
@@ -89,6 +89,7 @@ struct cow_ptr_t {
 
     swap(lhs.ptr, rhs.ptr);
   }
+
 private:
   void set_shared(shared_t ptr) {
     this->ptr = variant<shared_t>(std::move(ptr));
@@ -103,15 +104,12 @@ private:
   }
 
   std::shared_ptr<T const> &get_shared() const {
-    return get<shared_t>(this->ptr);    
+    return get<shared_t>(this->ptr);
   }
 
-  mutable variant<
-    std::unique_ptr<T>,
-    std::shared_ptr<T const>
-  > ptr;
+  mutable variant<std::unique_ptr<T>, std::shared_ptr<T const>> ptr;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

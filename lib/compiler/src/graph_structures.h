@@ -244,9 +244,9 @@ struct MultisourceGraphStructure {
 
   BaseStructure base;
 };
-} 
-}
-}
+} // namespace Utils
+} // namespace PCG
+} // namespace FlexFlow
 
 namespace std {
 using FlexFlow::PCG::Utils::UndirectedEdge;

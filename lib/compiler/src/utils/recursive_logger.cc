@@ -4,9 +4,8 @@
 namespace FlexFlow {
 namespace utils {
 
-RecursiveLogger::RecursiveLogger(std::shared_ptr<spdlog::logger> const &logger) 
-  : logger(logger)
-{}
+RecursiveLogger::RecursiveLogger(std::shared_ptr<spdlog::logger> const &logger)
+    : logger(logger) {}
 
 RecursiveLogger::RecursiveLogger(std::string const &logger_name) {
   this->logger = spdlog::get(logger_name);
@@ -37,5 +36,5 @@ DepthTag::~DepthTag() {
   this->logger.leave();
 }
 
-}
-}
+} // namespace utils
+} // namespace FlexFlow

@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_H
 #define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
+#include "fused_parallel_op_attrs.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "fused_parallel_op_attrs.h"
 
 namespace FlexFlow {
 
-template <> void register_task<FUSED_PARALLELOP_INIT_TASK_ID>();
-template <> void register_task<FUSED_PARALLELOP_FWD_TASK_ID>();
-template <> void register_task<FUSED_PARALLELOP_BWD_TASK_ID>();
+template <>
+void register_task<FUSED_PARALLELOP_INIT_TASK_ID>();
+template <>
+void register_task<FUSED_PARALLELOP_FWD_TASK_ID>();
+template <>
+void register_task<FUSED_PARALLELOP_BWD_TASK_ID>();
 
 OpTaskInvocation init(FusedParallelOpAttrs const &);
 OpTaskInvocation forward(FusedParallelOpAttrs const &);
@@ -26,7 +29,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &factory,
 /*   FusedParallelOp(FFModel &model, */
 /*                   const ParallelTensor input, */
 /*                   std::vector<ParallelOpInfo> const &parallel_ops); */
-/*   FusedParallelOp(FFModel &model, FusedParallelOpAttrs const &attrs, std::vector<ParallelTensor> const &inputs); */
+/*   FusedParallelOp(FFModel &model, FusedParallelOpAttrs const &attrs,
+ * std::vector<ParallelTensor> const &inputs); */
 /*   void init(FFModel const &) override; */
 /*   void forward(FFModel const &) override; */
 /*   void backward(FFModel const &) override; */
@@ -34,16 +38,19 @@ CostMetrics measure_operator_cost(SimEnvFactory const &factory,
 /*       std::vector<ParallelOpInfo> &parallel_ops) const override; */
 /*   void create_input_partition(FFModel &model) override; */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   template <typename T> */
 /*   static void */
-/*       forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements); */
+/*       forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements);
+ */
 /*   template <typename T> */
 /*   static void backward_kernel(T const *output_grad_ptr, */
 /*                               T *input_grad_ptr, */
@@ -57,6 +64,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &factory,
 /*   stack_vector<ParallelOpInfo, MAX_NUM_FUSED_OPERATORS> parallel_ops; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

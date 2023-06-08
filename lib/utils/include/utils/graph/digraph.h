@@ -3,10 +3,10 @@
 
 #include "node.h"
 #include "tl/optional.hpp"
-#include <unordered_set>
-#include "utils/visitable.h"
-#include "utils/unique.h"
 #include "utils/maybe_owned_ref.h"
+#include "utils/unique.h"
+#include "utils/visitable.h"
+#include <unordered_set>
 
 namespace FlexFlow {
 
@@ -14,12 +14,13 @@ struct DirectedEdge : use_visitable_cmp<DirectedEdge> {
 public:
   DirectedEdge() = delete;
   DirectedEdge(Node src, Node dst);
+
 public:
   Node src, dst;
 };
 std::ostream &operator<<(std::ostream &, DirectedEdge const &);
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::DirectedEdge, src, dst);
 MAKE_VISIT_HASHABLE(::FlexFlow::DirectedEdge);
@@ -28,12 +29,13 @@ namespace FlexFlow {
 
 struct DirectedEdgeQuery {
   DirectedEdgeQuery() = default;
-  DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs, tl::optional<std::unordered_set<Node>> const &dsts);
-  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, 
-                                         dsts = tl::nullopt;
+  DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs,
+                    tl::optional<std::unordered_set<Node>> const &dsts);
+  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
 };
 
-DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &, DirectedEdgeQuery const &);
+DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
+                                     DirectedEdgeQuery const &);
 
 struct IDiGraphView : public IGraphView {
 public:
@@ -45,11 +47,13 @@ public:
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
   virtual ~IDiGraphView();
+
 protected:
   IDiGraphView() = default;
 };
 
-static_assert(is_rc_copy_virtual_compliant<IDiGraphView>::value, RC_COPY_VIRTUAL_MSG);
+static_assert(is_rc_copy_virtual_compliant<IDiGraphView>::value,
+              RC_COPY_VIRTUAL_MSG);
 
 struct DiGraphView {
 public:
@@ -73,19 +77,21 @@ public:
   }
 
   IDiGraphView const *unsafe() const {
-    return this->ptr.get(); 
+    return this->ptr.get();
   }
 
-  template <typename T, typename ...Args>
-  static
-  typename std::enable_if<std::is_base_of<IDiGraphView, T>::value, DiGraphView>::type
-  create(Args &&... args) {
+  template <typename T, typename... Args>
+  static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
+                                 DiGraphView>::type
+      create(Args &&...args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
+
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const>);
 
   friend DiGraphView unsafe(IDiGraphView const &);
+
 private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
@@ -98,10 +104,11 @@ struct IDiGraph : public IDiGraphView, public IGraph {
   virtual IDiGraph *clone() const = 0;
 };
 
-static_assert(is_rc_copy_virtual_compliant<IDiGraph>::value, RC_COPY_VIRTUAL_MSG);
+static_assert(is_rc_copy_virtual_compliant<IDiGraph>::value,
+              RC_COPY_VIRTUAL_MSG);
 
 struct DiGraph {
-public: 
+public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
@@ -125,13 +132,15 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
-  static 
-  typename std::enable_if<std::is_base_of<IDiGraph, T>::value, DiGraph>::type 
-  create() { 
+  static typename std::enable_if<std::is_base_of<IDiGraph, T>::value,
+                                 DiGraph>::type
+      create() {
     return DiGraph(make_unique<T>());
   }
+
 private:
   DiGraph(std::unique_ptr<IDiGraph>);
+
 private:
   std::unique_ptr<IDiGraph> ptr;
 };
@@ -141,6 +150,6 @@ static_assert(std::is_move_constructible<DiGraph>::value, "");
 static_assert(std::is_copy_assignable<DiGraph>::value, "");
 static_assert(std::is_move_assignable<DiGraph>::value, "");
 
-}
+} // namespace FlexFlow
 
 #endif

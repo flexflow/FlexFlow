@@ -3,10 +3,6 @@
 
 #include "model_training_instance.h"
 
-namespace FlexFlow {
-
-
-
-}
+namespace FlexFlow {}
 
 #endif

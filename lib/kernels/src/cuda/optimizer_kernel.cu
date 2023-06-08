@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/optimizer_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/optimizer_kernels.h"
 
 namespace FlexFlow {
 
@@ -214,4 +214,4 @@ __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
 }
 #endif
 
-}
+} // namespace FlexFlow

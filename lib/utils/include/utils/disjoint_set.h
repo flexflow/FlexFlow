@@ -70,6 +70,6 @@ private:
   std::set<T, Compare> nodes;
 };
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

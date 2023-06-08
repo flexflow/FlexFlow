@@ -1,33 +1,30 @@
 #ifndef _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
 #define _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
 
-#include "legion.h"
-#include "tasks.h"
-#include "utils/optional.h"
-#include "runtime/config.h"
-#include <unordered_set>
-#include <unordered_map>
-#include "utils/bidict.h"
 #include "accessor.h"
-#include "serialization.h"
-#include <typeindex>
-#include "utils/stack_map.h"
-#include "accessor.h"
-#include "profiling.h"
 #include "index_task_invocation.h"
+#include "legion.h"
 #include "op_task_signature.h"
+#include "profiling.h"
+#include "runtime/config.h"
+#include "serialization.h"
+#include "tasks.h"
+#include "utils/bidict.h"
+#include "utils/optional.h"
+#include "utils/stack_map.h"
+#include <typeindex>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace FlexFlow {
 
-enum class IsTrainable {
-  YES,
-  NO
-};
+enum class IsTrainable { YES, NO };
 
 struct OpTensorSpec : public use_visitable_cmp<OpTensorSpec> {
 public:
   OpTensorSpec() = delete;
   OpTensorSpec(TensorRole, int);
+
 public:
   TensorRole role;
   int idx;
@@ -43,9 +40,8 @@ template <typename T>
 struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
 public:
   OpArgRef() = delete;
-  OpArgRef(OpArgRefType ref_type)
-    : ref_type(ref_type)
-  { }
+  OpArgRef(OpArgRefType ref_type) : ref_type(ref_type) {}
+
 public:
   OpArgRefType ref_type;
 };
@@ -74,6 +70,7 @@ public:
 
     return OpArgRefSpec(std::type_index(typeid(T)), r.ref_type);
   }
+
 private:
   OpArgRefSpec(std::type_index, OpArgRefType);
 
@@ -81,7 +78,13 @@ private:
   OpArgRefType ref_type;
 };
 
-using OpArgSpec = variant<ConcreteArgSpec, IndexArgSpec, OpArgRefSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
+using OpArgSpec = variant<ConcreteArgSpec,
+                          IndexArgSpec,
+                          OpArgRefSpec,
+                          CheckedTypedFuture,
+                          CheckedTypedFutureMap,
+                          ArgRefSpec,
+                          TaskInvocationSpec>;
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
@@ -96,7 +99,7 @@ struct OpTaskBinding {
     this->insert_arg_spec(name, ConcreteArgSpec::create(t));
   }
 
-  template <typename T> 
+  template <typename T>
   void bind_arg(slot_id name, OpArgRef<T> const &ref) {
     this->insert_arg_spec(name, OpArgRefSpec::create(ref));
   }
@@ -111,12 +114,14 @@ struct OpTaskBinding {
     this->insert_arg_spec(name, CheckedTypedFutureMap::create(fm));
   }
 
-  std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &get_tensor_bindings() const;
+  std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
+      get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
+
 private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
-    assert (!contains_key(this->arg_bindings, name));
-    arg_bindings.insert({ name, arg_spec });
+    assert(!contains_key(this->arg_bindings, name));
+    arg_bindings.insert({name, arg_spec});
   }
 
   // template <typename T>
@@ -142,7 +147,7 @@ struct OpTaskInvocation : public use_visitable_cmp<OpTaskInvocation> {
 public:
   OpTaskInvocation() = delete;
   OpTaskInvocation(task_id_t const &task_id, OpTaskBinding const &binding)
-    : task_id(task_id), binding(binding) { }
+      : task_id(task_id), binding(binding) {}
 
 public:
   task_id_t task_id;
@@ -152,15 +157,15 @@ public:
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
 
-/* std::unordered_map<int, OpTensorSpec> get_regions_idxs(TaskArgumentFormat const &); */
+/* std::unordered_map<int, OpTensorSpec> get_regions_idxs(TaskArgumentFormat
+ * const &); */
 
-/* TaskArgumentFormat compile_task_invocation(OpTaskSignature const &, OpTaskBinding const &); */
+/* TaskArgumentFormat compile_task_invocation(OpTaskSignature const &,
+ * OpTaskBinding const &); */
 
-
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::OpTensorSpec, role, idx);
 VISITABLE_STRUCT(::FlexFlow::OpTensorSlotSpec, name, slot_type, tensor_role);
-
 
 #endif

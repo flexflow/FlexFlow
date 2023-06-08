@@ -13,59 +13,77 @@
  * limitations under the License.
  */
 
+#include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/gather_kernels.h"
-#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 
-GatherPerDeviceState::GatherPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {};
+GatherPerDeviceState::GatherPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler){};
 
 namespace Kernels {
 namespace Gather {
 
 template <DataType IndexTxype>
 struct ForwardKernel {
-  void operator() (cudaStream_t stream, GatherPerDeviceState const *m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorR const &index,
-                            GenericTensorAccessorW const &output,
-                            size_t stride, 
-                            size_t input_dim_size,
-                            size_t output_dim_size) {
+  void operator()(cudaStream_t stream,
+                  GatherPerDeviceState const *m,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorR const &index,
+                  GenericTensorAccessorW const &output,
+                  size_t stride,
+                  size_t input_dim_size,
+                  size_t output_dim_size) {
     /*size_t stride = 1;
     for (int i = 0; i < m->legion_dim; i++) {
       stride *= (output.domain.hi()[i] - output.domain.lo()[i] + 1);
     }
     size_t dim_size =
-        output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] + 1;
+        output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] +
+    1;
 */
-    gather_forward<IndexType>
-      <<<GET_BLOCKS(output.domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
-          input.get<DT_FLOAT>(), index.get<IndexType>(), output.get<DT_FLOAT>(), 
-          output.domain.get_volume(), stride, dim_size);
+    gather_forward<IndexType><<<GET_BLOCKS(output.domain.get_volume()),
+                                CUDA_NUM_THREADS,
+                                0,
+                                stream>>>(input.get<DT_FLOAT>(),
+                                          index.get<IndexType>(),
+                                          output.get<DT_FLOAT>(),
+                                          output.domain.get_volume(),
+                                          stride,
+                                          dim_size);
   }
 }
 
-void forward_kernel(cudaStream_t stream, GatherPerDeviceState const *m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorR const &index,
-                            GenericTensorAccessorW const &output,
-                            size_t stride, 
-                            size_t input_dim_size,
-                            size_t output_dim_size) {
-  DataTypeDispatch1<ForwardKernel>{}(m->index_data_type, stream, m, input, index, output, stride, input_dim_size, output_dim_size);
+void forward_kernel(cudaStream_t stream,
+                    GatherPerDeviceState const *m,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorR const &index,
+                    GenericTensorAccessorW const &output,
+                    size_t stride,
+                    size_t input_dim_size,
+                    size_t output_dim_size) {
+  DataTypeDispatch1<ForwardKernel>{}(m->index_data_type,
+                                     stream,
+                                     m,
+                                     input,
+                                     index,
+                                     output,
+                                     stride,
+                                     input_dim_size,
+                                     output_dim_size);
 }
 
 template <DataType IndexType>
 struct BackwardKernel {
-  void operator() (cudaStream_t stream, GatherPerDeviceState const *m,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorR const &index,
-                             GenericTensorAccessorW const &input_grad,
-                             size_t stride, 
-                             size_t input_dim_size,
-                             size_t output_dim_size) {
+  void operator()(cudaStream_t stream,
+                  GatherPerDeviceState const *m,
+                  GenericTensorAccessorR const &output_grad,
+                  GenericTensorAccessorR const &index,
+                  GenericTensorAccessorW const &input_grad,
+                  size_t stride,
+                  size_t input_dim_size,
+                  size_t output_dim_size) {
     /*size_t stride = 1;
     for (int i = 0; i < m->legion_dim; i++) {
       stride *= (output_grad.domain.hi()[i] - output_grad.domain.lo()[i] + 1);
@@ -73,26 +91,36 @@ struct BackwardKernel {
     size_t dim_size = output_grad.domain.hi()[m->legion_dim] -
                       output_grad.domain.lo()[m->legion_dim] + 1;
     */
-    gather_backward<IndexType>
-      <<<GET_BLOCKS(output_grad.domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
-          output_grad.get<DT_FLOAT>(),
-          index.get<IndexType>(),
-          input_grad.get<DT_FLOAT>(),
-          output_grad.domain.get_volume(),
-          stride,
-          input_dim_size,
-          output_dim_size);
+    gather_backward<IndexType><<<GET_BLOCKS(output_grad.domain.get_volume()),
+                                 CUDA_NUM_THREADS,
+                                 0,
+                                 stream>>>(output_grad.get<DT_FLOAT>(),
+                                           index.get<IndexType>(),
+                                           input_grad.get<DT_FLOAT>(),
+                                           output_grad.domain.get_volume(),
+                                           stride,
+                                           input_dim_size,
+                                           output_dim_size);
   }
 }
 
-void backward_kernel(cudaStream_t stream, GatherPerDeviceState const *m,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorR const &index,
-                             GenericTensorAccessorW const &input_grad,
-                             size_t stride, 
-                             size_t input_dim_size,
-                             size_t output_dim_size) {
-  DataTypeDispatch1<BackwardKernel>{}(m->index_data_type, stream, m, output_grad, index, input_grad, stride, input_dim_size, output_dim_size);
+void backward_kernel(cudaStream_t stream,
+                     GatherPerDeviceState const *m,
+                     GenericTensorAccessorR const &output_grad,
+                     GenericTensorAccessorR const &index,
+                     GenericTensorAccessorW const &input_grad,
+                     size_t stride,
+                     size_t input_dim_size,
+                     size_t output_dim_size) {
+  DataTypeDispatch1<BackwardKernel>{}(m->index_data_type,
+                                      stream,
+                                      m,
+                                      output_grad,
+                                      index,
+                                      input_grad,
+                                      stride,
+                                      input_dim_size,
+                                      output_dim_size);
 }
 
 template <typename IndexType>
@@ -116,8 +144,8 @@ __global__ void gather_forward(float const *input,
     size_t outer_index = o / (stride * output_dim_size);
     // coord_t index_2 = (o / stride) % dim_size
     size_t left_over = o % stride;
-    size_t input_idx = outer_index * (stride * input_dim_size) +
-                        index[o] * stride + left_over;
+    size_t input_idx =
+        outer_index * (stride * input_dim_size) + index[o] * stride + left_over;
     output[o] = input[input_idx];
   }
 }
@@ -143,13 +171,13 @@ __global__ void gather_backward(float const *output_grad,
     size_t outer_index = o / (stride * output_dim_size);
     // coord_t index_2 = (o / stride) % dim_size
     size_t left_over = o % stride;
-    size_t input_idx = outer_index * (stride * input_dim_size) +
-                        index[o] * stride + left_over;
+    size_t input_idx =
+        outer_index * (stride * input_dim_size) + index[o] * stride + left_over;
 
     atomicAdd(&input_grad[input_idx], output_grad[o]);
   }
 }
 
-}
-}
-}
+} // namespace Gather
+} // namespace Kernels
+} // namespace FlexFlow

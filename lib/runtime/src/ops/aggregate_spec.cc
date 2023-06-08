@@ -64,7 +64,7 @@ using namespace FlexFlow::Kernels::AggregateSpec;
 //   layers.push_back(li);
 //   return li->outputs[0];
 // }
-// 
+//
 // Op *AggregateSpec::create_operator_from_layer(
 //     FFModel &model,
 //     Layer const *layer,
@@ -77,7 +77,7 @@ using namespace FlexFlow::Kernels::AggregateSpec;
 //   float lambda_bal = value2;
 //   return new AggregateSpec(model, inputs.data(), n, lambda_bal, layer->name);
 // }
-// 
+//
 // AggregateSpec::AggregateSpec(FFModel &model,
 //                              ParallelTensor const *_inputs,
 //                              int _n,
@@ -94,28 +94,29 @@ using namespace FlexFlow::Kernels::AggregateSpec;
 //       attrs(_n, _lambda_bal) {
 //   // FIXME: For now, set upper limits Better: Do as follows, but memory is
 //   // assigned per block, so requires to check that
-//   // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
+//   //
+//   https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
 //   assert(attrs.n <= AGGREGATE_SPEC_MAX_N &&
 //          "Increase AGGREGATE_SPEC_MAX_N in #define");
 //   assert(inputs[0]->dims[0].size <= AGGREGATE_SPEC_MAX_K &&
 //          "Increase AGGREGATE_SPEC_MAX_K in #define");
 //   assert(inputs[0]->dims[1].size <= AGGREGATE_SPEC_MAX_BATCH_SIZE &&
 //          "Increase AGGREGATE_SPEC_MAX_BATCH_SIZE in #define");
-// 
+//
 //   assert(attrs.n + 4 == numInputs);
 //   assert(attrs.n > 0);
 //   assert(inputs[0]->num_dims == 2);
 //   assert(inputs[1]->num_dims == 2);
 //   assert(inputs[2]->num_dims == 2);
 //   assert(inputs[3]->num_dims == 2);
-// 
+//
 //   for (int i = 0; i < inputs[0]->num_dims; i++) {
 //     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
 //     assert(inputs[0]->dims[i] == inputs[2]->dims[i]);
 //   }
 //   assert(inputs[0]->dims[1] == inputs[3]->dims[1]);
 //   assert(inputs[3]->dims[0].size == attrs.n);
-// 
+//
 //   // expert inputs
 //   int num_dim = inputs[4]->num_dims;
 //   int out_dim = inputs[4]->dims[0].size;
@@ -132,10 +133,9 @@ using namespace FlexFlow::Kernels::AggregateSpec;
 //   numOutputs = 1;
 //   outputs[0] = model.create_parallel_tensor_legion_ordering(
 //       num_dim, dims, DT_FLOAT, this);
-// 
+//
 //   numWeights = 0;
 // }
-
 
 // OpTaskInvocation init(AggregateSpecAttrs const &attrs) {
 //   OpTaskBinding binding;
@@ -153,7 +153,7 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
   binding.bind(GATE_ASSIGN, input_tensor(1));
 
   for (int i = 0; i < attrs.n; i++) {
-    binding.bind(EXP_PREDS, input_tensor(i+4));
+    binding.bind(EXP_PREDS, input_tensor(i + 4));
   }
 
   binding.bind(OUTPUT, output_tensor(0));
@@ -162,7 +162,7 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
-  return { AGG_SPEC_FWD_TASK_ID, binding };
+  return {AGG_SPEC_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
@@ -174,91 +174,91 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
   binding.bind_grad(GATE_GRADIENTS_FULL, input_tensor(3));
 
   for (int i = 0; i < attrs.n; i++) {
-    binding.bind_grad(EXP_PREDS, input_tensor(i+4));
+    binding.bind_grad(EXP_PREDS, input_tensor(i + 4));
   }
 
   binding.bind_grad(OUTPUT, output_tensor(0));
-  
+
   binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
-  return { AGG_SPEC_BWD_TASK_ID, binding };
+  return {AGG_SPEC_BWD_TASK_ID, binding};
 }
 
-  // assert(check_output_input_weight_same_parallel_is());
-  // parallel_is = outputs[0]->parallel_is;
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_init(ff, argmap);
-  // IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(this, sizeof(AggregateSpec)),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  // fm.wait_all_results();
-  // set_opmeta_from_futuremap(ff, fm);
+// assert(check_output_input_weight_same_parallel_is());
+// parallel_is = outputs[0]->parallel_is;
+// ArgumentMap argmap;
+// Context ctx = ff.config.lg_ctx;
+// Runtime *runtime = ff.config.lg_hlr;
+// set_argumentmap_for_init(ff, argmap);
+// IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID,
+//                        parallel_is,
+//                        TaskArgument(this, sizeof(AggregateSpec)),
+//                        argmap,
+//                        Predicate::TRUE_PRED,
+//                        false /*must*/,
+//                        0 /*mapper_id*/,
+//                        outputs[0]->machine_view.hash());
+// FutureMap fm = runtime->execute_index_space(ctx, launcher);
+// fm.wait_all_results();
+// set_opmeta_from_futuremap(ff, fm);
 
 // static PerDeviceOpState *init_task(Legion::Task const *task,
-//                                    std::vector<Legion::PhysicalRegion> const &regions,
-//                                    Legion::Context ctx,
+//                                    std::vector<Legion::PhysicalRegion> const
+//                                    &regions, Legion::Context ctx,
 //                                    Legion::Runtime *runtime) {
 //   TaskArgumentAccessor acc(task, regions, ctx, runtime);
 //   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
 //   auto handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
 
-//   AggregateSpecPerDeviceState *m = new AggregateSpecPerDeviceState(handle, attrs.n);
-//   return m;
+//   AggregateSpecPerDeviceState *m = new AggregateSpecPerDeviceState(handle,
+//   attrs.n); return m;
 // }
 
-  //ArgumentMap argmap;
-  //Context ctx = ff.config.lg_ctx;
-  //Runtime *runtime = ff.config.lg_hlr;
-  //set_argumentmap_for_forward(ff, argmap);
-  //IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID,
-  //                       parallel_is,
-  //                       TaskArgument(this, sizeof(AggregateSpec)),
-  //                       argmap,
-  //                       Predicate::TRUE_PRED,
-  //                       false /*must*/,
-  //                       0 /*mapper_id*/,
-  //                       outputs[0]->machine_view.hash());
-  //// gate_preds
-  //launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-  //                                                  0 /*projection id*/,
-  //                                                  READ_WRITE,
-  //                                                  EXCLUSIVE,
-  //                                                  inputs[0]->region));
-  //launcher.add_field(0, FID_DATA);
-  //// gate_assign
-  //launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-  //                                                  0 /*projection id*/,
-  //                                                  READ_WRITE,
-  //                                                  EXCLUSIVE,
-  //                                                  inputs[1]->region));
-  //launcher.add_field(1, FID_DATA);
-  //// exp_preds
-  //for (int i = 0; i < n; i++) {
-  //  launcher.add_region_requirement(RegionRequirement(inputs[i + 4]->part,
-  //                                                    0 /*projection id*/,
-  //                                                    READ_WRITE,
-  //                                                    EXCLUSIVE,
-  //                                                    inputs[i + 4]->region));
-  //  launcher.add_field(i + 2, FID_DATA);
-  //}
-  //// output
-  //launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-  //                                                  0 /*projection id*/,
-  //                                                  WRITE_ONLY,
-  //                                                  EXCLUSIVE,
-  //                                                  outputs[0]->region));
-  //launcher.add_field(n + 2, FID_DATA);
-  //runtime->execute_index_space(ctx, launcher);
+// ArgumentMap argmap;
+// Context ctx = ff.config.lg_ctx;
+// Runtime *runtime = ff.config.lg_hlr;
+// set_argumentmap_for_forward(ff, argmap);
+// IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID,
+//                        parallel_is,
+//                        TaskArgument(this, sizeof(AggregateSpec)),
+//                        argmap,
+//                        Predicate::TRUE_PRED,
+//                        false /*must*/,
+//                        0 /*mapper_id*/,
+//                        outputs[0]->machine_view.hash());
+//// gate_preds
+// launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+//                                                   0 /*projection id*/,
+//                                                   READ_WRITE,
+//                                                   EXCLUSIVE,
+//                                                   inputs[0]->region));
+// launcher.add_field(0, FID_DATA);
+//// gate_assign
+// launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+//                                                   0 /*projection id*/,
+//                                                   READ_WRITE,
+//                                                   EXCLUSIVE,
+//                                                   inputs[1]->region));
+// launcher.add_field(1, FID_DATA);
+//// exp_preds
+// for (int i = 0; i < n; i++) {
+//   launcher.add_region_requirement(RegionRequirement(inputs[i + 4]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_WRITE,
+//                                                     EXCLUSIVE,
+//                                                     inputs[i + 4]->region));
+//   launcher.add_field(i + 2, FID_DATA);
+// }
+//// output
+// launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+//                                                   0 /*projection id*/,
+//                                                   WRITE_ONLY,
+//                                                   EXCLUSIVE,
+//                                                   outputs[0]->region));
+// launcher.add_field(n + 2, FID_DATA);
+// runtime->execute_index_space(ctx, launcher);
 
 static void forward_task(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
@@ -270,7 +270,8 @@ static void forward_task(Legion::Task const *task,
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
-  auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
 
   int n = attrs.n;
@@ -278,7 +279,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto gate_pred = acc.get_tensor<READ_WRITE>(GATE_PREDS);
   auto gate_assign = acc.get_tensor<READ_WRITE>(GATE_ASSIGN);
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
-   
+
   coord_t batch_size = gate_pred.shape[1];
   assert(batch_size == gate_assign.shape[1]);
   coord_t k = gate_pred.shape[0];
@@ -289,93 +290,97 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto acc_exp_preds = acc.get_variadic_tensor<READ_WRITE>(EXP_PREDS);
 
   coord_t rows = acc_exp_preds[0].shape[1];
-  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
-  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
-  
-  std::vector<float *> exp_preds = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_preds);
-  assert (exp_preds.size() == n);
+  assert(all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) {
+    return a.shape[1] == rows;
+  }));
+  assert(all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) {
+    return a.shape[0] == out_dim;
+  }));
 
-  profile(
-    forward_kernel,
-    enable_profiling,
-    "[AggregateSpec] forward_time = %.2lfms\n",
-    &per_device_state,
-    exp_preds.data(),
-    gate_assign.get_int32_ptr(),
-    output.get_float_ptr(),
-    n,
-    k,
-    rows,
-    batch_size,
-    out_dim);
+  std::vector<float *> exp_preds = vector_transform(
+      [](GenericTensorAccessorW const &a) { return a.get_float_ptr(); },
+      acc_exp_preds);
+  assert(exp_preds.size() == n);
+
+  profile(forward_kernel,
+          enable_profiling,
+          "[AggregateSpec] forward_time = %.2lfms\n",
+          &per_device_state,
+          exp_preds.data(),
+          gate_assign.get_int32_ptr(),
+          output.get_float_ptr(),
+          n,
+          k,
+          rows,
+          batch_size,
+          out_dim);
 }
 
-  
-  //ArgumentMap argmap;
-  //Context ctx = ff.config.lg_ctx;
-  //Runtime *runtime = ff.config.lg_hlr;
-  //set_argumentmap_for_backward(ff, argmap);
-  //IndexLauncher launcher(AGG_SPEC_BWD_TASK_ID,
-  //                       parallel_is,
-  //                       TaskArgument(this, sizeof(AggregateSpec)),
-  //                       argmap,
-  //                       Predicate::TRUE_PRED,
-  //                       false /*must*/,
-  //                       0 /*mapper_id*/,
-  //                       outputs[0]->machine_view.hash());
+// ArgumentMap argmap;
+// Context ctx = ff.config.lg_ctx;
+// Runtime *runtime = ff.config.lg_hlr;
+// set_argumentmap_for_backward(ff, argmap);
+// IndexLauncher launcher(AGG_SPEC_BWD_TASK_ID,
+//                        parallel_is,
+//                        TaskArgument(this, sizeof(AggregateSpec)),
+//                        argmap,
+//                        Predicate::TRUE_PRED,
+//                        false /*must*/,
+//                        0 /*mapper_id*/,
+//                        outputs[0]->machine_view.hash());
 
-  //// gate_preds
-  //launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-  //                                                  0 /*projection id*/,
-  //                                                  READ_WRITE,
-  //                                                  EXCLUSIVE,
-  //                                                  inputs[0]->region));
-  //launcher.add_field(0, FID_DATA);
+//// gate_preds
+// launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+//                                                   0 /*projection id*/,
+//                                                   READ_WRITE,
+//                                                   EXCLUSIVE,
+//                                                   inputs[0]->region));
+// launcher.add_field(0, FID_DATA);
 
-  //// gate_assign
-  //launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-  //                                                  0 /*projection id*/,
-  //                                                  READ_ONLY,
-  //                                                  EXCLUSIVE,
-  //                                                  inputs[1]->region));
-  //launcher.add_field(1, FID_DATA);
+//// gate_assign
+// launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+//                                                   0 /*projection id*/,
+//                                                   READ_ONLY,
+//                                                   EXCLUSIVE,
+//                                                   inputs[1]->region));
+// launcher.add_field(1, FID_DATA);
 
-  //// true gate_assign
-  //launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
-  //                                                  0 /*projection id*/,
-  //                                                  READ_ONLY,
-  //                                                  EXCLUSIVE,
-  //                                                  inputs[2]->region));
-  //launcher.add_field(2, FID_DATA);
+//// true gate_assign
+// launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
+//                                                   0 /*projection id*/,
+//                                                   READ_ONLY,
+//                                                   EXCLUSIVE,
+//                                                   inputs[2]->region));
+// launcher.add_field(2, FID_DATA);
 
-  //// gate gradients full
-  //launcher.add_region_requirement(RegionRequirement(inputs[3]->part_grad,
-  //                                                  0 /*projection id*/,
-  //                                                  READ_WRITE,
-  //                                                  EXCLUSIVE,
-  //                                                  inputs[3]->region_grad));
-  //launcher.add_field(3, FID_DATA);
+//// gate gradients full
+// launcher.add_region_requirement(RegionRequirement(inputs[3]->part_grad,
+//                                                   0 /*projection id*/,
+//                                                   READ_WRITE,
+//                                                   EXCLUSIVE,
+//                                                   inputs[3]->region_grad));
+// launcher.add_field(3, FID_DATA);
 
-  //// exp gradients
-  //for (int i = 0; i < n; i++) {
-  //  launcher.add_region_requirement(
-  //      RegionRequirement(inputs[i + 4]->part_grad,
-  //                        0 /*projection id*/,
-  //                        READ_WRITE,
-  //                        EXCLUSIVE,
-  //                        inputs[i + 4]->region_grad));
-  //  launcher.add_field(i + 4, FID_DATA);
-  //}
+//// exp gradients
+// for (int i = 0; i < n; i++) {
+//   launcher.add_region_requirement(
+//       RegionRequirement(inputs[i + 4]->part_grad,
+//                         0 /*projection id*/,
+//                         READ_WRITE,
+//                         EXCLUSIVE,
+//                         inputs[i + 4]->region_grad));
+//   launcher.add_field(i + 4, FID_DATA);
+// }
 
-  //// output
-  //launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-  //                                                  0 /*projection id*/,
-  //                                                  READ_WRITE,
-  //                                                  EXCLUSIVE,
-  //                                                  outputs[0]->region_grad));
-  //launcher.add_field(n + 4, FID_DATA);
+//// output
+// launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+//                                                   0 /*projection id*/,
+//                                                   READ_WRITE,
+//                                                   EXCLUSIVE,
+//                                                   outputs[0]->region_grad));
+// launcher.add_field(n + 4, FID_DATA);
 
-  //runtime->execute_index_space(ctx, launcher);
+// runtime->execute_index_space(ctx, launcher);
 
 static void backward_task(Legion::Task const *task,
                           std::vector<Legion::PhysicalRegion> const &regions,
@@ -387,7 +392,8 @@ static void backward_task(Legion::Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
-  auto per_device_state = acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
 
   int n = attrs.n;
@@ -413,41 +419,45 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(n == full_gate_grad.shape[legion_dim_t(0)]);
 
   auto acc_exp_grads = acc.get_variadic_tensor_grad<READ_WRITE>(EXP_PREDS);
-  
+
   size_t rows = acc_exp_grads[0].shape[legion_dim_t(1)];
-  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[legion_dim_t(1)] == rows; }));
-  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[legion_dim_t(0)] == out_dim; }));
+  assert(all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) {
+    return a.shape[legion_dim_t(1)] == rows;
+  }));
+  assert(all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) {
+    return a.shape[legion_dim_t(0)] == out_dim;
+  }));
 
-  assert (acc_exp_grads.size() == n);
+  assert(acc_exp_grads.size() == n);
 
-  profile(
-    backward_kernel,
-    enable_profiling,
-    "[AggregateSpec] backward_time = %.2lfms\n",
-    &per_device_state,
-    get_float_ptrs(acc_exp_grads).data(),
-    get_int32_ptr(gate_assign),
-    get_int32_ptr(true_gate_assign),
-    get_float_ptr(gate_pred),
-    get_float_ptr(full_gate_grad),
-    get_float_ptr(output_grad),
-    n,
-    k,
-    rows,
-    lambda_bal,
-    batch_size,
-    out_dim);
+  profile(backward_kernel,
+          enable_profiling,
+          "[AggregateSpec] backward_time = %.2lfms\n",
+          &per_device_state,
+          get_float_ptrs(acc_exp_grads).data(),
+          get_int32_ptr(gate_assign),
+          get_int32_ptr(true_gate_assign),
+          get_float_ptr(gate_pred),
+          get_float_ptr(full_gate_grad),
+          get_float_ptr(output_grad),
+          n,
+          k,
+          rows,
+          lambda_bal,
+          batch_size,
+          out_dim);
 }
 
-ConstMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                   AggregateSpecAttrs const &attrs,
-                                   InputParallelTensorDesc const &gate_preds,
-                                   InputParallelTensorDesc const &gate_assign,
-                                   InputParallelTensorDesc const &true_gate_assign,
-                                   InputParallelTensorDesc const &full_gate_gradients,
-                                   InputVariadicParallelTensorDesc const &exp_preds,
-                                   ProfilingSettings const &settings,
-                                   MachineView const &mv) const {
+ConstMetrics
+    measure_operator_cost(SimEnvFactory const &sim,
+                          AggregateSpecAttrs const &attrs,
+                          InputParallelTensorDesc const &gate_preds,
+                          InputParallelTensorDesc const &gate_assign,
+                          InputParallelTensorDesc const &true_gate_assign,
+                          InputParallelTensorDesc const &full_gate_gradients,
+                          InputVariadicParallelTensorDesc const &exp_preds,
+                          ProfilingSettings const &settings,
+                          MachineView const &mv) const {
   auto env = sim.new_environment();
 
   SimTaskBinding fwd_binding;
@@ -455,19 +465,24 @@ ConstMetrics measure_operator_cost(SimEnvFactory const &sim,
   fwd_binding.bind(GATE_ASSIGN, gate_assign);
   fwd_binding.bind(EXP_PREDS, exp_preds);
 
-  ParallelTensorShape output_shape = get_output_shape(attrs, gate_preds.shape, gate_assign.shape, true_gate_assign.shape, full_gate_gradients.shape, exp_preds.shapes);
+  ParallelTensorShape output_shape = get_output_shape(attrs,
+                                                      gate_preds.shape,
+                                                      gate_assign.shape,
+                                                      true_gate_assign.shape,
+                                                      full_gate_gradients.shape,
+                                                      exp_preds.shapes);
   fwd_binding.bind(OUTPUT, output_shape);
 
   fwd_binding.bind_arg(PROFILING, settings);
 
   auto fwd_accessor = get_fwd_accessor(AGGREGATE_FWD_TASK_ID, fwd_binding);
-  
+
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
   bwd_binding.bind(FULL_GATE_GRADIENTS, full_gate_gradients);
   bwd_binding.bind(TRUE_GATE_ASSIGN, true_gate_gradients);
 
   auto bwd_accessor = get_bwd_accessor(AGGREGATE_BWD_TASK_ID, bwd_binding);
-   
+
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
 
@@ -484,7 +499,8 @@ ConstMetrics measure_operator_cost(SimEnvFactory const &sim,
 //   init.add_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
 //   init.add_return_value<AggregateSpecPerDeviceState>();
 
-//   register_task(AGG_SPEC_INIT_TASK_ID, "AggregateSpec Init", init, init_task);
+//   register_task(AGG_SPEC_INIT_TASK_ID, "AggregateSpec Init", init,
+//   init_task);
 // }
 
 template <>
@@ -521,4 +537,4 @@ void register_task() {
   register_task(AGG_SPEC_BWD_TASK_ID, "AggregateSpec Bwd", bwd, backward_task);
 }
 
-}
+} // namespace FlexFlow

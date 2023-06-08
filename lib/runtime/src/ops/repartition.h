@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_PARTITION_H
 #define _FLEXFLOW_PARTITION_H
 
+#include "op-attrs/ops/repartition.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/repartition.h"
 
 namespace FlexFlow {
 
-template <> void register_task<REPARTITION_INIT_TASK_ID>();
-template <> void register_task<REPARTITION_FWD_TASK_ID>();
-template <> void register_task<REPARTITION_BWD_TASK_ID>();
+template <>
+void register_task<REPARTITION_INIT_TASK_ID>();
+template <>
+void register_task<REPARTITION_FWD_TASK_ID>();
+template <>
+void register_task<REPARTITION_BWD_TASK_ID>();
 
 OpTaskInvocation init(RepartitionAttrs const &);
 OpTaskInvocation forward(RepartitionAttrs const &);
@@ -39,15 +42,18 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   bool append_parallel_op_info( */
 /*       std::vector<ParallelOpInfo> &parallel_ops) const override; */
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -66,6 +72,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   int repartition_dim, repartition_degree; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

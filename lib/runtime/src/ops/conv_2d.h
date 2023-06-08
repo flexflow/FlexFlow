@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_CONV_2D_H
 #define _FLEXFLOW_CONV_2D_H
 
+#include "op-attrs/ops/conv_2d.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/conv_2d.h"
 
 namespace FlexFlow {
 
-template <> void register_task<CONV2D_INIT_TASK_ID>();
-template <> void register_task<CONV2D_FWD_TASK_ID>();
-template <> void register_task<CONV2D_BWD_TASK_ID>();
+template <>
+void register_task<CONV2D_INIT_TASK_ID>();
+template <>
+void register_task<CONV2D_FWD_TASK_ID>();
+template <>
+void register_task<CONV2D_BWD_TASK_ID>();
 
 OpTaskInvocation init(Conv2DAttrs const &);
 OpTaskInvocation forward(Conv2DAttrs const &);
@@ -24,11 +27,13 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /* namespace Conv2DInput { */
 /* static constexpr int INDEX = 0; */
 
-/* enum { WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3, REPLICA = 4, NUMDIM }; */
-/* } */ 
+/* enum { WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3, REPLICA = 4, NUMDIM };
+ */
+/* } */
 
 /* namespace Conv2DOutput { */
-/* enum { WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3, REPLICA = 4, NUMDIM }; */
+/* enum { WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3, REPLICA = 4, NUMDIM };
+ */
 /* } */
 
 /* namespace Conv2DKernel { */
@@ -42,7 +47,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   REPLICA = 4, */
 /*   NUMDIM */
 /* }; */
-/* } */ 
+/* } */
 
 /* /1* namespace Conv2DBias { *1/ */
 /* /1* static constexpr int INDEX = 1; *1/ */
@@ -83,18 +88,22 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -105,10 +114,13 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*                           CostMetrics &cost_metrics) const override; */
 
 /*   /1* static void *1/ */
-/*   /1*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &); *1/ */
-/*   /1* static void construct_mappings(std::vector<ParallelDimMappingRecord> &, *1/ */
+/*   /1*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+ * *1/ */
+/*   /1* static void construct_mappings(std::vector<ParallelDimMappingRecord> &,
+ * *1/ */
 /*   /1*                                bool use_bias); *1/ */
-/*   /1* static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, *1/ */
+/*   /1* static void
+ * construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, *1/ */
 /*   /1*                                       bool use_bias); *1/ */
 
 /* public: */
@@ -119,6 +131,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   bool use_bias; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

@@ -2,8 +2,8 @@
 #define _FLEXFLOW_OPS_KERNELS_BATCH_MATMUL_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/per_device_op_state.h"
 #include "kernels/ff_handle.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
@@ -44,8 +44,8 @@ void backward_kernel(ffStream_t stream,
                      int k,
                      int batch);
 
-}
-}
-}
+} // namespace BatchMatmul
+} // namespace Kernels
+} // namespace FlexFlow
 
-#endif 
+#endif

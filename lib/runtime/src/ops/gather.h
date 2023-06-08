@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_OPS_GATHER_H
 #define _FLEXFLOW_OPS_GATHER_H
 
-#include "sim_environment.h"
-#include "op_task_invocation.h"
 #include "op-attrs/ops/gather.h"
+#include "op_task_invocation.h"
+#include "sim_environment.h"
 
 namespace FlexFlow {
 
-template <> void register_task<GATHER_INIT_TASK_ID>();
-template <> void register_task<GATHER_FWD_TASK_ID>();
-template <> void register_task<GATHER_BWD_TASK_ID>();
+template <>
+void register_task<GATHER_INIT_TASK_ID>();
+template <>
+void register_task<GATHER_FWD_TASK_ID>();
+template <>
+void register_task<GATHER_BWD_TASK_ID>();
 
 OpTaskInvocation init(GatherAttrs const &);
 OpTaskInvocation forward(GatherAttrs const &);
@@ -36,18 +39,22 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -66,6 +73,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   int legion_dim; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

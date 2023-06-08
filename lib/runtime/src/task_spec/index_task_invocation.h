@@ -6,10 +6,16 @@
 
 namespace FlexFlow {
 
-using IndexTaskArgSpec = variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture, CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
+using IndexTaskArgSpec = variant<ConcreteArgSpec,
+                                 IndexArgSpec,
+                                 CheckedTypedFuture,
+                                 CheckedTypedFutureMap,
+                                 ArgRefSpec,
+                                 TaskInvocationSpec>;
 
 template <typename T>
-using IndexTypedTaskArg = variant<IndexArg<T>, TypedFutureMap<T>, TypedIndexTaskInvocation<T>>;
+using IndexTypedTaskArg =
+    variant<IndexArg<T>, TypedFutureMap<T>, TypedIndexTaskInvocation<T>>;
 
 struct IndexTaskBinding {
 public:
@@ -32,10 +38,13 @@ public:
   template <typename T>
   void bind_arg(slot_id name, TypedIndexTaskInvocation<T> const &);
 
-  template <typename F, typename T = decltype(std::declval<F>()(std::declval<Legion::DomainPoint>()))>
+  template <typename F,
+            typename T = decltype(std::declval<F>()(
+                std::declval<Legion::DomainPoint>()))>
   void bind_index_arg(slot_id name, F const &f) {
     this->insert_arg_spec(name, IndexArgSpec::create(f));
   }
+
 public:
   void insert_arg_spec(slot_id, IndexTaskArgSpec const &);
 
@@ -46,14 +55,14 @@ struct IndexTaskInvocation : public use_visitable_cmp<IndexTaskInvocation> {
 public:
   IndexTaskInvocation() = delete;
   IndexTaskInvocation(task_id_t const &task_id, IndexTaskBinding const &binding)
-    : task_id(task_id), binding(binding)
-  { }
+      : task_id(task_id), binding(binding) {}
+
 public:
   task_id_t task_id;
   IndexTaskBinding binding;
 };
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::IndexTaskInvocation, task_id, binding);
 

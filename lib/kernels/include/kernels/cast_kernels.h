@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_CAST_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_CAST_KERNELS_H
 
+#include "kernels/accessor.h"
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
 #include "op-attrs/ffconst.h"
-#include "kernels/accessor.h"
 
 namespace FlexFlow {
 
@@ -26,9 +26,9 @@ void backward_kernel(ffStream_t stream,
                      CastPerDeviceState const *,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &output);
-        
-}
-}
-}
+
+} // namespace Cast
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif

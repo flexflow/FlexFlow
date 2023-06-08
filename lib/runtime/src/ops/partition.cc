@@ -93,10 +93,11 @@ Repartition::Repartition(FFModel &model,
                   params.repartition_degree,
                   name) {}
 
-PerDeviceOpState *Repartition::init_task(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
+PerDeviceOpState *
+    Repartition::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
+                           Context ctx,
+                           Runtime *runtime) {
   return nullptr;
 }
 

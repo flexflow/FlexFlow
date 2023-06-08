@@ -23,7 +23,6 @@ T sequence_cost(T const &first, T const &second);
 template <typename T>
 T parallel_cost(T const &first, T const &second);
 
-
 class SearchHelper {
 public:
   SearchHelper();
@@ -57,8 +56,10 @@ public:
       get_valid_machine_views(Node const &node,
                               MachineResource const &resource,
                               bool log = false) const;
-  std::vector<MachineView> get_valid_machine_views(
-      OperatorParameters const &op, MachineResource const &resource, bool log = false) const;
+  std::vector<MachineView>
+      get_valid_machine_views(OperatorParameters const &op,
+                              MachineResource const &resource,
+                              bool log = false) const;
 
   template <typename T>
   std::pair<bool, T> try_get_cost_from_cache(size_t hash) const;
@@ -116,6 +117,6 @@ private:
       cached_operator_valid_views;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

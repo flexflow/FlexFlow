@@ -86,9 +86,9 @@ NoOp::NoOp(FFModel &model,
 }
 
 PerDeviceOpState *NoOp::init_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions,
-                        Context ctx,
-                        Runtime *runtime) {
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   FFHandler handle = *((FFHandler const *)task->local_args);
   PerDeviceOpState *m = new PerDeviceOpState(handle);
   return m;

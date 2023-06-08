@@ -2,9 +2,11 @@
 
 namespace FlexFlow {
 
-ConcreteArgsFormat process_concrete_args(std::unordered_map<slot_id, ConcreteArgSpec> const &specs) {
+ConcreteArgsFormat process_concrete_args(
+    std::unordered_map<slot_id, ConcreteArgSpec> const &specs) {
   Legion::Serializer sez;
-  TaskArgumentsFormat *reserved = static_cast<TaskArgumentsFormat*>(sez.reserve_bytes(sizeof(TaskArgumentsFormat)));
+  TaskArgumentsFormat *reserved = static_cast<TaskArgumentsFormat *>(
+      sez.reserve_bytes(sizeof(TaskArgumentsFormat)));
   stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> fmts;
   for (auto const &kv : specs) {
     slot_id slot = kv.first;
@@ -16,11 +18,11 @@ ConcreteArgsFormat process_concrete_args(std::unordered_map<slot_id, ConcreteArg
 
     fmts.insert(slot, {arg.get_type_tag().get_type_idx(), before, after});
   }
-  return { sez, reserved, fmts };
+  return {sez, reserved, fmts};
 }
 
 ConcreteArgsFormat process_concrete_args(TensorlessTaskBinding const &binding) {
   return process_concrete_args(get_args_of_type<ConcreteArgSpec>(binding));
 }
 
-}
+} // namespace FlexFlow

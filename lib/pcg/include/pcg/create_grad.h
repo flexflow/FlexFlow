@@ -3,10 +3,7 @@
 
 namespace FlexFlow {
 
-enum class CreateGrad {
-  YES,
-  NO
-};
+enum class CreateGrad { YES, NO };
 
 }
 

@@ -119,18 +119,16 @@ __global__ void
   }
 }
 
-void forward_kernel(
-    hipStream_t stream,
-    GroupByPerDeviceState const *m,
-    float const *input,
-    int const *exp_assign,
-    float **outputs,
-    int n,       // num experts
-    int k,       // chosen experts
-    float alpha, // factor additional memory assigned
-    int batch_size,
-    int data_dim) {
-  
+void forward_kernel(hipStream_t stream,
+                    GroupByPerDeviceState const *m,
+                    float const *input,
+                    int const *exp_assign,
+                    float **outputs,
+                    int n,       // num experts
+                    int k,       // chosen experts
+                    float alpha, // factor additional memory assigned
+                    int batch_size,
+                    int data_dim) {
 
   // call forward kernel
   hipMemcpy(
@@ -184,10 +182,11 @@ void Group_by::backward_kernel_wrapper(
                      data_dim);
 }
 
-}
-}
+} // namespace GroupBy
+} // namespace Kernels
 
-GroupByPerDeviceState::GroupByPerDeviceState(FFHandler handler, int n) : PerDeviceOpState(handler) {
+GroupByPerDeviceState::GroupByPerDeviceState(FFHandler handler, int n)
+    : PerDeviceOpState(handler) {
   checkCUDA(hipMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
 GroupByPerDeviceState::~GroupByPerDeviceState(void) {

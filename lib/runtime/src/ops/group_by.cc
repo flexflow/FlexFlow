@@ -205,10 +205,11 @@ void Group_by::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-PerDeviceOpState *Group_by::init_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+PerDeviceOpState *
+    Group_by::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
+                        Context ctx,
+                        Runtime *runtime) {
   Group_by *gb = (Group_by *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   GroupByMeta *m = new GroupByMeta(handle, gb->n);

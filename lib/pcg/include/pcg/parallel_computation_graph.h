@@ -7,12 +7,14 @@
 
 namespace FlexFlow {
 
-class ParallelComputationGraph : public strong_typedef<ParallelComputationGraph, 
-                                                       OutputLabelledMultiDiGraph<Operator, ParallelTensor>> {
+class ParallelComputationGraph
+    : public strong_typedef<
+          ParallelComputationGraph,
+          OutputLabelledMultiDiGraph<Operator, ParallelTensor>> {
   using strong_typedef::strong_typedef;
 };
 
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::ParallelComputationGraph);
 

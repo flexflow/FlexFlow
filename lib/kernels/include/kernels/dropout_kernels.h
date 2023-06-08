@@ -10,11 +10,11 @@ namespace FlexFlow {
 class DropoutPerDeviceState : public PerDeviceOpState {
 public:
   DropoutPerDeviceState(FFHandler handler,
-              float rate,
-              unsigned long long seed,
-              bool profiling,
-              Legion::Memory gpu_mem,
-              Legion::Domain const &output_domain);
+                        float rate,
+                        unsigned long long seed,
+                        bool profiling,
+                        Legion::Memory gpu_mem,
+                        Legion::Domain const &output_domain);
   ~DropoutPerDeviceState(void);
   Realm::RegionInstance reserveInst;
   ffTensorDescriptor_t inputTensor, outputTensor;

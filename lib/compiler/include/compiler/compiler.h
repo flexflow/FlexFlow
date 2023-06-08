@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_COMPILER_COMPILER_H
 #define _FLEXFLOW_COMPILER_COMPILER_H
 
-#include "pcg/machine_view.h"
 #include "pcg/cost_values.h"
+#include "pcg/machine_view.h"
 
 namespace FlexFlow {
 
@@ -20,20 +20,22 @@ struct SearchResult {
   CostValues cost_values;
 };
 
-SearchResult optimize(ComputationGraph const &, 
-                      MachineSpecification const &, 
-                      CostEstimator const &, 
-                      Algorithm, 
+SearchResult optimize(ComputationGraph const &,
+                      MachineSpecification const &,
+                      CostEstimator const &,
+                      Algorithm,
                       optional<AlgorithmConfig> const &);
 
 // struct SearchSolution {
 //   LabelledMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape> optimized_pcg;
 //   std::unordered_map<Node, MachineView> device_assignments;
-//   /* std::unordered_map<tensor_guid_t, std::unordered_set<parallel_tensor_guid_t>> tensor_mappings; */
+//   /* std::unordered_map<tensor_guid_t,
+//   std::unordered_set<parallel_tensor_guid_t>> tensor_mappings; */
 // };
-// 
-// SearchSolution run_data_parallelize(ComputationGraph const &, MachineSpecification const &);
+//
+// SearchSolution run_data_parallelize(ComputationGraph const &,
+// MachineSpecification const &);
 
-}
+} // namespace FlexFlow
 
 #endif

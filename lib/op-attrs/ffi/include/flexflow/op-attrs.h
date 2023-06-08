@@ -81,13 +81,13 @@ typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
   FLEXFLOW_OP_TYPE_ENLARGE,
   FLEXFLOW_OP_TYPE_SQUEEZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Squeeze
   FLEXFLOW_OP_TYPE_UNSQUEEZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Unsqueeze
-  FLEXFLOW_OP_TYPE_EW_SUB,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sub
-  FLEXFLOW_OP_TYPE_EW_DIV,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Div
+  FLEXFLOW_OP_TYPE_EW_SUB, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sub
+  FLEXFLOW_OP_TYPE_EW_DIV, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Div
   FLEXFLOW_OP_TYPE_EW_EQUAL, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Equal
   FLEXFLOW_OP_TYPE_EW_GREATER, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Greater
   FLEXFLOW_OP_TYPE_EW_LESS, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Less
-  FLEXFLOW_OP_TYPE_EW_MAX,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Max
-  FLEXFLOW_OP_TYPE_EW_MIN,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Min
+  FLEXFLOW_OP_TYPE_EW_MAX, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Max
+  FLEXFLOW_OP_TYPE_EW_MIN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Min
   FLEXFLOW_OP_TYPE_REDUCE_ARGMAX, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMax
   FLEXFLOW_OP_TYPE_REDUCE_ARGMIN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMin
   FLEXFLOW_OP_TYPE_REDUCE_MAX, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMax
@@ -97,28 +97,29 @@ typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
   FLEXFLOW_OP_TYPE_REDUCE_SUM, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceSum
   FLEXFLOW_OP_TYPE_PAD, // https://github.com/dmlc/tvm/blob/master/topi/python/topi/nn/pad.py
   FLEXFLOW_OP_TYPE_SHAPE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Shape
-  FLEXFLOW_OP_TYPE_SIZE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
-  FLEXFLOW_OP_TYPE_TOPK,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
+  FLEXFLOW_OP_TYPE_SIZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
+  FLEXFLOW_OP_TYPE_TOPK, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
   FLEXFLOW_OP_TYPE_WHERE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Where
-  FLEXFLOW_OP_TYPE_CEIL,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Ceil
-  FLEXFLOW_OP_TYPE_CAST,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cast
-  FLEXFLOW_OP_TYPE_EXP,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Exp
+  FLEXFLOW_OP_TYPE_CEIL, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Ceil
+  FLEXFLOW_OP_TYPE_CAST, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cast
+  FLEXFLOW_OP_TYPE_EXP, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Exp
   FLEXFLOW_OP_TYPE_ROUND, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Round
-  FLEXFLOW_OP_TYPE_LOG,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Log
+  FLEXFLOW_OP_TYPE_LOG, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Log
   FLEXFLOW_OP_TYPE_LOGICAL_NOT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Not
   FLEXFLOW_OP_TYPE_SQRT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sqrt
-  FLEXFLOW_OP_TYPE_SIN,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sin
-  FLEXFLOW_OP_TYPE_COS,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cos
+  FLEXFLOW_OP_TYPE_SIN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sin
+  FLEXFLOW_OP_TYPE_COS, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cos
   FLEXFLOW_OP_TYPE_LEAKYRELU,
-  FLEXFLOW_OP_TYPE_SLICE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
+  FLEXFLOW_OP_TYPE_SLICE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
   FLEXFLOW_OP_TYPE_RESIZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
-  FLEXFLOW_OP_TYPE_PRELU,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
+  FLEXFLOW_OP_TYPE_PRELU, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
   FLEXFLOW_OP_TYPE_GELU,
   FLEXFLOW_OP_TYPE_MULTIHEAD_ATTENTION,
-  FLEXFLOW_OP_TYPE_FUSED, // Fused operator type for internal fusion optimizations
+  FLEXFLOW_OP_TYPE_FUSED, // Fused operator type for internal fusion
+                          // optimizations
   FLEXFLOW_OP_TYPE_RSQRT, // https://pytorch.org/docs/stable/generated/torch.rsqrt.html
-  FLEXFLOW_OP_TYPE_POW,   // https://pytorch.org/docs/stable/generated/torch.pow.html
-  FLEXFLOW_OP_TYPE_MEAN,  // https://pytorch.org/docs/stable/generated/torch.mean.html
+  FLEXFLOW_OP_TYPE_POW, // https://pytorch.org/docs/stable/generated/torch.pow.html
+  FLEXFLOW_OP_TYPE_MEAN, // https://pytorch.org/docs/stable/generated/torch.mean.html
   FLEXFLOW_OP_TYPE_LAYERNORM,
   FLEXFLOW_OP_TYPE_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
   FLEXFLOW_OP_TYPE_BROADCAST,
@@ -132,12 +133,15 @@ typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
 } flexflow_op_type_t;
 
 typedef struct {
-  flexflow_op_type_t op_type;  
+  flexflow_op_type_t op_type;
   void *data;
 } flexflow_operator_attrs_t;
 
-flexflow_opattrs_error_t flexflow_get_datatype_size(flexflow_datatype_t, int *out);
-flexflow_opattrs_error_t flexflow_operator_attrs_get_op_type(flexflow_operator_attrs_t, flexflow_op_type_t *out);
+flexflow_opattrs_error_t flexflow_get_datatype_size(flexflow_datatype_t,
+                                                    int *out);
+flexflow_opattrs_error_t
+    flexflow_operator_attrs_get_op_type(flexflow_operator_attrs_t,
+                                        flexflow_op_type_t *out);
 
 FLEXFLOW_FFI_END()
 

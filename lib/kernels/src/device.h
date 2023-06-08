@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_KERNELS_SRC_DEVICE_H
 #define _FLEXFLOW_KERNELS_SRC_DEVICE_H
 
-#include "kernels/device.h"
 #include "kernels/array_shape.h"
+#include "kernels/device.h"
 #include "op-attrs/ffconst.h"
 
 #if defined(FF_USE_CUDA)
@@ -26,7 +26,7 @@
 #define checkCUDNN(status)                                                     \
   do {                                                                         \
     std::stringstream _error;                                                  \
-    if (status != FF_CUDNN_STATUS_SUCCESS) {                                       \
+    if (status != FF_CUDNN_STATUS_SUCCESS) {                                   \
       _error << "CUDNN failure: " << status;                                   \
       FatalError(_error.str());                                                \
     }                                                                          \
@@ -35,16 +35,15 @@
 #define checkCURAND(status)                                                    \
   do {                                                                         \
     std::stringstream _error;                                                  \
-    if (status != FF_CURAND_STATUS_SUCESS) {                                    \
+    if (status != FF_CURAND_STATUS_SUCESS) {                                   \
       _error << "CURAND failure: " << status;                                  \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
 
-
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n)                                                 \
-  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n);     \
+  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n);              \
        i += blockDim.x * gridDim.x)
 
 // Use 1024 threads per block, which requires cuda sm_2x or above
@@ -57,8 +56,7 @@ inline int GET_BLOCKS(int const N) {
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
 
-__global__ void
-    scale_kernel(float *ptr, size_t size, float a, float b);
+__global__ void scale_kernel(float *ptr, size_t size, float a, float b);
 
 __global__ void ones_kernel(float *ptr, size_t size);
 
@@ -119,8 +117,9 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
-ffStatus_t cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
-                                                     FlexFlow::ArrayShape const &shape);
+ffStatus_t
+    cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
+                                           FlexFlow::ArrayShape const &shape);
 
 ffDataType_t ff_to_cuda_datatype(DataType type);
 
@@ -128,4 +127,4 @@ ffCudnnDataType_t ff_to_cudnn_datatype(DataType type);
 
 void handle_unimplemented_kernel(OperatorType op_type);
 
-#endif 
+#endif

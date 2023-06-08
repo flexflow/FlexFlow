@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_KERNELS_PROFILING_H
 #define _FLEXFLOW_KERNELS_PROFILING_H
 
-#include "utils/optional.h"
 #include "kernels/device.h"
+#include "utils/optional.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
@@ -17,10 +17,11 @@ public:
   int measure_iters;
 };
 
-template <typename F, typename ...Ts>
-optional<float> profiling_wrapper(F const &f, bool enable_profiling, Ts &&...ts) {
+template <typename F, typename... Ts>
+optional<float>
+    profiling_wrapper(F const &f, bool enable_profiling, Ts &&...ts) {
   if (enable_profiling) {
-    ProfilingSettings settings = { 0, 1 };
+    ProfilingSettings settings = {0, 1};
     return profiling_wrapper<F, Ts...>(f, settings, std::forward<Ts>(ts)...);
   } else {
     ffStream_t stream;
@@ -30,8 +31,10 @@ optional<float> profiling_wrapper(F const &f, bool enable_profiling, Ts &&...ts)
   }
 }
 
-template <typename F, typename ...Ts>
-optional<float> profiling_wrapper(F const &f, ProfilingSettings const &settings, Ts &&...ts) { 
+template <typename F, typename... Ts>
+optional<float> profiling_wrapper(F const &f,
+                                  ProfilingSettings const &settings,
+                                  Ts &&...ts) {
   ffStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -43,7 +46,7 @@ optional<float> profiling_wrapper(F const &f, ProfilingSettings const &settings,
     if (i == settings.warmup_iters) {
       checkCUDA(ffEventRecord(t_start, stream));
     }
-    f(stream, std::forward<Ts>(ts)...); 
+    f(stream, std::forward<Ts>(ts)...);
   }
 
   float elapsed = 0;
@@ -55,7 +58,7 @@ optional<float> profiling_wrapper(F const &f, ProfilingSettings const &settings,
   return elapsed;
 }
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::ProfilingSettings, warmup_iters, measure_iters);
 MAKE_VISIT_HASHABLE(::FlexFlow::ProfilingSettings);

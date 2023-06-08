@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_PARALLEL_OP_H
 #define _FLEXFLOW_PARALLEL_OP_H
 
-#include "utils/optional.h"
 #include "parallel_op_info.h"
+#include "utils/optional.h"
 
 namespace FlexFlow {
 
@@ -35,6 +35,6 @@ ParallelOpJoinResult try_join_parallel_ops(ParallelOpInfo const &,
 /*   Legion::LogicalPartition input_lp, output_grad_lp; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

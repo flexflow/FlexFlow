@@ -35,7 +35,8 @@ enum Slots {
   PROFILING
 }
 
-Tensor FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
+Tensor
+    FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
   Layer *bm = new Layer(this,
                         OP_BATCHNORM,
@@ -218,7 +219,8 @@ void BatchNorm::init(FFModel const &ff) {
   regions[2](I): scale
   regions[3](I): bias
 */
-PerDeviceOpState * BatchNorm::init_task(Task const *task,
+PerDeviceOpState *
+    BatchNorm::init_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
@@ -291,27 +293,29 @@ void BatchNorm::forward(FFModel const &ff) {
   regions[2](I): scale
   regions[3](I): bias
 */
-void
-    BatchNorm::forward_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+void BatchNorm::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // const BatchNorm* bm = (BatchNorm*) task->args;
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   BatchNormPerDeviceState *m = *((BatchNormPerDeviceState **)task->local_args);
-  
+
   auto input = acc.get_tensor<READ_ONLY>(INPUT);
   auto output = acc.get_tensor<WRITE_DISCARD>(OUTPUT);
   auto scale = acc.get_tensor<READ_ONLY>(SCALE);
   auto bias = acc.get_tensor<READ_ONLY>(SCALE);
 
-  profile(
-    forward_kernel,
-    m->profiling,
-    "[BatchNorm] forward_time = %.2lfms\n",
-    m, input.get_float_ptr(), output.get_float_ptr(), scale.get_float_ptr(), bias.get_float_ptr());
+  profile(forward_kernel,
+          m->profiling,
+          "[BatchNorm] forward_time = %.2lfms\n",
+          m,
+          input.get_float_ptr(),
+          output.get_float_ptr(),
+          scale.get_float_ptr(),
+          bias.get_float_ptr());
 }
 
 void BatchNorm::backward(FFModel const &ff) {
@@ -409,19 +413,18 @@ __host__ void
   auto scale_grad = acc.get_tensor_grad<READ_WRITE>(SCALE_GRAD);
   auto bias_grad = acc.get_tensor_grad<READ_WRITE>(BIAS_GRAD);
 
-  profile(
-    backward_kernel,
-    m->profiling,
-    "[BatchNorm] backward_time = %.2lfms\n",
-    m, 
-    input.get_float_ptr(), 
-    output_grad.get_float_ptr(), 
-    output.get_float_ptr(), 
-    input_grad.get_float_ptr(), 
-    scale.get_float_ptr(), 
-    scale_grad.get_float_ptr(), 
-    bias_grad.get_float_ptr(), 
-    output.get_volume());
+  profile(backward_kernel,
+          m->profiling,
+          "[BatchNorm] backward_time = %.2lfms\n",
+          m,
+          input.get_float_ptr(),
+          output_grad.get_float_ptr(),
+          output.get_float_ptr(),
+          input_grad.get_float_ptr(),
+          scale.get_float_ptr(),
+          scale_grad.get_float_ptr(),
+          bias_grad.get_float_ptr(),
+          output.get_volume());
 }
 
 bool BatchNorm::measure_operator_cost(Simulator *sim,
@@ -481,7 +484,8 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&](ffStream_t stream) {
-      backward_kernel(stream, m,
+      backward_kernel(stream,
+                      m,
                       input_ptr,
                       output_grad_ptr,
                       output_ptr,

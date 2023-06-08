@@ -18,7 +18,8 @@
 
 namespace FlexFlow {
 
-BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
+BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace BatchMatmul {

@@ -13,21 +13,24 @@
  * limitations under the License.
  */
 
+#include "kernels/accessor.h"
 #include "kernels/combine_kernels.h"
 #include "kernels/cuda_helper.h"
-#include "kernels/accessor.h"
 #include "kernels/datatype_dispatch.h"
 
 namespace FlexFlow {
 
-CombinePerDeviceState::CombinePerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
+CombinePerDeviceState::CombinePerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace Combine {
 
 template <DataType DT>
 struct ForwardKernel {
-  void operator()(ffStream_t stream, GenericTensorAccessorR const &input, GenericTensorAccessorW const &output) {
+  void operator()(ffStream_t stream,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output) {
     checkCUDA(cudaMemcpyAsync(output.get<DT>(),
                               input.get<DT>(),
                               input.shape.get_volume() * size_of(DT),
@@ -38,21 +41,31 @@ struct ForwardKernel {
 
 template <DataType DT>
 struct BackwardKernel {
-  void operator()(ffStream_t stream, GenericTensorAccessorR const &output_grad, GenericTensorAccessorW const &input_grad) {
+  void operator()(ffStream_t stream,
+                  GenericTensorAccessorR const &output_grad,
+                  GenericTensorAccessorW const &input_grad) {
     size_t num_elements = output_grad.shape.get_volume();
-    add_kernel<real_type<DT>><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
-        input_grad.get<DT>(), output_grad.get<DT>(), num_elements);
+    add_kernel<real_type<DT>>
+        <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
+            input_grad.get<DT>(), output_grad.get<DT>(), num_elements);
   }
 };
 
-void forward_kernel(ffStream_t stream, CombinePerDeviceState const *m, GenericTensorAccessorR const &input, GenericTensorAccessorW const &output) {
+void forward_kernel(ffStream_t stream,
+                    CombinePerDeviceState const *m,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output) {
   DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, input, output);
 }
 
-void backward_kernel(ffStream_t stream, CombinePerDeviceState const *m, GenericTensorAccessorR const &output_grad, GenericTensorAccessorW const &input_grad) {
-  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, output_grad, input_grad);
+void backward_kernel(ffStream_t stream,
+                     CombinePerDeviceState const *m,
+                     GenericTensorAccessorR const &output_grad,
+                     GenericTensorAccessorW const &input_grad) {
+  DataTypeDispatch1<BackwardKernel>{}(
+      m->data_type, stream, output_grad, input_grad);
 }
 
-} 
-}
-}
+} // namespace Combine
+} // namespace Kernels
+} // namespace FlexFlow

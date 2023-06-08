@@ -15,8 +15,8 @@
 
 #include "reshape.h"
 #include "kernels/reshape_kernels.h"
-#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -174,9 +174,9 @@ void Reshape::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *Reshape::init_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   Reshape const *reshape = (Reshape *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   ReshapeMeta *m = new ReshapeMeta(handle);

@@ -25,11 +25,11 @@ using Legion::Domain;
 using Legion::Memory;
 
 DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
-                         bool profiling,
-                         float rate,
-                         unsigned long long seed,
-                         Memory gpu_mem,
-                         Domain const &output_domain)
+                                             bool profiling,
+                                             float rate,
+                                             unsigned long long seed,
+                                             Memory gpu_mem,
+                                             Domain const &output_domain)
     : PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
@@ -112,7 +112,6 @@ void backward_kernel(hipStream_t stream,
                                    m->reserveSpace,
                                    m->reserveSpaceSize));
 }
-
 
 } // namespace Dropout
 } // namespace Kernels

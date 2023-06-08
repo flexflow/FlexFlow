@@ -1,7 +1,7 @@
 #include "reduce.h"
 #include "kernels/reduce_kernels.h"
-#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -118,14 +118,16 @@ Op *Reduce::create_operator_from_layer(
   layer->get_int_vector_property("legion_axes", axes);
   layer->get_int_property("keepdims", value);
   bool keepdims = value;
-  return new Reduce(model, layer->op_type, inputs[0], axes, keepdims, layer->name);
+  return new Reduce(
+      model, layer->op_type, inputs[0], axes, keepdims, layer->name);
 }
 
 Reduce::Reduce(FFModel &model,
                ReduceParams const &params,
                const ParallelTensor input,
                char const *name)
-    : Reduce(model, params.op_type, input, params.axes, params.keepdims, name) {}
+    : Reduce(model, params.op_type, input, params.axes, params.keepdims, name) {
+}
 
 Reduce::Reduce(FFModel &model,
                OperatorType _op_type,
@@ -212,9 +214,9 @@ void Reduce::init(FFModel const &ff) {
 };
 
 PerDeviceOpState *Reduce::init_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   Reduce *rd = (Reduce *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(

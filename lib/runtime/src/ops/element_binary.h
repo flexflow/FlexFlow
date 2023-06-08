@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_ELEMENT_BINARY_H
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
+#include "op-attrs/ops/element_binary.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/element_binary.h"
 
 namespace FlexFlow {
 
-template <> void register_task<ELEMENTBINARY_INIT_TASK_ID>();
-template <> void register_task<ELEMENTBINARY_FWD_TASK_ID>();
-template <> void register_task<ELEMENTBINARY_BWD_TASK_ID>();
+template <>
+void register_task<ELEMENTBINARY_INIT_TASK_ID>();
+template <>
+void register_task<ELEMENTBINARY_FWD_TASK_ID>();
+template <>
+void register_task<ELEMENTBINARY_BWD_TASK_ID>();
 
 OpTaskInvocation init(ElementBinaryAttrs const &);
 OpTaskInvocation forward(ElementBinaryAttrs const &);
@@ -40,17 +43,21 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -61,6 +68,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   bool broadcast_input1, broadcast_input2; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

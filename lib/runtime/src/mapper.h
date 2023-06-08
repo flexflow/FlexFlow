@@ -19,9 +19,9 @@
 #include "legion.h"
 #include "model.h"
 #include "null_mapper.h"
-#include "tasks.h"
 #include "pcg/device_id.h"
 #include "pcg/device_type.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 
@@ -34,10 +34,12 @@ public:
 
 public:
   Legion::ShardID shard(Legion::DomainPoint const &point,
-                Legion::Domain const &full_space,
-                const size_t total_shards);
+                        Legion::Domain const &full_space,
+                        const size_t total_shards);
+
 private:
   Legion::ShardID get_shard_id(device_id_t) const;
+
 private:
   int gpus_per_node, cpus_per_node, num_nodes;
   MachineView machine_view;
@@ -51,9 +53,15 @@ struct InstanceCreationLog {
 };
 
 void register_sharding_functor(Legion::Runtime *, FFShardingFunctor *);
-void register_sharding_functor(Legion::Runtime *, std::size_t, FFShardingFunctor *);
-std::vector<MachineView> starting_at_all_devices(MachineView const &, int total_num_cpus, int total_num_gpus);
-device_id_t get_device_index(MachineView const &, Legion::DomainPoint const &, Legion::Domain const &);
+void register_sharding_functor(Legion::Runtime *,
+                               std::size_t,
+                               FFShardingFunctor *);
+std::vector<MachineView> starting_at_all_devices(MachineView const &,
+                                                 int total_num_cpus,
+                                                 int total_num_gpus);
+device_id_t get_device_index(MachineView const &,
+                             Legion::DomainPoint const &,
+                             Legion::Domain const &);
 
 struct NodesConfig {
   NodesConfig(int num_nodes, int cpus_per_node, int gpus_per_node);
@@ -66,6 +74,7 @@ struct NodesConfig {
 
   FFShardingFunctor *make_sharding_functor(MachineView const &) const;
   std::vector<MachineView> starting_at_all_devices(MachineView const &);
+
 private:
   int cpus_per_node, gpus_per_node, num_nodes;
 };
@@ -87,9 +96,9 @@ public:
                              Legion::Runtime *rt,
                              std::set<Legion::Processor> const &local_procs);
   static void register_sharding_functors(Legion::Runtime *runtime,
-                                        Legion::Machine machine,
-                                        int argv,
-                                        char **argc);
+                                         Legion::Machine machine,
+                                         int argv,
+                                         char **argc);
   virtual void select_task_options(const Legion::Mapping::MapperContext ctx,
                                    Legion::Task const &task,
                                    TaskOptions &output);
@@ -254,10 +263,11 @@ public: // Partition mapping calls
                              Legion::Partition const &partition,
                              MapPartitionInput const &input,
                              MapPartitionOutput &output);
-  virtual void select_partition_sources(const Legion::Mapping::MapperContext ctx,
-                                        Legion::Partition const &partition,
-                                        SelectPartitionSrcInput const &input,
-                                        SelectPartitionSrcOutput &output);
+  virtual void
+      select_partition_sources(const Legion::Mapping::MapperContext ctx,
+                               Legion::Partition const &partition,
+                               SelectPartitionSrcInput const &input,
+                               SelectPartitionSrcOutput &output);
   virtual void create_partition_temporary_instance(
       const Legion::Mapping::MapperContext ctx,
       Legion::Partition const &partition,
@@ -318,16 +328,17 @@ public: // Mapping control and stealing
                                     StealRequestOutput &output);
 
 private: // static inline methods
-  static inline bool
-      physical_sort_func(std::pair<Legion::Mapping::PhysicalInstance, unsigned> const &left,
-                         std::pair<Legion::Mapping::PhysicalInstance, unsigned> const &right) {
+  static inline bool physical_sort_func(
+      std::pair<Legion::Mapping::PhysicalInstance, unsigned> const &left,
+      std::pair<Legion::Mapping::PhysicalInstance, unsigned> const &right) {
     return (left.second < right.second);
   }
 
 private: // Default helper functions
-  Legion::Memory default_select_target_memory(Legion::Mapping::MapperContext ctx,
-                                      Legion::Processor target_proc,
-                                      Legion::RegionRequirement const &req);
+  Legion::Memory
+      default_select_target_memory(Legion::Mapping::MapperContext ctx,
+                                   Legion::Processor target_proc,
+                                   Legion::RegionRequirement const &req);
   bool default_make_instance(Legion::Mapping::MapperContext ctx,
                              Legion::Memory target_mem,
                              Legion::LayoutConstraintSet const &constraints,
@@ -356,7 +367,8 @@ private:
   unsigned long long compute_task_hash(Legion::Task const &task);
   bool is_parameter_server_update_task(Legion::TaskID tid);
   bool is_initializer_task(Legion::TaskID tid);
-  std::vector<Legion::Processor> const &all_procs_by_kind(Legion::Processor::Kind kind);
+  std::vector<Legion::Processor> const &
+      all_procs_by_kind(Legion::Processor::Kind kind);
 
   void register_machine_view(Legion::MappingTagID, MachineView const &);
   void register_machine_view(MachineView const &);
@@ -371,6 +383,7 @@ private:
   Legion::Processor const &get_processor(device_id_t);
 
   bool has_device(device_id_t);
+
 protected:
   Legion::Processor const local_processor;
   Legion::AddressSpace const node_id;
@@ -378,16 +391,17 @@ protected:
   char const *mapper_name;
   bool enable_control_replication;
   bool log_instance_creation;
-  std::vector<Legion::Processor> all_gpus, all_cpus, all_pys, local_gpus, local_cpus,
-      local_pys;
+  std::vector<Legion::Processor> all_gpus, all_cpus, all_pys, local_gpus,
+      local_cpus, local_pys;
   std::map<Legion::Processor, Legion::Memory> proc_fbmems, proc_zcmems;
   std::map<unsigned long long, Legion::Processor> cache_update_tasks;
   // We use MappingTagID has the key since we will pass the tag to the mapper
   std::map<Legion::MappingTagID, MachineView> machine_views;
-  std::map<std::pair<Legion::Memory::Kind, Legion::FieldSpace>, Legion::LayoutConstraintID>
+  std::map<std::pair<Legion::Memory::Kind, Legion::FieldSpace>,
+           Legion::LayoutConstraintID>
       layout_constraint_cache;
   std::vector<InstanceCreationLog> created_instances;
 };
 
-}
+} // namespace FlexFlow
 #endif

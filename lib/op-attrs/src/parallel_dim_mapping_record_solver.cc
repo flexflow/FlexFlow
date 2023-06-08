@@ -1,7 +1,7 @@
 #include "parallel_dim_mapping_record_solver.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 
 namespace FlexFlow {
 
@@ -10,18 +10,18 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
     int input_idx,
     int weight_idx) {
-  
+
   std::vector<ParallelDimMappingRecord> output;
-  std::transform(
-    mappings.cbegin(), mappings.cend(), output.begin(),
-    [&](std::tuple<int, MappingOperation, int> const &mapping){
-      return construct_weight_parallel_dims(std::get<0>(mapping),
-                                    std::get<2>(mapping),
-                                    input_idx,
-                                    weight_idx,
-                                    std::get<1>(mapping));
-    }
-  );
+  std::transform(mappings.cbegin(),
+                 mappings.cend(),
+                 output.begin(),
+                 [&](std::tuple<int, MappingOperation, int> const &mapping) {
+                   return construct_weight_parallel_dims(std::get<0>(mapping),
+                                                         std::get<2>(mapping),
+                                                         input_idx,
+                                                         weight_idx,
+                                                         std::get<1>(mapping));
+                 });
   return output;
 }
 
@@ -95,7 +95,8 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
 /*   return -1; */
 /* } */
 
-/* bool check_output_input_weight_parallel_dims(bool allocate_weights) const { */
+/* bool check_output_input_weight_parallel_dims(bool allocate_weights) const {
+ */
 /*   // if (!allocate_weights) { */
 /*   //   assert(this->numWeights == 0); */
 /*   // } */
@@ -112,7 +113,8 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
 /*     switch (record.get_type()) { */
 /*       case MappingRecordType::INPUT_OUTPUT: */
 /*         assert(record.output_idx < this->numOutputs); */
-/*         assert(record.output_dim < this->outputs[record.output_idx]->num_dims); */
+/*         assert(record.output_dim <
+ * this->outputs[record.output_idx]->num_dims); */
 /*         other_dim = outputs[record.output_idx]->dims[record.output_dim]; */
 /*         break; */
 /*       case MappingRecordType::INPUT_WEIGHT: */
@@ -120,10 +122,12 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
 /*           continue; */
 /*         } */
 /*         if (record.weight_idx >= this->numWeights) { */
-/*           // The case where some weights are not used (e.g., no bias for linear) */
+/*           // The case where some weights are not used (e.g., no bias for
+ * linear) */
 /*           continue; */
 /*         } */
-/*         assert(record.weight_dim < this->weights[record.weight_idx]->num_dims); */
+/*         assert(record.weight_dim <
+ * this->weights[record.weight_idx]->num_dims); */
 /*         other_dim = weights[record.weight_idx]->dims[record.weight_dim]; */
 /*         break; */
 /*     } */
@@ -156,20 +160,17 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
 /* } */
 
 std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
-    std::vector<std::pair<int, int>> mappings,
-    int input_idx,
-    int weight_idx) {
+    std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) {
   std::vector<ParallelDimMappingRecord> output;
-  std::transform(
-    mappings.cbegin(), mappings.cend(), output.begin(),
-    [&](std::pair<int, int> const &mapping) {
-      return construct_weight_parallel_dims(
-        mapping.first, mapping.second, input_idx, weight_idx);
-    }
-  );
+  std::transform(mappings.cbegin(),
+                 mappings.cend(),
+                 output.begin(),
+                 [&](std::pair<int, int> const &mapping) {
+                   return construct_weight_parallel_dims(
+                       mapping.first, mapping.second, input_idx, weight_idx);
+                 });
   return output;
 }
-
 
 void construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -183,7 +184,8 @@ void construct_weight_parallel_dims(
 }
 
 /* void ParallelDimMappingRecordSolver::register_weight_parallel_dims( */
-/*     std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) { */
+/*     std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx)
+ * { */
 /*   construct_weight_parallel_dims( */
 /*       *this->parallel_dims_mapping, mappings, input_idx, weight_idx); */
 /* } */
@@ -216,11 +218,11 @@ void construct_output_parallel_dims(
     int input_idx,
     int output_idx) {
   for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
-    construct_output_parallel_dims( std::get<0>(mapping),
-                                       std::get<2>(mapping),
-                                       input_idx,
-                                       output_idx,
-                                       std::get<1>(mapping));
+    construct_output_parallel_dims(std::get<0>(mapping),
+                                   std::get<2>(mapping),
+                                   input_idx,
+                                   output_idx,
+                                   std::get<1>(mapping));
   }
 }
 
@@ -247,7 +249,8 @@ void construct_output_parallel_dims(
 }
 
 /* void register_output_parallel_dims( */
-/*     std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx) { */
+/*     std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx)
+ * { */
 /*   construct_output_parallel_dims( */
 /*       *this->parallel_dims_mapping, mappings, input_idx, output_idx); */
 /* } */
@@ -274,25 +277,26 @@ void construct_output_parallel_dims(
 /*                                      operation); */
 /* } */
 
-
-
 /* ParallelDimMappingSolution solve_parallel_dim_mappings( */
 /*     std::vector<ParallelDimMappingRecord> const &mappings, */
 /*     std::vector<ParallelTensorShape> const &inputs, */
 /*     int numWeights, int numOutputs) { */
 
-/*   ParallelDimMappingSolution solution = [&]() -> ParallelDimMappingSolution { */
+/*   ParallelDimMappingSolution solution = [&]() -> ParallelDimMappingSolution {
+ */
 /*     std::vector<ParallelTensorShape> weight_shapes(numWeights); */
 /*     std::vector<ParallelTensorShape> output_shapes(numOutputs); */
 /*     return { weight_shapes, output_shapes }; */
 /*   }(); */
 
 /*   for (ParallelDimMappingRecord const &record : mappings) { */
-/*     ParallelDim const &input_dim = inputs.at(record.input_idx).at(record.input_dim); */
+/*     ParallelDim const &input_dim =
+ * inputs.at(record.input_idx).at(record.input_dim); */
 
 /*     switch (record.get_type()) { */
 /*       case MappingRecordType::INPUT_OUTPUT: { */
-/*         ParallelDim &output_dim = solution.output_shapes.at(record.output_idx).at(record.output_dim); */
+/*         ParallelDim &output_dim =
+ * solution.output_shapes.at(record.output_idx).at(record.output_dim); */
 /*         output_dim.degree = input_dim.degree; */
 /*         output_dim.parallel_idx = input_dim.parallel_idx; */
 
@@ -301,7 +305,8 @@ void construct_output_parallel_dims(
 /*         } */
 /*       } break; */
 /*       case MappingRecordType::INPUT_WEIGHT: { */
-/*         ParallelDim &weight_dim = solution.weight_shapes.at(record.weight_idx).at(record.weight_dim); */
+/*         ParallelDim &weight_dim =
+ * solution.weight_shapes.at(record.weight_idx).at(record.weight_dim); */
 /*         weight_dim.degree = input_dim.degree; */
 /*         weight_dim.parallel_idx = input_dim.parallel_idx; */
 
@@ -315,4 +320,4 @@ void construct_output_parallel_dims(
 /*   return solution; */
 /* } */
 
-}
+} // namespace FlexFlow

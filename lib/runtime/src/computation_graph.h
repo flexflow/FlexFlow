@@ -19,7 +19,7 @@ static_assert(std::is_move_constructible<ComputationGraph>::value, "");
 static_assert(std::is_copy_assignable<ComputationGraph>::value, "");
 static_assert(std::is_copy_constructible<ComputationGraph>::value, "");
 
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::tensor_guid_t);
 

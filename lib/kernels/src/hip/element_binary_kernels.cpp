@@ -22,7 +22,8 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-ElementBinaryPerDeviceState::ElementBinaryPerDeviceState(FFHandler handler) : OpPerDeviceState(handler) {
+ElementBinaryPerDeviceState::ElementBinaryPerDeviceState(FFHandler handler)
+    : OpPerDeviceState(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&input1Tensor));
   checkCUDNN(miopenCreateTensorDescriptor(&input2Tensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
@@ -140,7 +141,6 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
   }
 }
 
-
 void forward_kernel(hipStream_t stream,
                     ElementBinaryPerDeviceState const *m,
                     float const *in1_ptr,
@@ -201,7 +201,6 @@ void forward_kernel(hipStream_t stream,
                               out_ptr));
   }
 }
-
 
 void backward_kernel(hipStream_t stream,
                      ElementBinaryPerDeviceState const *m,
@@ -306,7 +305,6 @@ void backward_kernel(hipStream_t stream,
     assert(false && "Unsupported ElementWise Binary Type");
   }
 }
-
 
 } // namespace ElementBinary
 } // namespace Kernels

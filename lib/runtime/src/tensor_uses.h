@@ -1,16 +1,12 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TENSOR_USES_H
 #define _FLEXFLOW_RUNTIME_SRC_TENSOR_USES_H
 
-#include "tensor.h"
 #include "layer.h"
+#include "tensor.h"
 
 namespace FlexFlow {
 
-enum class TensorUseType {
-  INPUT,
-  WEIGHT,
-  OUTPUT
-};
+enum class TensorUseType { INPUT, WEIGHT, OUTPUT };
 
 struct TensorUseDescription {
   TensorUseDescription() = delete;
@@ -29,10 +25,11 @@ struct TensorUses {
 
   void update(Layer const &);
   void remove(Layer const &);
+
 private:
   std::unordered_map<size_t, std::vector<TensorUseDescription>> uses;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

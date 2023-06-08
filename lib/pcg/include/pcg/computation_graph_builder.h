@@ -5,7 +5,8 @@
 
 namespace FlexFlow {
 
-struct ComputationGraphBuilder : public use_visitable_cmp<ComputationGraphBuilder> {
+struct ComputationGraphBuilder
+    : public use_visitable_cmp<ComputationGraphBuilder> {
 public:
   ComputationGraphBuilder();
 
@@ -37,8 +38,7 @@ public:
              Tensor const &y,
              optional<std::string> const &name = nullopt);
   // Add a rsqrt layer
-  Tensor rsqrt(Tensor const &x, 
-               optional<std::string> const &name = nullopt);
+  Tensor rsqrt(Tensor const &x, optional<std::string> const &name = nullopt);
   // Add a pow layer
   Tensor pow(Tensor const &x,
              float exponent,
@@ -57,8 +57,7 @@ public:
                         float denominator,
                         optional<std::string> const &name = nullopt);
   // Add a sin layer
-  Tensor sin(Tensor const &x, 
-             optional<std::string> const &name = nullopt);
+  Tensor sin(Tensor const &x, optional<std::string> const &name = nullopt);
   // Add a cos layer
   Tensor cos(Tensor const &x, optional<std::string> const &name = nullopt);
   // Add an activation layer
@@ -99,9 +98,9 @@ public:
                    optional<std::string> const &name = nullopt);
   // Add a gather layer
   std::vector<Tensor> gather(Tensor const &input,
-                Tensor const &index,
-                ff_dim_t dim,
-                optional<std::string> const &name = nullopt);
+                             Tensor const &index,
+                             ff_dim_t dim,
+                             optional<std::string> const &name = nullopt);
   // Add a group_by layer
   void group_by(Tensor const &data,
                 Tensor const &assign,
@@ -145,7 +144,9 @@ public:
                     bool elementwise_affine,
                     float eps,
                     optional<std::string> const &name = nullopt);
-  Tensor batch_norm(Tensor const &input, bool relu = true, optional<std::string> const &name = nullopt);
+  Tensor batch_norm(Tensor const &input,
+                    bool relu = true,
+                    optional<std::string> const &name = nullopt);
   Tensor batch_matmul(Tensor const &A,
                       Tensor const &B,
                       int a_seq_length_dim = -1,
@@ -160,10 +161,14 @@ public:
                optional<Initializer const &> bias_initializer = nullopt,
                optional<std::string> const &name = nullopt);
   // Add a cast layer
-  Tensor cast(Tensor const &input, DataType dtype, optional<std::string> const &name = nullopt);
+  Tensor cast(Tensor const &input,
+              DataType dtype,
+              optional<std::string> const &name = nullopt);
   // Add a concat layer
-  Tensor
-      concat(int n, std::vector<Tensor> const &tensors, int axis, optional<std::string> const &name = nullopt);
+  Tensor concat(int n,
+                std::vector<Tensor> const &tensors,
+                int axis,
+                optional<std::string> const &name = nullopt);
   // Add a mean layer
   Tensor mean(Tensor const &input,
               std::vector<int> const &dims,
@@ -185,7 +190,9 @@ public:
   // Add a flat layer
   Tensor flat(Tensor const &input, optional<std::string> const &name = nullopt);
   // Add a softmax layer
-  Tensor softmax(Tensor const &input, int dim = -1, optional<std::string> const &name = nullopt);
+  Tensor softmax(Tensor const &input,
+                 int dim = -1,
+                 optional<std::string> const &name = nullopt);
   // Create input tensors and constants
   Tensor transpose(Tensor const &input,
                    std::vector<int> const &perm,
@@ -197,28 +204,30 @@ public:
   Tensor reshape(Tensor const &input,
                  std::vector<int> const &shape,
                  optional<std::string> const &name = nullopt);
-  Tensor reverse(Tensor const &input, int axis, optional<std::string> const &name = nullopt);
+  Tensor reverse(Tensor const &input,
+                 int axis,
+                 optional<std::string> const &name = nullopt);
   void top_k(Tensor const &input,
              Tensor *outputs,
              int k,
              bool sorted,
              optional<std::string> const &name = nullopt);
-  Tensor multihead_attention(Tensor const &query,
-                             Tensor const &key,
-                             Tensor const &value,
-                             int embed_dim,
-                             int num_heads,
-                             int kdim = 0,
-                             int vdim = 0,
-                             float dropout = 0.0f,
-                             bool bias = true,
-                             bool add_bias_kv = false,
-                             bool add_zero_attn = false,
-                             optional<Initializer const &> initializer = nullopt,
-                             optional<std::string> const &name = nullopt);
-  Tensor create_tensor(TensorShape const &,
-                       bool create_grad = true);
-  Parameter create_weight(TensorShape const &, 
+  Tensor
+      multihead_attention(Tensor const &query,
+                          Tensor const &key,
+                          Tensor const &value,
+                          int embed_dim,
+                          int num_heads,
+                          int kdim = 0,
+                          int vdim = 0,
+                          float dropout = 0.0f,
+                          bool bias = true,
+                          bool add_bias_kv = false,
+                          bool add_zero_attn = false,
+                          optional<Initializer const &> initializer = nullopt,
+                          optional<std::string> const &name = nullopt);
+  Tensor create_tensor(TensorShape const &, bool create_grad = true);
+  Parameter create_weight(TensorShape const &,
                           bool create_grad = true,
                           optional<Initializer const &> initializer = nullopt,
                           optional<ParamSync> sync_type = nullopt);
@@ -226,36 +235,55 @@ public:
   std::vector<Tensor> get_outputs(Layer const &) const;
   Tensor get_output(Layer const &, int idx) const;
 
-  Tensor at(MultiDiEdge const &) const; 
+  Tensor at(MultiDiEdge const &) const;
   Layer at(Node const &) const;
 
 private:
   Tensor broadcast(Tensor const &, TensorShape const &);
 
-  void add_layer(Layer const &layer, std::vector<Tensor> const &inputs, std::vector<Tensor> const &weights, std::vector<Tensor> const &outputs);
-  Tensor add_layer(Layer const &layer, 
-                 std::vector<Tensor> const &inputs, 
-                 std::vector<std::pair<TensorShape, optional<Initializer>>> const &weight_shapes,
-                 TensorShape const &output_shape);
-  std::vector<Tensor> add_layer(Layer const &layer, 
-                 std::vector<Tensor> const &inputs, 
-                 std::vector<std::pair<TensorShape, optional<Initializer>>> const &weight_shapes,
-                 std::vector<TensorShape> const &output_shapes);
+  void add_layer(Layer const &layer,
+                 std::vector<Tensor> const &inputs,
+                 std::vector<Tensor> const &weights,
+                 std::vector<Tensor> const &outputs);
+  Tensor
+      add_layer(Layer const &layer,
+                std::vector<Tensor> const &inputs,
+                std::vector<std::pair<TensorShape, optional<Initializer>>> const
+                    &weight_shapes,
+                TensorShape const &output_shape);
+  std::vector<Tensor>
+      add_layer(Layer const &layer,
+                std::vector<Tensor> const &inputs,
+                std::vector<std::pair<TensorShape, optional<Initializer>>> const
+                    &weight_shapes,
+                std::vector<TensorShape> const &output_shapes);
 
   Tensor as_type(Tensor const &, DataType, std::string const &);
 
   TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
 
-  Tensor element_binary(OperatorType, Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name = nullopt);
+  Tensor element_binary(OperatorType,
+                        Tensor const &lhs,
+                        Tensor const &rhs,
+                        optional<std::string> const &name = nullopt);
 
-  Tensor element_unary(OperatorType, Tensor const &input, optional<std::string> const &name = nullopt);
-  Tensor element_scalar_unary(OperatorType, Tensor const &input, float scalar, optional<std::string> const &name = nullopt);
-  Tensor element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &, Tensor const &input, optional<std::string> const &name = nullopt);
+  Tensor element_unary(OperatorType,
+                       Tensor const &input,
+                       optional<std::string> const &name = nullopt);
+  Tensor element_scalar_unary(OperatorType,
+                              Tensor const &input,
+                              float scalar,
+                              optional<std::string> const &name = nullopt);
+  Tensor
+      element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &,
+                    Tensor const &input,
+                    optional<std::string> const &name = nullopt);
+
 public:
   ComputationGraph computation_graph;
 };
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::ComputationGraphBuilder, computation_graph);
 

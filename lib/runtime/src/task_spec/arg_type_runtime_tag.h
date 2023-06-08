@@ -2,8 +2,8 @@
 #define _FLEXFLOW_RUNTIME_SRC_ARG_TYPE_RUNTIME_TAG_H
 
 #include "legion.h"
-#include "utils/type_index.h"
 #include "serialization.h"
+#include "utils/type_index.h"
 
 namespace FlexFlow {
 
@@ -25,21 +25,24 @@ struct ArgTypeRuntimeTag {
 
   template <typename T>
   static ArgTypeRuntimeTag create() {
-    std::function<void(Legion::Serializer &, void const *)> serialize_func = [](Legion::Serializer &sez, void const *t) {
-      ff_task_serialize(sez, *static_cast<T const *>(t));
-    };
+    std::function<void(Legion::Serializer &, void const *)> serialize_func =
+        [](Legion::Serializer &sez, void const *t) {
+          ff_task_serialize(sez, *static_cast<T const *>(t));
+        };
 
     return {type_index<T>(), serialize_func};
   }
+
 private:
-  ArgTypeRuntimeTag(std::type_index type_idx, std::function<void(Legion::Serializer &, void const *)> const &serialize_f)
-    : type_idx(type_idx), serialize_f(serialize_f)
-  { }
+  ArgTypeRuntimeTag(std::type_index type_idx,
+                    std::function<void(Legion::Serializer &,
+                                       void const *)> const &serialize_f)
+      : type_idx(type_idx), serialize_f(serialize_f) {}
 
   std::type_index type_idx;
   std::function<void(Legion::Serializer &, void const *)> serialize_f;
 };
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

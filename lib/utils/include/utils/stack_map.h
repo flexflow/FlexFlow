@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_STACK_MAP_H
 #define _FLEXFLOW_UTILS_STACK_MAP_H
 
-#include "stack_vector.h"
 #include "optional.h"
+#include "stack_vector.h"
 
 namespace FlexFlow {
 
@@ -37,7 +37,8 @@ struct stack_map {
   }
 
   using iterator = typename stack_vector<std::pair<K, V>, MAXSIZE>::iterator;
-  using const_iterator = typename stack_vector<std::pair<K, V>, MAXSIZE>::const_iterator;
+  using const_iterator =
+      typename stack_vector<std::pair<K, V>, MAXSIZE>::const_iterator;
   using value_type = std::pair<K, V>;
   using reference = value_type &;
   using const_reference = value_type const &;
@@ -67,6 +68,7 @@ struct stack_map {
   const_iterator cend() const {
     return this->contents.cend();
   }
+
 private:
   optional<size_t> get_idx(K const &k) const {
     for (std::size_t idx = 0; idx < contents.size(); idx++) {
@@ -81,6 +83,6 @@ private:
   stack_vector<std::pair<K, V>, MAXSIZE> contents;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

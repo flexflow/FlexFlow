@@ -1,7 +1,7 @@
 #include "serialization.h"
 
-using Legion::Serializer;
 using Legion::Deserializer;
+using Legion::Serializer;
 
 namespace FlexFlow {
 
@@ -17,5 +17,4 @@ void deserialize(Deserializer &dez, SearchSolution &s) {
   return visit_deserialize(dez, s);
 }
 
-
-}
+} // namespace FlexFlow

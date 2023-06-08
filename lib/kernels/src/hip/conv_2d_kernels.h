@@ -46,8 +46,8 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
     void *dx,
     float *time);
 
-}
-}
-}
+} // namespace Conv2D
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif

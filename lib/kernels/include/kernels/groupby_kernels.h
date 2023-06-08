@@ -12,7 +12,6 @@ public:
   float **dev_region_ptrs;
 };
 
+} // namespace FlexFlow
 
-}
-
-#endif 
+#endif
