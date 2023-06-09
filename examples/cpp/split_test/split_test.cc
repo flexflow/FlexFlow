@@ -7,12 +7,15 @@ LegionRuntime::Logger::Category log_app("split_test");
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx, Runtime *runtime) {
+                              Context ctx,
+                              Runtime *runtime) {
   int layer_dims[4] = {256, 128, 64, 32};
 
   FFConfig ffConfig;
   log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+                ffConfig.batchSize,
+                ffConfig.workersPerNode,
+                ffConfig.numNodes);
   FFModel ff(ffConfig);
 
   Tensor input;
@@ -72,7 +75,8 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 

@@ -24,7 +24,8 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::Memory;
 
-DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler, bool profiling,
+DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
+                                             bool profiling,
                                              float rate,
                                              unsigned long long seed,
                                              Memory gpu_mem,
@@ -45,8 +46,11 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler, bool profiling,
                                    Realm::Point<1, coord_t>(totalSize - 1));
     std::vector<size_t> field_sizes;
     field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst, gpu_mem, bounds,
-                                           field_sizes, 0,
+    Realm::RegionInstance::create_instance(reserveInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
                                            Realm::ProfilingRequestSet())
         .wait();
     dropoutStates = reserveInst.pointer_untyped(0, sizeof(char));
@@ -54,9 +58,15 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler, bool profiling,
   }
   // checkCUDA(hipMalloc(&dropoutStates, dropoutStateSize));
   // checkCUDA(hipMalloc(&reserveSpace, reserveSpaceSize));
-  checkCUDNN(miopenSetDropoutDescriptor(
-      dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed,
-      false, false, MIOPEN_RNG_PSEUDO_XORWOW));
+  checkCUDNN(miopenSetDropoutDescriptor(dropoutDesc,
+                                        handle.dnn,
+                                        rate,
+                                        dropoutStates,
+                                        dropoutStateSize,
+                                        seed,
+                                        false,
+                                        false,
+                                        MIOPEN_RNG_PSEUDO_XORWOW));
 }
 
 DropoutPerDeviceState::~DropoutPerDeviceState(void) {
@@ -69,24 +79,38 @@ DropoutPerDeviceState::~DropoutPerDeviceState(void) {
 namespace Kernels {
 namespace Dropout {
 
-void forward_kernel(hipStream_t stream, DropoutPerDeviceState *m,
-                    float const *input_ptr, float *output_ptr) {
+void forward_kernel(hipStream_t stream,
+                    DropoutPerDeviceState *m,
+                    float const *input_ptr,
+                    float *output_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(miopenDropoutForward(m->handle.dnn, m->dropoutDesc,
-                                  m->inputTensor /* not used */, m->inputTensor,
-                                  input_ptr, m->outputTensor, output_ptr,
-                                  m->reserveSpace, m->reserveSpaceSize));
+  checkCUDNN(miopenDropoutForward(m->handle.dnn,
+                                  m->dropoutDesc,
+                                  m->inputTensor /* not used */,
+                                  m->inputTensor,
+                                  input_ptr,
+                                  m->outputTensor,
+                                  output_ptr,
+                                  m->reserveSpace,
+                                  m->reserveSpaceSize));
 }
 
-void backward_kernel(hipStream_t stream, DropoutPerDeviceState *m,
-                     float const *output_grad_ptr, float *input_grad_ptr) {
+void backward_kernel(hipStream_t stream,
+                     DropoutPerDeviceState *m,
+                     float const *output_grad_ptr,
+                     float *input_grad_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(miopenDropoutBackward(
-      m->handle.dnn, m->dropoutDesc, m->inputTensor /* not used */,
-      m->outputTensor, output_grad_ptr, m->inputTensor, input_grad_ptr,
-      m->reserveSpace, m->reserveSpaceSize));
+  checkCUDNN(miopenDropoutBackward(m->handle.dnn,
+                                   m->dropoutDesc,
+                                   m->inputTensor /* not used */,
+                                   m->outputTensor,
+                                   output_grad_ptr,
+                                   m->inputTensor,
+                                   input_grad_ptr,
+                                   m->reserveSpace,
+                                   m->reserveSpaceSize));
 }
 
 } // namespace Dropout

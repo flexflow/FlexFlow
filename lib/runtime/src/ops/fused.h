@@ -6,9 +6,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<FUSEDOP_INIT_TASK_ID>();
-template <> void register_task<FUSEDOP_FWD_TASK_ID>();
-template <> void register_task<FUSEDOP_BWD_TASK_ID>();
+template <>
+void register_task<FUSEDOP_INIT_TASK_ID>();
+template <>
+void register_task<FUSEDOP_FWD_TASK_ID>();
+template <>
+void register_task<FUSEDOP_BWD_TASK_ID>();
 
 OpTaskInvocation init(FusedOpAttrs const &);
 OpTaskInvocation forward(FusedOpAttrs const &);

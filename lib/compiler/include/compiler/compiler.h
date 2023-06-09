@@ -20,8 +20,10 @@ struct SearchResult {
   CostValues cost_values;
 };
 
-SearchResult optimize(ComputationGraph const &, MachineSpecification const &,
-                      CostEstimator const &, Algorithm,
+SearchResult optimize(ComputationGraph const &,
+                      MachineSpecification const &,
+                      CostEstimator const &,
+                      Algorithm,
                       optional<AlgorithmConfig> const &);
 
 // struct SearchSolution {

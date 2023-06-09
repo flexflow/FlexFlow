@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<CONV2D_INIT_TASK_ID>();
-template <> void register_task<CONV2D_FWD_TASK_ID>();
-template <> void register_task<CONV2D_BWD_TASK_ID>();
+template <>
+void register_task<CONV2D_INIT_TASK_ID>();
+template <>
+void register_task<CONV2D_FWD_TASK_ID>();
+template <>
+void register_task<CONV2D_BWD_TASK_ID>();
 
 OpTaskInvocation init(Conv2DAttrs const &);
 OpTaskInvocation forward(Conv2DAttrs const &);

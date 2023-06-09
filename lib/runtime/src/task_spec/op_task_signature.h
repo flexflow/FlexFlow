@@ -45,9 +45,8 @@ struct OpTaskSignature {
   void add_optional_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_untrainable_input_slot(slot_id,
                                   SlotType slot_type = SlotType::TENSOR);
-  void
-  add_optional_untrainable_input_slot(slot_id,
-                                      SlotType slot_type = SlotType::TENSOR);
+  void add_optional_untrainable_input_slot(
+      slot_id, SlotType slot_type = SlotType::TENSOR);
 
   void add_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_bwd_necessary_output_slot(slot_id,
@@ -64,7 +63,8 @@ struct OpTaskSignature {
   bool operator==(OpTaskSignature const &) const;
   bool operator!=(OpTaskSignature const &) const;
 
-  template <typename T> void add_arg_slot(slot_id name) {
+  template <typename T>
+  void add_arg_slot(slot_id name) {
     static_assert(is_serializable<T>, "Type must be serializable");
   }
 
@@ -77,15 +77,21 @@ private:
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
 
-template <task_id_t> OpTaskSignature get_signature();
+template <task_id_t>
+OpTaskSignature get_signature();
 
 template <typename F>
-void register_task(task_id_t, std::string const &name, OpTaskSignature const &,
+void register_task(task_id_t,
+                   std::string const &name,
+                   OpTaskSignature const &,
                    F const &func);
 
 template <typename F>
-void register_task(task_id_t, std::string const &name, OpTaskSignature const &,
-                   F const &func, F const &cpu_func);
+void register_task(task_id_t,
+                   std::string const &name,
+                   OpTaskSignature const &,
+                   F const &func,
+                   F const &cpu_func);
 
 } // namespace FlexFlow
 

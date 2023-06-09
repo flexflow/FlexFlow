@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<FUSED_PARALLELOP_INIT_TASK_ID>();
-template <> void register_task<FUSED_PARALLELOP_FWD_TASK_ID>();
-template <> void register_task<FUSED_PARALLELOP_BWD_TASK_ID>();
+template <>
+void register_task<FUSED_PARALLELOP_INIT_TASK_ID>();
+template <>
+void register_task<FUSED_PARALLELOP_FWD_TASK_ID>();
+template <>
+void register_task<FUSED_PARALLELOP_BWD_TASK_ID>();
 
 OpTaskInvocation init(FusedParallelOpAttrs const &);
 OpTaskInvocation forward(FusedParallelOpAttrs const &);

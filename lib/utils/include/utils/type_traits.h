@@ -14,17 +14,19 @@ namespace FlexFlow {
 
 template <typename T>
 struct is_rc_copy_virtual_compliant
-    : conjunction<
-          negation<disjunction<
-              std::is_copy_constructible<T>, std::is_copy_assignable<T>,
-              std::is_move_constructible<T>, std::is_move_assignable<T>>>,
-          std::has_virtual_destructor<T>> {};
+    : conjunction<negation<disjunction<std::is_copy_constructible<T>,
+                                       std::is_copy_assignable<T>,
+                                       std::is_move_constructible<T>,
+                                       std::is_move_assignable<T>>>,
+                  std::has_virtual_destructor<T>> {};
 
-template <typename... Ts> struct make_void {
+template <typename... Ts>
+struct make_void {
   typedef void type;
 };
 
-template <typename... Ts> using void_t = typename make_void<Ts...>::type;
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
 
 template <typename T, typename Enable = void>
 struct is_streamable : std::false_type {};
@@ -38,7 +40,8 @@ struct is_equal_comparable : std::false_type {};
 
 template <typename T>
 struct is_equal_comparable<
-    T, void_t<decltype((bool)(std::declval<T>() == std::declval<T>()))>>
+    T,
+    void_t<decltype((bool)(std::declval<T>() == std::declval<T>()))>>
     : std::true_type {};
 
 template <typename T, typename Enable = void>
@@ -46,7 +49,8 @@ struct is_neq_comparable : std::false_type {};
 
 template <typename T>
 struct is_neq_comparable<
-    T, void_t<decltype((bool)(std::declval<T>() != std::declval<T>()))>>
+    T,
+    void_t<decltype((bool)(std::declval<T>() != std::declval<T>()))>>
     : std::true_type {};
 
 template <typename T, typename Enable = void>
@@ -54,17 +58,21 @@ struct is_lt_comparable : std::false_type {};
 
 template <typename T>
 struct is_lt_comparable<
-    T, void_t<decltype((bool)(std::declval<T>() < std::declval<T>()))>>
+    T,
+    void_t<decltype((bool)(std::declval<T>() < std::declval<T>()))>>
     : std::true_type {};
 
 template <typename T, typename Enable = void>
 struct is_hashable : std::false_type {};
 
 template <typename T>
-struct is_hashable<T, void_t<decltype((size_t)(std::declval<std::hash<T>>()(
-                          std::declval<T>())))>> : std::true_type {};
+struct is_hashable<
+    T,
+    void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
+    : std::true_type {};
 
-template <template <typename, typename = void> class Cond, typename Enable,
+template <template <typename, typename = void> class Cond,
+          typename Enable,
           typename... Ts>
 struct elements_satisfy_impl;
 
@@ -73,10 +81,12 @@ struct elements_satisfy : elements_satisfy_impl<Cond, void, T> {};
 
 template <template <typename, typename = void> class Cond, typename T>
 struct elements_satisfy_impl<
-    Cond, typename std::enable_if<is_visitable<T>::value>::type, T>
-    : elements_satisfy<Cond, visit_as_tuple<T>> {};
+    Cond,
+    typename std::enable_if<is_visitable<T>::value>::type,
+    T> : elements_satisfy<Cond, visit_as_tuple<T>> {};
 
-template <template <typename, typename = void> class Cond, typename Head,
+template <template <typename, typename = void> class Cond,
+          typename Head,
           typename... Ts>
 struct elements_satisfy<Cond, std::tuple<Head, Ts...>>
     : conjunction<Cond<Head>, elements_satisfy<Cond, std::tuple<Ts...>>> {};
@@ -96,16 +106,21 @@ using is_copy_constructible = std::is_copy_constructible<T>;
 template <typename T>
 using is_move_constructible = std::is_move_constructible<T>;
 
-template <typename T> using is_copy_assignable = std::is_copy_assignable<T>;
-
-template <typename T> using is_move_assignable = std::is_move_assignable<T>;
+template <typename T>
+using is_copy_assignable = std::is_copy_assignable<T>;
 
 template <typename T>
-struct is_well_behaved_value_type
-    : conjunction<is_equal_comparable<T>, is_neq_comparable<T>,
-                  is_lt_comparable<T>, is_copy_constructible<T>,
-                  is_move_constructible<T>, is_copy_assignable<T>,
-                  is_move_assignable<T>, is_hashable<T>> {};
+using is_move_assignable = std::is_move_assignable<T>;
+
+template <typename T>
+struct is_well_behaved_value_type : conjunction<is_equal_comparable<T>,
+                                                is_neq_comparable<T>,
+                                                is_lt_comparable<T>,
+                                                is_copy_constructible<T>,
+                                                is_move_constructible<T>,
+                                                is_copy_assignable<T>,
+                                                is_move_assignable<T>,
+                                                is_hashable<T>> {};
 
 } // namespace FlexFlow
 

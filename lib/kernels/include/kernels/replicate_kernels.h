@@ -8,11 +8,14 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Replicate {
 
-void forward_kernel(ffStream_t stream, GenericTensorAccessorR const &input,
+void forward_kernel(ffStream_t stream,
+                    GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
-void backward_kernel(ffStream_t stream, GenericTensorAccessorW const &input,
-                     GenericTensorAccessorR const &output, size_t num_replicas);
+void backward_kernel(ffStream_t stream,
+                     GenericTensorAccessorW const &input,
+                     GenericTensorAccessorR const &output,
+                     size_t num_replicas);
 
 } // namespace Replicate
 } // namespace Kernels

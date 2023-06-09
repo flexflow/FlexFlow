@@ -15,8 +15,12 @@
 
 using namespace FlexFlow;
 
-Tensor FFModel::moe(const Tensor input, int num_exp, int num_select,
-                    int expert_hidden_size, float alpha, float lambda) {
+Tensor FFModel::moe(const Tensor input,
+                    int num_exp,
+                    int num_select,
+                    int expert_hidden_size,
+                    float alpha,
+                    float lambda) {
   // MoE model
   Tensor gate_preds = dense(input, num_exp, AC_MODE_RELU);
   Tensor topK_output[2];

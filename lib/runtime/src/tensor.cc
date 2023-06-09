@@ -29,7 +29,8 @@ size_t TensorBase::get_volume() const {
 
 template <typename T>
 bool TensorBase::set_tensor(FFModel const *ff,
-                            std::vector<int> const &dim_sizes, T const *data) {
+                            std::vector<int> const &dim_sizes,
+                            T const *data) {
   if (num_dims != (int)dim_sizes.size()) {
     return false;
   }
@@ -53,7 +54,8 @@ bool TensorBase::get_tensor(FFModel const *ff, T *data, bool get_gradients) {
 }
 
 template <typename T>
-bool TensorBase::get_output_parallel_tensor(FFModel const *ff, T *data,
+bool TensorBase::get_output_parallel_tensor(FFModel const *ff,
+                                            T *data,
                                             bool get_gradients) {
   ParallelTensor parallel_tensor = nullptr;
   Op *final_operator = ff->get_final_operator();

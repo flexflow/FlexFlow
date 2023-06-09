@@ -50,10 +50,17 @@ TransposeParams Transpose::get_params() const {
   return params;
 }
 
-Tensor FFModel::transpose(const Tensor input, std::vector<int> const &_perm,
+Tensor FFModel::transpose(const Tensor input,
+                          std::vector<int> const &_perm,
                           char const *name) {
-  Layer *transpose = new Layer(this, OP_TRANSPOSE, DT_FLOAT, name, 1 /*inputs*/,
-                               0 /*weights*/, 1 /*outputs*/, input);
+  Layer *transpose = new Layer(this,
+                               OP_TRANSPOSE,
+                               DT_FLOAT,
+                               name,
+                               1 /*inputs*/,
+                               0 /*weights*/,
+                               1 /*outputs*/,
+                               input);
   assert(_perm.size() == input->num_dims);
   // Use Legion indexing to store perm
   std::vector<int> perm;
@@ -75,21 +82,32 @@ Tensor FFModel::transpose(const Tensor input, std::vector<int> const &_perm,
 }
 
 Op *Transpose::create_operator_from_layer(
-    FFModel &model, Layer const *layer,
+    FFModel &model,
+    Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   std::vector<int> perm;
   layer->get_int_vector_property("legion_perm", perm);
   return new Transpose(model, inputs[0], perm, layer->name);
 }
 
-Transpose::Transpose(FFModel &model, TransposeParams const &params,
-                     const ParallelTensor input, char const *name)
+Transpose::Transpose(FFModel &model,
+                     TransposeParams const &params,
+                     const ParallelTensor input,
+                     char const *name)
     : Transpose(model, input, params.perm, name) {}
 
-Transpose::Transpose(FFModel &model, const ParallelTensor input,
-                     std::vector<int> const &_perm, char const *name)
-    : Op(model, OP_TRANSPOSE, input->data_type, name, 1 /*inputs*/,
-         0 /*weights*/, 1 /*outputs*/, input) {
+Transpose::Transpose(FFModel &model,
+                     const ParallelTensor input,
+                     std::vector<int> const &_perm,
+                     char const *name)
+    : Op(model,
+         OP_TRANSPOSE,
+         input->data_type,
+         name,
+         1 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         input) {
   int num_dims = input->num_dims;
   // Assume only the leading dims are replica_dims
   // while (num_dims > 0 && input->dims[num_dims-1].is_replica_dim)
@@ -117,24 +135,33 @@ void Transpose::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(TRANSPOSE_INIT_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(Transpose)), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(TRANSPOSE_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Transpose)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
 }
 
-void Transpose::init_meta(TransposeMeta *m, Domain const &in_domain,
+void Transpose::init_meta(TransposeMeta *m,
+                          Domain const &in_domain,
                           Domain const &out_domain) const {
   for (int i = 0; i < out_domain.get_dim(); i++) {
     assert(out_domain.hi()[i] == in_domain.hi()[this->perm[i]]);
@@ -147,9 +174,10 @@ void Transpose::init_meta(TransposeMeta *m, Domain const &in_domain,
 }
 
 PerDeviceOpState *
-Transpose::init_task(Task const *task,
-                     std::vector<PhysicalRegion> const &regions, Context ctx,
-                     Runtime *runtime) {
+    Transpose::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Transpose const *transpose = (Transpose const *)task->args;
@@ -170,24 +198,33 @@ void Transpose::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(TRANSPOSE_FWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, false), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(TRANSPOSE_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, false),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Transpose::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
-                             Context ctx, Runtime *runtime) {
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Transpose* transpose = (const Transpose*) task->args;
@@ -202,8 +239,8 @@ void Transpose::forward_task(Task const *task,
   }
   float const *in_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *out_ptr = helperGetTensorPointerWO<float>(regions[1], task->regions[1],
-                                                   FID_DATA, ctx, runtime);
+  float *out_ptr = helperGetTensorPointerWO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   forward_kernel_wrapper(m, in_ptr, out_ptr, in_domain, out_domain);
 }
@@ -213,26 +250,35 @@ void Transpose::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(TRANSPOSE_BWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
-                         false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(TRANSPOSE_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // regions[0](I): output_grad
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, outputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
-                        EXCLUSIVE, inputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Transpose::backward_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx, Runtime *runtime) {
+                              Context ctx,
+                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Transpose* transpose = (const Transpose*) task->args;
@@ -250,11 +296,12 @@ void Transpose::backward_task(Task const *task,
   float *in_grad_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  backward_kernel_wrapper(m, in_grad_ptr, out_grad_ptr, in_grad_domain,
-                          out_grad_domain);
+  backward_kernel_wrapper(
+      m, in_grad_ptr, out_grad_ptr, in_grad_domain, out_grad_domain);
 }
 
-bool Transpose::measure_operator_cost(Simulator *sim, MachineView const &mv,
+bool Transpose::measure_operator_cost(Simulator *sim,
+                                      MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -280,7 +327,10 @@ bool Transpose::measure_operator_cost(Simulator *sim, MachineView const &mv,
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m, input_ptr, output_ptr, sub_input.get_domain(),
+    forward_kernel_wrapper(m,
+                           input_ptr,
+                           output_ptr,
+                           sub_input.get_domain(),
                            sub_output.get_domain());
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
@@ -296,8 +346,11 @@ bool Transpose::measure_operator_cost(Simulator *sim, MachineView const &mv,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
-      backward_kernel_wrapper(m, input_grad_ptr, output_grad_ptr,
-                              sub_input.get_domain(), sub_output.get_domain());
+      backward_kernel_wrapper(m,
+                              input_grad_ptr,
+                              output_grad_ptr,
+                              sub_input.get_domain(),
+                              sub_output.get_domain());
     };
   }
 
@@ -306,9 +359,12 @@ bool Transpose::measure_operator_cost(Simulator *sim, MachineView const &mv,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure Transpose] name(%s) forward_time(%.4lf) "
            "backward_time(%.4lf)\n",
-           name, cost_metrics.forward_time, cost_metrics.backward_time);
+           name,
+           cost_metrics.forward_time,
+           cost_metrics.backward_time);
   } else {
-    printf("[Measure Transpose] name(%s) forward_time(%.4lf)\n", name,
+    printf("[Measure Transpose] name(%s) forward_time(%.4lf)\n",
+           name,
            cost_metrics.forward_time);
   }
 
@@ -324,8 +380,10 @@ void Transpose::serialize(Legion::Serializer &sez) const {
 }
 
 using PCG::Node;
-Node Transpose::deserialize(FFModel &ff, Legion::Deserializer &dez,
-                            ParallelTensor inputs[], int num_inputs) {
+Node Transpose::deserialize(FFModel &ff,
+                            Legion::Deserializer &dez,
+                            ParallelTensor inputs[],
+                            int num_inputs) {
   assert(num_inputs == 1);
   size_t perm_size;
   std::vector<int> perm;
@@ -338,7 +396,8 @@ Node Transpose::deserialize(FFModel &ff, Legion::Deserializer &dez,
   return ff.get_or_create_node<Transpose>(inputs[0], {perm});
 }
 
-Op *Transpose::materialize(FFModel &ff, ParallelTensor inputs[],
+Op *Transpose::materialize(FFModel &ff,
+                           ParallelTensor inputs[],
                            int num_inputs) const {
   TransposeParams params = get_params();
   return new Transpose(ff, params, inputs[0], this->name);

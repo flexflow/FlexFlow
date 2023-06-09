@@ -36,7 +36,8 @@ OpTensorSpec weight_tensor(int);
 
 enum class OpArgRefType { PER_DEVICE_OP_STATE };
 
-template <typename T> struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
+template <typename T>
+struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
 public:
   OpArgRef() = delete;
   OpArgRef(OpArgRefType ref_type) : ref_type(ref_type) {}
@@ -45,7 +46,8 @@ public:
   OpArgRefType ref_type;
 };
 
-template <typename T> OpArgRef<T> per_device_op_state() {
+template <typename T>
+OpArgRef<T> per_device_op_state() {
   return OpArgRef<T>(OpArgRefType::PER_DEVICE_OP_STATE);
 }
 
@@ -53,13 +55,17 @@ struct OpArgRefSpec {
 public:
   OpArgRefSpec() = delete;
 
-  template <typename T> bool holds() const {
+  template <typename T>
+  bool holds() const {
     return std::type_index(typeid(T)) == this->type;
   }
 
-  OpArgRefType const &get_ref_type() const { return this->ref_type; }
+  OpArgRefType const &get_ref_type() const {
+    return this->ref_type;
+  }
 
-  template <typename T> static OpArgRefSpec create(OpArgRef<T> const &r) {
+  template <typename T>
+  static OpArgRefSpec create(OpArgRef<T> const &r) {
     static_assert(is_serializable<T>, "Type must be serializable");
 
     return OpArgRefSpec(std::type_index(typeid(T)), r.ref_type);
@@ -72,9 +78,13 @@ private:
   OpArgRefType ref_type;
 };
 
-using OpArgSpec =
-    variant<ConcreteArgSpec, IndexArgSpec, OpArgRefSpec, CheckedTypedFuture,
-            CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
+using OpArgSpec = variant<ConcreteArgSpec,
+                          IndexArgSpec,
+                          OpArgRefSpec,
+                          CheckedTypedFuture,
+                          CheckedTypedFutureMap,
+                          ArgRefSpec,
+                          TaskInvocationSpec>;
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
@@ -84,15 +94,18 @@ struct OpTaskBinding {
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);
 
-  template <typename T> void bind_arg(slot_id name, T const &t) {
+  template <typename T>
+  void bind_arg(slot_id name, T const &t) {
     this->insert_arg_spec(name, ConcreteArgSpec::create(t));
   }
 
-  template <typename T> void bind_arg(slot_id name, OpArgRef<T> const &ref) {
+  template <typename T>
+  void bind_arg(slot_id name, OpArgRef<T> const &ref) {
     this->insert_arg_spec(name, OpArgRefSpec::create(ref));
   }
 
-  template <typename T> void bind_arg(slot_id name, TypedFuture<T> const &f) {
+  template <typename T>
+  void bind_arg(slot_id name, TypedFuture<T> const &f) {
     this->insert_arg_spec(name, CheckedTypedFuture::create(f));
   }
 
@@ -102,7 +115,7 @@ struct OpTaskBinding {
   }
 
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
-  get_tensor_bindings() const;
+      get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
 
 private:

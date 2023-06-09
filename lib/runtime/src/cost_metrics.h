@@ -10,8 +10,11 @@ namespace FlexFlow {
  */
 struct CostMetrics : public use_visitable_cmp<CostMetrics> {
   CostMetrics() = delete;
-  CostMetrics(float forward_time, float backward_time, float sync_type,
-              size_t inputs_memory, size_t outputs_memory,
+  CostMetrics(float forward_time,
+              float backward_time,
+              float sync_type,
+              size_t inputs_memory,
+              size_t outputs_memory,
               size_t weights_memory);
   /**
    * @brief Return the sum of inputs_memory, outputs_memory, and weights_memory
@@ -54,8 +57,13 @@ public:
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::CostMetrics, forward_time, backward_time,
-                 sync_time, inputs_memory, outputs_memory, weights_memory,
+VISITABLE_STRUCT(::FlexFlow::CostMetrics,
+                 forward_time,
+                 backward_time,
+                 sync_time,
+                 inputs_memory,
+                 outputs_memory,
+                 weights_memory,
                  op_total_mem);
 MAKE_VISIT_HASHABLE(::FlexFlow::CostMetrics);
 

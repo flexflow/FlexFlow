@@ -66,11 +66,20 @@ BatchMatmulParams BatchMatmul::get_params() const {
   return params;
 }
 
-Tensor FFModel::batch_matmul(const Tensor A, const Tensor B,
-                             int a_seq_length_dim, int b_seq_length_dim,
+Tensor FFModel::batch_matmul(const Tensor A,
+                             const Tensor B,
+                             int a_seq_length_dim,
+                             int b_seq_length_dim,
                              char const *name) {
-  Layer *bmm = new Layer(this, OP_BATCHMATMUL, DT_FLOAT, name, 2 /*inputs*/,
-                         0 /*weights*/, 1 /*outputs*/, A, B);
+  Layer *bmm = new Layer(this,
+                         OP_BATCHMATMUL,
+                         DT_FLOAT,
+                         name,
+                         2 /*inputs*/,
+                         0 /*weights*/,
+                         1 /*outputs*/,
+                         A,
+                         B);
   assert((a_seq_length_dim <= 1) &&
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
@@ -88,8 +97,8 @@ Tensor FFModel::batch_matmul(const Tensor A, const Tensor B,
     dims[i] = A->dims[i];
   }
   dims[0] = B->dims[0];
-  bmm->outputs[0] = create_tensor_legion_ordering(numdim, dims, A->data_type,
-                                                  bmm, 0, true /*create_grad*/);
+  bmm->outputs[0] = create_tensor_legion_ordering(
+      numdim, dims, A->data_type, bmm, 0, true /*create_grad*/);
   bmm->add_int_property("a_seq_length_dim", a_seq_length_dim);
   bmm->add_int_property("b_seq_length_dim", b_seq_length_dim);
   layers.push_back(bmm);
@@ -97,29 +106,50 @@ Tensor FFModel::batch_matmul(const Tensor A, const Tensor B,
 }
 
 Op *BatchMatmul::create_operator_from_layer(
-    FFModel &model, Layer const *layer,
+    FFModel &model,
+    Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("a_seq_length_dim", value);
   int a_seq_length_dim = value;
   layer->get_int_property("b_seq_length_dim", value);
   int b_seq_length_dim = value;
-  return new BatchMatmul(model, inputs[0], inputs[1], a_seq_length_dim,
-                         b_seq_length_dim, layer->name);
+  return new BatchMatmul(model,
+                         inputs[0],
+                         inputs[1],
+                         a_seq_length_dim,
+                         b_seq_length_dim,
+                         layer->name);
 }
 
 BatchMatmul::BatchMatmul(
-    FFModel &model, BatchMatmulParams const &params,
-    std::pair<ParallelTensor, ParallelTensor> const &inputs, char const *name)
-    : BatchMatmul(model, inputs.first, inputs.second, params.a_seq_length_dim,
-                  params.b_seq_length_dim, name) {}
+    FFModel &model,
+    BatchMatmulParams const &params,
+    std::pair<ParallelTensor, ParallelTensor> const &inputs,
+    char const *name)
+    : BatchMatmul(model,
+                  inputs.first,
+                  inputs.second,
+                  params.a_seq_length_dim,
+                  params.b_seq_length_dim,
+                  name) {}
 
 // return A*B
-BatchMatmul::BatchMatmul(FFModel &model, const ParallelTensor A,
-                         const ParallelTensor B, int _a_seq_length_dim,
-                         int _b_seq_length_dim, char const *name)
-    : Op(model, OP_BATCHMATMUL, DT_FLOAT, name, 2 /*inputs*/, 0 /*weights*/,
-         1 /*outputs*/, A, B),
+BatchMatmul::BatchMatmul(FFModel &model,
+                         const ParallelTensor A,
+                         const ParallelTensor B,
+                         int _a_seq_length_dim,
+                         int _b_seq_length_dim,
+                         char const *name)
+    : Op(model,
+         OP_BATCHMATMUL,
+         DT_FLOAT,
+         name,
+         2 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         A,
+         B),
       a_seq_length_dim(A->num_dims - 1 - _a_seq_length_dim),
       b_seq_length_dim(B->num_dims - 1 - _b_seq_length_dim) {
   assert((_a_seq_length_dim <= 1) &&
@@ -139,8 +169,8 @@ BatchMatmul::BatchMatmul(FFModel &model, const ParallelTensor A,
   }
   dims[0] = B->dims[0];
   numOutputs = 1;
-  outputs[0] = model.create_parallel_tensor_legion_ordering(A->num_dims, dims,
-                                                            DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
+      A->num_dims, dims, DT_FLOAT, this);
   // C is not none
   // if (C != Tensor::NO_TENSOR) {
   //  numInputs = 3;
@@ -158,8 +188,10 @@ void BatchMatmul::serialize(Legion::Serializer &sez) const {
 
 using PCG::Node;
 /*static*/
-Node BatchMatmul::deserialize(FFModel &ff, Legion::Deserializer &dez,
-                              ParallelTensor inputs[], int num_inputs) {
+Node BatchMatmul::deserialize(FFModel &ff,
+                              Legion::Deserializer &dez,
+                              ParallelTensor inputs[],
+                              int num_inputs) {
   assert(num_inputs == 2);
   int a_seq_length_dim, b_seq_length_dim;
   dez.deserialize(a_seq_length_dim);
@@ -171,13 +203,15 @@ Node BatchMatmul::deserialize(FFModel &ff, Legion::Deserializer &dez,
   return ff.get_or_create_node<BatchMatmul>({inputs[0], inputs[1]}, params);
 }
 
-Op *BatchMatmul::materialize(FFModel &ff, ParallelTensor inputs[],
+Op *BatchMatmul::materialize(FFModel &ff,
+                             ParallelTensor inputs[],
                              int num_inputs) const {
   BatchMatmulParams params = get_params();
   return new BatchMatmul(ff, params, {inputs[0], inputs[1]}, this->name);
 }
 
-template <> void register_task<BATCHMATMUL_INIT_TASK_ID>() {
+template <>
+void register_task<BATCHMATMUL_INIT_TASK_ID>() {
   OpTaskSignature sig(OpTaskType::INIT);
 
   sig.add_arg_slot<BatchMatmulAttrs>(ATTRS);
@@ -254,8 +288,8 @@ void BatchMatmul::init(FFModel const &ff) {
   }
   LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-default:
-  assert(false);
+  default:
+    assert(false);
 }
 } // namespace FlexFlow
 // /
@@ -295,9 +329,10 @@ default:
 // }
 
 PerDeviceOpState *
-BatchMatmul::init_task(Task const *task,
-                       std::vector<PhysicalRegion> const &regions, Context ctx,
-                       Runtime *runtime) {
+    BatchMatmul::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
+                           Context ctx,
+                           Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<BatchMatmulAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -321,8 +356,8 @@ void BatchMatmul::forward(FFModel const &ff) {
   }
   LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-default:
-  assert(false);
+  default:
+    assert(false);
 }
 }
 
@@ -367,7 +402,8 @@ default:
 */
 void BatchMatmul::forward_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
-                               Context ctx, Runtime *runtime) {
+                               Context ctx,
+                               Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
 
@@ -411,9 +447,19 @@ void BatchMatmul::forward_task(Task const *task,
   //       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   // }
 
-  profile(forward_kernel, meta->profiling,
-          "[BatchMatmul] forward_time = %.2lfms\n", out_ptr, a_ptr, b_ptr,
-          c_ptr, m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+  profile(forward_kernel,
+          meta->profiling,
+          "[BatchMatmul] forward_time = %.2lfms\n",
+          out_ptr,
+          a_ptr,
+          b_ptr,
+          c_ptr,
+          m,
+          n,
+          k,
+          batch,
+          meta->a_seq_length_dim,
+          meta->b_seq_length_dim,
           iter_config->seq_length);
 }
 
@@ -427,8 +473,8 @@ void BatchMatmul::backward(FFModel const &ff) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -511,9 +557,10 @@ void BatchMatmul::backward(FFModel const &ff) {
   regions[6](I/O): C_grad
 */
 __host__ void
-BatchMatmul::backward_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx, Runtime *runtime) {
+    BatchMatmul::backward_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   // Currently assume C is NULL
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
@@ -567,15 +614,29 @@ BatchMatmul::backward_task(Task const *task,
   assert((meta->a_seq_length_dim >= a_len) || (iter_config->seq_length == 0));
   assert((meta->b_seq_length_dim >= b_len) || (iter_config->seq_length == 0));
 
-  profile(backward_kernel, meta->profiling,
-          "[BatchMatmul] backward_time = %.2lfms\n", meta, out_ptr,
-          out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n,
-          k, batch);
+  profile(backward_kernel,
+          meta->profiling,
+          "[BatchMatmul] backward_time = %.2lfms\n",
+          meta,
+          out_ptr,
+          out_grad_ptr,
+          a_ptr,
+          a_grad_ptr,
+          b_ptr,
+          b_grad_ptr,
+          c_grad_ptr,
+          m,
+          n,
+          k,
+          batch);
 }
 
-void BatchMatmul::print_layer(FFModel const &ff) { return; }
+void BatchMatmul::print_layer(FFModel const &ff) {
+  return;
+}
 
-bool BatchMatmul::measure_operator_cost(Simulator *sim, MachineView const &pc,
+bool BatchMatmul::measure_operator_cost(Simulator *sim,
+                                        MachineView const &pc,
                                         CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input0, sub_input1;
   if (!outputs[0]->get_sub_tensor(pc, sub_output)) {
@@ -650,8 +711,19 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim, MachineView const &pc,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&](ffStream_t stream) {
-      backward_kernel(stream, meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
-                      b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
+      backward_kernel(stream,
+                      meta,
+                      out_ptr,
+                      out_grad_ptr,
+                      a_ptr,
+                      a_grad_ptr,
+                      b_ptr,
+                      b_grad_ptr,
+                      c_grad_ptr,
+                      m,
+                      n,
+                      k,
+                      batch);
     };
   }
 
@@ -660,14 +732,32 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim, MachineView const &pc,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) "
            "odim(%d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-           name, batch, input0_r, input0_c, batch, input1_r, input1_c, batch,
-           output_r, output_c, cost_metrics.forward_time,
+           name,
+           batch,
+           input0_r,
+           input0_c,
+           batch,
+           input1_r,
+           input1_c,
+           batch,
+           output_r,
+           output_c,
+           cost_metrics.forward_time,
            cost_metrics.backward_time);
   } else {
     printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) "
            "odim(%d %d %d) forward_time(%.4lf)\n",
-           name, batch, input0_r, input0_c, batch, input1_r, input1_c, batch,
-           output_r, output_c, cost_metrics.forward_time);
+           name,
+           batch,
+           input0_r,
+           input0_c,
+           batch,
+           input1_r,
+           input1_c,
+           batch,
+           output_r,
+           output_c,
+           cost_metrics.forward_time);
   }
 
   return true;

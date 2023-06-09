@@ -10,13 +10,16 @@ namespace FlexFlow {
 struct TaskInvocation;
 struct IndexTaskInvocation;
 
-template <typename T> struct TypedTaskInvocation;
-template <typename T> struct TypedIndexTaskInvocation;
+template <typename T>
+struct TypedTaskInvocation;
+template <typename T>
+struct TypedIndexTaskInvocation;
 
 template <typename T>
 TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &);
 
-template <typename T> struct TypedTaskInvocation {
+template <typename T>
+struct TypedTaskInvocation {
 public:
   TypedTaskInvocation() = delete;
 
@@ -41,11 +44,12 @@ static_assert(is_well_behaved_value_type<TypedTaskInvocation<int>>::value, "");
 template <typename T>
 TypedIndexTaskInvocation<T> ensure_return_type(IndexTaskInvocation const &);
 
-template <typename T> struct TypedIndexTaskInvocation {
+template <typename T>
+struct TypedIndexTaskInvocation {
   TypedIndexTaskInvocation() = delete;
 
   friend TypedIndexTaskInvocation
-  ensure_return_type<T>(IndexTaskInvocation const &);
+      ensure_return_type<T>(IndexTaskInvocation const &);
 
   friend bool operator==(TypedIndexTaskInvocation const &,
                          TypedIndexTaskInvocation const &);
@@ -67,7 +71,9 @@ static_assert(is_well_behaved_value_type<TypedIndexTaskInvocation<int>>::value,
 struct TaskInvocationSpec {
   TaskInvocationSpec() = delete;
 
-  TaskInvocation const &get_invocation() const { return *this->invocation; }
+  TaskInvocation const &get_invocation() const {
+    return *this->invocation;
+  }
 
   template <typename T>
   static TaskInvocationSpec create(TypedTaskInvocation<T> const &invocation) {
@@ -97,7 +103,7 @@ struct IndexTaskInvocationSpec {
 
   template <typename T>
   static IndexTaskInvocationSpec
-  create(TypedIndexTaskInvocation<T> const &invocation) {
+      create(TypedIndexTaskInvocation<T> const &invocation) {
     return IndexTaskInvocationSpec(type_index<T>(), invocation.invocation);
   }
 
@@ -118,7 +124,7 @@ static_assert(is_well_behaved_value_type<IndexTaskInvocationSpec>::value, "");
 
 template <typename T>
 TaskInvocationSpec
-create_task_invocation_spec(TypedTaskInvocation<T> const &invoc) {
+    create_task_invocation_spec(TypedTaskInvocation<T> const &invoc) {
   return TaskInvocationSpec::create<T>(invoc);
 }
 

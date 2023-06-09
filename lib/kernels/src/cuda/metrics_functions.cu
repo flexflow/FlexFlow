@@ -20,10 +20,12 @@ namespace FlexFlow {
 
 float const LOG_MIN_VALUE = 0.00000001f;
 
-__global__ void
-update_metrics_sparse_label_kernel(float const *logits, int const *labels,
-                                   PerfMetrics *perf, const Metrics metrics,
-                                   int num_samples, int num_classes) {
+__global__ void update_metrics_sparse_label_kernel(float const *logits,
+                                                   int const *labels,
+                                                   PerfMetrics *perf,
+                                                   const Metrics metrics,
+                                                   int num_samples,
+                                                   int num_classes) {
   CUDA_KERNEL_LOOP(b, num_samples) {
     if (metrics.measure_accuracy) {
       float max_val = -1.0f;
@@ -72,7 +74,8 @@ __global__ void update_metrics_label_kernel(float const *logits,
                                             float const *labels,
                                             PerfMetrics *perf,
                                             const Metrics metrics,
-                                            int num_samples, int num_classes) {
+                                            int num_samples,
+                                            int num_classes) {
   CUDA_KERNEL_LOOP(b, num_samples) {
     atomicAdd(&(perf->train_all), 1);
     if (metrics.measure_accuracy) {
@@ -134,8 +137,12 @@ __global__ void update_metrics_label_kernel(float const *logits,
 }
 
 void Metrics::update_metrics_sparse_label_kernel_wrapper(
-    float const *logit_ptr, int const *label_ptr, Metrics const *me,
-    int num_effective_samples, int num_classes, PerfMetrics &perf_zc) {
+    float const *logit_ptr,
+    int const *label_ptr,
+    Metrics const *me,
+    int num_effective_samples,
+    int num_classes,
+    PerfMetrics &perf_zc) {
   PerfMetrics *perf;
   checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
   checkCUDA(
@@ -144,7 +151,9 @@ void Metrics::update_metrics_sparse_label_kernel_wrapper(
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_effective_samples),
-                                       CUDA_NUM_THREADS, 0, stream>>>(
+                                       CUDA_NUM_THREADS,
+                                       0,
+                                       stream>>>(
       logit_ptr, label_ptr, perf, *me, num_effective_samples, num_classes);
   checkCUDA(cudaStreamSynchronize(stream));
   checkCUDA(
@@ -152,9 +161,12 @@ void Metrics::update_metrics_sparse_label_kernel_wrapper(
   checkCUDA(cudaFree(perf));
 }
 
-void Metrics::update_metrics_label_kernel_wrapper(
-    float const *logit_ptr, float const *label_ptr, Metrics const *me,
-    int num_samples, int num_classes, PerfMetrics &perf_zc) {
+void Metrics::update_metrics_label_kernel_wrapper(float const *logit_ptr,
+                                                  float const *label_ptr,
+                                                  Metrics const *me,
+                                                  int num_samples,
+                                                  int num_classes,
+                                                  PerfMetrics &perf_zc) {
   PerfMetrics *perf;
   checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
   checkCUDA(

@@ -10,8 +10,11 @@
 #define CHECK_FLEXFLOW(status)                                                 \
   do {                                                                         \
     if (flexflow_status_is_ok(status)) {                                       \
-      fprintf(stderr, "FlexFlow encountered an errorat %s:%d : %s\n",          \
-              __FILE__, __LINE__, flexflow_get_error_string(status));          \
+      fprintf(stderr,                                                          \
+              "FlexFlow encountered an errorat %s:%d : %s\n",                  \
+              __FILE__,                                                        \
+              __LINE__,                                                        \
+              flexflow_get_error_string(status));                              \
       exit(flexflow_get_error_return_code(status));                            \
     }                                                                          \
   } while (0)

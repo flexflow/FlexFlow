@@ -23,17 +23,25 @@ namespace FlexFlow {
 
 enum class ArgSlotType { INDEX, STANDARD };
 
-template <typename T> struct TypedTaskInvocation;
-template <typename T> struct TypedIndexTaskInvocation;
+template <typename T>
+struct TypedTaskInvocation;
+template <typename T>
+struct TypedIndexTaskInvocation;
 
-using StandardArgSpec =
-    variant<ConcreteArgSpec, CheckedTypedFuture, CheckedTypedFutureMap,
-            ArgRefSpec, TaskInvocationSpec>;
+using StandardArgSpec = variant<ConcreteArgSpec,
+                                CheckedTypedFuture,
+                                CheckedTypedFutureMap,
+                                ArgRefSpec,
+                                TaskInvocationSpec>;
 
 template <typename T>
-using TypedTaskArg =
-    variant<T, IndexArg<T>, TypedFuture<T>, TypedFutureMap<T>, ArgRef<T>,
-            TypedTaskInvocation<T>, TypedIndexTaskInvocation<T>>;
+using TypedTaskArg = variant<T,
+                             IndexArg<T>,
+                             TypedFuture<T>,
+                             TypedFutureMap<T>,
+                             ArgRef<T>,
+                             TypedTaskInvocation<T>,
+                             TypedIndexTaskInvocation<T>>;
 
 template <typename T>
 using StandardTypedTaskArg =
@@ -53,11 +61,13 @@ public:
   void bind(slot_id, parallel_tensor_guid_t const &);
   void bind(slot_id, ParallelTensorSpec const &);
 
-  template <typename T> void bind_arg(slot_id name, ArgRef<T> const &a) {
+  template <typename T>
+  void bind_arg(slot_id name, ArgRef<T> const &a) {
     this->insert_arg_spec(name, ArgRefSpec::create(a));
   }
 
-  template <typename T> void bind_arg(slot_id name, TypedTaskArg<T> const &);
+  template <typename T>
+  void bind_arg(slot_id name, TypedTaskArg<T> const &);
 
   template <typename T>
   void bind_arg(slot_id name, StandardTypedTaskArg<T> const &);
@@ -70,11 +80,13 @@ public:
   template <typename T>
   void bind_arg(slot_id name, TypedIndexTaskInvocation<T> const &invoc);
 
-  template <typename T> void bind_arg(slot_id name, T const &t) {
+  template <typename T>
+  void bind_arg(slot_id name, T const &t) {
     this->insert_arg_spec(name, ConcreteArgSpec::create(t));
   }
 
-  template <typename T> void bind_arg(slot_id name, TypedFuture<T> const &f) {
+  template <typename T>
+  void bind_arg(slot_id name, TypedFuture<T> const &f) {
     this->insert_arg_spec(name, CheckedTypedFuture::create(f));
   }
 

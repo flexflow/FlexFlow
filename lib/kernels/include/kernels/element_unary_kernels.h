@@ -29,11 +29,13 @@ void init_kernel(ElementUnaryPerDeviceState *m,
                  Legion::Domain const &input_domain,
                  Legion::Domain const &output_domain);
 
-void forward_kernel(ffStream_t stream, ElementUnaryPerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
+                    ElementUnaryPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
-void backward_kernel(ffStream_t stream, ElementUnaryPerDeviceState const *m,
+void backward_kernel(ffStream_t stream,
+                     ElementUnaryPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorR const &input_grad,
                      GenericTensorAccessorW const &output,

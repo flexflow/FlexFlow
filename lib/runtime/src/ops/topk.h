@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<TOPK_INIT_TASK_ID>();
-template <> void register_task<TOPK_FWD_TASK_ID>();
-template <> void register_task<TOPK_BWD_TASK_ID>();
+template <>
+void register_task<TOPK_INIT_TASK_ID>();
+template <>
+void register_task<TOPK_FWD_TASK_ID>();
+template <>
+void register_task<TOPK_BWD_TASK_ID>();
 
 OpTaskInvocation init(TopKAttrs const &);
 OpTaskInvocation forward(TopKAttrs const &);

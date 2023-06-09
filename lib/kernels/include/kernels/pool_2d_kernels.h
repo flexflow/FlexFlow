@@ -19,17 +19,34 @@ public:
 namespace Kernels {
 namespace Pool2D {
 
-void init_kernel(Pool2DPerDeviceState *m, int input_w, int input_h, int input_c,
-                 int input_n, int output_w, int output_h, int output_c,
-                 int output_n, int pad_h, int pad_w, int kernel_h, int kernel_w,
-                 int stride_h, int stride_w, PoolType pool_type);
+void init_kernel(Pool2DPerDeviceState *m,
+                 int input_w,
+                 int input_h,
+                 int input_c,
+                 int input_n,
+                 int output_w,
+                 int output_h,
+                 int output_c,
+                 int output_n,
+                 int pad_h,
+                 int pad_w,
+                 int kernel_h,
+                 int kernel_w,
+                 int stride_h,
+                 int stride_w,
+                 PoolType pool_type);
 
-void forward_kernel(ffStream_t stream, Pool2DPerDeviceState const *m,
-                    void const *input_ptr, void *output_ptr);
+void forward_kernel(ffStream_t stream,
+                    Pool2DPerDeviceState const *m,
+                    void const *input_ptr,
+                    void *output_ptr);
 
-void backward_kernel(ffStream_t stream, Pool2DPerDeviceState const *m,
-                     void const *input_ptr, void *input_grad_ptr,
-                     void const *output_ptr, void const *output_grad_ptr);
+void backward_kernel(ffStream_t stream,
+                     Pool2DPerDeviceState const *m,
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void const *output_grad_ptr);
 
 } // namespace Pool2D
 } // namespace Kernels

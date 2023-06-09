@@ -9,7 +9,9 @@ LegionRuntime::Logger::Category log_app("transpose_test");
 
 struct TransposeTestMeta {
   int m, k, d;
-  TransposeTestMeta(int _m, int _k, int _d) { m = _m, k = _k, d = _d; }
+  TransposeTestMeta(int _m, int _k, int _d) {
+    m = _m, k = _k, d = _d;
+  }
 };
 
 TransposeTestMeta get_test_meta(const std::string file_path) {
@@ -20,7 +22,8 @@ TransposeTestMeta get_test_meta(const std::string file_path) {
 }
 
 void top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions, Context ctx,
+                    std::vector<PhysicalRegion> const &regions,
+                    Context ctx,
                     Runtime *runtime) {
   // std::cout<< "test framework launched" << std::endl;
   auto test_meta = get_test_meta("test_meta.txt");
@@ -30,8 +33,8 @@ void top_level_task(Task const *task,
   // create input tensor
   Tensor dense_input;
   {
-    int const dims[3] = {test_meta.d, test_meta.m,
-                         test_meta.k}; // target shape (d,m,k)
+    int const dims[3] = {
+        test_meta.d, test_meta.m, test_meta.k}; // target shape (d,m,k)
     dense_input = ff.create_tensor<3>(dims, "transpose", DT_FLOAT);
   }
   // build transpose layer
@@ -40,8 +43,8 @@ void top_level_task(Task const *task,
   auto input1_file_path = "test_input1.txt";
   auto output_grad_file_path = "test_output_grad.txt";
   initialize_tensor_from_file(input1_file_path, dense_input, ff, "float", 3);
-  initialize_tensor_gradient_from_file(output_grad_file_path, ret, ff, "float",
-                                       3);
+  initialize_tensor_gradient_from_file(
+      output_grad_file_path, ret, ff, "float", 3);
   // run forward and backward to produce results
   ff.init_layers();
   ff.forward();

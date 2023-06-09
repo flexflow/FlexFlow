@@ -18,7 +18,9 @@ enum class AggregateOp {
 struct EmbeddingAttrs : public use_visitable_cmp<EmbeddingAttrs> {
 public:
   EmbeddingAttrs() = delete;
-  EmbeddingAttrs(int num_entries, int out_channels, AggregateOp aggr,
+  EmbeddingAttrs(int num_entries,
+                 int out_channels,
+                 AggregateOp aggr,
                  DataType data_type);
 
 public:
@@ -31,13 +33,14 @@ TensorShape get_weights_shape(EmbeddingAttrs const &, TensorShape const &);
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::EmbeddingAttrs, num_entries, out_channels, aggr,
-                 data_type);
+VISITABLE_STRUCT(
+    ::FlexFlow::EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
 MAKE_VISIT_HASHABLE(::FlexFlow::EmbeddingAttrs);
 
 namespace fmt {
 
-template <> struct formatter<::FlexFlow::AggregateOp> : formatter<string_view> {
+template <>
+struct formatter<::FlexFlow::AggregateOp> : formatter<string_view> {
   template <typename FormatContext>
   auto format(::FlexFlow::AggregateOp o, FormatContext &ctx) const
       -> decltype(ctx.out()) {
@@ -45,12 +48,12 @@ template <> struct formatter<::FlexFlow::AggregateOp> : formatter<string_view> {
 
     string_view name = "unknown";
     switch (o) {
-    case AggregateOp::SUM:
-      name = "Sum";
-      break;
-    case AggregateOp::AVG:
-      name = "Avg";
-      break;
+      case AggregateOp::SUM:
+        name = "Sum";
+        break;
+      case AggregateOp::AVG:
+        name = "Avg";
+        break;
     }
     return formatter<string_view>::format(name, ctx);
   }

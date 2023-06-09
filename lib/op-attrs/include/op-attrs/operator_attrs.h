@@ -37,14 +37,34 @@
 
 namespace FlexFlow {
 
-using SharedOperatorAttrs =
-    variant<AggregateAttrs, AggregateSpecAttrs, BatchMatmulAttrs,
-            BatchNormAttrs, CastAttrs, ConcatAttrs, Conv2DAttrs, DropoutAttrs,
-            ElementBinaryAttrs, ElementScalarUnaryAttrs, ElementUnaryAttrs,
-            EmbeddingAttrs, FlatAttrs, GatherAttrs, Group_byAttrs, InputAttrs,
-            LayerNormAttrs, LinearAttrs, MultiHeadAttentionAttrs, NoopAttrs,
-            Pool2DAttrs, ReduceAttrs, ReverseAttrs, ReshapeAttrs, SplitAttrs,
-            SoftmaxAttrs, TopKAttrs, TransposeAttrs>;
+using SharedOperatorAttrs = variant<AggregateAttrs,
+                                    AggregateSpecAttrs,
+                                    BatchMatmulAttrs,
+                                    BatchNormAttrs,
+                                    CastAttrs,
+                                    ConcatAttrs,
+                                    Conv2DAttrs,
+                                    DropoutAttrs,
+                                    ElementBinaryAttrs,
+                                    ElementScalarUnaryAttrs,
+                                    ElementUnaryAttrs,
+                                    EmbeddingAttrs,
+                                    FlatAttrs,
+                                    GatherAttrs,
+                                    Group_byAttrs,
+                                    InputAttrs,
+                                    LayerNormAttrs,
+                                    LinearAttrs,
+                                    MultiHeadAttentionAttrs,
+                                    NoopAttrs,
+                                    Pool2DAttrs,
+                                    ReduceAttrs,
+                                    ReverseAttrs,
+                                    ReshapeAttrs,
+                                    SplitAttrs,
+                                    SoftmaxAttrs,
+                                    TopKAttrs,
+                                    TransposeAttrs>;
 
 static_assert(is_valid_opattr<AggregateAttrs>::value, "");
 static_assert(is_valid_opattr<AggregateSpecAttrs>::value, "");
@@ -109,9 +129,9 @@ static_assert(is_hashable<PCGOperatorAttrs>::value,
 RecordFormatter as_dot(CompGraphOperatorAttrs const &);
 RecordFormatter as_dot(PCGOperatorAttrs const &);
 
-std::vector<ParallelTensorShape>
-get_output_shapes(PCGOperatorAttrs const &op_params,
-                  std::vector<ParallelTensorShape> const &input_tensor_shapes);
+std::vector<ParallelTensorShape> get_output_shapes(
+    PCGOperatorAttrs const &op_params,
+    std::vector<ParallelTensorShape> const &input_tensor_shapes);
 
 bool is_parallel_op(PCGOperatorAttrs const &);
 bool is_valid(PCGOperatorAttrs const &,

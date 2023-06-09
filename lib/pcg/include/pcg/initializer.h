@@ -48,8 +48,11 @@ public:
   DataTypeValue value;
 };
 
-using Initializer = variant<GlorotUniform, ZeroInitializer, UniformInitializer,
-                            NormInitializer, ConstantInitializer>;
+using Initializer = variant<GlorotUniform,
+                            ZeroInitializer,
+                            UniformInitializer,
+                            NormInitializer,
+                            ConstantInitializer>;
 
 } // namespace FlexFlow
 

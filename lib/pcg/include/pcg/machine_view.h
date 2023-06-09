@@ -32,9 +32,11 @@ DeviceType get_device_type(MachineView const &);
 
 MachineView make_1d_machine_view(gpu_id_t start, gpu_id_t stop, int stride = 1);
 MachineView make_1d_machine_view(cpu_id_t start, cpu_id_t stop, int stride = 1);
-MachineView make_1d_machine_view(device_id_t start, num_points_t num_points,
+MachineView make_1d_machine_view(device_id_t start,
+                                 num_points_t num_points,
                                  int stride = 1);
-MachineView make_1d_machine_view(device_id_t start, side_size_t interval_size,
+MachineView make_1d_machine_view(device_id_t start,
+                                 side_size_t interval_size,
                                  int stride = 1);
 
 MachineView make_1d_machine_view(device_id_t start, size_t interval_size);

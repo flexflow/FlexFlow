@@ -61,8 +61,10 @@ namespace FlexFlow {
 /*   return dim_mapping; */
 /* } */
 
-FFModel::FFModel(FFConfig const &_config, ComputationGraph const &cg,
-                 TrainingPCG const &training_pcg, Optimizer const &_optimizer,
+FFModel::FFModel(FFConfig const &_config,
+                 ComputationGraph const &cg,
+                 TrainingPCG const &training_pcg,
+                 Optimizer const &_optimizer,
                  RuntimeBacking const &_runtime_backing,
                  EnableProfiling const &_enable_profiling,
                  SimEnvFactory const &_sim_factory,
@@ -278,7 +280,9 @@ void backward(FFModel const &ff, int seq_length, PerfMetrics const &metrics) {
   /* } */
 }
 
-void update(FFModel const &ff) { ff.execute(update(ff.pcg, ff.optimizer)); }
+void update(FFModel const &ff) {
+  ff.execute(update(ff.pcg, ff.optimizer));
+}
 
 operator_guid_t get_final_operator(FFModel const &ff) {
   operator_guid_t final_op_id = get_only(get_sinks(ff.pcg.graph));
@@ -288,7 +292,8 @@ operator_guid_t get_final_operator(FFModel const &ff) {
   return final_op_id;
 }
 
-void FFModel::compile(Optimizer *_optimizer, LossType loss_type,
+void FFModel::compile(Optimizer *_optimizer,
+                      LossType loss_type,
                       std::vector<MetricsType> const &metrics,
                       CompMode comp_mode) {
   optimizer = _optimizer;
@@ -296,7 +301,7 @@ void FFModel::compile(Optimizer *_optimizer, LossType loss_type,
 }
 
 MachineView
-get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
+    get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
   gpu_id_t start = gpu_id_t(0);
   gpu_id_t stop = gpu_id_t(spec.num_nodes * spec.workersPerNode);
   return make_1d_machine_view(start, stop, 1);
@@ -325,15 +330,19 @@ void FFModel::print_operator_regions() const {
     printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
     for (int j = 0; j < op->numInputs; j++) {
       LogicalRegion handle = op->inputs[j]->region;
-      printf("inputs[%d] region(%d,%d,%d)\n", j,
+      printf("inputs[%d] region(%d,%d,%d)\n",
+             j,
              handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(), handle.get_tree_id());
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
     }
     for (int j = 0; j < op->numOutputs; j++) {
       LogicalRegion handle = op->outputs[j]->region;
-      printf("outputs[%d] region(%d,%d,%d)\n", j,
+      printf("outputs[%d] region(%d,%d,%d)\n",
+             j,
              handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(), handle.get_tree_id());
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
     }
   }
 }
@@ -373,7 +382,8 @@ void FFModel::create_label_tensor(LossType loss_type) {
       final_operator->outputs[0]->machine_view;
   map_tensor(parallel_label_tensor.value(),
              parallel_label_tensor.value()->owner_op,
-             this->config.legion_config, this->index_space_mgr);
+             this->config.legion_config,
+             this->index_space_mgr);
 }
 
 void FFModel::execute_graph_optimize() {
@@ -497,8 +507,12 @@ void FFModel::zero_gradients(void) {
 // ========================================================
 // class FFIterationConfig
 // ========================================================
-FFIterationConfig::FFIterationConfig() { seq_length = -1; }
+FFIterationConfig::FFIterationConfig() {
+  seq_length = -1;
+}
 
-void FFIterationConfig::reset() { seq_length = -1; }
+void FFIterationConfig::reset() {
+  seq_length = -1;
+}
 
 }; // namespace FlexFlow

@@ -25,23 +25,30 @@ ReshapePerDeviceState::ReshapePerDeviceState(FFHandler handler)
 namespace Kernels {
 namespace Reshape {
 
-template <DataType T> struct ForwardKernel {
-  void operator()(cudaStream_t stream, GenericTensorAccessorR const &input,
+template <DataType T>
+struct ForwardKernel {
+  void operator()(cudaStream_t stream,
+                  GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
-    checkCUDA(cudaMemcpyAsync(output.get<T>(), input.get<T>(),
+    checkCUDA(cudaMemcpyAsync(output.get<T>(),
+                              input.get<T>(),
                               input.shape.num_elements() * sizeof(T),
-                              cudaMemcpyDeviceToDevice, stream));
+                              cudaMemcpyDeviceToDevice,
+                              stream));
   }
 }
 
 template <DataType T>
 struct BackwardKernel {
-  void operator()(cudaStream_t stream, ReshapePerDeviceState const *m,
+  void operator()(cudaStream_t stream,
+                  ReshapePerDeviceState const *m,
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     float alpha = 1.0f;
     apply_add_with_scale<T><<<GET_BLOCKS(input.shape.num_elements()),
-                              CUDA_NUM_THREADS, 0, stream>>>(
+                              CUDA_NUM_THREADS,
+                              0,
+                              stream>>>(
         input.get<T>(), output.get<T>(), input.shape.num_elements(), (T)alpha);
   }
 }
@@ -53,7 +60,8 @@ void forward_kernel(cudaStream_t stream,
   DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output);
 }
 
-void backward_kernel(cudaStream_t stream, ReshapePerDeviceState const *m,
+void backward_kernel(cudaStream_t stream,
+                     ReshapePerDeviceState const *m,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output) {
   DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, input, output);

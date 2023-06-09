@@ -12,9 +12,16 @@ namespace FlexFlow {
 struct Conv2DAttrs : public use_visitable_cmp<Conv2DAttrs> {
 public:
   Conv2DAttrs() = delete;
-  Conv2DAttrs(int out_channels, int kernel_h, int kernel_w, int stride_h,
-              int stride_w, int padding_h, int padding_w, int groups,
-              optional<Activation> activation, bool use_bias);
+  Conv2DAttrs(int out_channels,
+              int kernel_h,
+              int kernel_w,
+              int stride_h,
+              int stride_w,
+              int padding_h,
+              int padding_w,
+              int groups,
+              optional<Activation> activation,
+              bool use_bias);
 
 public:
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
@@ -28,8 +35,16 @@ TensorShape get_bias_shape(Conv2DAttrs const &, TensorShape const &);
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::Conv2DAttrs, out_channels, kernel_h, kernel_w,
-                 stride_h, stride_w, padding_h, padding_w, groups, activation,
+VISITABLE_STRUCT(::FlexFlow::Conv2DAttrs,
+                 out_channels,
+                 kernel_h,
+                 kernel_w,
+                 stride_h,
+                 stride_w,
+                 padding_h,
+                 padding_w,
+                 groups,
+                 activation,
                  use_bias);
 MAKE_VISIT_HASHABLE(::FlexFlow::Conv2DAttrs);
 

@@ -44,8 +44,11 @@ bool broadcastable(const Tensor t1, const Tensor t2) {
   return true;
 }
 
-Tensor FFModel::binary(OperatorType op, const Tensor in1, const Tensor in2,
-                       bool inplace_a, char const *name) {
+Tensor FFModel::binary(OperatorType op,
+                       const Tensor in1,
+                       const Tensor in2,
+                       bool inplace_a,
+                       char const *name) {
   Layer *ele = nullptr;
   DataType dtype;
   assert(broadcastable(in1, in2));
@@ -53,18 +56,39 @@ Tensor FFModel::binary(OperatorType op, const Tensor in1, const Tensor in2,
     dtype = in2->data_type;
     std::string str(name);
     Tensor new_in1 = cast(in1, dtype, (str + "input1_pre_cast").c_str());
-    ele = new Layer(this, op, dtype, name, 2 /*inputs*/, 0 /*weights*/,
-                    1 /*outputs*/, new_in1, in2);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    2 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    new_in1,
+                    in2);
   } else if (in1->data_type > in2->data_type) {
     dtype = in1->data_type;
     std::string str(name);
     Tensor new_in2 = cast(in2, dtype, (str + "input2_pre_cast").c_str());
-    ele = new Layer(this, op, dtype, name, 2 /*inputs*/, 0 /*weights*/,
-                    1 /*outputs*/, in1, new_in2);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    2 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    in1,
+                    new_in2);
   } else {
     dtype = in1->data_type;
-    ele = new Layer(this, op, dtype, name, 2 /*inputs*/, 0 /*weights*/,
-                    1 /*outputs*/, in1, in2);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    2 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    in1,
+                    in2);
   }
   // Assert type match after broadcast
   assert(ele->inputs[0]->data_type == ele->inputs[1]->data_type);
@@ -76,41 +100,54 @@ Tensor FFModel::binary(OperatorType op, const Tensor in1, const Tensor in2,
 }
 
 Op *ElementBinary::create_operator_from_layer(
-    FFModel &model, Layer const *layer,
+    FFModel &model,
+    Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("inplace_a", value);
   bool inplace_a = (bool)value;
-  return new ElementBinary(model, layer->op_type, inputs[0], inputs[1],
-                           inplace_a, layer->name);
+  return new ElementBinary(
+      model, layer->op_type, inputs[0], inputs[1], inplace_a, layer->name);
 }
 
-Tensor FFModel::add(const Tensor in1, const Tensor in2, bool inplace_a,
+Tensor FFModel::add(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
                     char const *name) {
   return this->binary(OP_EW_ADD, in1, in2, inplace_a, name);
 }
 
-Tensor FFModel::subtract(const Tensor in1, const Tensor in2, bool inplace_a,
+Tensor FFModel::subtract(const Tensor in1,
+                         const Tensor in2,
+                         bool inplace_a,
                          char const *name) {
   return this->binary(OP_EW_SUB, in1, in2, inplace_a, name);
 }
 
-Tensor FFModel::multiply(const Tensor in1, const Tensor in2, bool inplace_a,
+Tensor FFModel::multiply(const Tensor in1,
+                         const Tensor in2,
+                         bool inplace_a,
                          char const *name) {
   return this->binary(OP_EW_MUL, in1, in2, inplace_a, name);
 }
 
-Tensor FFModel::divide(const Tensor in1, const Tensor in2, bool inplace_a,
+Tensor FFModel::divide(const Tensor in1,
+                       const Tensor in2,
+                       bool inplace_a,
                        char const *name) {
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
-Tensor FFModel::max(const Tensor in1, const Tensor in2, bool inplace_a,
+Tensor FFModel::max(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
                     char const *name) {
   return this->binary(OP_EW_MAX, in1, in2, inplace_a, name);
 }
 
-Tensor FFModel::min(const Tensor in1, const Tensor in2, bool inplace_a,
+Tensor FFModel::min(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
                     char const *name) {
   return this->binary(OP_EW_MIN, in1, in2, inplace_a, name);
 }
@@ -141,11 +178,21 @@ bool operator==(ElementBinaryParams const &lhs,
   return lhs.type == rhs.type;
 }
 
-ElementBinary::ElementBinary(FFModel &model, OperatorType _op_type,
-                             const ParallelTensor in1, const ParallelTensor in2,
-                             bool _inplace_a, char const *name)
-    : Op(model, _op_type, in1->data_type, name, 2 /*inputs*/, 0 /*weights*/,
-         1 /*outputs*/, in1, in2),
+ElementBinary::ElementBinary(FFModel &model,
+                             OperatorType _op_type,
+                             const ParallelTensor in1,
+                             const ParallelTensor in2,
+                             bool _inplace_a,
+                             char const *name)
+    : Op(model,
+         _op_type,
+         in1->data_type,
+         name,
+         2 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         in1,
+         in2),
       inplace_a(_inplace_a) {
   numOutputs = 1;
   numWeights = 0;
@@ -176,11 +223,13 @@ ElementBinary::ElementBinary(FFModel &model, OperatorType _op_type,
 }
 
 ElementBinary::ElementBinary(
-    FFModel &model, ElementBinaryParams const &params,
-    std::pair<ParallelTensor, ParallelTensor> const &inputs, char const *name,
+    FFModel &model,
+    ElementBinaryParams const &params,
+    std::pair<ParallelTensor, ParallelTensor> const &inputs,
+    char const *name,
     bool inplace_a)
-    : ElementBinary(model, params.type, inputs.first, inputs.second, inplace_a,
-                    name) {}
+    : ElementBinary(
+          model, params.type, inputs.first, inputs.second, inplace_a, name) {}
 
 void ElementBinary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
@@ -212,9 +261,13 @@ bool ElementBinary::can_inplace_output(void) {
   return false;
 }
 
-bool ElementBinary::has_inplace_output(void) { return inplace_a; }
+bool ElementBinary::has_inplace_output(void) {
+  return inplace_a;
+}
 
-void ElementBinary::do_inplace_output(void) { inplace_a = true; }
+void ElementBinary::do_inplace_output(void) {
+  inplace_a = true;
+}
 
 void ElementBinary::init(FFModel const &ff) {
   // Check if we have the same oprands
@@ -225,27 +278,37 @@ void ElementBinary::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(ElementBinary)), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(ElementBinary)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   int rid = 0;
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_WRITE,
-                        EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(rid++, FID_DATA);
   if (!has_same_operands) {
-    launcher.add_region_requirement(
-        RegionRequirement(inputs[1]->part, 0 /*projection id*/, READ_WRITE,
-                          EXCLUSIVE, inputs[1]->region));
+    launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      inputs[1]->region));
     launcher.add_field(rid++, FID_DATA);
   } else {
     assert(inputs[0]->part == inputs[1]->part);
   }
   if (!inplace_a) {
-    launcher.add_region_requirement(
-        RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                          EXCLUSIVE, outputs[0]->region));
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
     launcher.add_field(rid++, FID_DATA);
   } else {
     assert(outputs[0]->part == inputs[0]->part);
@@ -268,9 +331,10 @@ void ElementBinary::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *
-ElementBinary::init_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx, Runtime *runtime) {
+    ElementBinary::init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementBinaryMeta *m = new ElementBinaryMeta(handle);
@@ -428,7 +492,8 @@ void ElementBinary::backward(FFModel const &ff) {
 */
 void ElementBinary::forward_task(Task const *task,
                                  std::vector<PhysicalRegion> const &regions,
-                                 Context ctx, Runtime *runtime) {
+                                 Context ctx,
+                                 Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
 
@@ -460,7 +525,8 @@ void ElementBinary::forward_task(Task const *task,
 */
 void ElementBinary::backward_task(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
-                                  Context ctx, Runtime *runtime) {
+                                  Context ctx,
+                                  Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
 
@@ -472,8 +538,8 @@ void ElementBinary::backward_task(Task const *task,
   float *in2_grad_ptr = acc.get_slot<float>(grad(Tensors::RHS_INPUT));
   float const *out_grad_ptr = acc.get_const_slot<float>(grad(Tensors::OUTPUT));
 
-  backward_kernel_wrapper(m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr,
-                          in1_grad_ptr);
+  backward_kernel_wrapper(
+      m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr);
 
   /* Domain out_grad_domain = runtime->get_index_space_domain( */
   /*     ctx, task->regions[0].region.get_index_space()); */
@@ -553,7 +619,8 @@ void ElementBinary::backward_task(Task const *task,
   /*     m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr); */
 }
 
-bool ElementBinary::measure_operator_cost(Simulator *sim, MachineView const &mv,
+bool ElementBinary::measure_operator_cost(Simulator *sim,
+                                          MachineView const &mv,
                                           CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input1, sub_input2;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -621,8 +688,12 @@ bool ElementBinary::measure_operator_cost(Simulator *sim, MachineView const &mv,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
-      backward_kernel_wrapper(m, output_grad_ptr, input1_ptr, input2_ptr,
-                              input1_grad_ptr, input2_grad_ptr);
+      backward_kernel_wrapper(m,
+                              output_grad_ptr,
+                              input1_ptr,
+                              input2_ptr,
+                              input1_grad_ptr,
+                              input2_grad_ptr);
     };
   }
 
@@ -631,12 +702,16 @@ bool ElementBinary::measure_operator_cost(Simulator *sim, MachineView const &mv,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     log_measure.debug("[Measure Elewise Binary] name(%s) num_elements(%zu) "
                       "forward_time(%.4lf) backward_time(%.4lf)\n",
-                      name, sub_output.get_volume(), cost_metrics.forward_time,
+                      name,
+                      sub_output.get_volume(),
+                      cost_metrics.forward_time,
                       cost_metrics.backward_time);
   } else {
     log_measure.debug("[Measure Elewise Binary] name(%s) num_elements(%zu) "
                       "forward_time(%.4lf)\n",
-                      name, sub_output.get_volume(), cost_metrics.forward_time);
+                      name,
+                      sub_output.get_volume(),
+                      cost_metrics.forward_time);
   }
 
   return true;

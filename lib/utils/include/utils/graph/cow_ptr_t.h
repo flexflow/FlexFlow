@@ -8,11 +8,20 @@
 
 namespace FlexFlow {
 
-template <typename T> struct cow_ptr_t {
-  cow_ptr_t() { this->set_unique(nullptr); }
-  cow_ptr_t(std::shared_ptr<T> ptr) { this->set_shared(std::move(ptr)); }
-  cow_ptr_t(std::unique_ptr<T> ptr) { this->set_unique(std::move(ptr)); }
-  cow_ptr_t(T const &val) { this->set_unique(make_unique<T>(val)); }
+template <typename T>
+struct cow_ptr_t {
+  cow_ptr_t() {
+    this->set_unique(nullptr);
+  }
+  cow_ptr_t(std::shared_ptr<T> ptr) {
+    this->set_shared(std::move(ptr));
+  }
+  cow_ptr_t(std::unique_ptr<T> ptr) {
+    this->set_unique(std::move(ptr));
+  }
+  cow_ptr_t(T const &val) {
+    this->set_unique(make_unique<T>(val));
+  }
   cow_ptr_t(cow_ptr_t const &other) {
     this->set_shared(other.get_shared_ptr());
   }
@@ -24,7 +33,9 @@ template <typename T> struct cow_ptr_t {
   using shared_t = std::shared_ptr<T const>;
   using unique_t = std::unique_ptr<T>;
 
-  T const *get() const { return &this->ref(); }
+  T const *get() const {
+    return &this->ref();
+  }
 
   T const &ref() const {
     if (this->has_unique_access()) {
@@ -34,9 +45,13 @@ template <typename T> struct cow_ptr_t {
     }
   }
 
-  T const &operator*() const { return this->get(); }
+  T const &operator*() const {
+    return this->get();
+  }
 
-  T const *operator->() const { return &this->get(); }
+  T const *operator->() const {
+    return &this->get();
+  }
 
   std::shared_ptr<T const> get_shared_ptr() const {
     if (this->has_unique_access()) {
@@ -53,7 +68,9 @@ template <typename T> struct cow_ptr_t {
     }
   }
 
-  T &mutable_ref() const { return *this->mutable_ptr(); }
+  T &mutable_ref() const {
+    return *this->mutable_ptr();
+  }
 
   bool has_unique_access() const {
     return holds_alternative<unique_t>(this->ptr);
@@ -82,13 +99,15 @@ private:
     this->ptr = variant<unique_t>(std::move(ptr));
   }
 
-  std::unique_ptr<T> &get_unique() const { return get<unique_t>(this->ptr); }
-
-  std::shared_ptr<T const> &get_shared() const {
-    return get<shared_t>(this->ptr);
+  std::unique_ptr<T> &get_unique() const {
+    return ::FlexFlow::get<unique_t>(this->ptr);
   }
 
-  mutable variant<std::unique_ptr<T>, std::shared_ptr<T const>> ptr;
+  std::shared_ptr<T const> &get_shared() const {
+    return ::FlexFlow::get<shared_t>(this->ptr);
+  }
+
+  mutable variant<unique_t, shared_t> ptr;
 };
 
 } // namespace FlexFlow

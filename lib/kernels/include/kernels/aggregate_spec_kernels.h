@@ -21,18 +21,30 @@ public:
 namespace Kernels {
 namespace AggregateSpec {
 
-void forward_kernel(ffStream_t stream, AggregateSpecPerDeviceState const *m,
-                    float **exp_preds, int const *acc_gate_assign_ptr,
-                    float *acc_output_ptr, int n, int const k, int rows,
-                    int const batch_size, int out_dim);
+void forward_kernel(ffStream_t stream,
+                    AggregateSpecPerDeviceState const *m,
+                    float **exp_preds,
+                    int const *acc_gate_assign_ptr,
+                    float *acc_output_ptr,
+                    int n,
+                    int const k,
+                    int rows,
+                    int const batch_size,
+                    int out_dim);
 
-void backward_kernel(ffStream_t stream, AggregateSpecPerDeviceState const *m,
-                     float **exp_grads, int const *acc_gate_assign_ptr,
+void backward_kernel(ffStream_t stream,
+                     AggregateSpecPerDeviceState const *m,
+                     float **exp_grads,
+                     int const *acc_gate_assign_ptr,
                      int const *acc_true_gate_assign_ptr,
                      float const *acc_gate_pred_ptr,
                      float *acc_full_gate_grad_ptr,
-                     float const *acc_output_grad_ptr, int n, int const k,
-                     int rows, float lambda_bal, int const batch_size,
+                     float const *acc_output_grad_ptr,
+                     int n,
+                     int const k,
+                     int rows,
+                     float lambda_bal,
+                     int const batch_size,
                      int out_dim);
 } // namespace AggregateSpec
 } // namespace Kernels

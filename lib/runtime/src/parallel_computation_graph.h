@@ -22,36 +22,44 @@ OpTaskInvocation backward(ParallelComputationGraph const &,
                           operator_guid_t const &);
 
 std::unordered_map<operator_guid_t, OpTaskInvocation>
-init(ParallelComputationGraph const &);
+    init(ParallelComputationGraph const &);
 std::unordered_map<operator_guid_t, OpTaskInvocation>
-forward(ParallelComputationGraph const &);
+    forward(ParallelComputationGraph const &);
 std::unordered_map<operator_guid_t, OpTaskInvocation>
-backward(ParallelComputationGraph const &);
+    backward(ParallelComputationGraph const &);
 std::unordered_map<operator_guid_t, OpTaskInvocation>
-update(ParallelComputationGraph const &, Optimizer const &);
+    update(ParallelComputationGraph const &, Optimizer const &);
 
 IndexTaskArgSpec resolve(ParallelComputationGraph const &,
-                         operator_guid_t const &, OpArgRefSpec const &);
+                         operator_guid_t const &,
+                         OpArgRefSpec const &);
 IndexTaskArgSpec resolve(ParallelComputationGraph const &,
-                         operator_guid_t const &, OpArgSpec const &);
+                         operator_guid_t const &,
+                         OpArgSpec const &);
 parallel_tensor_guid_t resolve(ParallelComputationGraph const &,
-                               operator_guid_t const &, OpTensorSpec const &,
+                               operator_guid_t const &,
+                               OpTensorSpec const &,
                                IsGrad const &);
-TaskBinding resolve(ParallelComputationGraph const &, operator_guid_t const &,
+TaskBinding resolve(ParallelComputationGraph const &,
+                    operator_guid_t const &,
                     OpTaskBinding const &);
 
 TaskInvocation resolve(ParallelComputationGraph const &,
-                       operator_guid_t const &, OpTaskInvocation const &);
+                       operator_guid_t const &,
+                       OpTaskInvocation const &);
 std::unordered_map<operator_guid_t, TaskInvocation>
-resolve(ParallelComputationGraph const &,
-        std::unordered_map<operator_guid_t, OpTaskInvocation> const &);
+    resolve(ParallelComputationGraph const &,
+            std::unordered_map<operator_guid_t, OpTaskInvocation> const &);
 
 std::unordered_map<std::size_t, parallel_tensor_guid_t>
-get_input_ptensors_by_idx(ParallelComputationGraph const &, operator_guid_t);
+    get_input_ptensors_by_idx(ParallelComputationGraph const &,
+                              operator_guid_t);
 std::unordered_map<std::size_t, parallel_tensor_guid_t>
-get_weight_ptensors_by_idx(ParallelComputationGraph const &, operator_guid_t);
+    get_weight_ptensors_by_idx(ParallelComputationGraph const &,
+                               operator_guid_t);
 std::unordered_map<std::size_t, parallel_tensor_guid_t>
-get_output_ptensors_by_idx(ParallelComputationGraph const &, operator_guid_t);
+    get_output_ptensors_by_idx(ParallelComputationGraph const &,
+                               operator_guid_t);
 
 static_assert(std::is_copy_constructible<ParallelComputationGraph>::value, "");
 static_assert(std::is_move_constructible<ParallelComputationGraph>::value, "");

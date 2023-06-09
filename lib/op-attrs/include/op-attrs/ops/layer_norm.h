@@ -10,7 +10,8 @@ namespace FlexFlow {
 struct LayerNormAttrs : use_visitable_cmp<LayerNormAttrs> {
 public:
   LayerNormAttrs(stack_vector<ff_dim_t, MAX_TENSOR_DIM> const &axes,
-                 bool elementwise_affine, float eps);
+                 bool elementwise_affine,
+                 float eps);
 
 public:
   stack_vector<ff_dim_t, MAX_TENSOR_DIM> axes;

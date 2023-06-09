@@ -6,11 +6,14 @@
 namespace FlexFlow {
 
 template <typename T, typename Enable = void>
-using is_valid_opattr =
-    conjunction<is_equal_comparable<T>, is_neq_comparable<T>,
-                is_lt_comparable<T>, is_hashable<T>, is_copy_constructible<T>,
-                is_move_constructible<T>, is_copy_assignable<T>,
-                is_move_assignable<T>>;
+using is_valid_opattr = conjunction<is_equal_comparable<T>,
+                                    is_neq_comparable<T>,
+                                    is_lt_comparable<T>,
+                                    is_hashable<T>,
+                                    is_copy_constructible<T>,
+                                    is_move_constructible<T>,
+                                    is_copy_assignable<T>,
+                                    is_move_assignable<T>>;
 
 }
 

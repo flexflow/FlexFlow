@@ -42,10 +42,16 @@ using namespace FlexFlow::Kernels::TopK;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
-void FFModel::top_k(const Tensor input, Tensor *outputs, int k, bool sorted,
-                    char const *name) {
-  Layer *li = new Layer(this, OP_TOPK, input->data_type, name, 1 /*inputs*/,
-                        0 /*weights*/, 2 /*outputs*/, input);
+void FFModel::top_k(
+    const Tensor input, Tensor *outputs, int k, bool sorted, char const *name) {
+  Layer *li = new Layer(this,
+                        OP_TOPK,
+                        input->data_type,
+                        name,
+                        1 /*inputs*/,
+                        0 /*weights*/,
+                        2 /*outputs*/,
+                        input);
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
@@ -55,8 +61,8 @@ void FFModel::top_k(const Tensor input, Tensor *outputs, int k, bool sorted,
     dims[0] = k;
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, input->data_type, li, 0, true /*create_grad*/);
-    li->outputs[1] = create_tensor_legion_ordering(numdims, dims, DT_INT32, li,
-                                                   0, true /*create_grad*/);
+    li->outputs[1] = create_tensor_legion_ordering(
+        numdims, dims, DT_INT32, li, 0, true /*create_grad*/);
   }
   li->add_int_property("k", k);
   li->add_int_property("sorted", sorted);
@@ -66,7 +72,8 @@ void FFModel::top_k(const Tensor input, Tensor *outputs, int k, bool sorted,
 }
 
 Op *TopK::create_operator_from_layer(
-    FFModel &model, Layer const *layer,
+    FFModel &model,
+    Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("k", value);
@@ -92,10 +99,19 @@ bool operator==(TopKParams const &lhs, TopKParams const &rhs) {
   return lhs.k == rhs.k && lhs.sorted == rhs.sorted;
 }
 
-TopK::TopK(FFModel &model, const ParallelTensor _input, int _k, bool _sorted,
+TopK::TopK(FFModel &model,
+           const ParallelTensor _input,
+           int _k,
+           bool _sorted,
            char const *name)
-    : Op(model, OP_TOPK, _input->data_type, name, 1 /*inputs*/, 0 /*weights*/,
-         2 /*outputs*/, _input),
+    : Op(model,
+         OP_TOPK,
+         _input->data_type,
+         name,
+         1 /*inputs*/,
+         0 /*weights*/,
+         2 /*outputs*/,
+         _input),
       k(_k), sorted(_sorted) {
   int numdim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -114,7 +130,9 @@ TopK::TopK(FFModel &model, const ParallelTensor _input, int _k, bool _sorted,
 TopK::TopK(FFModel &model, TopK const &other, const ParallelTensor input)
     : TopK(model, input, other.k, other.sorted, other.name) {}
 
-TopK::TopK(FFModel &model, TopKParams const &params, const ParallelTensor input,
+TopK::TopK(FFModel &model,
+           TopKParams const &params,
+           const ParallelTensor input,
            char const *name)
     : TopK(model, input, params.k, params.sorted, name) {}
 
@@ -125,21 +143,31 @@ void TopK::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(TOPK_INIT_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(TopK)), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(TOPK_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(TopK)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[1]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[1]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[1]->region));
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -148,7 +176,8 @@ void TopK::init(FFModel const &ff) {
 
 PerDeviceOpState *TopK::init_task(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
-                                  Context ctx, Runtime *runtime) {
+                                  Context ctx,
+                                  Runtime *runtime) {
   TopK *topk = (TopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   TopKMeta *m = new TopKMeta(handle);
@@ -162,26 +191,38 @@ void TopK::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(TOPK_FWD_TASK_ID, parallel_is, TaskArgument(NULL, 0),
-                         argmap, Predicate::TRUE_PRED, false /*must*/,
-                         0 /*mapper_id*/, outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[0]->region));
+  IndexLauncher launcher(TOPK_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[1]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[1]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[1]->region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void TopK::forward_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions, Context ctx,
+                        std::vector<PhysicalRegion> const &regions,
+                        Context ctx,
                         Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
@@ -207,16 +248,16 @@ void TopK::forward_task(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *value_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  int *index_ptr = helperGetTensorPointerWO<int>(regions[2], task->regions[2],
-                                                 FID_DATA, ctx, runtime);
+  int *index_ptr = helperGetTensorPointerWO<int>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
   int k =
       out1_domain.hi()[0] - out1_domain.lo()[0] + 1; /*TODO: This prints to 5*/
   size_t batch_size = in1_domain.get_volume() / length;
 
-  forward_kernel_wrapper(m, in_ptr, value_ptr, index_ptr, batch_size, length, k,
-                         m->sorted);
+  forward_kernel_wrapper(
+      m, in_ptr, value_ptr, index_ptr, batch_size, length, k, m->sorted);
 }
 
 void TopK::backward(FFModel const &ff) {
@@ -224,23 +265,34 @@ void TopK::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(TOPK_BWD_TASK_ID, parallel_is, TaskArgument(NULL, 0),
-                         argmap, Predicate::TRUE_PRED, false /*must*/,
-                         0 /*mapper_id*/, outputs[0]->machine_view.hash());
+  IndexLauncher launcher(TOPK_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
   // regions[0](I): value_grad
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, outputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I): indices
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[1]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, outputs[1]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // regions[2](I/O): input_grad
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
-                        EXCLUSIVE, inputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -252,7 +304,8 @@ void TopK::backward(FFModel const &ff) {
 */
 void TopK::backward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx, Runtime *runtime) {
+                         Context ctx,
+                         Runtime *runtime) {
   // const TopK* topk = (const TopK*) task->args;
   TopKMeta const *m = *((TopKMeta **)task->local_args);
   assert(regions.size() == 3);
@@ -277,8 +330,8 @@ void TopK::backward_task(Task const *task,
   int length = in_domain.hi()[0] - in_domain.lo()[0] + 1;
   int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
   size_t batch_size = in_domain.get_volume() / length;
-  backward_kernel_wrapper(m, value_grad_ptr, indices_ptr, in_grad_ptr,
-                          batch_size, length, k);
+  backward_kernel_wrapper(
+      m, value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }
 
 void TopK::serialize(Legion::Serializer &sez) const {
@@ -286,8 +339,10 @@ void TopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->sorted);
 }
 
-Node TopK::deserialize(FFModel &ff, Legion::Deserializer &dez,
-                       ParallelTensor inputs[], int num_inputs) {
+Node TopK::deserialize(FFModel &ff,
+                       Legion::Deserializer &dez,
+                       ParallelTensor inputs[],
+                       int num_inputs) {
   assert(num_inputs == 1);
   int k;
   bool sorted;
@@ -299,13 +354,15 @@ Node TopK::deserialize(FFModel &ff, Legion::Deserializer &dez,
   return ff.get_or_create_node<TopK>(inputs[0], params);
 }
 
-Op *TopK::materialize(FFModel &ff, ParallelTensor inputs[],
+Op *TopK::materialize(FFModel &ff,
+                      ParallelTensor inputs[],
                       int num_inputs) const {
   TopKParams params = get_params();
   return new TopK(ff, params, inputs[0], this->name);
 }
 
-bool TopK::measure_operator_cost(Simulator *sim, MachineView const &mv,
+bool TopK::measure_operator_cost(Simulator *sim,
+                                 MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output, sub_output_ind;
   if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
@@ -347,12 +404,19 @@ bool TopK::measure_operator_cost(Simulator *sim, MachineView const &mv,
   size_t batch_size = in_domain.get_volume() / length;
 
   forward = [&] {
-    forward_kernel_wrapper(m, input_ptr, output_ptr, output_ind_ptr, batch_size,
-                           length, k, sorted);
+    forward_kernel_wrapper(m,
+                           input_ptr,
+                           output_ptr,
+                           output_ind_ptr,
+                           batch_size,
+                           length,
+                           k,
+                           sorted);
   };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  log_measure.debug("[Measure TopK] name(%s) forward_time(%.4lf)\n", name,
+  log_measure.debug("[Measure TopK] name(%s) forward_time(%.4lf)\n",
+                    name,
                     cost_metrics.forward_time);
 
   cost_metrics.backward_time = 0.0f; // not implemented for MOE

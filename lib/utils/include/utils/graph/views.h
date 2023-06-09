@@ -20,7 +20,7 @@ public:
   explicit FlippedView(IDiGraphView const &);
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -34,7 +34,7 @@ public:
                          std::unordered_set<Node> const &);
 
   std::unordered_set<UndirectedEdge>
-  query_edges(UndirectedEdgeQuery const &) const override;
+      query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -49,7 +49,7 @@ public:
                  std::unordered_set<Node> const &);
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -64,7 +64,7 @@ public:
                                std::unordered_set<Node> const &);
 
   std::unordered_set<MultiDiEdge>
-  query_edges(MultiDiEdgeQuery const &) const override;
+      query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -98,7 +98,8 @@ struct JoinNodeKey {
 } // namespace FlexFlow
 
 namespace std {
-template <> struct hash<::FlexFlow::JoinNodeKey> {
+template <>
+struct hash<::FlexFlow::JoinNodeKey> {
   std::size_t operator()(::FlexFlow::JoinNodeKey const &) const;
 };
 } // namespace std
@@ -112,7 +113,7 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::pair<std::unordered_set<Node>, std::unordered_set<Node>>
-  trace_nodes(std::unordered_set<Node> const &) const;
+      trace_nodes(std::unordered_set<Node> const &) const;
 
   Node at_join_key(JoinNodeKey const &) const;
   JoinNodeKey at_node(Node const &) const;
@@ -130,7 +131,7 @@ public:
       maybe_owned_ref<IUndirectedGraphView const> rhs);
 
   std::unordered_set<UndirectedEdge>
-  query_edges(UndirectedEdgeQuery const &) const override;
+      query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -150,7 +151,7 @@ public:
                              maybe_owned_ref<IDiGraphView const> rhs);
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   JoinedNodeView const &joined_nodes_view() const;
@@ -172,7 +173,7 @@ public:
                          maybe_owned_ref<IMultiDiGraphView const> rhs);
 
   std::unordered_set<MultiDiEdge>
-  query_edges(MultiDiEdgeQuery const &) const override;
+      query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   JoinedNodeView const &joined_nodes_view() const;
@@ -195,7 +196,7 @@ public:
                                 std::unordered_set<DirectedEdge> const &edges);
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -211,7 +212,7 @@ public:
   explicit SingleSourceNodeView(Ptr<IDiGraphView const> g) : g(g) {}
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -223,11 +224,12 @@ private:
 
 struct ContractNodeView : public IDiGraphView {
   ContractNodeView() = delete;
-  explicit ContractNodeView(IDiGraphView const &, Node const &removed,
+  explicit ContractNodeView(IDiGraphView const &,
+                            Node const &removed,
                             Node const &into);
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -243,7 +245,7 @@ public:
   DiGraphViewStack() = default;
 
   std::unordered_set<DirectedEdge>
-  query_edges(DirectedEdgeQuery const &) const override;
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   void add_view(
@@ -261,7 +263,7 @@ public:
                                    std::unordered_set<Node> const &);
 
   std::unordered_set<OpenMultiDiEdge>
-  query_edges(OpenMultiDiEdgeQuery const &) const override;
+      query_edges(OpenMultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:
@@ -307,15 +309,16 @@ MultiDiGraphView view_as_joined(MultiDiGraphView const &,
                                 MultiDiGraphView const &);
 
 DiGraphView
-unsafe_view_with_added_edges(DiGraphView const &,
-                             std::unordered_set<DirectedEdge> const &);
+    unsafe_view_with_added_edges(DiGraphView const &,
+                                 std::unordered_set<DirectedEdge> const &);
 DiGraphView view_with_added_edges(DiGraphView const &,
                                   std::unordered_set<DirectedEdge> const &);
 
-DiGraphView unsafe_view_as_contracted(DiGraphView const &, Node const &from,
+DiGraphView unsafe_view_as_contracted(DiGraphView const &,
+                                      Node const &from,
                                       Node const &into);
-DiGraphView view_as_contracted(DiGraphView const &, Node const &from,
-                               Node const &into);
+DiGraphView
+    view_as_contracted(DiGraphView const &, Node const &from, Node const &into);
 
 DiGraphView unsafe_view_as_contracted(DiGraphView const &,
                                       std::unordered_map<Node, Node> const &);
@@ -323,9 +326,10 @@ DiGraphView view_as_contracted(DiGraphView const &,
                                std::unordered_map<Node, Node> const &);
 
 std::unordered_map<Node, Node>
-flatten_contraction(std::unordered_map<Node, Node> const &);
+    flatten_contraction(std::unordered_map<Node, Node> const &);
 
-template <typename Impl, typename View> Impl materialize_view(View const &g) {
+template <typename Impl, typename View>
+Impl materialize_view(View const &g) {
   Impl result;
   for (Node const &n : get_nodes(g)) {
     result.add_node_unsafe(n);
@@ -341,7 +345,8 @@ Impl materialize_undirected_graph_view(IUndirectedGraphView const &g) {
   return materialize_view<Impl, IUndirectedGraphView>(g);
 }
 
-template <typename Impl> Impl materialize_digraph_view(IDiGraphView const &g) {
+template <typename Impl>
+Impl materialize_digraph_view(IDiGraphView const &g) {
   return materialize_view<Impl, IDiGraphView>(g);
 }
 

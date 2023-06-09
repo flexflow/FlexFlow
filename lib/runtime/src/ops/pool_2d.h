@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<POOL2D_INIT_TASK_ID>();
-template <> void register_task<POOL2D_FWD_TASK_ID>();
-template <> void register_task<POOL2D_BWD_TASK_ID>();
+template <>
+void register_task<POOL2D_INIT_TASK_ID>();
+template <>
+void register_task<POOL2D_FWD_TASK_ID>();
+template <>
+void register_task<POOL2D_BWD_TASK_ID>();
 
 OpTaskInvocation init(Pool2DAttrs const &);
 OpTaskInvocation forward(Pool2DAttrs const &);

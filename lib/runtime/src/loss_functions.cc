@@ -50,9 +50,10 @@ TaskInvocation backward_invocation(LossAttrs const &attrs,
 }
 
 static void
-loss_backward_task(Legion::Task const *task,
-                   std::vector<Legion::PhysicalRegion> const &regions,
-                   Legion::Context ctx, Legion::Runtime *runtime) {
+    loss_backward_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto attrs = acc.get_argument<LossAttrs>(LOSS_ATTRS);
   auto profiling_settings =
@@ -93,9 +94,14 @@ loss_backward_task(Legion::Task const *task,
     profile(sparse_categorical_crossentropy_loss_backward_kernel,
             profiling_settings,
             "[SparseCategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
-            get_float_ptr(logit_grad), get_float_ptr(logit),
-            get_int32_ptr(label), logit.shape.get_volume(),
-            logit_grad.shape.get_volume(), num_samples, num_classes, k,
+            get_float_ptr(logit_grad),
+            get_float_ptr(logit),
+            get_int32_ptr(label),
+            logit.shape.get_volume(),
+            logit_grad.shape.get_volume(),
+            num_samples,
+            num_classes,
+            k,
             scale_factor);
   } else {
     assert(logit.shape == label.shape);
@@ -106,39 +112,51 @@ loss_backward_task(Legion::Task const *task,
     int num_samples = label.shape.at(legion_dim_t(ndim - 1));
     int num_channels = logit.shape.get_volume() / num_samples;
     switch (loss_type) {
-    case LossFunction::CATEGORICAL_CROSSENTROPY: {
-      profile(categorical_crossentropy_loss_backward_kernel, profiling_settings,
-              "[CategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
-              get_float_ptr(logit_grad), get_float_ptr(logit),
-              get_float_ptr(label), logit.shape.get_volume(),
-              logit_grad.shape.get_volume(), scale_factor);
-      break;
-    }
-    case LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE: {
-      profile(mean_squared_error_avg_loss_backward_kernel, profiling_settings,
-              "[MeanSquaredErrorAvgLoss] backward_time = %.2lfms\n",
-              get_float_ptr(logit_grad), get_float_ptr(logit),
-              get_float_ptr(label), logit.shape.get_volume(),
-              logit_grad.shape.get_volume(), scale_factor);
-      break;
-    }
-    case LossFunction::IDENTITY: {
-      profile(identity_loss_backward_kernel, profiling_settings,
-              "[IdentityLoss] backward_time = %.2lfms\n",
-              get_float_ptr(logit_grad), get_float_ptr(logit),
-              logit.shape.get_volume(), logit_grad.shape.get_volume(),
-              scale_factor);
-      break;
-    }
-    default:
-      throw mk_runtime_error(
-          "Unsupported loss function {}. Please report this as an issue.",
-          loss_type);
+      case LossFunction::CATEGORICAL_CROSSENTROPY: {
+        profile(categorical_crossentropy_loss_backward_kernel,
+                profiling_settings,
+                "[CategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
+                get_float_ptr(logit_grad),
+                get_float_ptr(logit),
+                get_float_ptr(label),
+                logit.shape.get_volume(),
+                logit_grad.shape.get_volume(),
+                scale_factor);
+        break;
+      }
+      case LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE: {
+        profile(mean_squared_error_avg_loss_backward_kernel,
+                profiling_settings,
+                "[MeanSquaredErrorAvgLoss] backward_time = %.2lfms\n",
+                get_float_ptr(logit_grad),
+                get_float_ptr(logit),
+                get_float_ptr(label),
+                logit.shape.get_volume(),
+                logit_grad.shape.get_volume(),
+                scale_factor);
+        break;
+      }
+      case LossFunction::IDENTITY: {
+        profile(identity_loss_backward_kernel,
+                profiling_settings,
+                "[IdentityLoss] backward_time = %.2lfms\n",
+                get_float_ptr(logit_grad),
+                get_float_ptr(logit),
+                logit.shape.get_volume(),
+                logit_grad.shape.get_volume(),
+                scale_factor);
+        break;
+      }
+      default:
+        throw mk_runtime_error(
+            "Unsupported loss function {}. Please report this as an issue.",
+            loss_type);
     }
   }
 }
 
-template <> void register_task<LOSS_BWD_TASK_ID>() {
+template <>
+void register_task<LOSS_BWD_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<LossAttrs>(LOSS_ATTRS);
   sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);

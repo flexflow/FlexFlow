@@ -92,31 +92,32 @@ void ParallelTensorBase::inline_unmap(FFConfig &config) {
   runtime->unmap_region(ctx, physical_region);
 }
 
-template <typename T> T *ParallelTensorBase::get_raw_ptr(FFConfig &config) {
+template <typename T>
+T *ParallelTensorBase::get_raw_ptr(FFConfig &config) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
   region_req.add_field(FID_DATA);
   T *raw_ptr = NULL;
   if (num_dims == 1) {
-    TensorAccessorW<T, 1> acc(physical_region, region_req, FID_DATA, ctx,
-                              runtime, true);
+    TensorAccessorW<T, 1> acc(
+        physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T *)acc.ptr;
   } else if (num_dims == 2) {
-    TensorAccessorW<T, 2> acc(physical_region, region_req, FID_DATA, ctx,
-                              runtime, true);
+    TensorAccessorW<T, 2> acc(
+        physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T *)acc.ptr;
   } else if (num_dims == 3) {
-    TensorAccessorW<T, 3> acc(physical_region, region_req, FID_DATA, ctx,
-                              runtime, true);
+    TensorAccessorW<T, 3> acc(
+        physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T *)acc.ptr;
   } else if (num_dims == 4) {
-    TensorAccessorW<T, 4> acc(physical_region, region_req, FID_DATA, ctx,
-                              runtime, true);
+    TensorAccessorW<T, 4> acc(
+        physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T *)acc.ptr;
   } else if (num_dims == 5) {
-    TensorAccessorW<T, 5> acc(physical_region, region_req, FID_DATA, ctx,
-                              runtime, true);
+    TensorAccessorW<T, 5> acc(
+        physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T *)acc.ptr;
   } else {
     printf("wrong num_dims %d", num_dims);
@@ -125,7 +126,8 @@ template <typename T> T *ParallelTensorBase::get_raw_ptr(FFConfig &config) {
   return raw_ptr;
 }
 
-void ParallelTensorBase::attach_raw_ptr(FFConfig &config, void *raw_ptr,
+void ParallelTensorBase::attach_raw_ptr(FFConfig &config,
+                                        void *raw_ptr,
                                         bool column_major) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
@@ -152,7 +154,8 @@ bool ParallelTensorBase::get_input_sub_tensor_via_mappings(
   if (pc.nDims != num_dims) {
     printf("Could not get input subtensor because the number of dimensions do "
            "not match: %d != %d\n",
-           pc.nDims, num_dims);
+           pc.nDims,
+           num_dims);
     return false;
   }
   std::vector<ParallelDimMappingRecord> mapping;
@@ -188,85 +191,91 @@ bool ParallelTensorBase::get_input_sub_tensor(ParallelConfig const &pc,
                                               OperatorType type) {
   // TODO: consider reduction dim for conv2d and linear
   switch (type) {
-  case OP_FLAT: {
-    assert(pc.nDims == 3 && "Invalid dimension for parallel config of OP_FLAT");
+    case OP_FLAT: {
+      assert(pc.nDims == 3 &&
+             "Invalid dimension for parallel config of OP_FLAT");
 
-    tensor.num_dims = this->num_dims;
-    for (int i = 0; i < 3; i++) {
-      assert(tensor.dims[i].size % pc.dim[i] == 0);
-      tensor.dims[i].size = tensor.dims[i].size / pc.dim[i];
+      tensor.num_dims = this->num_dims;
+      for (int i = 0; i < 3; i++) {
+        assert(tensor.dims[i].size % pc.dim[i] == 0);
+        tensor.dims[i].size = tensor.dims[i].size / pc.dim[i];
+      }
+      break;
     }
-    break;
-  }
-  case OP_RESHAPE: {
-    for (int i = 0; i < pc.nDims - 1; i++) {
-      assert(pc.dim[i] == 1 && "Assuming data parallel for RESHAPE");
+    case OP_RESHAPE: {
+      for (int i = 0; i < pc.nDims - 1; i++) {
+        assert(pc.dim[i] == 1 && "Assuming data parallel for RESHAPE");
+      }
+      int batchDim = pc.dim[pc.nDims - 1];
+      if (dims[num_dims - 1].size % batchDim != 0) {
+        printf("Could not get input subtensor because the dimension is not "
+               "divisiable: %d %% %d != 0\n",
+               dims[num_dims - 1].size,
+               batchDim);
+      }
+      tensor.num_dims = num_dims;
+      for (int i = num_dims - 2; i >= 0; i--) {
+        tensor.dims[i].size = dims[i].size;
+      }
+      tensor.dims[num_dims - 1].size = dims[num_dims - 1].size / batchDim;
+      break;
     }
-    int batchDim = pc.dim[pc.nDims - 1];
-    if (dims[num_dims - 1].size % batchDim != 0) {
-      printf("Could not get input subtensor because the dimension is not "
-             "divisiable: %d %% %d != 0\n",
-             dims[num_dims - 1].size, batchDim);
-    }
-    tensor.num_dims = num_dims;
-    for (int i = num_dims - 2; i >= 0; i--) {
-      tensor.dims[i].size = dims[i].size;
-    }
-    tensor.dims[num_dims - 1].size = dims[num_dims - 1].size / batchDim;
-    break;
-  }
-  case OP_LINEAR: {
-    if (pc.nDims != num_dims) {
-      printf("Could not get input subtensor because the number of dimensions "
-             "do not match: %d != %d\n",
-             pc.nDims, num_dims);
-      return false;
-    }
-    tensor.num_dims = num_dims;
-    for (int i = 0; i < num_dims; i++) {
-      if (dims[i].size % pc.dim[i] != 0) {
-        printf("Could not get input subtensor because the given dimension is "
-               "not divisible: %d %% %d != 0\n",
-               dims[i].size, pc.dim[i]);
+    case OP_LINEAR: {
+      if (pc.nDims != num_dims) {
+        printf("Could not get input subtensor because the number of dimensions "
+               "do not match: %d != %d\n",
+               pc.nDims,
+               num_dims);
         return false;
       }
-      tensor.dims[i].size = dims[i].size / pc.dim[i];
+      tensor.num_dims = num_dims;
+      for (int i = 0; i < num_dims; i++) {
+        if (dims[i].size % pc.dim[i] != 0) {
+          printf("Could not get input subtensor because the given dimension is "
+                 "not divisible: %d %% %d != 0\n",
+                 dims[i].size,
+                 pc.dim[i]);
+          return false;
+        }
+        tensor.dims[i].size = dims[i].size / pc.dim[i];
+      }
+      tensor.dims[0].size = dims[0].size;
+      tensor.data_type = data_type;
+      break;
     }
-    tensor.dims[0].size = dims[0].size;
-    tensor.data_type = data_type;
-    break;
-  }
-  case OP_CONV2D:
-    if (!this->get_input_sub_tensor_via_mappings<Conv2D>(pc, tensor)) {
-      return false;
-    }
-    break;
-  case OP_POOL2D:
-    if (!this->get_input_sub_tensor_via_mappings<Pool2D>(pc, tensor)) {
-      return false;
-    }
-    break;
-  default: {
-    if (pc.nDims != num_dims) {
-      printf("Could not get input subtensor because the number of dimensions "
-             "do not match: %d != %d\n",
-             pc.nDims, num_dims);
-      return false;
-    }
-    for (int i = 0; i < num_dims; i++) {
-      if (dims[i].size % pc.dim[i] != 0) {
-        printf("Could not get input subtensor because the given dimension is "
-               "not divisible: %d %% %d != 0\n",
-               dims[i].size, pc.dim[i]);
+    case OP_CONV2D:
+      if (!this->get_input_sub_tensor_via_mappings<Conv2D>(pc, tensor)) {
         return false;
       }
-    }
-    tensor.num_dims = num_dims;
-    for (int i = 0; i < num_dims; i++) {
-      tensor.dims[i].size = dims[i].size / pc.dim[i];
-    }
-    tensor.data_type = data_type;
-  } break;
+      break;
+    case OP_POOL2D:
+      if (!this->get_input_sub_tensor_via_mappings<Pool2D>(pc, tensor)) {
+        return false;
+      }
+      break;
+    default: {
+      if (pc.nDims != num_dims) {
+        printf("Could not get input subtensor because the number of dimensions "
+               "do not match: %d != %d\n",
+               pc.nDims,
+               num_dims);
+        return false;
+      }
+      for (int i = 0; i < num_dims; i++) {
+        if (dims[i].size % pc.dim[i] != 0) {
+          printf("Could not get input subtensor because the given dimension is "
+                 "not divisible: %d %% %d != 0\n",
+                 dims[i].size,
+                 pc.dim[i]);
+          return false;
+        }
+      }
+      tensor.num_dims = num_dims;
+      for (int i = 0; i < num_dims; i++) {
+        tensor.dims[i].size = dims[i].size / pc.dim[i];
+      }
+      tensor.data_type = data_type;
+    } break;
   }
   return true;
 }
@@ -277,14 +286,16 @@ bool ParallelTensorBase::get_output_sub_tensor(ParallelConfig const &pc,
   if (pc.nDims != num_dims) {
     printf("Could not get output subtensor because the number of dimensions do "
            "not match: %d != %d\n",
-           pc.nDims, num_dims);
+           pc.nDims,
+           num_dims);
     return false;
   }
   for (int i = 0; i < num_dims; i++) {
     if (dims[i].size % pc.dim[i] != 0) {
       printf("Could not get output subtensor because the given dimension is "
              "not divisible: %d %% %d != 0\n",
-             dims[i].size, pc.dim[i]);
+             dims[i].size,
+             pc.dim[i]);
       return false;
     }
   }
@@ -421,16 +432,17 @@ bool ParallelTensorBase::set_tensor(FFModel const *ff,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    // Unsupported dim
-    assert(false);
+    default:
+      // Unsupported dim
+      assert(false);
   }
   runtime->unmap_region(ctx, pr);
   return true;
 }
 
 template <typename T>
-bool ParallelTensorBase::get_tensor(FFModel const *ff, T *data,
+bool ParallelTensorBase::get_tensor(FFModel const *ff,
+                                    T *data,
                                     bool get_gradients) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
@@ -457,8 +469,8 @@ bool ParallelTensorBase::get_tensor(FFModel const *ff, T *data,
   for (int i = 0; i < num_dims; i++) {
     volume = volume * dims[i].size / dims[i].degree;
   }
-  RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE,
-                        get_gradients ? region_grad : region);
+  RegionRequirement req(
+      weight_lr, READ_ONLY, EXCLUSIVE, get_gradients ? region_grad : region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion pr = runtime->map_region(ctx, launcher);
@@ -473,9 +485,9 @@ bool ParallelTensorBase::get_tensor(FFModel const *ff, T *data,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    // Unsupported dim
-    assert(false);
+    default:
+      // Unsupported dim
+      assert(false);
   }
   runtime->unmap_region(ctx, pr);
   return true;
@@ -487,22 +499,26 @@ template int32_t *ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
 template bool TensorBase::set_tensor<float>(FFModel const *ff,
                                             std::vector<int> const &dims,
                                             float const *data);
-template bool TensorBase::get_tensor<float>(FFModel const *ff, float *data,
+template bool TensorBase::get_tensor<float>(FFModel const *ff,
+                                            float *data,
                                             bool get_gradients);
 template bool TensorBase::set_tensor<double>(FFModel const *ff,
                                              std::vector<int> const &dims,
                                              double const *data);
-template bool TensorBase::get_tensor<double>(FFModel const *ff, double *data,
+template bool TensorBase::get_tensor<double>(FFModel const *ff,
+                                             double *data,
                                              bool get_gradients);
 template bool TensorBase::set_tensor<int32_t>(FFModel const *ff,
                                               std::vector<int> const &dims,
                                               int32_t const *data);
-template bool TensorBase::get_tensor<int32_t>(FFModel const *ff, int32_t *data,
+template bool TensorBase::get_tensor<int32_t>(FFModel const *ff,
+                                              int32_t *data,
                                               bool get_gradients);
 template bool TensorBase::set_tensor<int64_t>(FFModel const *ff,
                                               std::vector<int> const &dims,
                                               int64_t const *data);
-template bool TensorBase::get_tensor<int64_t>(FFModel const *ff, int64_t *data,
+template bool TensorBase::get_tensor<int64_t>(FFModel const *ff,
+                                              int64_t *data,
                                               bool get_gradients);
 
 template bool ParallelTensorBase::set_tensor<float>(

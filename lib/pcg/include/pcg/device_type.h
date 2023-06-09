@@ -11,7 +11,8 @@ enum class DeviceType { GPU, CPU };
 
 namespace fmt {
 
-template <> struct formatter<::FlexFlow::DeviceType> : formatter<string_view> {
+template <>
+struct formatter<::FlexFlow::DeviceType> : formatter<string_view> {
   template <typename FormatContext>
   auto format(::FlexFlow::DeviceType d, FormatContext &ctx) const
       -> decltype(ctx.out()) {
@@ -19,12 +20,12 @@ template <> struct formatter<::FlexFlow::DeviceType> : formatter<string_view> {
 
     string_view name = "unknown";
     switch (d) {
-    case DeviceType::GPU:
-      name = "GPU";
-      break;
-    case DeviceType::CPU:
-      name = "CPU";
-      break;
+      case DeviceType::GPU:
+        name = "GPU";
+        break;
+      case DeviceType::CPU:
+        name = "CPU";
+        break;
     }
     return formatter<string_view>::format(name, ctx);
   }

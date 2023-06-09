@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<REPARTITION_INIT_TASK_ID>();
-template <> void register_task<REPARTITION_FWD_TASK_ID>();
-template <> void register_task<REPARTITION_BWD_TASK_ID>();
+template <>
+void register_task<REPARTITION_INIT_TASK_ID>();
+template <>
+void register_task<REPARTITION_FWD_TASK_ID>();
+template <>
+void register_task<REPARTITION_BWD_TASK_ID>();
 
 OpTaskInvocation init(RepartitionAttrs const &);
 OpTaskInvocation forward(RepartitionAttrs const &);

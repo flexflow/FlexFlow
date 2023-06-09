@@ -24,27 +24,47 @@ using Legion::coord_t;
 namespace Kernels {
 namespace Split {
 
-void forward_kernel(hipStream_t stream, float **out_ptrs, float const *in_ptr,
-                    coord_t const *out_blk_sizes, coord_t in_blk_size,
-                    coord_t num_blks, int numOutputs) {
+void forward_kernel(hipStream_t stream,
+                    float **out_ptrs,
+                    float const *in_ptr,
+                    coord_t const *out_blk_sizes,
+                    coord_t in_blk_size,
+                    coord_t num_blks,
+                    int numOutputs) {
 
   for (int i = 0; i < numOutputs; i++) {
     hipLaunchKernelGGL(copy_with_stride,
                        GET_BLOCKS(out_blk_sizes[i] * num_blks),
-                       CUDA_NUM_THREADS, 0, stream, out_ptrs[i], in_ptr,
-                       num_blks, out_blk_sizes[i], in_blk_size);
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       out_ptrs[i],
+                       in_ptr,
+                       num_blks,
+                       out_blk_sizes[i],
+                       in_blk_size);
     in_ptr += out_blk_sizes[i];
   }
 }
 
-void backward_kernel(hipStream_t stream, float *in_grad_ptr,
-                     float const **out_grad_ptr, coord_t const *out_blk_sizes,
-                     coord_t in_blk_size, coord_t num_blks, int numOutputs) {
+void backward_kernel(hipStream_t stream,
+                     float *in_grad_ptr,
+                     float const **out_grad_ptr,
+                     coord_t const *out_blk_sizes,
+                     coord_t in_blk_size,
+                     coord_t num_blks,
+                     int numOutputs) {
 
   for (int i = 0; i < numOutputs; i++) {
-    hipLaunchKernelGGL(add_with_stride, GET_BLOCKS(out_blk_sizes[i] * num_blks),
-                       CUDA_NUM_THREADS, 0, stream, in_grad_ptr,
-                       out_grad_ptr[i], num_blks, in_blk_size,
+    hipLaunchKernelGGL(add_with_stride,
+                       GET_BLOCKS(out_blk_sizes[i] * num_blks),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       in_grad_ptr,
+                       out_grad_ptr[i],
+                       num_blks,
+                       in_blk_size,
                        out_blk_sizes[i]);
     in_grad_ptr += out_blk_sizes[i];
   }

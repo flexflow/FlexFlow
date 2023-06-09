@@ -9,7 +9,8 @@ namespace FlexFlow {
 namespace PCG {
 namespace Utils {
 
-template <typename G> struct GraphStructure;
+template <typename G>
+struct GraphStructure;
 /*
 {
   using graph_type = ...;
@@ -26,7 +27,8 @@ template <typename G> struct GraphStructure;
 };
 */
 
-template <typename T> struct BasicGraph {
+template <typename T>
+struct BasicGraph {
   using N = T;
   using E = std::pair<N, N>;
 
@@ -65,7 +67,9 @@ template <typename T> struct BasicGraph {
     return dst_in_edges.find({src, dst}) != dst_in_edges.end();
   }
 
-  bool has_edge(E const &e) const { return this->has_edge(e.first, e.second); }
+  bool has_edge(E const &e) const {
+    return this->has_edge(e.first, e.second);
+  }
 
   void remove_edge(N const &src, N const &dst) {
     out_edges[src].erase({src, dst});
@@ -77,7 +81,9 @@ template <typename T> struct BasicGraph {
     in_edges[e.second].erase(e);
   }
 
-  void add_node(N const &n) { nodes.insert(n); }
+  void add_node(N const &n) {
+    nodes.insert(n);
+  }
 
   template <typename Container = std::vector<N>>
   void add_nodes(Container const &nodes) {
@@ -99,7 +105,8 @@ template <typename T> struct BasicGraph {
   }
 };
 
-template <typename T> struct GraphStructure<BasicGraph<T>> {
+template <typename T>
+struct GraphStructure<BasicGraph<T>> {
   using graph_type = BasicGraph<T>;
   using vertex_type = T;
   using edge_type = std::pair<T, T>;

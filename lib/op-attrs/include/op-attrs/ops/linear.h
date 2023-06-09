@@ -31,7 +31,9 @@ using RegularizerAttrs = variant<L1RegularizerAttrs, L2RegularizerAttrs>;
 
 struct LinearAttrs : public use_visitable_cmp<LinearAttrs> {
 public:
-  LinearAttrs(int out_channels, bool use_bias, DataType data_type,
+  LinearAttrs(int out_channels,
+              bool use_bias,
+              DataType data_type,
               Activation activation,
               optional<RegularizerAttrs> const &regularizer = nullopt);
 
@@ -51,8 +53,12 @@ MAKE_VISIT_HASHABLE(::FlexFlow::L1RegularizerAttrs);
 VISITABLE_STRUCT(::FlexFlow::L2RegularizerAttrs, lambda);
 MAKE_VISIT_HASHABLE(::FlexFlow::L2RegularizerAttrs);
 
-VISITABLE_STRUCT(::FlexFlow::LinearAttrs, out_channels, use_bias, data_type,
-                 activation, regularizer);
+VISITABLE_STRUCT(::FlexFlow::LinearAttrs,
+                 out_channels,
+                 use_bias,
+                 data_type,
+                 activation,
+                 regularizer);
 MAKE_VISIT_HASHABLE(::FlexFlow::LinearAttrs);
 
 namespace FlexFlow {

@@ -19,7 +19,8 @@ public:
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::RepartitionAttrs, repartition_dim,
+VISITABLE_STRUCT(::FlexFlow::RepartitionAttrs,
+                 repartition_dim,
                  repartition_degree);
 MAKE_VISIT_HASHABLE(::FlexFlow::RepartitionAttrs);
 

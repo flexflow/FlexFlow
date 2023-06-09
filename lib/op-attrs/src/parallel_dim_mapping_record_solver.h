@@ -17,23 +17,33 @@
 namespace FlexFlow {
 
 std::vector<ParallelDimMappingRecord>
-construct_weight_parallel_dims(std::vector<std::pair<int, int>> mappings,
-                               int input_idx = 0, int weight_idx = 0);
+    construct_weight_parallel_dims(std::vector<std::pair<int, int>> mappings,
+                                   int input_idx = 0,
+                                   int weight_idx = 0);
 std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
-    int input_idx = 0, int weight_idx = 0);
+    int input_idx = 0,
+    int weight_idx = 0);
 ParallelDimMappingRecord construct_weight_parallel_dims(
-    int input_dim, int weight_dim, int input_idx = 0, int weight_idx = 0,
+    int input_dim,
+    int weight_dim,
+    int input_idx = 0,
+    int weight_idx = 0,
     tl::optional<MappingOperation> operation = tl::nullopt);
 
 std::vector<ParallelDimMappingRecord>
-construct_output_parallel_dims(std::vector<std::pair<int, int>> mappings,
-                               int input_idx = 0, int output_idx = 0);
+    construct_output_parallel_dims(std::vector<std::pair<int, int>> mappings,
+                                   int input_idx = 0,
+                                   int output_idx = 0);
 std::vector<ParallelDimMappingRecord> construct_output_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
-    int input_idx = 0, int output_idx = 0);
+    int input_idx = 0,
+    int output_idx = 0);
 ParallelDimMappingRecord construct_output_parallel_dims(
-    int input_dim, int output_dim, int input_idx = 0, int output_idx = 0,
+    int input_dim,
+    int output_dim,
+    int input_idx = 0,
+    int output_idx = 0,
     tl::optional<MappingOperation> operation = tl::nullopt);
 
 struct ParallelDimMappingSolution {
@@ -43,7 +53,8 @@ struct ParallelDimMappingSolution {
 
 ParallelDimMappingSolution solve_parallel_dim_mappings(
     std::vector<ParallelDimMappingRecord> const &mappings,
-    std::vector<ParallelTensorShape> const &input, int numWeights,
+    std::vector<ParallelTensorShape> const &input,
+    int numWeights,
     int numOutputs);
 
 /* class ParallelDimMappingRecordSolver { */

@@ -37,10 +37,12 @@ namespace FlexFlow {
 struct ParallelTensor : public use_visitable_cmp<ParallelTensor> {
   ParallelTensor() = delete;
 
-  ParallelTensor(ParallelTensorShape const &, CreateGrad create_gradients,
+  ParallelTensor(ParallelTensorShape const &,
+                 CreateGrad create_gradients,
                  optional<ParamSync> sync_type = nullopt,
                  optional<Initializer> initializer = nullopt);
-  ParallelTensor(ParallelTensorDims const &, DataType,
+  ParallelTensor(ParallelTensorDims const &,
+                 DataType,
                  CreateGrad create_gradients,
                  optional<ParamSync> sync_type = nullopt,
                  optional<Initializer> initializer = nullopt);
@@ -57,8 +59,12 @@ using ParallelParameter = ParallelTensor;
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::ParallelTensor, dims, data_type, sync_type,
-                 initializer, create_gradients);
+VISITABLE_STRUCT(::FlexFlow::ParallelTensor,
+                 dims,
+                 data_type,
+                 sync_type,
+                 initializer,
+                 create_gradients);
 MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensor);
 
 namespace FlexFlow {

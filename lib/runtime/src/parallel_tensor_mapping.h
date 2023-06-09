@@ -12,23 +12,28 @@ namespace FlexFlow {
 
 // TODO FIXME @lockshaw modernize
 
-void map_weight(ParallelTensor &weight, Op const *op,
+void map_weight(ParallelTensor &weight,
+                Op const *op,
                 LegionConfig const &config);
 
-void create_aliased_partition(int num_dims, const ParallelDim dims[],
+void create_aliased_partition(int num_dims,
+                              const ParallelDim dims[],
                               int aliased_dim,
                               Legion::IndexSpace const &part_is,
                               Legion::LogicalRegion const &region,
                               Legion::LogicalPartition &part,
                               LegionConfig const &config);
 
-void create_disjoint_partition(int num_dims, const ParallelDim dims[],
+void create_disjoint_partition(int num_dims,
+                               const ParallelDim dims[],
                                Legion::IndexSpace const &part_is,
                                Legion::LogicalRegion const &region,
                                Legion::LogicalPartition &part,
                                LegionConfig const &config);
 
-void map_tensor(ParallelTensor &tensor, Op const *op, LegionConfig const &,
+void map_tensor(ParallelTensor &tensor,
+                Op const *op,
+                LegionConfig const &,
                 IndexSpaceManager &);
 
 } // namespace FlexFlow

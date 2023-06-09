@@ -17,17 +17,21 @@ struct GraphCostResult {
   friend std::ostream &operator<<(std::ostream &, GraphCostResult const &);
 };
 
-template <typename T> T sequence_cost(T const &first, T const &second);
+template <typename T>
+T sequence_cost(T const &first, T const &second);
 
-template <typename T> T parallel_cost(T const &first, T const &second);
+template <typename T>
+T parallel_cost(T const &first, T const &second);
 
 class SearchHelper {
 public:
   SearchHelper();
 
   template <typename T>
-  T graph_cost(Graph const *graph, NodeAssignment const &source,
-               NodeAssignment const &sink, MachineResource const &resources,
+  T graph_cost(Graph const *graph,
+               NodeAssignment const &source,
+               NodeAssignment const &sink,
+               MachineResource const &resources,
                bool include_sink_compute_time) const;
   template <typename T>
   T find_optimal_sequence_graph_time(Graph const *g,
@@ -49,12 +53,13 @@ public:
   /*                                           std::unordered_map<Node,
    * MachineView>& optimal_views) const; */
   std::vector<MachineView>
-  get_valid_machine_views(Node const &node, MachineResource const &resource,
-                          bool log = false) const;
+      get_valid_machine_views(Node const &node,
+                              MachineResource const &resource,
+                              bool log = false) const;
   std::vector<MachineView>
-  get_valid_machine_views(OperatorParameters const &op,
-                          MachineResource const &resource,
-                          bool log = false) const;
+      get_valid_machine_views(OperatorParameters const &op,
+                              MachineResource const &resource,
+                              bool log = false) const;
 
   template <typename T>
   std::pair<bool, T> try_get_cost_from_cache(size_t hash) const;
@@ -62,20 +67,25 @@ public:
   template <typename T>
   void try_cache_result(size_t hash, T const &value) const;
 
-  template <typename T> T infinity() const;
-
-  template <typename T> T empty() const;
-
-  template <typename T> bool is_invalid(T const &) const;
+  template <typename T>
+  T infinity() const;
 
   template <typename T>
-  T estimate_xfer_cost(Graph const *g, NodeAssignment const &source,
+  T empty() const;
+
+  template <typename T>
+  bool is_invalid(T const &) const;
+
+  template <typename T>
+  T estimate_xfer_cost(Graph const *g,
+                       NodeAssignment const &source,
                        NodeAssignment const &sink) const;
 
   template <typename T>
   void add_operator_cost(NodeAssignment const &, float, T *) const;
 
-  template <typename T> float get_cost(T const &) const;
+  template <typename T>
+  float get_cost(T const &) const;
 
   template <typename T>
   void check_matches_graph(Graph const *, T const &, Node const &) const;

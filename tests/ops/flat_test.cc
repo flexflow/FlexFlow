@@ -45,7 +45,8 @@ FlatTestMeta get_test_meta(const std::string file_path) {
 }
 
 void top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions, Context ctx,
+                    std::vector<PhysicalRegion> const &regions,
+                    Context ctx,
                     Runtime *runtime) {
   // std::cout<< "test framework launched" << std::endl;
   auto test_meta = get_test_meta("test_meta.txt");
@@ -65,8 +66,8 @@ void top_level_task(Task const *task,
   auto input1_file_path = "test_input1.txt";
   auto output_grad_file_path = "test_output_grad.txt";
   initialize_tensor_from_file(input1_file_path, dense_input, ff, "float", 3);
-  initialize_tensor_gradient_from_file(output_grad_file_path, ret, ff, "float",
-                                       2);
+  initialize_tensor_gradient_from_file(
+      output_grad_file_path, ret, ff, "float", 2);
   // run forward and backward to produce results
   ff.init_layers();
   // forward

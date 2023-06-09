@@ -19,13 +19,17 @@ namespace Concat {
 
 void init_meta(ConcatPerDeviceState *meta, int legion_axis);
 
-void forward_kernel(ffStream_t stream, ConcatPerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
+                    ConcatPerDeviceState const *m,
                     GenericTensorAccessorW const &output,
-                    GenericTensorAccessorR const *inputs, int num_inputs);
+                    GenericTensorAccessorR const *inputs,
+                    int num_inputs);
 
-void backward_kernel(ffStream_t stream, ConcatPerDeviceState const *m,
+void backward_kernel(ffStream_t stream,
+                     ConcatPerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const *input_grads, int num_inputs);
+                     GenericTensorAccessorW const *input_grads,
+                     int num_inputs);
 
 } // namespace Concat
 } // namespace Kernels

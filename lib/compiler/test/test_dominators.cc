@@ -8,7 +8,9 @@ using namespace FlexFlow::PCG::Utils;
 namespace FlexFlow::PCG::Utils {
 template <>
 struct invalid_node<::BasicGraph<int>, GraphStructure<::BasicGraph<int>>> {
-  int operator()() const { return -1; }
+  int operator()() const {
+    return -1;
+  }
 };
 } // namespace FlexFlow::PCG::Utils
 
@@ -85,10 +87,17 @@ BasicGraph<int> get_dominator_test_graph() {
 TEST(dominators, basic) {
   BasicGraph<int> g = get_dominator_test_graph();
 
-  std::unordered_map<int, std::unordered_set<int>> answer = {
-      {1, {1}},          {2, {1, 2}},      {3, {1, 2, 3}},  {4, {1, 2, 4}},
-      {5, {1, 2, 4, 5}}, {6, {1, 2, 6}},   {7, {1, 7}},     {8, {1, 8}},
-      {9, {1, 8, 9}},    {10, {1, 8, 10}}, {11, {1, 8, 11}}};
+  std::unordered_map<int, std::unordered_set<int>> answer = {{1, {1}},
+                                                             {2, {1, 2}},
+                                                             {3, {1, 2, 3}},
+                                                             {4, {1, 2, 4}},
+                                                             {5, {1, 2, 4, 5}},
+                                                             {6, {1, 2, 6}},
+                                                             {7, {1, 7}},
+                                                             {8, {1, 8}},
+                                                             {9, {1, 8, 9}},
+                                                             {10, {1, 8, 10}},
+                                                             {11, {1, 8, 11}}};
 
   EXPECT_EQ(dominators(g), answer);
 }
@@ -96,11 +105,17 @@ TEST(dominators, basic) {
 TEST(post_dominators, basic) {
   BasicGraph<int> g = get_dominator_test_graph();
 
-  std::unordered_map<int, std::unordered_set<int>> answer = {
-      {1, {1, 8, 11}},    {2, {2, 6, 8, 11}}, {3, {3, 6, 8, 11}},
-      {4, {4, 6, 8, 11}}, {5, {5, 6, 8, 11}}, {6, {6, 8, 11}},
-      {7, {7, 8, 11}},    {8, {8, 11}},       {9, {9, 11}},
-      {10, {10, 11}},     {11, {11}}};
+  std::unordered_map<int, std::unordered_set<int>> answer = {{1, {1, 8, 11}},
+                                                             {2, {2, 6, 8, 11}},
+                                                             {3, {3, 6, 8, 11}},
+                                                             {4, {4, 6, 8, 11}},
+                                                             {5, {5, 6, 8, 11}},
+                                                             {6, {6, 8, 11}},
+                                                             {7, {7, 8, 11}},
+                                                             {8, {8, 11}},
+                                                             {9, {9, 11}},
+                                                             {10, {10, 11}},
+                                                             {11, {11}}};
 
   EXPECT_EQ(post_dominators(g), answer);
 }
@@ -109,9 +124,16 @@ TEST(imm_dominators, basic) {
   BasicGraph<int> g = get_dominator_test_graph();
 
   std::unordered_map<int, int> answer = {{1, 1}, // no immediate dominator
-                                         {2, 1},  {3, 2}, {4, 2}, {5, 4},
-                                         {6, 2},  {7, 1}, {8, 1}, {9, 8},
-                                         {10, 8}, {11, 8}};
+                                         {2, 1},
+                                         {3, 2},
+                                         {4, 2},
+                                         {5, 4},
+                                         {6, 2},
+                                         {7, 1},
+                                         {8, 1},
+                                         {9, 8},
+                                         {10, 8},
+                                         {11, 8}};
 
   EXPECT_EQ(imm_dominators(g), answer);
 }
@@ -120,9 +142,18 @@ TEST(imm_post_dominators, basic) {
   BasicGraph<int> g = get_dominator_test_graph();
 
   std::unordered_map<int, int> answer = {
-      {1, 8}, {2, 6},  {3, 6},  {4, 6},   {5, 6},  {6, 8},
-      {7, 8}, {8, 11}, {9, 11}, {10, 11}, {11, 11} // no immediate post
-                                                   // dominator
+      {1, 8},
+      {2, 6},
+      {3, 6},
+      {4, 6},
+      {5, 6},
+      {6, 8},
+      {7, 8},
+      {8, 11},
+      {9, 11},
+      {10, 11},
+      {11, 11} // no immediate post
+               // dominator
   };
 
   EXPECT_EQ(imm_post_dominators(g), answer);
@@ -134,8 +165,8 @@ TEST(imm_post_dominators, multisource) {
   g.add_nodes({1, 2, 3, 4, 5});
   g.add_edges({{1, 3}, {2, 3}, {3, 4}, {3, 5}});
 
-  std::unordered_map<int, int> answer = {{-1, 3}, {1, 3}, {2, 3},
-                                         {3, 3},  {4, 4}, {5, 5}};
+  std::unordered_map<int, int> answer = {
+      {-1, 3}, {1, 3}, {2, 3}, {3, 3}, {4, 4}, {5, 5}};
 
   auto result =
       imm_post_dominators<decltype(g), MultisourceGraphStructure<decltype(g)>>(
@@ -154,25 +185,27 @@ TEST(transitive_reduction, basic) {
 }
 
 TEST(transitive_reduction, medium) {
-  BasicGraph<int> g({1, 2, 3, 4, 5, 6, 7}, {
-                                               {1, 4},
-                                               {1, 5},
-                                               {2, 3},
-                                               {2, 4},
-                                               {2, 6},
-                                               {3, 4},
-                                               {4, 5},
-                                               {4, 6},
-                                               {5, 6},
-                                           });
+  BasicGraph<int> g({1, 2, 3, 4, 5, 6, 7},
+                    {
+                        {1, 4},
+                        {1, 5},
+                        {2, 3},
+                        {2, 4},
+                        {2, 6},
+                        {3, 4},
+                        {4, 5},
+                        {4, 6},
+                        {5, 6},
+                    });
 
-  BasicGraph<int> answer({1, 2, 3, 4, 5, 6, 7}, {
-                                                    {1, 4},
-                                                    {2, 3},
-                                                    {3, 4},
-                                                    {4, 5},
-                                                    {5, 6},
-                                                });
+  BasicGraph<int> answer({1, 2, 3, 4, 5, 6, 7},
+                         {
+                             {1, 4},
+                             {2, 3},
+                             {3, 4},
+                             {4, 5},
+                             {5, 6},
+                         });
 
   auto result = transitive_reduction(g);
 
@@ -180,25 +213,27 @@ TEST(transitive_reduction, medium) {
 }
 
 TEST(inplace_transitive_reduction, basic) {
-  BasicGraph<int> g({1, 2, 3, 4, 5, 6, 7}, {
-                                               {1, 4},
-                                               {1, 5},
-                                               {2, 3},
-                                               {2, 4},
-                                               {2, 6},
-                                               {3, 4},
-                                               {4, 5},
-                                               {4, 6},
-                                               {5, 6},
-                                           });
+  BasicGraph<int> g({1, 2, 3, 4, 5, 6, 7},
+                    {
+                        {1, 4},
+                        {1, 5},
+                        {2, 3},
+                        {2, 4},
+                        {2, 6},
+                        {3, 4},
+                        {4, 5},
+                        {4, 6},
+                        {5, 6},
+                    });
 
-  BasicGraph<int> answer({1, 2, 3, 4, 5, 6, 7}, {
-                                                    {1, 4},
-                                                    {2, 3},
-                                                    {3, 4},
-                                                    {4, 5},
-                                                    {5, 6},
-                                                });
+  BasicGraph<int> answer({1, 2, 3, 4, 5, 6, 7},
+                         {
+                             {1, 4},
+                             {2, 3},
+                             {3, 4},
+                             {4, 5},
+                             {5, 6},
+                         });
 
   inplace_transitive_reduction(g);
 
@@ -206,13 +241,14 @@ TEST(inplace_transitive_reduction, basic) {
 }
 
 TEST(roots, basic) {
-  BasicGraph<int> g({1, 2, 3, 4, 5, 6}, {
-                                            {1, 3},
-                                            {2, 3},
-                                            {3, 4},
-                                            {3, 5},
-                                            {3, 6},
-                                        });
+  BasicGraph<int> g({1, 2, 3, 4, 5, 6},
+                    {
+                        {1, 3},
+                        {2, 3},
+                        {3, 4},
+                        {3, 5},
+                        {3, 6},
+                    });
 
   std::unordered_set<int> answer{1, 2};
 

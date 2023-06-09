@@ -31,7 +31,9 @@ void init_meta(ConcatPerDeviceState *m, int legion_axis) {
 }
 
 template <int N>
-void calc_blk_size(coord_t &num_blocks, coord_t &blk_size, Rect<N> rect,
+void calc_blk_size(coord_t &num_blocks,
+                   coord_t &blk_size,
+                   Rect<N> rect,
                    int axis) {
   num_blocks = 1;
   blk_size = 1;
@@ -44,8 +46,10 @@ void calc_blk_size(coord_t &num_blocks, coord_t &blk_size, Rect<N> rect,
   }
 }
 
-void forward_kernel(hipStream_t stream, GenericTensorAccessorW const &output,
-                    GenericTensorAccessorR const *inputs, int num_inputs,
+void forward_kernel(hipStream_t stream,
+                    GenericTensorAccessorW const &output,
+                    GenericTensorAccessorR const *inputs,
+                    int num_inputs,
                     int axis) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
@@ -64,25 +68,31 @@ void forward_kernel(hipStream_t stream, GenericTensorAccessorW const &output,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    fprintf(stderr, "Unsupported concat dimension number");
-    assert(false);
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
   }
 
   off_t offset = 0;
   for (int i = 0; i < num_inputs; i++) {
-    hipLaunchKernelGGL(
-        copy_with_stride, GET_BLOCKS(input_blk_sizes[i] * num_blocks),
-        CUDA_NUM_THREADS, 0, stream, output.get_float_ptr() + offset,
-        inputs[i].get_float_ptr(), num_blocks, output_blk_size,
-        input_blk_sizes[i]);
+    hipLaunchKernelGGL(copy_with_stride,
+                       GET_BLOCKS(input_blk_sizes[i] * num_blocks),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       output.get_float_ptr() + offset,
+                       inputs[i].get_float_ptr(),
+                       num_blocks,
+                       output_blk_size,
+                       input_blk_sizes[i]);
     offset += input_blk_sizes[i];
   }
 }
 
 void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const *input_grads, int num_inputs,
+                     GenericTensorAccessorW const *input_grads,
+                     int num_inputs,
                      int axis) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
@@ -101,18 +111,23 @@ void backward_kernel(ffStream_t stream,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    fprintf(stderr, "Unsupported concat dimension number");
-    assert(false);
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
   }
 
   off_t offset = 0;
   for (int i = 0; i < num_inputs; i++) {
-    hipLaunchKernelGGL(
-        add_with_stride, GET_BLOCKS(input_blk_sizes[i] * num_blocks),
-        CUDA_NUM_THREADS, 0, stream, input_grads[i].get_float_ptr(),
-        output_grad.get_float_ptr() + offset, num_blocks, input_blk_sizes[i],
-        output_blk_size);
+    hipLaunchKernelGGL(add_with_stride,
+                       GET_BLOCKS(input_blk_sizes[i] * num_blocks),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       input_grads[i].get_float_ptr(),
+                       output_grad.get_float_ptr() + offset,
+                       num_blocks,
+                       input_blk_sizes[i],
+                       output_blk_size);
     offset += input_blk_sizes[i];
   }
 

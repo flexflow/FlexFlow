@@ -91,7 +91,7 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   virtual void remove_edge(Edge const &) = 0;
 
   virtual std::unordered_set<Node>
-  query_nodes(NodeQuery const &query) const override {
+      query_nodes(NodeQuery const &query) const override {
     return static_cast<IMultiDiGraphView const *>(this)->query_nodes(query);
   }
 
@@ -114,7 +114,9 @@ public:
     return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
   }
 
-  IMultiDiGraphView const *unsafe() const { return this->ptr.get(); }
+  IMultiDiGraphView const *unsafe() const {
+    return this->ptr.get();
+  }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
@@ -122,7 +124,7 @@ public:
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IMultiDiGraphView, T>::value,
                                  MultiDiGraphView>::type
-  create(Args &&...args) {
+      create(Args &&...args) {
     return MultiDiGraphView(
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
@@ -168,7 +170,7 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IMultiDiGraph, T>::value,
                                  MultiDiGraph>::type
-  create() {
+      create() {
     return MultiDiGraph(make_unique<T>());
   }
 

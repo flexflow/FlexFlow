@@ -35,7 +35,9 @@ XDLConfig::XDLConfig(void)
   mlp_top.push_back(2);
 }
 
-Tensor create_mlp(FFModel *model, Tensor const &input, std::vector<int> ln,
+Tensor create_mlp(FFModel *model,
+                  Tensor const &input,
+                  std::vector<int> ln,
                   int sigmoid_layer) {
   Tensor t = input;
   for (int i = 0; i < (int)(ln.size() - 1); i++) {
@@ -44,18 +46,31 @@ Tensor create_mlp(FFModel *model, Tensor const &input, std::vector<int> ln,
     std_dev = sqrt(2.0f / ln[i + 1]);
     Initializer *bias_init = new NormInitializer(std::rand(), 0, std_dev);
     ActiMode activation = i == sigmoid_layer ? AC_MODE_SIGMOID : AC_MODE_RELU;
-    t = model->dense(t, ln[i + 1], activation, false /*bias*/, DT_FLOAT,
-                     NULL /*weight_sharing*/, weight_init, bias_init);
+    t = model->dense(t,
+                     ln[i + 1],
+                     activation,
+                     false /*bias*/,
+                     DT_FLOAT,
+                     NULL /*weight_sharing*/,
+                     weight_init,
+                     bias_init);
   }
   return t;
 }
 
-Tensor create_emb(FFModel *model, Tensor const &input, int input_dim,
-                  int output_dim, int idx) {
+Tensor create_emb(FFModel *model,
+                  Tensor const &input,
+                  int input_dim,
+                  int output_dim,
+                  int idx) {
   float range = sqrt(1.0f / input_dim);
   Initializer *embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding(input, input_dim, output_dim, AGGR_MODE_SUM,
-                          DT_FLOAT /*dtype*/, NULL /*weight_sharing*/,
+  return model->embedding(input,
+                          input_dim,
+                          output_dim,
+                          AGGR_MODE_SUM,
+                          DT_FLOAT /*dtype*/,
+                          NULL /*weight_sharing*/,
                           embed_init);
 }
 
@@ -81,7 +96,8 @@ void print_vector(std::string const &name, std::vector<int> const &vector) {
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx, Runtime *runtime) {
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   // Parse input arguments
   XDLConfig xdlConfig;
@@ -91,7 +107,8 @@ void FlexFlow::top_level_task(Task const *task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, xdlConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                  ffConfig.batchSize, ffConfig.workersPerNode,
+                  ffConfig.batchSize,
+                  ffConfig.workersPerNode,
                   ffConfig.numNodes);
     log_app.print("EmbeddingBagSize(%d)", xdlConfig.embedding_bag_size);
     print_vector("Embedding Vocab Sizes", xdlConfig.embedding_size);
@@ -183,7 +200,8 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          data_loader.num_samples * ffConfig.epochs / run_time);
 }
 
@@ -230,7 +248,8 @@ void parse_input_args(char **argv, int argc, XDLConfig &config) {
   }
 }
 
-DataLoader::DataLoader(FFModel &ff, XDLConfig const &xdl,
+DataLoader::DataLoader(FFModel &ff,
+                       XDLConfig const &xdl,
                        std::vector<Tensor> const &_sparse_inputs,
                        Tensor _label) {
   Context ctx = ff.config.lg_ctx;
@@ -248,7 +267,8 @@ DataLoader::DataLoader(FFModel &ff, XDLConfig const &xdl,
 
 void DataLoader::load_entire_dataset(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx, Runtime *runtime) {
+                                     Context ctx,
+                                     Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // Note that these instances are in ZCM, can only use
@@ -317,18 +337,26 @@ void DataLoader::next_batch(FFModel &ff) {
     IndexLauncher launcher(
         CUSTOM_GPU_TASK_ID_1,
         batch_sparse_inputs[i]->parallel_tensor->parallel_is,
-        TaskArgument(&hash, sizeof(int)), argmap, Predicate::TRUE_PRED,
-        false /*must*/, 0 /*mapper_id*/,
+        TaskArgument(&hash, sizeof(int)),
+        argmap,
+        Predicate::TRUE_PRED,
+        false /*must*/,
+        0 /*mapper_id*/,
         batch_sparse_inputs[i]->parallel_tensor->machine_view.hash());
     // Full dataset in ZCM
-    launcher.add_region_requirement(RegionRequirement(
-        full_sparse_input->parallel_tensor->region, 0 /*projection id*/,
-        READ_ONLY, EXCLUSIVE, full_sparse_input->parallel_tensor->region,
-        MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_sparse_input->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_sparse_input->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
         RegionRequirement(batch_sparse_inputs[i]->parallel_tensor->part,
-                          0 /*projection id*/, WRITE_ONLY, EXCLUSIVE,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
                           batch_sparse_inputs[i]->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
@@ -349,18 +377,29 @@ void DataLoader::next_batch(FFModel &ff) {
       }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(
-        CUSTOM_GPU_TASK_ID_3, batch_label->parallel_tensor->parallel_is,
-        TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED, false /*must*/,
-        0 /*mapper_id*/, batch_label->parallel_tensor->machine_view.hash());
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3,
+                           batch_label->parallel_tensor->parallel_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           batch_label->parallel_tensor->machine_view.hash());
     // Full dataset in ZCM
-    launcher.add_region_requirement(RegionRequirement(
-        full_label->parallel_tensor->region, 0 /*projection id*/, READ_ONLY,
-        EXCLUSIVE, full_label->parallel_tensor->region, MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_label->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_label->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(
-        batch_label->parallel_tensor->part, 0 /*projection id*/, WRITE_ONLY,
-        EXCLUSIVE, batch_label->parallel_tensor->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label->parallel_tensor->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_label->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -370,10 +409,14 @@ void DataLoader::next_batch(FFModel &ff) {
 
 void DataLoader::shuffle() {}
 
-void DataLoader::reset() { next_index = 0; }
+void DataLoader::reset() {
+  next_index = 0;
+}
 
 void DataLoader::load_sparse_input_cpu(
-    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
     Runtime *runtime) {
   std::cout << "load_sparse_input_cpu" << std::endl;
 }

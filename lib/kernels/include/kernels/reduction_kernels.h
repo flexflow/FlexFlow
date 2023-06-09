@@ -8,10 +8,13 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Reduction {
 
-void forward_kernel(ffStream_t stream, GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output, size_t num_replicas);
+void forward_kernel(ffStream_t stream,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output,
+                    size_t num_replicas);
 
-void backward_kernel(ffStream_t stream, GenericTensorAccessorW const &input,
+void backward_kernel(ffStream_t stream,
+                     GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output);
 
 } // namespace Reduction

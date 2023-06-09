@@ -46,7 +46,8 @@ CandleConfig::CandleConfig(void) {
   input_features["drug2.fingerprints"] = "drug.fingerprints";
 }
 
-Tensor build_feature_model(FFModel *model, Tensor const &input,
+Tensor build_feature_model(FFModel *model,
+                           Tensor const &input,
                            std::vector<int> const &dense_layers) {
   Tensor t = input;
   for (size_t i = 0; i < dense_layers.size(); i++) {
@@ -68,7 +69,8 @@ void print_vector(std::string const &name, std::vector<int> const &vector) {
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx, Runtime *runtime) {
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ff_config;
   CandleConfig candle_config;
   {
@@ -77,7 +79,8 @@ void FlexFlow::top_level_task(Task const *task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, candle_config);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                  ff_config.batchSize, ff_config.workersPerNode,
+                  ff_config.batchSize,
+                  ff_config.workersPerNode,
                   ff_config.numNodes);
     print_vector("Dense Layers", candle_config.dense_layers);
     print_vector("Dense Feature Layers", candle_config.dense_feature_layers);
@@ -88,7 +91,8 @@ void FlexFlow::top_level_task(Task const *task,
   map<string, string> input_features = candle_config.input_features;
   map<string, int> feature_shapes = candle_config.feature_shapes;
   for (map<string, int>::const_iterator it = feature_shapes.begin();
-       it != feature_shapes.end(); it++) {
+       it != feature_shapes.end();
+       it++) {
     string fea_type = it->first;
     if (fea_type.find(".") != string::npos) {
       string base_type = fea_type.substr(0, fea_type.find("."));
@@ -101,7 +105,8 @@ void FlexFlow::top_level_task(Task const *task,
   std::vector<Tensor> all_inputs;
   Tensor encoded_inputs[MAX_NUM_INPUTS];
   for (map<string, string>::const_iterator it = input_features.begin();
-       it != input_features.end(); it++) {
+       it != input_features.end();
+       it++) {
     assert(feature_shapes.find(it->second) != feature_shapes.end());
     int shape = feature_shapes[it->second];
     int const dims[] = {ff_config.batchSize, shape};
@@ -171,7 +176,8 @@ void FlexFlow::top_level_task(Task const *task,
   future.get_void_result();
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          data_loader.num_samples * ff_config.epochs / run_time);
 }
 
@@ -214,8 +220,10 @@ size_t get_file_size(std::string const &filename) {
   return filesize;
 }
 
-DataLoader::DataLoader(FFModel &ff, CandleConfig const &candle,
-                       std::vector<Tensor> const &_inputs, Tensor _label) {
+DataLoader::DataLoader(FFModel &ff,
+                       CandleConfig const &candle,
+                       std::vector<Tensor> const &_inputs,
+                       Tensor _label) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   num_samples = 0;
@@ -230,7 +238,8 @@ DataLoader::DataLoader(FFModel &ff, CandleConfig const &candle,
     // inputs
     int idx = 0;
     for (map<string, string>::const_iterator it = candle.input_features.begin();
-         it != candle.input_features.end(); it++) {
+         it != candle.input_features.end();
+         it++) {
       string filename = candle.dataset_path + it->first;
       size_t filesize = get_file_size(filename);
       assert(filesize ==
@@ -260,15 +269,21 @@ DataLoader::DataLoader(FFModel &ff, CandleConfig const &candle,
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(CandleConfig *)));
   // regions[0]: full_label
-  launcher.add_region_requirement(RegionRequirement(
-      full_label->parallel_tensor->region, WRITE_ONLY, EXCLUSIVE,
-      full_label->parallel_tensor->region, MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_label->parallel_tensor->region,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        full_label->parallel_tensor->region,
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1-n]: full_inputs
   for (size_t i = 0; i < full_inputs.size(); i++) {
-    launcher.add_region_requirement(RegionRequirement(
-        full_inputs[i]->parallel_tensor->region, WRITE_ONLY, EXCLUSIVE,
-        full_inputs[i]->parallel_tensor->region, MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_inputs[i]->parallel_tensor->region,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          full_inputs[i]->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_task(ctx, launcher);
@@ -276,7 +291,8 @@ DataLoader::DataLoader(FFModel &ff, CandleConfig const &candle,
 
 void DataLoader::load_entire_dataset(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
-                                     Context ctx, Runtime *runtime) {
+                                     Context ctx,
+                                     Runtime *runtime) {
   CandleConfig *candle = *((CandleConfig **)task->args);
   assert(regions.size() == candle->input_features.size() + 1);
   assert(task->regions.size() == regions.size());
@@ -301,7 +317,8 @@ void DataLoader::load_entire_dataset(Task const *task,
   }
   int idx = 0;
   for (map<string, string>::const_iterator it = candle->input_features.begin();
-       it != candle->input_features.end(); it++, idx++) {
+       it != candle->input_features.end();
+       it++, idx++) {
     printf("idx = %d\n", idx);
     AccessorWO<float, 2> const acc_input(regions[idx + 1], FID_DATA);
     Rect<2> rect_input = runtime->get_index_space_domain(
@@ -316,7 +333,8 @@ void DataLoader::load_entire_dataset(Task const *task,
       }
     } else {
       string filename = candle->dataset_path + it->first;
-      log_app.print("Start loading input feature %s from %s", it->first.c_str(),
+      log_app.print("Start loading input feature %s from %s",
+                    it->first.c_str(),
                     filename.c_str());
       FILE *file = fopen(filename.c_str(), "rb");
       size_t ret = fread(input_ptr, sizeof(float), rect_input.volume(), file);
@@ -350,17 +368,28 @@ void DataLoader::next_batch(FFModel &ff) {
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(
-        CUSTOM_GPU_TASK_ID_1, batch_inputs[i]->parallel_tensor->parallel_is,
-        TaskArgument(&i, sizeof(int)), argmap, Predicate::TRUE_PRED,
-        false /*must*/, 0 /*mapper_id*/,
+        CUSTOM_GPU_TASK_ID_1,
+        batch_inputs[i]->parallel_tensor->parallel_is,
+        TaskArgument(&i, sizeof(int)),
+        argmap,
+        Predicate::TRUE_PRED,
+        false /*must*/,
+        0 /*mapper_id*/,
         batch_inputs[i]->parallel_tensor->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(
-        full_inputs[i]->parallel_tensor->region, 0 /*projection id*/, READ_ONLY,
-        EXCLUSIVE, full_inputs[i]->parallel_tensor->region, MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_inputs[i]->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_inputs[i]->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(
-        batch_inputs[i]->parallel_tensor->part, 0 /*projection id*/, WRITE_ONLY,
-        EXCLUSIVE, batch_inputs[i]->parallel_tensor->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[i]->parallel_tensor->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_inputs[i]->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -380,17 +409,28 @@ void DataLoader::next_batch(FFModel &ff) {
       }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(
-        CUSTOM_GPU_TASK_ID_1, batch_label->parallel_tensor->parallel_is,
-        TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED, false /*must*/,
-        0 /*mapper_id*/, batch_label->parallel_tensor->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(
-        full_label->parallel_tensor->region, 0 /*projection id*/, READ_ONLY,
-        EXCLUSIVE, full_label->parallel_tensor->region, MAP_TO_ZC_MEMORY));
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
+                           batch_label->parallel_tensor->parallel_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           batch_label->parallel_tensor->machine_view.hash());
+    launcher.add_region_requirement(
+        RegionRequirement(full_label->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_label->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(
-        batch_label->parallel_tensor->part, 0 /*projection id*/, WRITE_ONLY,
-        EXCLUSIVE, batch_label->parallel_tensor->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label->parallel_tensor->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_label->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -398,7 +438,9 @@ void DataLoader::next_batch(FFModel &ff) {
   next_index += ff.config.batchSize;
 }
 
-void DataLoader::reset() { next_index = 0; }
+void DataLoader::reset() {
+  next_index = 0;
+}
 
 void FlexFlow::register_custom_tasks() {
   // Load entire dataset

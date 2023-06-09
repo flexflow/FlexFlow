@@ -46,10 +46,19 @@ GatherParams Gather::get_params() const {
   return params;
 }
 
-Tensor FFModel::gather(const Tensor input, const Tensor index, int dim,
+Tensor FFModel::gather(const Tensor input,
+                       const Tensor index,
+                       int dim,
                        char const *name) {
-  Layer *gather = new Layer(this, OP_GATHER, DT_FLOAT, name, 2 /*inputs*/,
-                            0 /*weights*/, 1 /*output*/, input, index);
+  Layer *gather = new Layer(this,
+                            OP_GATHER,
+                            DT_FLOAT,
+                            name,
+                            2 /*inputs*/,
+                            0 /*weights*/,
+                            1 /*output*/,
+                            input,
+                            index);
   assert(index->data_type == DT_INT32 || index->data_type == DT_INT64);
   assert(input->num_dims == index->num_dims);
   int legion_dim = input->num_dims - 1 - dim;
@@ -73,26 +82,42 @@ Tensor FFModel::gather(const Tensor input, const Tensor index, int dim,
 }
 
 Op *Gather::create_operator_from_layer(
-    FFModel &model, Layer const *layer,
+    FFModel &model,
+    Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("legion_dim", value);
   int legion_dim = value;
-  return new Gather(model, layer->layer_guid, inputs[0], inputs[1], legion_dim,
-                    layer->name);
+  return new Gather(
+      model, layer->layer_guid, inputs[0], inputs[1], legion_dim, layer->name);
 }
 
-Gather::Gather(FFModel &model, GatherParams const &params,
+Gather::Gather(FFModel &model,
+               GatherParams const &params,
                std::pair<ParallelTensor, ParallelTensor> const &inputs,
                char const *name)
-    : Gather(model, params.layer_guid, inputs.first, inputs.second,
-             params.legion_dim, name) {}
+    : Gather(model,
+             params.layer_guid,
+             inputs.first,
+             inputs.second,
+             params.legion_dim,
+             name) {}
 
-Gather::Gather(FFModel &model, LayerID const &_layer_guid,
-               const ParallelTensor input, const ParallelTensor index,
-               int _legion_dim, char const *name)
-    : Op(model, OP_GATHER, input->data_type, name, 2 /*inputs*/, 0 /*weights*/,
-         1 /*outputs*/, input, index),
+Gather::Gather(FFModel &model,
+               LayerID const &_layer_guid,
+               const ParallelTensor input,
+               const ParallelTensor index,
+               int _legion_dim,
+               char const *name)
+    : Op(model,
+         OP_GATHER,
+         input->data_type,
+         name,
+         2 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         input,
+         index),
       legion_dim(_legion_dim) {
   layer_guid = _layer_guid;
   // Assume that input and index have the same paralleldim except
@@ -121,8 +146,10 @@ void Gather::serialize(Legion::Serializer &sez) const {
 
 using PCG::Node;
 /*static*/
-Node Gather::deserialize(FFModel &ff, Legion::Deserializer &dez,
-                         ParallelTensor inputs[], int num_inputs) {
+Node Gather::deserialize(FFModel &ff,
+                         Legion::Deserializer &dez,
+                         ParallelTensor inputs[],
+                         int num_inputs) {
   assert(num_inputs == 2);
   int legion_dim;
   dez.deserialize(legion_dim);
@@ -136,7 +163,8 @@ Node Gather::deserialize(FFModel &ff, Legion::Deserializer &dez,
   return ff.get_or_create_node<Gather>({inputs[0], inputs[1]}, params);
 }
 
-Op *Gather::materialize(FFModel &ff, ParallelTensor inputs[],
+Op *Gather::materialize(FFModel &ff,
+                        ParallelTensor inputs[],
                         int num_inputs) const {
   GatherParams params = get_params();
   return new Gather(ff, params, {inputs[0], inputs[1]}, this->name);
@@ -149,21 +177,31 @@ void Gather::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(GATHER_INIT_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(Gather)), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(GATHER_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Gather)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[1]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[1]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -172,7 +210,8 @@ void Gather::init(FFModel const &ff) {
 
 PerDeviceOpState *Gather::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx, Runtime *runtime) {
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   Gather const *gather = (Gather const *)task->args;
@@ -202,28 +241,39 @@ void Gather::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(GATHER_FWD_TASK_ID, parallel_is,
-                         TaskArgument(nullptr, false), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(GATHER_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, false),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[1]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[1]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Gather::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx, Runtime *runtime) {
+                          Context ctx,
+                          Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   GatherMeta const *m = *((GatherMeta **)task->local_args);
@@ -241,27 +291,39 @@ void Gather::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(GATHER_BWD_TASK_ID, parallel_is, TaskArgument(NULL, 0),
-                         argmap, Predicate::TRUE_PRED, false /*must*/,
-                         0 /*mapper_id*/, outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part_grad, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, outputs[0]->region_grad));
+  IndexLauncher launcher(GATHER_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[1]->part, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, inputs[1]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, inputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
 void Gather::backward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx, Runtime *runtime) {
+                           Context ctx,
+                           Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   GatherMeta const *m = *((GatherMeta **)task->local_args);
@@ -274,7 +336,8 @@ void Gather::backward_task(Task const *task,
   backward_kernel_wrapper(m, output_grad, index, input_grad);
 }
 
-bool Gather::measure_operator_cost(Simulator *sim, MachineView const &mv,
+bool Gather::measure_operator_cost(Simulator *sim,
+                                   MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_index, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -292,21 +355,21 @@ bool Gather::measure_operator_cost(Simulator *sim, MachineView const &mv,
   Domain input_domain = sub_input.get_domain();
   void *input_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorW input_acc(inputs[0]->data_type, input_domain,
-                                   input_ptr);
+  GenericTensorAccessorW input_acc(
+      inputs[0]->data_type, input_domain, input_ptr);
   Domain index_domain = sub_index.get_domain();
   void *index_ptr = sim->allocate(sub_index.get_volume(), inputs[1]->data_type);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorW index_acc(inputs[1]->data_type, index_domain,
-                                   index_ptr);
+  GenericTensorAccessorW index_acc(
+      inputs[1]->data_type, index_domain, index_ptr);
   out_of_memory = out_of_memory || (input_ptr == NULL) || (index_ptr == NULL);
   Domain out_domain = sub_output.get_domain();
   void *output_ptr =
       sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
   out_of_memory = out_of_memory || (output_ptr == NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorW output_acc(outputs[0]->data_type, out_domain,
-                                    output_ptr);
+  GenericTensorAccessorW output_acc(
+      outputs[0]->data_type, out_domain, output_ptr);
   if (out_of_memory) {
     cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
     cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
@@ -328,9 +391,12 @@ bool Gather::measure_operator_cost(Simulator *sim, MachineView const &mv,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure Gather] name(%s) forward_time(%.4lf) "
            "backward_time(%.4lf)\n",
-           name, cost_metrics.forward_time, cost_metrics.backward_time);
+           name,
+           cost_metrics.forward_time,
+           cost_metrics.backward_time);
   } else {
-    printf("[Measure Gather] name(%s) forward_time(%.4lf)\n", name,
+    printf("[Measure Gather] name(%s) forward_time(%.4lf)\n",
+           name,
            cost_metrics.forward_time);
   }
   delete m;

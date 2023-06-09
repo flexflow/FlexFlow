@@ -4,17 +4,17 @@
 namespace FlexFlow {
 
 std::vector<ParallelTensorUseDescription>
-ParallelTensorUses::at(ParallelTensor const &p_tensor) const {
+    ParallelTensorUses::at(ParallelTensor const &p_tensor) const {
   return this->at(p_tensor->parallel_tensor_guid);
 }
 
 std::vector<ParallelTensorUseDescription>
-ParallelTensorUses::at(ParallelTensorBase const *ptr) const {
+    ParallelTensorUses::at(ParallelTensorBase const *ptr) const {
   return this->at(ptr->parallel_tensor_guid);
 }
 
 std::vector<ParallelTensorUseDescription>
-ParallelTensorUses::at(size_t parallel_tensor_guid) const {
+    ParallelTensorUses::at(size_t parallel_tensor_guid) const {
   return this->uses.at(parallel_tensor_guid);
 }
 

@@ -4,7 +4,8 @@
 
 namespace FlexFlow {
 
-template <DataType DT> struct ZeroInitKernel {
+template <DataType DT>
+struct ZeroInitKernel {
   void operator()(GenericTensorAccessorW const &tensor) const {
     auto arr = get<DT>(tensor);
     for (size_t i = 0; i < tensor.shape.get_volume(); i++) {
@@ -17,7 +18,8 @@ void zero_init_kernel_cpu(GenericTensorAccessorW const &tensor) {
   DataTypeDispatch1<ZeroInitKernel>{}(tensor.data_type, tensor);
 }
 
-template <DataType DT> struct ConstantInitKernel {
+template <DataType DT>
+struct ConstantInitKernel {
   void operator()(GenericTensorAccessorW const &tensor,
                   DataTypeValue value) const {
     auto arr = get<DT>(tensor);

@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<SOFTMAX_INIT_TASK_ID>();
-template <> void register_task<SOFTMAX_FWD_TASK_ID>();
-template <> void register_task<SOFTMAX_BWD_TASK_ID>();
+template <>
+void register_task<SOFTMAX_INIT_TASK_ID>();
+template <>
+void register_task<SOFTMAX_FWD_TASK_ID>();
+template <>
+void register_task<SOFTMAX_BWD_TASK_ID>();
 
 OpTaskInvocation init(SoftmaxAttrs const &);
 OpTaskInvocation forward(SoftmaxAttrs const &);

@@ -23,9 +23,10 @@ public:
 
 private:
   using ContentsType = std::unordered_map<
-      Node, std::unordered_map<
-                Node, std::unordered_map<std::size_t,
-                                         std::unordered_set<std::size_t>>>>;
+      Node,
+      std::unordered_map<
+          Node,
+          std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>>;
 
   AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
 

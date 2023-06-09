@@ -9,18 +9,23 @@ using FlexFlow::Tensor;
 
 LegionRuntime::Logger::Category log_app("resnext");
 
-Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w,
-                     int out_channels, int groups, bool has_residual = false) {
+Tensor resnext_block(FFModel &ff,
+                     Tensor input,
+                     int stride_h,
+                     int stride_w,
+                     int out_channels,
+                     int groups,
+                     bool has_residual = false) {
   Tensor t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
 
-  t = ff.conv2d(t, out_channels, 3, 3, stride_h, stride_w, 1, 1, AC_MODE_RELU,
-                groups);
+  t = ff.conv2d(
+      t, out_channels, 3, 3, stride_h, stride_w, 1, 1, AC_MODE_RELU, groups);
 
   t = ff.conv2d(t, 2 * out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_NONE);
 
   if ((stride_h > 1 || input->dims[2] != out_channels * 2) && has_residual) {
-    input = ff.conv2d(input, 2 * out_channels, 1, 1, stride_h, stride_w, 0, 0,
-                      AC_MODE_RELU);
+    input = ff.conv2d(
+        input, 2 * out_channels, 1, 1, stride_h, stride_w, 0, 0, AC_MODE_RELU);
     t = ff.relu(ff.add(input, t), false);
   }
   return t;
@@ -28,7 +33,8 @@ Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w,
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx, Runtime *runtime) {
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   /* { */
   /*   const InputArgs &command_args = HighLevelRuntime::get_input_args(); */
@@ -36,7 +42,9 @@ void FlexFlow::top_level_task(Task const *task,
   /*   int argc = command_args.argc; */
   /*   parse_input_args(argv, argc, resnetConfig); */
   log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+                ffConfig.batchSize,
+                ffConfig.workersPerNode,
+                ffConfig.numNodes);
   /* } */
   FFModel ff(ffConfig);
 
@@ -124,7 +132,8 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 

@@ -25,8 +25,12 @@ constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
 LayerNormPerDeviceState::LayerNormPerDeviceState(
-    FFHandler handle, bool elementwise_affine_, int64_t effective_batch_size_,
-    int64_t effective_num_elements_, bool profiling_, float eps_)
+    FFHandler handle,
+    bool elementwise_affine_,
+    int64_t effective_batch_size_,
+    int64_t effective_num_elements_,
+    bool profiling_,
+    float eps_)
     : PerDeviceOpState(handle) {
   elementwise_affine = elementwise_affine_;
   effective_batch_size = effective_batch_size_;
@@ -44,26 +48,37 @@ LayerNormPerDeviceState::LayerNormPerDeviceState(
 namespace Kernels {
 namespace LayerNorm {
 
-template <DataType T> struct ForwardKernel {
-  void operator()(cudaStream_t stream, LayerNormPerDeviceState const *m,
+template <DataType T>
+struct ForwardKernel {
+  void operator()(cudaStream_t stream,
+                  LayerNormPerDeviceState const *m,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
                   GenericTensorAccessorW const &gamma,
                   GenericTensorAccessorW const &beta) {
     RowwiseMomentsCUDAKernel<float>
         <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-            m->effective_num_elements, m->eps, input.get<T>(), m->mean_ptr,
+            m->effective_num_elements,
+            m->eps,
+            input.get<T>(),
+            m->mean_ptr,
             m->rstd_ptr);
     LayerNormForwardCUDAKernel<float>
         <<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
-            m->effective_num_elements, input.get<T>(), m->mean_ptr, m->rstd_ptr,
-            gamma.get<T>(), beta.get<T>(), output.get<T>());
+            m->effective_num_elements,
+            input.get<T>(),
+            m->mean_ptr,
+            m->rstd_ptr,
+            gamma.get<T>(),
+            beta.get<T>(),
+            output.get<T>());
   }
 }
 
 template <DataType T>
 struct BackwardKernel {
-  void operator()(cudaStream_t stream, LayerNormPerDeviceState const *m,
+  void operator()(cudaStream_t stream,
+                  LayerNormPerDeviceState const *m,
                   GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &input_grad,
@@ -73,29 +88,49 @@ struct BackwardKernel {
     const int64_t M = m->effective_batch_size;
     const int64_t N = m->effective_num_elements;
     ComputeInternalGradientsCUDAKernel<T>
-        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-            N, output_grad.get<T>(), input.get<T>(), gamma.get<T>(), m->ds_ptr,
-            m->db_ptr);
+        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(N,
+                                                       output_grad.get<T>(),
+                                                       input.get<T>(),
+                                                       gamma.get<T>(),
+                                                       m->ds_ptr,
+                                                       m->db_ptr);
     const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-    ComputeGradientFusedParamsCUDAKernel<T><<<B, kCUDANumThreads, 0, stream>>>(
-        M, N, m->mean_ptr, m->rstd_ptr, m->ds_ptr, m->db_ptr, m->scale_ptr,
-        m->bias_ptr);
+    ComputeGradientFusedParamsCUDAKernel<T>
+        <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                            N,
+                                            m->mean_ptr,
+                                            m->rstd_ptr,
+                                            m->ds_ptr,
+                                            m->db_ptr,
+                                            m->scale_ptr,
+                                            m->bias_ptr);
     if (gamma_grad.get<T>() != NULL || beta_grad.get<T>() != NULL) {
       if (M < 512) {
         // For small batch size, do colwise reduce directly
         const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
-        GammaBetaBackwardSimpleCUDAKernel<T><<<B, kCUDANumThreads, 0, stream>>>(
-            M, N, output_grad.get<T>(), input.get<T>(), m->mean_ptr,
-            m->rstd_ptr, gamma_grad.get<T>(), beta_grad.get<T>());
+        GammaBetaBackwardSimpleCUDAKernel<T>
+            <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                                N,
+                                                output_grad.get<T>(),
+                                                input.get<T>(),
+                                                m->mean_ptr,
+                                                m->rstd_ptr,
+                                                gamma_grad.get<T>(),
+                                                beta_grad.get<T>());
       } else {
         const int64_t B =
             (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
         constexpr int kThreadX = kColwiseReduceTileSize;
         constexpr int kThreadY = kColwiseReduceTileSize / 2;
         GammaBetaBackwardCUDAKernel<T>
-            <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(
-                M, N, output_grad.get<T>(), input.get<T>(), m->mean_ptr,
-                m->rstd_ptr, gamma_grad.get<T>(), beta_grad.get<T>());
+            <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(M,
+                                                         N,
+                                                         output_grad.get<T>(),
+                                                         input.get<T>(),
+                                                         m->mean_ptr,
+                                                         m->rstd_ptr,
+                                                         gamma_grad.get<T>(),
+                                                         beta_grad.get<T>());
       }
     }
   }
@@ -107,24 +142,32 @@ void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorW const &output,
                     GenericTensorAccessorW const &gamma,
                     GenericTensorAccessorW const &beta) {
-  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output,
-                                     gamma, beta);
+  DataTypeDispatch1<ForwardKernel>{}(
+      m->data_type, stream, m, input, output, gamma, beta);
 }
 
-void backward_kernel(cudaStream_t stream, LayerNormPerDeviceState const *m,
+void backward_kernel(cudaStream_t stream,
+                     LayerNormPerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,
                      GenericTensorAccessorR const &gamma,
                      GenericTensorAccessorW const &gamma_grad,
                      GenericTensorAccessorW const &beta_grad) {
-  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, output_grad,
-                                      input, input_grad, gamma, gamma_grad,
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type,
+                                      stream,
+                                      m,
+                                      output_grad,
+                                      input,
+                                      input_grad,
+                                      gamma,
+                                      gamma_grad,
                                       beta_grad);
 }
 
 template <typename T>
-__device__ __forceinline__ T WARP_SHFL_DOWN(T value, unsigned int delta,
+__device__ __forceinline__ T WARP_SHFL_DOWN(T value,
+                                            unsigned int delta,
                                             int width = warpSize,
                                             unsigned int mask = 0xffffffff) {
 #ifndef __HIP_PLATFORM_HCC__
@@ -134,7 +177,8 @@ __device__ __forceinline__ T WARP_SHFL_DOWN(T value, unsigned int delta,
 #endif
 }
 
-template <typename T> __inline__ __device__ T WarpReduceSum(T val) {
+template <typename T>
+__inline__ __device__ T WarpReduceSum(T val) {
 #pragma unroll
   for (int offset = (C10_WARP_SIZE >> 1); offset > 0; offset >>= 1) {
     val += WARP_SHFL_DOWN(val, offset);
@@ -142,7 +186,8 @@ template <typename T> __inline__ __device__ T WarpReduceSum(T val) {
   return val;
 }
 
-template <typename T> __inline__ __device__ T BlockReduceSum(T val, T *shared) {
+template <typename T>
+__inline__ __device__ T BlockReduceSum(T val, T *shared) {
   int const lid = threadIdx.x % C10_WARP_SIZE;
   int const wid = threadIdx.x / C10_WARP_SIZE;
   val = WarpReduceSum(val);
@@ -159,8 +204,8 @@ template <typename T> __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__global__ void RowwiseMomentsCUDAKernel(int64_t N, T eps, T const *X, T *mean,
-                                         T *rstd) {
+__global__ void
+    RowwiseMomentsCUDAKernel(int64_t N, T eps, T const *X, T *mean, T *rstd) {
   __shared__ T m_shared[C10_WARP_SIZE];
   __shared__ T v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
@@ -183,9 +228,13 @@ __global__ void RowwiseMomentsCUDAKernel(int64_t N, T eps, T const *X, T *mean,
 }
 
 template <typename T>
-__global__ void LayerNormForwardCUDAKernel(int64_t N, T const *X, T const *mean,
-                                           T const *rstd, T const *gamma,
-                                           T const *beta, T *Y) {
+__global__ void LayerNormForwardCUDAKernel(int64_t N,
+                                           T const *X,
+                                           T const *mean,
+                                           T const *rstd,
+                                           T const *gamma,
+                                           T const *beta,
+                                           T *Y) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
@@ -201,9 +250,8 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N, T const *X, T const *mean,
 }
 
 template <typename T>
-__global__ void ComputeInternalGradientsCUDAKernel(int64_t N, T const *dY,
-                                                   T const *X, T const *gamma,
-                                                   T *ds, T *db) {
+__global__ void ComputeInternalGradientsCUDAKernel(
+    int64_t N, T const *dY, T const *X, T const *gamma, T *ds, T *db) {
   using T_ACC = T;
   __shared__ T_ACC ds_shared[C10_WARP_SIZE];
   __shared__ T_ACC db_shared[C10_WARP_SIZE];
@@ -227,10 +275,14 @@ __global__ void ComputeInternalGradientsCUDAKernel(int64_t N, T const *dY,
 }
 
 template <typename T>
-__global__ void
-ComputeGradientFusedParamsCUDAKernel(int64_t M, int64_t N, T const *mean,
-                                     T const *rstd, T const *ds, T const *db,
-                                     T *c1, T *c2) {
+__global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
+                                                     int64_t N,
+                                                     T const *mean,
+                                                     T const *rstd,
+                                                     T const *ds,
+                                                     T const *db,
+                                                     T *c1,
+                                                     T *c2) {
   using T_ACC = T;
   const int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < M) {
@@ -246,9 +298,14 @@ ComputeGradientFusedParamsCUDAKernel(int64_t M, int64_t N, T const *mean,
 }
 
 template <typename T>
-__global__ void LayerNormBackwardCUDAKenrel(int64_t N, T const *dY, T const *X,
-                                            T const *gamma, T const *a,
-                                            T const *b, T const *c, T *dX) {
+__global__ void LayerNormBackwardCUDAKenrel(int64_t N,
+                                            T const *dY,
+                                            T const *X,
+                                            T const *gamma,
+                                            T const *a,
+                                            T const *b,
+                                            T const *c,
+                                            T *dX) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
@@ -262,9 +319,14 @@ __global__ void LayerNormBackwardCUDAKenrel(int64_t N, T const *dY, T const *X,
 }
 
 template <typename T>
-__global__ void
-GammaBetaBackwardSimpleCUDAKernel(int64_t M, int64_t N, T const *dY, T const *X,
-                                  T const *mean, T const *rstd, T *dg, T *db) {
+__global__ void GammaBetaBackwardSimpleCUDAKernel(int64_t M,
+                                                  int64_t N,
+                                                  T const *dY,
+                                                  T const *X,
+                                                  T const *mean,
+                                                  T const *rstd,
+                                                  T *dg,
+                                                  T *db) {
   using T_ACC = T;
   const int64_t j = blockIdx.x * blockDim.x + threadIdx.x;
   if (j < N) {
@@ -289,9 +351,14 @@ GammaBetaBackwardSimpleCUDAKernel(int64_t M, int64_t N, T const *dY, T const *X,
 }
 
 template <typename T>
-__global__ void GammaBetaBackwardCUDAKernel(int64_t M, int64_t N, T const *dY,
-                                            T const *X, T const *mean,
-                                            T const *rstd, T *dg, T *db) {
+__global__ void GammaBetaBackwardCUDAKernel(int64_t M,
+                                            int64_t N,
+                                            T const *dY,
+                                            T const *X,
+                                            T const *mean,
+                                            T const *rstd,
+                                            T *dg,
+                                            T *db) {
   using T_ACC = T;
   __shared__ T_ACC g_shared[kColwiseReduceTileSize][kColwiseReduceTileSize + 1];
   __shared__ T_ACC b_shared[kColwiseReduceTileSize][kColwiseReduceTileSize + 1];

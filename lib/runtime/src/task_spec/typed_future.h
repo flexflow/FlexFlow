@@ -7,10 +7,13 @@
 
 namespace FlexFlow {
 
-template <typename T> struct TypedFuture {
+template <typename T>
+struct TypedFuture {
   explicit TypedFuture(Legion::Future const &future) : future(future) {}
 
-  T get() { return future.get_result<T>(); }
+  T get() {
+    return future.get_result<T>();
+  }
 
 public:
   Legion::Future future;
@@ -20,15 +23,20 @@ struct CheckedTypedFuture {
 public:
   CheckedTypedFuture() = delete;
 
-  template <typename T> TypedFuture<T> get() const {
+  template <typename T>
+  TypedFuture<T> get() const {
     assert(type_index<T>() == this->type_idx);
 
     return this->future;
   }
 
-  Legion::Future get_unsafe() const { return this->future; }
+  Legion::Future get_unsafe() const {
+    return this->future;
+  }
 
-  std::type_index get_type_idx() const { return this->type_idx; }
+  std::type_index get_type_idx() const {
+    return this->type_idx;
+  }
 
   template <typename T>
   static CheckedTypedFuture create(TypedFuture<T> const &f) {

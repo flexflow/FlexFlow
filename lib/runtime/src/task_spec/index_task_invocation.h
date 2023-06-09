@@ -6,9 +6,12 @@
 
 namespace FlexFlow {
 
-using IndexTaskArgSpec =
-    variant<ConcreteArgSpec, IndexArgSpec, CheckedTypedFuture,
-            CheckedTypedFutureMap, ArgRefSpec, TaskInvocationSpec>;
+using IndexTaskArgSpec = variant<ConcreteArgSpec,
+                                 IndexArgSpec,
+                                 CheckedTypedFuture,
+                                 CheckedTypedFutureMap,
+                                 ArgRefSpec,
+                                 TaskInvocationSpec>;
 
 template <typename T>
 using IndexTypedTaskArg =
@@ -29,13 +32,15 @@ public:
     this->standard_binding.bind_arg(name, arg);
   }
 
-  template <typename T> void bind_arg(slot_id name, TypedFutureMap<T> const &);
+  template <typename T>
+  void bind_arg(slot_id name, TypedFutureMap<T> const &);
 
   template <typename T>
   void bind_arg(slot_id name, TypedIndexTaskInvocation<T> const &);
 
-  template <typename F, typename T = decltype(std::declval<F>()(
-                            std::declval<Legion::DomainPoint>()))>
+  template <typename F,
+            typename T = decltype(std::declval<F>()(
+                std::declval<Legion::DomainPoint>()))>
   void bind_index_arg(slot_id name, F const &f) {
     this->insert_arg_spec(name, IndexArgSpec::create(f));
   }

@@ -8,9 +8,11 @@ namespace FlexFlow {
 
 class LayerNormPerDeviceState : public PerDeviceOpState {
 public:
-  LayerNormPerDeviceState(FFHandler handle, bool elementwise_affine_,
+  LayerNormPerDeviceState(FFHandler handle,
+                          bool elementwise_affine_,
                           int64_t effective_batch_size_,
-                          int64_t effective_num_elements_, bool profiling_,
+                          int64_t effective_num_elements_,
+                          bool profiling_,
                           float eps_);
 
 public:
@@ -25,13 +27,15 @@ public:
 namespace Kernels {
 namespace LayerNorm {
 
-void forward_kernel(ffStream_t stream, LayerNormPerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
+                    LayerNormPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     GenericTensorAccessorW const &gamma,
                     GenericTensorAccessorW const &beta);
 
-void backward_kernel(ffStream_t stream, LayerNormPerDeviceState const *m,
+void backward_kernel(ffStream_t stream,
+                     LayerNormPerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,

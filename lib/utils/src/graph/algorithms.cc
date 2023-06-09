@@ -12,8 +12,8 @@ namespace FlexFlow {
 
 std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
   std::vector<Node> nodes;
-  std::generate_n(std::back_inserter(nodes), num_nodes,
-                  [&g]() { return g.add_node(); });
+  std::generate_n(
+      std::back_inserter(nodes), num_nodes, [&g]() { return g.add_node(); });
   return nodes;
 }
 
@@ -83,9 +83,13 @@ void remove_node_if_unused(UndirectedGraph &g, Node const &n) {
   g.remove_node_unsafe(n);
 }
 
-std::size_t num_nodes(IGraphView const &g) { return get_nodes(g).size(); }
+std::size_t num_nodes(IGraphView const &g) {
+  return get_nodes(g).size();
+}
 
-bool empty(IGraphView const &g) { return num_nodes(g) == 0; }
+bool empty(IGraphView const &g) {
+  return num_nodes(g) == 0;
+}
 
 void add_edges(MultiDiGraph &g, std::vector<MultiDiEdge> const &edges) {
   for (MultiDiEdge const &e : edges) {
@@ -157,30 +161,34 @@ std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g,
 }
 
 std::unordered_set<MultiDiEdge>
-get_incoming_edges(MultiDiGraphView const &g, std::unordered_set<Node> dsts) {
+    get_incoming_edges(MultiDiGraphView const &g,
+                       std::unordered_set<Node> dsts) {
   return g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(dsts));
 }
 
 std::unordered_set<DirectedEdge>
-get_incoming_edges(DiGraphView const &g, std::unordered_set<Node> const &dsts) {
+    get_incoming_edges(DiGraphView const &g,
+                       std::unordered_set<Node> const &dsts) {
   auto multidigraph_view = unsafe_view_as_multidigraph(g);
   return to_directed_edges(get_incoming_edges(multidigraph_view, dsts));
 }
 
 std::unordered_set<MultiDiEdge>
-get_outgoing_edges(MultiDiGraphView const &g,
-                   std::unordered_set<Node> const &srcs) {
+    get_outgoing_edges(MultiDiGraphView const &g,
+                       std::unordered_set<Node> const &srcs) {
   return g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(srcs));
 }
 
 std::unordered_set<DirectedEdge>
-get_outgoing_edges(DiGraphView const &g, std::unordered_set<Node> const &dsts) {
+    get_outgoing_edges(DiGraphView const &g,
+                       std::unordered_set<Node> const &dsts) {
   auto multidigraph_view = unsafe_view_as_multidigraph(g);
   return to_directed_edges(get_outgoing_edges(multidigraph_view, dsts));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
-get_predecessors(DiGraphView const &g, std::unordered_set<Node> const &nodes) {
+    get_predecessors(DiGraphView const &g,
+                     std::unordered_set<Node> const &nodes) {
   std::unordered_map<Node, std::unordered_set<Node>> predecessors;
   for (Node const &n : nodes) {
     predecessors[n];
@@ -196,8 +204,8 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
-get_predecessors(MultiDiGraphView const &g,
-                 std::unordered_set<Node> const &nodes) {
+    get_predecessors(MultiDiGraphView const &g,
+                     std::unordered_set<Node> const &nodes) {
   return get_predecessors(unsafe_view_as_digraph(g), nodes);
 }
 
@@ -206,23 +214,22 @@ std::unordered_set<Node> get_predecessors(MultiDiGraphView const &g,
   return get_predecessors(g, {n});
 }
 
-std::vector<Node>
-get_unchecked_dfs_ordering(DiGraphView const &g,
-                           std::unordered_set<Node> const &starting_points) {
+std::vector<Node> get_unchecked_dfs_ordering(
+    DiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   UncheckedDFSView dfs_view = unchecked_dfs(g, starting_points);
   return {dfs_view.begin(), dfs_view.end()};
 }
 
 std::vector<Node>
-get_dfs_ordering(DiGraphView const &g,
-                 std::unordered_set<Node> const &starting_points) {
+    get_dfs_ordering(DiGraphView const &g,
+                     std::unordered_set<Node> const &starting_points) {
   CheckedDFSView dfs_view = dfs(g, starting_points);
   return {dfs_view.begin(), dfs_view.end()};
 }
 
 std::vector<Node>
-get_bfs_ordering(DiGraphView const &g,
-                 std::unordered_set<Node> const &starting_points) {
+    get_bfs_ordering(DiGraphView const &g,
+                     std::unordered_set<Node> const &starting_points) {
   BFSView bfs_view = bfs(g, starting_points);
   return {bfs_view.begin(), bfs_view.end()};
 }
@@ -323,7 +330,7 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
 }
 
 std::vector<MultiDiEdge>
-get_edge_topological_ordering(MultiDiGraphView const &g) {
+    get_edge_topological_ordering(MultiDiGraphView const &g) {
   std::vector<MultiDiEdge> result;
   for (Node const &n : get_topological_ordering(g)) {
     for (MultiDiEdge const &e : get_outgoing_edges(g, n)) {
@@ -337,12 +344,12 @@ get_edge_topological_ordering(MultiDiGraphView const &g) {
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
-get_dominators(MultiDiGraphView const &g) {
+    get_dominators(MultiDiGraphView const &g) {
   return get_dominators(unsafe_view_as_digraph(g));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
-get_dominators(DiGraphView const &g) {
+    get_dominators(DiGraphView const &g) {
   std::vector<Node> topo = get_topological_ordering(g);
   std::unordered_map<Node, std::unordered_set<Node>> result;
 
@@ -361,17 +368,17 @@ get_dominators(DiGraphView const &g) {
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
-get_post_dominators(MultiDiGraphView const &g) {
+    get_post_dominators(MultiDiGraphView const &g) {
   return get_post_dominators(unsafe_view_as_digraph(g));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
-get_post_dominators(DiGraphView const &g) {
+    get_post_dominators(DiGraphView const &g) {
   return get_dominators(unsafe_view_as_flipped(g));
 }
 
 std::unordered_map<Node, tl::optional<Node>>
-get_imm_dominators(DiGraphView const &g) {
+    get_imm_dominators(DiGraphView const &g) {
   std::unordered_map<Node, int> topo_rank = [&g]() {
     std::vector<Node> topo_ordering = get_topological_ordering(g);
     std::unordered_map<Node, int> topo_rank;
@@ -383,7 +390,8 @@ get_imm_dominators(DiGraphView const &g) {
 
   auto with_greatest_topo_rank =
       [&topo_rank](std::unordered_set<Node> const &nodes) -> Node {
-    return *std::max_element(nodes.cbegin(), nodes.cend(),
+    return *std::max_element(nodes.cbegin(),
+                             nodes.cend(),
                              [&topo_rank](Node const &lhs, Node const &rhs) {
                                return topo_rank.at(lhs) < topo_rank.at(rhs);
                              });
@@ -409,17 +417,17 @@ get_imm_dominators(DiGraphView const &g) {
 }
 
 std::unordered_map<Node, tl::optional<Node>>
-get_imm_dominators(MultiDiGraphView const &g) {
+    get_imm_dominators(MultiDiGraphView const &g) {
   return get_imm_dominators(unsafe_view_as_digraph(g));
 }
 
 std::unordered_map<Node, tl::optional<Node>>
-get_imm_post_dominators(DiGraphView const &g) {
+    get_imm_post_dominators(DiGraphView const &g) {
   return get_imm_dominators(unsafe_view_as_flipped(g));
 }
 
 std::unordered_map<Node, tl::optional<Node>>
-get_imm_post_dominators(MultiDiGraphView const &g) {
+    get_imm_post_dominators(MultiDiGraphView const &g) {
   return get_imm_post_dominators(unsafe_view_as_digraph(g));
 }
 
@@ -433,7 +441,7 @@ tl::optional<Node> imm_post_dominator(MultiDiGraphView const &g,
 }
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge>
-split_edge(MultiDiEdge const &e) {
+    split_edge(MultiDiEdge const &e) {
   return {OutputMultiDiEdge{{e.dst.value(), e.dstIdx}, e.src, e.srcIdx},
           InputMultiDiEdge{{e.src.value(), e.srcIdx}, e.dst, e.dstIdx}};
 }
@@ -444,8 +452,8 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
   assert(output_edge.uid.second == input_edge.dstIdx);
   assert(input_edge.uid.first == output_edge.src.value());
   assert(input_edge.uid.second == output_edge.srcIdx);
-  return {output_edge.src, input_edge.dst, output_edge.srcIdx,
-          input_edge.dstIdx};
+  return {
+      output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx};
 }
 
 UndirectedGraphView get_subgraph(UndirectedGraphView const &g,

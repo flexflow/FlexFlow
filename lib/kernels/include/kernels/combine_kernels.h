@@ -16,11 +16,13 @@ public:
 namespace Kernels {
 namespace Combine {
 
-void forward_kernel(ffStream_t stream, CombinePerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
+                    CombinePerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
-void backward_kernel(ffStream_t stream, CombinePerDeviceState const *m,
+void backward_kernel(ffStream_t stream,
+                     CombinePerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad);
 

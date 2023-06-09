@@ -36,7 +36,7 @@ void AdjacencyDiGraph::remove_edge(DirectedEdge const &e) {
 }
 
 std::unordered_set<DirectedEdge>
-AdjacencyDiGraph::query_edges(DirectedEdgeQuery const &query) const {
+    AdjacencyDiGraph::query_edges(DirectedEdgeQuery const &query) const {
   std::unordered_set<DirectedEdge> result;
   for (auto const &kv : this->adjacency) {
     Node src = kv.first;
@@ -53,7 +53,7 @@ AdjacencyDiGraph::query_edges(DirectedEdgeQuery const &query) const {
 }
 
 std::unordered_set<Node>
-AdjacencyDiGraph::query_nodes(NodeQuery const &query) const {
+    AdjacencyDiGraph::query_nodes(NodeQuery const &query) const {
   std::unordered_set<Node> result;
   for (auto const &kv : this->adjacency) {
     if (!query.nodes.has_value() ||

@@ -49,22 +49,29 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::cast(const Tensor input, DataType dtype, char const *name) {
-  Layer *cast = new Layer(this, OP_CAST, dtype, name, 1 /*inputs*/,
-                          0 /*weights*/, 1 /*outputs*/, input);
+  Layer *cast = new Layer(this,
+                          OP_CAST,
+                          dtype,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int numdims = input->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdims; i++) {
     dims[i] = input->dims[i];
   }
-  cast->outputs[0] = create_tensor_legion_ordering(numdims, dims, dtype, cast,
-                                                   0, true /*create_grad*/);
+  cast->outputs[0] = create_tensor_legion_ordering(
+      numdims, dims, dtype, cast, 0, true /*create_grad*/);
   cast->add_int_property("dtype", dtype);
   layers.push_back(cast);
   return cast->outputs[0];
 }
 
 Op *Cast::create_operator_from_layer(
-    FFModel &model, Layer const *layer,
+    FFModel &model,
+    Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("dtype", value);
@@ -78,10 +85,18 @@ CastParams Cast::get_params() const {
   return params;
 }
 
-Cast::Cast(FFModel &model, ParallelTensor const &input, DataType _dtype,
+Cast::Cast(FFModel &model,
+           ParallelTensor const &input,
+           DataType _dtype,
            char const *name)
-    : Op(model, OP_CAST, _dtype, name, 1 /*inputs*/, 0 /*weights*/,
-         1 /*outputs*/, input) {
+    : Op(model,
+         OP_CAST,
+         _dtype,
+         name,
+         1 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         input) {
   numOutputs = 1;
   numWeights = 0;
   int numdim = input->num_dims;
@@ -93,8 +108,10 @@ Cast::Cast(FFModel &model, ParallelTensor const &input, DataType _dtype,
       model.create_parallel_tensor_legion_ordering(numdim, dims, _dtype, this);
 }
 
-Cast::Cast(FFModel &model, CastParams const &params,
-           ParallelTensor const &input, char const *name)
+Cast::Cast(FFModel &model,
+           CastParams const &params,
+           ParallelTensor const &input,
+           char const *name)
     : Cast(model, input, params.dtype, name) {}
 
 static OpTaskSignature get_init_task_signature() {
@@ -200,7 +217,8 @@ void Cast::init(FFModel const &ff) {
 
 PerDeviceOpState *Cast::init_task(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
-                                  Context ctx, Runtime *runtime) {
+                                  Context ctx,
+                                  Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   FFHandler handler = *((FFHandler const *)task->local_args);
@@ -283,7 +301,8 @@ void Cast::forward(FFModel const &ff) {
 // }
 
 void Cast::forward_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions, Context ctx,
+                        std::vector<PhysicalRegion> const &regions,
+                        Context ctx,
                         Runtime *runtime) {
   CastPerDeviceState const *m = *((CastPerDeviceState **)task->local_args);
   // if (m->input_data_type == DT_FLOAT) {
@@ -298,8 +317,12 @@ void Cast::forward_task(Task const *task,
   auto input = acc.get_tensor<READ_ONLY>(INPUT);
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  profile(forward_kernel, m->profiling, "[Cast] forward_time = %.2lfms\n", m,
-          input, output)
+  profile(forward_kernel,
+          m->profiling,
+          "[Cast] forward_time = %.2lfms\n",
+          m,
+          input,
+          output)
 }
 
 void Cast::backward(FFModel const &ff) {
@@ -372,7 +395,8 @@ void Cast::backward(FFModel const &ff) {
 
 void Cast::backward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx, Runtime *runtime) {
+                         Context ctx,
+                         Runtime *runtime) {
   CastPerDeviceState const *m = *((CastPerDeviceState **)task->local_args);
   // if (m->output_data_type == DT_FLOAT) {
   //   Cast::backward_task_with_1_type<float>(task, regions, ctx, runtime);
@@ -386,11 +410,16 @@ void Cast::backward_task(Task const *task,
   auto input_grad = acc.get_tensor<READ_ONLY>(INPUT);
   auto output_grad = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  profile(backward_kernel, m->profiling, "[Cast] forward_time = %.2lfms\n", m,
-          input_grad, output_grad)
+  profile(backward_kernel,
+          m->profiling,
+          "[Cast] forward_time = %.2lfms\n",
+          m,
+          input_grad,
+          output_grad)
 }
 
-bool Cast::measure_operator_cost(Simulator *sim, MachineView const &mv,
+bool Cast::measure_operator_cost(Simulator *sim,
+                                 MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   // Assume cast has no cost
   cost_metrics.forward_time = 0.0f;
@@ -407,15 +436,18 @@ void Cast::serialize(Legion::Serializer &sez) const {
 
 using PCG::Node;
 
-Node Cast::deserialize(FFModel &ff, Legion::Deserializer &dez,
-                       ParallelTensor inputs[], int num_inputs) {
+Node Cast::deserialize(FFModel &ff,
+                       Legion::Deserializer &dez,
+                       ParallelTensor inputs[],
+                       int num_inputs) {
   assert(num_inputs == 1);
   DataType dtype;
   dez.deserialize(dtype);
   return ff.get_or_create_node<Cast>(inputs[0], {dtype});
 }
 
-Op *Cast::materialize(FFModel &ff, ParallelTensor inputs[],
+Op *Cast::materialize(FFModel &ff,
+                      ParallelTensor inputs[],
                       int num_inputs) const {
   assert(num_inputs == 1);
   return new Cast(ff, inputs[0], this->outputs[0]->data_type, this->name);

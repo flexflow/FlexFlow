@@ -5,18 +5,40 @@ using namespace Legion;
 
 namespace FlexFlow {
 
-Op::Op(size_t op_guid, OperatorType otype, DataType dtype, char const *name,
-       int numInputs, int numWeights, bool allocate_weights, int numOutputs,
-       bool profiling, optional<ParallelTensor> const &input1,
+Op::Op(size_t op_guid,
+       OperatorType otype,
+       DataType dtype,
+       char const *name,
+       int numInputs,
+       int numWeights,
+       bool allocate_weights,
+       int numOutputs,
+       bool profiling,
+       optional<ParallelTensor> const &input1,
        optional<ParallelTensor> const &input2,
        optional<ParallelTensor> const &input3,
        optional<ParallelTensor> const &input4)
-    : Op(op_guid, otype, dtype, name, numInputs,
-         allocate_weights ? numWeights : 0, numOutputs, profiling, input1,
-         input2, input3, input4) {}
+    : Op(op_guid,
+         otype,
+         dtype,
+         name,
+         numInputs,
+         allocate_weights ? numWeights : 0,
+         numOutputs,
+         profiling,
+         input1,
+         input2,
+         input3,
+         input4) {}
 
-Op::Op(size_t _op_guid, OperatorType _otype, DataType _dtype, char const *_name,
-       int _numInputs, int _numWeights, int _numOutputs, bool _profiling,
+Op::Op(size_t _op_guid,
+       OperatorType _otype,
+       DataType _dtype,
+       char const *_name,
+       int _numInputs,
+       int _numWeights,
+       int _numOutputs,
+       bool _profiling,
        optional<ParallelTensor> const &_input1,
        optional<ParallelTensor> const &_input2,
        optional<ParallelTensor> const &_input3,
@@ -58,8 +80,14 @@ Op::Op(size_t _op_guid, OperatorType _otype, DataType _dtype, char const *_name,
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
-Op::Op(size_t _op_guid, OperatorType _otype, DataType _dtype, char const *_name,
-       int _numInputs, int _numWeights, int _numOutputs, bool _profiling,
+Op::Op(size_t _op_guid,
+       OperatorType _otype,
+       DataType _dtype,
+       char const *_name,
+       int _numInputs,
+       int _numWeights,
+       int _numOutputs,
+       bool _profiling,
        ParallelTensor const *_inputs)
     : op_type(_otype), data_type(_dtype), op_guid(_op_guid),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
@@ -97,13 +125,21 @@ Op::Op(size_t _op_guid, OperatorType _otype, DataType _dtype, char const *_name,
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
-bool Op::is_parallel_op() const { return false; }
+bool Op::is_parallel_op() const {
+  return false;
+}
 
-bool Op::can_inplace_output() { return false; }
+bool Op::can_inplace_output() {
+  return false;
+}
 
-bool Op::has_inplace_output() { return false; }
+bool Op::has_inplace_output() {
+  return false;
+}
 
-void Op::do_inplace_output() { assert(false); }
+void Op::do_inplace_output() {
+  assert(false);
+}
 
 void Op::map_output_tensors(FFModel &ff) {
   for (int i = 0; i < numOutputs; i++) {
@@ -134,7 +170,8 @@ void Op::serialize(Legion::Serializer &serializer) const {
   assert(false && "This op does not support serialization");
 }
 
-Op *Op::materialize(FFModel &ff, ParallelTensor inputs[],
+Op *Op::materialize(FFModel &ff,
+                    ParallelTensor inputs[],
                     int num_inputs) const {
   fprintf(stderr,
           "The following operator type is currently not supported"
@@ -173,20 +210,28 @@ void Op::zero_grad(FFModel const &ff) {
       assert(parallel_is == outputs[i]->parallel_is);
     }
   }
-  IndexLauncher launcher(ZERO_INIT_TASK_ID, parallel_is,
-                         TaskArgument(&meta, sizeof(ZeroInitMeta)), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(ZERO_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(&meta, sizeof(ZeroInitMeta)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          get_std_hash(outputs[0]->machine_view));
   for (int i = 0; i < numWeights; i++) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[i]->part_grad, 0 /*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, weights[i]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region_grad));
     launcher.add_field(i, FID_DATA);
   }
   for (int i = 0; i < numOutputs; i++) {
-    launcher.add_region_requirement(
-        RegionRequirement(outputs[i]->part_grad, 0 /*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, outputs[i]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(outputs[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[i]->region_grad));
     // LogicalRegion lr = outputs[i]->region_grad;
     // printf("zero_grad:output[%d]: region(%d,%d,%d)\n", i,
     // lr.get_index_space().get_id(), lr.get_field_space().get_id(),
@@ -250,7 +295,9 @@ ParallelConfig Op::get_random_parallel_config(FFModel const &ff) const {
   return pc;
 }
 
-int Op::get_dimension() const { return this->outputs[0]->num_dims; }
+int Op::get_dimension() const {
+  return this->outputs[0]->num_dims;
+}
 
 ParallelConfig ParallelConfig::change_data_parallel_dimensionality(
     int new_dimensionality) const {
@@ -300,7 +347,8 @@ bool Op::is_valid_parallel_config(FFModel const &ff,
   return true;
 }
 
-Domain Op::get_output_tensor_shape(ParallelConfig const &pc, int output_idx,
+Domain Op::get_output_tensor_shape(ParallelConfig const &pc,
+                                   int output_idx,
                                    int part_idx) const {
   assert(output_idx < numOutputs);
   Domain d;
@@ -319,7 +367,8 @@ Domain Op::get_output_tensor_shape(ParallelConfig const &pc, int output_idx,
   return d;
 }
 
-Domain Op::get_input_tensor_shape(ParallelConfig const &pc, int input_idx,
+Domain Op::get_input_tensor_shape(ParallelConfig const &pc,
+                                  int input_idx,
                                   int part_idx) const {
   assert(input_idx < numInputs);
   Domain d;
@@ -358,7 +407,8 @@ Domain Op::get_input_tensor_shape(ParallelConfig const &pc, int input_idx,
   return d;
 }
 
-Domain Op::get_weight_tensor_shape(ParallelConfig const &pc, int weight_idx,
+Domain Op::get_weight_tensor_shape(ParallelConfig const &pc,
+                                   int weight_idx,
                                    int part_idx) const {
   // Default data parallel weight replication
   assert(weight_idx < numWeights);
@@ -381,9 +431,10 @@ size_t Op::get_untyped_params_hash() const {
 
 #ifdef FF_USE_NCCL
 ncclUniqueId
-Op::get_nccl_unique_id_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx, Runtime *runtime) {
+    Op::get_nccl_unique_id_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
   ncclUniqueId ncclId;
   checkNCCL(ncclGetUniqueId(&ncclId));
   return ncclId;
@@ -391,7 +442,8 @@ Op::get_nccl_unique_id_task(Task const *task,
 
 ncclComm_t Op::init_nccl_comms_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx, Runtime *runtime) {
+                                    Context ctx,
+                                    Runtime *runtime) {
   // Must be an index space launch
   assert(task->is_index_space);
   ncclUniqueId ncclId = *((ncclUniqueId const *)task->args);
@@ -414,22 +466,28 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
 /*static*/
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
-    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx,
+    std::vector<std::tuple<int, MappingOperation, int>> mappings,
+    int input_idx,
     int weight_idx) {
   for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
-    Op::construct_weight_parallel_dims(records, std::get<0>(mapping),
-                                       std::get<2>(mapping), input_idx,
-                                       weight_idx, std::get<1>(mapping));
+    Op::construct_weight_parallel_dims(records,
+                                       std::get<0>(mapping),
+                                       std::get<2>(mapping),
+                                       input_idx,
+                                       weight_idx,
+                                       std::get<1>(mapping));
   }
 }
 
 /*static*/
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
-    std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) {
+    std::vector<std::pair<int, int>> mappings,
+    int input_idx,
+    int weight_idx) {
   for (std::pair<int, int> const &mapping : mappings) {
-    Op::construct_weight_parallel_dims(records, mapping.first, mapping.second,
-                                       input_idx, weight_idx);
+    Op::construct_weight_parallel_dims(
+        records, mapping.first, mapping.second, input_idx, weight_idx);
   }
 }
 
@@ -518,22 +576,22 @@ bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const {
 
     ParallelDim other_dim;
     switch (record.get_type()) {
-    case MappingRecordType::INPUT_OUTPUT:
-      assert(record.output_idx < this->numOutputs);
-      assert(record.output_dim < this->outputs[record.output_idx]->num_dims);
-      other_dim = outputs[record.output_idx]->dims[record.output_dim];
-      break;
-    case MappingRecordType::INPUT_WEIGHT:
-      if (!allocate_weights) {
-        continue;
-      }
-      if (record.weight_idx >= this->numWeights) {
-        // The case where some weights are not used (e.g., no bias for linear)
-        continue;
-      }
-      assert(record.weight_dim < this->weights[record.weight_idx]->num_dims);
-      other_dim = weights[record.weight_idx]->dims[record.weight_dim];
-      break;
+      case MappingRecordType::INPUT_OUTPUT:
+        assert(record.output_idx < this->numOutputs);
+        assert(record.output_dim < this->outputs[record.output_idx]->num_dims);
+        other_dim = outputs[record.output_idx]->dims[record.output_dim];
+        break;
+      case MappingRecordType::INPUT_WEIGHT:
+        if (!allocate_weights) {
+          continue;
+        }
+        if (record.weight_idx >= this->numWeights) {
+          // The case where some weights are not used (e.g., no bias for linear)
+          continue;
+        }
+        assert(record.weight_dim < this->weights[record.weight_idx]->num_dims);
+        other_dim = weights[record.weight_idx]->dims[record.weight_dim];
+        break;
     }
 
     assert(other_dim.degree == input_dim.degree);
@@ -622,8 +680,8 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
 #endif
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -643,8 +701,8 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -666,8 +724,8 @@ void Op::set_argumentmap_for_forward(FFModel const &ff,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -688,28 +746,29 @@ void Op::set_argumentmap_for_backward(FFModel const &ff, ArgumentMap &argmap) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
 bool Op::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_OP_TYPE:
-    *value = (int)op_type;
-    return true;
-  case PM_NUM_INPUTS:
-    *value = numInputs;
-    return true;
-  case PM_NUM_OUTPUTS:
-    *value = numOutputs;
-    return true;
-  default:
-    return false;
+    case PM_OP_TYPE:
+      *value = (int)op_type;
+      return true;
+    case PM_NUM_INPUTS:
+      *value = numInputs;
+      return true;
+    case PM_NUM_OUTPUTS:
+      *value = numOutputs;
+      return true;
+    default:
+      return false;
   }
 }
 
-bool Op::get_tensor_parameter(TNParameter tnp, DIMParameter dim,
+bool Op::get_tensor_parameter(TNParameter tnp,
+                              DIMParameter dim,
                               int *value) const {
   if (tnp >= INPUT_0 && tnp <= INPUT_5) {
     return get_input_parameter(tnp, dim, value);
@@ -720,7 +779,8 @@ bool Op::get_tensor_parameter(TNParameter tnp, DIMParameter dim,
   return false;
 }
 
-bool Op::get_input_parameter(TNParameter tnp, DIMParameter dim,
+bool Op::get_input_parameter(TNParameter tnp,
+                             DIMParameter dim,
                              int *value) const {
   int inputIdx = 0, dimIdx = 0;
   assert(tnp <= INPUT_5 && tnp >= INPUT_0);
@@ -729,19 +789,19 @@ bool Op::get_input_parameter(TNParameter tnp, DIMParameter dim,
     return false;
   }
   switch (dim) {
-  case DIM_3:
-    dimIdx++;
-  case DIM_2:
-    dimIdx++;
-  case DIM_1:
-    dimIdx++;
-  case DIM_0:
-    break;
-  case DIM_ND:
-    *value = inputs[inputIdx]->num_dims;
-    return true;
-  default:
-    return false;
+    case DIM_3:
+      dimIdx++;
+    case DIM_2:
+      dimIdx++;
+    case DIM_1:
+      dimIdx++;
+    case DIM_0:
+      break;
+    case DIM_ND:
+      *value = inputs[inputIdx]->num_dims;
+      return true;
+    default:
+      return false;
   }
   if (dimIdx >= inputs[inputIdx]->num_dims) {
     return false;
@@ -750,7 +810,8 @@ bool Op::get_input_parameter(TNParameter tnp, DIMParameter dim,
   return true;
 }
 
-bool Op::get_weight_parameter(TNParameter tnp, DIMParameter dim,
+bool Op::get_weight_parameter(TNParameter tnp,
+                              DIMParameter dim,
                               int *value) const {
   int weightIdx = 0, dimIdx = 0;
   assert(tnp <= WEIGHT_5 && tnp >= WEIGHT_0);
@@ -759,19 +820,19 @@ bool Op::get_weight_parameter(TNParameter tnp, DIMParameter dim,
     return false;
   }
   switch (dim) {
-  case DIM_3:
-    dimIdx++;
-  case DIM_2:
-    dimIdx++;
-  case DIM_1:
-    dimIdx++;
-  case DIM_0:
-    break;
-  case DIM_ND:
-    *value = weights[weightIdx]->num_dims;
-    return true;
-  default:
-    return false;
+    case DIM_3:
+      dimIdx++;
+    case DIM_2:
+      dimIdx++;
+    case DIM_1:
+      dimIdx++;
+    case DIM_0:
+      break;
+    case DIM_ND:
+      *value = weights[weightIdx]->num_dims;
+      return true;
+    default:
+      return false;
   }
   if (dimIdx >= weights[weightIdx]->num_dims) {
     return false;
@@ -788,25 +849,34 @@ size_t Op::get_params_hash() const {
 
 void Op::require_input_tensor(IndexLauncher &launcher, int idx) const {
   launcher.add_region_requirement(
-      RegionRequirement(this->inputs.at(idx)->part, 0 /*projection id*/,
-                        READ_ONLY, EXCLUSIVE, this->inputs.at(idx)->region));
+      RegionRequirement(this->inputs.at(idx)->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        this->inputs.at(idx)->region));
 }
 
 void Op::require_output_tensor(Legion::IndexLauncher &launcher, int idx) const {
   launcher.add_region_requirement(
-      RegionRequirement(this->outputs.at(idx)->part, 0 /*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, this->outputs.at(idx)->region));
+      RegionRequirement(this->outputs.at(idx)->part,
+                        0 /*projection id*/,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        this->outputs.at(idx)->region));
 }
 
 void Op
     : require_weight_tensor(Legion::IndexLauncher &launcher, int idx) const {
   launcher.add_region_requirement(
-      RegionRequirement(this->weights.at(idx)->part, 0 /*projection id*/,
-                        READ_ONLY, EXCLUSIVE, this->weights.at(idx)->region));
+      RegionRequirement(this->weights.at(idx)->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        this->weights.at(idx)->region));
 }
 
-Legion::PrivilegeMode get_default_mode(Pass pass, TensorRole tensor_role,
-                                       IsGrad is_grad) {
+Legion::PrivilegeMode
+    get_default_mode(Pass pass, TensorRole tensor_role, IsGrad is_grad) {
   if (pass == Pass::FWD) {
     assert(is_grad == IsGrad::NO);
     if (tensor_role == TensorRole::INPUT || tensor_role == TensorRole::PARAM) {
@@ -889,9 +959,13 @@ void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
   this->set_argumentmap_for_forward(ff, argmap);
   TaskArgument task_arg;
 
-  IndexLauncher launcher(task_spec.get_task_id(), this->parallel_is,
-                         task_spec.get_argument(), argmap, Predicate::TRUE_PRED,
-                         false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(task_spec.get_task_id(),
+                         this->parallel_is,
+                         task_spec.get_argument(),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          get_std_hash(this->outputs.at(0)->machine_view));
 
   for (auto const &kv : task_spec.get_region_idxs()) {
@@ -905,9 +979,11 @@ void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
         !this->trainableInputs.at(tensor_spec.idx)) {
       continue;
     }
-    launcher.add_region_requirement(RegionRequirement(
-        parallel_tensor->part, 0 /*projection id*/, tensor_spec.mode.value(),
-        EXCLUSIVE, parallel_tensor->region));
+    launcher.add_region_requirement(RegionRequirement(parallel_tensor->part,
+                                                      0 /*projection id*/,
+                                                      tensor_spec.mode.value(),
+                                                      EXCLUSIVE,
+                                                      parallel_tensor->region));
     launcher.add_field(region_idx, FID_DATA);
     region_idx++;
   }
@@ -915,7 +991,8 @@ void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Op::execute_task(FFModel const &ff, TaskID task_id,
+void Op::execute_task(FFModel const &ff,
+                      TaskID task_id,
                       OpTaskSignature const &signature) {
   if (signature.get_task_type() == OpTaskType::INIT) {
     assert(this->check_output_input_weight_same_parallel_is());
@@ -934,9 +1011,13 @@ void Op::execute_task(FFModel const &ff, TaskID task_id,
   this->set_argumentmap(signature.get_task_type(), ff, argmap);
   TaskArgument task_arg;
 
-  IndexLauncher launcher(task_id, this->parallel_is,
-                         binding.get_legion_task_arg(), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(task_id,
+                         this->parallel_is,
+                         binding.get_legion_task_arg(),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          get_std_hash(this->outputs.at(0)->machine_view));
 
   for (auto const &kv : get_region_idxs(task_arg_fmt)) {
@@ -946,9 +1027,11 @@ void Op::execute_task(FFModel const &ff, TaskID task_id,
     ParallelTensor const &parallel_tensor =
         this->get_parallel_tensor(tensor_spec);
 
-    launcher.add_region_requirement(RegionRequirement(
-        parallel_tensor->part, 0 /*projection id*/, tensor_spec.mode.value(),
-        EXCLUSIVE, parallel_tensor->region));
+    launcher.add_region_requirement(RegionRequirement(parallel_tensor->part,
+                                                      0 /*projection id*/,
+                                                      tensor_spec.mode.value(),
+                                                      EXCLUSIVE,
+                                                      parallel_tensor->region));
     launcher.add_field(region_idx, FID_DATA);
     region_idx++;
   }
@@ -975,14 +1058,14 @@ void Op::backward(FFModel const &ff) {
 
 OpTaskSignature get_signature(TaskID task_id) {
   switch (task_id) {
-  case AGGREGATE_INIT_TASK_ID:
-    return get_signature<AGGREGATE_INIT_TASK_ID>();
-  case AGGREGATE_FWD_TASK_ID:
-    return get_signature<AGGREGATE_FWD_TASK_ID>();
-  case AGGREGATE_BWD_TASK_ID:
-    return get_signature<AGGREGATE_BWD_TASK_ID>();
-  case CONV2D_BWD_TASK_ID:
-    return get_signature<CONV2D_BWD_TASK_ID>();
+    case AGGREGATE_INIT_TASK_ID:
+      return get_signature<AGGREGATE_INIT_TASK_ID>();
+    case AGGREGATE_FWD_TASK_ID:
+      return get_signature<AGGREGATE_FWD_TASK_ID>();
+    case AGGREGATE_BWD_TASK_ID:
+      return get_signature<AGGREGATE_BWD_TASK_ID>();
+    case CONV2D_BWD_TASK_ID:
+      return get_signature<CONV2D_BWD_TASK_ID>();
   }
 }
 

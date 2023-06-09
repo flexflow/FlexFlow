@@ -12,7 +12,8 @@
 #include <unordered_set>
 #include <vector>
 
-template <typename T> class DotFile {
+template <typename T>
+class DotFile {
 private:
   size_t node_id = 0;
   size_t subgraph_id = 0;
@@ -51,7 +52,9 @@ public:
   DotFile(std::string const &filename) : owned_fstream(filename) {
     this->start_output();
   }
-  DotFile(std::ostream &s) : node_id(0), out(s) { this->start_output(); }
+  DotFile(std::ostream &s) : node_id(0), out(s) {
+    this->start_output();
+  }
 
   void set_filename(std::string filename) {
     this->owned_fstream = std::ofstream(filename);

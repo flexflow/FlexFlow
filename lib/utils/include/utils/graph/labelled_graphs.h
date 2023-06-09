@@ -11,7 +11,8 @@
 
 namespace FlexFlow {
 
-template <typename NodeLabel> struct NodeLabelledMultiDiGraph {
+template <typename NodeLabel>
+struct NodeLabelledMultiDiGraph {
 private:
   using Interface = INodeLabelledMultiDiGraph<NodeLabel>;
 
@@ -31,11 +32,19 @@ public:
     swap(lhs.ptr, rhs.ptr);
   }
 
-  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
-  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
-  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  Node add_node(NodeLabel const &l) {
+    return this->ptr->add_node(l);
+  }
+  NodeLabel &at(Node const &n) {
+    return this->ptr->at(n);
+  }
+  NodeLabel const &at(Node const &n) const {
+    return this->ptr->at(n);
+  }
 
-  void add_edge(MultiDiEdge const &e) { return this->ptr->add_edge(e); }
+  void add_edge(MultiDiEdge const &e) {
+    return this->ptr->add_edge(e);
+  }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return this->ptr->query_nodes(q);
@@ -47,7 +56,7 @@ public:
   template <typename BaseImpl>
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
                                  NodeLabelledMultiDiGraph>::type
-  create() {
+      create() {
     return NodeLabelledMultiDiGraph(make_unique<BaseImpl>());
   }
 
@@ -59,7 +68,8 @@ private:
   std::unique_ptr<Interface> ptr;
 };
 
-template <typename NodeLabel, typename EdgeLabel> struct LabelledMultiDiGraph {
+template <typename NodeLabel, typename EdgeLabel>
+struct LabelledMultiDiGraph {
 private:
   using Interface = ILabelledMultiDiGraph<NodeLabel, EdgeLabel>;
 
@@ -78,15 +88,25 @@ public:
     swap(lhs.ptr, rhs.ptr);
   }
 
-  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
-  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
-  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  Node add_node(NodeLabel const &l) {
+    return this->ptr->add_node(l);
+  }
+  NodeLabel &at(Node const &n) {
+    return this->ptr->at(n);
+  }
+  NodeLabel const &at(Node const &n) const {
+    return this->ptr->at(n);
+  }
 
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
     return this->ptr->add_edge(e, l);
   }
-  EdgeLabel &at(MultiDiEdge const &e) { return this->ptr->at(e); }
-  EdgeLabel const &at(MultiDiEdge const &e) const { return this->ptr->at(e); }
+  EdgeLabel &at(MultiDiEdge const &e) {
+    return this->ptr->at(e);
+  }
+  EdgeLabel const &at(MultiDiEdge const &e) const {
+    return this->ptr->at(e);
+  }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return this->ptr->query_nodes(q);
@@ -98,7 +118,7 @@ public:
   template <typename BaseImpl>
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
                                  LabelledMultiDiGraph>::type
-  create() {
+      create() {
     return LabelledMultiDiGraph(make_unique<BaseImpl>());
   }
 
@@ -130,9 +150,15 @@ public:
     swap(lhs.ptr, rhs.ptr);
   }
 
-  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
-  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
-  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  Node add_node(NodeLabel const &l) {
+    return this->ptr->add_node(l);
+  }
+  NodeLabel &at(Node const &n) {
+    return this->ptr->at(n);
+  }
+  NodeLabel const &at(Node const &n) const {
+    return this->ptr->at(n);
+  }
 
   void add_output(MultiDiOutput const &o, OutputLabel const &l) {
     return this->ptr->add_output(o, l);
@@ -141,7 +167,9 @@ public:
     return this->ptr->add_edge(o, i);
   };
 
-  OutputLabel &at(MultiDiOutput const &o) { return this->ptr->at(o); }
+  OutputLabel &at(MultiDiOutput const &o) {
+    return this->ptr->at(o);
+  }
   OutputLabel const &at(MultiDiOutput const &o) const {
     return this->ptr->at(o);
   }
@@ -162,8 +190,10 @@ private:
   std::unique_ptr<Interface> ptr;
 };
 
-template <typename NodeLabel, typename EdgeLabel,
-          typename InputLabel = EdgeLabel, typename OutputLabel = InputLabel>
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel,
+          typename OutputLabel = InputLabel>
 struct LabelledOpenMultiDiGraph {
 private:
   using Interface =
@@ -186,9 +216,15 @@ public:
     swap(lhs.ptr, rhs.ptr);
   }
 
-  Node add_node(NodeLabel const &l) { return this->ptr->add_node(l); }
-  NodeLabel &at(Node const &n) { return this->ptr->at(n); }
-  NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+  Node add_node(NodeLabel const &l) {
+    return this->ptr->add_node(l);
+  }
+  NodeLabel &at(Node const &n) {
+    return this->ptr->at(n);
+  }
+  NodeLabel const &at(Node const &n) const {
+    return this->ptr->at(n);
+  }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return this->ptr->query_nodes(q);
@@ -200,13 +236,19 @@ public:
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
     return this->ptr->add_edge(e, l);
   }
-  EdgeLabel &at(MultiDiEdge const &e) { return this->ptr->at(e); }
-  EdgeLabel const &at(MultiDiEdge const &e) const { return this->ptr->at(e); }
+  EdgeLabel &at(MultiDiEdge const &e) {
+    return this->ptr->at(e);
+  }
+  EdgeLabel const &at(MultiDiEdge const &e) const {
+    return this->ptr->at(e);
+  }
 
   void add_edge(InputMultiDiEdge const &e, InputLabel const &l) {
     return this->ptr->add_edge(e, l);
   }
-  InputLabel &at(InputMultiDiEdge const &e) { return this->ptr->at(e); }
+  InputLabel &at(InputMultiDiEdge const &e) {
+    return this->ptr->at(e);
+  }
   InputLabel const &at(InputMultiDiEdge const &e) const {
     return this->ptr->at(e);
   }
@@ -218,7 +260,7 @@ public:
   template <typename BaseImpl>
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
                                  LabelledOpenMultiDiGraph>::type
-  create() {
+      create() {
     return LabelledOpenMultiDiGraph(make_unique<BaseImpl>());
   }
 

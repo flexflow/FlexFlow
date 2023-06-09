@@ -62,7 +62,8 @@ FusedParallelOpParams FusedParallelOp::get_params() const {
 }
 
 FusedParallelOp::FusedParallelOp(
-    FFModel &model, const ParallelTensor _input,
+    FFModel &model,
+    const ParallelTensor _input,
     std::vector<ParallelOpInfo> const &_parallel_ops)
     : ParallelOp(model, OP_FUSED_PARALLEL, NULL, _input), num_parallel_ops(0) {
   set_parallel_ops(_parallel_ops);
@@ -75,30 +76,30 @@ FusedParallelOp::FusedParallelOp(
   for (int i = 0; i < num_parallel_ops; i++) {
     ParallelOpInfo info = parallel_ops[i];
     switch (info.op_type) {
-    case OP_REPARTITION: {
-      dims[info.parallel_dim].degree *= info.parallel_degree;
-      break;
-    }
-    case OP_COMBINE: {
-      assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
-      dims[info.parallel_dim].degree /= info.parallel_degree;
-      break;
-    }
-    case OP_REPLICATE: {
-      dims[info.parallel_dim].size *= info.parallel_degree;
-      dims[info.parallel_dim].degree *= info.parallel_degree;
-      break;
-    }
-    case OP_REDUCTION: {
-      assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
-      assert(dims[info.parallel_dim].size % info.parallel_degree == 0);
-      dims[info.parallel_dim].degree /= info.parallel_degree;
-      dims[info.parallel_dim].size /= info.parallel_degree;
-      break;
-    }
-    default: {
-      assert(false && "Unsupported parallel op");
-    }
+      case OP_REPARTITION: {
+        dims[info.parallel_dim].degree *= info.parallel_degree;
+        break;
+      }
+      case OP_COMBINE: {
+        assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
+        dims[info.parallel_dim].degree /= info.parallel_degree;
+        break;
+      }
+      case OP_REPLICATE: {
+        dims[info.parallel_dim].size *= info.parallel_degree;
+        dims[info.parallel_dim].degree *= info.parallel_degree;
+        break;
+      }
+      case OP_REDUCTION: {
+        assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
+        assert(dims[info.parallel_dim].size % info.parallel_degree == 0);
+        dims[info.parallel_dim].degree /= info.parallel_degree;
+        dims[info.parallel_dim].size /= info.parallel_degree;
+        break;
+      }
+      default: {
+        assert(false && "Unsupported parallel op");
+      }
     }
     ParallelTensorBase::update_parallel_ids(numdim, dims);
   }
@@ -153,16 +154,22 @@ void FusedParallelOp::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(FUSED_PARALLELOP_FWD_TASK_ID, outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
-                         false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(FUSED_PARALLELOP_FWD_TASK_ID,
+                         outputs[0]->parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(RegionRequirement(
       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -170,11 +177,15 @@ void FusedParallelOp::init(FFModel const &ff) {
 void FusedParallelOp::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);
   assert(inputs[0]->part != LogicalPartition::NO_PART);
-  ff.create_disjoint_partition(outputs[0]->num_dims, outputs[0]->dims,
-                               outputs[0]->parallel_is, inputs[0]->region,
+  ff.create_disjoint_partition(outputs[0]->num_dims,
+                               outputs[0]->dims,
+                               outputs[0]->parallel_is,
+                               inputs[0]->region,
                                input_lp);
-  ff.create_disjoint_partition(inputs[0]->num_dims, inputs[0]->dims,
-                               inputs[0]->parallel_is, outputs[0]->region_grad,
+  ff.create_disjoint_partition(inputs[0]->num_dims,
+                               inputs[0]->dims,
+                               inputs[0]->parallel_is,
+                               outputs[0]->region_grad,
                                output_grad_lp);
 }
 
@@ -184,16 +195,22 @@ void FusedParallelOp::forward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(FUSED_PARALLELOP_FWD_TASK_ID, outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
-                         false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(FUSED_PARALLELOP_FWD_TASK_ID,
+                         outputs[0]->parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(RegionRequirement(
       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
-                        EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -204,17 +221,25 @@ void FusedParallelOp::backward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(FUSED_PARALLELOP_BWD_TASK_ID, inputs[0]->parallel_is,
-                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
-                         false /*must*/, 0 /*mapper_id*/,
+  IndexLauncher launcher(FUSED_PARALLELOP_BWD_TASK_ID,
+                         inputs[0]->parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          inputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(output_grad_lp, 0 /*projection id*/, READ_ONLY,
-                        EXCLUSIVE, outputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(output_grad_lp,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0 /*projection id*/, READ_WRITE,
-                        EXCLUSIVE, inputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
 
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
@@ -259,11 +284,13 @@ Node FFModel::get_or_create_fused_parallel_node(
 
 void FusedParallelOp::forward_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
-                                   Context ctx, Runtime *runtime) {}
+                                   Context ctx,
+                                   Runtime *runtime) {}
 
 void FusedParallelOp::backward_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx, Runtime *runtime) {}
+                                    Context ctx,
+                                    Runtime *runtime) {}
 
 }; // namespace FlexFlow
 

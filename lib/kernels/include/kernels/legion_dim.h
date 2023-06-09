@@ -10,7 +10,8 @@ struct legion_dim_t : strong_typedef<legion_dim_t, int> {
   using strong_typedef::strong_typedef;
 };
 
-template <typename T> using LegionOrdered = DimOrdered<legion_dim_t, T>;
+template <typename T>
+using LegionOrdered = DimOrdered<legion_dim_t, T>;
 
 using LegionTensorDims = LegionOrdered<size_t>;
 

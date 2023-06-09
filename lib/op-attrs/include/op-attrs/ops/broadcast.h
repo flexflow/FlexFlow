@@ -24,7 +24,8 @@ bool operator<(BroadcastAttrs const &, BroadcastAttrs const &);
 VISITABLE_STRUCT(::FlexFlow::BroadcastAttrs, target_dims);
 
 namespace std {
-template <> struct hash<::FlexFlow::BroadcastAttrs> {
+template <>
+struct hash<::FlexFlow::BroadcastAttrs> {
   size_t operator()(::FlexFlow::BroadcastAttrs const &) const;
 };
 } // namespace std

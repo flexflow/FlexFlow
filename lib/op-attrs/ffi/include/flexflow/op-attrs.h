@@ -140,8 +140,8 @@ typedef struct {
 flexflow_opattrs_error_t flexflow_get_datatype_size(flexflow_datatype_t,
                                                     int *out);
 flexflow_opattrs_error_t
-flexflow_operator_attrs_get_op_type(flexflow_operator_attrs_t,
-                                    flexflow_op_type_t *out);
+    flexflow_operator_attrs_get_op_type(flexflow_operator_attrs_t,
+                                        flexflow_op_type_t *out);
 
 FLEXFLOW_FFI_END()
 

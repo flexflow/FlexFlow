@@ -31,8 +31,11 @@ struct TransposeStrides {
 namespace Kernels {
 namespace Transpose {
 
-void forward_kernel(hipStream_t stream, TransposePerDeviceState const *m,
-                    float const *input_ptr, float *output_ptr, Domain in_domain,
+void forward_kernel(hipStream_t stream,
+                    TransposePerDeviceState const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    Domain in_domain,
                     Domain out_domain) {
 
   TransposeStrides info;
@@ -46,14 +49,23 @@ void forward_kernel(hipStream_t stream, TransposePerDeviceState const *m,
     info.perm[i] = m->perm[i];
   }
   hipLaunchKernelGGL(transpose_simple_kernel,
-                     GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS, 0,
-                     stream, out_domain.get_volume(), input_ptr, output_ptr,
-                     info, 0.0f /*beta*/);
+                     GET_BLOCKS(out_domain.get_volume()),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     out_domain.get_volume(),
+                     input_ptr,
+                     output_ptr,
+                     info,
+                     0.0f /*beta*/);
 }
 
-void backward_kernel(hipStream_t stream, TransposePerDeviceState const *m,
-                     float *input_grad_ptr, float const *output_grad_ptr,
-                     Domain in_grad_domain, Domain out_grad_domain) {
+void backward_kernel(hipStream_t stream,
+                     TransposePerDeviceState const *m,
+                     float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     Domain in_grad_domain,
+                     Domain out_grad_domain) {
 
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
@@ -66,12 +78,19 @@ void backward_kernel(hipStream_t stream, TransposePerDeviceState const *m,
     info.perm[m->perm[i]] = i;
   }
   hipLaunchKernelGGL(transpose_simple_kernel,
-                     GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS,
-                     0, stream, in_grad_domain.get_volume(), output_grad_ptr,
-                     input_grad_ptr, info, 1.0f /*beta*/);
+                     GET_BLOCKS(in_grad_domain.get_volume()),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     in_grad_domain.get_volume(),
+                     output_grad_ptr,
+                     input_grad_ptr,
+                     info,
+                     1.0f /*beta*/);
 }
 
-__global__ void transpose_simple_kernel(coord_t volume, float const *in_ptr,
+__global__ void transpose_simple_kernel(coord_t volume,
+                                        float const *in_ptr,
                                         float *out_ptr,
                                         const TransposeStrides info,
                                         float const beta) {

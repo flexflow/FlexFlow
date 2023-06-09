@@ -117,22 +117,44 @@ enum FieldIDs {
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::FFInitInfo, workSpaceSize,
+VISITABLE_STRUCT(::FlexFlow::FFInitInfo,
+                 workSpaceSize,
                  allowTensorOpMathConversion);
 MAKE_VISIT_HASHABLE(::FlexFlow::FFInitInfo);
 
-VISITABLE_STRUCT(::FlexFlow::FFConfig, epochs, batchSize, numNodes, cpusPerNode,
-                 workersPerNode, learningRate, weightDecay, workSpaceSize,
-                 profiling, perform_fusion, simulator_work_space_size,
-                 search_budget, search_alpha, search_overlap_backward_update,
-                 computationMode, only_data_parallel, enable_parameter_parallel,
-                 enable_inplace_optimizations, allow_tensor_op_math_conversion,
-                 dataset_path, export_strategy_computation_graph_file,
-                 include_costs_dot_graph, substitution_json_path,
-                 machine_model_version, machine_model_file,
-                 simulator_segment_size, simulator_max_num_segments,
-                 search_num_nodes, search_num_workers, base_optimize_threshold,
-                 enable_control_replication, python_data_loader_type);
+VISITABLE_STRUCT(::FlexFlow::FFConfig,
+                 epochs,
+                 batchSize,
+                 numNodes,
+                 cpusPerNode,
+                 workersPerNode,
+                 learningRate,
+                 weightDecay,
+                 workSpaceSize,
+                 profiling,
+                 perform_fusion,
+                 simulator_work_space_size,
+                 search_budget,
+                 search_alpha,
+                 search_overlap_backward_update,
+                 computationMode,
+                 only_data_parallel,
+                 enable_parameter_parallel,
+                 enable_inplace_optimizations,
+                 allow_tensor_op_math_conversion,
+                 dataset_path,
+                 export_strategy_computation_graph_file,
+                 include_costs_dot_graph,
+                 substitution_json_path,
+                 machine_model_version,
+                 machine_model_file,
+                 simulator_segment_size,
+                 simulator_max_num_segments,
+                 search_num_nodes,
+                 search_num_workers,
+                 base_optimize_threshold,
+                 enable_control_replication,
+                 python_data_loader_type);
 
 namespace fmt {
 
@@ -145,12 +167,12 @@ struct formatter<::FlexFlow::ComputationMode> : formatter<string_view> {
 
     string_view name = "unknown";
     switch (m) {
-    case ComputationMode::TRAINING:
-      name = "Training";
-      break;
-    case ComputationMode::INFERENCE:
-      name = "Inference";
-      break;
+      case ComputationMode::TRAINING:
+        name = "Training";
+        break;
+      case ComputationMode::INFERENCE:
+        name = "Inference";
+        break;
     }
     return formatter<string_view>::format(name, ctx);
   }

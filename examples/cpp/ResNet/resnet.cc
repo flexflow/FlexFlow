@@ -35,8 +35,8 @@ void parse_input_args(char **argv, int argc, ResNetConfig &config) {
   }
 }
 
-Tensor BottleneckBlock(FFModel &ff, Tensor input, int out_channels,
-                       int stride) {
+Tensor
+    BottleneckBlock(FFModel &ff, Tensor input, int out_channels, int stride) {
   Tensor t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_NONE);
   // t = ff.batch_norm(t);
 
@@ -47,10 +47,11 @@ Tensor BottleneckBlock(FFModel &ff, Tensor input, int out_channels,
   // t = ff.batch_norm(t, false);
 
   if ((stride > 1) || (input->dims[2] != out_channels * 4)) {
-    printf("input->dims = %d out_channels*4 = %d\n", input->dims[2],
+    printf("input->dims = %d out_channels*4 = %d\n",
+           input->dims[2],
            out_channels * 4);
-    input = ff.conv2d(input, 4 * out_channels, 1, 1, stride, stride, 0, 0,
-                      AC_MODE_NONE);
+    input = ff.conv2d(
+        input, 4 * out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_NONE);
     // input = ff.batch_norm(input, false);
   }
   t = ff.add(input, t);
@@ -59,7 +60,8 @@ Tensor BottleneckBlock(FFModel &ff, Tensor input, int out_channels,
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx, Runtime *runtime) {
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   ResNetConfig resnetConfig;
   {
@@ -68,7 +70,8 @@ void FlexFlow::top_level_task(Task const *task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, resnetConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                  ffConfig.batchSize, ffConfig.workersPerNode,
+                  ffConfig.batchSize,
+                  ffConfig.workersPerNode,
                   ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
@@ -154,7 +157,8 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 
@@ -227,9 +231,14 @@ __inline__ int calc_offset(int c, int y, int x, int yscale, int xscale) {
   return (c * yscale * xscale + y * xscale + x);
 }
 
-void nearest_neigh(unsigned char *image, unsigned char *buffer, int height,
-                   int width, int orig_height, int orig_width,
-                   float height_scale, float width_scale) {
+void nearest_neigh(unsigned char *image,
+                   unsigned char *buffer,
+                   int height,
+                   int width,
+                   int orig_height,
+                   int orig_width,
+                   float height_scale,
+                   float width_scale) {
   for (int y = 0; y < height; y++) {
     int y0 =
         std::min(static_cast<int>(roundf(y * height_scale)), orig_height - 1);

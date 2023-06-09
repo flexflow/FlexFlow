@@ -170,17 +170,19 @@ LegionConfig::LegionConfig()
 
 enum Slots { NCCL_UNIQUE_ID, FF_INIT_INFO };
 
-static ncclUniqueId
-generate_nccl_unique_id_task(Legion::Task const *task,
-                             std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx, Legion::Runtime *runtime) {
+static ncclUniqueId generate_nccl_unique_id_task(
+    Legion::Task const *task,
+    std::vector<Legion::PhysicalRegion> const &regions,
+    Legion::Context ctx,
+    Legion::Runtime *runtime) {
   return NCCL::generate_unique_id();
 }
 
 static ncclComm_t
-init_nccl_comms_task(Legion::Task const *task,
-                     std::vector<Legion::PhysicalRegion> const &regions,
-                     Legion::Context ctx, Legion::Runtime *runtime) {
+    init_nccl_comms_task(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   // Must be an index space launch
   assert(task->is_index_space);
@@ -253,7 +255,8 @@ ncclComm_t *NcclCommunicators::at(MachineView const &view) const {
 
 static void ff_init_task(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx, Legion::Runtime *runtime) {}
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime) {}
 
 TensorlessTaskInvocation ff_init(FFConfig const &config,
                                  FFInitInfo const &info) {
@@ -264,24 +267,31 @@ TensorlessTaskInvocation ff_init(FFConfig const &config,
   return {FF_INIT_TASK_ID, b};
 }
 
-template <> void register_task<NCCL_GETUNIQUEID_TASK_ID>() {
+template <>
+void register_task<NCCL_GETUNIQUEID_TASK_ID>() {
   TaskSignature sig;
   sig.add_return_value<ncclUniqueId>();
 
-  register_task(NCCL_GETUNIQUEID_TASK_ID, "NCCL GetUniqueId Task", sig,
+  register_task(NCCL_GETUNIQUEID_TASK_ID,
+                "NCCL GetUniqueId Task",
+                sig,
                 generate_nccl_unique_id_task);
 }
 
-template <> void register_task<NCCL_INIT_COMMS_TASK_ID>() {
+template <>
+void register_task<NCCL_INIT_COMMS_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<ncclUniqueId>(NCCL_UNIQUE_ID);
   sig.add_return_value<ncclComm_t>();
 
-  register_task(NCCL_INIT_COMMS_TASK_ID, "NCCL Init Communicators Task", sig,
+  register_task(NCCL_INIT_COMMS_TASK_ID,
+                "NCCL Init Communicators Task",
+                sig,
                 init_nccl_comms_task);
 }
 
-template <> void register_task<FF_INIT_TASK_ID>() {
+template <>
+void register_task<FF_INIT_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<FFInitInfo>(FF_INIT_INFO);
   sig.add_return_value<DeviceSpecificArg<PerDeviceFFHandle>>();

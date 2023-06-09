@@ -58,17 +58,22 @@ struct MoeConfig {
 
 class DataLoader {
 public:
-  DataLoader(FFModel &ff, MoeConfig const &moe, ParallelTensor input,
+  DataLoader(FFModel &ff,
+             MoeConfig const &moe,
+             ParallelTensor input,
              ParallelTensor label);
   static void load_input(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx, Runtime *runtime);
+                         Context ctx,
+                         Runtime *runtime);
   static void load_label(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx, Runtime *runtime);
+                         Context ctx,
+                         Runtime *runtime);
   static void load_entire_dataset(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
-                                  Context ctx, Runtime *runtime);
+                                  Context ctx,
+                                  Runtime *runtime);
   void next_batch(FFModel &);
   void reset(void);
 

@@ -22,12 +22,15 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Aggregate {
 
-__global__ void agg_forward_kernel(float **exp_preds, int const *exp_assign,
-                                   float const *gate_net_preds, float *output,
+__global__ void agg_forward_kernel(float **exp_preds,
+                                   int const *exp_assign,
+                                   float const *gate_net_preds,
+                                   float *output,
                                    int n,
                                    int const k,     // num chosen experts
                                    int exp_samples, // max samples per expert
-                                   int const batch_size, int out_dim) {
+                                   int const batch_size,
+                                   int out_dim) {
   __shared__ float
       *chosen_exp_preds[AGGREGATE_MAX_K * AGGREGATE_MAX_BATCH_SIZE];
 
@@ -51,7 +54,9 @@ __global__ void agg_forward_kernel(float **exp_preds, int const *exp_assign,
   }
 
   // set output tensor to 0
-  CUDA_KERNEL_LOOP(i, batch_size * out_dim) { output[i] = 0.0f; }
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    output[i] = 0.0f;
+  }
 
   __syncthreads();
 
@@ -66,10 +71,17 @@ __global__ void agg_forward_kernel(float **exp_preds, int const *exp_assign,
   }
 }
 
-__device__ void agg_backward_kernel_gate(
-    float const *output_grad, float *full_gate_grads, float **exp_preds,
-    int const *expert_assign, bool const *cache_corr, int *expert_bal,
-    float lambda_bal, int batch_size, int k, int n, int out_dim) {
+__device__ void agg_backward_kernel_gate(float const *output_grad,
+                                         float *full_gate_grads,
+                                         float **exp_preds,
+                                         int const *expert_assign,
+                                         bool const *cache_corr,
+                                         int *expert_bal,
+                                         float lambda_bal,
+                                         int batch_size,
+                                         int k,
+                                         int n,
+                                         int out_dim) {
   // gate gradient
   CUDA_KERNEL_LOOP(i, batch_size * k * out_dim) {
     if (exp_preds[i / out_dim] != 0 && cache_corr[i / (k * out_dim)]) {
@@ -102,8 +114,10 @@ __device__ void agg_backward_kernel_gate(
 
 __device__ void agg_backward_kernel_exp(float const *output_grad,
                                         float const *gate_preds,
-                                        float **exp_grads, int batch_size,
-                                        int k, int out_dim) {
+                                        float **exp_grads,
+                                        int batch_size,
+                                        int k,
+                                        int out_dim) {
   // compute expert gradients
   CUDA_KERNEL_LOOP(i, k * out_dim * batch_size) {
     if (exp_grads[i / out_dim] != 0) {
@@ -114,14 +128,19 @@ __device__ void agg_backward_kernel_exp(float const *output_grad,
   }
 }
 
-__global__ void
-agg_backward_kernel(float **exp_preds, float **exp_grads, int const *exp_assign,
-                    int const *true_exp_assign, float const *gating_net_preds,
-                    float *full_gating_grads, float const *output_grads,
-                    int n,           // num experts
-                    int k,           // num chosen experts
-                    int exp_samples, // max samples per expert
-                    float lambda_bal, int batch_size, int out_dim) {
+__global__ void agg_backward_kernel(float **exp_preds,
+                                    float **exp_grads,
+                                    int const *exp_assign,
+                                    int const *true_exp_assign,
+                                    float const *gating_net_preds,
+                                    float *full_gating_grads,
+                                    float const *output_grads,
+                                    int n,           // num experts
+                                    int k,           // num chosen experts
+                                    int exp_samples, // max samples per expert
+                                    float lambda_bal,
+                                    int batch_size,
+                                    int out_dim) {
   __shared__ float
       *chosen_exp_preds[AGGREGATE_MAX_K * AGGREGATE_MAX_BATCH_SIZE];
   __shared__ float
@@ -166,13 +185,21 @@ agg_backward_kernel(float **exp_preds, float **exp_grads, int const *exp_assign,
 
   // FIXME: These 2 functions could execute independently in parallel
   // get expert gradients
-  agg_backward_kernel_exp(output_grads, gating_net_preds, chosen_exp_grads,
-                          batch_size, k, out_dim);
+  agg_backward_kernel_exp(
+      output_grads, gating_net_preds, chosen_exp_grads, batch_size, k, out_dim);
 
   // get gating net gradients
-  agg_backward_kernel_gate(
-      output_grads, full_gating_grads, chosen_exp_preds, exp_assign, cache_corr,
-      expert_bal, (lambda_bal * n) / batch_size, batch_size, k, n, out_dim);
+  agg_backward_kernel_gate(output_grads,
+                           full_gating_grads,
+                           chosen_exp_preds,
+                           exp_assign,
+                           cache_corr,
+                           expert_bal,
+                           (lambda_bal * n) / batch_size,
+                           batch_size,
+                           k,
+                           n,
+                           out_dim);
 }
 
 /*static*/
@@ -181,47 +208,80 @@ void Aggregate::forward_kernel(hipStream_t stream,
                                float **exp_preds,
                                int const *acc_gate_assign_ptr,
                                float const *acc_gate_pred_ptr,
-                               float *acc_output_ptr, int n, int const k,
-                               int rows, int const batch_size, int out_dim) {
+                               float *acc_output_ptr,
+                               int n,
+                               int const k,
+                               int rows,
+                               int const batch_size,
+                               int out_dim) {
 
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   // call forward_kernel
-  hipMemcpy(m->dev_exp_preds, exp_preds, n * sizeof(float *),
-            hipMemcpyHostToDevice);
+  hipMemcpy(
+      m->dev_exp_preds, exp_preds, n * sizeof(float *), hipMemcpyHostToDevice);
 
-  hipLaunchKernelGGL(agg_forward_kernel, GET_BLOCKS(batch_size * k * out_dim),
-                     min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)), 0,
-                     stream, m->dev_exp_preds, acc_gate_assign_ptr,
-                     acc_gate_pred_ptr, acc_output_ptr, n, k, rows, batch_size,
+  hipLaunchKernelGGL(agg_forward_kernel,
+                     GET_BLOCKS(batch_size * k * out_dim),
+                     min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
+                     0,
+                     stream,
+                     m->dev_exp_preds,
+                     acc_gate_assign_ptr,
+                     acc_gate_pred_ptr,
+                     acc_output_ptr,
+                     n,
+                     k,
+                     rows,
+                     batch_size,
                      out_dim);
 }
 
 /*static*/
-void Aggregate::backward_kernel(
-    hipStream_t stream, AggregatePerDeviceState const *m, float **exp_preds,
-    float **exp_grads, int const *acc_gate_assign_ptr,
-    int const *acc_true_gate_assign_ptr, float const *acc_gate_pred_ptr,
-    float *full_acc_gate_grad_ptr, float const *acc_output_grad_ptr, int n,
-    int const k, int rows, float lambda_bal, int const batch_size,
-    int out_dim) {
+void Aggregate::backward_kernel(hipStream_t stream,
+                                AggregatePerDeviceState const *m,
+                                float **exp_preds,
+                                float **exp_grads,
+                                int const *acc_gate_assign_ptr,
+                                int const *acc_true_gate_assign_ptr,
+                                float const *acc_gate_pred_ptr,
+                                float *full_acc_gate_grad_ptr,
+                                float const *acc_output_grad_ptr,
+                                int n,
+                                int const k,
+                                int rows,
+                                float lambda_bal,
+                                int const batch_size,
+                                int out_dim) {
 
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   // call backward kernel
-  hipMemcpy(m->dev_exp_preds, exp_preds, n * sizeof(float *),
-            hipMemcpyHostToDevice);
-  hipMemcpy(m->dev_exp_grads, exp_grads, n * sizeof(float *),
-            hipMemcpyHostToDevice);
+  hipMemcpy(
+      m->dev_exp_preds, exp_preds, n * sizeof(float *), hipMemcpyHostToDevice);
+  hipMemcpy(
+      m->dev_exp_grads, exp_grads, n * sizeof(float *), hipMemcpyHostToDevice);
 
-  hipLaunchKernelGGL(
-      agg_backward_kernel, GET_BLOCKS(batch_size * k * out_dim),
-      min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)), 0, stream,
-      m->dev_exp_preds, m->dev_exp_grads, acc_gate_assign_ptr,
-      acc_true_gate_assign_ptr, acc_gate_pred_ptr, full_acc_gate_grad_ptr,
-      acc_output_grad_ptr, n, k, rows, lambda_bal, batch_size, out_dim);
+  hipLaunchKernelGGL(agg_backward_kernel,
+                     GET_BLOCKS(batch_size * k * out_dim),
+                     min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
+                     0,
+                     stream,
+                     m->dev_exp_preds,
+                     m->dev_exp_grads,
+                     acc_gate_assign_ptr,
+                     acc_true_gate_assign_ptr,
+                     acc_gate_pred_ptr,
+                     full_acc_gate_grad_ptr,
+                     acc_output_grad_ptr,
+                     n,
+                     k,
+                     rows,
+                     lambda_bal,
+                     batch_size,
+                     out_dim);
 }
 
 AggregatePerDeviceState::AggregatePerDeviceState(FFHandler handler, int n)

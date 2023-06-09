@@ -23,14 +23,18 @@ using FlexFlow::TensorAccessorW;
 
 void DataLoader::load_input(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx, Runtime *runtime) {
+                            Context ctx,
+                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<float, 5> acc_full_input(regions[0], task->regions[0],
-                                           FlexFlow::FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 5> acc_batch_input(regions[1], task->regions[1],
-                                            FlexFlow::FID_DATA, ctx, runtime,
+  TensorAccessorR<float, 5> acc_full_input(
+      regions[0], task->regions[0], FlexFlow::FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 5> acc_batch_input(regions[1],
+                                            task->regions[1],
+                                            FlexFlow::FID_DATA,
+                                            ctx,
+                                            runtime,
                                             false /*readOutput*/);
   coord_t batch_size =
       acc_batch_input.rect.hi[3] - acc_batch_input.rect.lo[3] + 1;
@@ -53,14 +57,18 @@ void DataLoader::load_input(Task const *task,
 
 void DataLoader::load_label(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx, Runtime *runtime) {
+                            Context ctx,
+                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<int, 3> acc_full_label(regions[0], task->regions[0],
-                                         FlexFlow::FID_DATA, ctx, runtime);
-  TensorAccessorW<int, 3> acc_batch_label(regions[1], task->regions[1],
-                                          FlexFlow::FID_DATA, ctx, runtime,
+  TensorAccessorR<int, 3> acc_full_label(
+      regions[0], task->regions[0], FlexFlow::FID_DATA, ctx, runtime);
+  TensorAccessorW<int, 3> acc_batch_label(regions[1],
+                                          task->regions[1],
+                                          FlexFlow::FID_DATA,
+                                          ctx,
+                                          runtime,
                                           false /*readOutput*/);
   int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   // FIXME: currently assume continous indices

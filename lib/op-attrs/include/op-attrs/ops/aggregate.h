@@ -21,17 +21,19 @@ public:
 };
 
 DataType get_datatype(AggregateAttrs const &);
-bool is_valid(AggregateAttrs const &, ParallelTensorShape const &gate_preds,
+bool is_valid(AggregateAttrs const &,
+              ParallelTensorShape const &gate_preds,
               ParallelTensorShape const &gate_assign,
               ParallelTensorShape const &true_gate_assign,
               ParallelTensorShape const &full_gate_gradients,
               std::vector<ParallelTensorShape> const &exp_preds);
 ParallelTensorShape
-get_output_shape(AggregateAttrs const &, ParallelTensorShape const &gate_preds,
-                 ParallelTensorShape const &gate_asign,
-                 ParallelTensorShape const &true_gate_assign,
-                 ParallelTensorShape const &full_gate_gradients,
-                 std::vector<ParallelTensorShape> const &exp_preds);
+    get_output_shape(AggregateAttrs const &,
+                     ParallelTensorShape const &gate_preds,
+                     ParallelTensorShape const &gate_asign,
+                     ParallelTensorShape const &true_gate_assign,
+                     ParallelTensorShape const &full_gate_gradients,
+                     std::vector<ParallelTensorShape> const &exp_preds);
 
 } // namespace FlexFlow
 

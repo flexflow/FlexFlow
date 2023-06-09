@@ -16,11 +16,13 @@ public:
 namespace Kernels {
 namespace Repartition {
 
-void forward_kernel(ffStream_t stream, RepartitionPerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
+                    RepartitionPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
-void backward_kernel(ffStream_t stream, RepartitionPerDeviceState const *m,
+void backward_kernel(ffStream_t stream,
+                     RepartitionPerDeviceState const *m,
                      GenericTensorAccessorW const &output_grad,
                      GenericTensorAccessorR const &input_grad);
 

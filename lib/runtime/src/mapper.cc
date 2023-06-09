@@ -26,8 +26,8 @@ using namespace Legion;
 using namespace Mapping;
 
 static FFOrdered<num_points_t>
-from_domain_point(Legion::DomainPoint const &point,
-                  Legion::Domain const &domain) {
+    from_domain_point(Legion::DomainPoint const &point,
+                      Legion::Domain const &domain) {
   assert(point.get_dim() == domain.get_dim());
   std::vector<num_points_t> idxs;
   for (int i = point.get_dim(); i > 0; i--) {
@@ -38,7 +38,8 @@ from_domain_point(Legion::DomainPoint const &point,
 }
 
 device_id_t get_device_index(MachineView const &machine_view,
-                             DomainPoint const &point, Domain const &domain,
+                             DomainPoint const &point,
+                             Domain const &domain,
                              DeviceType device_type) {
   return machine_view.at(from_domain_point(point, domain));
 }
@@ -46,17 +47,19 @@ device_id_t get_device_index(MachineView const &machine_view,
 ShardID FFShardingFunctor::get_shard_id(device_id_t device_id) const {
   DeviceType device_type = get_device_type(device_id);
   switch (device_type) {
-  case DeviceType::GPU:
-    return unwrap_gpu(device_id).value() / this->gpus_per_node;
-  case DeviceType::CPU:
-    return unwrap_cpu(device_id).value() / this->cpus_per_node;
-  default:
-    throw mk_runtime_error("Unknown DeviceType {}", device_type);
+    case DeviceType::GPU:
+      return unwrap_gpu(device_id).value() / this->gpus_per_node;
+    case DeviceType::CPU:
+      return unwrap_cpu(device_id).value() / this->cpus_per_node;
+    default:
+      throw mk_runtime_error("Unknown DeviceType {}", device_type);
   }
 }
 
-FFShardingFunctor::FFShardingFunctor(int _gpus_per_node, int _cpus_per_node,
-                                     int _num_nodes, MachineView const &_mv)
+FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
+                                     int _cpus_per_node,
+                                     int _num_nodes,
+                                     MachineView const &_mv)
     : gpus_per_node(_gpus_per_node), cpus_per_node(_cpus_per_node),
       num_nodes(_num_nodes), machine_view(_mv) {}
 
@@ -74,7 +77,9 @@ ShardID FFShardingFunctor::shard(DomainPoint const &point,
   return shard_id;
 }
 
-FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor _local,
+FFMapper::FFMapper(MapperRuntime *rt,
+                   Machine machine,
+                   Processor _local,
                    char const *_mapper_name,
                    // const std::string& strategyFile,
                    bool _enable_control_replication,
@@ -88,7 +93,8 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor _local,
   Machine::ProcessorQuery proc_query(machine);
   std::set<AddressSpace> address_space_set;
   for (Machine::ProcessorQuery::iterator it = proc_query.begin();
-       it != proc_query.end(); it++) {
+       it != proc_query.end();
+       it++) {
     address_space_set.insert(it->address_space());
     if (it->kind() == Processor::TOC_PROC) {
       all_gpus.push_back(*it);
@@ -150,8 +156,10 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor _local,
   }
 }
 
-void FFMapper::register_sharding_functors(Runtime *runtime, Machine machine,
-                                          int argc, char **argv) {
+void FFMapper::register_sharding_functors(Runtime *runtime,
+                                          Machine machine,
+                                          int argc,
+                                          char **argv) {
   // std::string strategyFile = "";
   int gpus_per_node = 0, cpus_per_node = 1;
   int num_nodes = machine.get_address_space_count();
@@ -192,34 +200,37 @@ void FFMapper::register_sharding_functors(Runtime *runtime, Machine machine,
 
 bool FFMapper::is_parameter_server_update_task(Legion::TaskID tid) {
   switch (tid) {
-  case SGD_UPD_PS_TASK_ID:
-  case ADAM_UPD_PS_TASK_ID:
-    return true;
-  default:
-    return false;
+    case SGD_UPD_PS_TASK_ID:
+    case ADAM_UPD_PS_TASK_ID:
+      return true;
+    default:
+      return false;
   }
 }
 
 bool FFMapper::is_initializer_task(Legion::TaskID tid) {
   switch (tid) {
-  case GLOROT_INIT_TASK_ID:
-  case ZERO_INIT_TASK_ID:
-  case CONSTANT_INIT_TASK_ID:
-  case UNIFORM_INIT_TASK_ID:
-  case NORMAL_INIT_TASK_ID:
-    return true;
-  default:
-    return false;
+    case GLOROT_INIT_TASK_ID:
+    case ZERO_INIT_TASK_ID:
+    case CONSTANT_INIT_TASK_ID:
+    case UNIFORM_INIT_TASK_ID:
+    case NORMAL_INIT_TASK_ID:
+      return true;
+    default:
+      return false;
   }
 }
 
-char const *FFMapper::get_mapper_name(void) const { return mapper_name; }
+char const *FFMapper::get_mapper_name(void) const {
+  return mapper_name;
+}
 
 Mapper::MapperSyncModel FFMapper::get_mapper_sync_model(void) const {
   return SERIALIZED_REENTRANT_MAPPER_MODEL;
 }
 
-void FFMapper::select_task_options(const MapperContext ctx, Task const &task,
+void FFMapper::select_task_options(const MapperContext ctx,
+                                   Task const &task,
                                    TaskOptions &output) {
   unsigned long long task_hash = compute_task_hash(task);
   output.inline_task = false;
@@ -321,7 +332,8 @@ void FFMapper::select_task_options(const MapperContext ctx, Task const &task,
   }
 }
 
-void FFMapper::slice_task(MapperContext const ctx, Task const &task,
+void FFMapper::slice_task(MapperContext const ctx,
+                          Task const &task,
                           SliceTaskInput const &input,
                           SliceTaskOutput &output) {
   output.slices.resize(input.domain.get_volume());
@@ -355,8 +367,8 @@ void FFMapper::slice_task(MapperContext const ctx, Task const &task,
     if (machine_views.find(hash) == machine_views.end()) {
       // No strategy found, use default data parallelism
       std::vector<VariantID> variant_ids;
-      runtime->find_valid_variants(ctx, task.task_id, variant_ids,
-                                   Processor::TOC_PROC);
+      runtime->find_valid_variants(
+          ctx, task.task_id, variant_ids, Processor::TOC_PROC);
       if (variant_ids.size() > 0) {
         // Use GPU implementation
         // Currently assume there is exactly one variant
@@ -369,8 +381,8 @@ void FFMapper::slice_task(MapperContext const ctx, Task const &task,
         view = machine_views.at(FFConfig::DataParallelism_GPU);
       } else {
         // Use CPU implementation
-        runtime->find_valid_variants(ctx, task.task_id, variant_ids,
-                                     Processor::LOC_PROC);
+        runtime->find_valid_variants(
+            ctx, task.task_id, variant_ids, Processor::LOC_PROC);
         assert(variant_ids.size() == 1);
         // Assert data parallelism must be 1-d index space
         // since all other dims with a degree of 1 should be eliminated
@@ -396,16 +408,17 @@ void FFMapper::slice_task(MapperContext const ctx, Task const &task,
           get_device_index(view.value(), *pir, task.index_domain);             \
       assert(this->has_device(idx));                                           \
       Rect<DIM> slice(*pir, *pir);                                             \
-      output.slices[cnt++] =                                                   \
-          TaskSlice(slice, this->get_processor(idx), false /*recurse*/,        \
-                    false /*stealable*/);                                      \
+      output.slices[cnt++] = TaskSlice(slice,                                  \
+                                       this->get_processor(idx),               \
+                                       false /*recurse*/,                      \
+                                       false /*stealable*/);                   \
     }                                                                          \
     break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   // In control replication, each mapper should only receive task slices
   // that should be assigned to local proccessors
@@ -418,17 +431,20 @@ void FFMapper::slice_task(MapperContext const ctx, Task const &task,
   }
 }
 
-void FFMapper::premap_task(const MapperContext ctx, Task const &task,
+void FFMapper::premap_task(const MapperContext ctx,
+                           Task const &task,
                            PremapTaskInput const &input,
                            PremapTaskOutput &output) {
   assert(false);
 }
 
-void FFMapper::map_task(const MapperContext ctx, Task const &task,
-                        MapTaskInput const &input, MapTaskOutput &output) {
+void FFMapper::map_task(const MapperContext ctx,
+                        Task const &task,
+                        MapTaskInput const &input,
+                        MapTaskOutput &output) {
   std::vector<VariantID> variant_ids;
-  runtime->find_valid_variants(ctx, task.task_id, variant_ids,
-                               task.target_proc.kind());
+  runtime->find_valid_variants(
+      ctx, task.task_id, variant_ids, task.target_proc.kind());
   // Currently assume there is exactly one variant
   assert(variant_ids.size() == 1);
   output.chosen_variant = variant_ids[0];
@@ -445,8 +461,8 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
     // If we're part of a must epoch launch, our
     // target proc will be sufficient
     if (!task.must_epoch_task) {
-      output.target_procs.insert(output.target_procs.end(), local_cpus.begin(),
-                                 local_cpus.end());
+      output.target_procs.insert(
+          output.target_procs.end(), local_cpus.begin(), local_cpus.end());
     } else {
       output.target_procs.push_back(task.target_proc);
     }
@@ -455,8 +471,8 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
     // If we're part of a must epoch launch, our
     // target proc will be sufficient
     if (!task.must_epoch_task) {
-      output.target_procs.insert(output.target_procs.end(), local_pys.begin(),
-                                 local_pys.end());
+      output.target_procs.insert(
+          output.target_procs.end(), local_pys.begin(), local_pys.end());
     } else {
       output.target_procs.push_back(task.target_proc);
     }
@@ -476,14 +492,18 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
   }
   // Find instances that still need to be mapped
   std::vector<std::set<FieldID>> missing_fields(task.regions.size());
-  runtime->filter_instances(ctx, task, output.chosen_variant,
-                            output.chosen_instances, missing_fields);
+  runtime->filter_instances(ctx,
+                            task,
+                            output.chosen_variant,
+                            output.chosen_instances,
+                            missing_fields);
   // Track which regions have already been mapped
   std::vector<bool> done_regions(task.regions.size(), false);
   if (!input.premapped_regions.empty()) {
     for (std::vector<unsigned>::const_iterator it =
              input.premapped_regions.begin();
-         it != input.premapped_regions.end(); it++) {
+         it != input.premapped_regions.end();
+         it++) {
       done_regions[*it] = true;
     }
   }
@@ -510,7 +530,8 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
       for (std::vector<PhysicalInstance>::const_iterator
                it = input.valid_instances[idx].begin(),
                ie = input.valid_instances[idx].end();
-           it != ie; ++it) {
+           it != ie;
+           ++it) {
         if (it->get_location() == target_mem) {
           // Only select instances with exact same index domain
           Domain instance_domain = it->get_instance_domain();
@@ -523,8 +544,12 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
       }
 
       std::set<FieldID> valid_missing_fields;
-      runtime->filter_instances(ctx, task, idx, output.chosen_variant,
-                                valid_instances, valid_missing_fields);
+      runtime->filter_instances(ctx,
+                                task,
+                                idx,
+                                output.chosen_variant,
+                                valid_instances,
+                                valid_missing_fields);
       runtime->acquire_and_filter_instances(ctx, valid_instances);
       output.chosen_instances[idx] = valid_instances;
       missing_fields[idx] = valid_missing_fields;
@@ -540,14 +565,20 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
     size_t footprint;
     PhysicalInstance result;
     bool created;
-    if (!default_make_instance(ctx, target_mem, constraint_set, result,
-                               true /*meet_constraints*/, task.regions[idx],
-                               created, &footprint)) {
+    if (!default_make_instance(ctx,
+                               target_mem,
+                               constraint_set,
+                               result,
+                               true /*meet_constraints*/,
+                               task.regions[idx],
+                               created,
+                               &footprint)) {
       if (log_instance_creation) {
         for (size_t idx = 0; idx < created_instances.size(); idx++) {
           log_mapper.print("Instance[%zu]: memory:" IDFMT "	proc:" IDFMT
                            "	size:%zu	task:%s",
-                           idx, created_instances[idx].memory.id,
+                           idx,
+                           created_instances[idx].memory.id,
                            created_instances[idx].processor.id,
                            created_instances[idx].size,
                            created_instances[idx].task_name.c_str());
@@ -558,8 +589,13 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
           "FlexFlow failed allocation of size %zd bytes for "
           "region requirement %d of task %s (UID %lld) in memory " IDFMT
           " with kind %d for processor " IDFMT ".",
-          footprint, idx, task.get_task_name(), task.get_unique_id(),
-          target_mem.id, target_mem.kind(), task.target_proc.id);
+          footprint,
+          idx,
+          task.get_task_name(),
+          task.get_unique_id(),
+          target_mem.id,
+          target_mem.kind(),
+          task.target_proc.id);
       assert(false);
     } else {
       output.chosen_instances[idx].push_back(result);
@@ -576,7 +612,8 @@ void FFMapper::map_task(const MapperContext ctx, Task const &task,
   } // for idx
 }
 
-void FFMapper::map_replicate_task(const MapperContext ctx, Task const &task,
+void FFMapper::map_replicate_task(const MapperContext ctx,
+                                  Task const &task,
                                   MapTaskInput const &input,
                                   MapTaskOutput const &default_output,
                                   MapReplicateTaskOutput &output) {
@@ -586,8 +623,8 @@ void FFMapper::map_replicate_task(const MapperContext ctx, Task const &task,
   VariantID chosen_variant;
   {
     std::vector<VariantID> variant_ids;
-    runtime->find_valid_variants(ctx, task.task_id, variant_ids,
-                                 task.target_proc.kind());
+    runtime->find_valid_variants(
+        ctx, task.task_id, variant_ids, task.target_proc.kind());
     // Currently assume there is exactly one variant
     assert(variant_ids.size() == 1);
     chosen_variant = variant_ids[0];
@@ -598,7 +635,8 @@ void FFMapper::map_replicate_task(const MapperContext ctx, Task const &task,
   // Assume default_output does not include any target_procs
   assert(default_output.target_procs.size() == 0);
   for (std::vector<Processor>::const_iterator it = all_procs.begin();
-       it != all_procs.end(); it++) {
+       it != all_procs.end();
+       it++) {
     AddressSpace space = it->address_space();
     assert(space < output.task_mappings.size());
     // Add *it as a target_proc if we haven't found one
@@ -614,18 +652,22 @@ void FFMapper::map_replicate_task(const MapperContext ctx, Task const &task,
   }
 }
 
-void FFMapper::select_task_variant(const MapperContext ctx, Task const &task,
+void FFMapper::select_task_variant(const MapperContext ctx,
+                                   Task const &task,
                                    SelectVariantInput const &input,
                                    SelectVariantOutput &output) {
   assert(false);
 }
 
-void FFMapper::postmap_task(const MapperContext ctx, Task const &task,
-                            PostMapInput const &input, PostMapOutput &output) {
+void FFMapper::postmap_task(const MapperContext ctx,
+                            Task const &task,
+                            PostMapInput const &input,
+                            PostMapOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_task_sources(const MapperContext ctx, Task const &task,
+void FFMapper::select_task_sources(const MapperContext ctx,
+                                   Task const &task,
                                    SelectTaskSrcInput const &input,
                                    SelectTaskSrcOutput &output) {
   if (task.task_id == PS_PREFETCH_TASK_ID) {
@@ -645,18 +687,23 @@ void FFMapper::select_task_sources(const MapperContext ctx, Task const &task,
     Processor parameter_server = this->get_processor(view->start);
     // Prefer instances located on the parameter server
     Memory ps_memory = proc_fbmems[parameter_server];
-    default_policy_select_sources(ctx, input.target, input.source_instances,
-                                  output.chosen_ranking, ps_memory);
+    default_policy_select_sources(ctx,
+                                  input.target,
+                                  input.source_instances,
+                                  output.chosen_ranking,
+                                  ps_memory);
     return;
   }
-  default_policy_select_sources(ctx, input.target, input.source_instances,
-                                output.chosen_ranking);
+  default_policy_select_sources(
+      ctx, input.target, input.source_instances, output.chosen_ranking);
 }
 
 void FFMapper::default_policy_select_sources(
-    MapperContext ctx, PhysicalInstance const &target,
+    MapperContext ctx,
+    PhysicalInstance const &target,
     std::vector<PhysicalInstance> const &sources,
-    std::deque<PhysicalInstance> &ranking, Memory preferred_memory) {
+    std::deque<PhysicalInstance> &ranking,
+    Memory preferred_memory) {
   // We rank source instances by the bandwidth of the memory
   // they are in to the destination
   std::map<Memory, unsigned> source_memories;
@@ -671,8 +718,8 @@ void FFMapper::default_policy_select_sources(
         source_memories.find(location);
     if (finder == source_memories.end()) {
       affinity.clear();
-      machine.get_mem_mem_affinity(affinity, location, destination_memory,
-                                   false);
+      machine.get_mem_mem_affinity(
+          affinity, location, destination_memory, false);
       unsigned memory_bandwidth = 0;
       if (!affinity.empty()) {
         assert(affinity.size() == 1);
@@ -696,24 +743,29 @@ void FFMapper::default_policy_select_sources(
   for (std::vector<
            std::pair<PhysicalInstance, unsigned>>::const_reverse_iterator it =
            band_ranking.rbegin();
-       it != band_ranking.rend(); it++) {
+       it != band_ranking.rend();
+       it++) {
     ranking.push_back(it->first);
     break;
   }
 }
 
 void FFMapper::create_task_temporary_instance(
-    const MapperContext ctx, Task const &task,
-    CreateTaskTemporaryInput const &input, CreateTaskTemporaryOutput &output) {
+    const MapperContext ctx,
+    Task const &task,
+    CreateTaskTemporaryInput const &input,
+    CreateTaskTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx, Task const &task,
+void FFMapper::speculate(const MapperContext ctx,
+                         Task const &task,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx, Task const &task,
+void FFMapper::report_profiling(const MapperContext ctx,
+                                Task const &task,
                                 TaskProfilingInfo const &input) {
   assert(false);
 }
@@ -765,7 +817,8 @@ void FFMapper::map_inline(const MapperContext ctx,
         log_mapper.error("FlexFlow mapper error. Mapper %s could find no "
                          "valid memories for the constraints requested by "
                          "inline mapping %lld in parent task %s (ID %lld).",
-                         get_mapper_name(), inline_op.get_unique_id(),
+                         get_mapper_name(),
+                         inline_op.get_unique_id(),
                          inline_op.parent_task->get_task_name(),
                          inline_op.parent_task->get_unique_id());
         assert(false);
@@ -788,7 +841,8 @@ void FFMapper::map_inline(const MapperContext ctx,
     if (!input.valid_instances.empty()) {
       for (std::vector<PhysicalInstance>::const_iterator it =
                input.valid_instances.begin();
-           it != input.valid_instances.end(); it++) {
+           it != input.valid_instances.end();
+           it++) {
         if (it->get_location() == target_memory) {
           output.chosen_instances.push_back(*it);
         }
@@ -801,7 +855,8 @@ void FFMapper::map_inline(const MapperContext ctx,
     std::set<FieldID> missing_fields = inline_op.requirement.privilege_fields;
     for (std::vector<PhysicalInstance>::const_iterator it =
              output.chosen_instances.begin();
-         it != output.chosen_instances.end(); it++) {
+         it != output.chosen_instances.end();
+         it++) {
       it->remove_space_fields(missing_fields);
       if (missing_fields.empty()) {
         break;
@@ -821,15 +876,22 @@ void FFMapper::map_inline(const MapperContext ctx,
   PhysicalInstance result;
   size_t footprint;
   bool created;
-  if (!default_make_instance(ctx, target_memory, creation_constraints, result,
-                             true /*meets_constraints*/, inline_op.requirement,
-                             created, &footprint)) {
+  if (!default_make_instance(ctx,
+                             target_memory,
+                             creation_constraints,
+                             result,
+                             true /*meets_constraints*/,
+                             inline_op.requirement,
+                             created,
+                             &footprint)) {
     log_mapper.error(
         "FlexFlow Mapper failed allocation of size %zd bytes"
         " for region requirement of inline ammping in task %s (UID %lld)"
         " in memory " IDFMT "for processor " IDFMT ".",
-        footprint, inline_op.parent_task->get_task_name(),
-        inline_op.parent_task->get_unique_id(), target_memory.id,
+        footprint,
+        inline_op.parent_task->get_task_name(),
+        inline_op.parent_task->get_unique_id(),
+        target_memory.id,
         inline_op.parent_task->current_proc.id);
     assert(false);
   } else {
@@ -842,12 +904,13 @@ void FFMapper::select_inline_sources(const MapperContext ctx,
                                      SelectInlineSrcInput const &input,
                                      SelectInlineSrcOutput &output) {
   // assert(false);
-  default_policy_select_sources(ctx, input.target, input.source_instances,
-                                output.chosen_ranking);
+  default_policy_select_sources(
+      ctx, input.target, input.source_instances, output.chosen_ranking);
 }
 
 void FFMapper::create_inline_temporary_instance(
-    const MapperContext ctx, InlineMapping const &inline_op,
+    const MapperContext ctx,
+    InlineMapping const &inline_op,
     CreateInlineTemporaryInput const &input,
     CreateInlineTemporaryOutput &output) {
   assert(false);
@@ -859,29 +922,36 @@ void FFMapper::report_profiling(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::map_copy(const MapperContext ctx, Copy const &copy,
-                        MapCopyInput const &input, MapCopyOutput &output) {
+void FFMapper::map_copy(const MapperContext ctx,
+                        Copy const &copy,
+                        MapCopyInput const &input,
+                        MapCopyOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_copy_sources(const MapperContext ctx, Copy const &copy,
+void FFMapper::select_copy_sources(const MapperContext ctx,
+                                   Copy const &copy,
                                    SelectCopySrcInput const &input,
                                    SelectCopySrcOutput &output) {
   assert(false);
 }
 
 void FFMapper::create_copy_temporary_instance(
-    const MapperContext ctx, Copy const &copy,
-    CreateCopyTemporaryInput const &input, CreateCopyTemporaryOutput &output) {
+    const MapperContext ctx,
+    Copy const &copy,
+    CreateCopyTemporaryInput const &input,
+    CreateCopyTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx, Copy const &copy,
+void FFMapper::speculate(const MapperContext ctx,
+                         Copy const &copy,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx, Copy const &copy,
+void FFMapper::report_profiling(const MapperContext ctx,
+                                Copy const &copy,
                                 CopyProfilingInfo const &input) {
   assert(false);
 }
@@ -894,25 +964,30 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::map_close(const MapperContext ctx, Close const &close,
-                         MapCloseInput const &input, MapCloseOutput &output) {
+void FFMapper::map_close(const MapperContext ctx,
+                         Close const &close,
+                         MapCloseInput const &input,
+                         MapCloseOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_close_sources(const MapperContext ctx, Close const &close,
+void FFMapper::select_close_sources(const MapperContext ctx,
+                                    Close const &close,
                                     SelectCloseSrcInput const &input,
                                     SelectCloseSrcOutput &output) {
   assert(false);
 }
 
 void FFMapper::create_close_temporary_instance(
-    const MapperContext ctx, Close const &close,
+    const MapperContext ctx,
+    Close const &close,
     CreateCloseTemporaryInput const &input,
     CreateCloseTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx, Close const &close,
+void FFMapper::report_profiling(const MapperContext ctx,
+                                Close const &close,
                                 CloseProfilingInfo const &input) {
   assert(false);
 }
@@ -925,18 +1000,21 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::map_acquire(const MapperContext ctx, Acquire const &acquire,
+void FFMapper::map_acquire(const MapperContext ctx,
+                           Acquire const &acquire,
                            MapAcquireInput const &input,
                            MapAcquireOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx, Acquire const &acquire,
+void FFMapper::speculate(const MapperContext ctx,
+                         Acquire const &acquire,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx, Acquire const &acquire,
+void FFMapper::report_profiling(const MapperContext ctx,
+                                Acquire const &acquire,
                                 AcquireProfilingInfo const &input) {
   assert(false);
 }
@@ -949,7 +1027,8 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::map_release(const MapperContext ctx, Release const &release,
+void FFMapper::map_release(const MapperContext ctx,
+                           Release const &release,
                            MapReleaseInput const &input,
                            MapReleaseOutput &output) {
   assert(false);
@@ -963,18 +1042,21 @@ void FFMapper::select_release_sources(const MapperContext ctx,
 }
 
 void FFMapper::create_release_temporary_instance(
-    const MapperContext ctx, Release const &release,
+    const MapperContext ctx,
+    Release const &release,
     CreateReleaseTemporaryInput const &input,
     CreateReleaseTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx, Release const &release,
+void FFMapper::speculate(const MapperContext ctx,
+                         Release const &release,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx, Release const &release,
+void FFMapper::report_profiling(const MapperContext ctx,
+                                Release const &release,
                                 ReleaseProfilingInfo const &input) {
   assert(false);
 }
@@ -987,7 +1069,8 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
 }
 
 void FFMapper::select_partition_projection(
-    const MapperContext ctx, Partition const &partition,
+    const MapperContext ctx,
+    Partition const &partition,
     SelectPartitionProjectionInput const &input,
     SelectPartitionProjectionOutput &output) {
   assert(false);
@@ -1008,7 +1091,8 @@ void FFMapper::select_partition_sources(const MapperContext ctx,
 }
 
 void FFMapper::create_partition_temporary_instance(
-    const MapperContext ctx, Partition const &partition,
+    const MapperContext ctx,
+    Partition const &partition,
     CreatePartitionTemporaryInput const &input,
     CreatePartitionTemporaryOutput &output) {
   assert(false);
@@ -1034,14 +1118,16 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::configure_context(const MapperContext ctx, Task const &task,
+void FFMapper::configure_context(const MapperContext ctx,
+                                 Task const &task,
                                  ContextConfigOutput &output) {
   // Increase max_window_size to allow Legion tracing to capture larger traces
   output.max_window_size = 16 * 1024;
   // Use the default values and do nothing else
 }
 
-void FFMapper::select_tunable_value(const MapperContext ctx, Task const &task,
+void FFMapper::select_tunable_value(const MapperContext ctx,
+                                    Task const &task,
                                     SelectTunableInput const &input,
                                     SelectTunableOutput &output) {
   assert(false);
@@ -1090,7 +1176,8 @@ void FFMapper::select_tasks_to_map(const MapperContext ctx,
                                    SelectMappingOutput &output) {
   // Just map all the ready tasks
   for (std::list<Task const *>::const_iterator it = input.ready_tasks.begin();
-       it != input.ready_tasks.end(); it++) {
+       it != input.ready_tasks.end();
+       it++) {
     output.map_tasks.insert(*it);
   }
 }
@@ -1131,7 +1218,8 @@ void FFMapper::permit_steal_request(const MapperContext ctx,
       result = result * c1 + c2 + req.partition.get_field_space().get_id();
     }
     for (std::set<FieldID>::const_iterator it = req.privilege_fields.begin();
-         it != req.privilege_fields.end(); it++) {
+         it != req.privilege_fields.end();
+         it++) {
       result = result * c1 + c2 + *it;
     }
     result = result * c1 + c2 + req.privilege;
@@ -1142,16 +1230,16 @@ void FFMapper::permit_steal_request(const MapperContext ctx,
 }
 
 std::vector<Processor> const &
-FFMapper::all_procs_by_kind(Processor::Kind kind) {
+    FFMapper::all_procs_by_kind(Processor::Kind kind) {
   switch (kind) {
-  case Processor::LOC_PROC:
-    return all_cpus;
-  case Processor::TOC_PROC:
-    return all_gpus;
-  case Processor::PY_PROC:
-    return all_pys;
-  default:
-    assert(0);
+    case Processor::LOC_PROC:
+      return all_cpus;
+    case Processor::TOC_PROC:
+      return all_gpus;
+    case Processor::PY_PROC:
+      return all_pys;
+    default:
+      assert(0);
   }
   return all_cpus;
 }
@@ -1181,19 +1269,28 @@ Memory FFMapper::default_select_target_memory(MapperContext ctx,
   }
 }
 
-bool FFMapper::default_make_instance(MapperContext ctx, Memory target_mem,
+bool FFMapper::default_make_instance(MapperContext ctx,
+                                     Memory target_mem,
                                      LayoutConstraintSet const &constraints,
                                      PhysicalInstance &result,
                                      bool meets_constraints,
                                      RegionRequirement const &req,
-                                     bool &created, size_t *footprint) {
+                                     bool &created,
+                                     size_t *footprint) {
   LogicalRegion target_region = req.region;
   bool tight_region_bounds = true;
   created = true;
   std::vector<LogicalRegion> target_regions(1, target_region);
-  if (!runtime->find_or_create_physical_instance(
-          ctx, target_mem, constraints, target_regions, result, created,
-          true /*acquire*/, 0 /*priority*/, tight_region_bounds, footprint)) {
+  if (!runtime->find_or_create_physical_instance(ctx,
+                                                 target_mem,
+                                                 constraints,
+                                                 target_regions,
+                                                 result,
+                                                 created,
+                                                 true /*acquire*/,
+                                                 0 /*priority*/,
+                                                 tight_region_bounds,
+                                                 footprint)) {
     return false;
   }
   if (created) {
@@ -1206,7 +1303,9 @@ bool FFMapper::default_make_instance(MapperContext ctx, Memory target_mem,
 }
 
 LayoutConstraintID FFMapper::default_select_layout_constraints(
-    MapperContext ctx, Memory target_memory, RegionRequirement const &req,
+    MapperContext ctx,
+    Memory target_memory,
+    RegionRequirement const &req,
     bool needs_field_constraint_check) {
   assert(req.privilege != LEGION_REDUCE);
   std::pair<Memory::Kind, FieldSpace> constraint_key(
@@ -1295,7 +1394,8 @@ void FFMapper::default_select_constraints(MapperContext ctx,
   }
 }
 
-void FFMapper::update_mappers(Machine machine, Runtime *runtime,
+void FFMapper::update_mappers(Machine machine,
+                              Runtime *runtime,
                               std::set<Processor> const &local_procs) {
   /*
     for (unsigned idx = 0; idx < proc_mem_affinities.size(); ++idx) {
@@ -1341,10 +1441,14 @@ void FFMapper::update_mappers(Machine machine, Runtime *runtime,
   }
 
   for (std::set<Processor>::const_iterator it = local_procs.begin();
-       it != local_procs.end(); it++) {
-    FFMapper *mapper = new FFMapper(
-        runtime->get_mapper_runtime(), machine, *it, "FlexFlow Mapper",
-        enable_control_replication, log_instance_creation);
+       it != local_procs.end();
+       it++) {
+    FFMapper *mapper = new FFMapper(runtime->get_mapper_runtime(),
+                                    machine,
+                                    *it,
+                                    "FlexFlow Mapper",
+                                    enable_control_replication,
+                                    log_instance_creation);
     runtime->replace_default_mapper(mapper, *it);
   }
 }

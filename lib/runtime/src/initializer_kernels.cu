@@ -25,7 +25,8 @@ namespace FlexFlow {
 
 void UniformInitializer::init_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
-                                   Context ctx, Runtime *runtime) {
+                                   Context ctx,
+                                   Runtime *runtime) {
 
   assert(regions.size() == task->regions.size());
   UniformInitializer *initializer = (UniformInitializer *)task->args;
@@ -43,30 +44,36 @@ void UniformInitializer::init_task(Task const *task,
         ctx, task->regions[i].region.get_index_space());
     float *w;
     switch (domain.get_dim()) {
-    case 0: {
-      // Do not support 0-dim parameters
-      assert(false);
-      break;
-    }
+      case 0: {
+        // Do not support 0-dim parameters
+        assert(false);
+        break;
+      }
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    TensorAccessorW<float, DIM> accW(regions[i], task->regions[i], FID_DATA,   \
-                                     ctx, runtime, false /*readOutput*/);      \
+    TensorAccessorW<float, DIM> accW(regions[i],                               \
+                                     task->regions[i],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     false /*readOutput*/);                    \
     w = accW.ptr;                                                              \
     break;                                                                     \
   }
-      LEGION_FOREACH_N(DIMFUNC)
+        LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      assert(false);
-      break;
-    }
+      default: {
+        assert(false);
+        break;
+      }
     }
     curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
     checkCUDA(curandGenerateUniform(gen, w, domain.get_volume()));
-    scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0,
-                   stream>>>(w, domain.get_volume(), initializer->min_val,
-                             initializer->max_val);
+    scale_kernel<<<GET_BLOCKS(domain.get_volume()),
+                   CUDA_NUM_THREADS,
+                   0,
+                   stream>>>(
+        w, domain.get_volume(), initializer->min_val, initializer->max_val);
   }
   checkCUDA(cudaDeviceSynchronize());
   curandDestroyGenerator(gen);
@@ -74,11 +81,18 @@ void UniformInitializer::init_task(Task const *task,
 
 template <int NDIM>
 void init_task_inner(Task const *task,
-                     std::vector<PhysicalRegion> const &regions, Context ctx,
-                     Runtime *runtime, Domain const &domain, float *&w,
+                     std::vector<PhysicalRegion> const &regions,
+                     Context ctx,
+                     Runtime *runtime,
+                     Domain const &domain,
+                     float *&w,
                      float &scale) {
-  TensorAccessorW<float, NDIM> accW(regions[0], task->regions[0], FID_DATA, ctx,
-                                    runtime, false /*readOutput*/);
+  TensorAccessorW<float, NDIM> accW(regions[0],
+                                    task->regions[0],
+                                    FID_DATA,
+                                    ctx,
+                                    runtime,
+                                    false /*readOutput*/);
   w = accW.ptr;
   // reference: tensorflow code for computing fan_in/fan_out
   // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
@@ -96,15 +110,16 @@ void init_task_inner(Task const *task,
 
 void GlorotUniform::init_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
-                              Context ctx, Runtime *runtime) {
+                              Context ctx,
+                              Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   GlorotUniform const *gu = (GlorotUniform const *)task->args;
   assert(gu->data_type == DT_FLOAT);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  float *w = helperGetTensorPointerWO<float>(regions[0], task->regions[0],
-                                             FID_DATA, ctx, runtime);
+  float *w = helperGetTensorPointerWO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
   cudaStream_t stream;
@@ -115,7 +130,9 @@ void GlorotUniform::init_task(Task const *task,
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
   fprintf(stderr, "seed = %d scale = %.4lf\n", initializer->seed, gu->scale);
   checkCUDA(curandGenerateUniform(gen, w, domain.get_volume()));
-  scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0,
+  scale_kernel<<<GET_BLOCKS(domain.get_volume()),
+                 CUDA_NUM_THREADS,
+                 0,
                  stream>>>(w, domain.get_volume(), -gu->scale, gu->scale);
   checkCUDA(cudaDeviceSynchronize());
   curandDestroyGenerator(gen);
@@ -123,7 +140,8 @@ void GlorotUniform::init_task(Task const *task,
 
 void NormInitializer::init_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
-                                Context ctx, Runtime *runtime) {
+                                Context ctx,
+                                Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   Domain domain = runtime->get_index_space_domain(
@@ -132,15 +150,19 @@ void NormInitializer::init_task(Task const *task,
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    TensorAccessorW<float, DIM> accW(regions[0], task->regions[0], FID_DATA,   \
-                                     ctx, runtime, false /*readOutput*/);      \
+    TensorAccessorW<float, DIM> accW(regions[0],                               \
+                                     task->regions[0],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     false /*readOutput*/);                    \
     w = accW.ptr;                                                              \
     break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
@@ -164,13 +186,15 @@ void NormInitializer::init_task(Task const *task,
     for (size_t i = 0; i < domain.get_volume(); i++) {
       w_dram[i] = distribution(generator);
     }
-    checkCUDA(cudaMemcpy(w, w_dram, sizeof(float) * domain.get_volume(),
+    checkCUDA(cudaMemcpy(w,
+                         w_dram,
+                         sizeof(float) * domain.get_volume(),
                          cudaMemcpyHostToDevice));
     checkCUDA(cudaDeviceSynchronize());
     free(w_dram);
   } else {
-    checkCURAND(curandGenerateNormal(gen, w, domain.get_volume(),
-                                     initializer->mean, initializer->stddev));
+    checkCURAND(curandGenerateNormal(
+        gen, w, domain.get_volume(), initializer->mean, initializer->stddev));
     checkCUDA(cudaDeviceSynchronize());
   }
   curandDestroyGenerator(gen);
@@ -178,7 +202,8 @@ void NormInitializer::init_task(Task const *task,
 
 void ZeroInitializer::init_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
-                                Context ctx, Runtime *runtime) {
+                                Context ctx,
+                                Runtime *runtime) {
   ZeroInitMeta *meta = (ZeroInitMeta *)task->args;
   assert(meta->num_regions == regions.size());
   assert(regions.size() == task->regions.size());
@@ -188,14 +213,14 @@ void ZeroInitializer::init_task(Task const *task,
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     if (meta->data_types[i] == DT_HALF) {
-      half *w = helperGetTensorPointerWO<half>(regions[i], task->regions[i],
-                                               FID_DATA, ctx, runtime);
+      half *w = helperGetTensorPointerWO<half>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
       assign_kernel<half>
           <<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
               w, domain.get_volume(), 0.0f);
     } else if (meta->data_types[i] == DT_FLOAT) {
-      float *w = helperGetTensorPointerWO<float>(regions[i], task->regions[i],
-                                                 FID_DATA, ctx, runtime);
+      float *w = helperGetTensorPointerWO<float>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
       assign_kernel<float>
           <<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
               w, domain.get_volume(), 0.0f);
@@ -220,7 +245,8 @@ void ZeroInitializer::init_task(Task const *task,
 
 void ConstantInitializer::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx, Runtime *runtime) {
+                                    Context ctx,
+                                    Runtime *runtime) {
   ConstantInitializer *initializer = (ConstantInitializer *)task->args;
   assert(regions.size() == task->regions.size());
   cudaStream_t stream;
@@ -229,33 +255,39 @@ void ConstantInitializer::init_task(Task const *task,
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     switch (initializer->data_type) {
-    case DT_FLOAT: {
-      float *w = helperGetTensorPointerWO<float>(regions[i], task->regions[i],
-                                                 FID_DATA, ctx, runtime);
-      assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0,
-                      stream>>>(w, domain.get_volume(),
-                                initializer->float_value);
-      break;
-    }
-    case DT_INT64: {
-      int64_t *w = helperGetTensorPointerWO<int64_t>(
-          regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0,
-                      stream>>>(w, domain.get_volume(),
-                                initializer->int64_value);
-      break;
-    }
-    case DT_INT32: {
-      int *w = helperGetTensorPointerWO<int>(regions[i], task->regions[i],
-                                             FID_DATA, ctx, runtime);
-      assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0,
-                      stream>>>(w, domain.get_volume(),
-                                initializer->int32_value);
-      break;
-    }
-    default: {
-      assert(false && "Unsupported Initialzier Type");
-    }
+      case DT_FLOAT: {
+        float *w = helperGetTensorPointerWO<float>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()),
+                        CUDA_NUM_THREADS,
+                        0,
+                        stream>>>(
+            w, domain.get_volume(), initializer->float_value);
+        break;
+      }
+      case DT_INT64: {
+        int64_t *w = helperGetTensorPointerWO<int64_t>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()),
+                        CUDA_NUM_THREADS,
+                        0,
+                        stream>>>(
+            w, domain.get_volume(), initializer->int64_value);
+        break;
+      }
+      case DT_INT32: {
+        int *w = helperGetTensorPointerWO<int>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()),
+                        CUDA_NUM_THREADS,
+                        0,
+                        stream>>>(
+            w, domain.get_volume(), initializer->int32_value);
+        break;
+      }
+      default: {
+        assert(false && "Unsupported Initialzier Type");
+      }
     }
   }
   checkCUDA(cudaDeviceSynchronize());

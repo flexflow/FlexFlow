@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<SPLIT_INIT_TASK_ID>();
-template <> void register_task<SPLIT_FWD_TASK_ID>();
-template <> void register_task<SPLIT_BWD_TASK_ID>();
+template <>
+void register_task<SPLIT_INIT_TASK_ID>();
+template <>
+void register_task<SPLIT_FWD_TASK_ID>();
+template <>
+void register_task<SPLIT_BWD_TASK_ID>();
 
 OpTaskInvocation init(SplitAttrs const &);
 OpTaskInvocation forward(SplitAttrs const &);

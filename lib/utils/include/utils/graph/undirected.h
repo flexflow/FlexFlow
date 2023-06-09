@@ -43,7 +43,7 @@ struct IUndirectedGraphView : public IGraphView {
   IUndirectedGraphView &operator=(IUndirectedGraphView const &) = delete;
 
   virtual std::unordered_set<Edge>
-  query_edges(UndirectedEdgeQuery const &) const = 0;
+      query_edges(UndirectedEdgeQuery const &) const = 0;
   virtual ~IUndirectedGraphView();
 
 protected:
@@ -72,7 +72,9 @@ public:
     return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
   }
 
-  IUndirectedGraphView const *unsafe() const { return this->ptr.get(); }
+  IUndirectedGraphView const *unsafe() const {
+    return this->ptr.get();
+  }
 
   template <typename T, typename... Args>
   static
@@ -127,7 +129,7 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IUndirectedGraph, T>::value,
                                  UndirectedGraph>::type
-  create() {
+      create() {
     return UndirectedGraph(make_unique<T>());
   }
 

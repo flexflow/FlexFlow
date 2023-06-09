@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<RESHAPE_INIT_TASK_ID>();
-template <> void register_task<RESHAPE_FWD_TASK_ID>();
-template <> void register_task<RESHAPE_BWD_TASK_ID>();
+template <>
+void register_task<RESHAPE_INIT_TASK_ID>();
+template <>
+void register_task<RESHAPE_FWD_TASK_ID>();
+template <>
+void register_task<RESHAPE_BWD_TASK_ID>();
 
 OpTaskInvocation init(ReshapeAttrs const &);
 OpTaskInvocation forward(ReshapeAttrs const &);

@@ -60,21 +60,21 @@ struct formatter<::FlexFlow::LossFunction> : formatter<string_view> {
 
     string_view name = "unknown";
     switch (d) {
-    case LossFunction::CATEGORICAL_CROSSENTROPY:
-      name = "CategoricalCrossEntropy";
-      break;
-    case LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY:
-      name = "SparseCategoricalCrossEntropy";
-      break;
-    case LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE:
-      name = "MeanSquaredErrorAvgReduce";
-      break;
-    case LossFunction::MEAN_SQUARED_ERROR_SUM_REDUCE:
-      name = "MeanSquaredErrorSumReduce";
-      break;
-    case LossFunction::IDENTITY:
-      name = "Identity";
-      break;
+      case LossFunction::CATEGORICAL_CROSSENTROPY:
+        name = "CategoricalCrossEntropy";
+        break;
+      case LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY:
+        name = "SparseCategoricalCrossEntropy";
+        break;
+      case LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE:
+        name = "MeanSquaredErrorAvgReduce";
+        break;
+      case LossFunction::MEAN_SQUARED_ERROR_SUM_REDUCE:
+        name = "MeanSquaredErrorSumReduce";
+        break;
+      case LossFunction::IDENTITY:
+        name = "Identity";
+        break;
     }
     return formatter<string_view>::format(name, ctx);
   }

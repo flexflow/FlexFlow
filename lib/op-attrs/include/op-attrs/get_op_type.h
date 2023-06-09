@@ -41,7 +41,8 @@ OperatorType get_op_type(RepartitionAttrs const &);
 OperatorType get_op_type(ReplicateAttrs const &);
 
 struct GetOpTypeFunctor {
-  template <typename T> OperatorType operator()(T const &t) {
+  template <typename T>
+  OperatorType operator()(T const &t) {
     return get_op_type(t);
   }
 };

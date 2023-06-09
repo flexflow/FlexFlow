@@ -21,9 +21,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<CAST_INIT_TASK_ID>();
-template <> void register_task<CAST_FWD_TASK_ID>();
-template <> void register_task<CAST_BWD_TASK_ID>();
+template <>
+void register_task<CAST_INIT_TASK_ID>();
+template <>
+void register_task<CAST_FWD_TASK_ID>();
+template <>
+void register_task<CAST_BWD_TASK_ID>();
 
 OpTaskInvocation init(CastAttrs const &);
 OpTaskInvocation forward(CastAttrs const &);

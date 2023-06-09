@@ -7,9 +7,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<LAYERNORM_INIT_TASK_ID>();
-template <> void register_task<LAYERNORM_FWD_TASK_ID>();
-template <> void register_task<LAYERNORM_BWD_TASK_ID>();
+template <>
+void register_task<LAYERNORM_INIT_TASK_ID>();
+template <>
+void register_task<LAYERNORM_FWD_TASK_ID>();
+template <>
+void register_task<LAYERNORM_BWD_TASK_ID>();
 
 OpTaskInvocation init(LayerNormAttrs const &);
 OpTaskInvocation forward(LayerNormAttrs const &);

@@ -104,42 +104,72 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   auto output = allocate_output(env, output_shape);
   auto output_grad = allocate_output_grad(env, output_shape);
 
-  MHAPerDeviceState per_device_state = init_kernel(
-      get_ff_handle(env), create_allocator(env), get_num_samples(input_shapes),
-      attrs.num_heads, get_qSize(input_shapes), get_kSize(input_shapes),
-      get_vSize(input_shapes), get_qProjSize(attrs), get_kProjSize(attrs),
-      get_vProjSize(attrs), get_oProjSize(attrs), get_qoSeqLength(input_shapes),
-      get_kvSeqLength(input_shapes), attrs.add_bias_kv);
+  MHAPerDeviceState per_device_state =
+      init_kernel(get_ff_handle(env),
+                  create_allocator(env),
+                  get_num_samples(input_shapes),
+                  attrs.num_heads,
+                  get_qSize(input_shapes),
+                  get_kSize(input_shapes),
+                  get_vSize(input_shapes),
+                  get_qProjSize(attrs),
+                  get_kProjSize(attrs),
+                  get_vProjSize(attrs),
+                  get_oProjSize(attrs),
+                  get_qoSeqLength(input_shapes),
+                  get_kvSeqLength(input_shapes),
+                  attrs.add_bias_kv);
 
-  float forward_time =
-      profiling_wrapper(forward_kernel, settings, get_float_ptr(query),
-                        get_float_ptr(key), get_float_ptr(value),
-                        get_float_ptr(weights), get_float_ptr(output))
-          .value();
+  float forward_time = profiling_wrapper(forward_kernel,
+                                         settings,
+                                         get_float_ptr(query),
+                                         get_float_ptr(key),
+                                         get_float_ptr(value),
+                                         get_float_ptr(weights),
+                                         get_float_ptr(output))
+                           .value();
 
-  float backward_time =
-      profiling_wrapper(backward_kernel, settings, get_float_ptr(query),
-                        get_float_ptr(query_grad), get_float_ptr(key),
-                        get_float_ptr(key_grad), get_float_ptr(value),
-                        get_float_ptr(value_grad), get_float_ptr(weights),
-                        get_float_ptr(weights_grad), get_float_ptr(output_grad))
-          .value();
+  float backward_time = profiling_wrapper(backward_kernel,
+                                          settings,
+                                          get_float_ptr(query),
+                                          get_float_ptr(query_grad),
+                                          get_float_ptr(key),
+                                          get_float_ptr(key_grad),
+                                          get_float_ptr(value),
+                                          get_float_ptr(value_grad),
+                                          get_float_ptr(weights),
+                                          get_float_ptr(weights_grad),
+                                          get_float_ptr(output_grad))
+                            .value();
 
   float sync_time = default_estimate_sync_time(env);
 
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-Tensor FFModel::multihead_attention(const Tensor query, const Tensor key,
-                                    const Tensor value, int embed_dim,
-                                    int num_heads, int kdim, int vdim,
-                                    float dropout, bool bias, bool add_bias_kv,
+Tensor FFModel::multihead_attention(const Tensor query,
+                                    const Tensor key,
+                                    const Tensor value,
+                                    int embed_dim,
+                                    int num_heads,
+                                    int kdim,
+                                    int vdim,
+                                    float dropout,
+                                    bool bias,
+                                    bool add_bias_kv,
                                     bool add_zero_attn,
                                     Initializer *kernel_initializer,
                                     char const *name) {
-  Layer *li =
-      new Layer(this, OP_MULTIHEAD_ATTENTION, DT_FLOAT, name, 3 /*inputs*/,
-                1 /*weights*/, 1 /*outputs*/, query, key, value);
+  Layer *li = new Layer(this,
+                        OP_MULTIHEAD_ATTENTION,
+                        DT_FLOAT,
+                        name,
+                        3 /*inputs*/,
+                        1 /*weights*/,
+                        1 /*outputs*/,
+                        query,
+                        key,
+                        value);
   {
     int numdims = query->num_dims;
     int dims[MAX_TENSOR_DIM];
@@ -147,8 +177,8 @@ Tensor FFModel::multihead_attention(const Tensor query, const Tensor key,
       dims[i] = query->dims[i];
     }
     dims[0] = embed_dim;
-    li->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT, li,
-                                                   0, true /*create_grad*/);
+    li->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, DT_FLOAT, li, 0, true /*create_grad*/);
   }
   {
     // Compute weight size
@@ -160,9 +190,13 @@ Tensor FFModel::multihead_attention(const Tensor query, const Tensor key,
     int vParas = vProjSize * vSize;
     int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
-    li->weights[0] = create_weight_legion_ordering(
-        2, dims, DT_FLOAT, li, true /*create_grad*/, kernel_initializer,
-        CHOSEN_SYNC_TYPE);
+    li->weights[0] = create_weight_legion_ordering(2,
+                                                   dims,
+                                                   DT_FLOAT,
+                                                   li,
+                                                   true /*create_grad*/,
+                                                   kernel_initializer,
+                                                   CHOSEN_SYNC_TYPE);
   }
   li->data_type = DT_FLOAT;
   li->add_int_property("embed_dim", embed_dim);
@@ -177,16 +211,39 @@ Tensor FFModel::multihead_attention(const Tensor query, const Tensor key,
   return li->outputs[0];
 }
 
-MultiHeadAttention::MultiHeadAttention(
-    FFModel &model, LayerID const &_layer_guid, const ParallelTensor _query,
-    const ParallelTensor _key, const ParallelTensor _value, int _embed_dim,
-    int _num_heads, int _kdim, int _vdim, float _dropout, bool _bias,
-    bool _add_bias_kv, bool _add_zero_attn, bool allocate_weights,
-    char const *name)
+MultiHeadAttention::MultiHeadAttention(FFModel &model,
+                                       LayerID const &_layer_guid,
+                                       const ParallelTensor _query,
+                                       const ParallelTensor _key,
+                                       const ParallelTensor _value,
+                                       int _embed_dim,
+                                       int _num_heads,
+                                       int _kdim,
+                                       int _vdim,
+                                       float _dropout,
+                                       bool _bias,
+                                       bool _add_bias_kv,
+                                       bool _add_zero_attn,
+                                       bool allocate_weights,
+                                       char const *name)
     // Initializer* _bias_initializer)
-    : Op(model, OP_MULTIHEAD_ATTENTION, DT_FLOAT, name, 3 /*inputs*/,
-         1 /*weights*/, 1 /*outputs*/, _query, _key, _value),
-      attrs(_embed_dim, _num_heads, _kdim, _vdim, _dropout, _bias, _add_bias_kv,
+    : Op(model,
+         OP_MULTIHEAD_ATTENTION,
+         DT_FLOAT,
+         name,
+         3 /*inputs*/,
+         1 /*weights*/,
+         1 /*outputs*/,
+         _query,
+         _key,
+         _value),
+      attrs(_embed_dim,
+            _num_heads,
+            _kdim,
+            _vdim,
+            _dropout,
+            _bias,
+            _add_bias_kv,
             _add_zero_attn),
       qSize(_query->dims[0].size), kSize(_key->dims[0].size),
       vSize(_value->dims[0].size), qProjSize(_kdim),
@@ -229,9 +286,12 @@ MultiHeadAttention::MultiHeadAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(
-        dims, DT_FLOAT, NULL /*owner_op*/, true /*create_grad*/, initializer,
-        comm_type);
+    weights[0] = model.create_parallel_weight<3>(dims,
+                                                 DT_FLOAT,
+                                                 NULL /*owner_op*/,
+                                                 true /*create_grad*/,
+                                                 initializer,
+                                                 comm_type);
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -243,16 +303,40 @@ MultiHeadAttention::MultiHeadAttention(
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-MultiHeadAttention::MultiHeadAttention(
-    FFModel &model, const ParallelTensor _query, const ParallelTensor _key,
-    const ParallelTensor _value, const ParallelTensor _weight, int _embed_dim,
-    int _num_heads, int _kdim, int _vdim, float _dropout, bool _bias,
-    bool _add_bias_kv, bool _add_zero_attn, bool allocate_weights,
-    char const *name)
+MultiHeadAttention::MultiHeadAttention(FFModel &model,
+                                       const ParallelTensor _query,
+                                       const ParallelTensor _key,
+                                       const ParallelTensor _value,
+                                       const ParallelTensor _weight,
+                                       int _embed_dim,
+                                       int _num_heads,
+                                       int _kdim,
+                                       int _vdim,
+                                       float _dropout,
+                                       bool _bias,
+                                       bool _add_bias_kv,
+                                       bool _add_zero_attn,
+                                       bool allocate_weights,
+                                       char const *name)
     // Initializer* _bias_initializer)
-    : Op(model, OP_MULTIHEAD_ATTENTION, DT_FLOAT, name, 3 /*inputs*/,
-         1 /*weights*/, 1 /*outputs*/, _query, _key, _value, _weight),
-      attrs(_embed_dim, _num_heads, _kdim, _vdim, _dropout, _bias, _add_bias_kv,
+    : Op(model,
+         OP_MULTIHEAD_ATTENTION,
+         DT_FLOAT,
+         name,
+         3 /*inputs*/,
+         1 /*weights*/,
+         1 /*outputs*/,
+         _query,
+         _key,
+         _value,
+         _weight),
+      attrs(_embed_dim,
+            _num_heads,
+            _kdim,
+            _vdim,
+            _dropout,
+            _bias,
+            _add_bias_kv,
             _add_zero_attn),
       qSize(_query->dims[0].size), kSize(_key->dims[0].size),
       vSize(_value->dims[0].size), qProjSize(_kdim),
@@ -294,9 +378,12 @@ MultiHeadAttention::MultiHeadAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(
-        dims, DT_FLOAT, NULL /*owner_op*/, true /*create_grad*/, initializer,
-        comm_type);
+    weights[0] = model.create_parallel_weight<3>(dims,
+                                                 DT_FLOAT,
+                                                 NULL /*owner_op*/,
+                                                 true /*create_grad*/,
+                                                 initializer,
+                                                 comm_type);
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _query->num_dims, dims, DT_FLOAT, this);
@@ -312,7 +399,8 @@ MultiHeadAttention::MultiHeadAttention(
 
 static PerDeviceOpState *init_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
-                                   Context ctx, Runtime *runtime) {
+                                   Context ctx,
+                                   Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
@@ -346,10 +434,20 @@ static PerDeviceOpState *init_task(Task const *task,
   assert(qoSeqLength == output.shape[1]);
   assert(oProjSize(attrs) == output.shape[0]);
 
-  MHAPerDeviceState *m = new MHAPerDeviceState(
-      handle, get_gpu_memory_allocator(task), num_samples, num_heads, qSize,
-      kSize, vSize, qProjSize, kProjSize(attrs), vProjSize(attrs),
-      oProjSize(attrs), qoSeqLength, kvSeqLength, attrs.add_bias_kv);
+  MHAPerDeviceState *m = new MHAPerDeviceState(handle,
+                                               get_gpu_memory_allocator(task),
+                                               num_samples,
+                                               num_heads,
+                                               qSize,
+                                               kSize,
+                                               vSize,
+                                               qProjSize,
+                                               kProjSize(attrs),
+                                               vProjSize(attrs),
+                                               oProjSize(attrs),
+                                               qoSeqLength,
+                                               kvSeqLength,
+                                               attrs.add_bias_kv);
 
   m->profiling = profiling;
   assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
@@ -405,7 +503,8 @@ static PerDeviceOpState *init_task(Task const *task,
 
 static void forward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
-                         Context ctx, Runtime *runtime) {
+                         Context ctx,
+                         Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   auto query = acc.get_tensor<READ_ONLY>(QUERY);
@@ -415,10 +514,15 @@ static void forward_task(Task const *task,
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
 
-  profile(forward_kernel, m->profiling,
-          "[MultiHeadAttention] forward_time = %.2lfms\n", m,
-          query.get_float_ptr(), key.get_float_ptr(), value.get_float_ptr(),
-          weight.get_float_ptr(), output.get_float_ptr());
+  profile(forward_kernel,
+          m->profiling,
+          "[MultiHeadAttention] forward_time = %.2lfms\n",
+          m,
+          query.get_float_ptr(),
+          key.get_float_ptr(),
+          value.get_float_ptr(),
+          weight.get_float_ptr(),
+          output.get_float_ptr());
 }
 
 // void MultiHeadAttention::backward(FFModel const &ff) {
@@ -501,7 +605,8 @@ static void forward_task(Task const *task,
 
 static void backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx, Runtime *runtime) {
+                          Context ctx,
+                          Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   auto query = acc.get_tensor<READ_ONLY>(QUERY);
@@ -528,11 +633,18 @@ static void backward_task(Task const *task,
   assert(query_grad.shape == query.shape);
   assert(weight_grad.shape.get_volume() == weight.shape.get_volume());
 
-  profile(backward_kernel, m->profiling,
-          "[MultiHeadAttention] backward_time = %.2lfms\n", m,
-          query.get_float_ptr(), query_grad.get_float_ptr(),
-          key.get_float_ptr(), key_grad_ptr, value.get_float_ptr(),
-          value_grad_ptr, weight.get_float_ptr(), weight_grad.get_float_ptr(),
+  profile(backward_kernel,
+          m->profiling,
+          "[MultiHeadAttention] backward_time = %.2lfms\n",
+          m,
+          query.get_float_ptr(),
+          query_grad.get_float_ptr(),
+          key.get_float_ptr(),
+          key_grad_ptr,
+          value.get_float_ptr(),
+          value_grad_ptr,
+          weight.get_float_ptr(),
+          weight_grad.get_float_ptr(),
           output_grad.get_float_ptr());
 }
 
@@ -615,9 +727,17 @@ bool MultiHeadAttention::measure_operator_cost(
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&](ffStream_t stream) {
-      backward_kernel(stream, m, query_ptr, query_grad_ptr, key_ptr,
-                      key_grad_ptr, value_ptr, value_grad_ptr, weight_ptr,
-                      weight_grad_ptr, output_grad_ptr);
+      backward_kernel(stream,
+                      m,
+                      query_ptr,
+                      query_grad_ptr,
+                      key_ptr,
+                      key_grad_ptr,
+                      value_ptr,
+                      value_grad_ptr,
+                      weight_ptr,
+                      weight_grad_ptr,
+                      output_grad_ptr);
     };
   }
 
@@ -627,21 +747,36 @@ bool MultiHeadAttention::measure_operator_cost(
     printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) "
            "value(%d %d %d) output(%d %d %d)"
            "forward_time(%.4lf) backward_time(%.4lf)\n",
-           sub_query.dims[2].size, sub_query.dims[1].size,
-           sub_query.dims[0].size, sub_key.dims[2].size, sub_key.dims[1].size,
-           sub_key.dims[0].size, sub_value.dims[2].size, sub_value.dims[1].size,
-           sub_value.dims[0].size, sub_output.dims[2].size,
-           sub_output.dims[1].size, sub_output.dims[0].size,
-           cost_metrics.forward_time, cost_metrics.backward_time);
+           sub_query.dims[2].size,
+           sub_query.dims[1].size,
+           sub_query.dims[0].size,
+           sub_key.dims[2].size,
+           sub_key.dims[1].size,
+           sub_key.dims[0].size,
+           sub_value.dims[2].size,
+           sub_value.dims[1].size,
+           sub_value.dims[0].size,
+           sub_output.dims[2].size,
+           sub_output.dims[1].size,
+           sub_output.dims[0].size,
+           cost_metrics.forward_time,
+           cost_metrics.backward_time);
   } else {
     printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) "
            "value(%d %d %d) output(%d %d %d)"
            "forward_time(%.4lf)\n",
-           sub_query.dims[2].size, sub_query.dims[1].size,
-           sub_query.dims[0].size, sub_key.dims[2].size, sub_key.dims[1].size,
-           sub_key.dims[0].size, sub_value.dims[2].size, sub_value.dims[1].size,
-           sub_value.dims[0].size, sub_output.dims[2].size,
-           sub_output.dims[1].size, sub_output.dims[0].size,
+           sub_query.dims[2].size,
+           sub_query.dims[1].size,
+           sub_query.dims[0].size,
+           sub_key.dims[2].size,
+           sub_key.dims[1].size,
+           sub_key.dims[0].size,
+           sub_value.dims[2].size,
+           sub_value.dims[1].size,
+           sub_value.dims[0].size,
+           sub_output.dims[2].size,
+           sub_output.dims[1].size,
+           sub_output.dims[0].size,
            cost_metrics.forward_time);
   }
   // Free multiheadattentionmeta
@@ -649,7 +784,8 @@ bool MultiHeadAttention::measure_operator_cost(
   return true;
 }
 
-template <> void register_task<ATTENTION_INIT_TASK_ID>() {
+template <>
+void register_task<ATTENTION_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<MultiHeadAttentionAttrs>(ATTRS);
@@ -665,11 +801,12 @@ template <> void register_task<ATTENTION_INIT_TASK_ID>() {
   init.add_param_slot(WEIGHTS);
   init.add_output_slot(OUTPUT);
 
-  register_task(ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init,
-                init_task);
+  register_task(
+      ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init, init_task);
 }
 
-template <> void register_task<ATTENTION_FWD_TASK_ID>() {
+template <>
+void register_task<ATTENTION_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(QUERY);
@@ -681,7 +818,8 @@ template <> void register_task<ATTENTION_FWD_TASK_ID>() {
   register_task(ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, fwd_task);
 }
 
-template <> void register_task<ATTENTION_BWD_TASK_ID>() {
+template <>
+void register_task<ATTENTION_BWD_TASK_ID>() {
   OpTaskSignature bwd(OpTaskType::BWD);
 
   bwd.add_input_slot(QUERY);

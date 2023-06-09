@@ -6,9 +6,11 @@
 
 namespace FlexFlow {
 
-using StandardExecutableArgSpec =
-    variant<ConcreteArgSpec, CheckedTypedFuture, CheckedTypedFutureMap,
-            TaskInvocationSpec, IndexTaskInvocationSpec>;
+using StandardExecutableArgSpec = variant<ConcreteArgSpec,
+                                          CheckedTypedFuture,
+                                          CheckedTypedFutureMap,
+                                          TaskInvocationSpec,
+                                          IndexTaskInvocationSpec>;
 using IndexExecutableArgSpec = variant<IndexArgSpec, IndexTaskInvocationSpec>;
 
 struct TensorlessTaskBinding : public use_visitable_cmp<TensorlessTaskBinding> {
@@ -17,10 +19,14 @@ public:
 
   using ArgType = StandardExecutableArgSpec;
 
-  template <typename T> void bind_arg(slot_id name, T const &);
-  template <typename T> void bind_arg(slot_id name, TypedFuture<T> const &);
-  template <typename T> void bind_arg(slot_id name, TypedFutureMap<T> const &);
-  template <typename T> void bind_arg(TypedTaskInvocation<T> const &);
+  template <typename T>
+  void bind_arg(slot_id name, T const &);
+  template <typename T>
+  void bind_arg(slot_id name, TypedFuture<T> const &);
+  template <typename T>
+  void bind_arg(slot_id name, TypedFutureMap<T> const &);
+  template <typename T>
+  void bind_arg(TypedTaskInvocation<T> const &);
 
 public:
   std::unordered_map<slot_id, StandardExecutableArgSpec> arg_bindings;
@@ -35,13 +41,18 @@ struct TensorlessIndexTaskBinding
   using ArgType =
       variant_join<StandardExecutableArgSpec, IndexExecutableArgSpec>;
 
-  template <typename T> void bind_arg(slot_id name, T const &);
-  template <typename T> void bind_arg(slot_id name, TypedFuture<T> const &);
-  template <typename T> void bind_arg(slot_id name, TypedFutureMap<T> const &);
-  template <typename T> void bind_arg(TypedTaskInvocation<T> const &);
+  template <typename T>
+  void bind_arg(slot_id name, T const &);
+  template <typename T>
+  void bind_arg(slot_id name, TypedFuture<T> const &);
+  template <typename T>
+  void bind_arg(slot_id name, TypedFutureMap<T> const &);
+  template <typename T>
+  void bind_arg(TypedTaskInvocation<T> const &);
 
-  template <typename F, typename T = decltype(std::declval<F>()(
-                            std::declval<Legion::DomainPoint>()))>
+  template <typename F,
+            typename T = decltype(std::declval<F>()(
+                std::declval<Legion::DomainPoint>()))>
   void bind_index_arg(slot_id name, F const &f);
 
 public:
@@ -63,13 +74,13 @@ std::unordered_map<slot_id, T> get_args_of_type(BindingType const &binding) {
 
 template <typename T>
 std::unordered_map<slot_id, T>
-get_args_of_type(TensorlessTaskBinding const &binding) {
+    get_args_of_type(TensorlessTaskBinding const &binding) {
   return get_args_of_type<TensorlessTaskBinding, T>(binding);
 }
 
 template <typename T>
 std::unordered_map<slot_id, T>
-get_args_of_type(TensorlessIndexTaskBinding const &binding) {
+    get_args_of_type(TensorlessIndexTaskBinding const &binding) {
   return get_args_of_type<TensorlessIndexTaskBinding, T>(binding);
 }
 

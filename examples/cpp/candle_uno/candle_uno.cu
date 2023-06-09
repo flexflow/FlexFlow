@@ -18,14 +18,18 @@
 
 void DataLoader::load_input(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
-                            Context ctx, Runtime *runtime) {
+                            Context ctx,
+                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<float, 2> acc_full_input(regions[0], task->regions[0],
-                                           FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_input(regions[1], task->regions[1],
-                                            FID_DATA, ctx, runtime,
+  TensorAccessorR<float, 2> acc_full_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 2> acc_batch_input(regions[1],
+                                            task->regions[1],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime,
                                             false /*readOutput*/);
   int batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
   int num_feats = acc_batch_input.rect.hi[0] - acc_batch_input.rect.lo[0] + 1;

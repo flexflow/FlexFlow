@@ -75,39 +75,51 @@ __global__ void reluBackward(T *grad_ptr, T const *input, size_t n);
 template <typename T>
 __global__ void sigmoid_backward_kernel(T *grad_ptr, T const *input, size_t n);
 
-__host__ void relu_backward_kernel(DataType data_type, void *output_grad_ptr,
-                                   void const *output_ptr, size_t output_size,
+__host__ void relu_backward_kernel(DataType data_type,
+                                   void *output_grad_ptr,
+                                   void const *output_ptr,
+                                   size_t output_size,
                                    cudaStream_t stream);
 
-__host__ void sigmoid_backward_kernel(DataType data_type, void *output_grad_ptr,
+__host__ void sigmoid_backward_kernel(DataType data_type,
+                                      void *output_grad_ptr,
                                       void const *output_ptr,
-                                      size_t output_size, cudaStream_t stream);
+                                      size_t output_size,
+                                      cudaStream_t stream);
 
 template <typename DT>
-__global__ void apply_add_with_scale(DT *data_ptr, const DT *grad_ptr,
-                                     size_t size, DT scale);
+__global__ void apply_add_with_scale(DT *data_ptr,
+                                     const DT *grad_ptr,
+                                     size_t size,
+                                     DT scale);
 
-__global__ void gelu_forward_kernel(size_t size, float B, float C,
-                                    float *input);
+__global__ void
+    gelu_forward_kernel(size_t size, float B, float C, float *input);
 
 // Use by concat and split
-__global__ void add_with_stride(float *output, float const *input,
-                                int num_blocks, int output_blk_size,
+__global__ void add_with_stride(float *output,
+                                float const *input,
+                                int num_blocks,
+                                int output_blk_size,
                                 int input_blk_size);
-__global__ void copy_with_stride(float *output, float const *input,
-                                 int num_blocks, int output_blk_size,
+__global__ void copy_with_stride(float *output,
+                                 float const *input,
+                                 int num_blocks,
+                                 int output_blk_size,
                                  int input_blk_size);
 
-__host__ void updateGAS(float *para_ptr, float const *grad_ptr,
-                        size_t replica_size, int num_replica,
+__host__ void updateGAS(float *para_ptr,
+                        float const *grad_ptr,
+                        size_t replica_size,
+                        int num_replica,
                         float learning_rate);
 
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
 ffStatus_t
-cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
-                                       FlexFlow::ArrayShape const &shape);
+    cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
+                                           FlexFlow::ArrayShape const &shape);
 
 ffDataType_t ff_to_cuda_datatype(DataType type);
 

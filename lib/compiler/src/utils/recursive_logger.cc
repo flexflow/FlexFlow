@@ -15,7 +15,9 @@ std::string RecursiveLogger::get_prefix() const {
   return std::string(this->depth * 2, ' ');
 }
 
-void RecursiveLogger::enter() { this->depth++; }
+void RecursiveLogger::enter() {
+  this->depth++;
+}
 
 void RecursiveLogger::leave() {
   this->depth--;
@@ -30,7 +32,9 @@ DepthTag::DepthTag(RecursiveLogger &_logger) : logger(_logger) {
   this->logger.enter();
 }
 
-DepthTag::~DepthTag() { this->logger.leave(); }
+DepthTag::~DepthTag() {
+  this->logger.leave();
+}
 
 } // namespace utils
 } // namespace FlexFlow

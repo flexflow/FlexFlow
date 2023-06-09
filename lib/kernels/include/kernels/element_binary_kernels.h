@@ -27,11 +27,17 @@ void init_kernel(ElementBinaryPerDeviceState *m,
                  ArrayShape const &input2_domain,
                  ArrayShape const &output_domain);
 
-void forward_kernel(ffStream_t stream, ElementBinaryPerDeviceState const *m,
-                    float const *in1_ptr, float const *in2_ptr, float *out_ptr);
-void backward_kernel(ffStream_t stream, ElementBinaryPerDeviceState const *m,
-                     float const *out_grad_ptr, float const *in1_ptr,
-                     float const *in2_ptr, float *in1_grad_ptr,
+void forward_kernel(ffStream_t stream,
+                    ElementBinaryPerDeviceState const *m,
+                    float const *in1_ptr,
+                    float const *in2_ptr,
+                    float *out_ptr);
+void backward_kernel(ffStream_t stream,
+                     ElementBinaryPerDeviceState const *m,
+                     float const *out_grad_ptr,
+                     float const *in1_ptr,
+                     float const *in2_ptr,
+                     float *in1_grad_ptr,
                      float *in2_grad_ptr);
 
 } // namespace ElementBinary

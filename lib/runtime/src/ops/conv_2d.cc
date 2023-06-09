@@ -40,16 +40,33 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Conv2D;
 
-Tensor FFModel::conv2d(Tensor const &input, int outChannels, int kernelH,
-                       int kernelW, int strideH, int strideW, int paddingH,
-                       int paddingW, ActiMode activation, int groups,
-                       bool use_bias, Layer const *shared_op,
+Tensor FFModel::conv2d(Tensor const &input,
+                       int outChannels,
+                       int kernelH,
+                       int kernelW,
+                       int strideH,
+                       int strideW,
+                       int paddingH,
+                       int paddingW,
+                       ActiMode activation,
+                       int groups,
+                       bool use_bias,
+                       Layer const *shared_op,
                        Initializer *kernel_initializer,
-                       Initializer *bias_initializer, char const *name) {
+                       Initializer *bias_initializer,
+                       char const *name) {
   assert(input->num_dims() == 4); /*NCHW*/
 
-  Conv2DAttrs attrs = {outChannels, kernelH,  kernelW, strideH,    strideW,
-                       paddingH,    paddingW, groups,  activation, use_bias};
+  Conv2DAttrs attrs = {outChannels,
+                       kernelH,
+                       kernelW,
+                       strideH,
+                       strideW,
+                       paddingH,
+                       paddingW,
+                       groups,
+                       activation,
+                       use_bias};
 
   TensorShape output_shape = get_output_shape(attrs, input->get_shape());
   Tensor output = this->tensor_mgr.create(output_shape, CreateGrad::YES, conv);
@@ -106,9 +123,13 @@ Tensor FFModel::conv2d(Tensor const &input, int outChannels, int kernelH,
 }
 
 Op *Conv2D::create_operator_from_layer(
-    FFModel &model, Layer const *layer,
+    FFModel &model,
+    Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  return new Conv2D(model, get<Conv2DAttrs>(layer->attrs), inputs, layer->name,
+  return new Conv2D(model,
+                    get<Conv2DAttrs>(layer->attrs),
+                    inputs,
+                    layer->name,
                     false /*allocate_weights*/
   );
 }
@@ -280,20 +301,46 @@ Op *Conv2D::create_operator_from_layer(
 /*   } */
 /* } */
 
-Conv2D::Conv2D(FFModel &model, Conv2D const &other, const ParallelTensor input,
+Conv2D::Conv2D(FFModel &model,
+               Conv2D const &other,
+               const ParallelTensor input,
                bool allocate_weights)
-    : Conv2D(model, other.layer_guid, input, other.out_channels, other.kernel_h,
-             other.kernel_w, other.stride_h, other.stride_w, other.padding_h,
-             other.padding_w, other.activation, other.groups, other.use_bias,
-             allocate_weights, other.name) {}
+    : Conv2D(model,
+             other.layer_guid,
+             input,
+             other.out_channels,
+             other.kernel_h,
+             other.kernel_w,
+             other.stride_h,
+             other.stride_w,
+             other.padding_h,
+             other.padding_w,
+             other.activation,
+             other.groups,
+             other.use_bias,
+             allocate_weights,
+             other.name) {}
 
-Conv2D::Conv2D(FFModel &model, Conv2DAttrs const &attrs,
-               std::vector<ParallelTensor> const &inputs, char const *name,
+Conv2D::Conv2D(FFModel &model,
+               Conv2DAttrs const &attrs,
+               std::vector<ParallelTensor> const &inputs,
+               char const *name,
                bool allocate_weights)
-    : Conv2D(model, params.layer_guid, input, params.out_channels,
-             params.kernel_h, params.kernel_w, params.stride_h, params.stride_w,
-             params.padding_h, params.padding_w, params.activation,
-             params.groups, params.use_bias, allocate_weights, name) {}
+    : Conv2D(model,
+             params.layer_guid,
+             input,
+             params.out_channels,
+             params.kernel_h,
+             params.kernel_w,
+             params.stride_h,
+             params.stride_w,
+             params.padding_h,
+             params.padding_w,
+             params.activation,
+             params.groups,
+             params.use_bias,
+             allocate_weights,
+             name) {}
 
 /* bool Conv2DParams::is_valid(ParallelTensorShape const &input) const { */
 /*   ParallelTensorShape output_shape, kernel_shape, bias_shape; */
@@ -321,13 +368,30 @@ Conv2D::Conv2D(FFModel &model, Conv2DAttrs const &attrs,
 /*   return is_valid; */
 /* } */
 
-Conv2D::Conv2D(FFModel &model, LayerID const &_layer_guid,
-               const ParallelTensor input, int outChannels, int kernelH,
-               int kernelW, int strideH, int strideW, int paddingH,
-               int paddingW, ActiMode activation, int groups, bool use_bias,
-               bool allocate_weights, char const *name)
-    : Op(model, OP_CONV2D, DT_FLOAT, name, 1 /*inputs*/,
-         use_bias ? 2 : 1 /*weights*/, allocate_weights, 1 /*outputs*/, input),
+Conv2D::Conv2D(FFModel &model,
+               LayerID const &_layer_guid,
+               const ParallelTensor input,
+               int outChannels,
+               int kernelH,
+               int kernelW,
+               int strideH,
+               int strideW,
+               int paddingH,
+               int paddingW,
+               ActiMode activation,
+               int groups,
+               bool use_bias,
+               bool allocate_weights,
+               char const *name)
+    : Op(model,
+         OP_CONV2D,
+         DT_FLOAT,
+         name,
+         1 /*inputs*/,
+         use_bias ? 2 : 1 /*weights*/,
+         allocate_weights,
+         1 /*outputs*/,
+         input),
       in_channels(input->dims[Conv2DInput::CHANNEL].size /
                   input->dims[Conv2DInput::CHANNEL].degree),
       out_channels(outChannels), kernel_h(kernelH), kernel_w(kernelW),
@@ -345,23 +409,37 @@ Conv2D::Conv2D(FFModel &model, LayerID const &_layer_guid,
   int output_ndims, kernel_ndims, bias_ndims;
 
   this->construct_mappings(*this->parallel_dims_mapping, this->use_bias);
-  this->get_params().solve_dims(this->inputs[0]->get_shape(), output_dims,
-                                &output_ndims, kernel_dims, &kernel_ndims,
-                                bias_dims, &bias_ndims);
+  this->get_params().solve_dims(this->inputs[0]->get_shape(),
+                                output_dims,
+                                &output_ndims,
+                                kernel_dims,
+                                &kernel_ndims,
+                                bias_dims,
+                                &bias_ndims);
 
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
 
-    weights[Conv2DKernel::INDEX] = model.create_parallel_weight_legion_ordering(
-        kernel_ndims, kernel_dims, DT_FLOAT, NULL /*owner_op*/,
-        true /*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+    weights[Conv2DKernel::INDEX] =
+        model.create_parallel_weight_legion_ordering(kernel_ndims,
+                                                     kernel_dims,
+                                                     DT_FLOAT,
+                                                     NULL /*owner_op*/,
+                                                     true /*create_grad*/,
+                                                     kernel_initializer,
+                                                     CHOSEN_SYNC_TYPE);
 
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
 
-      weights[Conv2DBias::INDEX] = model.create_parallel_weight_legion_ordering(
-          bias_ndims, bias_dims, DT_FLOAT, NULL /*owner_op*/,
-          true /*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+      weights[Conv2DBias::INDEX] =
+          model.create_parallel_weight_legion_ordering(bias_ndims,
+                                                       bias_dims,
+                                                       DT_FLOAT,
+                                                       NULL /*owner_op*/,
+                                                       true /*create_grad*/,
+                                                       bias_initializer,
+                                                       CHOSEN_SYNC_TYPE);
     }
   }
 
@@ -524,7 +602,8 @@ void Conv2D::init(FFModel const &ff) {
 */
 PerDeviceOpState *Conv2D::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
-                                    Context ctx, Runtime *runtime) {
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // Conv2D const *conv = (Conv2D *)task->args;
@@ -578,10 +657,16 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
   int output_c = output.shape[2];
   int output_n = output.shape[3];
 
-  printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n", input_n, input_c,
-         input_h, input_w);
-  printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n", output_n, output_c,
-         output_h, output_w);
+  printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
+         input_n,
+         input_c,
+         input_h,
+         input_w);
+  printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
+         output_n,
+         output_c,
+         output_h,
+         output_w);
 
   // printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h,
   // conv->padding_w, conv->stride_h, conv->stride_w);
@@ -596,11 +681,26 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
     printf("Warning: changing conv_padding_w to satisfy output_w size\n");
   }
 
-  init_kernel(m, input_w, input_h, input_c, input_n, output_w, output_h,
-              output_c, output_n, attrs.kernel_h, attrs.kernel_w, attrs.groups,
-              attrs.stride_h, attrs.stride_w, pad_h, pad_w,
-              input.get_float_ptr(), output.get_float_ptr(),
-              filter.get_float_ptr(), filter_grad.get_float_ptr());
+  init_kernel(m,
+              input_w,
+              input_h,
+              input_c,
+              input_n,
+              output_w,
+              output_h,
+              output_c,
+              output_n,
+              attrs.kernel_h,
+              attrs.kernel_w,
+              attrs.groups,
+              attrs.stride_h,
+              attrs.stride_w,
+              pad_h,
+              pad_w,
+              input.get_float_ptr(),
+              output.get_float_ptr(),
+              filter.get_float_ptr(),
+              filter_grad.get_float_ptr());
 
   return m;
 }
@@ -692,7 +792,8 @@ void Conv2D::backward(FFModel const &ff) {
 */
 void Conv2D::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx, Runtime *runtime) {
+                          Context ctx,
+                          Runtime *runtime) {
   Conv2DPerDeviceState const *m = *((Conv2DPerDeviceState **)task->local_args);
 
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
@@ -720,8 +821,13 @@ void Conv2D::forward_task(Task const *task,
   //   acc_bias_ptr = acc_bias.ptr;
   // }
 
-  profile(forward_kernel, m->profiling, "[Conv2d] forward_time = %.2lfms\n", m,
-          input.get_float_ptr(), output.get_float_ptr(), filter.get_float_ptr(),
+  profile(forward_kernel,
+          m->profiling,
+          "[Conv2d] forward_time = %.2lfms\n",
+          m,
+          input.get_float_ptr(),
+          output.get_float_ptr(),
+          filter.get_float_ptr(),
           bias.get_float_ptr());
 }
 
@@ -736,7 +842,8 @@ void Conv2D::forward_task(Task const *task,
 */
 void Conv2D::backward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
-                           Context ctx, Runtime *runtime) {
+                           Context ctx,
+                           Runtime *runtime) {
   // Conv2D* conv = (Conv2D*) task->args;
   Conv2DPerDeviceState const *m = *((Conv2DPerDeviceState **)task->local_args);
   assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) +
@@ -751,7 +858,11 @@ void Conv2D::backward_task(Task const *task,
   float *acc_input_grad_ptr = NULL;
   if (m->trainableInputs[0]) {
     TensorAccessorW<float, Conv2DInput::NUMDIM> acc_input_grad(
-        regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+        regions[rid],
+        task->regions[rid],
+        FID_DATA,
+        ctx,
+        runtime,
         true /*readOutput*/);
     acc_input_grad_ptr = acc_input_grad.ptr;
     rid++;
@@ -760,38 +871,60 @@ void Conv2D::backward_task(Task const *task,
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
   TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output_grad(
-      regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+      regions[rid],
+      task->regions[rid],
+      FID_DATA,
+      ctx,
+      runtime,
       true /*readOutput*/);
   rid++;
   TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
   TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
-      regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+      regions[rid],
+      task->regions[rid],
+      FID_DATA,
+      ctx,
+      runtime,
       true /*readOutput*/);
   rid++;
   float *acc_bias_grad_ptr = NULL;
   if (m->use_bias) {
     TensorAccessorW<float, Conv2DBias::NUMDIM> acc_bias_grad(
-        regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+        regions[rid],
+        task->regions[rid],
+        FID_DATA,
+        ctx,
+        runtime,
         true /*readOutput*/);
     acc_bias_grad_ptr = static_cast<float *>(acc_bias_grad.ptr);
     rid++;
   }
   assert(rid == regions.size());
 
-  backward_kernel_wrapper(m, acc_input.ptr, acc_input_grad_ptr, acc_output.ptr,
-                          acc_output_grad.ptr, acc_kernel.ptr,
-                          acc_kernel_grad.ptr, acc_bias_grad_ptr);
+  backward_kernel_wrapper(m,
+                          acc_input.ptr,
+                          acc_input_grad_ptr,
+                          acc_output.ptr,
+                          acc_output_grad.ptr,
+                          acc_kernel.ptr,
+                          acc_kernel_grad.ptr,
+                          acc_bias_grad_ptr);
 }
 
-bool Conv2D::estimate_sync_cost(Simulator *sim, MachineView const &view,
+bool Conv2D::estimate_sync_cost(Simulator *sim,
+                                MachineView const &view,
                                 CostMetrics &cost_metrics) const {
   ParallelDim kernel_dims[MAX_TENSOR_DIM], bias_dims[MAX_TENSOR_DIM];
   int kernel_ndims, bias_ndims;
 
-  this->get_params().solve_dims(this->inputs[0]->get_shape(), nullptr, nullptr,
-                                kernel_dims, &kernel_ndims, bias_dims,
+  this->get_params().solve_dims(this->inputs[0]->get_shape(),
+                                nullptr,
+                                nullptr,
+                                kernel_dims,
+                                &kernel_ndims,
+                                bias_dims,
                                 &bias_ndims);
 
   cost_metrics.sync_time =
@@ -824,7 +957,8 @@ tl::optional<RecordFormatter> Conv2D::as_dot() const {
   return rr;
 }
 
-bool Conv2D::measure_operator_cost(Simulator *sim, MachineView const &mv,
+bool Conv2D::measure_operator_cost(Simulator *sim,
+                                   MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -865,20 +999,51 @@ bool Conv2D::measure_operator_cost(Simulator *sim, MachineView const &mv,
   assert(bias_ptr != NULL);
   cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
-  init_kernel(m, input_w, input_h, input_c, input_n, output_w, output_h,
-              output_c, output_n, kernel_h, kernel_w, groups, stride_h,
-              stride_w, pad_h, pad_w, input_ptr, output_ptr, weight_ptr,
+  init_kernel(m,
+              input_w,
+              input_h,
+              input_c,
+              input_n,
+              output_w,
+              output_h,
+              output_c,
+              output_n,
+              kernel_h,
+              kernel_w,
+              groups,
+              stride_h,
+              stride_w,
+              pad_h,
+              pad_w,
+              input_ptr,
+              output_ptr,
+              weight_ptr,
               weight_ptr, // note we reuse weight_ptr for kernel_grad_ptr here
                           // to avoid allocating another tensor
-              &cost_metrics.forward_time, &cost_metrics.backward_time);
+              &cost_metrics.forward_time,
+              &cost_metrics.backward_time);
 
   log_measure.debug("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d "
                     "%d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) "
                     "forward_time(%.4lf) backward_time(%.4lf)\n",
-                    name, input_n, input_c, input_h, input_w, output_c,
-                    input_c / groups, kernel_h, kernel_w, output_n, output_c,
-                    output_h, output_w, stride_h, stride_w, padding_h,
-                    padding_w, cost_metrics.forward_time,
+                    name,
+                    input_n,
+                    input_c,
+                    input_h,
+                    input_w,
+                    output_c,
+                    input_c / groups,
+                    kernel_h,
+                    kernel_w,
+                    output_n,
+                    output_c,
+                    output_h,
+                    output_w,
+                    stride_h,
+                    stride_w,
+                    padding_h,
+                    padding_w,
+                    cost_metrics.forward_time,
                     cost_metrics.backward_time);
   return true;
 }

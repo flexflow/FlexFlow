@@ -6,12 +6,22 @@
 
 namespace FlexFlow {
 
-ParallelOp::ParallelOp(FFModel &model, OperatorType op_type, char const *name,
+ParallelOp::ParallelOp(FFModel &model,
+                       OperatorType op_type,
+                       char const *name,
                        const ParallelTensor input)
-    : Op(model, op_type, input->data_type, name, 1 /*num_inputs*/,
-         0 /*num_weights*/, 1 /*num_ouputs*/, input) {}
+    : Op(model,
+         op_type,
+         input->data_type,
+         name,
+         1 /*num_inputs*/,
+         0 /*num_weights*/,
+         1 /*num_ouputs*/,
+         input) {}
 
-bool ParallelOp::is_parallel_op() const { return true; }
+bool ParallelOp::is_parallel_op() const {
+  return true;
+}
 
 ParallelOpJoinResult try_join_parallel_ops(ParallelOpInfo const &_first,
                                            ParallelOpInfo const &_second) {
@@ -56,20 +66,20 @@ Node FFModel::get_or_create_parallel_op_node(
   int parallel_degree = parallel_op_info.parallel_degree;
 
   switch (op_type) {
-  case OP_COMBINE:
-    return this->get_or_create_node<Combine>(input,
-                                             {parallel_dim, parallel_degree});
-  case OP_REPARTITION:
-    return this->get_or_create_node<Repartition>(
-        input, {parallel_dim, parallel_degree});
-  case OP_REPLICATE:
-    return this->get_or_create_node<Replicate>(input,
+    case OP_COMBINE:
+      return this->get_or_create_node<Combine>(input,
                                                {parallel_dim, parallel_degree});
-  case OP_REDUCTION:
-    return this->get_or_create_node<Reduction>(input,
-                                               {parallel_dim, parallel_degree});
-  default:
-    assert(false && "Unsupported parallel op");
+    case OP_REPARTITION:
+      return this->get_or_create_node<Repartition>(
+          input, {parallel_dim, parallel_degree});
+    case OP_REPLICATE:
+      return this->get_or_create_node<Replicate>(
+          input, {parallel_dim, parallel_degree});
+    case OP_REDUCTION:
+      return this->get_or_create_node<Reduction>(
+          input, {parallel_dim, parallel_degree});
+    default:
+      assert(false && "Unsupported parallel op");
   }
 }
 

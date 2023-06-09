@@ -25,7 +25,8 @@ bool operator>=(Permissions lhs, Permissions rhs);
 
 namespace fmt {
 
-template <> struct formatter<::FlexFlow::Permissions> : formatter<string_view> {
+template <>
+struct formatter<::FlexFlow::Permissions> : formatter<string_view> {
   template <typename FormatContext>
   auto format(::FlexFlow::Permissions p, FormatContext &ctx) const
       -> decltype(ctx.out()) {
@@ -33,21 +34,21 @@ template <> struct formatter<::FlexFlow::Permissions> : formatter<string_view> {
 
     string_view name = "unknown";
     switch (p) {
-    case Permissions::NONE:
-      name = "NO_PERMISSIONS";
-      break;
-    case Permissions::RO:
-      name = "READ_ONLY";
-      break;
-    case Permissions::WO:
-      name = "WRITE_ONLY";
-      break;
-    case Permissions::RW:
-      name = "READ_WRITE";
-      break;
-    default:
-      throw ::FlexFlow::mk_runtime_error("Unknown permission {}",
-                                         static_cast<int>(p));
+      case Permissions::NONE:
+        name = "NO_PERMISSIONS";
+        break;
+      case Permissions::RO:
+        name = "READ_ONLY";
+        break;
+      case Permissions::WO:
+        name = "WRITE_ONLY";
+        break;
+      case Permissions::RW:
+        name = "READ_WRITE";
+        break;
+      default:
+        throw ::FlexFlow::mk_runtime_error("Unknown permission {}",
+                                           static_cast<int>(p));
     }
     return formatter<string_view>::format(name, ctx);
   }

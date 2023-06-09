@@ -11,7 +11,8 @@ namespace FlexFlow {
 
 enum class ArgRefType { ENABLE_PROFILING, FF_HANDLE, PROFILING_SETTINGS };
 
-template <typename T> struct ArgRef : public use_visitable_cmp<ArgRef<T>> {
+template <typename T>
+struct ArgRef : public use_visitable_cmp<ArgRef<T>> {
 public:
   ArgRef() = delete;
   ArgRef(ArgRefType ref_type) : ref_type(ref_type) {}
@@ -24,15 +25,21 @@ struct ArgRefSpec {
 public:
   ArgRefSpec() = delete;
 
-  template <typename T> bool holds() const {
+  template <typename T>
+  bool holds() const {
     return this->type_tag.matches<T>();
   }
 
-  ArgRefType const &get_ref_type() const { return this->ref_type; }
+  ArgRefType const &get_ref_type() const {
+    return this->ref_type;
+  }
 
-  ArgTypeRuntimeTag get_type_tag() const { return this->type_tag; }
+  ArgTypeRuntimeTag get_type_tag() const {
+    return this->type_tag;
+  }
 
-  template <typename T> static ArgRefSpec create(ArgRef<T> const &r) {
+  template <typename T>
+  static ArgRefSpec create(ArgRef<T> const &r) {
     static_assert(is_serializable<T>, "Type must be serializeable");
 
     return ArgRefSpec(ArgTypeRuntimeTag::create<T>(), r.ref_type);

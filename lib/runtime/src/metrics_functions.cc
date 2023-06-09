@@ -34,26 +34,26 @@ MetricsAttrs::MetricsAttrs(LossFunction _loss_type,
       measure_mean_absolute_error(false) {
   for (Metric const &m : metrics) {
     switch (m) {
-    case Metric::ACCURACY:
-      measure_accuracy = true;
-      continue;
-    case Metric::CATEGORICAL_CROSSENTROPY:
-      measure_categorical_crossentropy = true;
-      continue;
-    case Metric::SPARSE_CATEGORICAL_CROSSENTROPY:
-      measure_sparse_categorical_crossentropy = true;
-      continue;
-    case Metric::MEAN_SQUARED_ERROR:
-      measure_mean_squared_error = true;
-      continue;
-    case Metric::ROOT_MEAN_SQUARED_ERROR:
-      measure_root_mean_squared_error = true;
-      continue;
-    case Metric::MEAN_ABSOLUTE_ERROR:
-      measure_mean_absolute_error = true;
-      continue;
-    default:
-      throw mk_runtime_error("Unrecogonized metrics type {}", m);
+      case Metric::ACCURACY:
+        measure_accuracy = true;
+        continue;
+      case Metric::CATEGORICAL_CROSSENTROPY:
+        measure_categorical_crossentropy = true;
+        continue;
+      case Metric::SPARSE_CATEGORICAL_CROSSENTROPY:
+        measure_sparse_categorical_crossentropy = true;
+        continue;
+      case Metric::MEAN_SQUARED_ERROR:
+        measure_mean_squared_error = true;
+        continue;
+      case Metric::ROOT_MEAN_SQUARED_ERROR:
+        measure_root_mean_squared_error = true;
+        continue;
+      case Metric::MEAN_ABSOLUTE_ERROR:
+        measure_mean_absolute_error = true;
+        continue;
+      default:
+        throw mk_runtime_error("Unrecogonized metrics type {}", m);
     }
   }
 }
@@ -68,9 +68,9 @@ enum Slots {
 };
 
 TypedIndexTaskInvocation<PerfMetrics>
-compute_metrics(MetricsAttrs const &metrics,
-                parallel_tensor_guid_t const &logit,
-                parallel_tensor_guid_t const &label) {
+    compute_metrics(MetricsAttrs const &metrics,
+                    parallel_tensor_guid_t const &logit,
+                    parallel_tensor_guid_t const &label) {
   IndexTaskBinding binding(LOGIT);
   binding.bind(LOGIT, logit);
   binding.bind(LABEL, label);
@@ -81,9 +81,9 @@ compute_metrics(MetricsAttrs const &metrics,
 }
 
 TypedTaskInvocation<PerfMetrics>
-update_metrics(MetricsAttrs const &metrics,
-               StandardTypedTaskArg<PerfMetrics> const &all_metrics,
-               TypedIndexTaskInvocation<PerfMetrics> const &one_metrics) {
+    update_metrics(MetricsAttrs const &metrics,
+                   StandardTypedTaskArg<PerfMetrics> const &all_metrics,
+                   TypedIndexTaskInvocation<PerfMetrics> const &one_metrics) {
   auto binding = TaskBinding::standard_launch();
   binding.bind_arg(METRICS_STRUCT, metrics);
   binding.bind_arg(ALL_METRICS, all_metrics);
@@ -93,13 +93,13 @@ update_metrics(MetricsAttrs const &metrics,
   return ensure_return_type<PerfMetrics>({UPDATE_METRICS_TASK_ID, binding});
 }
 
-TypedTaskInvocation<PerfMetrics>
-compute_and_update_metrics(MetricsAttrs const &metrics,
-                           StandardTypedTaskArg<PerfMetrics> const &all_metrics,
-                           parallel_tensor_guid_t const &logit,
-                           parallel_tensor_guid_t const &label) {
-  return update_metrics(metrics, all_metrics,
-                        compute_metrics(metrics, logit, label));
+TypedTaskInvocation<PerfMetrics> compute_and_update_metrics(
+    MetricsAttrs const &metrics,
+    StandardTypedTaskArg<PerfMetrics> const &all_metrics,
+    parallel_tensor_guid_t const &logit,
+    parallel_tensor_guid_t const &label) {
+  return update_metrics(
+      metrics, all_metrics, compute_metrics(metrics, logit, label));
 }
 
 TaskInvocation reset_metrics(MetricsAttrs const &metrics) {
@@ -157,9 +157,10 @@ static PerfMetrics make_empty_metrics() {
 }
 
 static PerfMetrics
-compute_metrics_task(Legion::Task const *task,
-                     std::vector<Legion::PhysicalRegion> const &regions,
-                     Legion::Context ctx, Legion::Runtime *runtime) {
+    compute_metrics_task(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto me = acc.get_argument<MetricsAttrs>(METRICS_STRUCT);
   auto logit = acc.get_tensor<Permissions::RO>(LOGIT);
@@ -188,10 +189,15 @@ compute_metrics_task(Legion::Task const *task,
     // Cannot measure categorical_crossentropy w/ sparse labels
     // Use measure_sparse_categorical_crossentropy instead
     assert(!me.measure_categorical_crossentropy);
-    profile(update_metrics_sparse_label_kernel, profiling_settings,
-            "[Compute Metrics] running_time = %.2lfms\n", me,
-            get_float_ptr(logit), get_int32_ptr(label), num_effective_samples,
-            num_classes, perf_zc);
+    profile(update_metrics_sparse_label_kernel,
+            profiling_settings,
+            "[Compute Metrics] running_time = %.2lfms\n",
+            me,
+            get_float_ptr(logit),
+            get_int32_ptr(label),
+            num_effective_samples,
+            num_classes,
+            perf_zc);
   } else {
     // other loss require label and logit have identical shape
     assert(logit.shape == label.shape);
@@ -201,18 +207,24 @@ compute_metrics_task(Legion::Task const *task,
     int num_classes = logit.shape.get_volume() / num_samples;
     // Use CUDA_NUM_THREADS may result in out of resources so we set
     // #threads=256
-    profile(update_metrics_label_kernel, profiling_settings,
-            "[Compute Mtrics] running_time = %.2lfms\n", me,
-            get_float_ptr(logit), get_float_ptr(label), num_samples,
-            num_classes, perf_zc);
+    profile(update_metrics_label_kernel,
+            profiling_settings,
+            "[Compute Mtrics] running_time = %.2lfms\n",
+            me,
+            get_float_ptr(logit),
+            get_float_ptr(label),
+            num_samples,
+            num_classes,
+            perf_zc);
   }
   return perf_zc;
 }
 
 static PerfMetrics
-update_metrics_task(Legion::Task const *task,
-                    std::vector<Legion::PhysicalRegion> const &regions,
-                    Legion::Context ctx, Legion::Runtime *runtime) {
+    update_metrics_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto m = acc.get_argument<MetricsAttrs>(METRICS_STRUCT);
   auto maybe_all_metrics = acc.get_optional_argument<PerfMetrics>(ALL_METRICS);
@@ -234,7 +246,8 @@ update_metrics_task(Legion::Task const *task,
   return all_metrics;
 }
 
-template <> void register_task<METRICS_COMP_TASK_ID>() {
+template <>
+void register_task<METRICS_COMP_TASK_ID>() {
   TaskSignature sig;
   sig.add_slot(LOGIT, {SlotType::TENSOR, Permissions::RO});
   sig.add_slot(LABEL, {SlotType::TENSOR, Permissions::RO});
@@ -242,11 +255,12 @@ template <> void register_task<METRICS_COMP_TASK_ID>() {
   sig.add_arg_slot<MetricsAttrs>(METRICS_STRUCT);
   sig.add_return_value<PerfMetrics>();
 
-  register_task(METRICS_COMP_TASK_ID, "Metrics Compute", sig,
-                compute_metrics_task);
+  register_task(
+      METRICS_COMP_TASK_ID, "Metrics Compute", sig, compute_metrics_task);
 }
 
-template <> void register_task<UPDATE_METRICS_TASK_ID>() {
+template <>
+void register_task<UPDATE_METRICS_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<MetricsAttrs>(METRICS_STRUCT);
   sig.add_arg_slot<PerfMetrics>(ALL_METRICS);
@@ -254,8 +268,8 @@ template <> void register_task<UPDATE_METRICS_TASK_ID>() {
   sig.add_variadic_arg_slot<PerfMetrics>(ONE_METRICS);
   sig.add_return_value<PerfMetrics>();
 
-  register_task(UPDATE_METRICS_TASK_ID, "Update Metrics", sig,
-                update_metrics_task);
+  register_task(
+      UPDATE_METRICS_TASK_ID, "Update Metrics", sig, update_metrics_task);
 }
 
 } // namespace FlexFlow

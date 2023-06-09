@@ -45,12 +45,14 @@ enum class OperatorAttributeKey {
   PAD,
 };
 
-template <typename T> struct ListIndexAccess {
+template <typename T>
+struct ListIndexAccess {
   T attribute_key;
   int index;
 };
 
-template <typename T> struct ListSize {
+template <typename T>
+struct ListSize {
   T attribute_key;
 };
 
@@ -73,7 +75,8 @@ using OperatorAttributeValue =
     mpark::variant<int, float, bool, std::vector<int>>;
 using TensorAttributeValue = mpark::variant<int, std::vector<int>>;
 
-template <typename K, typename V> struct AttributeConstraint {
+template <typename K, typename V>
+struct AttributeConstraint {
   ConstraintType constraint_type;
   AttributeExpr<K> attribute_expr;
   V attribute_value;

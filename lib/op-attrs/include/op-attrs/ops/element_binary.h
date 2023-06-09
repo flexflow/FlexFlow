@@ -12,7 +12,9 @@ namespace FlexFlow {
 struct ElementBinaryAttrs : use_visitable_cmp<ElementBinaryAttrs> {
 public:
   ElementBinaryAttrs() = delete;
-  ElementBinaryAttrs(Op, DataType, bool should_broadcast_lhs,
+  ElementBinaryAttrs(Op,
+                     DataType,
+                     bool should_broadcast_lhs,
                      bool should_broadcast_rhs);
 
 public:
@@ -24,8 +26,11 @@ public:
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::ElementBinaryAttrs, type, compute_type,
-                 should_broadcast_lhs, should_broadcast_rhs);
+VISITABLE_STRUCT(::FlexFlow::ElementBinaryAttrs,
+                 type,
+                 compute_type,
+                 should_broadcast_lhs,
+                 should_broadcast_rhs);
 MAKE_VISIT_HASHABLE(::FlexFlow::ElementBinaryAttrs);
 
 namespace FlexFlow {

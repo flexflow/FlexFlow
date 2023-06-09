@@ -5,31 +5,31 @@ namespace FlexFlow {
 
 Legion::PrivilegeMode to_legion(Permissions p) {
   switch (p) {
-  case Permissions::NONE:
-    return LEGION_NO_ACCESS;
-  case Permissions::RO:
-    return LEGION_READ_ONLY;
-  case Permissions::WO:
-    return LEGION_WRITE_ONLY;
-  case Permissions::RW:
-    return LEGION_READ_WRITE;
-  default:
-    throw mk_runtime_error("Unknown permission {}", static_cast<int>(p));
+    case Permissions::NONE:
+      return LEGION_NO_ACCESS;
+    case Permissions::RO:
+      return LEGION_READ_ONLY;
+    case Permissions::WO:
+      return LEGION_WRITE_ONLY;
+    case Permissions::RW:
+      return LEGION_READ_WRITE;
+    default:
+      throw mk_runtime_error("Unknown permission {}", static_cast<int>(p));
   }
 }
 
 optional<Permissions> from_legion(Legion::PrivilegeMode p) {
   switch (p) {
-  case LEGION_NO_ACCESS:
-    return Permissions::NONE;
-  case LEGION_READ_ONLY:
-    return Permissions::RO;
-  case LEGION_WRITE_ONLY:
-    return Permissions::WO;
-  case LEGION_READ_WRITE:
-    return Permissions::RW;
-  default:
-    return nullopt;
+    case LEGION_NO_ACCESS:
+      return Permissions::NONE;
+    case LEGION_READ_ONLY:
+      return Permissions::RO;
+    case LEGION_WRITE_ONLY:
+      return Permissions::WO;
+    case LEGION_READ_WRITE:
+      return Permissions::RW;
+    default:
+      return nullopt;
   }
 }
 
@@ -55,15 +55,15 @@ Permissions meet(Permissions lhs, Permissions rhs) {
 
 static int as_int(Permissions p) {
   switch (p) {
-  case Permissions::NONE:
-    return 0;
-  case Permissions::RO:
-  case Permissions::WO:
-    return 1;
-  case Permissions::RW:
-    return 2;
-  default:
-    throw mk_runtime_error("Unknown permission {}", static_cast<int>(p));
+    case Permissions::NONE:
+      return 0;
+    case Permissions::RO:
+    case Permissions::WO:
+      return 1;
+    case Permissions::RW:
+      return 2;
+    default:
+      throw mk_runtime_error("Unknown permission {}", static_cast<int>(p));
   }
 }
 

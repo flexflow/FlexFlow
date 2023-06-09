@@ -8,9 +8,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<DROPOUT_INIT_TASK_ID>();
-template <> void register_task<DROPOUT_FWD_TASK_ID>();
-template <> void register_task<DROPOUT_BWD_TASK_ID>();
+template <>
+void register_task<DROPOUT_INIT_TASK_ID>();
+template <>
+void register_task<DROPOUT_FWD_TASK_ID>();
+template <>
+void register_task<DROPOUT_BWD_TASK_ID>();
 
 OpTaskInvocation init(DropoutAttrs const &);
 OpTaskInvocation forward(DropoutAttrs const &);

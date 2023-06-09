@@ -11,17 +11,21 @@ using Legion::Mapping::Utilities::to_string;
 
 namespace FlexFlow {
 
-template <Permissions> struct privilege_mode_to_accessor_t {};
+template <Permissions>
+struct privilege_mode_to_accessor_t {};
 
-template <> struct privilege_mode_to_accessor_t<Permissions::RW> {
+template <>
+struct privilege_mode_to_accessor_t<Permissions::RW> {
   using type = GenericTensorAccessorW;
 };
 
-template <> struct privilege_mode_to_accessor_t<Permissions::RO> {
+template <>
+struct privilege_mode_to_accessor_t<Permissions::RO> {
   using type = GenericTensorAccessorR;
 };
 
-template <> struct privilege_mode_to_accessor_t<Permissions::WO> {
+template <>
+struct privilege_mode_to_accessor_t<Permissions::WO> {
   using type = GenericTensorAccessorW;
 };
 
@@ -33,15 +37,18 @@ template <typename FT, int N, typename T = Legion::coord_t>
 using AccessorRO =
     Legion::FieldAccessor<READ_ONLY, FT, N, T, Realm::AffineAccessor<FT, N, T>>;
 template <typename FT, int N, typename T = Legion::coord_t>
-using AccessorRW = Legion::FieldAccessor<READ_WRITE, FT, N, T,
-                                         Realm::AffineAccessor<FT, N, T>>;
+using AccessorRW = Legion::
+    FieldAccessor<READ_WRITE, FT, N, T, Realm::AffineAccessor<FT, N, T>>;
 template <typename FT, int N, typename T = Legion::coord_t>
-using AccessorWO = Legion::FieldAccessor<WRITE_ONLY, FT, N, T,
-                                         Realm::AffineAccessor<FT, N, T>>;
+using AccessorWO = Legion::
+    FieldAccessor<WRITE_ONLY, FT, N, T, Realm::AffineAccessor<FT, N, T>>;
 
-template <typename DT, int dim> struct TensorAccessorR {
-  TensorAccessorR(Legion::PhysicalRegion region, Legion::RegionRequirement req,
-                  Legion::FieldID fid, Legion::Context ctx,
+template <typename DT, int dim>
+struct TensorAccessorR {
+  TensorAccessorR(Legion::PhysicalRegion region,
+                  Legion::RegionRequirement req,
+                  Legion::FieldID fid,
+                  Legion::Context ctx,
                   Legion::Runtime *runtime);
   TensorAccessorR();
   Legion::Rect<dim> rect;
@@ -49,10 +56,14 @@ template <typename DT, int dim> struct TensorAccessorR {
   const DT *ptr;
 };
 
-template <typename DT, int dim> struct TensorAccessorW {
-  TensorAccessorW(Legion::PhysicalRegion region, Legion::RegionRequirement req,
-                  Legion::FieldID fid, Legion::Context ctx,
-                  Legion::Runtime *runtime, bool readOutput = false);
+template <typename DT, int dim>
+struct TensorAccessorW {
+  TensorAccessorW(Legion::PhysicalRegion region,
+                  Legion::RegionRequirement req,
+                  Legion::FieldID fid,
+                  Legion::Context ctx,
+                  Legion::Runtime *runtime,
+                  bool readOutput = false);
   TensorAccessorW();
   Legion::Rect<dim> rect;
   Legion::Memory memory;
@@ -62,56 +73,73 @@ template <typename DT, int dim> struct TensorAccessorW {
 template <typename DT>
 const DT *helperGetTensorPointerRO(Legion::PhysicalRegion region,
                                    Legion::RegionRequirement req,
-                                   Legion::FieldID fid, Legion::Context ctx,
+                                   Legion::FieldID fid,
+                                   Legion::Context ctx,
                                    Legion::Runtime *runtime);
 
 template <typename DT>
 DT *helperGetTensorPointerWO(Legion::PhysicalRegion region,
-                             Legion::RegionRequirement req, Legion::FieldID fid,
-                             Legion::Context ctx, Legion::Runtime *runtime);
+                             Legion::RegionRequirement req,
+                             Legion::FieldID fid,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
 
 template <typename DT>
 DT *helperGetTensorPointerRW(Legion::PhysicalRegion region,
-                             Legion::RegionRequirement req, Legion::FieldID fid,
-                             Legion::Context ctx, Legion::Runtime *runtime);
+                             Legion::RegionRequirement req,
+                             Legion::FieldID fid,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
 
-GenericTensorAccessorR helperGetGenericTensorAccessorRO(
-    DataType datatype, Legion::PhysicalRegion region,
-    Legion::RegionRequirement req, Legion::FieldID fid, Legion::Context ctx,
-    Legion::Runtime *runtime);
+GenericTensorAccessorR
+    helperGetGenericTensorAccessorRO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
 
-GenericTensorAccessorW helperGetGenericTensorAccessorWO(
-    DataType datatype, Legion::PhysicalRegion region,
-    Legion::RegionRequirement req, Legion::FieldID fid, Legion::Context ctx,
-    Legion::Runtime *runtime);
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorWO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
 
-GenericTensorAccessorW helperGetGenericTensorAccessorRW(
-    DataType datatype, Legion::PhysicalRegion region,
-    Legion::RegionRequirement req, Legion::FieldID fid, Legion::Context ctx,
-    Legion::Runtime *runtime);
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorRW(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
 
 template <Permissions PRIV>
-privilege_mode_to_accessor<PRIV> helperGetGenericTensorAccessor(
-    DataType datatype, Legion::PhysicalRegion const &region,
-    Legion::RegionRequirement const &req, Legion::FieldID const &fid,
-    Legion::Context const &ctx, Legion::Runtime *runtime) {
+privilege_mode_to_accessor<PRIV>
+    helperGetGenericTensorAccessor(DataType datatype,
+                                   Legion::PhysicalRegion const &region,
+                                   Legion::RegionRequirement const &req,
+                                   Legion::FieldID const &fid,
+                                   Legion::Context const &ctx,
+                                   Legion::Runtime *runtime) {
   optional<variant<GenericTensorAccessorR, GenericTensorAccessorW>> result =
       nullopt;
   switch (PRIV) {
-  case Permissions::RO:
-    result = helperGetGenericTensorAccessorRO(datatype, region, req, fid, ctx,
-                                              runtime);
-    break;
-  case Permissions::WO:
-    result = helperGetGenericTensorAccessorWO(datatype, region, req, fid, ctx,
-                                              runtime);
-    break;
-  case Permissions::RW:
-    result = helperGetGenericTensorAccessorRW(datatype, region, req, fid, ctx,
-                                              runtime);
-    break;
-  default:
-    throw mk_runtime_error("Unhandled privilege mode {}", PRIV);
+    case Permissions::RO:
+      result = helperGetGenericTensorAccessorRO(
+          datatype, region, req, fid, ctx, runtime);
+      break;
+    case Permissions::WO:
+      result = helperGetGenericTensorAccessorWO(
+          datatype, region, req, fid, ctx, runtime);
+      break;
+    case Permissions::RW:
+      result = helperGetGenericTensorAccessorRW(
+          datatype, region, req, fid, ctx, runtime);
+      break;
+    default:
+      throw mk_runtime_error("Unhandled privilege mode {}", PRIV);
   }
   return get<privilege_mode_to_accessor<PRIV>>(result.value());
 }

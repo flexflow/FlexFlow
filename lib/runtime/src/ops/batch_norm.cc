@@ -36,13 +36,19 @@ enum Slots {
 }
 
 Tensor
-FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
+    FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
-  Layer *bm = new Layer(this, OP_BATCHNORM, DT_FLOAT, name, 1 /*inputs*/,
-                        2 /*weights*/, 1 /*outputs*/, input);
+  Layer *bm = new Layer(this,
+                        OP_BATCHNORM,
+                        DT_FLOAT,
+                        name,
+                        1 /*inputs*/,
+                        2 /*weights*/,
+                        1 /*outputs*/,
+                        input);
   int numdims = 4;
-  bm->outputs[0] = create_tensor_legion_ordering(numdims, input->dims, DT_FLOAT,
-                                                 bm, 0, true /*create_grad*/);
+  bm->outputs[0] = create_tensor_legion_ordering(
+      numdims, input->dims, DT_FLOAT, bm, 0, true /*create_grad*/);
   bm->add_int_property("relu", relu);
   layers.push_back(bm);
   return bm->outputs[0];
@@ -52,11 +58,22 @@ FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
   locals[0] = scale
   locals[1] = bias
 */
-BatchNorm::BatchNorm(FFModel &model, const ParallelTensor _input,
-                     const ParallelTensor _scale, const ParallelTensor _bias,
-                     bool _relu, char const *name)
-    : Op(model, OP_BATCHNORM, DT_FLOAT, name, 1 /*inputs*/, 2 /*weights*/,
-         1 /*outputs*/, _input, _scale, _bias),
+BatchNorm::BatchNorm(FFModel &model,
+                     const ParallelTensor _input,
+                     const ParallelTensor _scale,
+                     const ParallelTensor _bias,
+                     bool _relu,
+                     char const *name)
+    : Op(model,
+         OP_BATCHNORM,
+         DT_FLOAT,
+         name,
+         1 /*inputs*/,
+         2 /*weights*/,
+         1 /*outputs*/,
+         _input,
+         _scale,
+         _bias),
       relu(_relu) {
   assert(_input->num_dims == 4);
   numOutputs = 1;
@@ -203,9 +220,10 @@ void BatchNorm::init(FFModel const &ff) {
   regions[3](I): bias
 */
 PerDeviceOpState *
-BatchNorm::init_task(Task const *task,
-                     std::vector<PhysicalRegion> const &regions, Context ctx,
-                     Runtime *runtime) {
+    BatchNorm::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
@@ -277,7 +295,8 @@ void BatchNorm::forward(FFModel const &ff) {
 */
 void BatchNorm::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
-                             Context ctx, Runtime *runtime) {
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // const BatchNorm* bm = (BatchNorm*) task->args;
@@ -289,9 +308,14 @@ void BatchNorm::forward_task(Task const *task,
   auto scale = acc.get_tensor<READ_ONLY>(SCALE);
   auto bias = acc.get_tensor<READ_ONLY>(SCALE);
 
-  profile(forward_kernel, m->profiling, "[BatchNorm] forward_time = %.2lfms\n",
-          m, input.get_float_ptr(), output.get_float_ptr(),
-          scale.get_float_ptr(), bias.get_float_ptr());
+  profile(forward_kernel,
+          m->profiling,
+          "[BatchNorm] forward_time = %.2lfms\n",
+          m,
+          input.get_float_ptr(),
+          output.get_float_ptr(),
+          scale.get_float_ptr(),
+          bias.get_float_ptr());
 }
 
 void BatchNorm::backward(FFModel const &ff) {
@@ -370,9 +394,10 @@ void BatchNorm::backward(FFModel const &ff) {
   regions[6](I/O): bias_grad
 */
 __host__ void
-BatchNorm::backward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx, Runtime *runtime) {
+    BatchNorm::backward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   // float beta = 0.0f;
@@ -388,15 +413,22 @@ BatchNorm::backward_task(Task const *task,
   auto scale_grad = acc.get_tensor_grad<READ_WRITE>(SCALE_GRAD);
   auto bias_grad = acc.get_tensor_grad<READ_WRITE>(BIAS_GRAD);
 
-  profile(backward_kernel, m->profiling,
-          "[BatchNorm] backward_time = %.2lfms\n", m, input.get_float_ptr(),
-          output_grad.get_float_ptr(), output.get_float_ptr(),
-          input_grad.get_float_ptr(), scale.get_float_ptr(),
-          scale_grad.get_float_ptr(), bias_grad.get_float_ptr(),
+  profile(backward_kernel,
+          m->profiling,
+          "[BatchNorm] backward_time = %.2lfms\n",
+          m,
+          input.get_float_ptr(),
+          output_grad.get_float_ptr(),
+          output.get_float_ptr(),
+          input_grad.get_float_ptr(),
+          scale.get_float_ptr(),
+          scale_grad.get_float_ptr(),
+          bias_grad.get_float_ptr(),
           output.get_volume());
 }
 
-bool BatchNorm::measure_operator_cost(Simulator *sim, MachineView const &mv,
+bool BatchNorm::measure_operator_cost(Simulator *sim,
+                                      MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -452,8 +484,15 @@ bool BatchNorm::measure_operator_cost(Simulator *sim, MachineView const &mv,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&](ffStream_t stream) {
-      backward_kernel(stream, m, input_ptr, output_grad_ptr, output_ptr,
-                      input_grad_ptr, scale_ptr, scale_grad_ptr, bias_grad_ptr,
+      backward_kernel(stream,
+                      m,
+                      input_ptr,
+                      output_grad_ptr,
+                      output_ptr,
+                      input_grad_ptr,
+                      scale_ptr,
+                      scale_grad_ptr,
+                      bias_grad_ptr,
                       sub_output.get_volume());
     };
   }
@@ -463,11 +502,15 @@ bool BatchNorm::measure_operator_cost(Simulator *sim, MachineView const &mv,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf) "
            "backward_time(%.4lf)\n",
-           name, sub_input.get_volume(), cost_metrics.forward_time,
+           name,
+           sub_input.get_volume(),
+           cost_metrics.forward_time,
            cost_metrics.backward_time);
   } else {
-    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf)\n", name,
-           sub_input.get_volume(), cost_metrics.forward_time);
+    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf)\n",
+           name,
+           sub_input.get_volume(),
+           cost_metrics.forward_time);
   }
   // Free batchnormmeta
   delete m;

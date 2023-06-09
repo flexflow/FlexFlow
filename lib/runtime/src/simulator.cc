@@ -126,23 +126,37 @@ bool MachineResource::is_valid_machine_view(MachineView const &view) const {
   }
 }
 
-Device::Device(std::string const &name, DeviceType type, int node_id,
-               int socket_id, int device_id)
+Device::Device(std::string const &name,
+               DeviceType type,
+               int node_id,
+               int socket_id,
+               int device_id)
     : name(name), type(type), node_id(node_id), socket_id(socket_id),
       device_id(device_id) {}
 
-CompDevice::CompDevice(std::string const &name, CompDevType comp_type,
-                       int node_id, int socket_id, int device_id)
+CompDevice::CompDevice(std::string const &name,
+                       CompDevType comp_type,
+                       int node_id,
+                       int socket_id,
+                       int device_id)
     : Device(name, Device::DEVICE_COMP, node_id, socket_id, device_id),
       comp_type(comp_type) {}
 
-MemDevice::MemDevice(std::string const &name, MemDevType mem_type, int node_id,
-                     int socket_id, int device_id, size_t capacity)
+MemDevice::MemDevice(std::string const &name,
+                     MemDevType mem_type,
+                     int node_id,
+                     int socket_id,
+                     int device_id,
+                     size_t capacity)
     : Device(name, Device::DEVICE_MEM, node_id, socket_id, device_id),
       mem_type(mem_type), capacity(capacity) {}
 
-CommDevice::CommDevice(std::string const &name, CommDevType comm_type,
-                       int node_id, int socket_id, int device_id, float latency,
+CommDevice::CommDevice(std::string const &name,
+                       CommDevType comm_type,
+                       int node_id,
+                       int socket_id,
+                       int device_id,
+                       float latency,
                        float bandwidth)
     : Device(name, Device::DEVICE_COMM, node_id, socket_id, device_id),
       comm_type(comm_type), latency(latency), bandwidth(bandwidth) {}
@@ -152,7 +166,8 @@ static std::mt19937 gen = std::mt19937(rd());
 static std::uniform_real_distribution<> std_uniform =
     std::uniform_real_distribution<>(0.0, 1.0);
 
-NominalCommDevice::NominalCommDevice(std::string const &name, int device_id,
+NominalCommDevice::NominalCommDevice(std::string const &name,
+                                     int device_id,
                                      int nnodes,
                                      NetworkRoutingStrategy *routing)
     : CommDevice(name, CommDevice::NW_NOMINAL, -1, -1, device_id, 0, 0),
@@ -214,18 +229,18 @@ void SimTask::add_next_task(SimTask *task) {
 
 std::string SimTask::get_type_str() const {
   switch (type) {
-  case TASK_FORWARD:
-    return "Forward";
-  case TASK_BACKWARD:
-    return "Backward";
-  case TASK_COMM:
-    return "Comm";
-  case TASK_UPDATE:
-    return "Update";
-  case TASK_BARRIER:
-    return "Barrier";
-  default:
-    assert(false && "Unknown task type");
+    case TASK_FORWARD:
+      return "Forward";
+    case TASK_BACKWARD:
+      return "Backward";
+    case TASK_COMM:
+      return "Comm";
+    case TASK_UPDATE:
+      return "Update";
+    case TASK_BARRIER:
+      return "Barrier";
+    default:
+      assert(false && "Unknown task type");
   }
 }
 
@@ -324,24 +339,26 @@ SimTask *TaskManager::get_backward_task(Op const *op, int idx) {
   return hash_to_backward_task[hash];
 }
 
-void Simulator::free_all() { offset = 0; }
+void Simulator::free_all() {
+  offset = 0;
+}
 
 size_t data_type_size(DataType type) {
   switch (type) {
-  case DT_HALF:
-    return sizeof(half);
-  case DT_FLOAT:
-    return sizeof(float);
-  case DT_DOUBLE:
-    return sizeof(double);
-  case DT_INT32:
-    return sizeof(int32_t);
-  case DT_INT64:
-    return sizeof(int64_t);
-  case DT_BOOLEAN:
-    return sizeof(bool);
-  default:
-    assert(false);
+    case DT_HALF:
+      return sizeof(half);
+    case DT_FLOAT:
+      return sizeof(float);
+    case DT_DOUBLE:
+      return sizeof(double);
+    case DT_INT32:
+      return sizeof(int32_t);
+    case DT_INT64:
+      return sizeof(int64_t);
+    case DT_BOOLEAN:
+      return sizeof(bool);
+    default:
+      assert(false);
   }
 }
 
@@ -375,7 +392,8 @@ void Simulator::add_task_dependencies_with_xfer(SimTask *src_task,
 
   if (path.empty() || zero_cost) {
     log_xfer_sim.spew("Simulated xfer cost from %s to %s: 0ms",
-                      src_task->name.c_str(), dst_task->name.c_str());
+                      src_task->name.c_str(),
+                      dst_task->name.c_str());
     src_task->add_next_task(dst_task);
     return;
   }
@@ -414,8 +432,10 @@ void Simulator::add_task_dependencies_with_xfer(SimTask *src_task,
       all_tasks[i].push_back(cur_task);
       if (j == 0) {
         log_xfer_sim.debug("Simulated xfer cost from %s to %s: %fms (%d)",
-                           src_task->name.c_str(), dst_task->name.c_str(),
-                           cur_task->run_time, cur_seg_size);
+                           src_task->name.c_str(),
+                           dst_task->name.c_str(),
+                           cur_task->run_time,
+                           cur_seg_size);
       }
     }
   }
@@ -551,10 +571,12 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
 }
 
 float Simulator::estimate_repartition_xfer_cost(
-    int repartition_dim, int repartition_degree,
+    int repartition_dim,
+    int repartition_degree,
     ParallelTensorShape const &input_tensor_shape,
     ParallelTensorShape const &output_tensor_shape,
-    MachineView const &source_view, MachineView const &sink_view) const {
+    MachineView const &source_view,
+    MachineView const &sink_view) const {
   assert(source_view != sink_view);
 
   auto tensor_dim_to_mv_dim_mapping =
@@ -591,7 +613,8 @@ float Simulator::estimate_repartition_xfer_cost(
 
 // estimate the data transfer costs from some op with view source_view to Op op
 // with view sink_view
-float Simulator::estimate_xfer_cost(Op const *op, int input_idx,
+float Simulator::estimate_xfer_cost(Op const *op,
+                                    int input_idx,
                                     MachineView const &source_view,
                                     MachineView const &sink_view) {
   // assert(tensor->is_valid_machine_view(source_view));
@@ -605,83 +628,93 @@ float Simulator::estimate_xfer_cost(Op const *op, int input_idx,
     assert(input_idx == 0);
     const ParallelTensor output_tensor = op->outputs[0];
     switch (op->op_type) {
-    case OP_REPARTITION: {
-      Repartition *rp = (Repartition *)op;
-      return this->estimate_repartition_xfer_cost(
-          rp->repartition_dim, rp->repartition_degree,
-          input_tensor->get_shape(), output_tensor->get_shape(), source_view,
-          sink_view);
-    }
-    case OP_COMBINE: {
-      Combine *combine = (Combine *)op;
-      const ParallelTensor output_tensor = op->outputs[0];
-      return this->estimate_repartition_xfer_cost(
-          combine->combine_dim, combine->combine_degree,
-          output_tensor->get_shape(), input_tensor->get_shape(), sink_view,
-          source_view);
-    }
-    case OP_REPLICATE: {
-      Replicate *replicate = (Replicate *)op;
-      ParallelTensorShape fake_input_shape = input_tensor->get_shape();
-      fake_input_shape.dims[replicate->replicate_dim].size *=
-          replicate->replicate_degree;
-      return this->estimate_repartition_xfer_cost(
-          replicate->replicate_dim, replicate->replicate_degree,
-          fake_input_shape, output_tensor->get_shape(), source_view, sink_view);
-    }
-    case OP_REDUCTION: {
-      Reduction *reduction = (Reduction *)op;
-      const ParallelTensor output_tensor = op->outputs[0];
-      ParallelTensorShape fake_output_shape = output_tensor->get_shape();
-      fake_output_shape.dims[reduction->reduction_dim].size *=
-          reduction->reduction_degree;
-      return this->estimate_repartition_xfer_cost(
-          reduction->reduction_dim, reduction->reduction_degree,
-          fake_output_shape, input_tensor->get_shape(), sink_view, source_view);
-    }
-    case OP_FUSED_PARALLEL: {
-      FusedParallelOp const *fused = (FusedParallelOp const *)op;
-      const ParallelTensor input_tensor = op->inputs[0];
-      const ParallelTensor output_tensor = op->outputs[0];
-      ParallelTensorShape input_shape = input_tensor->get_shape();
-      ParallelTensorShape output_shape = output_tensor->get_shape();
-      // FIXME: we currently calculate an over estimation
-      size_t input_piece_size = input_shape.get_piece_size();
-      size_t output_piece_size = output_shape.get_piece_size();
-      bool inter_node = false;
-      for (Domain::DomainPointIterator it1(source_view.get_domain()); it1;
-           it1++) {
-        DomainPoint source_dp(*it1);
-        int source_node_id = source_view.get_device_id(source_dp);
-        for (Domain::DomainPointIterator it2(sink_view.get_domain()); it2;
-             it2++) {
-          DomainPoint sink_dp(*it2);
-          int sink_node_id = sink_view.get_device_id(sink_dp);
-          if (sink_node_id != source_node_id) {
-            inter_node = true;
+      case OP_REPARTITION: {
+        Repartition *rp = (Repartition *)op;
+        return this->estimate_repartition_xfer_cost(rp->repartition_dim,
+                                                    rp->repartition_degree,
+                                                    input_tensor->get_shape(),
+                                                    output_tensor->get_shape(),
+                                                    source_view,
+                                                    sink_view);
+      }
+      case OP_COMBINE: {
+        Combine *combine = (Combine *)op;
+        const ParallelTensor output_tensor = op->outputs[0];
+        return this->estimate_repartition_xfer_cost(combine->combine_dim,
+                                                    combine->combine_degree,
+                                                    output_tensor->get_shape(),
+                                                    input_tensor->get_shape(),
+                                                    sink_view,
+                                                    source_view);
+      }
+      case OP_REPLICATE: {
+        Replicate *replicate = (Replicate *)op;
+        ParallelTensorShape fake_input_shape = input_tensor->get_shape();
+        fake_input_shape.dims[replicate->replicate_dim].size *=
+            replicate->replicate_degree;
+        return this->estimate_repartition_xfer_cost(replicate->replicate_dim,
+                                                    replicate->replicate_degree,
+                                                    fake_input_shape,
+                                                    output_tensor->get_shape(),
+                                                    source_view,
+                                                    sink_view);
+      }
+      case OP_REDUCTION: {
+        Reduction *reduction = (Reduction *)op;
+        const ParallelTensor output_tensor = op->outputs[0];
+        ParallelTensorShape fake_output_shape = output_tensor->get_shape();
+        fake_output_shape.dims[reduction->reduction_dim].size *=
+            reduction->reduction_degree;
+        return this->estimate_repartition_xfer_cost(reduction->reduction_dim,
+                                                    reduction->reduction_degree,
+                                                    fake_output_shape,
+                                                    input_tensor->get_shape(),
+                                                    sink_view,
+                                                    source_view);
+      }
+      case OP_FUSED_PARALLEL: {
+        FusedParallelOp const *fused = (FusedParallelOp const *)op;
+        const ParallelTensor input_tensor = op->inputs[0];
+        const ParallelTensor output_tensor = op->outputs[0];
+        ParallelTensorShape input_shape = input_tensor->get_shape();
+        ParallelTensorShape output_shape = output_tensor->get_shape();
+        // FIXME: we currently calculate an over estimation
+        size_t input_piece_size = input_shape.get_piece_size();
+        size_t output_piece_size = output_shape.get_piece_size();
+        bool inter_node = false;
+        for (Domain::DomainPointIterator it1(source_view.get_domain()); it1;
+             it1++) {
+          DomainPoint source_dp(*it1);
+          int source_node_id = source_view.get_device_id(source_dp);
+          for (Domain::DomainPointIterator it2(sink_view.get_domain()); it2;
+               it2++) {
+            DomainPoint sink_dp(*it2);
+            int sink_node_id = sink_view.get_device_id(sink_dp);
+            if (sink_node_id != source_node_id) {
+              inter_node = true;
+              break;
+            }
+          }
+          if (inter_node) {
             break;
           }
         }
+        float max_xfer_cost = 0.0f;
         if (inter_node) {
-          break;
+          // inter_node case
+          float bandwidth = machine->get_inter_node_gpu_bandwidth();
+          max_xfer_cost =
+              std::max(input_piece_size, output_piece_size) / bandwidth;
+        } else {
+          // intra_node case
+          float bandwidth = machine->get_intra_node_gpu_bandwidth();
+          max_xfer_cost =
+              std::max(input_piece_size, output_piece_size) / bandwidth;
         }
+        return 2 * max_xfer_cost;
       }
-      float max_xfer_cost = 0.0f;
-      if (inter_node) {
-        // inter_node case
-        float bandwidth = machine->get_inter_node_gpu_bandwidth();
-        max_xfer_cost =
-            std::max(input_piece_size, output_piece_size) / bandwidth;
-      } else {
-        // intra_node case
-        float bandwidth = machine->get_intra_node_gpu_bandwidth();
-        max_xfer_cost =
-            std::max(input_piece_size, output_piece_size) / bandwidth;
-      }
-      return 2 * max_xfer_cost;
-    }
-    default:
-      assert(false);
+      default:
+        assert(false);
     }
   } else {
     // No cost if source_view == sink_view
@@ -718,7 +751,8 @@ float Simulator::estimate_xfer_cost(Op const *op, int input_idx,
   }
 }
 
-bool Op::estimate_sync_cost(Simulator *sim, MachineView const &view,
+bool Op::estimate_sync_cost(Simulator *sim,
+                            MachineView const &view,
                             CostMetrics &cost_metrics) const {
   // By default we assume an operator does not have sync cost
   // Implement a derived method for operators with parameters
@@ -726,23 +760,25 @@ bool Op::estimate_sync_cost(Simulator *sim, MachineView const &view,
 }
 
 float Simulator::default_estimate_sync_cost(
-    const ParallelDim tensor_dims[MAX_TENSOR_DIM], int tensor_ndims,
+    const ParallelDim tensor_dims[MAX_TENSOR_DIM],
+    int tensor_ndims,
     MachineView const &view) {
   ParallelTensorShape tensor_shape(tensor_ndims, tensor_dims, DT_FLOAT);
 
-  return this->default_estimate_sync_cost(tensor_shape, view,
-                                          tensor_shape.get_num_replica_dims());
+  return this->default_estimate_sync_cost(
+      tensor_shape, view, tensor_shape.get_num_replica_dims());
 }
 
 float Simulator::default_estimate_sync_cost(const ParallelTensor tensor,
                                             MachineView const &view,
                                             int num_replica_dims) {
-  return this->default_estimate_sync_cost(tensor->get_shape(), view,
-                                          num_replica_dims);
+  return this->default_estimate_sync_cost(
+      tensor->get_shape(), view, num_replica_dims);
 }
 
 float Simulator::default_estimate_sync_cost(
-    ParallelTensorShape const &tensor_shape, MachineView const &view,
+    ParallelTensorShape const &tensor_shape,
+    MachineView const &view,
     int num_replicate_dims) {
   // Currently only support 1 replicate_dim
   int num_replicas = tensor_shape.get_num_replicas();
@@ -771,14 +807,17 @@ float Simulator::default_estimate_sync_cost(
 }
 
 float Simulator::simulate_runtime(
-    FFModel const *model, std::map<Op const *, ParallelConfig> const &global,
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
     CompMode comp_mode) {
   return this->simulate_runtime(model, global, comp_mode, "");
 }
 
 float Simulator::simulate_runtime(
-    FFModel const *model, std::map<Op const *, ParallelConfig> const &global,
-    CompMode comp_mode, std::string const &export_file_name) {
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
+    CompMode comp_mode,
+    std::string const &export_file_name) {
   // printf("%s\n", machine->to_string().c_str());
   task_manager->reset();
   // Step 1: register forward and backward tasks
@@ -826,11 +865,13 @@ float Simulator::simulate_runtime(
               size_t xfer_size =
                   dstR.intersection(srcR).get_volume() * element_size;
               if (dstId == 0 && srcId == 0) {
-                log_sim.debug("fwd xfer from %s to %s: %zu", srcT->name.c_str(),
-                              dstT->name.c_str(), xfer_size);
+                log_sim.debug("fwd xfer from %s to %s: %zu",
+                              srcT->name.c_str(),
+                              dstT->name.c_str(),
+                              xfer_size);
               }
-              add_task_dependencies_with_xfer(srcT, dstT, xfer_size,
-                                              force_zero_cost);
+              add_task_dependencies_with_xfer(
+                  srcT, dstT, xfer_size, force_zero_cost);
               // add_task_dependencies_with_xfer(srcT, dstT,
               // dstR.intersection(srcR).get_volume() * element_size);
             }
@@ -841,11 +882,13 @@ float Simulator::simulate_runtime(
               size_t xfer_size =
                   dstR.intersection(srcR).get_volume() * element_size;
               if (dstId == 0 && srcId == 0) {
-                log_sim.debug("bwd xfer from %s to %s: %zu", dstT->name.c_str(),
-                              srcT->name.c_str(), xfer_size);
+                log_sim.debug("bwd xfer from %s to %s: %zu",
+                              dstT->name.c_str(),
+                              srcT->name.c_str(),
+                              xfer_size);
               }
-              add_task_dependencies_with_xfer(dstT, srcT, xfer_size,
-                                              force_zero_cost);
+              add_task_dependencies_with_xfer(
+                  dstT, srcT, xfer_size, force_zero_cost);
               // add_task_dependencies_with_xfer(dstT, srcT,
               // dstR.intersection(srcR).get_volume() * element_size);
             }
@@ -1063,7 +1106,8 @@ float Simulator::simulate_runtime(
 
     std::vector<bool> available_devices(this->machine->get_num_gpus(), true);
 
-    std::priority_queue<OpSyncTask *, std::vector<OpSyncTask *>,
+    std::priority_queue<OpSyncTask *,
+                        std::vector<OpSyncTask *>,
                         OpSyncTaskEarliestFirst>
         sync_ready_queue;
 
@@ -1124,9 +1168,9 @@ float Simulator::simulate_runtime(
                   // printf("[NCCL Time] Op(%s) Weight(%d) firstId(%d)
                   // nextId(%d): volume is %f\n", op->name, j, firstId, nextId,
                   // (float)firstR.get_volume());
-                  nccl_time =
-                      std::max(nccl_time, 2 * (float)firstR.get_volume() *
-                                              element_size / bandwidth);
+                  nccl_time = std::max(nccl_time,
+                                       2 * (float)firstR.get_volume() *
+                                           element_size / bandwidth);
                 }
               }
               sync_run_time += nccl_time;
@@ -1199,8 +1243,10 @@ float Simulator::simulate_runtime(
 }
 
 float LogicalTaskgraphBasedSimulator::simulate_runtime(
-    FFModel const *model, std::map<Op const *, ParallelConfig> const &global,
-    CompMode comp_mode, std::string const &export_file_name) {
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
+    CompMode comp_mode,
+    std::string const &export_file_name) {
 #ifdef WRITE_NETWORK_TRANSFER
   network_transfer_log.open("network.log");
 #endif
@@ -1295,7 +1341,8 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
               SimTask *dstT = task_manager->get_forward_task(op, dstId);
               SimTask *srcT = task_manager->get_forward_task(pre_op, srcId);
               add_task_dependencies_with_xfer(
-                  srcT, dstT,
+                  srcT,
+                  dstT,
                   dstR.intersection(srcR).get_volume() * element_size);
             }
             // Backward dependency
@@ -1303,7 +1350,8 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
               SimTask *dstT = task_manager->get_backward_task(op, dstId);
               SimTask *srcT = task_manager->get_backward_task(pre_op, srcId);
               add_task_dependencies_with_xfer(
-                  dstT, srcT,
+                  dstT,
+                  srcT,
                   dstR.intersection(srcR).get_volume() * element_size);
             }
           }
@@ -1361,8 +1409,12 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
 #ifdef DEBUG_PRINT
     printf("task[%lu/%lu] type(%d) run_time(%.4lf) ready_time(%.4lf) "
            "start_time(%.4lf) device(%s)\n",
-           idx, task_manager->global_task_id, cur_task->type,
-           cur_task->run_time, ready_time, start_time,
+           idx,
+           task_manager->global_task_id,
+           cur_task->type,
+           cur_task->run_time,
+           ready_time,
+           start_time,
            (cur_task->device->name).c_str());
 #endif
 
@@ -1421,13 +1473,15 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
 }
 
 float LogicalTaskgraphBasedSimulator::simulate_runtime(
-    FFModel const *model, std::map<Op const *, ParallelConfig> const &global,
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
     CompMode comp_mode) {
   return this->simulate_runtime(model, global, comp_mode, "");
 }
 
 float LogicalTaskgraphBasedSimulator::route_transfer(
-    SimTask *transfer_task, float start_time,
+    SimTask *transfer_task,
+    float start_time,
     std::map<Device *, float> &device_times) {
   std::vector<CommDevice *> route =
       static_cast<NominalCommDevice *>(transfer_task->device)
@@ -1485,10 +1539,14 @@ float LogicalTaskgraphBasedSimulator::route_transfer(
 #ifdef DEBUG_PRINT
     printf("\texpand: route[%u] run_time(%.4lf) ready_time(%.4lf) "
            "start_time(%.4lf) device(%s)\n",
-           i, curr_task_run_time, curr_task_ready_time, curr_task_start_time,
+           i,
+           curr_task_run_time,
+           curr_task_ready_time,
+           curr_task_start_time,
            (latency_task_device->name).c_str());
     printf("\t\td2d: run_time(%.4lf) start_time(%.4lf) device(%s)\n",
-           dram_to_dram_run_time, dram_to_dram_start_time,
+           dram_to_dram_run_time,
+           dram_to_dram_start_time,
            (latency_task_device->name).c_str());
 #endif
 
@@ -1511,8 +1569,10 @@ float LogicalTaskgraphBasedSimulator::route_transfer(
 }
 
 float LogicalTaskgraphBasedSimulator::route_transfer_seg(
-    SimTask *transfer_task, float start_time,
-    std::map<Device *, float> &device_times, bool &finished) {
+    SimTask *transfer_task,
+    float start_time,
+    std::map<Device *, float> &device_times,
+    bool &finished) {
   std::vector<CommDevice *> route =
       static_cast<NominalCommDevice *>(transfer_task->device)
           ->expand_to_physical();
@@ -1586,10 +1646,14 @@ float LogicalTaskgraphBasedSimulator::route_transfer_seg(
 #ifdef DEBUG_PRINT
     printf("\texpand: route[%u] run_time(%.4lf) ready_time(%.4lf) "
            "start_time(%.4lf) device(%s)\n",
-           i, curr_task_run_time, curr_task_ready_time, curr_task_start_time,
+           i,
+           curr_task_run_time,
+           curr_task_ready_time,
+           curr_task_start_time,
            (latency_task_device->name).c_str());
     printf("\t\td2d: run_time(%.4lf) start_time(%.4lf) device(%s)\n",
-           dram_to_dram_run_time, dram_to_dram_start_time,
+           dram_to_dram_run_time,
+           dram_to_dram_start_time,
            (latency_task_device->name).c_str());
 #endif
     info_holder->device = latency_task_device;
@@ -1618,7 +1682,8 @@ float LogicalTaskgraphBasedSimulator::route_transfer_seg(
 }
 
 void LogicalTaskgraphBasedSimulator::expand_allreduce(
-    SimTask *allreduce_task, float start_time,
+    SimTask *allreduce_task,
+    float start_time,
     std::priority_queue<SimTask *, std::vector<SimTask *>, SimTaskCompare>
         &ready_queue) {
 

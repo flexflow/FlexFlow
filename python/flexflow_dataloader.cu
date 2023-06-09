@@ -22,7 +22,8 @@ using namespace FlexFlow;
 template <typename DT>
 void SingleDataLoader::load_input(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
-                                  Context ctx, Runtime *runtime) {
+                                  Context ctx,
+                                  Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
@@ -60,18 +61,25 @@ void SingleDataLoader::load_input(Task const *task,
   // %d\n", acc_full_input.ptr, input_zc, start_idx, num_elements_per_batch,
   // batch_size, start_idx * num_elements_per_batch);
   copy_kernel<DT>
-      <<<GET_BLOCKS(batch_input_domain.get_volume()), CUDA_NUM_THREADS, 0,
+      <<<GET_BLOCKS(batch_input_domain.get_volume()),
+         CUDA_NUM_THREADS,
+         0,
          stream>>>(batch_input_ptr, input_zc, batch_input_domain.get_volume());
   checkCUDA(cudaDeviceSynchronize());
 }
 
-template void
-SingleDataLoader::load_input<float>(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx, Runtime *runtime);
+template void SingleDataLoader::load_input<float>(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime);
 template void SingleDataLoader::load_input<int32_t>(
-    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::load_input<int64_t>(
-    Task const *task, std::vector<PhysicalRegion> const &regions, Context ctx,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
     Runtime *runtime);

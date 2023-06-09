@@ -7,18 +7,23 @@
 
 namespace FlexFlow {
 
-template <> void register_task<TRANSPOSE_INIT_TASK_ID>();
-template <> void register_task<TRANSPOSE_FWD_TASK_ID>();
-template <> void register_task<TRANSPOSE_BWD_TASK_ID>();
+template <>
+void register_task<TRANSPOSE_INIT_TASK_ID>();
+template <>
+void register_task<TRANSPOSE_FWD_TASK_ID>();
+template <>
+void register_task<TRANSPOSE_BWD_TASK_ID>();
 
 OpTaskInvocation init(TransposeAttrs const &);
 OpTaskInvocation forward(TransposeAttrs const &);
 OpTaskInvocation backward(TransposeAttrs const &);
 
-CostMetrics measure_operator_cost(
-    SimEnvFactory const &sim_factory, TransposeAttrs const &attrs,
-    std::vector<ParallelTensorShape> const &input_shapes,
-    ProfilingSettings const &settings, MachineView const &machine_view);
+CostMetrics
+    measure_operator_cost(SimEnvFactory const &sim_factory,
+                          TransposeAttrs const &attrs,
+                          std::vector<ParallelTensorShape> const &input_shapes,
+                          ProfilingSettings const &settings,
+                          MachineView const &machine_view);
 
 /* class Transpose : public Op { */
 /* public: */
