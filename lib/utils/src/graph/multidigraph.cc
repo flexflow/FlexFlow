@@ -85,27 +85,27 @@ void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
 }
 
 MultiDiGraph::operator MultiDiGraphView() const {
-  return MultiDiGraphView(this->ptr.get_shared_ptr());
+  return MultiDiGraphView(this->ptr.get());
 }
 
 Node MultiDiGraph::add_node() {
-  return this->ptr.mutable_ref().add_node();
+  return this->ptr.get_mutable()->add_node();
 }
 
 void MultiDiGraph::add_node_unsafe(Node const &n) {
-  return this->ptr.mutable_ref().add_node_unsafe(n);
+  return this->ptr.get_mutable()->add_node_unsafe(n);
 }
 
 void MultiDiGraph::remove_node_unsafe(Node const &n) {
-  return this->ptr.mutable_ref().remove_node_unsafe(n);
+  return this->ptr.get_mutable()->remove_node_unsafe(n);
 }
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
-  return this->ptr.mutable_ref().add_edge(e);
+  return this->ptr.get_mutable()->add_edge(e);
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
-  return this->ptr.mutable_ref().remove_edge(e);
+  return this->ptr.get_mutable()->remove_edge(e);
 }
 
 std::unordered_set<MultiDiEdge>
@@ -113,4 +113,4 @@ std::unordered_set<MultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
-} // namespace FlexFlow
+}

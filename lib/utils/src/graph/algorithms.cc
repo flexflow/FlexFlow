@@ -17,7 +17,7 @@ std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
   return nodes;
 }
 
-std::unordered_set<Node> get_nodes(IGraphView const &g) {
+std::unordered_set<Node> get_nodes(GraphView const &g) {
   return g.query_nodes({});
 }
 
@@ -83,12 +83,8 @@ void remove_node_if_unused(UndirectedGraph &g, Node const &n) {
   g.remove_node_unsafe(n);
 }
 
-std::size_t num_nodes(IGraphView const &g) {
+std::size_t num_nodes(GraphView const &g) {
   return get_nodes(g).size();
-}
-
-bool empty(IGraphView const &g) {
-  return num_nodes(g) == 0;
 }
 
 void add_edges(MultiDiGraph &g, std::vector<MultiDiEdge> const &edges) {
