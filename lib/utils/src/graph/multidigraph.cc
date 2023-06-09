@@ -84,6 +84,10 @@ void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
+MultiDiGraph::operator MultiDiGraphView() const {
+  return MultiDiGraphView(this->ptr.get_shared_ptr());
+}
+
 Node MultiDiGraph::add_node() {
   return this->ptr.mutable_ref().add_node();
 }
