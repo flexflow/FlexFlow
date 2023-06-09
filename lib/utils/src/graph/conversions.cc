@@ -193,6 +193,11 @@ std::unique_ptr<IDiGraphView>
   return std::unique_ptr<IDiGraphView>(new ViewMultiDiGraphAsDiGraph{multidi});
 }
 
+// DiGraphView unsafe_view_as_digraph(MultiDiGraphView const &) {
+//   //return DigraphView
+//   //看看哪个类继承了DigraphView, 然后它构造函数的参数是MulitDiGraphView
+// }
+
 std::unique_ptr<IDiGraphView>
     view_as_digraph(std::shared_ptr<IMultiDiGraph> const &multidi) {
   return std::unique_ptr<IDiGraphView>(new ViewMultiDiGraphAsDiGraph{multidi});

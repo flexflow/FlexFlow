@@ -1,4 +1,5 @@
 #include "utils/graph/multidigraph.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
@@ -9,6 +10,14 @@ std::ostream &operator<<(std::ostream &s, MultiDiEdge const &e) {
   return (s << "MultiDiEdge<" << e.src.value() << ":" << e.srcIdx << " -> "
             << e.dst.value() << ":" << e.dstIdx << ">");
 }
+
+// add MultiDiEdgeQuery::MultiDiEdgeQuery constructor
+MultiDiEdgeQuery::MultiDiEdgeQuery(
+    tl::optional<std::unordered_set<Node>> const &srcs,
+    tl::optional<std::unordered_set<Node>> const &dsts,
+    tl::optional<std::unordered_set<std::size_t>> const &srcIdxs,
+    tl::optional<std::unordered_set<std::size_t>> const &dstIdxs)
+    : srcs(srcs), dsts(dsts), srcIdxs(srcIdxs), dstIdxs(dstIdxs) {}
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(
     std::unordered_set<Node> const &nodes) const {
@@ -70,13 +79,37 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
   return MultiDiEdgeQuery{};
 }
 
+MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
+                                    MultiDiEdgeQuery const &rhs) {
+  assert(lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() &&
+         rhs.dsts.has_value());
+
+  tl::optional<std::unordered_set<Node>> srcs =
+      intersection(*lhs.srcs, *rhs.srcs);
+  tl::optional<std::unordered_set<Node>> dsts =
+      intersection(*lhs.dsts, *rhs.dsts);
+
+  // TODO, how to set srcIdxs, dstIdxs
+  return MultiDiEdgeQuery(srcs, dsts);
+}
+
 void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   using std::swap;
 
   swap(lhs.ptr, rhs.ptr);
 }
 
+MultiDiGraph::operator MultiDiGraphView() const {
+  std::shared_ptr<IMultiDiGraph const> sharedPtr = ptr.get_shared_ptr();
+  return MultiDiGraphView(sharedPtr);
+}
+
 MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) : ptr(other.ptr) {}
+
+std::unordered_set<MultiDiEdge>
+    MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
 
 MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
   swap(*this, other);

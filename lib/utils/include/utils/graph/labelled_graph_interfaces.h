@@ -48,7 +48,7 @@ static_assert(
 struct MultiDiOutput : public use_visitable_cmp<MultiDiOutput> {
 public:
   MultiDiOutput() = delete;
-  MultiDiOutput(Node const &, size_t);
+  MultiDiOutput(Node const &node, size_t idx) : node(node), idx(idx) {}
 
 public:
   Node node;
@@ -57,7 +57,7 @@ public:
 
 struct MultiDiInput : public use_visitable_cmp<MultiDiInput> {
 public:
-  MultiDiInput(Node const &, size_t);
+  MultiDiInput(Node const &node, size_t idx) : node(node), idx(idx) {}
 
 public:
   Node node;

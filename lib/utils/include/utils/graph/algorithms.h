@@ -113,9 +113,11 @@ std::unordered_map<Node, std::unordered_set<Node>>
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
+// return the set of nodes without incoming edges
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 
+// return the set of nodes without outgoing edges
 std::unordered_set<Node> get_sinks(DiGraphView const &);
 std::unordered_set<Node> get_sinks(MultiDiGraphView const &);
 

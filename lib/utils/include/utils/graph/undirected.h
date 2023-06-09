@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-struct UndirectedEdge : public use_visitable_cmp<UndirectedEdge> {
+struct UndirectedEdge : use_visitable_cmp<UndirectedEdge> {
 public:
   UndirectedEdge() = delete;
   UndirectedEdge(Node src, Node dst);
@@ -44,7 +44,7 @@ struct IUndirectedGraphView : public IGraphView {
 
   virtual std::unordered_set<Edge>
       query_edges(UndirectedEdgeQuery const &) const = 0;
-  virtual ~IUndirectedGraphView();
+  virtual ~IUndirectedGraphView() = default;
 
 protected:
   IUndirectedGraphView() = default;
@@ -85,9 +85,10 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>);
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
+      : ptr(ptr) {}
 
+private:
   friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
 
 private:
@@ -113,7 +114,10 @@ public:
 
   UndirectedGraph &operator=(UndirectedGraph);
 
-  operator UndirectedGraphView() const;
+  operator UndirectedGraphView() const {
+    return UndirectedGraphView(
+        std::shared_ptr<IUndirectedGraphView const>(ptr->clone()));
+  }
 
   friend void swap(UndirectedGraph &, UndirectedGraph &);
 

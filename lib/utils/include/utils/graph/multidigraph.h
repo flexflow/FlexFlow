@@ -8,37 +8,19 @@
 #include "utils/type_traits.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
+#include <memory>
 #include <unordered_set>
 
 namespace FlexFlow {
 
-/**
- * @class NodePort
- * @brief An opaque object used to disambiguate multiple edges between the same
- * nodes in a MultiDiGraph
- *
- * Name chosen to match the terminology used by <a href="linkURL">ELK</a>
- *
- */
-struct NodePort : public strong_typedef<NodePort, size_t> {
-  using strong_typedef::strong_typedef;
-};
-
-} // namespace FlexFlow
-
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::NodePort);
-MAKE_TYPEDEF_PRINTABLE(::FlexFlow::NodePort, "NodePort");
-
-namespace FlexFlow {
-
-struct MultiDiEdge : public use_visitable_cmp<MultiDiEdge> {
+struct MultiDiEdge : use_visitable_cmp<MultiDiEdge> {
 public:
   MultiDiEdge() = delete;
-  MultiDiEdge(Node src, Node dst, NodePort srcIdx, NodePort dstIdx);
+  MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx);
 
 public:
   Node src, dst;
-  NodePort srcIdx, dstIdx;
+  std::size_t srcIdx, dstIdx;
 };
 std::ostream &operator<<(std::ostream &, MultiDiEdge const &);
 
@@ -51,23 +33,25 @@ namespace FlexFlow {
 
 struct MultiDiEdgeQuery {
   tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
-  tl::optional<std::unordered_set<NodePort>> srcIdxs = tl::nullopt,
-                                             dstIdxs = tl::nullopt;
+  tl::optional<std::unordered_set<std::size_t>> srcIdxs = tl::nullopt,
+                                                dstIdxs = tl::nullopt;
 
   MultiDiEdgeQuery(
       tl::optional<std::unordered_set<Node>> const &srcs = tl::nullopt,
       tl::optional<std::unordered_set<Node>> const &dsts = tl::nullopt,
-      tl::optional<std::unordered_set<NodePort>> const &srcIdxs = tl::nullopt,
-      tl::optional<std::unordered_set<NodePort>> const &dstIdxs = tl::nullopt);
+      tl::optional<std::unordered_set<std::size_t>> const &srcIdxs =
+          tl::nullopt,
+      tl::optional<std::unordered_set<std::size_t>> const &dstIdxs =
+          tl::nullopt);
 
   MultiDiEdgeQuery with_src_nodes(std::unordered_set<Node> const &) const;
   MultiDiEdgeQuery with_src_node(Node const &) const;
   MultiDiEdgeQuery with_dst_nodes(std::unordered_set<Node> const &) const;
   MultiDiEdgeQuery with_dst_node(Node const &) const;
-  MultiDiEdgeQuery with_src_idxs(std::unordered_set<NodePort> const &) const;
-  MultiDiEdgeQuery with_src_idx(NodePort const &) const;
-  MultiDiEdgeQuery with_dst_idxs(std::unordered_set<NodePort> const &) const;
-  MultiDiEdgeQuery with_dst_idx(NodePort const &) const;
+  MultiDiEdgeQuery with_src_idxs(std::unordered_set<std::size_t> const &) const;
+  MultiDiEdgeQuery with_src_idx(std::size_t) const;
+  MultiDiEdgeQuery with_dst_idxs(std::unordered_set<std::size_t> const &) const;
+  MultiDiEdgeQuery with_dst_idx(std::size_t) const;
 
   static MultiDiEdgeQuery all();
 };
@@ -80,7 +64,7 @@ struct IMultiDiGraphView : public IGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IMultiDiGraphView();
+  virtual ~IMultiDiGraphView() = default;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value,
@@ -106,7 +90,9 @@ public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
 
-  operator GraphView() const;
+  operator GraphView() const {
+    return GraphView(ptr);
+  }
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
@@ -129,9 +115,9 @@ public:
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
 
-private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
 
+private:
   friend struct MultiDiGraph;
   friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
 
@@ -139,7 +125,7 @@ private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 
-MultiDiGraphView unsafe(IMultiDiGraphView const &);
+MultiDiGraphView unsafe(IMultiDiGraphView const &graphView);
 
 struct MultiDiGraph {
 public:
@@ -156,9 +142,7 @@ public:
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 
   Node add_node();
-  NodePort add_node_port();
   void add_node_unsafe(Node const &);
-  void add_node_port_unsafe(NodePort const &);
   void remove_node_unsafe(Node const &);
 
   void add_edge(Edge const &e);

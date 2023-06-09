@@ -117,6 +117,13 @@ Node NodeSource::fresh_node() {
   return result;
 }
 
+JoinNodeKey::JoinNodeKey(Node const &node, LRDirection direction)
+    : node(node), direction(direction) {}
+
+bool JoinNodeKey::operator==(JoinNodeKey const &jnk) const {
+  return node == jnk.node && direction == jnk.direction;
+}
+
 JoinedNodeView::JoinedNodeView(IGraphView const &lhs, IGraphView const &rhs) {
   for (Node const &n : get_nodes(GraphView::unsafe(lhs))) {
     this->mapping.equate({n, LRDirection::LEFT},

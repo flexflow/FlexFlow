@@ -31,4 +31,4 @@ target_link_libraries(
 ff_set_cxx_properties(${project_target})
 
 add_subdirectory(ffi)
-# add_subdirectory(test)
+add_subdirectory(test)

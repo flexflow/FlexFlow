@@ -65,4 +65,9 @@ std::unordered_set<UndirectedEdge>
 UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
+std::unordered_set<UndirectedEdge>
+    UndirectedGraphView::query_edges(UndirectedEdgeQuery const &query) const {
+  return ptr->query_edges(query);
+}
+
 } // namespace FlexFlow

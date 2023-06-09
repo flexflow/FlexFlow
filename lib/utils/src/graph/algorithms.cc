@@ -21,6 +21,10 @@ std::unordered_set<Node> get_nodes(IGraphView const &g) {
   return g.query_nodes({});
 }
 
+std::unordered_set<Node> get_nodes(GraphView const &g) {
+  return g.unsafe()->query_nodes({});
+}
+
 std::unordered_set<Node> query_nodes(IGraphView const &g,
                                      std::unordered_set<Node> const &nodes) {
   return g.query_nodes({nodes});
@@ -87,7 +91,15 @@ std::size_t num_nodes(IGraphView const &g) {
   return get_nodes(g).size();
 }
 
+std::size_t num_nodes(GraphView const &g) {
+  return get_nodes(g).size();
+}
+
 bool empty(IGraphView const &g) {
+  return num_nodes(g) == 0;
+}
+
+bool empty(GraphView const &g) {
   return num_nodes(g) == 0;
 }
 
@@ -186,6 +198,16 @@ std::unordered_set<DirectedEdge>
   return to_directed_edges(get_outgoing_edges(multidigraph_view, dsts));
 }
 
+std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g,
+                                                   Node const &n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
+}
+
+std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g,
+                                                    Node const &n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
+}
+
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &g,
                      std::unordered_set<Node> const &nodes) {
@@ -249,6 +271,28 @@ std::unordered_set<Node> get_sources(DiGraphView const &g) {
     }
   }
   return sources;
+}
+
+std::unordered_set<Node> get_sinks(DiGraphView const &g) {
+  std::unordered_set<Node> dsts;
+  for (Node const &n : get_nodes(g)) {
+    auto outgoing = get_outgoing_edges(g, n);
+    if (outgoing.size() == 0) {
+      dsts.insert(n);
+    }
+  }
+  return dsts;
+}
+
+std::unordered_set<Node> get_sinks(MultiDiGraphView const &g) {
+  std::unordered_set<Node> dsts;
+  for (Node const &n : get_nodes(g)) {
+    auto outgoing = get_outgoing_edges(g, n);
+    if (outgoing.size() == 0) {
+      dsts.insert(n);
+    }
+  }
+  return dsts;
 }
 
 tl::optional<bool> is_acyclic(DiGraphView const &g) {

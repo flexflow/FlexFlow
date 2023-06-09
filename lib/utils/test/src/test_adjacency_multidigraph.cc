@@ -1,7 +1,7 @@
 #include "doctest.h"
 #include "utils/graph/adjacency_multidigraph.h"
 
-using namespace FlexFlow::utils;
+using namespace FlexFlow;
 
 TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
   AdjacencyMultiDiGraph g;
