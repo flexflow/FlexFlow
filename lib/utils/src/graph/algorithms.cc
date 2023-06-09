@@ -442,16 +442,16 @@ tl::optional<Node> imm_post_dominator(MultiDiGraphView const &g,
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge>
     split_edge(MultiDiEdge const &e) {
-  return {OutputMultiDiEdge{{e.dst.value(), e.dstIdx}, e.src, e.srcIdx},
-          InputMultiDiEdge{{e.src.value(), e.srcIdx}, e.dst, e.dstIdx}};
+  return {OutputMultiDiEdge{{e.dst.value(), e.dstIdx.value()}, e.src, e.srcIdx},
+          InputMultiDiEdge{{e.src.value(), e.srcIdx.value()}, e.dst, e.dstIdx}};
 }
 
 MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
                          InputMultiDiEdge const &input_edge) {
   assert(output_edge.uid.first == input_edge.dst.value());
-  assert(output_edge.uid.second == input_edge.dstIdx);
+  assert(output_edge.uid.second == input_edge.dstIdx.value());
   assert(input_edge.uid.first == output_edge.src.value());
-  assert(input_edge.uid.second == output_edge.srcIdx);
+  assert(input_edge.uid.second == output_edge.srcIdx.value());
   return {
       output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx};
 }

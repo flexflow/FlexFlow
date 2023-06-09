@@ -1,6 +1,5 @@
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/containers.h"
-#include <iostream>
 
 namespace FlexFlow {
 
@@ -39,12 +38,10 @@ std::unordered_set<MultiDiEdge>
         Node dst = kv2.first;
         if (!q.dsts.has_value() || contains(*q.dsts, dst)) {
           for (auto const &kv3 : kv2.second) {
-            std::size_t srcIdx = kv3.first;
+            NodePort srcIdx = kv3.first;
             if (!q.srcIdxs.has_value() || contains(*q.srcIdxs, srcIdx)) {
-              for (std::size_t dstIdx : kv3.second) {
+              for (NodePort dstIdx : kv3.second) {
                 if (!q.dstIdxs.has_value() || contains(*q.dstIdxs, dstIdx)) {
-                  std::cout << src << " " << dst << " " << srcIdx << " "
-                            << dstIdx << std::endl;
                   result.insert({src, dst, srcIdx, dstIdx});
                 }
               }
@@ -54,7 +51,6 @@ std::unordered_set<MultiDiEdge>
       }
     }
   }
-  std::cout << "DONE " << result.size() << std::endl;
   return result;
 }
 

@@ -22,10 +22,10 @@ target_link_libraries(
   ${project_target}
   op-attrs
   utils
-  nlohmann_json::nlohmann_json
+  json
   optional
   pcg
-  spdlog::spdlog
+  spdlog
   # substitutions
 )
 ff_set_cxx_properties(${project_target})

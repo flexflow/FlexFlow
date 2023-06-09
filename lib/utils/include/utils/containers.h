@@ -2,8 +2,9 @@
 #define _FLEXFLOW_UTILS_CONTAINERS_H
 
 #include "bidict.h"
+#include "invoke.h"
+#include "optional.h"
 #include "stack_map.h"
-#include "tl/optional.hpp"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -360,10 +361,16 @@ T get_first(std::unordered_set<T> const &s) {
   return *s.cbegin();
 }
 
-template <typename T>
-void extend(std::vector<T> &lhs, std::vector<T> const &rhs) {
-  lhs.reserve(lhs.size() + distance(rhs.begin(), rhs.end()));
+template <typename T, typename C>
+void extend(std::vector<T> &lhs, C const &rhs) {
+  lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
   lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+}
+
+template <typename T, typename C>
+void extend(std::unordered_set<T> &lhs, C const &rhs) {
+  lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
+  lhs.insert(rhs.cbegin(), rhs.cend());
 }
 
 template <typename C, typename F>
@@ -422,6 +429,17 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   return result;
 }
 
+template <typename F,
+          typename In,
+          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
+  std::unordered_set<Out> result;
+  for (auto const &e : v) {
+    result.insert(f(e));
+  }
+  return result;
+}
+
 template <typename F>
 std::string transform(std::string const &s, F const &f) {
   std::string result;
@@ -435,6 +453,25 @@ template <typename In,
               std::declval<In>()))::value_type>
 std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
+  for (auto const &elem : v) {
+    extend(result, f(elem));
+  }
+  return result;
+}
+
+template <typename In, typename F, typename Out = invoke_result_t<F, In>>
+std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f) {
+  std::unordered_set<Out> result;
+  for (auto const &elem : v) {
+    extend(result, f(elem));
+  }
+  return result;
+}
+
+template <typename Out, typename In>
+std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
+                                   std::unordered_set<Out> (*f)(In const &)) {
+  std::unordered_set<Out> result;
   for (auto const &elem : v) {
     extend(result, f(elem));
   }

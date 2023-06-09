@@ -1,4 +1,5 @@
 #include "utils/graph/conversions.h"
+#include "utils/containers.h"
 #include <algorithm>
 #include <iterator>
 
@@ -33,12 +34,7 @@ std::unordered_set<DirectedEdge> to_directed_edges(UndirectedEdge const &e) {
 
 std::unordered_set<DirectedEdge> to_directed_edges(
     std::unordered_set<UndirectedEdge> const &undirected_edges) {
-  std::unordered_set<DirectedEdge> result;
-  for (UndirectedEdge const &e : undirected_edges) {
-    std::unordered_set<DirectedEdge> const for_e = to_directed_edges(e);
-    result.insert(for_e.cbegin(), for_e.cend());
-  }
-  return result;
+  return flatmap_v2<DirectedEdge>(undirected_edges, to_directed_edges);
 }
 
 DirectedEdge to_directed_edge(MultiDiEdge const &e) {
@@ -47,40 +43,7 @@ DirectedEdge to_directed_edge(MultiDiEdge const &e) {
 
 std::unordered_set<DirectedEdge>
     to_directed_edges(std::unordered_set<MultiDiEdge> const &multidi_edges) {
-  std::unordered_set<DirectedEdge> result;
-  std::transform(multidi_edges.cbegin(),
-                 multidi_edges.cend(),
-                 std::inserter(result, result.begin()),
-                 [](MultiDiEdge const &e) { return to_directed_edge(e); });
-  return result;
-}
-
-std::unordered_set<MultiDiEdge> to_multidigraph_edges(UndirectedEdge const &e) {
-  return to_multidigraph_edges(to_directed_edges(e));
-}
-
-std::unordered_set<MultiDiEdge> to_multidigraph_edges(
-    std::unordered_set<UndirectedEdge> const &undirected_edges) {
-  std::unordered_set<MultiDiEdge> result;
-  for (UndirectedEdge const &e : undirected_edges) {
-    std::unordered_set<MultiDiEdge> const for_e = to_multidigraph_edges(e);
-    result.insert(for_e.cbegin(), for_e.cend());
-  }
-  return result;
-}
-
-MultiDiEdge to_multidigraph_edge(DirectedEdge const &e) {
-  return {e.src, e.dst, 0, 0};
-}
-
-std::unordered_set<MultiDiEdge> to_multidigraph_edges(
-    std::unordered_set<DirectedEdge> const &digraph_edges) {
-  std::unordered_set<MultiDiEdge> result;
-  std::transform(digraph_edges.cbegin(),
-                 digraph_edges.cend(),
-                 std::inserter(result, result.begin()),
-                 [](DirectedEdge const &e) { return to_multidigraph_edge(e); });
-  return result;
+  return transform(multidi_edges, to_directed_edge);
 }
 
 ViewDiGraphAsUndirectedGraph::ViewDiGraphAsUndirectedGraph(
@@ -116,18 +79,13 @@ ViewDiGraphAsMultiDiGraph::ViewDiGraphAsMultiDiGraph(
 std::unordered_set<MultiDiEdge> ViewDiGraphAsMultiDiGraph::query_edges(
     MultiDiEdgeQuery const &multidi_query) const {
   DirectedEdgeQuery directed_query{multidi_query.srcs, multidi_query.dsts};
+
   std::unordered_set<DirectedEdge> const directed_edges =
       this->directed->query_edges(directed_query);
 
-  return [&] {
-    std::unordered_set<MultiDiEdge> result;
-    std::transform(
-        directed_edges.begin(),
-        directed_edges.cend(),
-        std::inserter(result, result.begin()),
-        [](DirectedEdge const &e) { return to_multidigraph_edge(e); });
-    return result;
-  }();
+  return transform(directed_edges, [](DirectedEdge const &e) {
+    return MultiDiEdge(e.src, e.dst, NodePort(0), NodePort(0));
+  });
 }
 
 std::unordered_set<Node>

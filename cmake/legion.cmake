@@ -157,3 +157,5 @@ else()
 		set(LEGION_DEF_DIR ${CMAKE_BINARY_DIR}/deps/legion/runtime)
 	endif()
 endif()
+
+alias_library(legion "${LEGION_LIBRARY}")

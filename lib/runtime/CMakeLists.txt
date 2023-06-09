@@ -25,7 +25,7 @@ target_link_libraries(
   op-attrs
   utils
   optional
-  ${LEGION_LIBRARY}
+  legion
   compiler
   kernels
   pcg
@@ -54,7 +54,7 @@ target_include_directories(
 target_link_libraries(
   ${test_target}
   ${project_target}
-  doctest::doctest
+  doctest
 )
 doctest_discover_tests(${test_target})
 ff_set_cxx_properties(${test_target})

@@ -23,10 +23,11 @@ target_link_libraries(
   ${project_target}
   optional
   expected
-  mpark_variant
+  variant
   visit_struct
-  fmt::fmt
+  fmt
   rapidcheck
+  invoke
 )
 ff_set_cxx_properties(${project_target})
 

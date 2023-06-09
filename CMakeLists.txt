@@ -103,6 +103,7 @@ include(CTest)
 include(fmt)
 include(legion)
 include(rapidcheck)
+include(invoke)
 #include(gtest)
 #include(fmt)
 

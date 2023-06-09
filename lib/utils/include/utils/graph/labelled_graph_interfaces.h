@@ -48,20 +48,20 @@ static_assert(
 struct MultiDiOutput : public use_visitable_cmp<MultiDiOutput> {
 public:
   MultiDiOutput() = delete;
-  MultiDiOutput(Node const &, size_t);
+  MultiDiOutput(Node const &, NodePort const &);
 
 public:
   Node node;
-  size_t idx;
+  NodePort idx;
 };
 
 struct MultiDiInput : public use_visitable_cmp<MultiDiInput> {
 public:
-  MultiDiInput(Node const &, size_t);
+  MultiDiInput(Node const &, NodePort const &);
 
 public:
   Node node;
-  size_t idx;
+  NodePort idx;
 };
 
 } // namespace FlexFlow

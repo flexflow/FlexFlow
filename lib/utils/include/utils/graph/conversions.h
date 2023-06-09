@@ -26,13 +26,6 @@ DirectedEdge to_directed_edge(MultiDiEdge const &);
 std::unordered_set<DirectedEdge>
     to_directed_edges(std::unordered_set<MultiDiEdge> const &);
 
-std::unordered_set<MultiDiEdge> to_multidigraph_edges(UndirectedEdge const &);
-std::unordered_set<MultiDiEdge>
-    to_multidigraph_edges(std::unordered_set<UndirectedEdge> const &);
-MultiDiEdge to_multidigraph_edge(DirectedEdge const &);
-std::unordered_set<MultiDiEdge>
-    to_multidigraph_edges(std::unordered_set<DirectedEdge> const &);
-
 template <typename Undirected>
 Undirected to_undirected(IDiGraphView const &directed) {
   static_assert(std::is_base_of<IUndirectedGraph, Undirected>::value, "Error");

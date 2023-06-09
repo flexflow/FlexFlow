@@ -46,26 +46,25 @@ struct cow_ptr_t {
   }
 
   T const &operator*() const {
-    return this->get();
+    return *this->get();
   }
 
   T const *operator->() const {
-    return &this->get();
+    return this->get();
   }
 
-  std::shared_ptr<T const> get_shared_ptr() const {
+  shared_t get_shared_ptr() const {
     if (this->has_unique_access()) {
-      this->set_shared(shared_ptr(this->get_unique()));
+      this->set_shared(std::move(this->get_unique()));
     }
     return this->get_shared();
   }
 
   T *mutable_ptr() const {
-    if (this->has_unique_access()) {
-      return *this->get_unique();
-    } else {
+    if (!this->has_unique_access()) {
       this->set_unique(unique_t(this->get_shared()->clone()));
     }
+    return this->get_unique().get();
   }
 
   T &mutable_ref() const {
@@ -91,19 +90,19 @@ struct cow_ptr_t {
   }
 
 private:
-  void set_shared(shared_t ptr) {
-    this->ptr = variant<shared_t>(std::move(ptr));
+  void set_shared(shared_t ptr) const {
+    this->ptr = std::move(ptr);
   }
 
-  void set_unique(unique_t ptr) {
-    this->ptr = variant<unique_t>(std::move(ptr));
+  void set_unique(unique_t ptr) const {
+    this->ptr = std::move(ptr);
   }
 
-  std::unique_ptr<T> &get_unique() const {
+  unique_t &get_unique() const {
     return ::FlexFlow::get<unique_t>(this->ptr);
   }
 
-  std::shared_ptr<T const> &get_shared() const {
+  shared_t &get_shared() const {
     return ::FlexFlow::get<shared_t>(this->ptr);
   }
 

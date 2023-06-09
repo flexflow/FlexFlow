@@ -37,3 +37,6 @@
 [submodule "deps/fmt"]
 	path = deps/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "deps/invoke"]
+	path = deps/invoke
+	url = https://github.com/BlackMATov/invoke.hpp.git

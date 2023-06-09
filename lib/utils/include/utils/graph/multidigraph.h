@@ -40,7 +40,6 @@ public:
   Node src, dst;
   NodePort srcIdx, dstIdx;
 };
-std::ostream &operator<<(std::ostream &, MultiDiEdge const &);
 
 } // namespace FlexFlow
 
@@ -87,6 +86,8 @@ static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value,
               RC_COPY_VIRTUAL_MSG);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
+  virtual NodePort add_node_port();
+  virtual void add_node_port_unsafe(NodePort const &);
   virtual void add_edge(Edge const &) = 0;
   virtual void remove_edge(Edge const &) = 0;
 

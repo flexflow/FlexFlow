@@ -22,7 +22,7 @@ target_include_directories(
 target_link_libraries(
   ${project_target}
   utils
-  nlohmann_json::nlohmann_json
+  json
   optional
   visit_struct
   op-attrs

@@ -26,12 +26,13 @@ private:
       Node,
       std::unordered_map<
           Node,
-          std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>>;
+          std::unordered_map<NodePort, std::unordered_set<NodePort>>>>;
 
   AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
 
 private:
   std::size_t next_node_idx = 0;
+  std::size_t next_node_port = 0;
   ContentsType adjacency;
 };
 
