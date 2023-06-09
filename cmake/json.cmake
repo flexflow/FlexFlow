@@ -1,4 +1,6 @@
-include(FetchContent)
+include(aliasing)
 
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.10.5/json.tar.xz)
-FetchContent_MakeAvailable(json)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/json)
+
+alias_library(nlohmann nlohmann_json::nlohmann_json)

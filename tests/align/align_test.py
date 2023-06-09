@@ -1,15 +1,12 @@
-from align_utils import TensorAlignmentData, align_tensors
 import os
 import sys
 from typing import Callable
 
 sys.path.append("./align/")
 
+from align_utils import TensorAlignmentData, align_tensors
 
-BASE_DIR = "tests/align/out"
-param_weight_op = {'conv2d', 'embedding', 'view_embedding', 'linear'}
-param_bias_op = {'conv2d', 'linear'}
-no_grad_op = {"getitem"}
+BASE_DIR = "align/"
 
 
 def prepend_dirname_fn(dirname: str) -> Callable[[str], str]:
@@ -19,28 +16,169 @@ def prepend_dirname_fn(dirname: str) -> Callable[[str], str]:
 
 
 def test_embedding():
-    _test_operator('embedding')
+    out_dir = os.path.join(BASE_DIR, "embedding", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "embedding_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "embedding_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "embedding_weight_grad",
+                expand("ff_weight_grad.pt"),
+                expand("torch_weight_grad.pt"),
+            ),
+        ]
+    )
+
+
+def test_layernorm():
+    out_dir = os.path.join(BASE_DIR, "layernorm", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "layernorm_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "layernorm_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "layernorm_weight_grad",
+                expand("ff_weight_grad.pt"),
+                expand("torch_weight_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "layernorm_bias_grad",
+                expand("ff_bias_grad.pt"),
+                expand("torch_bias_grad.pt")
+            )
+        ]
+    )
 
 
 def test_view_embedding():
-    _test_operator('view_embedding')
+    out_dir = os.path.join(BASE_DIR, "view_embedding", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "embedding_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "embedding_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "embedding_weight_grad",
+                expand("ff_weight_grad.pt"),
+                expand("torch_weight_grad.pt"),
+            ),
+        ]
+    )
 
 
 def test_getitem():
-    _test_operator('getitem')
+    out_dir = os.path.join(BASE_DIR, "getitem", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "getitem_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+        ]
+    )
 
+def test_linear():
+    out_dir = os.path.join(BASE_DIR, "linear", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "linear_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "linear_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "linear_weight_grad",
+                expand("ff_weight_grad.pt"),
+                expand("torch_weight_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "linear_bias_grad",
+                expand("ff_bias_grad.pt"),
+                expand("torch_bias_grad.pt")
+            )
+          ]
+    )
 
 def test_conv2d():
-    _test_operator('conv2d')
+    out_dir = os.path.join(BASE_DIR, "conv2d", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "conv2d_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "conv2d_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "conv2d_weight_grad",
+                expand("ff_weight_grad.pt"),
+                expand("torch_weight_grad.pt"),
+            ),
+            TensorAlignmentData(
+                "conv2d_bias_grad",
+                expand("ff_bias_grad.pt"),
+                expand("torch_bias_grad.pt")
+            )
+          ]
+    )
 
 
 def test_add():
-    _test_operator('add')
-
-
-def test_concat():
-    _test_operator('concat')
-
+    out_dir = os.path.join(BASE_DIR, "add", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "add_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "add_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+        ]
+    )
 
 def test_subtract():
     _test_operator('subtract')
@@ -132,54 +270,35 @@ def test_gather():
 def _test_operator(operater_name):
     out_dir = os.path.join(BASE_DIR, operater_name)
     expand = prepend_dirname_fn(out_dir)
-
-    if (operater_name in no_grad_op):
-        align_tensors(
-            [
-                TensorAlignmentData(
-                    operater_name + "_out",
-                    expand("ff_out.pt"),
-                    expand("torch_out.pt"),
-                ),
-            ]
-        )
-        return
-
-    # test output
     align_tensors(
         [
             TensorAlignmentData(
-                operater_name + "_out",
+                "subtract_out",
                 expand("ff_out.pt"),
                 expand("torch_out.pt"),
             ),
             TensorAlignmentData(
-                operater_name + "_out_grad",
+                "subtract_out_grad",
                 expand("ff_out_grad.pt"),
                 expand("torch_out_grad.pt"),
             ),
         ]
     )
 
-    # test weight
-    if (operater_name in param_weight_op):
-        align_tensors(
-            [
-                TensorAlignmentData(
-                    operater_name + "_weight_grad",
-                    expand("ff_weight_grad.pt"),
-                    expand("torch_weight_grad.pt"),
-                ),
-            ]
-        )
-    # test bias
-    if (operater_name in param_bias_op):
-        align_tensors(
-            [
-                TensorAlignmentData(
-                    operater_name + "_bias_grad",
-                    expand("ff_bias_grad.pt"),
-                    expand("torch_bias_grad.pt")
-                )
-            ]
-        )
+def test_multiply():
+    out_dir = os.path.join(BASE_DIR, "multiply", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "multiply_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "multiply_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+        ]
+    )
