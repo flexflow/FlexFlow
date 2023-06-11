@@ -147,8 +147,10 @@ VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorW, data_type, shape, ptr);
 VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorR, data_type, shape, ptr);
 
 namespace FlexFlow {
-static_assert(is_well_behaved_value_type<GenericTensorAccessorR>::value, "");
-static_assert(is_well_behaved_value_type<GenericTensorAccessorW>::value, "");
+static_assert(is_well_behaved_value_type_no_hash<GenericTensorAccessorR>::value,
+              "");
+static_assert(is_well_behaved_value_type_no_hash<GenericTensorAccessorW>::value,
+              "");
 } // namespace FlexFlow
 
 #endif

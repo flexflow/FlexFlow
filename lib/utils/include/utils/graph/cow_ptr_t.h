@@ -10,15 +10,9 @@ namespace FlexFlow {
 
 template <typename T>
 struct cow_ptr_t {
-  cow_ptr_t(std::shared_ptr<T> ptr) 
-    : ptr(std::move(ptr))
-  { }
-  cow_ptr_t(std::unique_ptr<T> ptr) 
-    : ptr(std::move(ptr))
-  { }
-  cow_ptr_t(T const &val) 
-    : ptr(std::make_shared<T>(val))
-  { }
+  cow_ptr_t(std::shared_ptr<T> ptr) : ptr(std::move(ptr)) {}
+  cow_ptr_t(std::unique_ptr<T> ptr) : ptr(std::move(ptr)) {}
+  cow_ptr_t(T const &val) : ptr(std::make_shared<T>(val)) {}
   cow_ptr_t(cow_ptr_t const &other) {
     this->ptr = other.ptr;
   }
@@ -60,6 +54,7 @@ struct cow_ptr_t {
 
     swap(lhs.ptr, rhs.ptr);
   }
+
 private:
   bool has_unique_access() const {
     return this->ptr.use_count() == 1;
@@ -68,6 +63,6 @@ private:
   mutable std::shared_ptr<T> ptr = nullptr;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

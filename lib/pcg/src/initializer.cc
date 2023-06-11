@@ -1,4 +1,4 @@
-#include "initializer.h"
+#include "pcg/initializer.h"
 
 namespace FlexFlow {
 

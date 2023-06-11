@@ -122,6 +122,16 @@ struct is_well_behaved_value_type : conjunction<is_equal_comparable<T>,
                                                 is_move_assignable<T>,
                                                 is_hashable<T>> {};
 
+template <typename T>
+struct is_well_behaved_value_type_no_hash
+    : conjunction<is_equal_comparable<T>,
+                  is_neq_comparable<T>,
+                  is_lt_comparable<T>,
+                  is_copy_constructible<T>,
+                  is_move_constructible<T>,
+                  is_copy_assignable<T>,
+                  is_move_assignable<T>> {};
+
 } // namespace FlexFlow
 
 #endif

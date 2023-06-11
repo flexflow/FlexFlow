@@ -220,6 +220,7 @@ Tensor ComputationGraphBuilder::conv2d(
     bool use_bias,
     optional<Initializer const &> kernel_initializer,
     optional<Initializer const &> bias_initializer,
+    optional<RegularizerAttrs const &> kernel_regularizer,
     optional<std::string> const &maybe_name) {
   Conv2DAttrs attrs = {outChannels,
                        kernelH,

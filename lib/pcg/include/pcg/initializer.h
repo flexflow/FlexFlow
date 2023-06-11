@@ -56,4 +56,23 @@ using Initializer = variant<GlorotUniform,
 
 } // namespace FlexFlow
 
+VISITABLE_STRUCT(::FlexFlow::GlorotUniform, seed);
+MAKE_VISIT_HASHABLE(::FlexFlow::GlorotUniform);
+
+VISITABLE_STRUCT_EMPTY(::FlexFlow::ZeroInitializer);
+MAKE_VISIT_HASHABLE(::FlexFlow::ZeroInitializer);
+
+VISITABLE_STRUCT(::FlexFlow::UniformInitializer, seed, min_val, max_val);
+MAKE_VISIT_HASHABLE(::FlexFlow::UniformInitializer);
+
+VISITABLE_STRUCT(::FlexFlow::NormInitializer, seed, mean, stddev);
+MAKE_VISIT_HASHABLE(::FlexFlow::NormInitializer);
+
+VISITABLE_STRUCT(::FlexFlow::ConstantInitializer, value);
+MAKE_VISIT_HASHABLE(::FlexFlow::ConstantInitializer);
+
+namespace FlexFlow {
+static_assert(is_well_behaved_value_type<Initializer>::value, "");
+}
+
 #endif

@@ -81,7 +81,7 @@ public:
                 bool use_bias = true,
                 optional<Initializer const &> kernel_initializer = nullopt,
                 optional<Initializer const &> bias_initializer = nullopt,
-                optional<Regularizer const &> kernel_regularizer = nullopt,
+                optional<RegularizerAttrs const &> kernel_regularizer = nullopt,
                 optional<std::string> const &name = nullopt);
   // Add a dropout layer
   Tensor dropout(Tensor const &input,
@@ -288,7 +288,8 @@ public:
 VISITABLE_STRUCT(::FlexFlow::ComputationGraphBuilder, computation_graph);
 
 namespace FlexFlow {
-static_assert(is_well_behaved_value_type<ComputationGraphBuilder>::value, "");
+static_assert(
+    is_well_behaved_value_type_no_hash<ComputationGraphBuilder>::value, "");
 }
 
 #endif

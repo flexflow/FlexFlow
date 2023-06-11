@@ -241,8 +241,8 @@
 /* //   } */
 /* // }; */
 
-/* /1* } // namespace Utils *1/ */
-/* } // namespace ffc */
-/* } // namespace FlexFlow */
+/* /1* }
+/* }
+/* }
 
 #endif

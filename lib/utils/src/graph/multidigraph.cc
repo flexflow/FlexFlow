@@ -113,4 +113,4 @@ std::unordered_set<MultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
-}
+} // namespace FlexFlow

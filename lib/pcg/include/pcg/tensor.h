@@ -39,6 +39,7 @@ VISITABLE_STRUCT(::FlexFlow::Tensor,
                  initializer,
                  create_gradients,
                  sync_type);
+MAKE_VISIT_HASHABLE(::FlexFlow::Tensor);
 
 namespace FlexFlow {
 static_assert(is_well_behaved_value_type<Tensor>::value, "");

@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-enum class ParamSync { PS = 81, NCCL = 82 };
+enum class ParamSync { PS, NCCL };
 
 }
 

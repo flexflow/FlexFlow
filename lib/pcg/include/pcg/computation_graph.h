@@ -18,10 +18,8 @@ struct ComputationGraph
 
 } // namespace FlexFlow
 
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::ComputationGraph);
-
 namespace FlexFlow {
-static_assert(is_well_behaved_value_type<ComputationGraph>::value, "");
+static_assert(is_well_behaved_value_type_no_hash<ComputationGraph>::value, "");
 }
 
 #endif
