@@ -1,4 +1,5 @@
 #include "utils/graph/multidigraph.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
@@ -13,6 +14,26 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(
   }
   e.srcs = nodes;
   return e;
+}
+
+//add MultiDiEdgeQuery::MultiDiEdgeQuery constructor
+MultiDiEdgeQuery::  MultiDiEdgeQuery(
+      tl::optional<std::unordered_set<Node>> const &srcs,
+      tl::optional<std::unordered_set<Node>> const &dsts,
+      tl::optional<std::unordered_set<NodePort>> const &srcIdxs ,
+      tl::optional<std::unordered_set<NodePort>> const &dstIdxs )
+      :srcs(srcs), dsts(dsts),srcIdxs(srcIdxs), dstIdxs(dstIdxs)
+{}
+
+
+MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs, MultiDiEdgeQuery const &rhs){
+  assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
+
+  tl::optional<std::unordered_set<Node>> srcs = intersection(*lhs.srcs, *rhs.srcs);
+  tl::optional<std::unordered_set<Node>> dsts = intersection(*lhs.dsts, *rhs.dsts);
+
+  //TODO, how to set srcIdxs, dstIdxs
+  return MultiDiEdgeQuery(srcs, dsts);
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_node(Node const &n) const {
@@ -78,6 +99,10 @@ MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
   return *this;
 }
 
+std::unordered_set<MultiDiEdge> MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
+
 void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
   using std::swap;
 
@@ -85,27 +110,31 @@ void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
 }
 
 MultiDiGraph::operator MultiDiGraphView() const {
-  return MultiDiGraphView(this->ptr.get_shared_ptr());
+  return MultiDiGraphView(this->ptr.get_mutable());
 }
 
 Node MultiDiGraph::add_node() {
-  return this->ptr.mutable_ref().add_node();
+  return this->ptr.get_mutable()->add_node();
 }
 
 void MultiDiGraph::add_node_unsafe(Node const &n) {
-  return this->ptr.mutable_ref().add_node_unsafe(n);
+  return this->ptr.get_mutable()->add_node_unsafe(n);
+}
+
+void MultiDiGraph::add_node_port_unsafe(NodePort const &np) {
+  return this->ptr.get_mutable()->add_node_port_unsafe(np);
 }
 
 void MultiDiGraph::remove_node_unsafe(Node const &n) {
-  return this->ptr.mutable_ref().remove_node_unsafe(n);
+  return this->ptr.get_mutable()->remove_node_unsafe(n);
 }
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
-  return this->ptr.mutable_ref().add_edge(e);
+  return this->ptr.get_mutable()->add_edge(e);
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
-  return this->ptr.mutable_ref().remove_edge(e);
+  return this->ptr.get_mutable()->remove_edge(e);
 }
 
 std::unordered_set<MultiDiEdge>
@@ -113,4 +142,4 @@ std::unordered_set<MultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
-} // namespace FlexFlow
+}

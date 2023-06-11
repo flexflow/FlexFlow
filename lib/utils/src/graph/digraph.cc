@@ -1,4 +1,5 @@
 #include "utils/graph/digraph.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
@@ -14,11 +15,32 @@ DirectedEdgeQuery::DirectedEdgeQuery(
     tl::optional<std::unordered_set<Node>> const &dsts)
     : srcs(srcs), dsts(dsts) {}
 
+DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs, DirectedEdgeQuery const &rhs){
+  assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
+
+  tl::optional<std::unordered_set<Node>> srcs_t1 = intersection(*lhs.srcs, *rhs.srcs);
+  tl::optional<std::unordered_set<Node>> dsts_t1 = intersection(*lhs.dsts, *rhs.dsts);
+
+  return DirectedEdgeQuery(srcs_t1, dsts_t1);
+}
+
 DiGraph::DiGraph(DiGraph const &other) : ptr(other.ptr->clone()) {}
 
 DiGraph &DiGraph::operator=(DiGraph other) {
   swap(*this, other);
   return *this;
+}
+
+bool DiGraphView::operator==(DiGraphView const &other) const {
+  return ptr == other.ptr;
+}
+
+bool DiGraphView::operator!=(DiGraphView const &other) const {
+  return ptr != other.ptr;
+}
+
+std::unordered_set<DirectedEdge> DiGraphView::query_edges(EdgeQuery const & query) const {
+  return ptr->query_edges(query);
 }
 
 void swap(DiGraph &lhs, DiGraph &rhs) {

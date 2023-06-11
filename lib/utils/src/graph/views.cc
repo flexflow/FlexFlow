@@ -28,6 +28,12 @@ DiGraphView unsafe_view_as_flipped(IDiGraphView const &g) {
   return DiGraphView::create<FlippedView>(g);
 }
 
+
+DiGraphView unsafe_view_as_flipped(DiGraphView const & g)  {
+  IDiGraphView const *ptr = g.unsafe();  // Get the underlying pointer from the input graph view
+  return DiGraphView::create<FlippedView>(*ptr);
+}
+
 UndirectedSubgraphView::UndirectedSubgraphView(
     maybe_owned_ref<IUndirectedGraphView const> g,
     std::unordered_set<Node> const &subgraph_nodes)
@@ -127,6 +133,14 @@ JoinedNodeView::JoinedNodeView(IGraphView const &lhs, IGraphView const &rhs) {
                          this->node_source.fresh_node());
   }
 }
+
+JoinNodeKey::JoinNodeKey(Node const & node, LRDirection direction)
+:node(node), direction(direction){}
+
+bool JoinNodeKey::operator==(JoinNodeKey const & jnk) const {
+  return node== jnk.node && direction == jnk.direction;
+}
+
 
 std::unordered_set<Node>
     JoinedNodeView::query_nodes(NodeQuery const &query) const {
@@ -298,6 +312,22 @@ MultiDiEdge JoinedMultiDigraphView::fix_rhs_edge(MultiDiEdge const &e) const {
           this->joined_nodes.at_join_key({e.dst, LRDirection::RIGHT}),
           e.srcIdx,
           e.dstIdx};
+}
+
+std::unordered_set<Node> MultiDiSubgraphView::query_nodes(NodeQuery const& query) const {
+  std::unordered_set<Node> result;
+
+  // Get the nodes from the underlying graph
+  std::unordered_set<Node> graph_nodes = g.get().query_nodes(query);
+
+  // Filter the nodes based on the subgraph
+  for (const auto& node : graph_nodes) {
+    if (subgraph_nodes.count(node)) {
+      result.insert(node);
+    }
+  }
+
+  return result;
 }
 
 /* SingleSourceNodeView::SingleSourceNodeView(IDiGraphView const &g) */

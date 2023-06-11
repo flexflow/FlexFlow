@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_GRAPH_INTERFACES_H
 
 #include "multidigraph.h"
+#include "node.h"
 #include "open_graph_interfaces.h"
 #include "utils/visitable.h"
 
@@ -48,7 +49,7 @@ static_assert(
 struct MultiDiOutput : public use_visitable_cmp<MultiDiOutput> {
 public:
   MultiDiOutput() = delete;
-  MultiDiOutput(Node const &, NodePort const &);
+  MultiDiOutput(Node const & node, NodePort const & idx):node(node), idx(idx){}
 
 public:
   Node node;
@@ -57,7 +58,7 @@ public:
 
 struct MultiDiInput : public use_visitable_cmp<MultiDiInput> {
 public:
-  MultiDiInput(Node const &, NodePort const &);
+  MultiDiInput(Node const & node, NodePort const & idx):node(node), idx(idx){}
 
 public:
   Node node;

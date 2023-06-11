@@ -100,7 +100,9 @@ struct JoinNodeKey {
 namespace std {
 template <>
 struct hash<::FlexFlow::JoinNodeKey> {
-  std::size_t operator()(::FlexFlow::JoinNodeKey const &) const;
+  std::size_t operator()(::FlexFlow::JoinNodeKey const & key) const {
+    return std::hash<size_t>{}(static_cast<size_t>(key.node));
+  }
 };
 } // namespace std
 

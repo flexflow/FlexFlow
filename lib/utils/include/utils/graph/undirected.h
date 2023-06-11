@@ -44,7 +44,7 @@ struct IUndirectedGraphView : public IGraphView {
 
   virtual std::unordered_set<Edge>
       query_edges(UndirectedEdgeQuery const &) const = 0;
-  virtual ~IUndirectedGraphView();
+  virtual ~IUndirectedGraphView()=default;
 
 protected:
   IUndirectedGraphView() = default;
@@ -61,7 +61,11 @@ public:
   UndirectedGraphView() = delete;
 
   operator GraphView const &() const;
-  operator GraphView &();
+
+  operator GraphView &() {
+     static GraphView graphViewRef(this->ptr);
+    return graphViewRef;
+  }
 
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
@@ -85,9 +89,9 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>);
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr):ptr(ptr) {}
 
+private:
   friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
 
 private:
@@ -113,7 +117,10 @@ public:
 
   UndirectedGraph &operator=(UndirectedGraph);
 
-  operator UndirectedGraphView() const;
+  operator UndirectedGraphView() const {
+    return UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>(ptr->clone()));
+  }
+
 
   friend void swap(UndirectedGraph &, UndirectedGraph &);
 

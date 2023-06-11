@@ -9,6 +9,7 @@ namespace FlexFlow {
 
 class AdjacencyMultiDiGraph : public IMultiDiGraph {
 public:
+  AdjacencyMultiDiGraph() = default;
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
   void remove_node_unsafe(Node const &) override;
@@ -28,7 +29,8 @@ private:
           Node,
           std::unordered_map<NodePort, std::unordered_set<NodePort>>>>;
 
-  AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
+  AdjacencyMultiDiGraph(std::size_t next_node_idx, ContentsType const & adjacency):
+    next_node_idx(next_node_idx), adjacency(adjacency) {}
 
 private:
   std::size_t next_node_idx = 0;

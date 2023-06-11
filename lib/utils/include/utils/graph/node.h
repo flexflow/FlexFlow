@@ -54,7 +54,7 @@ struct GraphView {
 
   friend void swap(GraphView &, GraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
   operator maybe_owned_ref<IGraphView const>() const {
     return maybe_owned_ref<IGraphView const>(this->ptr);
@@ -73,8 +73,9 @@ struct GraphView {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
+  GraphView(std::shared_ptr<IGraphView const> ptr):ptr(ptr){}
 private:
-  GraphView(std::shared_ptr<IGraphView const>);
+  
 
 private:
   std::shared_ptr<IGraphView const> ptr;
@@ -85,6 +86,7 @@ static_assert(is_rc_copy_virtual_compliant<IGraphView>::value,
 
 struct IGraph : IGraphView {
   IGraph(IGraph const &) = delete;
+  IGraph()=default;
   IGraph &operator=(IGraph const &) = delete;
 
   virtual Node add_node() = 0;
