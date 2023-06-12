@@ -15,6 +15,7 @@
 
 #include "flexflow/inference.h"
 #include "flexflow/tokenizers.h"
+#include "models/falcon.h"
 #include "models/llama.h"
 #include "models/opt.h"
 #include <filesystem>
@@ -32,7 +33,7 @@ struct FilePaths {
   std::string output_file_path;
 };
 
-enum ModelType { UNKNOWN, LLAMA, OPT };
+enum ModelType { UNKNOWN, LLAMA, OPT, FALCON };
 
 void parse_input_args(char **argv,
                       int argc,
@@ -52,6 +53,8 @@ void parse_input_args(char **argv,
         llm_model_type = ModelType::LLAMA;
       } else if (model_type_str == "opt") {
         llm_model_type = ModelType::OPT;
+      } else if (model_type_str == "falcon") {
+        llm_model_type = ModelType::FALCON;
       } else {
         llm_model_type = ModelType::UNKNOWN;
       }
@@ -118,7 +121,7 @@ void FlexFlow::top_level_task(Task const *task,
   OptTokenizer *opt_tokenizer = nullptr;
   if (model_type == ModelType::LLAMA) {
     sp_tokenizer = new SentencePieceTokenizer(file_paths.tokenizer_file_path);
-  } else {
+  } else if (model_type == ModelType::OPT) {
     std::string tokenizer_folder =
         (!file_paths.tokenizer_file_path.empty() &&
          file_paths.tokenizer_file_path.back() != '/')
@@ -151,8 +154,7 @@ void FlexFlow::top_level_task(Task const *task,
                               ffconfig.workersPerNode * ffconfig.numNodes,
                               INC_DECODING_MODE,
                               use_full_precision);
-  } else {
-    assert(model_type == ModelType::OPT);
+  } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,
                           im,
                           file_paths.llm_config_file_path,
@@ -160,24 +162,37 @@ void FlexFlow::top_level_task(Task const *task,
                           ffconfig.workersPerNode * ffconfig.numNodes,
                           INC_DECODING_MODE,
                           use_full_precision);
+  } else if (model_type == ModelType::FALCON) {
+    FALCON::create_falcon_model(model,
+                                im,
+                                file_paths.llm_config_file_path,
+                                file_paths.llm_weight_file_path,
+                                ffconfig.workersPerNode * ffconfig.numNodes,
+                                INC_DECODING_MODE,
+                                use_full_precision);
+  } else {
+    assert(false && "unknow model type");
   }
 
-  int total_num_requests = 0;
-  {
-    using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
-    for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      total_num_requests++;
-      rm.register_new_request(text, 128 /*max_sequence_length*/);
-    }
-  }
+  int total_num_requests = 1;
+  std::vector<int> prompt = {18805, 1373, 4754, 312, 9391, 3820, 25};
+  rm.register_new_request(prompt, 128 /*max_sequence_length*/);
+  // {
+  //   using json = nlohmann::json;
+  //   std::ifstream file_handle(file_paths.prompt_file_path);
+  //   assert(file_handle.good() && "Prompt file does not exist.");
+  //   json prompt_json = json::parse(file_handle,
+  //                                  /*parser_callback_t */ nullptr,
+  //                                  /*allow_exceptions */ true,
+  //                                  /*ignore_comments */ true);
+  //   for (auto &prompt : prompt_json) {
+  //     // std::string text = prompt.get<std::string>();
+  //     std::string text =
+  //     printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+  //     total_num_requests++;
+  //     rm.register_new_request(text, 128 /*max_sequence_length*/);
+  //   }
+  // }
 
   BatchConfig bc;
   InferenceResult ir;
