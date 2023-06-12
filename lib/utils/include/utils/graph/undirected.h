@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 #define _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
 #include "utils/maybe_owned_ref.h"
@@ -62,9 +63,8 @@ public:
 
   operator GraphView const &() const;
 
-  operator GraphView &() {
-     static GraphView graphViewRef(this->ptr);
-    return graphViewRef;
+  operator GraphView () {
+    return GraphView(this->ptr.get());
   }
 
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
@@ -73,11 +73,11 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   operator maybe_owned_ref<IUndirectedGraphView const>() const {
-    return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
+    return maybe_owned_ref<IUndirectedGraphView const>(this->ptr.get());
   }
 
   IUndirectedGraphView const *unsafe() const {
-    return this->ptr.get();
+    return this->ptr.get().get();
   }
 
   template <typename T, typename... Args>
@@ -95,7 +95,8 @@ private:
   friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
 
 private:
-  std::shared_ptr<IUndirectedGraphView const> ptr;
+  cow_ptr_t<IUndirectedGraphView const> ptr;
+  //std::shared_ptr<IUndirectedGraphView const> ptr;
 };
 
 UndirectedGraphView unsafe(IUndirectedGraphView const &);

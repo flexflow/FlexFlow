@@ -92,6 +92,16 @@ void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
+NodePort IMultiDiGraph::add_node_port(){
+  NodePort np{this->next_node_idx};
+  this->next_node_idx += 1;
+  return np;
+}
+
+void IMultiDiGraph::add_node_port_unsafe(NodePort const &np) {
+  this->next_node_idx = std::max(this->next_node_idx, np.value() + 1);
+}
+
 MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) : ptr(other.ptr) {}
 
 MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
