@@ -39,7 +39,8 @@ void parse_input_args(char **argv,
                       FilePaths &paths,
                       ModelType &llm_model_type,
                       bool &use_full_precision,
-                      bool &verbose) {
+                      bool &verbose,
+                      int &tensor_parallelism_degree) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -91,6 +92,11 @@ void parse_input_args(char **argv,
       verbose = true;
       continue;
     }
+    // tensor parallelism degree
+    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
+      tensor_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
   }
 }
 
@@ -103,12 +109,18 @@ void FlexFlow::top_level_task(Task const *task,
   ModelType model_type;
   bool use_full_precision = false;
   bool verbose = false;
+  int tensor_parallelism_degree = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(
-      argv, argc, file_paths, model_type, use_full_precision, verbose);
+  parse_input_args(argv,
+                   argc,
+                   file_paths,
+                   model_type,
+                   use_full_precision,
+                   verbose,
+                   tensor_parallelism_degree);
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
@@ -148,7 +160,7 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
-                              1, // tensor_parallelism_degree
+                              tensor_parallelism_degree,
                               ffconfig.workersPerNode * ffconfig.numNodes,
                               INC_DECODING_MODE,
                               use_full_precision);
@@ -158,7 +170,7 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
-                          2, // tensor_parallelism_degree
+                          tensor_parallelism_degree,
                           ffconfig.workersPerNode * ffconfig.numNodes,
                           INC_DECODING_MODE,
                           use_full_precision);
@@ -177,7 +189,7 @@ void FlexFlow::top_level_task(Task const *task,
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm.register_new_request(text, 128 /*max_sequence_length*/);
+      rm.register_new_request(text, 10 /*max_sequence_length*/);
     }
   }
 

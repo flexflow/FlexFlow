@@ -227,9 +227,9 @@ void OPT::create_opt_model(FFModel &ff,
          mha_tensor_idx < ff.layers.size();
          mha_tensor_idx++) {
       Layer *attention_layer = ff.layers[mha_tensor_idx];
-      std::cout << "attention_layer->op_type: " << attention_layer->op_type
-                << ",  attention_layer->name: " << attention_layer->name
-                << std::endl;
+      // std::cout << "attention_layer->op_type: " << attention_layer->op_type
+      //           << ",  attention_layer->name: " << attention_layer->name
+      //           << std::endl;
       if (mha_tensor_idx >= mha_layer_start_idx + 2 &&
           (mha_tensor_idx - mha_layer_start_idx) % 2 == 0) {
         assert(attention_layer->op_type == OP_EW_ADD);
