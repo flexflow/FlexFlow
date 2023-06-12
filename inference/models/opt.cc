@@ -219,13 +219,19 @@ void OPT::create_opt_model(FFModel &ff,
       }
     }
 
-    int num_mha_allreduce = tensor_parallelism_degree -1;
-    int mha_layer_start_idx = ff.layers.size() - tensor_parallelism_degree - num_mha_allreduce;
-    int partition_idx=0;
-    for (int mha_tensor_idx = mha_layer_start_idx; mha_tensor_idx < ff.layers.size(); mha_tensor_idx++) {
+    int num_mha_allreduce = tensor_parallelism_degree - 1;
+    int mha_layer_start_idx =
+        ff.layers.size() - tensor_parallelism_degree - num_mha_allreduce;
+    int partition_idx = 0;
+    for (int mha_tensor_idx = mha_layer_start_idx;
+         mha_tensor_idx < ff.layers.size();
+         mha_tensor_idx++) {
       Layer *attention_layer = ff.layers[mha_tensor_idx];
-      std::cout << "attention_layer->op_type: " << attention_layer->op_type << ",  attention_layer->name: " << attention_layer->name << std::endl;
-      if (mha_tensor_idx >= mha_layer_start_idx+2 && (mha_tensor_idx-mha_layer_start_idx) % 2 == 0) {
+      std::cout << "attention_layer->op_type: " << attention_layer->op_type
+                << ",  attention_layer->name: " << attention_layer->name
+                << std::endl;
+      if (mha_tensor_idx >= mha_layer_start_idx + 2 &&
+          (mha_tensor_idx - mha_layer_start_idx) % 2 == 0) {
         assert(attention_layer->op_type == OP_EW_ADD);
         continue;
       }

@@ -108,15 +108,15 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, data_type, li, 0, true /*create_grad*/);
   }
+  // Compute weight size
+  int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
+      oProjSize = embed_dim;
+  int qSize = input->dims[0], kSize = input->dims[0], vSize = input->dims[0];
+  int qParas = qProjSize * qSize;
+  int kParas = kProjSize * kSize;
+  int vParas = vProjSize * vSize;
+  int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
   {
-    // Compute weight size
-    int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
-        oProjSize = embed_dim;
-    int qSize = input->dims[0], kSize = input->dims[0], vSize = input->dims[0];
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
     li->weights[0] = create_weight_legion_ordering(2,
                                                    dims,
@@ -128,7 +128,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {embed_dim * 4};
+    int dims[1] = {(qProjSize + kProjSize + vProjSize) * num_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -288,7 +288,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     int num_dims = inputs[0]->num_dims;
     dims[0] = inputs[0]->dims[num_dims - 1];
     dims[0].size = dims[0].degree;
-    dims[1].size = oProjSize * 4;
+    dims[1].size = (qProjSize + kProjSize + vProjSize) * num_heads + oProjSize;
     dims[1].degree = 1;
     dims[1].parallel_idx = -1;
 #ifdef USE_NCCL

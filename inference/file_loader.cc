@@ -86,30 +86,49 @@ void load_attention_bias(DT *ptr,
                        "attention_wo_bias";
   std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
 
+  assert(num_heads % tensor_parallelism_degree == 0);
+
   int file_index = 0;
 
   for (auto file : bias_files) {
-    size_t partial_size = hidden_dim;
-    std::cout << "Loading attention bias filename: " << file << std::endl;
+    size_t qkv_partial_size =
+        qkv_inner_dim * (num_heads / tensor_parallelism_degree);
+    size_t out_partial_size = hidden_dim;
+    size_t partial_size =
+        (file_index < 3) ? qkv_partial_size : out_partial_size;
+    // std::cout << "Loading attention bias filename: " << file << std::endl;
+    // std::cout << "partition_idx: " << partition_idx
+    //   << ", tensor_parallelism_degree: " << tensor_parallelism_degree
+    //   << ", num_heads: " << num_heads
+    //   << ", hidden_dim: " << hidden_dim
+    //   << ", qkv_inner_dim: " << qkv_inner_dim
+    //   << ", partial_size: " << partial_size << std::endl;
     std::ifstream in(file, std::ios::in | std::ios::binary);
     assert(in.good() && "incorrect bias file path");
     std::vector<DT> host_array(partial_size);
     size_t loaded_data_size = sizeof(DT) * partial_size;
     in.seekg(0, in.end);
-    in.seekg(0, in.beg);
+    if (file_index < 3) {
+      in.seekg(loaded_data_size * partition_idx, in.beg);
+    } else {
+      in.seekg(0, in.beg);
+    }
     in.read((char *)host_array.data(), loaded_data_size);
     size_t in_get_size = in.gcount();
 
     if (in_get_size != loaded_data_size) {
-      std::cout << "load bias data error";
-      return;
+      printf(
+          "load bias data error: in_get_size (%lu) != loaded_data_size (%lu)\n",
+          in_get_size,
+          loaded_data_size);
+      assert(false);
     }
     assert(partial_size == host_array.size());
 
     size_t data_index = 0;
 
-    for (int i = 0; i < hidden_dim; i++) {
-      ptr[file_index * hidden_dim + i] = host_array.at(data_index);
+    for (int i = 0; i < partial_size; i++) {
+      ptr[file_index * qkv_partial_size + i] = host_array.at(data_index);
       data_index++;
     }
 
@@ -176,8 +195,8 @@ void load_attention_weights(DT *ptr,
     size_t in_get_size = in.gcount();
 
     if (in_get_size != loaded_data_size) {
-      std::cout << "load data error";
-      return;
+      std::cout << "load data error" << std::endl;
+      assert(false);
     }
     assert(partial_size == host_array.size());
 
@@ -218,7 +237,7 @@ void load_from_file(DT *ptr, size_t size, std::string filename) {
   if (in_get_size != loaded_data_size) {
     std::cout << "load weight data error " << in_get_size << ", "
               << loaded_data_size << ", " << sizeof(DT) << std::endl;
-    return;
+    assert(false);
   }
   assert(size == host_array.size());
 
@@ -284,9 +303,10 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     }
     int partition_idx = std::stoi(numberSubstring);
     assert(partition_idx >= 0 && partition_idx < tensor_parallelism_degree);
-    std::cout << "Loading file_path: " << file_path
-              << ", file_path2: " << file_path2
-              << ", partition_idx: " << partition_idx << std::endl;
+    // std::cout << "Loading file_path: " << file_path
+    //           << ", file_path2: " << file_path2
+    //           << ", partition_idx: " << partition_idx
+    //           << ", weight_idx: " << weight_idx << std::endl;
 
     // std::cout << "data array has volume " << volume << std::endl;
 
