@@ -631,6 +631,7 @@ public:
                                       bool scaling_query = false,
                                       float scaling_factor = 1.0f,
                                       bool qk_prod_scaling = true,
+                                      int partition_idx = 0,
                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(const Tensor input,
@@ -648,6 +649,7 @@ public:
                                         bool scaling_query = false,
                                         float scaling_factor = 1.0f,
                                         bool qk_prod_scaling = true,
+                                        int partition_idx = 0,
                                         char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
       const Tensor input,
@@ -665,6 +667,7 @@ public:
       bool scaling_query = false,
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
+      int partition_idx = 0,
       char const *name = NULL);
 
   Tensor create_tensor_legion_ordering(int num_dim,

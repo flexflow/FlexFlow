@@ -189,7 +189,7 @@ void FlexFlow::top_level_task(Task const *task,
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm.register_new_request(text, 10 /*max_sequence_length*/);
+      rm.register_new_request(text, 128 /*max_sequence_length*/);
     }
   }
 

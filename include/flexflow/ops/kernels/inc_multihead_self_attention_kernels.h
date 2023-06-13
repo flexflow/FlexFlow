@@ -23,7 +23,8 @@ template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
                                   int num_tokens,
-                                  int oProjSize);
+                                  int oProjSize,
+                                  int qkv_biases_size);
 
 template <typename DT>
 __global__ void apply_proj_bias_qkv(DT *input_ptr,

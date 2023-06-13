@@ -38,6 +38,7 @@ public:
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                int _partition_idx,
                                 bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
@@ -55,6 +56,7 @@ public:
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                int _partition_idx,
                                 bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
@@ -119,6 +121,7 @@ public:
       qk_prod_scaling;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
+  int partition_idx;
 };
 
 class SpecIncMultiHeadSelfAttentionMeta : public IncMultiHeadSelfAttentionMeta {

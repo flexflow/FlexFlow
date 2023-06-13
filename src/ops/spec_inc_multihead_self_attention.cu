@@ -457,7 +457,11 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
                           stream>>>(
-          output_ptr, bias_ptr, num_tokens, m->oProjSize);
+          output_ptr,
+          bias_ptr,
+          num_tokens,
+          m->oProjSize,
+          (m->qProjSize + m->kProjSize + m->vProjSize) * m->num_heads);
     }
   }
 
@@ -604,7 +608,8 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem,
                                     num_samples,
-                                    _num_heads) {
+                                    _num_heads,
+                                    attn->partition_idx) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));

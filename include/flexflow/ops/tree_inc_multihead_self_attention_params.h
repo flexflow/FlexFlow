@@ -12,6 +12,7 @@ struct TreeIncMultiHeadSelfAttentionParams {
   float dropout, scaling_factor;
   bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
       qk_prod_scaling;
+  int partition_idx;
 
   bool is_valid(ParallelTensorShape const &) const;
 };

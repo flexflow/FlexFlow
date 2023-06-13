@@ -52,9 +52,10 @@ template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
                                   int num_tokens,
-                                  int oProjSize) {
+                                  int oProjSize,
+                                  int qkv_biases_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * oProjSize) {
-    int bias_idx = 3 * oProjSize + i % oProjSize;
+    int bias_idx = qkv_biases_size + i % oProjSize;
     input_ptr[i] += bias_ptr[bias_idx];
   }
 }
@@ -652,13 +653,17 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     tokens_previous_requests += num_new_tokens;
   }
 
-  if (*m->bias) {
+  if (*m->bias && *m->partition_idx == 0) {
     int parallelism = m->oProjSize * num_tokens;
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
                         0,
-                        stream>>>(
-        output_ptr, bias_ptr, num_tokens, m->oProjSize);
+                        stream>>>(output_ptr,
+                                  bias_ptr,
+                                  num_tokens,
+                                  m->oProjSize,
+                                  (m->qProjSize + m->kProjSize + m->vProjSize) *
+                                      m->num_heads);
   }
 
   assert(tokens_previous_requests == num_tokens);
@@ -751,7 +756,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem,
                                     num_samples,
-                                    _num_heads) {}
+                                    _num_heads,
+                                    attn->partition_idx) {}
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
@@ -773,7 +779,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
-    int _num_heads)
+    int _num_heads,
+    int _partition_idx)
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -806,6 +813,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   scaling_factor = _scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
   *qk_prod_scaling = _qk_prod_scaling;
+  partition_idx = (int *)calloc(1, sizeof(int));
+  *partition_idx = _partition_idx;
   // Currently do not support adding bias to key/value projection
   assert(!_add_bias_kv);
 

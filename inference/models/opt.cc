@@ -141,7 +141,7 @@ void OPT::create_opt_model(FFModel &ff,
             NULL,
             false,
             /*scaling query*/ true,
-            /*sacling factor*/
+            /*scaling factor*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5),
             /*qk_prod_scaling*/ false);
@@ -162,7 +162,7 @@ void OPT::create_opt_model(FFModel &ff,
             NULL,
             false,
             /*scaling query*/ true,
-            /*sacling factor*/
+            /*scaling factor*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5),
             /*qk_prod_scaling*/ false);
@@ -170,8 +170,9 @@ void OPT::create_opt_model(FFModel &ff,
       }
       case INC_DECODING_MODE: {
         assert(opt_config.num_attention_heads % tensor_parallelism_degree == 0);
-        for (int j = 0; j < tensor_parallelism_degree; j++) {
-          if (j == 0) {
+        for (int partition_idx = 0; partition_idx < tensor_parallelism_degree;
+             partition_idx++) {
+          if (partition_idx == 0) {
             mha = ff.inc_multihead_self_attention(
                 hidden_states,
                 opt_config.hidden_size,
@@ -186,10 +187,11 @@ void OPT::create_opt_model(FFModel &ff,
                 NULL,
                 false,
                 /*scaling query*/ true,
-                /*sacling factor*/
+                /*scaling factor*/
                 pow((opt_config.hidden_size / opt_config.num_attention_heads),
                     -0.5),
-                /*qk_prod_scaling*/ false);
+                /*qk_prod_scaling*/ false,
+                partition_idx);
           } else {
             Tensor partial_mha = ff.inc_multihead_self_attention(
                 hidden_states,
@@ -205,10 +207,11 @@ void OPT::create_opt_model(FFModel &ff,
                 NULL,
                 false,
                 /*scaling query*/ true,
-                /*sacling factor*/
+                /*scaling factor*/
                 pow((opt_config.hidden_size / opt_config.num_attention_heads),
                     -0.5),
-                /*qk_prod_scaling*/ false);
+                /*qk_prod_scaling*/ false,
+                partition_idx);
             ff.add(mha, partial_mha, true);
           }
         }

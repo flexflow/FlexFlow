@@ -2278,6 +2278,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->scaling_query);
         sez.serialize(attn->scaling_factor);
         sez.serialize(attn->qk_prod_scaling);
+        sez.serialize(attn->partition_idx);
         break;
       }
       case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2296,6 +2297,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->scaling_query);
         sez.serialize(attn->scaling_factor);
         sez.serialize(attn->qk_prod_scaling);
+        sez.serialize(attn->partition_idx);
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2314,6 +2316,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->scaling_query);
         sez.serialize(attn->scaling_factor);
         sez.serialize(attn->qk_prod_scaling);
+        sez.serialize(attn->partition_idx);
         break;
       }
       case OP_SOFTMAX: {
@@ -2681,6 +2684,7 @@ void FFModel::deserialize_graph_optimal_view(
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling;
+        int partition_idx;
         size_t id;
         dez.deserialize(id);
         LayerID layer_guid(id);
@@ -2696,6 +2700,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(scaling_query);
         dez.deserialize(scaling_factor);
         dez.deserialize(qk_prod_scaling);
+        dez.deserialize(partition_idx);
 
         IncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2711,6 +2716,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.scaling_query = scaling_query;
         params.scaling_factor = scaling_factor;
         params.qk_prod_scaling = qk_prod_scaling;
+        params.partition_idx = partition_idx;
         node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }
@@ -2720,6 +2726,7 @@ void FFModel::deserialize_graph_optimal_view(
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling;
+        int partition_idx;
         size_t id;
         dez.deserialize(id);
         LayerID layer_guid(id);
@@ -2735,6 +2742,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(scaling_query);
         dez.deserialize(scaling_factor);
         dez.deserialize(qk_prod_scaling);
+        dez.deserialize(partition_idx);
 
         SpecIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2750,6 +2758,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.scaling_query = scaling_query;
         params.scaling_factor = scaling_factor;
         params.qk_prod_scaling = qk_prod_scaling;
+        params.partition_idx = partition_idx;
         node = get_or_create_node<SpecIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
         break;
@@ -2760,6 +2769,7 @@ void FFModel::deserialize_graph_optimal_view(
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling;
+        int partition_idx;
         size_t id;
         dez.deserialize(id);
         LayerID layer_guid(id);
@@ -2775,6 +2785,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(scaling_query);
         dez.deserialize(scaling_factor);
         dez.deserialize(qk_prod_scaling);
+        dez.deserialize(partition_idx);
 
         TreeIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2790,6 +2801,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.scaling_query = scaling_query;
         params.scaling_factor = scaling_factor;
         params.qk_prod_scaling = qk_prod_scaling;
+        params.partition_idx = partition_idx;
         node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
         break;

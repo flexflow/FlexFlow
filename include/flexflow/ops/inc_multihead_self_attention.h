@@ -37,6 +37,7 @@ public:
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
+                            int _partition_idx,
                             bool allocate_weights,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -54,6 +55,7 @@ public:
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
+                            int _partition_idx,
                             bool allocate_weights,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -114,6 +116,7 @@ public:
       qk_prod_scaling;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
+  int partition_idx;
 };
 
 class IncMultiHeadSelfAttentionMeta : public OpMeta {
@@ -143,7 +146,8 @@ public:
                                 GenericTensorAccessorR const &weight,
                                 Legion::Memory gpu_mem,
                                 int num_samples,
-                                int _num_heads);
+                                int _num_heads,
+                                int _partition_idx);
   ~IncMultiHeadSelfAttentionMeta(void);
 
 public:
@@ -157,6 +161,7 @@ public:
   bool *scaling_query;
   bool *qk_prod_scaling;
   float scaling_factor;
+  int *partition_idx;
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif

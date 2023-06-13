@@ -444,8 +444,12 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
                         0,
-                        stream>>>(
-        output_ptr, bias_ptr, processed_tokens_in_batch, m->oProjSize);
+                        stream>>>(output_ptr,
+                                  bias_ptr,
+                                  processed_tokens_in_batch,
+                                  m->oProjSize,
+                                  (m->qProjSize + m->kProjSize + m->vProjSize) *
+                                      m->num_heads);
   }
 
   assert(processed_tokens_in_batch == bc->num_active_tokens());
@@ -592,7 +596,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem,
                                     num_samples,
-                                    _num_heads),
+                                    _num_heads,
+                                    attn->partition_idx),
       num_active_tokens(0) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
