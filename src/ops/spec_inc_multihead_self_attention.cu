@@ -582,7 +582,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     SpecIncMultiHeadSelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
@@ -602,7 +602,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
-                                    gpu_mem,
+                                    gpu_mem_allocator,
                                     num_samples,
                                     _num_heads) {
   cudaStream_t stream;
@@ -624,29 +624,21 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                        BeamSearchPerRequestInfo); // more components will
                                                   // be added here later
 
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(total_size - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(beam_search_reserve_inst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
+    gpu_mem_allocator.allocate(beam_search_reserve_inst, total_size);
     off_t offset = 0;
     beam_token_infos =
-        beam_search_reserve_inst
-            .pointer<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(offset);
+        gpu_mem_allocator
+            .pointer<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
+                offset, beam_tokeninfo_size);
     offset += beam_tokeninfo_size *
               sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
-    request_infos =
-        beam_search_reserve_inst.pointer<BatchConfig::PerRequestInfo>(offset);
+    request_infos = gpu_mem_allocator.pointer<BatchConfig::PerRequestInfo>(
+        offset, requestinfo_size);
     offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
     beam_request_infos =
-        beam_search_reserve_inst
-            .pointer<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(offset);
+        gpu_mem_allocator
+            .pointer<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
+                offset, beam_requestinfo_size);
     offset += beam_requestinfo_size *
               sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
     assert(offset == total_size);

@@ -1270,6 +1270,8 @@ FFRuntime::FFRuntime(FFConfig &config) {
     // info.myRank = rank++;
     // info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
+    info.offload_reserve_space_size =
+        config.cpu_offload ? config.offload_reserve_space_size : 0;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
@@ -3641,9 +3643,12 @@ struct DefaultConfig {
   const static int cpusPerNode = 0;
   const static size_t searchBudget = -1;
   const static size_t simulatorWorkSpaceSize =
-      (size_t)2 * 1024 * 1024 * 1024; // 2GB
+      (size_t)2 * 1024 * 1024 * 1024; // 2 GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
+  const static bool cpuOffload = false;
+  const static size_t offloadReserveSpaceSize =
+      (size_t)10 * 1024 * 1024 * 1024; // 10 GB
   const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
@@ -3675,6 +3680,8 @@ FFConfig::FFConfig() {
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   computationMode = COMP_MODE_TRAINING;
+  cpu_offload = DefaultConfig::cpuOffload;
+  offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
   only_data_parallel = DefaultConfig::onlyDataParallel;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
@@ -3766,6 +3773,14 @@ void FFConfig::parse_args(char **argv, int argc) {
     if ((!strcmp(argv[i], "--export")) ||
         (!strcmp(argv[i], "--export-strategy"))) {
       export_strategy_file = std::string(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "-offload"))) {
+      cpu_offload = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "-offload-reserve-space-size")) {
+      offload_reserve_space_size = atoll(argv[++i]);
       continue;
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {

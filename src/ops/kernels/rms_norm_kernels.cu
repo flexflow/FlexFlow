@@ -93,10 +93,11 @@ __global__ void
     long long const index = i * N + j;
     sum += (static_cast<float>(X[index]) * static_cast<float>(X[index]));
   }
-  sum = BlockReduceSum<float>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
+  sum = BlockReduceSum<float>(sum,
+                              v_shared); // use BlockReduceSum() to sum X_ij^2
 
   if (threadIdx.x == 0) {
-    rms[i] = static_cast<T>(rsqrt((sum / static_cast<float>(N)) + eps));    
+    rms[i] = static_cast<T>(rsqrt((sum / static_cast<float>(N)) + eps));
   }
 }
 
@@ -130,10 +131,7 @@ void forward_kernel(RMSNormMeta const *m,
   int parallelism = m->batch_size * m->in_dim;
   RowwiseRootMeanSquareKernel<T>
       <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->in_dim,
-          m->eps,
-          input_ptr,
-          static_cast<T *>(m->rms_ptr));
+          m->in_dim, m->eps, input_ptr, static_cast<T *>(m->rms_ptr));
   NormKernel<T><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
       m->in_dim,
       input_ptr,

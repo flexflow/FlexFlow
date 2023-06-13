@@ -727,7 +727,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     IncMultiHeadSelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
@@ -747,7 +747,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
-                                    gpu_mem,
+                                    gpu_mem_allocator,
                                     num_samples,
                                     _num_heads) {}
 
@@ -769,7 +769,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _add_bias_kv,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : OpMeta(handler, attn) {
@@ -861,35 +861,34 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         complex_size * sizeof(cuFloatComplex); // more components will
                                                // be added here later
 
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
+    gpu_mem_allocator.allocate(reserveInst, totalSize);
     off_t offset = 0;
-    devQKVProjArray = reserveInst.pointer_untyped(offset, 0);
+    devQKVProjArray = gpu_mem_allocator.pointer_untyped(
+        offset, qkv_max_proj_size * size_of_dt);
     offset += qkv_max_proj_size * size_of_dt;
-    keyCache = reserveInst.pointer_untyped(offset, 0);
+    keyCache =
+        gpu_mem_allocator.pointer_untyped(offset, key_cache_size * size_of_dt);
     offset += key_cache_size * size_of_dt;
-    valueCache = reserveInst.pointer_untyped(offset, 0);
+    valueCache = gpu_mem_allocator.pointer_untyped(
+        offset, value_cache_size * size_of_dt);
     offset += value_cache_size * size_of_dt;
-    token_infos = reserveInst.pointer<BatchConfig::PerTokenInfo>(offset);
+    token_infos = gpu_mem_allocator.pointer<BatchConfig::PerTokenInfo>(
+        offset, tokeninfo_size);
     offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
-    qk_prods = reserveInst.pointer_untyped(offset, 0);
+    qk_prods =
+        gpu_mem_allocator.pointer_untyped(offset, qk_prod_size * size_of_dt);
     offset += qk_prod_size * size_of_dt;
-    qk_prods_softmax = reserveInst.pointer_untyped(offset, 0);
+    qk_prods_softmax =
+        gpu_mem_allocator.pointer_untyped(offset, qk_prod_size * size_of_dt);
     offset += qk_prod_size * size_of_dt;
-    attn_heads = reserveInst.pointer_untyped(offset, 0);
+    attn_heads =
+        gpu_mem_allocator.pointer_untyped(offset, attn_heads_size * size_of_dt);
     offset += attn_heads_size * size_of_dt;
-    W_out_contiguous = reserveInst.pointer_untyped(offset, 0);
+    W_out_contiguous = gpu_mem_allocator.pointer_untyped(
+        offset, W_out_contiguous_size * size_of_dt);
     offset += W_out_contiguous_size * size_of_dt;
-    complex_input = reserveInst.pointer<cuFloatComplex>(offset);
+    complex_input =
+        gpu_mem_allocator.pointer<cuFloatComplex>(offset, complex_size);
     offset += complex_size * sizeof(cuFloatComplex);
     if (weight.data_type == DT_FLOAT) {
       int parallelism = vProjSize * oProjSize * num_heads;

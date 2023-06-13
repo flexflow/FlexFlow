@@ -122,7 +122,7 @@ public:
   TreeIncMultiHeadSelfAttentionMeta(FFHandler handler,
                                     TreeIncMultiHeadSelfAttention const *attn,
                                     GenericTensorAccessorR const &weight,
-                                    Legion::Memory gpu_mem,
+                                    MemoryAllocator &gpu_mem_allocator,
                                     int num_samples,
                                     int _num_heads);
   ~TreeIncMultiHeadSelfAttentionMeta(void);

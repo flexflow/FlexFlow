@@ -137,7 +137,7 @@ __global__ void update_tree_branch_kv_cache(
         (i / proj_size) % num_tokens_in_branch; // index in the tree branch
     int head_idx = i / (proj_size * num_tokens_in_branch);
 
-    token_idx += processed_tokens_in_batch;     // get index in the whole batch
+    token_idx += processed_tokens_in_batch; // get index in the whole batch
     int qkv_block_size = (qProjSize + kProjSize + vProjSize) *
                          total_tokens_in_batch; // skip over previous heads
     int current_head_block_size =
@@ -570,7 +570,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     TreeIncMultiHeadSelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
@@ -590,7 +590,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
-                                    gpu_mem,
+                                    gpu_mem_allocator,
                                     num_samples,
                                     _num_heads),
       num_active_tokens(0) {
@@ -601,23 +601,12 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
     size_t committed_tokeninfo_size = TreeVerifyBatchConfig::MAX_NUM_TOKENS;
-    size_t totalSize = committed_tokeninfo_size *
-                       sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
-
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(committed_token_reserve_inst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
+    size_t total_size = committed_tokeninfo_size *
+                        sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
+    gpu_mem_allocator.allocate(committed_token_reserve_inst, total_size);
     committed_token_infos =
-        committed_token_reserve_inst
-            .pointer<TreeVerifyBatchConfig::CommittedTokensInfo>(0);
+        gpu_mem_allocator.pointer<TreeVerifyBatchConfig::CommittedTokensInfo>(
+            0, committed_tokeninfo_size);
   }
 
   cudaStreamSynchronize(stream);

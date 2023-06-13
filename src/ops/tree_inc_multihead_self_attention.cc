@@ -596,8 +596,19 @@ OpMeta *TreeIncMultiHeadSelfAttention::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  if (handle.offload_reserve_space != nullptr) {
+    // cpu-offload enabled
+    // use offload_reserved_space
+    gpu_mem_allocator.allocate(handle.offload_reserve_space,
+                               handle.offload_reserve_space_size);
+  }
   TreeIncMultiHeadSelfAttentionMeta *m = new TreeIncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem, num_samples, num_heads);
+      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
+  if (handle.offload_reserve_space != nullptr) {
+    // assert that we didn't over allocate memory
+    assert(gpu_mem_allocator.allocated_size == gpu_mem_allocator.total_size);
+  }
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
          m->weightSize);

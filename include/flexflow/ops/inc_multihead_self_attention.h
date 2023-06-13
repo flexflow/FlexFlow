@@ -9,6 +9,7 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
+#include "flexflow/utils/memory_allocator.h"
 #include "math.h"
 #include <cfloat>
 #include <complex>
@@ -121,7 +122,7 @@ public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 IncMultiHeadSelfAttention const *attn,
                                 GenericTensorAccessorR const &weight,
-                                Legion::Memory gpu_mem,
+                                MemoryAllocator &gpu_mem_allocator,
                                 int num_samples,
                                 int _num_heads);
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
@@ -141,7 +142,7 @@ public:
                                 bool _add_bias_kv,
                                 float _scaling_factor,
                                 GenericTensorAccessorR const &weight,
-                                Legion::Memory gpu_mem,
+                                MemoryAllocator &gpu_mem_allocator,
                                 int num_samples,
                                 int _num_heads);
   ~IncMultiHeadSelfAttentionMeta(void);
