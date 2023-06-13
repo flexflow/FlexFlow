@@ -238,7 +238,13 @@ void OPT::create_opt_model(FFModel &ff,
         assert(attention_layer->op_type == OP_EW_ADD);
         continue;
       }
-      assert(attention_layer->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION);
+      if (mode == BEAM_SEARCH_MODE) {
+        assert(attention_layer->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION);
+      } else if (mode == TREE_VERIFY_MODE) {
+        assert(attention_layer->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION);
+      } else {
+        assert(attention_layer->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION);
+      }
       weights_layers.emplace("layers_" + std::to_string(i) +
                                  "_attention_weight_" +
                                  std::to_string(partition_idx),
