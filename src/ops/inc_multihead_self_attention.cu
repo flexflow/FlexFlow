@@ -30,19 +30,21 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
-__global__ void build_w_out_tensor(DT const *weight_ptr,
-                                   DT *contiguous_weight_ptr,
-                                   int vProjSize,
-                                   int oProjSize,
-                                   int num_heads,
-                                   int qkv_weight_block_size) {
-  CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
-    int row_idx = i % vProjSize;
-    int col_idx = (i / vProjSize) % oProjSize;
-    int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[i] =
-        weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
-                   qkv_weight_block_size + col_idx * vProjSize + row_idx];
+void build_w_out_tensor(DT const *weight_ptr,
+                        DT *contiguous_weight_ptr,
+                        int vProjSize,
+                        int oProjSize,
+                        int num_heads,
+                        int qkv_weight_block_size,
+                        cudaStream_t stream) {
+  size_t wout_block_size = oProjSize * vProjSize;
+  for (int h = 0; h < num_heads; h++) {
+    cudaMemcpyAsync(contiguous_weight_ptr + h * wout_block_size,
+                    weight_ptr + h * (qkv_weight_block_size + wout_block_size) +
+                        qkv_weight_block_size,
+                    wout_block_size * sizeof(DT),
+                    cudaMemcpyDeviceToDevice,
+                    stream);
   }
 }
 
@@ -622,13 +624,13 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     m_ = m->oProjSize;
     k = m->vProjSize * m->num_heads;
     n = num_new_tokens;
-    lda = k, ldb = n, ldc = m_;
+    lda = m_, ldb = n, ldc = m_;
     A = m->W_out_contiguous;
     B = C;
     C = (output_ptr + tokens_previous_requests * m->oProjSize);
 
     checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_T,
+                           CUBLAS_OP_N,
                            CUBLAS_OP_T,
                            m_,
                            n,
@@ -892,29 +894,23 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     complex_input = reserveInst.pointer<cuFloatComplex>(offset);
     offset += complex_size * sizeof(cuFloatComplex);
     if (weight.data_type == DT_FLOAT) {
-      int parallelism = vProjSize * oProjSize * num_heads;
-      build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                           min(CUDA_NUM_THREADS, parallelism),
-                           0,
-                           stream>>>(
+      build_w_out_tensor(
           weight.get_float_ptr(),
           (float *)W_out_contiguous,
           vProjSize,
           oProjSize,
           num_heads,
-          (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
+          (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize),
+          stream);
     } else if (weight.data_type == DT_HALF) {
-      int parallelism = vProjSize * oProjSize * num_heads;
-      build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                           min(CUDA_NUM_THREADS, parallelism),
-                           0,
-                           stream>>>(
+      build_w_out_tensor(
           weight.get_half_ptr(),
           (half *)W_out_contiguous,
           vProjSize,
           oProjSize,
           num_heads,
-          (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
+          (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize),
+          stream);
     } else {
       assert(false && "Unsupported data_type");
     }
