@@ -17,12 +17,14 @@
 
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
+#include <tokenizers_cpp.h>
 #include <mutex>
 
 namespace FlexFlow {
 
 class FFModel;
 class BeamTree;
+using tokenizers::Tokenizer;
 
 class InferenceManager {
 public:
@@ -74,13 +76,12 @@ struct BeamTree {
 //   std::vector<float> probs;
 // };
 
-class Tokenizer;
-
 class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
-  RequestManager(Tokenizer *tokenizer,
+  RequestManager(ModelType model_type,
+                 std::string const &path,
                  bool verbose = false,
                  std::string output_filepath = "");
   RequestManager();
@@ -144,8 +145,9 @@ public:
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 
-private:
-  Tokenizer *tokenizer;
+private:  
+  std::unique_ptr<Tokenizer> tokenizer_;
+  int bos_token_id;
   bool verbose;
   std::string output_filepath;
   std::queue<Request> pending_request_queue;

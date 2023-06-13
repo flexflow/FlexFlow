@@ -34,6 +34,9 @@ endif()
 # do not disable assertions even if in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
 
+set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall --std=c++17 -O3 -fPIC" )
+set( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -O3 -fPIC" )
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LIBEXT ".so")
 endif()
@@ -474,13 +477,10 @@ if(FF_BUILD_VISUALIZATION_TOOL)
   add_subdirectory(tools/substitutions_to_dot)
 endif()
 
-if(FF_BUILD_SENTENCEPIECE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
-  if (FF_GPU_BACKEND STREQUAL "hip_rocm")
-    SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
-  endif()
-  add_subdirectory(deps/sentencepiece sentencepiece EXCLUDE_FROM_ALL)
-  target_include_directories(flexflow PUBLIC deps/sentencepiece/src)
-  target_link_libraries(flexflow sentencepiece)
+if(FF_BUILD_ALL_INFERENCE_EXAMPLES)
+  add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
+  target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
+  target_link_libraries(flexflow tokenizers_cpp)
 endif()
 
 # Python

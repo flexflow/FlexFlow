@@ -175,6 +175,8 @@ enum OperatorType {
   OP_INVALID,
 };
 
+enum ModelType { UNKNOWN, LLAMA, OPT, FALCON };
+
 enum PMParameter {
   PM_OP_TYPE,            // AnyOp
   PM_NUM_INPUTS,         // AnyOp

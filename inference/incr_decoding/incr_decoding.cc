@@ -14,11 +14,10 @@
  */
 
 #include "flexflow/inference.h"
-#include "flexflow/tokenizers.h"
 #include "models/falcon.h"
 #include "models/llama.h"
 #include "models/opt.h"
-#include <filesystem>
+
 #include <nlohmann/json.hpp>
 
 using namespace Legion;
@@ -32,8 +31,6 @@ struct FilePaths {
   std::string tokenizer_file_path;
   std::string output_file_path;
 };
-
-enum ModelType { UNKNOWN, LLAMA, OPT, FALCON };
 
 void parse_input_args(char **argv,
                       int argc,
@@ -116,35 +113,12 @@ void FlexFlow::top_level_task(Task const *task,
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
-  // Create SentencePiece tokenizer or OPT tokenizer
-  SentencePieceTokenizer *sp_tokenizer = nullptr;
-  OptTokenizer *opt_tokenizer = nullptr;
-  if (model_type == ModelType::LLAMA) {
-    sp_tokenizer = new SentencePieceTokenizer(file_paths.tokenizer_file_path);
-  } else if (model_type == ModelType::OPT) {
-    std::string tokenizer_folder =
-        (!file_paths.tokenizer_file_path.empty() &&
-         file_paths.tokenizer_file_path.back() != '/')
-            ? file_paths.tokenizer_file_path + '/'
-            : file_paths.tokenizer_file_path;
-    std::string vocab_file = tokenizer_folder + "gpt2-vocab.json";
-    std::string merges_file = tokenizer_folder + "gpt2-merges.txt";
-    std::filesystem::path path1(vocab_file);
-    std::filesystem::path path2(merges_file);
-    assert(std::filesystem::exists(path1) &&
-           "Vocab file gpt2-vocab.json does not exist at the specified path");
-    assert(std::filesystem::exists(path2) &&
-           "Merge file gpt2-merges.txt does not exist at the specified path");
-    opt_tokenizer = new OptTokenizer(vocab_file, merges_file);
-  }
-
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
-  RequestManager rm((model_type == ModelType::LLAMA)
-                        ? (Tokenizer *)sp_tokenizer
-                        : (Tokenizer *)opt_tokenizer,
+  RequestManager rm(model_type,
+  file_paths.tokenizer_file_path,
                     /*verbose*/ verbose,
                     file_paths.output_file_path);
-
+  
   FFModel model(ffconfig);
   if (model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(model,
@@ -174,25 +148,25 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "unknow model type");
   }
 
-  int total_num_requests = 1;
-  std::vector<int> prompt = {18805, 1373, 4754, 312, 9391, 3820, 25};
-  rm.register_new_request(prompt, 128 /*max_sequence_length*/);
-  // {
-  //   using json = nlohmann::json;
-  //   std::ifstream file_handle(file_paths.prompt_file_path);
-  //   assert(file_handle.good() && "Prompt file does not exist.");
-  //   json prompt_json = json::parse(file_handle,
-  //                                  /*parser_callback_t */ nullptr,
-  //                                  /*allow_exceptions */ true,
-  //                                  /*ignore_comments */ true);
-  //   for (auto &prompt : prompt_json) {
-  //     // std::string text = prompt.get<std::string>();
-  //     std::string text =
-  //     printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-  //     total_num_requests++;
-  //     rm.register_new_request(text, 128 /*max_sequence_length*/);
-  //   }
-  // }
+  int total_num_requests = 0;
+  // std::vector<int> prompt = {18805, 1373, 4754, 312, 9391, 3820, 25};
+  // rm.register_new_request(prompt, 128 /*max_sequence_length*/);
+  {
+    using json = nlohmann::json;
+    std::ifstream file_handle(file_paths.prompt_file_path);
+    assert(file_handle.good() && "Prompt file does not exist.");
+    json prompt_json = json::parse(file_handle,
+                                   /*parser_callback_t */ nullptr,
+                                   /*allow_exceptions */ true,
+                                   /*ignore_comments */ true);
+    for (auto &prompt : prompt_json) {
+      std::string text = prompt.get<std::string>();
+      // std::string text =
+      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      total_num_requests++;
+      rm.register_new_request(text, 128 /*max_sequence_length*/);
+    }
+  }
 
   BatchConfig bc;
   InferenceResult ir;
@@ -217,11 +191,6 @@ void FlexFlow::top_level_task(Task const *task,
   std::cout << "----------inference finished--------------" << std::endl;
 
   // free tokenizer space in memory
-  if (model_type == ModelType::LLAMA) {
-    delete sp_tokenizer;
-  } else {
-    delete opt_tokenizer;
-  }
 }
 
 void FlexFlow::register_custom_tasks() {}
