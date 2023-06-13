@@ -33,8 +33,6 @@ struct FilePaths {
   std::string output_file_path;
 };
 
-enum ModelType { UNKNOWN, LLAMA, OPT };
-
 struct ModelTypes {
   ModelType llm_model_type;
   std::vector<ModelType> ssm_model_types;
@@ -168,7 +166,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   // Create SentencePiece tokenizer or OPT tokenizer
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
-  RequestManager rm(model_type,
+  RequestManager rm(model_types.llm_model_type,
                     file_paths.tokenizer_file_path,
                     /*verbose*/ verbose,
                     file_paths.output_file_path);
