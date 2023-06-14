@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/inc_multiquery_attention.h"
+#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -51,13 +51,13 @@ using PCG::Node;
 
 LegionRuntime::Logger::Category log_inc_mqa("IncrementalMQA");
 
-bool IncMultiQueryAttentionParams::is_valid(
+bool IncMultiQuerySelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {
   bool is_valid = input.is_valid();
   return is_valid;
 }
 
-Tensor FFModel::inc_multi_query_attention(const Tensor input,
+Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
                                           int embed_dim,
                                           int num_heads,
                                           int kdim,
@@ -77,7 +77,7 @@ Tensor FFModel::inc_multi_query_attention(const Tensor input,
   if (data_type != input->data_type) {
     Tensor casted_input = cast(input, data_type, "type cast for IncMQA");
     li = new Layer(this,
-                   OP_INC_MULTIQUERY_ATTENTION,
+                   OP_INC_MULTIQUERY_SELF_ATTENTION,
                    data_type,
                    name,
                    1 /*inputs*/,
@@ -86,7 +86,7 @@ Tensor FFModel::inc_multi_query_attention(const Tensor input,
                    casted_input);
   } else {
     li = new Layer(this,
-                   OP_INC_MULTIQUERY_ATTENTION,
+                   OP_INC_MULTIQUERY_SELF_ATTENTION,
                    data_type,
                    name,
                    1 /*inputs*/,
@@ -137,7 +137,7 @@ Tensor FFModel::inc_multi_query_attention(const Tensor input,
   return li->outputs[0];
 }
 
-Op *IncMultiQueryAttention::create_operator_from_layer(
+Op *IncMultiQuerySelfAttention::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
@@ -158,7 +158,7 @@ Op *IncMultiQueryAttention::create_operator_from_layer(
   bool add_bias_kv = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
-  return new IncMultiQueryAttention(model,
+  return new IncMultiQuerySelfAttention(model,
                                     layer->layer_guid,
                                     inputs[0],
                                     embed_dim,
@@ -173,7 +173,7 @@ Op *IncMultiQueryAttention::create_operator_from_layer(
                                     layer->name);
 }
 
-IncMultiQueryAttention::IncMultiQueryAttention(FFModel &model,
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(FFModel &model,
                                                LayerID const &_layer_guid,
                                                const ParallelTensor _input,
                                                int _embed_dim,
@@ -188,7 +188,7 @@ IncMultiQueryAttention::IncMultiQueryAttention(FFModel &model,
                                                char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_INC_MULTIQUERY_ATTENTION,
+         OP_INC_MULTIQUERY_SELF_ATTENTION,
          _input->data_type,
          name,
          1 /*inputs*/,
@@ -256,7 +256,7 @@ IncMultiQueryAttention::IncMultiQueryAttention(FFModel &model,
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-IncMultiQueryAttention::IncMultiQueryAttention(FFModel &model,
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(FFModel &model,
                                                const ParallelTensor _input,
                                                const ParallelTensor _weight,
                                                int _embed_dim,
@@ -271,7 +271,7 @@ IncMultiQueryAttention::IncMultiQueryAttention(FFModel &model,
                                                char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_INC_MULTIQUERY_ATTENTION,
+         OP_INC_MULTIQUERY_SELF_ATTENTION,
          _input->data_type,
          name,
          1 /*inputs*/,
@@ -339,12 +339,12 @@ IncMultiQueryAttention::IncMultiQueryAttention(FFModel &model,
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-IncMultiQueryAttention::IncMultiQueryAttention(
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     FFModel &model,
-    IncMultiQueryAttention const &other,
+    IncMultiQuerySelfAttention const &other,
     const ParallelTensor input,
     bool allocate_weights)
-    : IncMultiQueryAttention(model,
+    : IncMultiQuerySelfAttention(model,
                              other.layer_guid,
                              input,
                              other.oProjSize,
@@ -358,13 +358,13 @@ IncMultiQueryAttention::IncMultiQueryAttention(
                              allocate_weights,
                              other.name) {}
 
-IncMultiQueryAttention::IncMultiQueryAttention(
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     FFModel &model,
-    IncMultiQueryAttentionParams const &params,
+    IncMultiQuerySelfAttentionParams const &params,
     ParallelTensor const &input,
     bool allocate_weights,
     char const *name)
-    : IncMultiQueryAttention(model,
+    : IncMultiQuerySelfAttention(model,
                              params.layer_guid,
                              input,
                              params.embed_dim,
@@ -378,7 +378,7 @@ IncMultiQueryAttention::IncMultiQueryAttention(
                              allocate_weights,
                              name) {}
 
-void IncMultiQueryAttention::init_inference(
+void IncMultiQuerySelfAttention::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
@@ -391,9 +391,9 @@ void IncMultiQueryAttention::init_inference(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(INC_MULTI_QUERY_ATTENTION_INIT_TASK_ID,
+  IndexLauncher launcher(INC_MULTIQUERY_ATTENTION_INIT_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(IncMultiQueryAttention)),
+                         TaskArgument(this, sizeof(IncMultiQuerySelfAttention)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -422,7 +422,7 @@ void IncMultiQueryAttention::init_inference(
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
-void IncMultiQueryAttention::init(FFModel const &ff) {
+void IncMultiQuerySelfAttention::init(FFModel const &ff) {
 
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
@@ -430,9 +430,9 @@ void IncMultiQueryAttention::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(INC_MULTI_QUERY_ATTENTION_INIT_TASK_ID,
+  IndexLauncher launcher(INC_MULTIQUERY_ATTENTION_INIT_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(IncMultiQueryAttention)),
+                         TaskArgument(this, sizeof(IncMultiQuerySelfAttention)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -466,12 +466,12 @@ void IncMultiQueryAttention::init(FFModel const &ff) {
   regions[1](I): weight
   regions[2](O): output
 */
-OpMeta *IncMultiQueryAttention::init_task(
+OpMeta *IncMultiQuerySelfAttention::init_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  IncMultiQueryAttention const *attn = (IncMultiQueryAttention *)task->args;
+  IncMultiQuerySelfAttention const *attn = (IncMultiQuerySelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   GenericTensorAccessorR input =
       helperGetGenericTensorAccessorRO(attn->inputs[0]->data_type,
@@ -507,7 +507,7 @@ OpMeta *IncMultiQueryAttention::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  IncMultiQueryAttentionMeta *m = new IncMultiQueryAttentionMeta(
+  IncMultiQuerySelfAttentionMeta *m = new IncMultiQuerySelfAttentionMeta(
       handle, attn, weight, gpu_mem, num_samples);
 
   m->profiling = attn->profiling;
@@ -516,12 +516,12 @@ OpMeta *IncMultiQueryAttention::init_task(
   return m;
 }
 
-void IncMultiQueryAttention::forward(FFModel const &ff) {
-  // IncMultiQueryAttention doesn't support forward
+void IncMultiQuerySelfAttention::forward(FFModel const &ff) {
+  // IncMultiQuerySelfAttention doesn't support forward
   assert(false);
 }
 
-FutureMap IncMultiQueryAttention::inference(
+FutureMap IncMultiQuerySelfAttention::inference(
     FFModel const &ff,
     BatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
@@ -572,7 +572,7 @@ FutureMap IncMultiQueryAttention::inference(
   regions[3](I): weight
   regions[4](O): output
 */
-void IncMultiQueryAttention::inference_task(
+void IncMultiQuerySelfAttention::inference_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
@@ -581,8 +581,8 @@ void IncMultiQueryAttention::inference_task(
   assert(task->regions.size() == regions.size());
 
   BatchConfig const *bc = (BatchConfig *)task->args;
-  IncMultiQueryAttentionMeta const *m =
-      *((IncMultiQueryAttentionMeta **)task->local_args);
+  IncMultiQuerySelfAttentionMeta const *m =
+      *((IncMultiQuerySelfAttentionMeta **)task->local_args);
 
   assert(regions.size() == 3);
 
@@ -604,10 +604,10 @@ void IncMultiQueryAttention::inference_task(
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
 
-  IncMultiQueryAttention::inference_kernel_wrapper(
+  IncMultiQuerySelfAttention::inference_kernel_wrapper(
       m, bc, input, weight, output);
 #ifdef INFERENCE_TESTS
-  printf("Checking IncMultiQueryAttention computations...\n");
+  printf("Checking IncMultiQuerySelfAttention computations...\n");
 
   // =============================================================================
   //  Define helper functions to handle row-major arrays
@@ -1365,12 +1365,12 @@ void IncMultiQueryAttention::inference_task(
   // Done with INFERENCE_TESTS block
 }
 
-void IncMultiQueryAttention::backward(FFModel const &ff) {
-  // IncMultiQueryAttention does not support backward
+void IncMultiQuerySelfAttention::backward(FFModel const &ff) {
+  // IncMultiQuerySelfAttention does not support backward
   assert(false);
 }
 
-bool IncMultiQueryAttention::get_int_parameter(PMParameter para,
+bool IncMultiQuerySelfAttention::get_int_parameter(PMParameter para,
                                                int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
@@ -1381,13 +1381,13 @@ bool IncMultiQueryAttention::get_int_parameter(PMParameter para,
   }
 }
 
-bool IncMultiQueryAttention::measure_operator_cost(
+bool IncMultiQuerySelfAttention::measure_operator_cost(
     Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
   return false;
 }
 
-bool operator==(IncMultiQueryAttentionParams const &lhs,
-                IncMultiQueryAttentionParams const &rhs) {
+bool operator==(IncMultiQuerySelfAttentionParams const &lhs,
+                IncMultiQuerySelfAttentionParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
          lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
@@ -1395,8 +1395,8 @@ bool operator==(IncMultiQueryAttentionParams const &lhs,
          lhs.add_zero_attn == rhs.add_zero_attn;
 }
 
-IncMultiQueryAttentionParams IncMultiQueryAttention::get_params() const {
-  IncMultiQueryAttentionParams params;
+IncMultiQuerySelfAttentionParams IncMultiQuerySelfAttention::get_params() const {
+  IncMultiQuerySelfAttentionParams params;
   params.layer_guid = this->layer_guid;
   params.embed_dim = this->oProjSize;
   params.num_heads = this->num_heads;
@@ -1413,8 +1413,8 @@ IncMultiQueryAttentionParams IncMultiQueryAttention::get_params() const {
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::IncMultiQueryAttentionParams>::operator()(
-    FlexFlow::IncMultiQueryAttentionParams const &params) const {
+size_t hash<FlexFlow::IncMultiQuerySelfAttentionParams>::operator()(
+    FlexFlow::IncMultiQuerySelfAttentionParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.embed_dim);

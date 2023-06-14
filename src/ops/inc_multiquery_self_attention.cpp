@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/inc_multiquery_attention.h"
+#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -24,8 +24,8 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void IncMultiQueryAttention::inference_kernel_wrapper(
-    IncMultiQueryAttentionMeta const *m,
+void IncMultiQuerySelfAttention::inference_kernel_wrapper(
+    IncMultiQuerySelfAttentionMeta const *m,
     BatchConfig const *bc,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
@@ -40,7 +40,7 @@ void IncMultiQueryAttention::inference_kernel_wrapper(
     hipEventRecord(t_start, stream);
   }
 
-  handle_unimplemented_hip_kernel(OP_INC_MULTIQUERY_ATTENTION);
+  handle_unimplemented_hip_kernel(OP_INC_MULTIQUERY_SELF_ATTENTION);
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);
@@ -49,16 +49,16 @@ void IncMultiQueryAttention::inference_kernel_wrapper(
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
-    printf("IncMultiQueryAttention forward time = %.2fms\n", elapsed);
+    printf("IncMultiQuerySelfAttention forward time = %.2fms\n", elapsed);
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
-IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
+IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(
     FFHandler handler,
-    IncMultiQueryAttention const *attn,
+    IncMultiQuerySelfAttention const *attn,
     GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
@@ -69,7 +69,7 @@ IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
-IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
+IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(
     FFHandler handler,
     InferenceMode infer_mode,
     Op const *attn,
@@ -92,6 +92,6 @@ IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
-IncMultiQueryAttentionMeta::~IncMultiQueryAttentionMeta(void) {}
+IncMultiQuerySelfAttentionMeta::~IncMultiQuerySelfAttentionMeta(void) {}
 
 }; // namespace FlexFlow

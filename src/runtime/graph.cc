@@ -32,7 +32,7 @@
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
-#include "flexflow/ops/inc_multiquery_attention.h"
+#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2317,8 +2317,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qk_prod_scaling);
         break;
       }
-      case OP_INC_MULTIQUERY_ATTENTION: {
-        IncMultiQueryAttention *attn = (IncMultiQueryAttention *)op;
+      case OP_INC_MULTIQUERY_SELF_ATTENTION: {
+        IncMultiQuerySelfAttention *attn = (IncMultiQuerySelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_heads);
@@ -2808,7 +2808,7 @@ void FFModel::deserialize_graph_optimal_view(
                                                                  params);
         break;
       }
-      case OP_INC_MULTIQUERY_ATTENTION: {
+      case OP_INC_MULTIQUERY_SELF_ATTENTION: {
         assert(num_inputs == 1);
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout, scaling_factor;
@@ -2826,7 +2826,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
 
-        IncMultiQueryAttentionParams params;
+        IncMultiQuerySelfAttentionParams params;
         params.embed_dim = embed_dim;
         params.num_heads = num_heads;
         params.kdim = k_dim;
@@ -2836,7 +2836,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_bias_kv = add_bias_kv;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
-        node = get_or_create_node<IncMultiQueryAttention>(inputs[0], params);
+        node = get_or_create_node<IncMultiQuerySelfAttention>(inputs[0], params);
         break;
       }
       case OP_TOPK: {

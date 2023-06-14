@@ -115,10 +115,10 @@ void FlexFlow::top_level_task(Task const *task,
 
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
   RequestManager rm(model_type,
-  file_paths.tokenizer_file_path,
+                    file_paths.tokenizer_file_path,
                     /*verbose*/ verbose,
                     file_paths.output_file_path);
-  
+
   FFModel model(ffconfig);
   if (model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(model,
@@ -164,7 +164,7 @@ void FlexFlow::top_level_task(Task const *task,
       // std::string text =
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm.register_new_request(text, 128 /*max_sequence_length*/);
+      rm.register_new_request(text, 30 /*max_sequence_length*/);
     }
   }
 

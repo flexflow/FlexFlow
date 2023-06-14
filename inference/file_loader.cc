@@ -129,7 +129,6 @@ void load_attention_weights_multi_query(DT *ptr,
                        "attention_dense_weight";
 
   // q has n_heads heads, k and v only have one head, o have n_head heads
-  std::cout << "sada: " << qkv_file << ", " << o_file << "\n";
   std::vector<std::string> weight_files = {qkv_file, o_file};
   int file_index = 0;
   int data_index = 0;
@@ -137,8 +136,6 @@ void load_attention_weights_multi_query(DT *ptr,
     size_t partial_size =
         file_index == 0 ? (hidden_dim + 2 * hidden_dim / num_heads) * hidden_dim
                         : hidden_dim * hidden_dim;
-    std::cout << "pat size: " << (hidden_dim + 2 * hidden_dim / num_heads)
-              << ", " << hidden_dim << ", " << partial_size << "\n";
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
     // std::cout << "Loading filename: " << file << std::endl;
@@ -328,7 +325,6 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     }
 
   } else if (file_path.find("self_attention") != std::string::npos) {
-    std::cout << "volume: " << volume << "\n";
     load_attention_weights_multi_query(
         data, file_path, weight_file_path, hidden_dim, num_heads);
   } else {

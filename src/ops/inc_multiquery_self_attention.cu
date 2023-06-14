@@ -16,7 +16,7 @@
 #include "cuComplex.h"
 #endif
 #include "flexflow/ffconst_utils.h"
-#include "flexflow/ops/inc_multiquery_attention.h"
+#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -51,15 +51,10 @@ __global__ void apply_rotary_embedding_multi_query(
     int token_idx =
         (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
 
-    
-    int real_part_index = idx + token_idx * (proj_size / 2) +
-                          (q_tensor ? head_idx * q_block_size
-                                    : num_heads * q_block_size);
+    int real_part_index =
+        idx + token_idx * (proj_size / 2) +
+        (q_tensor ? head_idx * q_block_size : num_heads * q_block_size);
     int complex_part_index = real_part_index + (proj_size / 2);
-
-    if(i == 0 && q_tensor == false){
-      printf("see index %d, %d\n", real_part_index, complex_part_index);
-    }
 
     complex_input[i] = {input_ptr[real_part_index],
                         input_ptr[complex_part_index]};
@@ -88,7 +83,7 @@ __global__ void apply_rotary_embedding_multi_query(
 }
 
 template <typename DT>
-void compute_qkv_kernel(IncMultiQueryAttentionMeta const *m,
+void compute_qkv_kernel(IncMultiQuerySelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         DT const *input_ptr,
                         DT const *weight_ptr,
@@ -188,7 +183,8 @@ void compute_qkv_kernel(IncMultiQueryAttentionMeta const *m,
                    ldc,
                    compute_type,
                    CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  save_tensor<DT>(output_ptr, 4544 * 7,"/home/ubuntu/FlexFlow/inference/q_before.txt"); 
+  // save_tensor<DT>(output_ptr, 4544 *
+  // 7,"/home/ubuntu/FlexFlow/inference/q_before.txt");
   int q_block_size = m->qProjSize * num_tokens;
   int k_block_size = m->kProjSize * num_tokens;
   int v_block_size = m->vProjSize * num_tokens;
@@ -224,14 +220,14 @@ void compute_qkv_kernel(IncMultiQueryAttentionMeta const *m,
                                                  false);
 
   // save_tensor<DT>(output_ptr, 64 * 7 * 2,
-  // "/home/ubuntu/FlexFlow/inference/query.txt"); 
-  save_tensor<DT>(output_ptr, 4544 * 7,"/home/ubuntu/FlexFlow/inference/q.txt"); 
-  // print_tensor<DT>(output_ptr
+  // "/home/ubuntu/FlexFlow/inference/query.txt");
+  // save_tensor<DT>(output_ptr, 4544 *
+  // 7,"/home/ubuntu/FlexFlow/inference/q.txt"); print_tensor<DT>(output_ptr
   // + num_new_tokens * (m->embed_dim + m->kProjSize), 32, "vvvvvvvvv");
 }
 
 template <typename DT>
-void update_kv_cache_kernel(IncMultiQueryAttentionMeta const *m,
+void update_kv_cache_kernel(IncMultiQuerySelfAttentionMeta const *m,
                             BatchConfig const *bc,
                             cudaStream_t stream) {
   int num_tokens = bc->num_active_tokens();
@@ -271,7 +267,7 @@ void update_kv_cache_kernel(IncMultiQueryAttentionMeta const *m,
 }
 
 template <typename DT>
-void inference_kernel(IncMultiQueryAttentionMeta const *m,
+void inference_kernel(IncMultiQuerySelfAttentionMeta const *m,
                       BatchConfig const *bc,
                       DT const *input_ptr,
                       DT const *weight_ptr,
@@ -360,7 +356,7 @@ __global__ void
 }
 
 template <typename DT>
-void compute_attention_kernel(IncMultiQueryAttentionMeta const *m,
+void compute_attention_kernel(IncMultiQuerySelfAttentionMeta const *m,
                               BatchConfig const *bc,
                               DT *output_ptr,
                               DT const *weight_ptr,
@@ -438,10 +434,11 @@ void compute_attention_kernel(IncMultiQueryAttentionMeta const *m,
                                          m->num_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    save_tensor<DT>(
-        (DT *)A, 64 * 7 * 2, "/home/ubuntu/FlexFlow/inference/query.txt");
-    save_tensor<DT>((DT *)B, 64 * 7, "/home/ubuntu/FlexFlow/inference/key.txt");
-    print_tensor<DT>((DT *)m->qk_prods, 32, "output qkprod");
+    // save_tensor<DT>(
+    //     (DT *)A, 64 * 7 * 2, "/home/ubuntu/FlexFlow/inference/query.txt");
+    // save_tensor<DT>((DT *)B, 64 * 7,
+    // "/home/ubuntu/FlexFlow/inference/key.txt"); print_tensor<DT>((DT
+    // *)m->qk_prods, 32, "output qkprod");
 
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
@@ -585,8 +582,8 @@ void compute_attention_kernel(IncMultiQueryAttentionMeta const *m,
 }
 
 /*static*/
-void IncMultiQueryAttention::inference_kernel_wrapper(
-    IncMultiQueryAttentionMeta const *m,
+void IncMultiQuerySelfAttention::inference_kernel_wrapper(
+    IncMultiQuerySelfAttentionMeta const *m,
     BatchConfig const *bc,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
@@ -628,20 +625,20 @@ void IncMultiQueryAttention::inference_kernel_wrapper(
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("IncMultiQueryAttention forward time = %.2fms\n", elapsed);
+    printf("IncMultiQuerySelfAttention forward time = %.2fms\n", elapsed);
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
-IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
+IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(
     FFHandler handler,
-    IncMultiQueryAttention const *attn,
+    IncMultiQuerySelfAttention const *attn,
     GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples)
-    : IncMultiQueryAttentionMeta(handler,
+    : IncMultiQuerySelfAttentionMeta(handler,
                                  INC_DECODING_MODE,
                                  attn,
                                  attn->qSize,
@@ -658,7 +655,7 @@ IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
                                  gpu_mem,
                                  num_samples) {}
 
-IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
+IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(
     FFHandler handler,
     InferenceMode infer_mode,
     Op const *attn,
@@ -789,7 +786,7 @@ IncMultiQueryAttentionMeta::IncMultiQueryAttentionMeta(
   cudaStreamSynchronize(stream);
 }
 
-IncMultiQueryAttentionMeta::~IncMultiQueryAttentionMeta(void) {
+IncMultiQuerySelfAttentionMeta::~IncMultiQuerySelfAttentionMeta(void) {
   reserveInst.destroy();
 #ifdef INFERENCE_TESTS
   free(kcache);

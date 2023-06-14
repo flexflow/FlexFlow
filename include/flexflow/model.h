@@ -149,7 +149,7 @@ enum TaskIDs {
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-  INC_MULTI_QUERY_ATTENTION_INIT_TASK_ID,
+  INC_MULTIQUERY_ATTENTION_INIT_TASK_ID,
   INC_MULTI_QUERY_ATTENTION_INF_TASK_ID,
   SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
@@ -306,7 +306,7 @@ class Transpose;
 class RMSNorm;
 class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
-class IncMultiQueryAttention;
+class IncMultiQuerySelfAttention;
 class Combine;
 class Repartition;
 class Reduction;
@@ -635,7 +635,7 @@ public:
                                       float scaling_factor = 1.0f,
                                       bool qk_prod_scaling = true,
                                       char const *name = NULL);
-  Tensor inc_multi_query_attention(const Tensor input,
+  Tensor inc_multiquery_self_attention(const Tensor input,
                                    int embed_dim,
                                    int num_heads,
                                    int kdim = 0,
@@ -1045,8 +1045,8 @@ public:
           std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionParams>,
           IncMultiHeadSelfAttention *>,
       std::unordered_map<
-          std::pair<ParallelTensorShape, IncMultiQueryAttentionParams>,
-          IncMultiQueryAttention *>,
+          std::pair<ParallelTensorShape, IncMultiQuerySelfAttentionParams>,
+          IncMultiQuerySelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, BeamTopKParams>,
                          BeamTopK *>,
       std::unordered_map<

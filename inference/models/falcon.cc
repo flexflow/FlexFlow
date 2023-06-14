@@ -82,7 +82,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   int num_transformer_layers_per_stage =
       (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
 
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < num_transformer_layers; i++) {
     // step 1: attention
     Tensor att_norm = ff.layer_norm(token, axes, true, falcon_config.norm_eps);
     Layer *attention_norm = ff.layers.back();
@@ -101,7 +101,7 @@ void FALCON::create_falcon_model(FFModel &ff,
     Tensor mha;
     switch (mode) {
       case INC_DECODING_MODE: {
-        mha = ff.inc_multi_query_attention(
+        mha = ff.inc_multiquery_self_attention(
             att_norm,
             falcon_config.dim,
             falcon_config.n_heads,
@@ -139,19 +139,25 @@ void FALCON::create_falcon_model(FFModel &ff,
                                "_mlp_dense_4h_to_layers_weight",
                            dense_4h_to_h_layer);
 
-    token = ff.add(mha, mlp_output);
+    token = ff.add(token, mha);
+    token = ff.add(token, mlp_output);
   }
   // final normalization and linear
   Tensor ln_f = ff.layer_norm(token, axes, true, falcon_config.norm_eps);
   Layer *ln_f_layer = ff.layers.back();
   weights_layers.emplace("ln_f_weight", ln_f_layer);
 
+  Tensor lm_head =
+      ff.dense(ln_f, falcon_config.vocab_size, AC_MODE_NONE, false);
+  Layer *lm_head_layer = ff.layers.back();
+  weights_layers.emplace("lm_head_weight", lm_head_layer);
+
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
-    Tensor softmax = ff.softmax(ln_f, -1);
+    Tensor softmax = ff.softmax(lm_head, -1);
     output = ff.beam_top_k(softmax, falcon_config.max_beam_width, false);
   } else {
-    output = ff.arg_top_k(ln_f, /*k=*/1, false);
+    output = ff.arg_top_k(lm_head, /*k=*/1, false);
   }
 
   // Compile the model

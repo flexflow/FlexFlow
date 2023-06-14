@@ -43,7 +43,7 @@
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
-#include "flexflow/ops/inc_multiquery_attention.h"
+#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2784,8 +2784,8 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
-    case OP_INC_MULTIQUERY_ATTENTION: {
-      Op *op = IncMultiQueryAttention::create_operator_from_layer(
+    case OP_INC_MULTIQUERY_SELF_ATTENTION: {
+      Op *op = IncMultiQuerySelfAttention::create_operator_from_layer(
           *this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -4665,21 +4665,21 @@ void register_flexflow_internal_tasks() {
   }
   // MultiQueryAttention task
   {
-    TaskVariantRegistrar registrar(INC_MULTI_QUERY_ATTENTION_INIT_TASK_ID,
-                                   "IncMultiQueryAttention Init");
+    TaskVariantRegistrar registrar(INC_MULTIQUERY_ATTENTION_INIT_TASK_ID,
+                                   "IncMultiQuerySelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta *,
-                                      IncMultiQueryAttention::init_task>(
-        registrar, "IncMultiQueryAttention Init Task");
+                                      IncMultiQuerySelfAttention::init_task>(
+        registrar, "IncMultiQuerySelfAttention Init Task");
   }
   {
     TaskVariantRegistrar registrar(INC_MULTI_QUERY_ATTENTION_INF_TASK_ID,
-                                   "IncMultiQueryAttention Inference");
+                                   "IncMultiQuerySelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<IncMultiQueryAttention::inference_task>(
-        registrar, "IncMultiQueryAttention Inference Task");
+    Runtime::preregister_task_variant<IncMultiQuerySelfAttention::inference_task>(
+        registrar, "IncMultiQuerySelfAttention Inference Task");
   }
   // speculative MultiHeadAttention task
   {

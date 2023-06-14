@@ -15,14 +15,14 @@
 
 namespace FlexFlow {
 
-class IncMultiQueryAttentionMeta;
+class IncMultiQuerySelfAttentionMeta;
 
-class IncMultiQueryAttention : public Op {
+class IncMultiQuerySelfAttention : public Op {
 public:
-  using Params = IncMultiQueryAttentionParams;
+  using Params = IncMultiQuerySelfAttentionParams;
   using Input = ParallelTensor;
 
-  IncMultiQueryAttention(FFModel &model,
+  IncMultiQuerySelfAttention(FFModel &model,
                          LayerID const &layer_guid,
                          const ParallelTensor _input,
                          int _embed_dim,
@@ -35,7 +35,7 @@ public:
                          bool _add_zero_attn,
                          bool allocate_weights,
                          char const *name);
-  IncMultiQueryAttention(FFModel &model,
+  IncMultiQuerySelfAttention(FFModel &model,
                          const ParallelTensor _input,
                          const ParallelTensor _weight,
                          int _embed_dim,
@@ -48,11 +48,11 @@ public:
                          bool _add_zero_attn,
                          bool allocate_weights,
                          char const *name);
-  IncMultiQueryAttention(FFModel &model,
-                         IncMultiQueryAttention const &other,
+  IncMultiQuerySelfAttention(FFModel &model,
+                         IncMultiQuerySelfAttention const &other,
                          const ParallelTensor input,
                          bool allocate_weights);
-  IncMultiQueryAttention(FFModel &model,
+  IncMultiQuerySelfAttention(FFModel &model,
                          Params const &params,
                          Input const &inputs,
                          bool allocate_weights = false,
@@ -90,7 +90,7 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void inference_kernel_wrapper(IncMultiQueryAttentionMeta const *m,
+  static void inference_kernel_wrapper(IncMultiQuerySelfAttentionMeta const *m,
                                        BatchConfig const *bc,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorR const &weight,
@@ -107,14 +107,14 @@ public:
   int qoSeqLength, kvSeqLength;
 };
 
-class IncMultiQueryAttentionMeta : public OpMeta {
+class IncMultiQuerySelfAttentionMeta : public OpMeta {
 public:
-  IncMultiQueryAttentionMeta(FFHandler handler,
-                             IncMultiQueryAttention const *attn,
+  IncMultiQuerySelfAttentionMeta(FFHandler handler,
+                             IncMultiQuerySelfAttention const *attn,
                              GenericTensorAccessorR const &weight,
                              Legion::Memory gpu_mem,
                              int num_samples);
-  IncMultiQueryAttentionMeta(FFHandler handler,
+  IncMultiQuerySelfAttentionMeta(FFHandler handler,
                              InferenceMode infer_mode,
                              Op const *attn,
                              int _qSize,
@@ -130,7 +130,7 @@ public:
                              GenericTensorAccessorR const &weight,
                              Legion::Memory gpu_mem,
                              int num_samples);
-  ~IncMultiQueryAttentionMeta(void);
+  ~IncMultiQuerySelfAttentionMeta(void);
 
 public:
   Realm::RegionInstance reserveInst;

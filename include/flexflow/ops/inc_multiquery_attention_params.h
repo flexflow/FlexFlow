@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct IncMultiQueryAttentionParams {
+struct IncMultiQuerySelfAttentionParams {
   LayerID layer_guid;
   int embed_dim, num_heads, kdim, vdim;
   float dropout;
@@ -15,15 +15,15 @@ struct IncMultiQueryAttentionParams {
   bool is_valid(ParallelTensorShape const &) const;
 };
 
-bool operator==(IncMultiQueryAttentionParams const &,
-                IncMultiQueryAttentionParams const &);
+bool operator==(IncMultiQuerySelfAttentionParams const &,
+                IncMultiQuerySelfAttentionParams const &);
 
 } // namespace FlexFlow
 
 namespace std {
 template <>
-struct hash<FlexFlow::IncMultiQueryAttentionParams> {
-  size_t operator()(FlexFlow::IncMultiQueryAttentionParams const &) const;
+struct hash<FlexFlow::IncMultiQuerySelfAttentionParams> {
+  size_t operator()(FlexFlow::IncMultiQuerySelfAttentionParams const &) const;
 };
 } // namespace std
 

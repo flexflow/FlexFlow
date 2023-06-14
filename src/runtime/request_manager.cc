@@ -53,7 +53,6 @@ RequestManager::RequestManager(ModelType model_type,
       num_processed_requests(0), output_filepath(_output_filepath) {
 
   // bos id
-  std::cout<< "fffff" <<"\n";
   this->bos_token_id = 0;
   // load tokenizer;
   if (model_type == ModelType::LLAMA) {
@@ -77,8 +76,6 @@ RequestManager::RequestManager(ModelType model_type,
   } else if (model_type == ModelType::FALCON) {
     this->tokenizer_ = Tokenizer::FromBlobJSON(LoadBytesFromFile(path));
   }
-
-  std::cout<< "fffff" <<"\n";
 }
 
 int RequestManager::register_new_model(FFModel *model) {
@@ -139,14 +136,8 @@ RequestManager::RequestGuid
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  request.tokens.push_back(this->bos_token_id);
-  std::cout << "sdasd" << prompt << "\n";
+  // request.tokens.push_back(this->bos_token_id);
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
-  
-  std::cout << "sdasd" << prompt << "\n";
-  for(int i = 0; i < tokens.size(); i++){
-    std::cout << tokens.at(i) << "\n";
-  }
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
 
