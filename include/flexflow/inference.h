@@ -149,6 +149,7 @@ private:
   std::unique_ptr<Tokenizer> tokenizer_;
   int bos_token_id;
   bool verbose;
+  ModelType model_type;
   std::string output_filepath;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;

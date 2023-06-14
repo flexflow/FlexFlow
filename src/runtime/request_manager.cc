@@ -53,6 +53,7 @@ RequestManager::RequestManager(ModelType model_type,
 
   // bos id
   this->bos_token_id = 0;
+  this->model_type = model_type;
   if (model_type == ModelType::LLAMA) {
     this->tokenizer_ =
         Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(path));
@@ -139,7 +140,9 @@ RequestManager::RequestGuid
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  // request.tokens.push_back(this->bos_token_id);
+  if (this->model_type == ModelType::LLAMA) {
+    request.tokens.push_back(this->bos_token_id);
+  }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();

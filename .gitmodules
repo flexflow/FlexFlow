@@ -22,3 +22,4 @@
 [submodule "deps/tokenizers-cpp"]
 	path = deps/tokenizers-cpp
 	url = https://github.com/mlc-ai/tokenizers-cpp.git
+	fetchRecurseSubmodules = true

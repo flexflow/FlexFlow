@@ -149,8 +149,6 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   int total_num_requests = 0;
-  // std::vector<int> prompt = {18805, 1373, 4754, 312, 9391, 3820, 25};
-  // rm.register_new_request(prompt, 128 /*max_sequence_length*/);
   {
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
@@ -161,10 +159,9 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*ignore_comments */ true);
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
-      // std::string text =
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm.register_new_request(text, 30 /*max_sequence_length*/);
+      rm.register_new_request(text, 128 /*max_sequence_length*/);
     }
   }
 
