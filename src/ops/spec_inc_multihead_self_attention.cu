@@ -424,13 +424,13 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       m_ = m->oProjSize;
       k = m->vProjSize * m->num_heads;
       n = num_new_tokens;
-      lda = k, ldb = n, ldc = m_;
+      lda = m_, ldb = n, ldc = m_;
       A = (void const *)m->W_out_contiguous;
       B = (void const *)C;
       C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
 
       checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_T,
+                             CUBLAS_OP_N,
                              CUBLAS_OP_T,
                              m_,
                              n,
