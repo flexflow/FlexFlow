@@ -21,7 +21,6 @@
 #include <new>
 #include <stack>
 #include <stdexcept>
-#include <tokenizers_cpp.h>
 
 namespace FlexFlow {
 
@@ -54,7 +53,6 @@ RequestManager::RequestManager(ModelType model_type,
 
   // bos id
   this->bos_token_id = 0;
-  // load tokenizer;
   if (model_type == ModelType::LLAMA) {
     this->tokenizer_ =
         Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(path));
@@ -63,16 +61,21 @@ RequestManager::RequestManager(ModelType model_type,
         (!path.empty() && path.back() != '/') ? path + '/' : path;
     std::string vocab_file = tokenizer_folder + "gpt2-vocab.json";
     std::string merges_file = tokenizer_folder + "gpt2-merges.txt";
+    std::string added_tokens_file = tokenizer_folder + "added_tokens.json";
     std::filesystem::path path1(vocab_file);
     std::filesystem::path path2(merges_file);
+    std::filesystem::path path3(added_tokens_file);
     assert(std::filesystem::exists(path1) &&
            "Vocab file gpt2-vocab.json does not exist at the specified path");
     assert(std::filesystem::exists(path2) &&
            "Merge file gpt2-merges.txt does not exist at the specified path");
     // opt_tokenizer = new OptTokenizer(vocab_file, merges_file);
-    std::string vocab = LoadBytesFromFile(path1);
-    std::string merges = LoadBytesFromFile(path2);
-    this->tokenizer_ = Tokenizer::FromBlobByteLevelBPE(vocab, merges, "");
+    std::string vocab = LoadBytesFromFile(path1.string());
+    std::string merges = LoadBytesFromFile(path2.string());
+    std::string added_tokens = LoadBytesFromFile(path3.string());
+
+    this->tokenizer_ =
+        Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
   } else if (model_type == ModelType::FALCON) {
     this->tokenizer_ = Tokenizer::FromBlobJSON(LoadBytesFromFile(path));
   }

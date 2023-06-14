@@ -56,3 +56,7 @@ tokenizer_filepath = '../tokenizer/gpt2-merges.txt'
 url = 'https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt'
 r = requests.get(url)
 open(tokenizer_filepath , 'wb').write(r.content)
+tokenizer_filepath = '../tokenizer/added_tokens.json'
+url = 'https://huggingface.co/truongpdd/vietnews-gpt2/raw/main/added_tokens.json'
+r = requests.get(url)
+open(tokenizer_filepath , 'wb').write(r.content)
