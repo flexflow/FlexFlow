@@ -58,17 +58,17 @@ bool IncMultiQuerySelfAttentionParams::is_valid(
 }
 
 Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
-                                          int embed_dim,
-                                          int num_heads,
-                                          int kdim,
-                                          int vdim,
-                                          float dropout,
-                                          bool bias,
-                                          bool add_bias_kv,
-                                          bool add_zero_attn,
-                                          DataType data_type,
-                                          Initializer *kernel_initializer,
-                                          char const *name) {
+                                              int embed_dim,
+                                              int num_heads,
+                                              int kdim,
+                                              int vdim,
+                                              float dropout,
+                                              bool bias,
+                                              bool add_bias_kv,
+                                              bool add_zero_attn,
+                                              DataType data_type,
+                                              Initializer *kernel_initializer,
+                                              char const *name) {
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
@@ -159,33 +159,34 @@ Op *IncMultiQuerySelfAttention::create_operator_from_layer(
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
   return new IncMultiQuerySelfAttention(model,
-                                    layer->layer_guid,
-                                    inputs[0],
-                                    embed_dim,
-                                    num_heads,
-                                    kdim,
-                                    vdim,
-                                    dropout,
-                                    bias,
-                                    add_bias_kv,
-                                    add_zero_attn,
-                                    true /*allocate_weights*/,
-                                    layer->name);
+                                        layer->layer_guid,
+                                        inputs[0],
+                                        embed_dim,
+                                        num_heads,
+                                        kdim,
+                                        vdim,
+                                        dropout,
+                                        bias,
+                                        add_bias_kv,
+                                        add_zero_attn,
+                                        true /*allocate_weights*/,
+                                        layer->name);
 }
 
-IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(FFModel &model,
-                                               LayerID const &_layer_guid,
-                                               const ParallelTensor _input,
-                                               int _embed_dim,
-                                               int _num_heads,
-                                               int _kdim,
-                                               int _vdim,
-                                               float _dropout,
-                                               bool _bias,
-                                               bool _add_bias_kv,
-                                               bool _add_zero_attn,
-                                               bool allocate_weights,
-                                               char const *name)
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
+    FFModel &model,
+    LayerID const &_layer_guid,
+    const ParallelTensor _input,
+    int _embed_dim,
+    int _num_heads,
+    int _kdim,
+    int _vdim,
+    float _dropout,
+    bool _bias,
+    bool _add_bias_kv,
+    bool _add_zero_attn,
+    bool allocate_weights,
+    char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
          OP_INC_MULTIQUERY_SELF_ATTENTION,
@@ -256,19 +257,20 @@ IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(FFModel &model,
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(FFModel &model,
-                                               const ParallelTensor _input,
-                                               const ParallelTensor _weight,
-                                               int _embed_dim,
-                                               int _num_heads,
-                                               int _kdim,
-                                               int _vdim,
-                                               float _dropout,
-                                               bool _bias,
-                                               bool _add_bias_kv,
-                                               bool _add_zero_attn,
-                                               bool allocate_weights,
-                                               char const *name)
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
+    FFModel &model,
+    const ParallelTensor _input,
+    const ParallelTensor _weight,
+    int _embed_dim,
+    int _num_heads,
+    int _kdim,
+    int _vdim,
+    float _dropout,
+    bool _bias,
+    bool _add_bias_kv,
+    bool _add_zero_attn,
+    bool allocate_weights,
+    char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
          OP_INC_MULTIQUERY_SELF_ATTENTION,
@@ -345,18 +347,18 @@ IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     const ParallelTensor input,
     bool allocate_weights)
     : IncMultiQuerySelfAttention(model,
-                             other.layer_guid,
-                             input,
-                             other.oProjSize,
-                             other.num_heads,
-                             other.qProjSize,
-                             other.vProjSize,
-                             other.dropout,
-                             other.bias,
-                             other.add_bias_kv,
-                             other.add_zero_attn,
-                             allocate_weights,
-                             other.name) {}
+                                 other.layer_guid,
+                                 input,
+                                 other.oProjSize,
+                                 other.num_heads,
+                                 other.qProjSize,
+                                 other.vProjSize,
+                                 other.dropout,
+                                 other.bias,
+                                 other.add_bias_kv,
+                                 other.add_zero_attn,
+                                 allocate_weights,
+                                 other.name) {}
 
 IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     FFModel &model,
@@ -365,18 +367,18 @@ IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     bool allocate_weights,
     char const *name)
     : IncMultiQuerySelfAttention(model,
-                             params.layer_guid,
-                             input,
-                             params.embed_dim,
-                             params.num_heads,
-                             params.kdim,
-                             params.vdim,
-                             params.dropout,
-                             params.bias,
-                             params.add_bias_kv,
-                             params.add_zero_attn,
-                             allocate_weights,
-                             name) {}
+                                 params.layer_guid,
+                                 input,
+                                 params.embed_dim,
+                                 params.num_heads,
+                                 params.kdim,
+                                 params.vdim,
+                                 params.dropout,
+                                 params.bias,
+                                 params.add_bias_kv,
+                                 params.add_zero_attn,
+                                 allocate_weights,
+                                 name) {}
 
 void IncMultiQuerySelfAttention::init_inference(
     FFModel const &ff,
@@ -391,7 +393,7 @@ void IncMultiQuerySelfAttention::init_inference(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(INC_MULTIQUERY_ATTENTION_INIT_TASK_ID,
+  IndexLauncher launcher(INC_MULTIQUERY_SELF_ATTENTION_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(IncMultiQuerySelfAttention)),
                          argmap,
@@ -430,7 +432,7 @@ void IncMultiQuerySelfAttention::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(INC_MULTIQUERY_ATTENTION_INIT_TASK_ID,
+  IndexLauncher launcher(INC_MULTIQUERY_SELF_ATTENTION_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(IncMultiQuerySelfAttention)),
                          argmap,
@@ -471,7 +473,8 @@ OpMeta *IncMultiQuerySelfAttention::init_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  IncMultiQuerySelfAttention const *attn = (IncMultiQuerySelfAttention *)task->args;
+  IncMultiQuerySelfAttention const *attn =
+      (IncMultiQuerySelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   GenericTensorAccessorR input =
       helperGetGenericTensorAccessorRO(attn->inputs[0]->data_type,
@@ -538,7 +541,7 @@ FutureMap IncMultiQuerySelfAttention::inference(
   log_inc_mqa.debug("BatchConfig, num_tokens: %d, num_requests: %d",
                     bc.num_tokens,
                     bc.num_active_requests());
-  IndexLauncher launcher(INC_MULTI_QUERY_ATTENTION_INF_TASK_ID,
+  IndexLauncher launcher(INC_MULTIQUERY_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(&bc, sizeof(BatchConfig)),
                          argmap,
@@ -1371,7 +1374,7 @@ void IncMultiQuerySelfAttention::backward(FFModel const &ff) {
 }
 
 bool IncMultiQuerySelfAttention::get_int_parameter(PMParameter para,
-                                               int *value) const {
+                                                   int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
       *value = num_heads;
@@ -1395,7 +1398,8 @@ bool operator==(IncMultiQuerySelfAttentionParams const &lhs,
          lhs.add_zero_attn == rhs.add_zero_attn;
 }
 
-IncMultiQuerySelfAttentionParams IncMultiQuerySelfAttention::get_params() const {
+IncMultiQuerySelfAttentionParams
+    IncMultiQuerySelfAttention::get_params() const {
   IncMultiQuerySelfAttentionParams params;
   params.layer_guid = this->layer_guid;
   params.embed_dim = this->oProjSize;

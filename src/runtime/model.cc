@@ -4665,7 +4665,7 @@ void register_flexflow_internal_tasks() {
   }
   // MultiQueryAttention task
   {
-    TaskVariantRegistrar registrar(INC_MULTIQUERY_ATTENTION_INIT_TASK_ID,
+    TaskVariantRegistrar registrar(INC_MULTIQUERY_SELF_ATTENTION_INIT_TASK_ID,
                                    "IncMultiQuerySelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -4674,11 +4674,12 @@ void register_flexflow_internal_tasks() {
         registrar, "IncMultiQuerySelfAttention Init Task");
   }
   {
-    TaskVariantRegistrar registrar(INC_MULTI_QUERY_ATTENTION_INF_TASK_ID,
+    TaskVariantRegistrar registrar(INC_MULTIQUERY_SELF_ATTENTION_INF_TASK_ID,
                                    "IncMultiQuerySelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<IncMultiQuerySelfAttention::inference_task>(
+    Runtime::preregister_task_variant<
+        IncMultiQuerySelfAttention::inference_task>(
         registrar, "IncMultiQuerySelfAttention Inference Task");
   }
   // speculative MultiHeadAttention task

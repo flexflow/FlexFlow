@@ -2836,7 +2836,8 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_bias_kv = add_bias_kv;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
-        node = get_or_create_node<IncMultiQuerySelfAttention>(inputs[0], params);
+        node =
+            get_or_create_node<IncMultiQuerySelfAttention>(inputs[0], params);
         break;
       }
       case OP_TOPK: {

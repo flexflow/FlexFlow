@@ -3718,7 +3718,8 @@ bool FFModel::convert_graph_to_operators(
       }
       case OP_INC_MULTIQUERY_SELF_ATTENTION: {
         assert(inList.size() == 1);
-        IncMultiQuerySelfAttention *attn = (IncMultiQuerySelfAttention *)node.ptr;
+        IncMultiQuerySelfAttention *attn =
+            (IncMultiQuerySelfAttention *)node.ptr;
         new_op = new IncMultiQuerySelfAttention(*this, *attn, inputs[0], true);
         break;
       }
