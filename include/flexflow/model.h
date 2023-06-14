@@ -636,17 +636,17 @@ public:
                                       bool qk_prod_scaling = true,
                                       char const *name = NULL);
   Tensor inc_multiquery_self_attention(const Tensor input,
-                                   int embed_dim,
-                                   int num_heads,
-                                   int kdim = 0,
-                                   int vdim = 0,
-                                   float dropout = 0.0f,
-                                   bool bias = false,
-                                   bool add_bias_kv = false,
-                                   bool add_zero_attn = false,
-                                   DataType data_type = DT_NONE,
-                                   Initializer *kernel_initializer = NULL,
-                                   char const *name = NULL);
+                                       int embed_dim,
+                                       int num_heads,
+                                       int kdim = 0,
+                                       int vdim = 0,
+                                       float dropout = 0.0f,
+                                       bool bias = false,
+                                       bool add_bias_kv = false,
+                                       bool add_zero_attn = false,
+                                       DataType data_type = DT_NONE,
+                                       Initializer *kernel_initializer = NULL,
+                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(const Tensor input,
                                         int embed_dim,

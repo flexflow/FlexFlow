@@ -17,8 +17,8 @@
 
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
-#include <tokenizers_cpp.h>
 #include <mutex>
+#include <tokenizers_cpp.h>
 
 namespace FlexFlow {
 
@@ -145,7 +145,7 @@ public:
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 
-private:  
+private:
   std::unique_ptr<Tokenizer> tokenizer_;
   int bos_token_id;
   bool verbose;

@@ -143,9 +143,9 @@ enum OperatorType {
   OP_ROUND, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Round
   OP_LOG,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Log
   OP_LOGICAL_NOT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Not
-  OP_SQRT,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sqrt
-  OP_SIN,    // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sin
-  OP_COS,    // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cos
+  OP_SQRT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sqrt
+  OP_SIN,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sin
+  OP_COS,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cos
   OP_LEAKYRELU,
   OP_SLICE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
   OP_RESIZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
