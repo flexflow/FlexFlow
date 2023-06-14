@@ -148,70 +148,62 @@ void OPT::create_opt_model(FFModel &ff,
         break;
       }
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multihead_self_attention_verify(
-            hidden_states,
-            opt_config.hidden_size,
-            opt_config.num_attention_heads,
-            opt_config.hidden_size / opt_config.num_attention_heads,
-            opt_config.hidden_size / opt_config.num_attention_heads,
-            0.0f,
-            true,
-            false,
-            false,
-            DT_NONE, /*data_type*/
-            NULL,
-            false,
-            /*scaling query*/ true,
-            /*scaling factor*/
-            pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                -0.5),
-            /*qk_prod_scaling*/ false);
+        assert(opt_config.num_attention_heads % tensor_parallelism_degree == 0);
+        for (int partition_idx = 0; partition_idx < tensor_parallelism_degree;
+             partition_idx++) {
+          Tensor partial_mha = ff.inc_multihead_self_attention_verify(
+              hidden_states,
+              opt_config.hidden_size,
+              opt_config.num_attention_heads,
+              opt_config.hidden_size / opt_config.num_attention_heads,
+              opt_config.hidden_size / opt_config.num_attention_heads,
+              0.0f,
+              true,
+              false,
+              false,
+              DT_NONE, /*data_type*/
+              NULL,
+              false,
+              /*scaling query*/ true,
+              /*scaling factor*/
+              pow((opt_config.hidden_size / opt_config.num_attention_heads),
+                  -0.5),
+              /*qk_prod_scaling*/ false,
+              partition_idx);
+          if (partition_idx == 0) {
+            mha = partial_mha;
+          } else {
+            mha = ff.add(mha, partial_mha);
+          }
+        }
         break;
       }
       case INC_DECODING_MODE: {
         assert(opt_config.num_attention_heads % tensor_parallelism_degree == 0);
         for (int partition_idx = 0; partition_idx < tensor_parallelism_degree;
              partition_idx++) {
+          Tensor partial_mha = ff.inc_multihead_self_attention(
+              hidden_states,
+              opt_config.hidden_size,
+              opt_config.num_attention_heads / tensor_parallelism_degree,
+              opt_config.hidden_size / opt_config.num_attention_heads,
+              opt_config.hidden_size / opt_config.num_attention_heads,
+              0.0f,
+              true,
+              false,
+              false,
+              DT_NONE, /*data_type*/
+              NULL,
+              false,
+              /*scaling query*/ true,
+              /*scaling factor*/
+              pow((opt_config.hidden_size / opt_config.num_attention_heads),
+                  -0.5),
+              /*qk_prod_scaling*/ false,
+              partition_idx);
           if (partition_idx == 0) {
-            mha = ff.inc_multihead_self_attention(
-                hidden_states,
-                opt_config.hidden_size,
-                opt_config.num_attention_heads / tensor_parallelism_degree,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                0.0f,
-                true,
-                false,
-                false,
-                DT_NONE, /*data_type*/
-                NULL,
-                false,
-                /*scaling query*/ true,
-                /*scaling factor*/
-                pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                    -0.5),
-                /*qk_prod_scaling*/ false,
-                partition_idx);
+            mha = partial_mha;
           } else {
-            Tensor partial_mha = ff.inc_multihead_self_attention(
-                hidden_states,
-                opt_config.hidden_size,
-                opt_config.num_attention_heads / tensor_parallelism_degree,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                opt_config.hidden_size / opt_config.num_attention_heads,
-                0.0f,
-                true,
-                false,
-                false,
-                DT_NONE, /*data_type*/
-                NULL,
-                false,
-                /*scaling query*/ true,
-                /*scaling factor*/
-                pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                    -0.5),
-                /*qk_prod_scaling*/ false,
-                partition_idx);
             mha = ff.add(mha, partial_mha);
           }
         }

@@ -120,57 +120,59 @@ void LLAMA::create_llama_model(FFModel &ff,
         break;
       }
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multihead_self_attention_verify(
-            att_norm,
-            llama_config.dim,
-            llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
-            0.0f,    /*dropout*/
-            false,   /*bias*/
-            false,   /*add_bias_kv*/
-            false,   /*add_zero_attn*/
-            DT_NONE, /*data_type*/
-            nullptr, /*kernel_initializer*/
-            true     /*apply_rotary_embedding*/
-        );
+        assert(llama_config.n_heads % tensor_parallelism_degree == 0);
+        for (int partition_idx = 0; partition_idx < tensor_parallelism_degree;
+             partition_idx++) {
+          Tensor partial_mha = ff.inc_multihead_self_attention_verify(
+              att_norm,
+              llama_config.dim,
+              llama_config.n_heads,
+              llama_config.dim / llama_config.n_heads,
+              llama_config.dim / llama_config.n_heads,
+              0.0f,    /*dropout*/
+              false,   /*bias*/
+              false,   /*add_bias_kv*/
+              false,   /*add_zero_attn*/
+              DT_NONE, /*data_type*/
+              nullptr, /*kernel_initializer*/
+              true,    /*apply_rotary_embedding*/
+              false,
+              1.0f,
+              true,
+              partition_idx);
+          if (partition_idx == 0) {
+            mha = partial_mha;
+          } else {
+            mha = ff.add(mha, partial_mha);
+          }
+        }
         break;
       }
       case INC_DECODING_MODE: {
         assert(llama_config.n_heads % tensor_parallelism_degree == 0);
         for (int partition_idx = 0; partition_idx < tensor_parallelism_degree;
              partition_idx++) {
+          Tensor partial_mha = ff.inc_multihead_self_attention(
+              att_norm,
+              llama_config.dim,
+              llama_config.n_heads / tensor_parallelism_degree,
+              llama_config.dim / llama_config.n_heads,
+              llama_config.dim / llama_config.n_heads,
+              0.0f,    /*dropout*/
+              false,   /*bias*/
+              false,   /*add_bias_kv*/
+              false,   /*add_zero_attn*/
+              DT_NONE, /*data_type*/
+              nullptr, /*kernel_initializer*/
+              true,    /*apply_rotary_embedding*/
+              false,
+              1.0f,
+              true,
+              partition_idx);
           if (partition_idx == 0) {
-            mha = ff.inc_multihead_self_attention(
-                att_norm,
-                llama_config.dim,
-                llama_config.n_heads / tensor_parallelism_degree,
-                llama_config.dim / llama_config.n_heads,
-                llama_config.dim / llama_config.n_heads,
-                0.0f,    /*dropout*/
-                false,   /*bias*/
-                false,   /*add_bias_kv*/
-                false,   /*add_zero_attn*/
-                DT_NONE, /*data_type*/
-                nullptr, /*kernel_initializer*/
-                true     /*apply_rotary_embedding*/
-            );
+            mha = partial_mha;
           } else {
-            Tensor partial_mha = ff.inc_multihead_self_attention(
-                att_norm,
-                llama_config.dim,
-                llama_config.n_heads / tensor_parallelism_degree,
-                llama_config.dim / llama_config.n_heads,
-                llama_config.dim / llama_config.n_heads,
-                0.0f,    /*dropout*/
-                false,   /*bias*/
-                false,   /*add_bias_kv*/
-                false,   /*add_zero_attn*/
-                DT_NONE, /*data_type*/
-                nullptr, /*kernel_initializer*/
-                true     /*apply_rotary_embedding*/
-            );
-            ff.add(mha, partial_mha, true);
+            mha = ff.add(mha, partial_mha);
           }
         }
         break;
