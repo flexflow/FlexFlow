@@ -239,9 +239,11 @@ void OPT::create_opt_model(FFModel &ff,
         continue;
       }
       if (mode == BEAM_SEARCH_MODE) {
-        assert(attention_layer->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION);
+        assert(attention_layer->op_type ==
+               OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION);
       } else if (mode == TREE_VERIFY_MODE) {
-        assert(attention_layer->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION);
+        assert(attention_layer->op_type ==
+               OP_TREE_INC_MULTIHEAD_SELF_ATTENTION);
       } else {
         assert(attention_layer->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION);
       }
