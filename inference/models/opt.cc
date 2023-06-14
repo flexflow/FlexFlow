@@ -212,7 +212,7 @@ void OPT::create_opt_model(FFModel &ff,
                     -0.5),
                 /*qk_prod_scaling*/ false,
                 partition_idx);
-            ff.add(mha, partial_mha, true);
+            mha = ff.add(mha, partial_mha);
           }
         }
         break;
