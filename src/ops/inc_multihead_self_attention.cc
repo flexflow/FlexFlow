@@ -290,26 +290,27 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                                  true /*create_grad*/,
                                                  initializer,
                                                  comm_type);
-  }
-  if (bias) {
-    ParallelDim dims[2];
-    int num_dims = inputs[0]->num_dims;
-    dims[0] = inputs[0]->dims[num_dims - 1];
-    dims[0].size = dims[0].degree;
-    dims[1].size = (qProjSize + kProjSize + vProjSize) * num_heads + oProjSize;
-    dims[1].degree = 1;
-    dims[1].parallel_idx = -1;
+    if (bias) {
+      ParallelDim dims[2];
+      int num_dims = inputs[0]->num_dims;
+      dims[0] = inputs[0]->dims[num_dims - 1];
+      dims[0].size = dims[0].degree;
+      dims[1].size =
+          (qProjSize + kProjSize + vProjSize) * num_heads + oProjSize;
+      dims[1].degree = 1;
+      dims[1].parallel_idx = -1;
 #ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+      ParameterSyncType comm_type = ParameterSyncType::NCCL;
 #else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
+      ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[1] = model.create_parallel_weight<2>(dims,
-                                                 this->data_type,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 NULL,
-                                                 comm_type);
+      weights[1] = model.create_parallel_weight<2>(dims,
+                                                   this->data_type,
+                                                   NULL /*owner_op*/,
+                                                   true /*create_grad*/,
+                                                   NULL,
+                                                   comm_type);
+    }
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -398,25 +399,26 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                                  true /*create_grad*/,
                                                  initializer,
                                                  comm_type);
-  }
-  if (bias) {
-    ParallelDim dims[2];
-    int num_dims = inputs[0]->num_dims;
-    dims[0] = inputs[0]->dims[num_dims - 1];
-    dims[0].size = dims[0].degree;
-    dims[1].size = oProjSize * 4;
+    if (bias) {
+      ParallelDim dims[2];
+      int num_dims = inputs[0]->num_dims;
+      dims[0] = inputs[0]->dims[num_dims - 1];
+      dims[0].size = dims[0].degree;
+      dims[1].size = oProjSize * 4;
 #ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+      ParameterSyncType comm_type = ParameterSyncType::NCCL;
 #else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
+      ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[1] = model.create_parallel_weight<2>(dims,
-                                                 this->data_type,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 NULL,
-                                                 comm_type);
+      weights[1] = model.create_parallel_weight<2>(dims,
+                                                   this->data_type,
+                                                   NULL /*owner_op*/,
+                                                   true /*create_grad*/,
+                                                   NULL,
+                                                   comm_type);
+    }
   }
+
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, this->data_type, this);
 
