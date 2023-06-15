@@ -33,8 +33,8 @@ __global__ void decompress_kernel(T1 *input_weight_ptr,
                                   int tensor_size) {
   CUDA_KERNEL_LOOP(i, tensor_size) {
     weight_ptr[i] = static_cast<T2>(input_weight_ptr);
-    weight_ptr[i] *= scaling_ptr[(i % group_size) * 2];
-    weight_ptr[i] += offet_ptr[(i % group_size) * 2 + 1];
+    weight_ptr[i] *= params[(i % group_size) * 2];
+    weight_ptr[i] += params[(i % group_size) * 2 + 1];
   }
 }
 

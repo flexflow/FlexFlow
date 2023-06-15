@@ -600,12 +600,12 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   if (handle.offload_reserve_space != nullptr) {
     // cpu-offload enabled
     // use offload_reserved_space
-    gpu_mem_allocator.allocate(handle.offload_reserve_space,
-                               handle.offload_reserve_space_size);
+    gpu_mem_allocator.register_reserved_work_space(
+        handle.offload_reserve_space, handle.offload_reserve_space_size);
   }
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
       handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
-  if (handle.offload_reserve_space != nullptr) {
+  if (handle.offload_reserve_space == nullptr) {
     // assert that we didn't over allocate memory
     assert(gpu_mem_allocator.allocated_size == gpu_mem_allocator.total_size);
   }
@@ -651,11 +651,13 @@ FutureMap IncMultiHeadSelfAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.config.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -665,11 +667,13 @@ FutureMap IncMultiHeadSelfAttention::inference(
   launcher.add_field(idx++, FID_DATA);
 
   if (bias) {
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[1]->region,
+                          ff.config.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
     launcher.add_field(idx++, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);

@@ -26,6 +26,7 @@ namespace FlexFlow {
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
+LegionRuntime::Logger::Category log_offload("Offloading");
 
 InferenceManager::InferenceManager(FFConfig const &_config,
                                    int _max_num_tokens_per_batch,
@@ -61,7 +62,8 @@ void InferenceManager::compile_model_and_allocate_buffer(
     assert(pt->owner_op != nullptr);
     mapping[pt->owner_op] = it.second;
   }
-  for (auto const &op : model->operators) {
+  for (int op_idx = 0; op_idx < model->operators.size(); op_idx ++) {
+    const Op* op = model->operators[op_idx];
     // Skip weight operators
     if (op->op_type == OP_WEIGHT) {
       continue;
@@ -99,20 +101,48 @@ void InferenceManager::compile_model_and_allocate_buffer(
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       std::vector<ParallelTensor> list;
-      for (int j = 0; j < max_num_inflight_batches; j++) {
-        // Copy the metadata from pt_base to pt
-        ParallelTensor pt = new ParallelTensorBase(*pt_base);
-        pt->region =
-            runtime->create_logical_region(ctx,
-                                           pt_base->region.get_index_space(),
-                                           pt_base->region.get_field_space());
-        pt->part = runtime->get_logical_partition(
-            ctx, pt->region, pt_base->part.get_index_partition());
-        pt->machine_view = machine_views[j];
-        Domain part_domain =
-            runtime->get_index_space_domain(ctx, pt_base->parallel_is);
-        assert(pt->machine_view.get_domain() == part_domain);
-        list.push_back(pt);
+      bool found_parallel_tensor = false;
+      if (model->config.cpu_offload) {
+        for (const auto& pre_pt : tensor_buffer) {
+          bool used_by_future_operator = false;
+          if (pre_pt.first->get_shape() != pt_base->get_shape()) {
+            // Continue if shape mismatches
+            continue;
+          }
+          // Check that pt cannot be used by any subsequent operators
+          for (int op_idx2 = op_idx; op_idx2 < model->operators.size(); op_idx2 ++) {
+            const Op* op2 = model->operators[op_idx2];
+            for (int j = 0; j < op2->numInputs; j++) {
+              if (op2->inputs[j] == pre_pt.first) {
+                used_by_future_operator = true;
+              }
+            }
+          }
+          if (!used_by_future_operator) {
+            found_parallel_tensor = true;
+            list = pre_pt.second;
+          }
+        }
+        if (!found_parallel_tensor) {
+          log_offload.print("Cannot find a previous tensor for operator(%d) output_idx(%d)", op_idx, i);
+        }
+      }
+      if (!found_parallel_tensor) {
+        for (int j = 0; j < max_num_inflight_batches; j++) {
+          // Copy the metadata from pt_base to pt
+          ParallelTensor pt = new ParallelTensorBase(*pt_base);
+          pt->region =
+              runtime->create_logical_region(ctx,
+                                             pt_base->region.get_index_space(),
+                                             pt_base->region.get_field_space());
+          pt->part = runtime->get_logical_partition(
+              ctx, pt->region, pt_base->part.get_index_partition());
+          pt->machine_view = machine_views[j];
+          Domain part_domain =
+              runtime->get_index_space_domain(ctx, pt_base->parallel_is);
+          assert(pt->machine_view.get_domain() == part_domain);
+          list.push_back(pt);
+        }
       }
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       tensor_buffer[pt_base] = list;

@@ -459,6 +459,35 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+  // additional processing for weight uploading
+  if (m->handle.offload_reserve_space != nullptr) {
+    // Note that we update weight_ptr and bias_ptr when uploading weight and
+    // bias
+    cudaMemcpyAsync(m->weight_ptr,
+                    weight_ptr,
+                    m->weightSize,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    weight_ptr = static_cast<DT *>(m->weight_ptr);
+    if (m->biasSize > 0) {
+      cudaMemcpyAsync(
+          m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
+      bias_ptr = static_cast<DT *>(m->bias_ptr);
+    }
+    // reload weight_o for offloading case
+    int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
+    build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                         min(CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream>>>(weight_ptr,
+                                   static_cast<DT *>(m->W_out_contiguous),
+                                   m->vProjSize,
+                                   m->oProjSize,
+                                   m->num_heads,
+                                   (m->qSize * m->qProjSize +
+                                    m->kSize * m->kProjSize +
+                                    m->vSize * m->vProjSize));
+  }
   // copy committed tokens info to GPU for the commit_tokens kernel
   // Note that m->num_active_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
@@ -603,17 +632,27 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     size_t committed_tokeninfo_size = TreeVerifyBatchConfig::MAX_NUM_TOKENS;
     size_t total_size = committed_tokeninfo_size *
                         sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
-    gpu_mem_allocator.allocate(committed_token_reserve_inst, total_size);
+    if (gpu_mem_allocator.use_reserved_work_space) {
+      // assert that we have enough reserved work space left
+      assert(gpu_mem_allocator.total_size - gpu_mem_allocator.allocated_size >=
+             total_size);
+    } else {
+      gpu_mem_allocator.create_legion_instance(committed_token_reserve_inst,
+                                               total_size);
+    }
+
     committed_token_infos =
-        gpu_mem_allocator.pointer<TreeVerifyBatchConfig::CommittedTokensInfo>(
-            0, committed_tokeninfo_size);
+        gpu_mem_allocator.allocate<TreeVerifyBatchConfig::CommittedTokensInfo>(
+            committed_tokeninfo_size);
   }
 
   cudaStreamSynchronize(stream);
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
-  committed_token_reserve_inst.destroy();
+  if (committed_token_reserve_inst != Realm::RegionInstance::NO_INST) {
+    committed_token_reserve_inst.destroy();
+  }
 }
 
 }; // namespace FlexFlow

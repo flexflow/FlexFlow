@@ -472,6 +472,35 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+  // additional processing for weight uploading
+  if (m->handle.offload_reserve_space != nullptr) {
+    // Note that we update weight_ptr and bias_ptr when uploading weight and
+    // bias
+    cudaMemcpyAsync(m->weight_ptr,
+                    weight_ptr,
+                    m->weightSize,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    weight_ptr = static_cast<DT *>(m->weight_ptr);
+    if (m->biasSize > 0) {
+      cudaMemcpyAsync(
+          m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
+      bias_ptr = static_cast<DT *>(m->bias_ptr);
+    }
+    // reload weight_o for offloading case
+    int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
+    build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                         min(CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream>>>(weight_ptr,
+                                   static_cast<DT *>(m->W_out_contiguous),
+                                   m->vProjSize,
+                                   m->oProjSize,
+                                   m->num_heads,
+                                   (m->qSize * m->qProjSize +
+                                    m->kSize * m->kProjSize +
+                                    m->vSize * m->vProjSize));
+  }
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
@@ -624,31 +653,43 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                        BeamSearchPerRequestInfo); // more components will
                                                   // be added here later
 
-    gpu_mem_allocator.allocate(beam_search_reserve_inst, total_size);
-    off_t offset = 0;
+    if (gpu_mem_allocator.use_reserved_work_space) {
+      // assert that we have enough reserved work space left
+      assert(gpu_mem_allocator.total_size - gpu_mem_allocator.allocated_size >=
+             total_size);
+    } else {
+      gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
+                                               total_size);
+    }
+
     beam_token_infos =
         gpu_mem_allocator
-            .pointer<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
-                offset, beam_tokeninfo_size);
-    offset += beam_tokeninfo_size *
-              sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
-    request_infos = gpu_mem_allocator.pointer<BatchConfig::PerRequestInfo>(
-        offset, requestinfo_size);
-    offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
+            .allocate<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
+                beam_tokeninfo_size);
+    // offset += beam_tokeninfo_size *
+    //           sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
+    request_infos = gpu_mem_allocator.allocate<BatchConfig::PerRequestInfo>(
+        requestinfo_size);
+    // offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
     beam_request_infos =
         gpu_mem_allocator
-            .pointer<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
-                offset, beam_requestinfo_size);
-    offset += beam_requestinfo_size *
-              sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
-    assert(offset == total_size);
+            .allocate<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
+                beam_requestinfo_size);
+    // offset += beam_requestinfo_size *
+    //           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
+    // assert(offset == total_size);
+    if (!gpu_mem_allocator.use_reserved_work_space) {
+      assert(gpu_mem_allocator.total_size == gpu_mem_allocator.allocated_size);
+    }
   }
 
   cudaStreamSynchronize(stream);
 }
 
 SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(void) {
-  beam_search_reserve_inst.destroy();
+  if (beam_search_reserve_inst != Realm::RegionInstance::NO_INST) {
+    beam_search_reserve_inst.destroy();
+  }
 }
 
 }; // namespace FlexFlow

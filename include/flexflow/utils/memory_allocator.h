@@ -22,18 +22,20 @@ namespace FlexFlow {
 
 class MemoryAllocator {
 public:
-  MemoryAllocator(Legion::Memory memory,
-                  bool enforce_sequential_allocation = true);
-  void allocate(Realm::RegionInstance &inst, size_t size);
-  void allocate(void *base, size_t size);
-  void *pointer_untyped(off_t offset, size_t datalen);
+  MemoryAllocator(Legion::Memory memory);
+  void create_legion_instance(Realm::RegionInstance &inst, size_t size);
+  void register_reserved_work_space(void *base, size_t size);
+  inline void *allocate_untyped(size_t datalen) {
+    void *ptr = static_cast<char *>(base_ptr) + allocated_size;
+    allocated_size += datalen;
+    assert(allocated_size <= total_size);
+    return ptr;
+  }
   template <typename DT>
-  inline DT *pointer(off_t offset, size_t count) {
-    if (enforce_sequential_allocation) {
-      assert((size_t)offset == allocated_size);
-    }
+  inline DT *allocate(size_t count) {
+    void *ptr = static_cast<char *>(base_ptr) + allocated_size;
     allocated_size += sizeof(DT) * count;
-    void *ptr = static_cast<char *>(base_ptr) + offset;
+    assert(allocated_size <= total_size);
     return static_cast<DT *>(ptr);
   }
 
@@ -41,7 +43,7 @@ public:
   Legion::Memory memory;
   void *base_ptr;
   size_t total_size, allocated_size;
-  bool enforce_sequential_allocation;
+  bool use_reserved_work_space;
 };
 
 }; // namespace FlexFlow

@@ -149,7 +149,7 @@ public:
 
 public:
   Realm::RegionInstance reserveInst;
-  size_t weights_params, weightSize, reserveSpaceSize;
+  size_t weights_params, weightSize, biasSize, reserveSpaceSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
   bool *has_load_weights;
@@ -161,6 +161,7 @@ public:
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif
+  void *weight_ptr, *bias_ptr; // for weight offload
   void *devQKVProjArray, *keyCache, *valueCache;
   void *qk_prods, *qk_prods_softmax;
   void *attn_heads, *W_out_contiguous;
