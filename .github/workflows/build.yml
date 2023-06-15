@@ -163,9 +163,6 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          cd $FF_HOME/deps/tokenizers-cpp/example
-          cmake -D CMAKE_CXX_FLAGS=-fPIC
-          make -j
           cores_available=$(nproc --all)
           n_build_cores=$(( cores_available -1 ))
           if (( $n_build_cores < 1 )) ; then n_build_cores=1 ; fi

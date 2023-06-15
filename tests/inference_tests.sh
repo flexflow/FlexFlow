@@ -115,10 +115,10 @@ compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_opt_6B
 pip3 install protobuf==3.20.3
 
 # LLAMA (small model, full precision)
-python3 ./inference/huggingface_inference.py --model-name "JackFram/llama-160m" --tokenizer-model-name "decapoda-research/llama-7b-hf" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M.txt" --gpu
+python3 ./inference/huggingface_inference.py --model-name "JackFram/llama-160m" --tokenizer-model-name "JackFram/llama-160m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M.txt" --gpu
 
 # LLAMA (small model, half precision)
-python3 ./inference/huggingface_inference.py --model-name "JackFram/llama-160m" --tokenizer-model-name "decapoda-research/llama-7b-hf" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M_half.txt" --gpu
+python3 ./inference/huggingface_inference.py --model-name "JackFram/llama-160m" --tokenizer-model-name "JackFram/llama-160m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M_half.txt" --gpu
 
 # LLAMA (big model, full precision)
 python3 ./inference/huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --tokenizer-model-name "decapoda-research/llama-7b-hf" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B.txt"
