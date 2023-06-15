@@ -494,11 +494,13 @@ void IncMultiHeadSelfAttention::init_inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.config.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,

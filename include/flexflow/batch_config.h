@@ -112,8 +112,8 @@ public:
 
   size_t beam_width;
   size_t target_iterations;
-  static int const MAX_BEAM_WIDTH = 1;
-  static int const MAX_BEAM_DEPTH = 8;
+  inline static int const MAX_BEAM_WIDTH = 1;
+  inline static int const MAX_BEAM_DEPTH = 8;
 
   int model_id;
 

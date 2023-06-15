@@ -822,7 +822,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
                     oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   weightSize = weights_params * num_heads * size_of_dt;
-  biasSize = _bias ? oProjSize * 4 : 0;
+  biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
   // has_load_weights = (bool *)calloc(1, sizeof(bool));
   //*has_load_weights = false;
   apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));

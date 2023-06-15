@@ -19,6 +19,7 @@ public:
   miopenActivationDescriptor_t actiDesc;
 #endif
   void *one_ptr;
+  void *weight_ptr;
   ActiMode activation;
   RegularizerMode kernel_reg_type;
   float kernel_reg_lambda;

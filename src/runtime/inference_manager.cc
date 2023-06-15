@@ -46,6 +46,18 @@ InferenceManager::InferenceManager(FFConfig const &_config,
   }
 }
 
+bool parallel_tensor_list_overlaps(std::vector<ParallelTensor> const &list1,
+                                   std::vector<ParallelTensor> const &list2) {
+  for (auto const &pt1 : list1) {
+    for (auto const &pt2 : list2) {
+      if (pt1 == pt2) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void InferenceManager::compile_model_and_allocate_buffer(
     FFModel *model,
     std::unordered_map<Tensor, std::vector<MachineView>> const
@@ -62,8 +74,8 @@ void InferenceManager::compile_model_and_allocate_buffer(
     assert(pt->owner_op != nullptr);
     mapping[pt->owner_op] = it.second;
   }
-  for (int op_idx = 0; op_idx < model->operators.size(); op_idx ++) {
-    const Op* op = model->operators[op_idx];
+  for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
+    Op const *op = model->operators[op_idx];
     // Skip weight operators
     if (op->op_type == OP_WEIGHT) {
       continue;
@@ -103,28 +115,40 @@ void InferenceManager::compile_model_and_allocate_buffer(
       std::vector<ParallelTensor> list;
       bool found_parallel_tensor = false;
       if (model->config.cpu_offload) {
-        for (const auto& pre_pt : tensor_buffer) {
+        for (auto const &pre_pt : tensor_buffer) {
           bool used_by_future_operator = false;
+          bool used_by_current_operator = false;
           if (pre_pt.first->get_shape() != pt_base->get_shape()) {
             // Continue if shape mismatches
             continue;
           }
+          // Check that pt cannot be used as an input to the current operator
+          for (int j = 0; j < op->numInputs; j++) {
+            if (parallel_tensor_list_overlaps(tensor_buffer[op->inputs[j]],
+                                              pre_pt.second)) {
+              used_by_current_operator = true;
+            }
+          }
           // Check that pt cannot be used by any subsequent operators
-          for (int op_idx2 = op_idx; op_idx2 < model->operators.size(); op_idx2 ++) {
-            const Op* op2 = model->operators[op_idx2];
+          for (int op_idx2 = op_idx; op_idx2 < model->operators.size();
+               op_idx2++) {
+            Op const *op2 = model->operators[op_idx2];
             for (int j = 0; j < op2->numInputs; j++) {
               if (op2->inputs[j] == pre_pt.first) {
                 used_by_future_operator = true;
               }
             }
           }
-          if (!used_by_future_operator) {
+          if (!used_by_future_operator && !used_by_current_operator) {
             found_parallel_tensor = true;
             list = pre_pt.second;
           }
         }
         if (!found_parallel_tensor) {
-          log_offload.print("Cannot find a previous tensor for operator(%d) output_idx(%d)", op_idx, i);
+          log_offload.print(
+              "Cannot find a previous tensor for operator(%d) output_idx(%d)",
+              op_idx,
+              i);
         }
       }
       if (!found_parallel_tensor) {

@@ -3780,7 +3780,7 @@ void FFConfig::parse_args(char **argv, int argc) {
       continue;
     }
     if (!strcmp(argv[i], "-offload-reserve-space-size")) {
-      offload_reserve_space_size = atoll(argv[++i]);
+      offload_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
       continue;
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {

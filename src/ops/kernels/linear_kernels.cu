@@ -20,7 +20,11 @@
 namespace FlexFlow {
 
 LinearMeta::LinearMeta(FFHandler handler, int batch_size, Linear const *li)
-    : OpMeta(handler, li) {
+    : OpMeta(handler, li), weight_ptr(nullptr) {
+  // allocate weight and bias in the reserve space for cpu offloading
+  if (handler.offload_reserve_space != nullptr) {
+    weight_ptr = handle.offload_reserve_space;
+  }
   // Allocate an all-one's vector
   DataType data_type = li->data_type;
   checkCUDA(cudaMalloc(&one_ptr, data_type_size(data_type) * batch_size));
@@ -237,6 +241,16 @@ void forward_kernel(LinearMeta const *m,
                     int out_dim,
                     int batch_size,
                     ffStream_t stream) {
+  // additional processing for uploading weights
+  if (m->handle.offload_reserve_space != nullptr) {
+    // Note that we update weight_ptr when uploading weight
+    cudaMemcpyAsync(m->weight_ptr,
+                    weight_ptr,
+                    in_dim * out_dim * sizeof(DT),
+                    cudaMemcpyHostToDevice,
+                    stream);
+    weight_ptr = static_cast<DT *>(m->weight_ptr);
+  }
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
