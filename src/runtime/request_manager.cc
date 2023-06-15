@@ -140,7 +140,7 @@ RequestManager::RequestGuid
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  if (this->model_type == ModelType::LLAMA) {
+  if (this->model_type != ModelType::FALCON) {
     request.tokens.push_back(this->bos_token_id);
   }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
