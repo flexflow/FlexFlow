@@ -2,7 +2,7 @@ import argparse
 import json
 import os
 from transformers import AutoModelForCausalLM
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, LlamaTokenizer
 
 def main():
     # Change working dir to folder storing this script
@@ -45,7 +45,10 @@ def main():
     # Run huggingface model
     device = "cuda" if args.gpu else "cpu"
     model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_model_name)
+    if "llama" in args.tokenizer_model_name:
+        tokenizer = LlamaTokenizer.from_pretrained(args.tokenizer_model_name)
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_model_name)
     with open(args.output_file, 'w') as f:
         for i, prompt in enumerate(prompt_list):
             batch = tokenizer(prompt_list, return_tensors="pt", add_special_tokens=True).to(device)
