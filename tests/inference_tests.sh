@@ -13,8 +13,8 @@ cd "${BASH_SOURCE[0]%/*}"
 cleanup
 
 # Update the transformers library to support the LLAMA model
-pip3 install --upgrade transformers
-pip3 install --upgrade sentencepiece
+
+pip3 install --upgrade transformers sentencepiece
 
 # Download the weights in both half and full precision
 python3 ../inference/utils/download_llama_weights.py
