@@ -52,7 +52,6 @@ RequestManager::RequestManager(ModelType model_type,
       num_processed_requests(0), output_filepath(_output_filepath) {
 
   // bos id
-  this->bos_token_id = 0;
   this->model_type = model_type;
   if (model_type == ModelType::LLAMA) {
     this->tokenizer_ =
@@ -140,10 +139,14 @@ RequestManager::RequestGuid
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  if (this->model_type != ModelType::FALCON) {
-    request.tokens.push_back(this->bos_token_id);
-  }
+  request.tokens.push_back(this->model_bos_map.at(this->model_type));
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
+
+  for (int i = 0; i < tokens.size(); i++) {
+    std::cout << tokens.at(i) << "\n";
+  }
+
+  // assert(false);
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
 
@@ -214,6 +217,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
       std::string output = this->tokenizer_->Decode(request.tokens);
+
+      for (int i = 0; i < request.tokens.size(); i++) {
+        std::cout << request.tokens.at(i) << "\n";
+      }
       log_req_mgr.print("Final output: %s", output.c_str());
       num_processed_requests++;
       ProfileInfo profile_info = profiling_requests[request.guid];

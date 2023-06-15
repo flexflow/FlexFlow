@@ -127,10 +127,10 @@ python3 ./inference/huggingface_inference.py --model-name "decapoda-research/lla
 python3 ./inference/huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --tokenizer-model-name "decapoda-research/llama-7b-hf" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B_half.txt" --gpu
 
 # OPT (small model, full precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M.txt" --gpu --max-length 127
+python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M.txt" --gpu --max-length 128
 
 # OPT (small model, half precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 127
+python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 128
 
 # OPT (big model, full precision)
 #python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B.txt" --max-length 127
