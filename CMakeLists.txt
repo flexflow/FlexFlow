@@ -130,6 +130,10 @@ if ((FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx") 
 
     if (FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx")
         set(ENV{UCX_HOME} "${UCX_DIR}/install")
+        install(DIRECTORY ${UCX_DIR}/install/bin/ DESTINATION bin)
+        install(DIRECTORY ${UCX_DIR}/install/include/ DESTINATION include)
+        install(DIRECTORY ${UCX_DIR}/install/lib/ DESTINATION lib)
+        install(DIRECTORY ${UCX_DIR}/install/share/ DESTINATION share)
     endif()
 
     if (FF_LEGION_NETWORKS STREQUAL "ucx")
