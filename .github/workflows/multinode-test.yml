@@ -62,6 +62,7 @@ jobs:
           export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -70,6 +71,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
@@ -109,6 +111,7 @@ jobs:
           export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -117,6 +120,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
@@ -155,6 +159,7 @@ jobs:
           export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -163,6 +168,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
