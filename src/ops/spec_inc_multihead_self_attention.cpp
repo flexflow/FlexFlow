@@ -84,7 +84,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     gpu_mem,
                                     num_samples,
                                     _num_heads,
-                                    attn->partition_idx) {
+                                    attn->output_bias) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));

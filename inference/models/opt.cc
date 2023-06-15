@@ -169,7 +169,7 @@ void OPT::create_opt_model(FFModel &ff,
               pow((opt_config.hidden_size / opt_config.num_attention_heads),
                   -0.5),
               /*qk_prod_scaling*/ false,
-              partition_idx);
+              partition_idx == 0);
           if (partition_idx == 0) {
             mha = partial_mha;
           } else {
@@ -200,7 +200,7 @@ void OPT::create_opt_model(FFModel &ff,
               pow((opt_config.hidden_size / opt_config.num_attention_heads),
                   -0.5),
               /*qk_prod_scaling*/ false,
-              partition_idx);
+              partition_idx == 0);
           if (partition_idx == 0) {
             mha = partial_mha;
           } else {

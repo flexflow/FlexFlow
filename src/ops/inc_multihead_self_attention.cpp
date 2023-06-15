@@ -91,7 +91,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads,
-    int _partition_idx)
+    bool _output_bias)
     : OpMeta(handler, attn) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));

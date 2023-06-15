@@ -74,7 +74,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              bool scaling_query,
                                              float scaling_factor,
                                              bool qk_prod_scaling,
-                                             int partition_idx,
+                                             bool output_bias,
                                              char const *name) {
   if (data_type == DT_NONE) {
     data_type = input->data_type;
@@ -153,7 +153,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   li->add_int_property("scaling_query", scaling_query);
   li->add_float_property("scaling_factor", scaling_factor);
   li->add_int_property("qk_prod_scaling", qk_prod_scaling);
-  li->add_int_property("partition_idx", partition_idx);
+  li->add_int_property("output_bias", output_bias);
   layers.push_back(li);
 
   return li->outputs[0];
@@ -188,8 +188,8 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   layer->get_float_property("scaling_factor", scaling_factor);
   layer->get_int_property("qk_prod_scaling", value);
   bool qk_prod_scaling = (bool)value;
-  layer->get_int_property("partition_idx", value);
-  int partition_idx = value;
+  layer->get_int_property("output_bias", value);
+  bool output_bias = (bool)value;
 
   return new IncMultiHeadSelfAttention(model,
                                        layer->layer_guid,
@@ -206,7 +206,7 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        scaling_query,
                                        scaling_factor,
                                        qk_prod_scaling,
-                                       partition_idx,
+                                       output_bias,
                                        false /*allocate_weights*/,
                                        layer->name);
 }
@@ -227,7 +227,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
-    int _partition_idx,
+    bool _output_bias,
     bool allocate_weights,
     char const *name)
     // Initializer* _bias_initializer)
@@ -247,7 +247,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), partition_idx(_partition_idx) {
+      qk_prod_scaling(_qk_prod_scaling), output_bias(_output_bias) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -338,7 +338,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
-    int _partition_idx,
+    bool _output_bias,
     bool allocate_weights,
     char const *name)
     // Initializer* _bias_initializer)
@@ -359,7 +359,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), partition_idx(_partition_idx)
+      qk_prod_scaling(_qk_prod_scaling), output_bias(_output_bias)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -451,7 +451,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 other.scaling_query,
                                 other.scaling_factor,
                                 other.qk_prod_scaling,
-                                other.partition_idx,
+                                other.output_bias,
                                 allocate_weights,
                                 other.name) {}
 
@@ -476,7 +476,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 params.scaling_query,
                                 params.scaling_factor,
                                 params.qk_prod_scaling,
-                                params.partition_idx,
+                                params.output_bias,
                                 allocate_weights,
                                 name) {}
 
@@ -1520,7 +1520,7 @@ bool operator==(IncMultiHeadSelfAttentionParams const &lhs,
          lhs.scaling_query == rhs.scaling_query &&
          lhs.scaling_factor == rhs.scaling_factor &&
          lhs.qk_prod_scaling == rhs.qk_prod_scaling &&
-         lhs.partition_idx == rhs.partition_idx;
+         lhs.output_bias == rhs.output_bias;
 }
 
 IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
@@ -1538,7 +1538,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.scaling_query = this->scaling_query;
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
-  params.partition_idx = this->partition_idx;
+  params.output_bias = this->output_bias;
 
   return params;
 }
@@ -1562,7 +1562,7 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.scaling_query);
   hash_combine(key, params.scaling_factor);
   hash_combine(key, params.qk_prod_scaling);
-  hash_combine(key, params.partition_idx);
+  hash_combine(key, params.output_bias);
   return key;
 }
 }; // namespace std

@@ -84,7 +84,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     gpu_mem,
                                     num_samples,
                                     _num_heads,
-                                    attn->partition_idx),
+                                    attn->output_bias),
       num_active_tokens(0) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));

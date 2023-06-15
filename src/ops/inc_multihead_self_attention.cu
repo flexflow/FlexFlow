@@ -653,7 +653,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     tokens_previous_requests += num_new_tokens;
   }
 
-  if (*m->bias && *m->partition_idx == 0) {
+  if (*m->output_bias) {
     int parallelism = m->oProjSize * num_tokens;
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
@@ -757,7 +757,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     gpu_mem,
                                     num_samples,
                                     _num_heads,
-                                    attn->partition_idx) {}
+                                    attn->output_bias) {}
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
@@ -780,7 +780,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     Memory gpu_mem,
     int num_samples,
     int _num_heads,
-    int _partition_idx)
+    bool _output_bias)
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -813,8 +813,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   scaling_factor = _scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
   *qk_prod_scaling = _qk_prod_scaling;
-  partition_idx = (int *)calloc(1, sizeof(int));
-  *partition_idx = _partition_idx;
+  output_bias = (bool *)calloc(1, sizeof(bool));
+  *output_bias = _output_bias;
   // Currently do not support adding bias to key/value projection
   assert(!_add_bias_kv);
 

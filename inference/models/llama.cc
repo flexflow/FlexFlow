@@ -135,11 +135,8 @@ void LLAMA::create_llama_model(FFModel &ff,
               false,   /*add_zero_attn*/
               DT_NONE, /*data_type*/
               nullptr, /*kernel_initializer*/
-              true,    /*apply_rotary_embedding*/
-              false,
-              1.0f,
-              true,
-              partition_idx);
+              true     /*apply_rotary_embedding*/
+          );
           if (partition_idx == 0) {
             mha = partial_mha;
           } else {
@@ -164,11 +161,8 @@ void LLAMA::create_llama_model(FFModel &ff,
               false,   /*add_zero_attn*/
               DT_NONE, /*data_type*/
               nullptr, /*kernel_initializer*/
-              true,    /*apply_rotary_embedding*/
-              false,
-              1.0f,
-              true,
-              partition_idx);
+              true     /*apply_rotary_embedding*/
+          );
           if (partition_idx == 0) {
             mha = partial_mha;
           } else {
