@@ -3648,7 +3648,7 @@ struct DefaultConfig {
   const static bool searchOverlapBackwardUpdate = false;
   const static bool cpuOffload = false;
   const static size_t offloadReserveSpaceSize =
-      (size_t)10 * 1024 * 1024 * 1024; // 10 GB
+      (size_t)8 * 1024 * 1024 * 1024; // 8 GB
   const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
