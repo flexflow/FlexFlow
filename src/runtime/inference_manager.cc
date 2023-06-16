@@ -134,8 +134,11 @@ void InferenceManager::compile_model_and_allocate_buffer(
                op_idx2++) {
             Op const *op2 = model->operators[op_idx2];
             for (int j = 0; j < op2->numInputs; j++) {
-              if (op2->inputs[j] == pre_pt.first) {
-                used_by_future_operator = true;
+              if (tensor_buffer.find(op2->inputs[j]) != tensor_buffer.end()) {
+                if (parallel_tensor_list_overlaps(tensor_buffer[op2->inputs[j]],
+                                                  pre_pt.second)) {
+                  used_by_future_operator = true;
+                }
               }
             }
           }
