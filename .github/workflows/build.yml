@@ -166,7 +166,7 @@ jobs:
           cores_available=$(nproc --all)
           n_build_cores=$(( cores_available -1 ))
           if (( $n_build_cores < 1 )) ; then n_build_cores=1 ; fi
-          
+
           cd python
           make -j $n_build_cores
           python -c 'import flexflow.core'

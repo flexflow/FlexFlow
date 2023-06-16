@@ -53,6 +53,6 @@ RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind1
 RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
 RUN conda install -c conda-forge onnx tensorflow transformers sentencepiece
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-RUN source "$HOME/.cargo/env"
+ENV PATH $HOME/.cargo/bin:$PATH
 
 ENTRYPOINT ["/bin/bash"]
