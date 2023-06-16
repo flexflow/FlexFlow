@@ -472,35 +472,6 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
-  // additional processing for weight uploading
-  if (m->handle.offload_reserve_space != nullptr) {
-    // Note that we update weight_ptr and bias_ptr when uploading weight and
-    // bias
-    cudaMemcpyAsync(m->weight_ptr,
-                    weight_ptr,
-                    m->weightSize,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    weight_ptr = static_cast<DT *>(m->weight_ptr);
-    if (m->biasSize > 0) {
-      cudaMemcpyAsync(
-          m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
-      bias_ptr = static_cast<DT *>(m->bias_ptr);
-    }
-    // reload weight_o for offloading case
-    int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
-    build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                         min(CUDA_NUM_THREADS, parallelism),
-                         0,
-                         stream>>>(weight_ptr,
-                                   static_cast<DT *>(m->W_out_contiguous),
-                                   m->vProjSize,
-                                   m->oProjSize,
-                                   m->num_heads,
-                                   (m->qSize * m->qProjSize +
-                                    m->kSize * m->kProjSize +
-                                    m->vSize * m->vProjSize));
-  }
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
@@ -653,15 +624,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                        BeamSearchPerRequestInfo); // more components will
                                                   // be added here later
 
-    if (gpu_mem_allocator.use_reserved_work_space) {
-      // assert that we have enough reserved work space left
-      assert(gpu_mem_allocator.total_size - gpu_mem_allocator.allocated_size >=
-             total_size);
-    } else {
-      gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
-                                               total_size);
-    }
-
+    // We always directly allocate memory for small speculative models
+    gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
+                                             total_size);
     beam_token_infos =
         gpu_mem_allocator
             .allocate<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
@@ -678,9 +643,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     // offset += beam_requestinfo_size *
     //           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
     // assert(offset == total_size);
-    if (!gpu_mem_allocator.use_reserved_work_space) {
-      assert(gpu_mem_allocator.total_size == gpu_mem_allocator.allocated_size);
-    }
+    assert(gpu_mem_allocator.total_size == gpu_mem_allocator.allocated_size);
   }
 
   cudaStreamSynchronize(stream);
