@@ -1269,7 +1269,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 // ---------------------- offloading functions -------------------------
 BatchConfig
     RequestManager::prepare_next_batch_offload(BatchConfig const &old_bc,
-                                              InferenceResult const &result) {
+                                               InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Step 1: append result from previous iteration to request's tokens
   for (int i = 0; i < old_bc.num_tokens; i++) {
