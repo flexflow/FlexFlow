@@ -18,10 +18,13 @@ FLEXFLOW_CONTAINER_TOKEN=${FLEXFLOW_CONTAINER_TOKEN:-}
 if [ -z "$FLEXFLOW_CONTAINER_TOKEN" ]; then echo "FLEXFLOW_CONTAINER_TOKEN secret is not available, cannot publish the docker image to ghrc.io"; exit; fi
 echo "$FLEXFLOW_CONTAINER_TOKEN" | docker login ghcr.io -u flexflow --password-stdin
 
+# Obtain Branch Name
+branch=$(git branch | sed -n -e 's/^\* \(.*))/\1/p')
+
 # Tag image to be uploaded
 git_sha=${GITHUB_SHA:-$(git rev-parse HEAD)}
 if [ -z "$git_sha" ]; then echo "Commit hash cannot be detected, cannot publish the docker image to ghrc.io"; exit; fi
-docker tag "$image":latest ghcr.io/flexflow/"$image":latest
+docker tag "$image":latest ghcr.io/flexflow/"$image"_"$branch":latest
 
 # Upload image
-docker push ghcr.io/flexflow/"$image":latest
+docker push ghcr.io/flexflow/"$image"_"$branch":latest
