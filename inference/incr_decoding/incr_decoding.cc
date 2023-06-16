@@ -182,7 +182,8 @@ void FlexFlow::top_level_task(Task const *task,
   BatchConfig bc;
   InferenceResult ir;
   while (rm.get_num_processed_requests() < total_num_requests) {
-    bc = rm.prepare_next_batch(bc, ir);
+    bc = ffconfig.cpu_offload ? rm.prepare_next_batch_offload(bc, ir)
+                              : rm.prepare_next_batch(bc, ir);
     if (rm.get_num_processed_requests() >= total_num_requests) {
       break;
     }

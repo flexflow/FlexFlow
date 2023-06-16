@@ -105,6 +105,9 @@ public:
                               InferenceResult const &result,
                               int model_id);
 
+  BatchConfig prepare_next_batch_offload(BatchConfig const &old_bc,
+                                        InferenceResult const &result);
+
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfig> const &old_batches);
 
