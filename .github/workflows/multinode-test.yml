@@ -34,6 +34,8 @@ jobs:
     if: github.repository_owner == 'flexflow'
     runs-on: self-hosted
     needs: gpu-ci-concierge
+    # 10h timeout, instead of default of 360min (6h)
+    timeout-minutes: 600
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
@@ -86,6 +88,8 @@ jobs:
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
+    # 10h timeout, instead of default of 360min (6h)
+    timeout-minutes: 600
     steps:
       - name: Install updated git version
         run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
