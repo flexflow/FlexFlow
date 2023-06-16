@@ -31,7 +31,7 @@ void MemoryAllocator::create_legion_instance(RegionInstance &inst,
   // Assert that we have used up previously created region instance
   assert(total_size == allocated_size);
   Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                 Realm::Point<1, coord_t>(total_size - 1));
+                                 Realm::Point<1, coord_t>(size - 1));
   std::vector<size_t> field_sizes;
   field_sizes.push_back(sizeof(char));
   Realm::RegionInstance::create_instance(
