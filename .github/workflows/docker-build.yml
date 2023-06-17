@@ -47,6 +47,11 @@ jobs:
           else
             export FF_CUDA_ARCH=70
           fi
+          if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          else
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=OFF
+          fi
           ./docker/build.sh flexflow
 
       - name: Check availability of Python flexflow.core module
