@@ -108,6 +108,21 @@ void Replicate::create_input_partition(FFModel &ff) {
                                output_grad_lp);
 }
 
+void Replicate::create_input_partition_inference(FFModel &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
+  assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
+  // input_lp is an aliased partitioning along the replica dim
+  ff.create_aliased_partition(batch_outputs[0]->num_dims,
+                              batch_outputs[0]->dims,
+                              replicate_dim,
+                              batch_outputs[0]->parallel_is,
+                              batch_inputs[0]->region,
+                              inference_input_lps[batch_inputs[0]]);
+}
+
 void Replicate::init(FFModel const &ff) {
   // Do nothing
   ArgumentMap argmap;

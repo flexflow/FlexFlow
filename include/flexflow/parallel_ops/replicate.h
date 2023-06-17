@@ -25,6 +25,10 @@ public:
             Input const input,
             char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
+  void create_input_partition_inference(
+      FFModel &model,
+      std::vector<ParallelTensor> const &batch_inputs,
+      std::vector<ParallelTensor> const &batch_outputs) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;

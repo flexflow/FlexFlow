@@ -108,6 +108,20 @@ void Reduction::create_input_partition(FFModel &ff) {
                               output_grad_lp);
 }
 
+void Reduction::create_input_partition_inference(FFModel &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
+  assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
+  // input_lp is a disjoint partition
+  ff.create_disjoint_partition(batch_outputs[0]->num_dims,
+                               batch_outputs[0]->dims,
+                               batch_outputs[0]->parallel_is,
+                               batch_inputs[0]->region,
+                               inference_input_lps[batch_inputs[0]]);
+}
+
 void Reduction::init(FFModel const &ff) {
   forward(ff);
 }
