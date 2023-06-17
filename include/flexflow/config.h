@@ -135,6 +135,8 @@ public:
   bool enable_parameter_parallel;
   bool enable_attribute_parallel;
   bool enable_inplace_optimizations;
+  // Control tensor model parallelism degree in inference
+  int tensor_parallelism_degree;
   // Control Tensor Op Math Conversion
   bool allow_tensor_op_math_conversion;
   std::string dataset_path;

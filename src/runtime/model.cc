@@ -2772,16 +2772,60 @@ Op *FFModel::create_operator_from_layer(
       return op;
     }
     case OP_INC_MULTIHEAD_SELF_ATTENTION: {
-      Op *op = IncMultiHeadSelfAttention::create_operator_from_layer(
-          *this, layer, inputs);
-      operators.push_back(op);
-      return op;
+      if (config.computationMode == COMP_MODE_INFERENCE &&
+          config.tensor_parallelism_degree > 1) {
+        std::vector<ParallelTensor> partitioned_inputs;
+        for (int i = 0; i < inputs.size(); i++) {
+          Replicate *repl = new Replicate(*this,
+                                          inputs[i],
+                                          inputs[i]->num_dims - 1,
+                                          config.tensor_parallelism_degree);
+          partitioned_inputs.push_back(repl->outputs[0]);
+          operators.push_back(repl);
+        }
+        Op *op = IncMultiHeadSelfAttention::create_operator_from_layer(
+            *this, layer, partitioned_inputs);
+        operators.push_back(op);
+        Reduction *reduct = new Reduction(*this,
+                                          op->outputs[0],
+                                          op->outputs[0]->num_dims - 1,
+                                          config.tensor_parallelism_degree);
+        operators.push_back(reduct);
+        return reduct;
+      } else {
+        Op *op = IncMultiHeadSelfAttention::create_operator_from_layer(
+            *this, layer, inputs);
+        operators.push_back(op);
+        return op;
+      }
     }
     case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
-      Op *op = TreeIncMultiHeadSelfAttention::create_operator_from_layer(
-          *this, layer, inputs);
-      operators.push_back(op);
-      return op;
+      if (config.computationMode == COMP_MODE_INFERENCE &&
+          config.tensor_parallelism_degree > 1) {
+        std::vector<ParallelTensor> partitioned_inputs;
+        for (int i = 0; i < inputs.size(); i++) {
+          Replicate *repl = new Replicate(*this,
+                                          inputs[i],
+                                          inputs[i]->num_dims - 1,
+                                          config.tensor_parallelism_degree);
+          partitioned_inputs.push_back(repl->outputs[0]);
+          operators.push_back(repl);
+        }
+        Op *op = TreeIncMultiHeadSelfAttention::create_operator_from_layer(
+            *this, layer, partitioned_inputs);
+        operators.push_back(op);
+        Reduction *reduct = new Reduction(*this,
+                                          op->outputs[0],
+                                          op->outputs[0]->num_dims - 1,
+                                          config.tensor_parallelism_degree);
+        operators.push_back(reduct);
+        return reduct;
+      } else {
+        Op *op = TreeIncMultiHeadSelfAttention::create_operator_from_layer(
+            *this, layer, inputs);
+        operators.push_back(op);
+        return op;
+      }
     }
     case OP_BATCHMATMUL: {
       Op *op = BatchMatmul::create_operator_from_layer(*this, layer, inputs);
