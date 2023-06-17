@@ -161,8 +161,8 @@ void InferenceManager::compile_model_and_allocate_buffer(
         Domain part_domain =
             runtime->get_index_space_domain(ctx, pt_base->parallel_is);
 
-        std::cout << part_domain << std::endl;
-        std::cout << pt->machine_view.get_domain() << std::endl;
+        // std::cout << part_domain << std::endl;
+        // std::cout << pt->machine_view.get_domain() << std::endl;
 
         assert(pt->machine_view.get_domain() == part_domain);
         list.push_back(pt);
