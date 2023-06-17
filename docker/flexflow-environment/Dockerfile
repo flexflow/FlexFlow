@@ -59,4 +59,8 @@ RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
 RUN conda install -c conda-forge onnx transformers sentencepiece
 RUN pip3 install tensorflow
 
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH /root/.cargo/bin:$PATH
+
 ENTRYPOINT ["/bin/bash"]

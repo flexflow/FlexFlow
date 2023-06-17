@@ -3,7 +3,6 @@ import json
 import os
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 
-
 def main():
     # Change working dir to folder storing this script
     abspath = os.path.abspath(__file__)
