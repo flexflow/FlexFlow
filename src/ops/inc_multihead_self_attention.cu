@@ -352,6 +352,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       BatchConfig const *bc,
+                      int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
@@ -377,7 +378,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  compute_attention_kernel(m, bc, output_ptr, bias_ptr, stream);
+  compute_attention_kernel(m, bc, shard_id, output_ptr, bias_ptr, stream);
 }
 
 } // namespace IncMultiHeadAttention
@@ -440,6 +441,7 @@ __global__ void fill_entries_above_diagonal(DT *matrix,
 template <typename DT>
 void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                               BatchConfig const *bc,
+                              int shard_id,
                               DT *output_ptr,
                               DT const *bias_ptr,
                               cudaStream_t stream) {
@@ -650,7 +652,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     tokens_previous_requests += num_new_tokens;
   }
 
-  if (*m->bias) {
+  if (*m->bias && shard_id == 0) {
     int parallelism = m->oProjSize * num_tokens;
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
@@ -666,6 +668,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
 void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
+    int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output,
@@ -691,6 +694,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(m,
                                                      bc,
+                                                     shard_id,
                                                      input.get_half_ptr(),
                                                      weight.get_half_ptr(),
                                                      output.get_half_ptr(),
@@ -701,6 +705,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(m,
                                                      bc,
+                                                     shard_id,
                                                      input.get_float_ptr(),
                                                      weight.get_float_ptr(),
                                                      output.get_float_ptr(),

@@ -706,8 +706,10 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
 
+  assert(task->index_point.get_dim() == 1);
+
   IncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, bc, input, weight, output, biases);
+      m, bc, task->index_point.point_data[0], input, weight, output, biases);
 #ifdef INFERENCE_TESTS
   printf("Checking IncMultiHeadSelfAttention computations...\n");
 
