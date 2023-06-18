@@ -4821,6 +4821,13 @@ void register_flexflow_internal_tasks() {
   }
   // Replicate
   {
+    TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Replicate::init_task>(
+        registrar, "Replicate init Task");
+  }
+  {
     TaskVariantRegistrar registrar(REPLICATE_FWD_TASK_ID, "Replicate Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -4835,6 +4842,13 @@ void register_flexflow_internal_tasks() {
         registrar, "Replicate Backward Task");
   }
   // Reduction
+  {
+    TaskVariantRegistrar registrar(REDUCTION_INIT_TASK_ID, "Reduction Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Reduction::init_task>(
+        registrar, "Reduction init Task");
+  }
   {
     TaskVariantRegistrar registrar(REDUCTION_FWD_TASK_ID, "Reduction Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
