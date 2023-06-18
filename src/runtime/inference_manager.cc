@@ -41,7 +41,7 @@ InferenceManager::InferenceManager(FFConfig const &_config,
     view.dim[0] = 1;
     view.stride[0] = 0;
     view.start_device_id = i;
-    std::cout << "Registering machine view: " << view << std::endl;
+    // std::cout << "Registering machine view: " << view << std::endl;
     machine_views.push_back(view);
   }
   // multiple-device machine views
@@ -54,7 +54,7 @@ InferenceManager::InferenceManager(FFConfig const &_config,
         view.dim[0] = ff_config.tensor_parallelism_degree;
         view.stride[0] = 1;
         view.start_device_id = i;
-        std::cout << "Registering machine view: " << view << std::endl;
+        // std::cout << "Registering machine view: " << view << std::endl;
         machine_views.push_back(view);
       }
     }
@@ -108,29 +108,29 @@ void InferenceManager::compile_model_and_allocate_buffer(
           }
         }
         if (op->op_type == OP_REPLICATE) {
-          std::cout << "Replicate operator got machine view: " << mv
-                    << std::endl;
+          // std::cout << "Replicate operator got machine view: " << mv
+          //           << std::endl;
           assert(model->config.tensor_parallelism_degree > 1);
           mv.dim[0] = ff_config.tensor_parallelism_degree;
           mv.stride[0] = 1;
-          std::cout << "Corrected machine view: " << mv << std::endl;
+          // std::cout << "Corrected machine view: " << mv << std::endl;
         } else if (op->op_type == OP_REDUCTION) {
-          std::cout << "Reduction operator got machine view: " << mv
-                    << std::endl;
+          // std::cout << "Reduction operator got machine view: " << mv
+          //           << std::endl;
           assert(model->config.tensor_parallelism_degree > 1);
           mv.dim[0] = 1;
           mv.stride[0] = 0;
-          std::cout << "Corrected machine view: " << mv << std::endl;
+          // std::cout << "Corrected machine view: " << mv << std::endl;
         }
         machine_views.push_back(mv);
       }
       assert(machine_views.size() == max_num_inflight_batches);
     }
-    std::cout << "operator: " << op->name << std::endl;
-    for (int i = 0; i < op->numInputs; i++) {
-      op->inputs[i]->print("input pt");
-      std::cout << "input mv: " << op->inputs[i]->machine_view << std::endl;
-    }
+    // std::cout << "operator: " << op->name << std::endl;
+    // for (int i = 0; i < op->numInputs; i++) {
+    //   op->inputs[i]->print("input pt");
+    //   std::cout << "input mv: " << op->inputs[i]->machine_view << std::endl;
+    // }
 
     for (int i = 0; i < op->numOutputs; i++) {
       ParallelTensor pt_base = op->outputs[i];
@@ -139,8 +139,8 @@ void InferenceManager::compile_model_and_allocate_buffer(
       if (op->op_type == OP_REPLICATE) {
         assert(op->numInputs == 1 && op->numOutputs == 1);
       }
-      pt_base->print("output pt");
-      std::cout << "output mv: " << pt_base->machine_view << std::endl;
+      // pt_base->print("output pt");
+      // std::cout << "output mv: " << pt_base->machine_view << std::endl;
 
       std::vector<ParallelTensor> list;
       for (int j = 0; j < max_num_inflight_batches; j++) {
@@ -154,9 +154,9 @@ void InferenceManager::compile_model_and_allocate_buffer(
             ctx, pt->region, pt_base->part.get_index_partition());
         pt->machine_view = machine_views[j];
 
-        pt->print("output pt after assignment");
-        std::cout << "output mv after assignment: " << pt->machine_view
-                  << std::endl;
+        // pt->print("output pt after assignment");
+        // std::cout << "output mv after assignment: " << pt->machine_view
+        //           << std::endl;
 
         Domain part_domain =
             runtime->get_index_space_domain(ctx, pt_base->parallel_is);

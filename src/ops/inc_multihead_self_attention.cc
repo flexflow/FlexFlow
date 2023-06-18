@@ -48,7 +48,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
-
+static constexpr int KERNEL_IDX = 0;
+static constexpr int BIAS_IDX = 1;
 LegionRuntime::Logger::Category log_inc_mha("IncrementalMHA");
 
 bool IncMultiHeadSelfAttentionParams::is_valid(
@@ -108,15 +109,15 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, data_type, li, 0, true /*create_grad*/);
   }
+  // Compute weight size
+  int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
+      oProjSize = embed_dim;
+  int qSize = input->dims[0], kSize = input->dims[0], vSize = input->dims[0];
+  int qParas = qProjSize * qSize;
+  int kParas = kProjSize * kSize;
+  int vParas = vProjSize * vSize;
+  int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
   {
-    // Compute weight size
-    int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
-        oProjSize = embed_dim;
-    int qSize = input->dims[0], kSize = input->dims[0], vSize = input->dims[0];
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
     li->weights[0] = create_weight_legion_ordering(2,
                                                    dims,
@@ -128,7 +129,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {embed_dim * 4};
+    int dims[1] = {(qProjSize + kProjSize + vProjSize) * num_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -283,19 +284,18 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                                  initializer,
                                                  comm_type);
     if (bias) {
-      ParallelDim dims[2];
-      int num_dims = inputs[0]->num_dims;
-      dims[0] = inputs[0]->dims[num_dims - 1];
-      dims[0].size = dims[0].degree;
-      dims[1].size = oProjSize * 4;
-      dims[1].degree = 1;
-      dims[1].parallel_idx = -1;
-      weights[1] = model.create_parallel_weight<2>(dims,
-                                                  this->data_type,
-                                                  NULL /*owner_op*/,
-                                                  true /*create_grad*/,
-                                                  NULL,
-                                                  comm_type);
+      ParallelTensorShape bias_shape = _input->get_shape();
+      bias_shape.dims[0].size =
+          (qProjSize + kProjSize + vProjSize) * num_heads + oProjSize;
+      bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
+      weights[1] =
+          model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
+                                                       bias_shape.dims,
+                                                       this->data_type,
+                                                       nullptr /*owner_op*/,
+                                                       true /*create_grad*/,
+                                                       initializer,
+                                                       comm_type);
     }
   }
 
@@ -385,25 +385,21 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                                  initializer,
                                                  comm_type);
     if (bias) {
-      ParallelDim dims[2];
-      int num_dims = inputs[0]->num_dims;
-      dims[0] = inputs[0]->dims[num_dims - 1];
-      dims[0].size = dims[0].degree;
-      dims[1].size = oProjSize * 4;
-  #ifdef USE_NCCL
-      ParameterSyncType comm_type = ParameterSyncType::NCCL;
-  #else
-      ParameterSyncType comm_type = ParameterSyncType::PS;
-  #endif
-      weights[1] = model.create_parallel_weight<2>(dims,
-                                                  this->data_type,
-                                                  NULL /*owner_op*/,
-                                                  true /*create_grad*/,
-                                                  NULL,
-                                                  comm_type);
+      ParallelTensorShape bias_shape = _input->get_shape();
+      bias_shape.dims[0].size =
+          (qProjSize + kProjSize + vProjSize) * num_heads + oProjSize;
+      bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
+      weights[1] =
+          model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
+                                                       bias_shape.dims,
+                                                       this->data_type,
+                                                       nullptr /*owner_op*/,
+                                                       true /*create_grad*/,
+                                                       initializer,
+                                                       comm_type);
     }
   }
-  
+
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, this->data_type, this);
 
@@ -696,7 +692,7 @@ void IncMultiHeadSelfAttention::inference_task(
                                               runtime);
     Domain bias_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
-    assert(bias_domain.get_dim() == 2);
+    assert(bias_domain.get_dim() == 4);
   }
 
   Domain input_domain = runtime->get_index_space_domain(
