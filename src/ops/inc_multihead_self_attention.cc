@@ -27,7 +27,7 @@
 #include <torch/torch.h>
 using namespace at::indexing;
 #endif
-#include <iomanip>
+
 namespace FlexFlow {
 
 // declare Legion names
@@ -48,8 +48,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
-static constexpr int KERNEL_IDX = 0;
-static constexpr int BIAS_IDX = 1;
+
 LegionRuntime::Logger::Category log_inc_mha("IncrementalMHA");
 
 bool IncMultiHeadSelfAttentionParams::is_valid(

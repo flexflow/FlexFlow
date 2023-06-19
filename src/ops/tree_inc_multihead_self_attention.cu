@@ -410,13 +410,14 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       m_ = m->oProjSize;
       k = m->vProjSize * m->num_heads;
       n = num_new_tokens;
-      lda = m_, ldb = n, ldc = m_;
-      A = m->W_out_contiguous;
+      lda = k, ldb = n, ldc = m_;
+      A = static_cast<DT *>(m->W_out_contiguous);
       B = C;
-      C = (output_ptr + processed_tokens_in_batch * m->oProjSize);
+      C = static_cast<DT *>(output_ptr) +
+          processed_tokens_in_batch * m->oProjSize;
 
       checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_N,
+                             CUBLAS_OP_T,
                              CUBLAS_OP_T,
                              m_,
                              n,
