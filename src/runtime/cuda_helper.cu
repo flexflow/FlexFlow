@@ -579,6 +579,8 @@ template __host__ void
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);
+template __host__ half *download_tensor<half>(half const *ptr,
+                                              size_t num_elements);
 template __host__ double *download_tensor<double>(double const *ptr,
                                                   size_t num_elements);
 template __host__ int32_t *download_tensor<int32_t>(int32_t const *ptr,
@@ -587,6 +589,8 @@ template __host__ int64_t *download_tensor<int64_t>(int64_t const *ptr,
                                                     size_t num_elements);
 template __host__ bool
     download_tensor<float>(float const *ptr, float *dst, size_t num_elements);
+template __host__ bool
+    download_tensor<half>(half const *ptr, half *dst, size_t num_elements);
 template __host__ bool download_tensor<double>(double const *ptr,
                                                double *dst,
                                                size_t num_elements);
