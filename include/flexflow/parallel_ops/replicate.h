@@ -10,6 +10,8 @@
 
 namespace FlexFlow {
 
+class ReplicateMeta;
+
 class Replicate : public ParallelOp {
 public:
   using Params = ReplicateParams;
@@ -56,6 +58,11 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
+  static void forward_kernel_wrapper(ReplicateMeta const *m,
+                                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW const &output,
+                                     size_t num_elements,
+                                     size_t num_replicas);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

@@ -3,8 +3,16 @@
 
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/parallel_ops/reduction.h"
 
 namespace FlexFlow {
+
+class ReductionMeta : public OpMeta {
+public:
+  ReductionMeta(FFHandler handle, Reduction const *reduct);
+};
+
 namespace Kernels {
 namespace Reduction {
 

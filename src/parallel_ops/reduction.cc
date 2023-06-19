@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/parallel_ops/kernels/reduction_kernels.h"
 #include "flexflow/utils/hash_utils.h"
@@ -77,7 +78,7 @@ Reduction::Reduction(FFModel &model,
   dims[reduction_dim].size /= reduction_degree;
   ParallelTensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
+      numdim, dims, _input->data_type, this);
 }
 
 Reduction::Reduction(FFModel &model,
@@ -127,7 +128,13 @@ OpMeta *Reduction::init_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  return nullptr;
+  Reduction *reduct = (Reduction *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  ReductionMeta *meta = new ReductionMeta(handle, reduct);
+  meta->input_type[0] = reduct->inputs[0]->data_type;
+  meta->output_type[0] = reduct->outputs[0]->data_type;
+  assert(meta->input_type[0] == meta->output_type[0]);
+  return meta;
 }
 
 void Reduction::init(FFModel const &ff) {
@@ -137,9 +144,10 @@ void Reduction::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(REDUCTION_INIT_TASK_ID,
                          parallel_is,
-                         TaskArgument(nullptr, 0),
+                         TaskArgument(this, sizeof(Reduction)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -156,6 +164,7 @@ void Reduction::init(FFModel const &ff) {
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 void Reduction::init_inference(FFModel const &ff,
@@ -170,9 +179,10 @@ void Reduction::init_inference(FFModel const &ff,
   assert(numInputs == 1);
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(REDUCTION_INIT_TASK_ID,
                          parallel_is,
-                         TaskArgument(nullptr, 0),
+                         TaskArgument(this, sizeof(Reduction)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -195,6 +205,7 @@ void Reduction::init_inference(FFModel const &ff,
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
 FutureMap Reduction::inference(FFModel const &ff,
@@ -205,12 +216,14 @@ FutureMap Reduction::inference(FFModel const &ff,
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
   assert(numOutputs == 1);
   assert(numInputs == 1);
   assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
   DataType data_type = batch_inputs[0]->data_type;
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(REDUCTION_FWD_TASK_ID,
                          batch_outputs[0]->parallel_is,
                          TaskArgument(NULL, 0),
@@ -239,8 +252,10 @@ void Reduction::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = outputs[0]->parallel_is;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(REDUCTION_FWD_TASK_ID,
                          outputs[0]->parallel_is,
                          TaskArgument(NULL, 0),
@@ -334,6 +349,9 @@ void Reduction::forward_task(Task const *task,
                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
+
+  ReductionMeta const *m = *((ReductionMeta **)task->local_args);
+
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
@@ -345,12 +363,26 @@ void Reduction::forward_task(Task const *task,
   }
   size_t num_elements = output_domain.get_volume();
   size_t num_replicas = input_domain.get_volume() / num_elements;
-  float const *input_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *output_ptr = helperGetTensorPointerRW<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  forward_kernel<float>(input_ptr, output_ptr, num_elements, num_replicas);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  assert(input.data_type == output.data_type);
+  if (input.data_type == DT_HALF) {
+    forward_kernel<half>(input.get_half_ptr(),
+                         output.get_half_ptr(),
+                         num_elements,
+                         num_replicas);
+  } else if (input.data_type == DT_FLOAT) {
+    forward_kernel<float>(input.get_float_ptr(),
+                          output.get_float_ptr(),
+                          num_elements,
+                          num_replicas);
+  } else {
+    assert(false && "Unspported data type");
+  }
 }
 
 void Reduction::backward_task(Task const *task,
