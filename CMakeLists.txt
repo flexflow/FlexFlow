@@ -482,6 +482,14 @@ if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
   if (FF_GPU_BACKEND STREQUAL "hip_rocm")
     SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
   endif()
+  # Ensure Rust is installed
+  execute_process(COMMAND rustc --version
+                RESULT_VARIABLE RUST_COMMAND_RESULT
+                OUTPUT_VARIABLE RUSTC_OUTPUT
+                ERROR_QUIET)
+  if(NOT RUST_COMMAND_RESULT EQUAL 0)
+    message(FATAL_ERROR "Rust is not installed on the system. Cannot build the tokenizers.")
+  endif()
   add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
   target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
   target_link_libraries(flexflow tokenizers_cpp)
