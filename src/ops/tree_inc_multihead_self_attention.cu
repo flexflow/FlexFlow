@@ -177,6 +177,7 @@ __global__ void tree_fill_entries_above_diagonal(DT *matrix,
 template <typename DT>
 void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                               TreeVerifyBatchConfig const *bc,
+                              int shard_id,
                               DT *output_ptr,
                               DT const *bias_ptr,
                               cudaStream_t stream) {
@@ -409,13 +410,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       m_ = m->oProjSize;
       k = m->vProjSize * m->num_heads;
       n = num_new_tokens;
-      lda = k, ldb = n, ldc = m_;
+      lda = m_, ldb = n, ldc = m_;
       A = m->W_out_contiguous;
       B = C;
       C = (output_ptr + processed_tokens_in_batch * m->oProjSize);
 
       checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_T,
+                             CUBLAS_OP_N,
                              CUBLAS_OP_T,
                              m_,
                              n,
@@ -439,7 +440,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
     // check that we have finished all tokens of the request
     assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
   }
-  if (*m->bias) {
+  if (*m->bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
@@ -454,6 +455,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       TreeVerifyBatchConfig const *bc,
+                      int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
@@ -485,6 +487,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
+                     shard_id,
                      input_ptr,
                      weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
@@ -497,7 +500,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  compute_attention_kernel(m, bc, output_ptr, bias_ptr, stream);
+  compute_attention_kernel(m, bc, shard_id, output_ptr, bias_ptr, stream);
 }
 
 } // namespace TreeIncMultiHeadAttention
@@ -507,6 +510,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeIncMultiHeadSelfAttentionMeta *m,
     TreeVerifyBatchConfig const *bc,
+    int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output,
@@ -533,6 +537,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(m,
                                                          bc,
+                                                         shard_id,
                                                          input.get_half_ptr(),
                                                          weight.get_half_ptr(),
                                                          output.get_half_ptr(),
@@ -543,6 +548,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(m,
                                                          bc,
+                                                         shard_id,
                                                          input.get_float_ptr(),
                                                          weight.get_float_ptr(),
                                                          output.get_float_ptr(),
@@ -592,6 +598,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem,
                                     num_samples,
+                                    attn->num_heads,
                                     _num_heads),
       num_active_tokens(0) {
   cudaStream_t stream;

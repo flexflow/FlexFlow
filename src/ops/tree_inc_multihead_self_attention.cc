@@ -706,8 +706,10 @@ void TreeIncMultiHeadSelfAttention::inference_task(
                       input_domain.get_volume(),
                       "[Attention:forward:query]"); */
 
+  assert(task->index_point.get_dim() == 1);
+
   TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, bc, input, weight, output, biases);
+      m, bc, task->index_point.point_data[0], input, weight, output, biases);
 #ifdef INFERENCE_TESTS
   printf("Checking TreeIncMultiHeadSelfAttention computations...\n");
 

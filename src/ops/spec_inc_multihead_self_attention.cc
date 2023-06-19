@@ -700,8 +700,9 @@ void SpecIncMultiHeadSelfAttention::inference_task(
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
 
+  assert(task->index_point.get_dim() == 1);
   SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, bc, input, weight, output, biases);
+      m, bc, task->index_point.point_data[0], input, weight, output, biases);
 
   // print_tensor<float>(input.get_float_ptr(), 20, "attention input");
   // print_tensor<float>(output.get_float_ptr(), 20, "attention output");

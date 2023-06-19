@@ -144,6 +144,7 @@ public:
                                 GenericTensorAccessorR const &weight,
                                 Legion::Memory gpu_mem,
                                 int num_samples,
+                                int _global_num_heads,
                                 int _num_heads);
   ~IncMultiHeadSelfAttentionMeta(void);
 
@@ -151,7 +152,7 @@ public:
   Realm::RegionInstance reserveInst;
   size_t weights_params, weightSize, reserveSpaceSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int num_heads;
+  int global_num_heads, num_heads;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *bias;
