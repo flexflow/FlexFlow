@@ -923,14 +923,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           oProjSize,
           num_heads,
           (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
-      // build_w_out_tensor(
-      //     weight.get_float_ptr(),
-      //     (float *)W_out_contiguous,
-      //     vProjSize,
-      //     oProjSize,
-      //     num_heads,
-      //     (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize),
-      //     stream);
     } else if (weight.data_type == DT_HALF) {
       int parallelism = vProjSize * oProjSize * num_heads;
       build_w_out_tensor<<<GET_BLOCKS(parallelism),
@@ -943,14 +935,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           oProjSize,
           num_heads,
           (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
-      // build_w_out_tensor(
-      //     weight.get_half_ptr(),
-      //     (half *)W_out_contiguous,
-      //     vProjSize,
-      //     oProjSize,
-      //     num_heads,
-      //     (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize),
-      //     stream);
     } else {
       assert(false && "Unsupported data_type");
     }
