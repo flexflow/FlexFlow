@@ -83,7 +83,6 @@ void load_attention_bias(DT *ptr,
   std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
 
   int file_index = 0;
-
   for (auto file : bias_files) {
     size_t qkv_partial_size = qkv_inner_dim * num_heads;
     size_t out_partial_size = hidden_dim;
@@ -118,6 +117,54 @@ void load_attention_bias(DT *ptr,
     file_index++;
 
     in.close();
+  }
+}
+
+template <typename DT>
+void load_attention_weights_multi_query(DT *ptr,
+                                        std::string layer_name,
+                                        std::string weight_path,
+                                        size_t hidden_dim,
+                                        int num_heads) {
+
+  std::string qkv_file = weight_path +
+                         layer_name.substr(0, layer_name.find("attention")) +
+                         "attention_query_key_value_weight";
+  std::string o_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_dense_weight";
+
+  // q has n_heads heads, k and v only have one head, o have n_head heads
+  std::vector<std::string> weight_files = {qkv_file, o_file};
+  int file_index = 0;
+  int data_index = 0;
+  for (auto file : weight_files) {
+    size_t partial_size =
+        file_index == 0 ? (hidden_dim + 2 * hidden_dim / num_heads) * hidden_dim
+                        : hidden_dim * hidden_dim;
+
+    std::ifstream in(file, std::ios::in | std::ios::binary);
+    // std::cout << "Loading filename: " << file << std::endl;
+    if (!in.good()) {
+      std::cout << "Could not open file: " << file << std::endl;
+    }
+    assert(in.good() && "incorrect weight file path");
+    std::vector<DT> host_array(partial_size);
+    size_t loaded_data_size = sizeof(DT) * partial_size;
+    in.seekg(0, in.end);
+    in.seekg(0, in.beg);
+    in.read((char *)host_array.data(), loaded_data_size);
+    size_t in_get_size = in.gcount();
+
+    if (in_get_size != loaded_data_size) {
+      std::cout << "load data error " << in_get_size << ", "
+                << loaded_data_size;
+      assert(false && "data size mismatch");
+    }
+    for (int i = 0; i < partial_size; i++) {
+      ptr[data_index++] = host_array.at(i);
+    }
+    file_index++;
   }
 }
 
@@ -320,6 +367,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                           weight_file_path);
     }
 
+  } else if (file_path.find("self_attention") != std::string::npos) {
+    load_attention_weights_multi_query(
+        data, file_path, weight_file_path, hidden_dim, num_heads);
   } else {
     if (weight_idx > 0) {
       int index = file_path.find("_weight");

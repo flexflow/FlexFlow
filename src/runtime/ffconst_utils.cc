@@ -154,6 +154,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "SpecIncMultiHeadSelfAttention";
     case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION:
       return "TreeIncMultiHeadSelfAttention";
+    case OP_INC_MULTIQUERY_SELF_ATTENTION:
+      return "IncMultiQuerySelfAttention";
     case OP_INPUT:
       return "Input";
     case OP_WEIGHT:
@@ -172,6 +174,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "LayerNorm";
     case OP_RMS_NORM:
       return "RMSNorm";
+    case OP_GELU:
+      return "GELU";
     case OP_IDENTITY:
       return "Identity";
     // Parallel Ops

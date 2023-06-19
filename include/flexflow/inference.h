@@ -18,11 +18,13 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
 #include <mutex>
+#include <tokenizers_cpp.h>
 
 namespace FlexFlow {
 
 class FFModel;
 class BeamTree;
+using tokenizers::Tokenizer;
 
 class InferenceManager {
 public:
@@ -74,13 +76,12 @@ struct BeamTree {
 //   std::vector<float> probs;
 // };
 
-class Tokenizer;
-
 class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
-  RequestManager(Tokenizer *tokenizer,
+  RequestManager(ModelType model_type,
+                 std::string const &path,
                  bool verbose = false,
                  std::string output_filepath = "");
   RequestManager();
@@ -145,13 +146,16 @@ public:
                           Legion::Runtime *runtime);
 
 private:
-  Tokenizer *tokenizer;
+  std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
+  ModelType model_type;
   std::string output_filepath;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> running_request_queue;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
+  const std::map<ModelType, int> model_bos_map = {{ModelType::LLAMA, 0},
+                                                  {ModelType::OPT, 2}};
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,

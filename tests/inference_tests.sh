@@ -13,7 +13,8 @@ cd "${BASH_SOURCE[0]%/*}"
 cleanup
 
 # Update the transformers library to support the LLAMA model
-pip3 install --upgrade transformers sentencepiece 
+
+pip3 install --upgrade transformers sentencepiece
 
 # Download the weights in both half and full precision
 python3 ../inference/utils/download_llama_weights.py
@@ -126,10 +127,10 @@ python3 ./inference/huggingface_inference.py --model-name "decapoda-research/lla
 python3 ./inference/huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --tokenizer-model-name "JackFram/llama-160m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B_half.txt" --gpu
 
 # OPT (small model, full precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M.txt" --gpu --max-length 127
+python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M.txt" --gpu --max-length 128
 
 # OPT (small model, half precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 127
+python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 128
 
 # OPT (big model, full precision)
 #python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B.txt" --max-length 127
