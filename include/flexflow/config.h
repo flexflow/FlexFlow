@@ -72,6 +72,7 @@ struct FFHandler {
   size_t workSpaceSize;
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
+  DataType quantization_type;
   bool allowTensorOpMathConversion;
 #ifdef FF_USE_NCCL
   ncclComm_t ncclComm;
@@ -81,6 +82,7 @@ struct FFHandler {
 struct FFInitInfo {
   size_t workSpaceSize;
   size_t offload_reserve_space_size;
+  DataType quantization_type;
   bool allowTensorOpMathConversion;
   // int myRank, allRanks;
 };
@@ -134,6 +136,7 @@ public:
   CompMode computationMode;
   bool cpu_offload;
   size_t offload_reserve_space_size;
+  DataType quantization_type;
   // Control parallelizable dimensions
   bool only_data_parallel;
   bool enable_sample_parallel;

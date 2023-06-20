@@ -17,6 +17,7 @@
 #endif
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -350,6 +351,79 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
+void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                             GenericTensorAccessorR const weight,
+                             DataType data_type,
+                             cudaStream_t stream) {
+  // additional processing for weight uploading
+  // Note that we update weight_ptr and bias_ptr when uploading weight and
+  // bias
+  if (m->handle.quantization_type != DT_NONE) {
+    // copy weight_ptr to quantized_weight_ptr, do compression and store in
+    // m->weight_ptr
+    cudaMemcpyAsync(m->quantized_weight_ptr,
+                    weight.get_byte_ptr(),
+                    m->quantized_weightSize,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    if (m->handle.quantization_type == DT_INT4) {
+      int parallelism = m->qProjSize * m->qSize * m->num_heads / 2;
+      decompress_int4_attention_weights<<<GET_BLOCKS(parallelism),
+                                          min(CUDA_NUM_THREADS, parallelism),
+                                          0,
+                                          stream>>>(
+          m->quantized_weight_ptr,
+          static_cast<DT *>(m->weight_ptr),
+          m->qProjSize,
+          m->qSize,
+          m->num_heads);
+    } else {
+      assert(m->handle.quantization_type == DT_INT8);
+      int parallelism = m->qProjSize * m->qSize * m->num_heads;
+      decompress_int8_attention_weights<<<GET_BLOCKS(parallelism),
+                                          min(CUDA_NUM_THREADS, parallelism),
+                                          0,
+                                          stream>>>(
+          m->quantized_weight_ptr,
+          static_cast<DT *>(m->weight_ptr),
+          m->qProjSize,
+          m->qSize,
+          m->num_heads);
+    }
+  } else {
+    if (data_type == DT_FLOAT) {
+      cudaMemcpyAsync(m->weight_ptr,
+                      weight.get_float_ptr(),
+                      m->weightSize,
+                      cudaMemcpyHostToDevice,
+                      stream);
+    } else if (data_type == DT_HALF) {
+      cudaMemcpyAsync(m->weight_ptr,
+                      weight.get_half_ptr(),
+                      m->weightSize,
+                      cudaMemcpyHostToDevice,
+                      stream);
+    } else {
+      assert(false);
+    }
+  }
+  // reload weight_o for offloading case
+  int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
+  build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                       min(CUDA_NUM_THREADS, parallelism),
+                       0,
+                       stream>>>(static_cast<DT *>(m->weight_ptr),
+                                 static_cast<DT *>(m->W_out_contiguous),
+                                 m->vProjSize,
+                                 m->oProjSize,
+                                 m->num_heads,
+                                 (m->qSize * m->qProjSize +
+                                  m->kSize * m->kProjSize +
+                                  m->vSize * m->vProjSize));
+}
+
+template <typename DT>
 void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       BatchConfig const *bc,
                       DT const *input_ptr,
@@ -357,36 +431,13 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
-  // additional processing for weight uploading
-  if (m->handle.offload_reserve_space != nullptr) {
-    // Note that we update weight_ptr and bias_ptr when uploading weight and
-    // bias
-    cudaMemcpyAsync(m->weight_ptr,
-                    weight_ptr,
-                    m->weightSize,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    weight_ptr = static_cast<DT *>(m->weight_ptr);
-    if (m->biasSize > 0) {
-      cudaMemcpyAsync(
-          m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
-      bias_ptr = static_cast<DT *>(m->bias_ptr);
-    }
-    // reload weight_o for offloading case
-    int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
-    build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                         min(CUDA_NUM_THREADS, parallelism),
-                         0,
-                         stream>>>(weight_ptr,
-                                   static_cast<DT *>(m->W_out_contiguous),
-                                   m->vProjSize,
-                                   m->oProjSize,
-                                   m->num_heads,
-                                   (m->qSize * m->qProjSize +
-                                    m->kSize * m->kProjSize +
-                                    m->vSize * m->vProjSize));
-  }
   // here because we need postion info in infernece 1
+
+  if (m->handle.quantization_type != DT_NONE && m->biasSize > 0) {
+    cudaMemcpyAsync(
+        m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
+    bias_ptr = static_cast<DT *>(m->bias_ptr);
+  }
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
@@ -710,31 +761,44 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  assert(input.data_type == weight.data_type);
+  // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
   if (use_bias) {
     assert(input.data_type == bias.data_type);
   }
+
   if (input.data_type == DT_HALF) {
+    if (m->handle.offload_reserve_space != nullptr) {
+      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+    }
     half const *bias_ptr =
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
-    Kernels::IncMultiHeadAttention::inference_kernel(m,
-                                                     bc,
-                                                     input.get_half_ptr(),
-                                                     weight.get_half_ptr(),
-                                                     output.get_half_ptr(),
-                                                     bias_ptr,
-                                                     stream);
+    Kernels::IncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        input.get_half_ptr(),
+        m->handle.offload_reserve_space == nullptr
+            ? weight.get_half_ptr()
+            : static_cast<half *>(m->weight_ptr),
+        output.get_half_ptr(),
+        bias_ptr,
+        stream);
   } else if (input.data_type == DT_FLOAT) {
+    if (m->handle.offload_reserve_space != nullptr) {
+      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+    }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
-    Kernels::IncMultiHeadAttention::inference_kernel(m,
-                                                     bc,
-                                                     input.get_float_ptr(),
-                                                     weight.get_float_ptr(),
-                                                     output.get_float_ptr(),
-                                                     bias_ptr,
-                                                     stream);
+    Kernels::IncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        input.get_float_ptr(),
+        m->handle.offload_reserve_space == nullptr
+            ? weight.get_float_ptr()
+            : static_cast<float *>(m->weight_ptr),
+        output.get_float_ptr(),
+        bias_ptr,
+        stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -822,6 +886,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
                     oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   weightSize = weights_params * num_heads * size_of_dt;
+  if (handler.quantization_type != DT_NONE) {
+    quantized_weightSize = get_quantization_to_byte_size(
+        attn->data_type, handler.quantization_type, weightSize);
+  }
   biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
   // has_load_weights = (bool *)calloc(1, sizeof(bool));
   //*has_load_weights = false;
@@ -842,6 +910,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     assert(gpu_mem_allocator.use_reserved_work_space);
     weight_ptr = gpu_mem_allocator.allocate_untyped(weightSize);
     bias_ptr = gpu_mem_allocator.allocate_untyped(biasSize);
+    // allocate more size for quantization data
+    if (handler.quantization_type != DT_NONE) {
+      quantized_weight_ptr =
+          gpu_mem_allocator.allocate<char>(quantized_weightSize);
+    }
   }
 
 #ifdef INFERENCE_TESTS
@@ -953,7 +1026,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           num_heads,
           (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
     } else {
-      assert(false && "Unsupported data_type");
+      assert(weight.data_type == DT_INT4 || weight.data_type == DT_INT8);
     }
     if (!gpu_mem_allocator.use_reserved_work_space) {
       assert(gpu_mem_allocator.total_size == gpu_mem_allocator.allocated_size);

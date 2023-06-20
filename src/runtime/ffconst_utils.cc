@@ -212,6 +212,15 @@ size_t data_type_size(DataType type) {
   }
 }
 
+size_t get_quantization_to_byte_size(DataType type,
+                                     DataType quantization_type,
+                                     size_t num_elements) {
+  assert(quantization_type == DT_INT4 || quantization_type == DT_INT8);
+  return (num_elements / (quantization_type == DT_INT4 ? 2 : 1)) +
+         (num_elements / INT4_NUM_OF_ELEMENTS_PER_GROUP) * 2 *
+             data_type_size(type);
+}
+
 std::ostream &operator<<(std::ostream &s, OperatorType op_type) {
   s << get_operator_type_name(op_type);
 

@@ -149,7 +149,8 @@ public:
 
 public:
   Realm::RegionInstance reserveInst;
-  size_t weights_params, weightSize, biasSize, reserveSpaceSize;
+  size_t weights_params, weightSize, biasSize, reserveSpaceSize,
+      quantized_weightSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
   bool *has_load_weights;
@@ -165,6 +166,7 @@ public:
   void *devQKVProjArray, *keyCache, *valueCache;
   void *qk_prods, *qk_prods_softmax;
   void *attn_heads, *W_out_contiguous;
+  char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cuFloatComplex *complex_input;

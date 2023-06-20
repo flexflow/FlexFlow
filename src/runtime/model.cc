@@ -1272,6 +1272,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
     info.workSpaceSize = config.workSpaceSize;
     info.offload_reserve_space_size =
         config.cpu_offload ? config.offload_reserve_space_size : 0;
+    info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
@@ -1715,6 +1716,12 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
       break;
     case DT_INT64:
       allocator.allocate_field(sizeof(int64_t), FID_DATA);
+      break;
+    case DT_INT4:
+      allocator.allocate_field(sizeof(char), FID_DATA);
+      break;
+    case DT_INT8:
+      allocator.allocate_field(sizeof(char), FID_DATA);
       break;
     default:
       assert(false);
@@ -3646,9 +3653,9 @@ struct DefaultConfig {
       (size_t)2 * 1024 * 1024 * 1024; // 2 GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
-  const static bool cpuOffload = false;
   const static size_t offloadReserveSpaceSize =
       (size_t)8 * 1024 * 1024 * 1024; // 8 GB
+  const static bool cpuOffload = false;
   const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
@@ -3682,6 +3689,7 @@ FFConfig::FFConfig() {
   computationMode = COMP_MODE_TRAINING;
   cpu_offload = DefaultConfig::cpuOffload;
   offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
+  quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
@@ -3781,6 +3789,14 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "-offload-reserve-space-size")) {
       offload_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--4bit-quantization"))) {
+      quantization_type = DT_INT4;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--8bit-quantization"))) {
+      quantization_type = DT_INT8;
       continue;
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {

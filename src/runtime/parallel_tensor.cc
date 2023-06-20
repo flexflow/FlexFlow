@@ -841,6 +841,14 @@ template bool ParallelTensorBase::set_tensor<half>(FFModel const *ff,
 template bool ParallelTensorBase::get_tensor<half>(FFModel const *ff,
                                                    half *data,
                                                    bool get_gradients);
+
+template bool ParallelTensorBase::set_tensor<char>(FFModel const *ff,
+                                                   std::vector<int> const &dims,
+                                                   char const *data);
+template bool ParallelTensorBase::get_tensor<char>(FFModel const *ff,
+                                                   char *data,
+                                                   bool get_gradients);
+
 template bool ParallelTensorBase::set_tensor<float>(
     FFModel const *ff, std::vector<int> const &dims, float const *data);
 template bool ParallelTensorBase::get_tensor<float>(FFModel const *ff,

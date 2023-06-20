@@ -14,19 +14,31 @@
  */
 
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-LinearMeta::LinearMeta(FFHandler handler, int batch_size, Linear const *li)
+LinearMeta::LinearMeta(FFHandler handler,
+                       int batch_size,
+                       Linear const *li,
+                       MemoryAllocator gpu_mem_allocator,
+                       int weightSize)
     : OpMeta(handler, li), weight_ptr(nullptr) {
+  DataType data_type = li->data_type;
   // allocate weight and bias in the reserve space for cpu offloading
   if (handler.offload_reserve_space != nullptr) {
-    weight_ptr = handle.offload_reserve_space;
+    weight_ptr = gpu_mem_allocator.allocate_untyped(weightSize *
+                                                    data_type_size(data_type));
+    if (handler.quantization_type != DT_NONE) {
+      quantized_weightSize = get_quantization_to_byte_size(
+          data_type, handler.quantization_type, weightSize);
+      quantized_weight_ptr =
+          gpu_mem_allocator.allocate<char>(quantized_weightSize);
+    }
   }
   // Allocate an all-one's vector
-  DataType data_type = li->data_type;
   checkCUDA(cudaMalloc(&one_ptr, data_type_size(data_type) * batch_size));
   int parallelism = batch_size;
   cudaStream_t stream;
@@ -104,7 +116,6 @@ void forward_kernel_wrapper(LinearMeta const *m,
                             int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
@@ -244,18 +255,50 @@ void forward_kernel(LinearMeta const *m,
   // additional processing for uploading weights
   if (m->handle.offload_reserve_space != nullptr) {
     // Note that we update weight_ptr when uploading weight
-    cudaMemcpyAsync(m->weight_ptr,
-                    weight_ptr,
-                    in_dim * out_dim * sizeof(DT),
-                    cudaMemcpyHostToDevice,
-                    stream);
-    weight_ptr = static_cast<DT *>(m->weight_ptr);
+    if (m->handle.quantization_type != DT_NONE) {
+      cudaMemcpyAsync(m->quantized_weight_ptr,
+                      weight_ptr,
+                      m->quantized_weightSize,
+                      cudaMemcpyHostToDevice,
+                      stream);
+      if (m->handle.quantization_type == DT_INT4) {
+        int parallelism = in_dim * out_dim / 2;
+        decompress_int4_general_weights<DT>
+            <<<GET_BLOCKS(parallelism),
+               min(CUDA_NUM_THREADS, parallelism),
+               0,
+               stream>>>(m->quantized_weight_ptr,
+                         static_cast<DT *>(m->weight_ptr),
+                         in_dim,
+                         in_dim * out_dim);
+      } else {
+        assert(m->handle.quantization_type == DT_INT8);
+        int parallelism = in_dim * out_dim;
+        decompress_int8_general_weights<DT>
+            <<<GET_BLOCKS(parallelism),
+               min(CUDA_NUM_THREADS, parallelism),
+               0,
+               stream>>>(m->quantized_weight_ptr,
+                         static_cast<DT *>(m->weight_ptr),
+                         in_dim,
+                         in_dim * out_dim);
+      }
+
+    } else {
+      cudaMemcpyAsync(m->weight_ptr,
+                      weight_ptr,
+                      in_dim * out_dim * sizeof(DT),
+                      cudaMemcpyHostToDevice,
+                      stream);
+    }
   }
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
-  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
+  cudaDataType_t weight_type = m->handle.offload_reserve_space == nullptr
+                                   ? ff_to_cuda_datatype(m->weight_type)
+                                   : ff_to_cuda_datatype(m->weight_ptr_type);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
   assert(input_type == weight_type && weight_type == output_type);
 #if CUDA_VERSION >= 11000
@@ -264,25 +307,26 @@ void forward_kernel(LinearMeta const *m,
 #else
   cudaDataType_t compute_type = input_type;
 #endif
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         out_dim,
-                         batch_size,
-                         in_dim,
-                         &alpha,
-                         weight_ptr,
-                         weight_type,
-                         in_dim,
-                         input_ptr,
-                         input_type,
-                         in_dim,
-                         &beta,
-                         output_ptr,
-                         output_type,
-                         out_dim,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUDA(cublasGemmEx(
+      m->handle.blas,
+      CUBLAS_OP_T,
+      CUBLAS_OP_N,
+      out_dim,
+      batch_size,
+      in_dim,
+      &alpha,
+      m->handle.offload_reserve_space == nullptr ? weight_ptr : m->weight_ptr,
+      weight_type,
+      in_dim,
+      input_ptr,
+      input_type,
+      in_dim,
+      &beta,
+      output_ptr,
+      output_type,
+      out_dim,
+      compute_type,
+      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // use_bias = True
   if (bias_ptr != NULL) {
     checkCUDA(cublasGemmEx(m->handle.blas,

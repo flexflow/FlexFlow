@@ -5,6 +5,7 @@
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/linear_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -96,13 +97,13 @@ private:
          bool allocate_weights,
          char const *name);
 
-  template <typename DT, int NDIM>
+  template <typename DT, typename WT, int NDIM>
   static OpMeta *
       init_task_with_dim(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
-  template <typename DT, int NDIM>
+  template <typename DT, typename WT, int NDIM>
   static void
       forward_task_with_dim(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,

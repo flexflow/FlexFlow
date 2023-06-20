@@ -87,6 +87,7 @@ FFHandler
   FFHandler handle;
   handle.workSpaceSize = info->workSpaceSize;
   handle.offload_reserve_space_size = info->offload_reserve_space_size;
+  handle.quantization_type = info->quantization_type;
   handle.allowTensorOpMathConversion = info->allowTensorOpMathConversion;
   checkCUDA(cublasCreate(&handle.blas));
   if (handle.allowTensorOpMathConversion) {

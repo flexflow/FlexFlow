@@ -76,6 +76,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
+  DataType quantization_type = config.quantization_type;
   Layer *li = nullptr;
   int weight_num = bias ? 2 : 1;
   if (data_type != input->data_type) {
@@ -117,14 +118,22 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
     int kParas = kProjSize * kSize;
     int vParas = vProjSize * vSize;
     int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
-    li->weights[0] = create_weight_legion_ordering(2,
-                                                   dims,
-                                                   data_type,
-                                                   li,
-                                                   true /*create_grad*/,
-                                                   kernel_initializer,
-                                                   CHOSEN_SYNC_TYPE);
+    int one_head_size = qParas + kParas + vParas + oParas;
+
+    // compress the weight size if quantization.
+    if (quantization_type != DT_NONE) {
+      one_head_size = get_quantization_to_byte_size(
+          data_type, quantization_type, one_head_size);
+    }
+    int dims[2] = {one_head_size, num_heads};
+    li->weights[0] = create_weight_legion_ordering(
+        2,
+        dims,
+        quantization_type == DT_NONE ? data_type : quantization_type,
+        li,
+        true /*create_grad*/,
+        kernel_initializer,
+        CHOSEN_SYNC_TYPE);
   }
   if (bias) {
     // q, k, v, o
@@ -242,7 +251,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       qk_prod_scaling(_qk_prod_scaling) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
-
+  DataType quantization_type = model.config.quantization_type;
   numOutputs = 1;
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -267,6 +276,11 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_heads;
     dims[2].size = qParas + kParas + vParas + oParas;
+
+    if (quantization_type != DT_NONE) {
+      dims[2].size = get_quantization_to_byte_size(
+          data_type, quantization_type, dims[2].size);
+    }
     dims[2].degree = 1;
     dims[2].parallel_idx = -1;
     int seed = std::rand();
@@ -276,12 +290,13 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 this->data_type,
-                                                 nullptr /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
+    weights[0] = model.create_parallel_weight<3>(
+        dims,
+        quantization_type == DT_NONE ? this->data_type : quantization_type,
+        nullptr /*owner_op*/,
+        true /*create_grad*/,
+        initializer,
+        comm_type);
   }
   if (bias) {
     ParallelDim dims[2];
@@ -353,6 +368,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
+  DataType quantization_type = model.config.quantization_type;
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
@@ -376,6 +392,10 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_heads;
     dims[2].size = qParas + kParas + vParas + oParas;
+    if (quantization_type != DT_NONE) {
+      dims[2].size = get_quantization_to_byte_size(
+          data_type, quantization_type, dims[2].size);
+    }
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
 #ifdef USE_NCCL
@@ -383,12 +403,13 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 this->data_type,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
+    weights[0] = model.create_parallel_weight<3>(
+        dims,
+        quantization_type == DT_NONE ? this->data_type : quantization_type,
+        NULL /*owner_op*/,
+        true /*create_grad*/,
+        initializer,
+        comm_type);
   }
   if (bias) {
     ParallelDim dims[2];
@@ -612,8 +633,11 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
     assert(gpu_mem_allocator.allocated_size == gpu_mem_allocator.total_size);
   }
   m->profiling = attn->profiling;
-  assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
-         m->weightSize);
+  if (handle.quantization_type == DT_NONE) {
+    assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
+           m->weightSize);
+  }
+
   return m;
 }
 
