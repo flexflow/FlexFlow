@@ -1340,7 +1340,7 @@ BatchConfig
       // This is a decoding token
       log_req_mgr.print("Output token is: %d", result.token_ids[i]);
       request.tokens.push_back(result.token_ids[i]);
-      std::string output = tokenizer->Decode(request.tokens);
+      std::string output = this->tokenizer_->Decode(request.tokens);
       log_req_mgr.print("Output: %s", output.c_str());
     }
   }
@@ -1363,7 +1363,7 @@ BatchConfig
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
-      std::string output = tokenizer->Decode(request.tokens);
+      std::string output = this->tokenizer_->Decode(request.tokens);
       log_req_mgr.print("Final output: %s", output.c_str());
       num_processed_requests++;
       ProfileInfo profile_info = profiling_requests[request.guid];
