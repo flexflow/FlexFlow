@@ -91,6 +91,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     Memory gpu_mem,
     int num_samples,
+    int _global_num_heads,
     int _num_heads)
     : OpMeta(handler, attn) {
   hipStream_t stream;
