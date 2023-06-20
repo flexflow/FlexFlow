@@ -191,7 +191,8 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
-                              ffconfig.workersPerNode * ffconfig.numNodes,
+                              ffconfig.workersPerNode * ffconfig.numNodes /
+                                  tensor_parallelism_degree,
                               TREE_VERIFY_MODE,
                               use_full_precision);
   } else if (model_types.llm_model_type == ModelType::OPT) {
@@ -199,7 +200,8 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
-                          ffconfig.workersPerNode * ffconfig.numNodes,
+                          ffconfig.workersPerNode * ffconfig.numNodes /
+                              tensor_parallelism_degree,
                           TREE_VERIFY_MODE,
                           use_full_precision);
   } else {
