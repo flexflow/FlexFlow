@@ -352,13 +352,12 @@ __device__ void mergeBeamShards(int num_shards,
 
       T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((next_shard_index % max_heap_size) / k)];
-      if (batch_index == 0) {
-        printf("next_shard_index %d, value %.15f, prob %.15f\n",
-               next_shard_index,
-               static_cast<float>(entries[next_shard_index].value),
-               static_cast<float>(prob));
-      }
-
+      // if (batch_index == 0) {
+      //   printf("next_shard_index %d, value %.15f, prob %.15f\n",
+      //          next_shard_index,
+      //          entries[next_shard_index].value,
+      //          prob);
+      // }
       max_heap.replace_root(
           {next_shard_index, entries[next_shard_index].value * prob},
           heap_size);

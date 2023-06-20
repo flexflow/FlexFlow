@@ -9,8 +9,10 @@ on:
       - "include/**"
       - "inference/**"
       - "src/**"
+      - "tests/inference/**"
       - ".github/workflows/gpu-ci.yml"
       - "tests/cpp_gpu_tests.sh"
+      - "tests/inference_tests.sh"
       - "tests/multi_gpu_tests.sh"
       - "tests/python_interface_test.sh"
   push:
@@ -24,8 +26,10 @@ on:
       - "include/**"
       - "inference/**"
       - "src/**"
+      - "tests/inference/**"
       - ".github/workflows/gpu-ci.yml"
       - "tests/cpp_gpu_tests.sh"
+      - "tests/inference_tests.sh"
       - "tests/multi_gpu_tests.sh"
       - "tests/python_interface_test.sh"
   workflow_dispatch:
@@ -190,10 +194,19 @@ jobs:
     steps:
       - name: Install updated git version
         run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+      
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
           submodules: recursive
+      
+      - name: Install conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: flexflow
+          environment-file: conda/flexflow-cpu.yml
+          auto-activate-base: false
 
       - name: Build and Install FlexFlow
         run: |

@@ -28,6 +28,8 @@ USE_GPU_REDUCTIONS ?= 0
 FF_USE_NCCL  ?= 0
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
+INSTALL_TOKENIZERS := $(shell $(FF_HOME)/scripts/install_tokenizer.sh)
+
 ifeq ($(strip $(DARWIN)),1)
   PYTHON_EXT := dylib
 else
