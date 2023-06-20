@@ -113,6 +113,10 @@ void InferenceManager::compile_model_and_allocate_buffer(
           assert(model->config.tensor_parallelism_degree > 1);
           mv.dim[0] = ff_config.tensor_parallelism_degree;
           mv.stride[0] = 1;
+          if (mv.start_device_id + mv.dim[0] > num_devices) {
+            mv.start_device_id -=
+                (mv.start_device_id + mv.dim[0]) - num_devices;
+          }
           // std::cout << "Corrected machine view: " << mv << std::endl;
         } else if (op->op_type == OP_REDUCTION) {
           // std::cout << "Reduction operator got machine view: " << mv
@@ -122,6 +126,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
           mv.stride[0] = 0;
           // std::cout << "Corrected machine view: " << mv << std::endl;
         }
+        assert(mv.start_device_id + mv.dim[0] <= num_devices);
         machine_views.push_back(mv);
       }
       assert(machine_views.size() == max_num_inflight_batches);
