@@ -168,7 +168,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                             falcon_config.n_heads,
                             falcon_config.dim,
                             falcon_config.dim / falcon_config.n_heads);
-  fileloader.load_weights(&ff, weights_layers);
+  fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
