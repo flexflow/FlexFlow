@@ -118,9 +118,7 @@ public:
 
   UndirectedGraph &operator=(UndirectedGraph);
 
-  operator UndirectedGraphView() const {
-    return UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>(ptr->clone()));
-  }
+  operator UndirectedGraphView() const;
 
 
   friend void swap(UndirectedGraph &, UndirectedGraph &);
@@ -145,7 +143,7 @@ private:
   UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
 
 private:
-  std::unique_ptr<IUndirectedGraph> ptr;
+  cow_ptr_t<IUndirectedGraph> ptr;
 };
 
 static_assert(std::is_copy_constructible<UndirectedGraph>::value, "");
