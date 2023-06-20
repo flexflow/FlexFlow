@@ -83,6 +83,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem,
                                     num_samples,
+                                    attn->num_heads,
                                     _num_heads) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));

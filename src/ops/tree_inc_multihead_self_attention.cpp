@@ -83,6 +83,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem,
                                     num_samples,
+                                    attn->num_heads,
                                     _num_heads),
       num_active_tokens(0) {
   hipStream_t stream;
