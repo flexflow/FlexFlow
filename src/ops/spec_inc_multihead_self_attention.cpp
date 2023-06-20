@@ -27,6 +27,7 @@ using Legion::Memory;
 void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     SpecIncMultiHeadSelfAttentionMeta const *m,
     BeamSearchBatchConfig const *bc,
+    int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output,
