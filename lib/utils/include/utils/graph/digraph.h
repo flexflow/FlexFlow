@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
 #include "utils/maybe_owned_ref.h"
@@ -122,7 +123,7 @@ public:
   DiGraph &operator=(DiGraph);
 
   operator DiGraphView() const {
-      return DiGraphView(std::shared_ptr<IDiGraphView const>(ptr.get()));
+      return DiGraphView(std::shared_ptr<IDiGraphView const>(ptr.get_mutable().get()));
   }
 
   friend void swap(DiGraph &, DiGraph &);
@@ -145,10 +146,10 @@ public:
   }
 
 private:
-  DiGraph(std::unique_ptr<IDiGraph>);
+  DiGraph(std::shared_ptr<IDiGraph>);
 
 private:
-  std::unique_ptr<IDiGraph> ptr;
+  cow_ptr_t<IDiGraph> ptr;
 };
 
 static_assert(std::is_copy_constructible<DiGraph>::value, "");

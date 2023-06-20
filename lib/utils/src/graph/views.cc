@@ -3,6 +3,7 @@
 #include "utils/disjoint_set.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
+#include <memory>
 
 namespace FlexFlow {
 
@@ -37,6 +38,32 @@ DirectedEdge flipped(DirectedEdge const &e) {
 DiGraphView view_as_flipped(DiGraphView const & g) {
     return DiGraphView::create<FlippedView>(*g.unsafe());//TODO, maybe exists porblems
 }
+
+// DiGraphView view_as_joined(DiGraphView const & lhs, DiGraphView const & rhs) {
+//   //return DiGraphView::create<JoinedView>(lhs, rhs);
+//   auto lhs_nodes = lhs.query_nodes({});
+//   auto rhs_nodes = rhs.query_nodes({});
+//   auto lhs_edge = lhs.query_edges({});
+//   auto rhs_edge = rhs.query_edges({});
+  
+//   for(auto node : rhs_nodes) {
+//     lhs_nodes.insert(node);
+//   }
+//   for(auto edge : rhs_edge) {
+//     lhs_edge.insert(edge);
+//   }
+  
+  
+//   DiGraph digra
+//   for(auto node : lhs_nodes) {
+//     digraph.add_node_unsafe(node);
+//   }
+//   for(auto edge : lhs_edge) {
+//     digraph.add_edge(edge);
+//   }
+
+//   return static_cast<DiGraphView>(digraph);
+// } 
 
 
 UndirectedSubgraphView::UndirectedSubgraphView(
