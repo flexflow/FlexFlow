@@ -17,7 +17,7 @@ namespace FlexFlow {
 struct FlippedView : public IDiGraphView {
 public:
   FlippedView() = delete;
-  explicit FlippedView(IDiGraphView const &);
+  explicit FlippedView(IDiGraphView const & g);
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -274,39 +274,39 @@ private:
 
 DirectedEdge flipped(DirectedEdge const &);
 
-DiGraphView unsafe_view_as_flipped(DiGraphView const &);
+// DiGraphView unsafe_view_as_flipped(DiGraphView const &);
 DiGraphView view_as_flipped(DiGraphView const &);
 
-UndirectedGraphView unsafe_view_subgraph(UndirectedGraphView const &,
-                                         std::unordered_set<Node> const &);
+// UndirectedGraphView unsafe_view_subgraph(UndirectedGraphView const &,
+//                                          std::unordered_set<Node> const &);
 UndirectedGraphView view_subgraph(UndirectedGraphView const &,
                                   std::unordered_set<Node> const &);
 
-DiGraphView unsafe_view_subgraph(DiGraphView const &,
-                                 std::unordered_set<Node> const &);
+// DiGraphView unsafe_view_subgraph(DiGraphView const &,
+//                                  std::unordered_set<Node> const &);
 DiGraphView view_subgraph(DiGraphView const &,
                           std::unordered_set<Node> const &);
 
-MultiDiGraphView unsafe_view_subgraph(MultiDiGraphView const &,
-                                      std::unordered_set<Node> const &);
+// MultiDiGraphView unsafe_view_subgraph(MultiDiGraphView const &,
+//                                       std::unordered_set<Node> const &);
 MultiDiGraphView view_subgraph(MultiDiGraphView const &,
                                std::unordered_set<Node> const &);
 
-OpenMultiDiGraphView unsafe_view_as_subgraph(OpenMultiDiGraphView const &,
-                                             std::unordered_set<Node> const &);
+// OpenMultiDiGraphView unsafe_view_as_subgraph(OpenMultiDiGraphView const &,
+//                                              std::unordered_set<Node> const &);
 OpenMultiDiGraphView view_subgraph(OpenMultiDiGraphView const &,
                                    std::unordered_set<Node> const &);
 
-UndirectedGraphView unsafe_view_as_joined(UndirectedGraphView const &,
-                                          UndirectedGraphView const &);
+// UndirectedGraphView unsafe_view_as_joined(UndirectedGraphView const &,
+//                                           UndirectedGraphView const &);
 UndirectedGraphView view_as_joined(UndirectedGraphView const &,
                                    UndirectedGraphView const &);
 
-DiGraphView unsafe_view_as_joined(DiGraphView const &, DiGraphView const &);
+// DiGraphView unsafe_view_as_joined(DiGraphView const &, DiGraphView const &);
 DiGraphView view_as_joined(DiGraphView const &, DiGraphView const &);
 
-MultiDiGraphView unsafe_view_as_joined(MultiDiGraphView const &,
-                                       MultiDiGraphView const &);
+// MultiDiGraphView unsafe_view_as_joined(MultiDiGraphView const &,
+//                                        MultiDiGraphView const &);
 MultiDiGraphView view_as_joined(MultiDiGraphView const &,
                                 MultiDiGraphView const &);
 
@@ -316,14 +316,14 @@ DiGraphView
 DiGraphView view_with_added_edges(DiGraphView const &,
                                   std::unordered_set<DirectedEdge> const &);
 
-DiGraphView unsafe_view_as_contracted(DiGraphView const &,
-                                      Node const &from,
-                                      Node const &into);
+// DiGraphView unsafe_view_as_contracted(DiGraphView const &,
+//                                       Node const &from,
+//                                       Node const &into);
 DiGraphView
     view_as_contracted(DiGraphView const &, Node const &from, Node const &into);
 
-DiGraphView unsafe_view_as_contracted(DiGraphView const &,
-                                      std::unordered_map<Node, Node> const &);
+// DiGraphView unsafe_view_as_contracted(DiGraphView const &,
+//                                       std::unordered_map<Node, Node> const &);
 DiGraphView view_as_contracted(DiGraphView const &,
                                std::unordered_map<Node, Node> const &);
 

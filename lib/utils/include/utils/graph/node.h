@@ -64,7 +64,7 @@ struct GraphView {
     return this->ptr.get();
   }
 
-  static GraphView unsafe(IGraphView const &);
+  static GraphView unsafe(IGraphView const & g);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,

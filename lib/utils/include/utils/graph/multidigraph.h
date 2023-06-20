@@ -138,13 +138,13 @@ private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){}
 
   friend struct MultiDiGraph;
-  friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
+ // friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
 
 private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 
-MultiDiGraphView unsafe(IMultiDiGraphView const &);
+//MultiDiGraphView unsafe(IMultiDiGraphView const &);
 
 struct MultiDiGraph {
 public:

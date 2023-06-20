@@ -156,4 +156,13 @@ std::unique_ptr<IDiGraphView>
   return std::unique_ptr<IDiGraphView>(new ViewMultiDiGraphAsDiGraph{multidi});
 }
 
+// DiGraphView view_as_digraph(MultiDiGraphView const & multidi ) {
+
+// }
+
+MultiDiGraphView view_as_multidigraph(DiGraphView const & g) {
+    
+
+}
+
 } // namespace FlexFlow

@@ -117,16 +117,16 @@ private:
   IOpenMultiDiGraphView const &g;
 };
 
-UndirectedGraphView unsafe_view_as_undirected(DiGraphView const &);
+//UndirectedGraphView unsafe_view_as_undirected(DiGraphView const &);
 UndirectedGraphView view_as_undirected(DiGraphView const &);
 
-MultiDiGraphView unsafe_view_as_multidigraph(DiGraphView const &);
+//MultiDiGraphView unsafe_view_as_multidigraph(DiGraphView const &);
 MultiDiGraphView view_as_multidigraph(DiGraphView const &);
 
-DiGraphView unsafe_view_as_digraph(MultiDiGraphView const &);
+//DiGraphView unsafe_view_as_digraph(MultiDiGraphView const &);
 DiGraphView view_as_digraph(MultiDiGraphView const &);
 
-MultiDiGraphView unsafe_view_as_multidigraph(OpenMultiDiGraphView const &);
+//MultiDiGraphView unsafe_view_as_multidigraph(OpenMultiDiGraphView const &);
 MultiDiGraphView view_as_multidigraph(OpenMultiDiGraphView const &);
 } // namespace FlexFlow
 

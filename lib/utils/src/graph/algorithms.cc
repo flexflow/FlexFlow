@@ -166,7 +166,7 @@ std::unordered_set<MultiDiEdge>
 std::unordered_set<DirectedEdge>
     get_incoming_edges(DiGraphView const &g,
                        std::unordered_set<Node> const &dsts) {
-  auto multidigraph_view = unsafe_view_as_multidigraph(g);
+  auto multidigraph_view = view_as_multidigraph(g);
   return to_directed_edges(get_incoming_edges(multidigraph_view, dsts));
 }
 
@@ -185,7 +185,7 @@ std::unordered_set<MultiDiEdge>
 std::unordered_set<DirectedEdge>
     get_outgoing_edges(DiGraphView const &g,
                        std::unordered_set<Node> const &dsts) {
-  auto multidigraph_view = unsafe_view_as_multidigraph(g);
+  auto multidigraph_view = view_as_multidigraph(g);
   return to_directed_edges(get_outgoing_edges(multidigraph_view, dsts));
 }
 
@@ -214,7 +214,7 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(MultiDiGraphView const &g,
                      std::unordered_set<Node> const &nodes) {
-  return get_predecessors(unsafe_view_as_digraph(g), nodes);
+  return get_predecessors(view_as_digraph(g), nodes);
 }
 
 std::unordered_set<Node> get_predecessors(MultiDiGraphView const &g,
@@ -318,7 +318,7 @@ tl::optional<bool> is_acyclic(DiGraphView const & g) {
 }
 
 tl::optional<bool> is_acyclic(MultiDiGraph const &g) {
-  auto digraph_view = unsafe_view_as_digraph(g);
+  auto digraph_view = view_as_digraph(g);
   return is_acyclic(digraph_view);
 }
 
@@ -357,7 +357,7 @@ std::vector<Node> get_topological_ordering(DiGraphView const &g) {
 }
 
 std::vector<Node> get_topological_ordering(MultiDiGraphView const &g) {
-  return get_topological_ordering(unsafe_view_as_digraph(g));
+  return get_topological_ordering(view_as_digraph(g));
 }
 
 std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
@@ -389,7 +389,7 @@ std::vector<MultiDiEdge>
 
 std::unordered_map<Node, std::unordered_set<Node>>
     get_dominators(MultiDiGraphView const &g) {
-  return get_dominators(unsafe_view_as_digraph(g));
+  return get_dominators(view_as_digraph(g));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -413,12 +413,12 @@ std::unordered_map<Node, std::unordered_set<Node>>
 
 std::unordered_map<Node, std::unordered_set<Node>>
     get_post_dominators(MultiDiGraphView const &g) {
-  return get_post_dominators(unsafe_view_as_digraph(g));
+  return get_post_dominators(view_as_digraph(g));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
     get_post_dominators(DiGraphView const &g) {
-  return get_dominators(unsafe_view_as_flipped(g));
+  return get_dominators(view_as_flipped(g));
 }
 
 std::unordered_map<Node, tl::optional<Node>>
@@ -462,12 +462,12 @@ std::unordered_map<Node, tl::optional<Node>>
 
 std::unordered_map<Node, tl::optional<Node>>
     get_imm_dominators(MultiDiGraphView const &g) {
-  return get_imm_dominators(unsafe_view_as_digraph(g));
+  return get_imm_dominators(view_as_digraph(g));
 }
 
 std::unordered_map<Node, tl::optional<Node>>
     get_imm_post_dominators(DiGraphView const &g) {
-  return get_imm_dominators(unsafe_view_as_flipped(g));
+  return get_imm_dominators(view_as_flipped(g));
 }
 
 
@@ -482,7 +482,7 @@ std::unordered_map<Node, tl::optional<Node>>
 
 std::unordered_map<Node, tl::optional<Node>>
     get_imm_post_dominators(MultiDiGraphView const &g) {
-  return get_imm_post_dominators(unsafe_view_as_digraph(g));
+  return get_imm_post_dominators(view_as_digraph(g));
 }
 
 tl::optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {

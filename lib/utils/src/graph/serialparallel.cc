@@ -18,7 +18,7 @@ Node find_sink_node(DiGraphView const &g) {
 }
 
 optional<Node> find_bottleneck_node(MultiDiGraphView const &g) {
-  return find_bottleneck_node(unsafe_view_as_digraph(g));
+  return find_bottleneck_node(view_as_digraph(g));
 }
 
 optional<Node> find_bottleneck_node(DiGraphView const &g) {
@@ -66,7 +66,7 @@ std::unordered_set<Node>
   for (Node const &sink : sinks) {
     contraction.insert({sink, contracted_sink});
   }
-  auto contracted_view = unsafe_view_as_contracted(g, contraction);
+  auto contracted_view = view_as_contracted(g, contraction);
 
   std::unordered_set<Node> result =
       from_source_to_sink(contracted_view, contracted_src, contracted_sink);
@@ -88,7 +88,7 @@ DiGraphView
                                    std::unordered_set<Node> const &sinks,
                                    SourceSettings include_src,
                                    SinkSettings include_sink) {
-  return unsafe_view_subgraph(
+  return view_subgraph(
       g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
 }
 
@@ -128,7 +128,7 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
   SplitASTNode split(SplitType::PARALLEL);
   for (auto const &component : weakly_connected_components) {
     split.children.push_back(
-        sp_decomposition(unsafe_view_subgraph(g, component)));
+      sp_decomposition(view_subgraph(g, component)));
   }
 
   return split;

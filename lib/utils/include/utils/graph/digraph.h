@@ -94,13 +94,13 @@ public:
 private:
   
 
-  friend DiGraphView unsafe(IDiGraphView const &);
+  //friend DiGraphView unsafe(IDiGraphView const &);
 
 private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
 
-DiGraphView unsafe(IDiGraphView const &);
+//DiGraphView unsafe(IDiGraphView const &);
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
