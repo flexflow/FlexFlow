@@ -27,7 +27,7 @@ MAKE_VISIT_HASHABLE(::FlexFlow::UndirectedEdge);
 namespace FlexFlow {
 
 struct UndirectedEdgeQuery {
-  UndirectedEdgeQuery() = delete;
+  UndirectedEdgeQuery() = default;//TODO, change it to default
   UndirectedEdgeQuery(optional<std::unordered_set<Node>> const &);
 
   optional<std::unordered_set<Node>> nodes = nullopt;
@@ -133,7 +133,6 @@ public:
     return UndirectedGraph(std::make_shared<T>());
   }
 
-private:
   UndirectedGraph(std::shared_ptr<IUndirectedGraph>);
 
 private:

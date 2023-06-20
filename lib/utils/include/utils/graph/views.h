@@ -309,8 +309,7 @@ DiGraphView view_as_joined(DiGraphView const &, DiGraphView const &);
 
 // MultiDiGraphView unsafe_view_as_joined(MultiDiGraphView const &,
 //                                        MultiDiGraphView const &);
-MultiDiGraphView view_as_joined(MultiDiGraphView const &,
-                                MultiDiGraphView const &);
+MultiDiGraphView view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);
 //1 get the nodes and edges by calling the query_nodes and query_edges, 2 we build  MultiDiGraph multi
 //3 we use the multi to add_nodes and add_edges, then we can return MultiDiGraphView 
 

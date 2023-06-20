@@ -119,12 +119,19 @@ private:
 
 //UndirectedGraphView unsafe_view_as_undirected(DiGraphView const &);
 UndirectedGraphView view_as_undirected(DiGraphView const &);
+//1 use DiGraphView t0 get GraphView, because DiGraphView::operator GraphView ()
+//2 use GraphView to get UndirectedGraphView, because UndirectedGraphView::operator GraphView ()
 
 //MultiDiGraphView unsafe_view_as_multidigraph(DiGraphView const &);
 MultiDiGraphView view_as_multidigraph(DiGraphView const &);
+//1 use DiGraphView t0 get GraphView, because DiGraphView::operator GraphView ()
+//2 use GraphView to get MultiDiGraphView, because MultiDiGraphView::operator GraphView ()
+
 
 //DiGraphView unsafe_view_as_digraph(MultiDiGraphView const &);
 DiGraphView view_as_digraph(MultiDiGraphView const &);
+//1 use MultiDiGraphView to get GraphView, because MultiDiGraphView::operator GraphView ()
+//2 use GraphView to get DiGraphView, because DiGraphView::operator GraphView ()
 
 //MultiDiGraphView unsafe_view_as_multidigraph(OpenMultiDiGraphView const &);
 MultiDiGraphView view_as_multidigraph(OpenMultiDiGraphView const &);

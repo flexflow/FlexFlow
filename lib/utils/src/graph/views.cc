@@ -64,23 +64,6 @@ DiGraphView view_as_joined(DiGraphView const & lhs, DiGraphView const & rhs) {
   return static_cast<DiGraphView>(digraph);
 } 
 
-// UndirectedGraphView view_as_joined(UndirectedGraphView const & lhs,
-//                                    UndirectedGraphView const & rhs){
-//   auto lhs_nodes = lhs.query_nodes({});
-//   auto rhs_nodes = rhs.query_nodes({});
-//   auto lhs_edge = lhs.query_edges({});
-//   auto rhs_edge = rhs.query_edges({});
-  
-//   for(auto node : rhs_nodes) {
-//     lhs_nodes.insert(node);
-//   }
-//   for(auto edge : rhs_edge) {
-//     lhs_edge.insert(edge);
-//   }
-
-//   UndriectGraph undigraph = UndriectGraph::create<AdjacencyUndirectedGraph>();                                  
-// }
-
 MultiDiGraphView view_as_joined(MultiDiGraphView const & lhs,
                                 MultiDiGraphView const & rhs) {
   auto lhs_nodes = lhs.query_nodes({});
