@@ -65,8 +65,8 @@ std::unordered_set<UndirectedEdge>
   return this->ptr.get_mutable()->query_edges(q);
 }
 
-UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
-    : ptr(std::move(_ptr)) {}
+UndirectedGraph::UndirectedGraph(std::shared_ptr<IUndirectedGraph> ptr)
+    : ptr(ptr) {}
   
 std::unordered_set<UndirectedEdge> UndirectedGraphView::query_edges(UndirectedEdgeQuery const& g)  const {
   return this->ptr->query_edges(g);

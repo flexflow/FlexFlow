@@ -92,14 +92,8 @@ public:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr):ptr(ptr) {}
 
 private:
-  //friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
-
-private:
   cow_ptr_t<IUndirectedGraphView const> ptr;
-  //std::shared_ptr<IUndirectedGraphView const> ptr;
 };
-
-//UndirectedGraphView unsafe(IUndirectedGraphView const &);
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
@@ -136,11 +130,11 @@ public:
   static typename std::enable_if<std::is_base_of<IUndirectedGraph, T>::value,
                                  UndirectedGraph>::type
       create() {
-    return UndirectedGraph(make_unique<T>());
+    return UndirectedGraph(std::make_shared<T>());
   }
 
 private:
-  UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
+  UndirectedGraph(std::shared_ptr<IUndirectedGraph>);
 
 private:
   cow_ptr_t<IUndirectedGraph> ptr;

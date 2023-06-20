@@ -39,6 +39,10 @@ bool DiGraphView::operator!=(DiGraphView const &other) const {
   return ptr != other.ptr;
 }
 
+std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const& q) const {
+  return this->ptr->query_nodes(q);
+}
+
 std::unordered_set<DirectedEdge> DiGraphView::query_edges(EdgeQuery const & query) const {
   return ptr->query_edges(query);
 }
@@ -75,5 +79,7 @@ std::unordered_set<DirectedEdge>
 }
 
 DiGraph::DiGraph(std::shared_ptr<IDiGraph> ptr) : ptr(std::move(ptr)) {}
+
+
 
 } // namespace FlexFlow

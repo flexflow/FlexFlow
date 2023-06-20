@@ -138,13 +138,10 @@ private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){}
 
   friend struct MultiDiGraph;
- // friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
 
 private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
-
-//MultiDiGraphView unsafe(IMultiDiGraphView const &);
 
 struct MultiDiGraph {
 public:
@@ -176,11 +173,11 @@ public:
   static typename std::enable_if<std::is_base_of<IMultiDiGraph, T>::value,
                                  MultiDiGraph>::type
       create() {
-    return MultiDiGraph(make_unique<T>());
+    return MultiDiGraph(std::make_shared<T>());
   }
 
 private:
-  MultiDiGraph(cow_ptr_t<IMultiDiGraph>  const ptr):ptr(ptr){}
+  MultiDiGraph(std::shared_ptr<IMultiDiGraph>  const ptr):ptr(ptr){}
 
 private:
   cow_ptr_t<IMultiDiGraph> ptr;

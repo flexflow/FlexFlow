@@ -160,9 +160,9 @@ std::unique_ptr<IDiGraphView>
 
 // }
 
-MultiDiGraphView view_as_multidigraph(DiGraphView const & g) {
+// MultiDiGraphView view_as_multidigraph(DiGraphView const & g) {
     
 
-}
+// }
 
 } // namespace FlexFlow

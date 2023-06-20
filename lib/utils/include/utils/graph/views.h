@@ -299,7 +299,7 @@ OpenMultiDiGraphView view_subgraph(OpenMultiDiGraphView const &,
 
 // UndirectedGraphView unsafe_view_as_joined(UndirectedGraphView const &,
 //                                           UndirectedGraphView const &);
-UndirectedGraphView view_as_joined(UndirectedGraphView const & lhs
+UndirectedGraphView view_as_joined(UndirectedGraphView const & lhs,
                                    UndirectedGraphView const & rhs);
 //use UndirectedGraphView to UndirectedGraph, then we can use the UndriectGraph to add_nodes, add_edges,
 //we get the nodes and edges of lhs and rhs. then add the nodes and edges to get a new UndriectGraph

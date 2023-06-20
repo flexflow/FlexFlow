@@ -109,6 +109,10 @@ MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
   return *this;
 }
 
+std::unordered_set<Node> MultiDiGraphView::query_nodes(NodeQuery const & q) const {
+  return this->ptr->query_nodes(q);
+}
+
 std::unordered_set<MultiDiEdge> MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }

@@ -3,6 +3,7 @@
 #include "utils/disjoint_set.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
+#include "utils/graph/adjacency_multidigraph.h"
 #include <memory>
 
 namespace FlexFlow {
@@ -39,8 +40,32 @@ DiGraphView view_as_flipped(DiGraphView const & g) {
     return DiGraphView::create<FlippedView>(*g.unsafe());//TODO, maybe exists porblems
 }
 
-// DiGraphView view_as_joined(DiGraphView const & lhs, DiGraphView const & rhs) {
-//   //return DiGraphView::create<JoinedView>(lhs, rhs);
+DiGraphView view_as_joined(DiGraphView const & lhs, DiGraphView const & rhs) {
+  auto lhs_nodes = lhs.query_nodes({});
+  auto rhs_nodes = rhs.query_nodes({});
+  auto lhs_edge = lhs.query_edges({});
+  auto rhs_edge = rhs.query_edges({});
+  
+  for(auto node : rhs_nodes) {
+    lhs_nodes.insert(node);
+  }
+  for(auto edge : rhs_edge) {
+    lhs_edge.insert(edge);
+  }
+  
+  DiGraph digraph = DiGraph::create<AdjacencyDiGraph>();
+  for(auto node : lhs_nodes) {
+    digraph.add_node_unsafe(node);
+  }
+  for(auto edge : lhs_edge) {
+    digraph.add_edge(edge);
+  }
+
+  return static_cast<DiGraphView>(digraph);
+} 
+
+// UndirectedGraphView view_as_joined(UndirectedGraphView const & lhs,
+//                                    UndirectedGraphView const & rhs){
 //   auto lhs_nodes = lhs.query_nodes({});
 //   auto rhs_nodes = rhs.query_nodes({});
 //   auto lhs_edge = lhs.query_edges({});
@@ -52,19 +77,36 @@ DiGraphView view_as_flipped(DiGraphView const & g) {
 //   for(auto edge : rhs_edge) {
 //     lhs_edge.insert(edge);
 //   }
-  
-  
-//   DiGraph digra
-//   for(auto node : lhs_nodes) {
-//     digraph.add_node_unsafe(node);
-//   }
-//   for(auto edge : lhs_edge) {
-//     digraph.add_edge(edge);
-//   }
 
-//   return static_cast<DiGraphView>(digraph);
-// } 
+//   UndriectGraph undigraph = UndriectGraph::create<AdjacencyUndirectedGraph>();                                  
+// }
 
+MultiDiGraphView view_as_joined(MultiDiGraphView const & lhs,
+                                MultiDiGraphView const & rhs) {
+  auto lhs_nodes = lhs.query_nodes({});
+  auto rhs_nodes = rhs.query_nodes({});
+  auto lhs_edge = lhs.query_edges({});
+  auto rhs_edge = rhs.query_edges({});
+  
+  for(auto node : rhs_nodes) {
+    lhs_nodes.insert(node);
+  }
+  for(auto edge : rhs_edge) {
+    lhs_edge.insert(edge);
+  }
+  
+  MultiDiGraph multi_digraph = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+
+  for(auto node : lhs_nodes) {
+    multi_digraph.add_node_unsafe(node);
+  }
+
+  for(auto edge : lhs_edge) {
+    multi_digraph.add_edge(edge);
+  }
+
+  return static_cast<MultiDiGraphView>(multi_digraph);
+}
 
 UndirectedSubgraphView::UndirectedSubgraphView(
     maybe_owned_ref<IUndirectedGraphView const> g,

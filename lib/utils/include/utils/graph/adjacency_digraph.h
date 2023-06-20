@@ -21,6 +21,8 @@ public:
   bool operator==(AdjacencyDiGraph const &) const;
   bool operator!=(AdjacencyDiGraph const &) const;
 
+  AdjacencyDiGraph()=default;
+
   AdjacencyDiGraph *clone() const override {
     return new AdjacencyDiGraph(this->next_node_idx, this->adjacency);
   }
@@ -30,7 +32,7 @@ private:
 
   AdjacencyDiGraph(std::size_t next_node_idx, ContentsType adjacency):
       next_node_idx(next_node_idx), adjacency(adjacency) {}
-
+    
   std::size_t next_node_idx = 0;
   ContentsType adjacency;
 };
