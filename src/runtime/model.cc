@@ -2964,7 +2964,19 @@ void FFModel::create_operators_from_layers() {
          l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
          (l->op_type == OP_LINEAR && layer_idx + 3 <= layers.size() &&
           layers[layer_idx + 1]->op_type == OP_RELU &&
-          layers[layer_idx + 2]->op_type == OP_LINEAR))) {
+          layers[layer_idx + 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 6 <= layers.size() &&
+          layers[layer_idx + 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 2]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 5]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 5 <= layers.size() &&
+          layer_idx >= 1 && layers[layer_idx - 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 1]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_LINEAR))) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Replicate *repl = new Replicate(*this,
@@ -2985,7 +2997,13 @@ void FFModel::create_operators_from_layers() {
          l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
          (l->op_type == OP_LINEAR && layer_idx >= 2 &&
           layers[layer_idx - 1]->op_type == OP_RELU &&
-          layers[layer_idx - 2]->op_type == OP_LINEAR))) {
+          layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+          layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+          layers[layer_idx - 4]->op_type == OP_LINEAR &&
+          layers[layer_idx - 5]->op_type == OP_LINEAR))) {
       assert(op->numOutputs == 1);
       Reduction *reduct = new Reduction(*this,
                                         op->outputs[0],
