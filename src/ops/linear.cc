@@ -240,7 +240,7 @@ Linear::Linear(FFModel &model,
                                                        true /*create_grad*/,
                                                        bias_initializer,
                                                        CHOSEN_SYNC_TYPE);
-      bias_replicated = bias_shape.dims[bias_shape.num_dims - 1].size > 0;
+      bias_replicated = bias_shape.dims[bias_shape.num_dims - 1].size > 1;
     }
   }
 
