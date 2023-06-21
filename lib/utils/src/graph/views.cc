@@ -64,6 +64,7 @@ DiGraphView view_as_joined(DiGraphView const & lhs, DiGraphView const & rhs) {
   return static_cast<DiGraphView>(digraph);
 } 
 
+//TODO, has problem
 MultiDiGraphView view_as_joined(MultiDiGraphView const & lhs,
                                 MultiDiGraphView const & rhs) {
   auto lhs_nodes = lhs.query_nodes({});

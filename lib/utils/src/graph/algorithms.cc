@@ -470,15 +470,16 @@ std::unordered_map<Node, tl::optional<Node>>
   return get_imm_dominators(view_as_flipped(g));
 }
 
+tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
+  return get_imm_post_dominators(g).at(n);
+}
 
+//TODO 
 // tl::optional<Node> get_imm_post_dominator(DiGraphView const &,
 //                                           std::unordered_set<Node> const &){
 
 // }
 
-// get_imm_post_dominator(DiGraphView const &g, Node const &n) {
-//   return get_imm_post_dominators(g).at(n);
-// }
 
 std::unordered_map<Node, tl::optional<Node>>
     get_imm_post_dominators(MultiDiGraphView const &g) {
