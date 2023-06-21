@@ -656,15 +656,18 @@ bool ParallelTensorBase::set_tensor(FFModel const *ff,
   // TODO: check data type matches
   // TODO: Currently we use a task launch, change to index launch for NCCL
   // parameter
-  size_t volume = 1, num_replicas = 0;
-  if (sync_type == ParameterSyncType::NCCL) {
-    Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
-    num_replicas = domain.get_volume();
-  } else if (sync_type == ParameterSyncType::PS) {
-    num_replicas = 1;
-  } else {
-    num_replicas = 1;
-  }
+  size_t volume = 1, num_replicas = 1;
+  // if (sync_type == ParameterSyncType::NCCL) {
+  //   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  //   num_replicas = domain.get_volume();
+  //   if (num_replicas > 1) {
+  //     std::cout << domain << std::endl;
+  //   }
+  // } else if (sync_type == ParameterSyncType::PS) {
+  //   num_replicas = 1;
+  // } else {
+  //   num_replicas = 1;
+  // }
   for (size_t i = 0; i < dim_sizes.size(); i++) {
     volume = volume * dim_sizes[i];
   }

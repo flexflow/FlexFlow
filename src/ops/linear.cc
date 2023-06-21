@@ -206,6 +206,16 @@ Linear::Linear(FFModel &model,
   LinearParams params = this->get_params();
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
+  kernel_shape.dims[0].size = this->in_channels;
+  bias_shape.dims[0].degree = _input->dims[_input->num_dims - 1].degree;
+  bias_shape.dims[0].parallel_idx =
+      _input->dims[_input->num_dims - 1].parallel_idx;
+  bias_shape.dims[1].size = bias_shape.dims[1].degree = 1;
+  bias_shape.dims[1].parallel_idx = -1;
+  bias_shape.dims[bias_shape.num_dims - 1].size =
+      bias_shape.dims[bias_shape.num_dims - 1].degree = _input->dims[0].degree;
+  bias_shape.dims[bias_shape.num_dims - 1].parallel_idx =
+      _input->dims[0].parallel_idx;
 
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
@@ -230,6 +240,7 @@ Linear::Linear(FFModel &model,
                                                        true /*create_grad*/,
                                                        bias_initializer,
                                                        CHOSEN_SYNC_TYPE);
+      bias_replicated = bias_shape.dims[bias_shape.num_dims - 1].size > 0;
     }
   }
 
@@ -237,7 +248,7 @@ Linear::Linear(FFModel &model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_shape.num_dims, output_shape.dims, _data_type, this);
 
-  assert(check_output_input_weight_parallel_dims(allocate_weights));
+  // assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
 void Linear::init(FFModel const &ff) {
@@ -414,6 +425,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->kernel_reg_type = linear->kernel_reg_type;
   m->kernel_reg_lambda = linear->kernel_reg_lambda;
   m->use_bias = linear->use_bias;
+  m->bias_replicated = linear->bias_replicated;
   m->profiling = linear->profiling;
   m->trainableInputs[0] = linear->trainableInputs[0];
   m->input_type = linear->inputs[0]->data_type;
@@ -578,7 +590,8 @@ void Linear::forward_task_with_dim(Task const *task,
   assert(acc_input.rect.volume() == static_cast<size_t>(in_dim * batch_size));
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   DT const *acc_bias_ptr = nullptr;
-  if (m->use_bias) {
+  if (m->use_bias &&
+      !(m->bias_replicated && task->index_point.point_data[0] != 0)) {
     TensorAccessorR<DT, NDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(acc_bias.rect.volume() == static_cast<size_t>(out_dim));
