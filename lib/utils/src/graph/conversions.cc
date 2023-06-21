@@ -156,13 +156,25 @@ std::unique_ptr<IDiGraphView>
   return std::unique_ptr<IDiGraphView>(new ViewMultiDiGraphAsDiGraph{multidi});
 }
 
-// DiGraphView view_as_digraph(MultiDiGraphView const & multidi ) {
+UndirectedGraphView view_as_undirected(DiGraphView const & g) {
+  GraphView graphView = static_cast<GraphView>(g);
+  IGraphView const *graphViewPtr = graphView.unsafe();
+  std::shared_ptr<IUndirectedGraphView const> undirectedPtr = std::dynamic_pointer_cast<IUndirectedGraphView const>(std::shared_ptr<IGraphView const>(const_cast<IGraphView *>(graphViewPtr)));
+  return UndirectedGraphView(undirectedPtr);//IUndirectedGraphView :public IGraphView
+}
 
-// }
+MultiDiGraphView view_as_multidigraph(DiGraphView const & g) {
+  GraphView graphView = static_cast<GraphView>(g);
+  IGraphView const *graphViewPtr = graphView.unsafe();
+  std::shared_ptr<IMultiDiGraphView const> multidigraphPtr = std::dynamic_pointer_cast<IMultiDiGraphView const>(std::shared_ptr<IGraphView const>(const_cast<IGraphView *>(graphViewPtr)));
+  return MultiDiGraphView(multidigraphPtr);//IMultiDiGraphView : public IGraphView
+}
 
-// MultiDiGraphView view_as_multidigraph(DiGraphView const & g) {
-    
-
-// }
+DiGraphView view_as_digraph(MultiDiGraphView const & g) {
+  GraphView graphView = static_cast<GraphView>(g);
+  IGraphView const *graphViewPtr = graphView.unsafe();
+  std::shared_ptr<IDiGraphView const> digraphPtr = std::dynamic_pointer_cast<IDiGraphView const>(std::shared_ptr<IGraphView const>(const_cast<IGraphView *>(graphViewPtr)));//IDiGraphView : public IGraphView
+  return DiGraphView(digraphPtr);
+}
 
 } // namespace FlexFlow

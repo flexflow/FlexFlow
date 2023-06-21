@@ -134,9 +134,9 @@ public:
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
 
-private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){}
 
+private:
   friend struct MultiDiGraph;
 
 private:

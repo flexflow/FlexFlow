@@ -63,9 +63,7 @@ public:
 
   operator GraphView const &() const;
 
-  operator GraphView () {
-    return GraphView(this->ptr.get());
-  }
+  operator GraphView ();
 
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 

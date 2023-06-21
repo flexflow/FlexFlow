@@ -74,8 +74,6 @@ struct GraphView {
   }
 
   GraphView(std::shared_ptr<IGraphView const> ptr):ptr(ptr){}
-private:
-  
 
 private:
   std::shared_ptr<IGraphView const> ptr;
