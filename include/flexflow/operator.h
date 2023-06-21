@@ -294,7 +294,7 @@ public:
   std::map<ParallelTensor, OpMeta *[MAX_NUM_WORKERS]> inference_meta;
   int numInputs, numWeights, numOutputs;
   bool profiling;
-  bool bias_replicated;
+  bool add_bias_only_once;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif

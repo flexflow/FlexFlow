@@ -213,9 +213,15 @@ Linear::Linear(FFModel &model,
   bias_shape.dims[1].size = bias_shape.dims[1].degree = 1;
   bias_shape.dims[1].parallel_idx = -1;
   bias_shape.dims[bias_shape.num_dims - 1].size =
-      bias_shape.dims[bias_shape.num_dims - 1].degree = _input->dims[0].degree;
-  bias_shape.dims[bias_shape.num_dims - 1].parallel_idx =
-      _input->dims[0].parallel_idx;
+      bias_shape.dims[bias_shape.num_dims - 1].degree = 1;
+  for (int i = 0; i < input_shape.num_dims - 1; i++) {
+    if (_input->dims[i].degree > 1) {
+      bias_shape.dims[bias_shape.num_dims - 1].size *= _input->dims[i].degree;
+      bias_shape.dims[bias_shape.num_dims - 1].degree *= _input->dims[i].degree;
+      bias_shape.dims[bias_shape.num_dims - 1].parallel_idx =
+          _input->dims[i].parallel_idx;
+    }
+  }
 
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
@@ -240,7 +246,7 @@ Linear::Linear(FFModel &model,
                                                        true /*create_grad*/,
                                                        bias_initializer,
                                                        CHOSEN_SYNC_TYPE);
-      bias_replicated = bias_shape.dims[bias_shape.num_dims - 1].size > 1;
+      add_bias_only_once = _input->dims[0].degree > 1;
     }
   }
 
@@ -425,7 +431,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->kernel_reg_type = linear->kernel_reg_type;
   m->kernel_reg_lambda = linear->kernel_reg_lambda;
   m->use_bias = linear->use_bias;
-  m->bias_replicated = linear->bias_replicated;
+  m->add_bias_only_once = linear->add_bias_only_once;
   m->profiling = linear->profiling;
   m->trainableInputs[0] = linear->trainableInputs[0];
   m->input_type = linear->inputs[0]->data_type;
@@ -591,7 +597,7 @@ void Linear::forward_task_with_dim(Task const *task,
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   DT const *acc_bias_ptr = nullptr;
   if (m->use_bias &&
-      !(m->bias_replicated && task->index_point.point_data[0] != 0)) {
+      !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {
     TensorAccessorR<DT, NDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(acc_bias.rect.volume() == static_cast<size_t>(out_dim));

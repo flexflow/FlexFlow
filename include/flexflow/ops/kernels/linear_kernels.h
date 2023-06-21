@@ -22,7 +22,7 @@ public:
   ActiMode activation;
   RegularizerMode kernel_reg_type;
   float kernel_reg_lambda;
-  bool use_bias, bias_replicated;
+  bool use_bias, add_bias_only_once;
   DataType input_type, weight_type, output_type;
   char op_name[MAX_OPNAME];
 };
