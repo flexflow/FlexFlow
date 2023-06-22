@@ -17,6 +17,7 @@
 #endif
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -350,6 +351,79 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
+void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                             GenericTensorAccessorR const weight,
+                             DataType data_type,
+                             cudaStream_t stream) {
+  // additional processing for weight uploading
+  // Note that we update weight_ptr and bias_ptr when uploading weight and
+  // bias
+  if (m->quantization_type != DT_NONE) {
+    // copy weight_ptr to quantized_weight_ptr, do compression and store in
+    // m->weight_ptr
+    cudaMemcpyAsync(m->quantized_weight_ptr,
+                    weight.get_byte_ptr(),
+                    m->quantized_weightSize,
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    if (m->quantization_type == DT_INT4) {
+      int parallelism = m->qProjSize * m->qSize * m->num_heads / 2;
+      decompress_int4_attention_weights<<<GET_BLOCKS(parallelism),
+                                          min(CUDA_NUM_THREADS, parallelism),
+                                          0,
+                                          stream>>>(
+          m->quantized_weight_ptr,
+          static_cast<DT *>(m->weight_ptr),
+          m->qProjSize,
+          m->qSize,
+          m->num_heads);
+    } else {
+      assert(m->quantization_type == DT_INT8);
+      int parallelism = m->qProjSize * m->qSize * m->num_heads;
+      decompress_int8_attention_weights<<<GET_BLOCKS(parallelism),
+                                          min(CUDA_NUM_THREADS, parallelism),
+                                          0,
+                                          stream>>>(
+          m->quantized_weight_ptr,
+          static_cast<DT *>(m->weight_ptr),
+          m->qProjSize,
+          m->qSize,
+          m->num_heads);
+    }
+  } else {
+    if (data_type == DT_FLOAT) {
+      cudaMemcpyAsync(m->weight_ptr,
+                      weight.get_float_ptr(),
+                      m->weightSize,
+                      cudaMemcpyHostToDevice,
+                      stream);
+    } else if (data_type == DT_HALF) {
+      cudaMemcpyAsync(m->weight_ptr,
+                      weight.get_half_ptr(),
+                      m->weightSize,
+                      cudaMemcpyHostToDevice,
+                      stream);
+    } else {
+      assert(false);
+    }
+  }
+  // reload weight_o for offloading case
+  int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
+  build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                       min(CUDA_NUM_THREADS, parallelism),
+                       0,
+                       stream>>>(static_cast<DT *>(m->weight_ptr),
+                                 static_cast<DT *>(m->W_out_contiguous),
+                                 m->vProjSize,
+                                 m->oProjSize,
+                                 m->num_heads,
+                                 (m->qSize * m->qProjSize +
+                                  m->kSize * m->kProjSize +
+                                  m->vSize * m->vProjSize));
+}
+
+template <typename DT>
 void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       BatchConfig const *bc,
                       DT const *input_ptr,
@@ -358,6 +432,12 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
   // here because we need postion info in infernece 1
+
+  if (m->offload && m->biasSize > 0) {
+    cudaMemcpyAsync(
+        m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
+    bias_ptr = static_cast<DT *>(m->bias_ptr);
+  }
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
@@ -681,31 +761,41 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  assert(input.data_type == weight.data_type);
+  // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
   if (use_bias) {
     assert(input.data_type == bias.data_type);
   }
+
   if (input.data_type == DT_HALF) {
+    if (m->offload) {
+      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+    }
     half const *bias_ptr =
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
-    Kernels::IncMultiHeadAttention::inference_kernel(m,
-                                                     bc,
-                                                     input.get_half_ptr(),
-                                                     weight.get_half_ptr(),
-                                                     output.get_half_ptr(),
-                                                     bias_ptr,
-                                                     stream);
+    Kernels::IncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        input.get_half_ptr(),
+        m->offload ? static_cast<half *>(m->weight_ptr) : weight.get_half_ptr(),
+        output.get_half_ptr(),
+        bias_ptr,
+        stream);
   } else if (input.data_type == DT_FLOAT) {
+    if (m->offload) {
+      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+    }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
-    Kernels::IncMultiHeadAttention::inference_kernel(m,
-                                                     bc,
-                                                     input.get_float_ptr(),
-                                                     weight.get_float_ptr(),
-                                                     output.get_float_ptr(),
-                                                     bias_ptr,
-                                                     stream);
+    Kernels::IncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        input.get_float_ptr(),
+        m->offload ? static_cast<float *>(m->weight_ptr)
+                   : weight.get_float_ptr(),
+        output.get_float_ptr(),
+        bias_ptr,
+        stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -727,7 +817,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     IncMultiHeadSelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
@@ -747,9 +837,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
-                                    gpu_mem,
+                                    gpu_mem_allocator,
                                     num_samples,
-                                    _num_heads) {}
+                                    _num_heads,
+                                    attn->quantization_type,
+                                    attn->offload) {}
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
@@ -769,10 +861,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _add_bias_kv,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
-    int _num_heads)
-    : OpMeta(handler, attn) {
+    int _num_heads,
+    DataType _quantization_type,
+    bool _offload)
+    : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
@@ -788,13 +882,20 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   vProjSize = _vProjSize;
   oProjSize = _oProjSize;
   size_t size_of_dt = data_type_size(attn->data_type);
+  quantization_type = _quantization_type;
+  offload = _offload;
 
   num_heads = _num_heads;
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
                     oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   weightSize = weights_params * num_heads * size_of_dt;
-  has_load_weights = (bool *)calloc(1, sizeof(bool));
-  *has_load_weights = false;
+  if (quantization_type != DT_NONE) {
+    quantized_weightSize = get_quantization_to_byte_size(
+        attn->data_type, quantization_type, weightSize);
+  }
+  biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
+  // has_load_weights = (bool *)calloc(1, sizeof(bool));
+  //*has_load_weights = false;
   apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));
   *apply_rotary_embedding = _apply_rotary_embedding;
   bias = (bool *)calloc(1, sizeof(bool));
@@ -806,6 +907,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   *qk_prod_scaling = _qk_prod_scaling;
   // Currently do not support adding bias to key/value projection
   assert(!_add_bias_kv);
+
+  // allocate weight and bias in the reserve space for cpu offloading
+  if (offload) {
+    weight_ptr = gpu_mem_allocator.allocate_reserved_untyped(weightSize);
+    bias_ptr = gpu_mem_allocator.allocate_reserved_untyped(biasSize);
+  }
 
 #ifdef INFERENCE_TESTS
   kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH * num_heads *
@@ -860,37 +967,91 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
         complex_size * sizeof(cuFloatComplex); // more components will
                                                // be added here later
+    if (offload) {
+      // assert that we have enough reserved work space left
+      size_t totalSharedSize =
+          infer_mode == TREE_VERIFY_MODE
+              ? totalSize -
+                    (key_cache_size + value_cache_size + qkv_max_proj_size) *
+                        size_of_dt
+              : totalSize - (key_cache_size + value_cache_size) * size_of_dt;
 
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    off_t offset = 0;
-    devQKVProjArray = reserveInst.pointer_untyped(offset, 0);
-    offset += qkv_max_proj_size * size_of_dt;
-    keyCache = reserveInst.pointer_untyped(offset, 0);
-    offset += key_cache_size * size_of_dt;
-    valueCache = reserveInst.pointer_untyped(offset, 0);
-    offset += value_cache_size * size_of_dt;
-    token_infos = reserveInst.pointer<BatchConfig::PerTokenInfo>(offset);
-    offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
-    qk_prods = reserveInst.pointer_untyped(offset, 0);
-    offset += qk_prod_size * size_of_dt;
-    qk_prods_softmax = reserveInst.pointer_untyped(offset, 0);
-    offset += qk_prod_size * size_of_dt;
-    attn_heads = reserveInst.pointer_untyped(offset, 0);
-    offset += attn_heads_size * size_of_dt;
-    W_out_contiguous = reserveInst.pointer_untyped(offset, 0);
-    offset += W_out_contiguous_size * size_of_dt;
-    complex_input = reserveInst.pointer<cuFloatComplex>(offset);
-    offset += complex_size * sizeof(cuFloatComplex);
+      size_t instance_size =
+          size_of_dt *
+          (infer_mode == TREE_VERIFY_MODE
+               ? key_cache_size + value_cache_size + qkv_max_proj_size
+               : key_cache_size + value_cache_size);
+
+      if (quantization_type != DT_NONE) {
+        totalSharedSize += quantized_weightSize;
+      }
+      assert(gpu_mem_allocator.reserved_total_size -
+                 gpu_mem_allocator.reserved_allocated_size >=
+             totalSharedSize);
+      gpu_mem_allocator.create_legion_instance(reserveInst, instance_size);
+    } else {
+      gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
+    }
+
+    // in tree_verify, enable devQKVProjArray;
+    if (!offload || infer_mode == TREE_VERIFY_MODE) {
+      devQKVProjArray = gpu_mem_allocator.allocate_instance_untyped(
+          qkv_max_proj_size * size_of_dt);
+    } else {
+      devQKVProjArray = gpu_mem_allocator.allocate_reserved_untyped(
+          qkv_max_proj_size * size_of_dt);
+      // offset += qkv_max_proj_size * size_of_dt;
+    }
+
+    // use key value cache in all mode.
+    keyCache = gpu_mem_allocator.allocate_instance_untyped(key_cache_size *
+                                                           size_of_dt);
+    valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
+                                                             size_of_dt);
+
+    if (offload) {
+      token_infos =
+          gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
+              tokeninfo_size);
+      // offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
+      qk_prods = gpu_mem_allocator.allocate_reserved_untyped(qk_prod_size *
+                                                             size_of_dt);
+      // offset += qk_prod_size * size_of_dt;
+      qk_prods_softmax = gpu_mem_allocator.allocate_reserved_untyped(
+          qk_prod_size * size_of_dt);
+      // offset += qk_prod_size * size_of_dt;
+      attn_heads = gpu_mem_allocator.allocate_reserved_untyped(attn_heads_size *
+                                                               size_of_dt);
+      // offset += attn_heads_size * size_of_dt;
+      W_out_contiguous = gpu_mem_allocator.allocate_reserved_untyped(
+          W_out_contiguous_size * size_of_dt);
+      // offset += W_out_contiguous_size * size_of_dt;
+      complex_input =
+          gpu_mem_allocator.allocate_reserved<cuFloatComplex>(complex_size);
+      // offset += complex_size * sizeof(cuFloatComplex);
+    } else {
+      token_infos =
+          gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
+              tokeninfo_size);
+      qk_prods = gpu_mem_allocator.allocate_instance_untyped(qk_prod_size *
+                                                             size_of_dt);
+      qk_prods_softmax = gpu_mem_allocator.allocate_instance_untyped(
+          qk_prod_size * size_of_dt);
+      attn_heads = gpu_mem_allocator.allocate_instance_untyped(attn_heads_size *
+                                                               size_of_dt);
+      W_out_contiguous = gpu_mem_allocator.allocate_instance_untyped(
+          W_out_contiguous_size * size_of_dt);
+      complex_input =
+          gpu_mem_allocator.allocate_instance<cuFloatComplex>(complex_size);
+    }
+
+    // allocate more size for quantization data
+    if (quantization_type != DT_NONE) {
+      assert(offload);
+      quantized_weight_ptr =
+          gpu_mem_allocator.allocate_reserved<char>(quantized_weightSize);
+    }
+
     if (weight.data_type == DT_FLOAT) {
       int parallelism = vProjSize * oProjSize * num_heads;
       build_w_out_tensor<<<GET_BLOCKS(parallelism),
@@ -916,19 +1077,36 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           num_heads,
           (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
     } else {
-      assert(false && "Unsupported data_type");
+      assert(weight.data_type == DT_INT4 || weight.data_type == DT_INT8);
     }
-    assert(offset == totalSize);
+    if (!offload) {
+      assert(gpu_mem_allocator.reserved_total_size ==
+             gpu_mem_allocator.reserved_allocated_size);
+    }
   }
   cudaStreamSynchronize(stream);
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
-  reserveInst.destroy();
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
 #ifdef INFERENCE_TESTS
   free(kcache);
   free(vcache);
 #endif
 }
+
+template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    cudaStream_t stream);
 
 }; // namespace FlexFlow

@@ -26,6 +26,7 @@ namespace FlexFlow {
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
+LegionRuntime::Logger::Category log_offload("Offloading");
 
 InferenceManager::InferenceManager(FFConfig const &_config,
                                    int _max_num_tokens_per_batch,
@@ -45,6 +46,18 @@ InferenceManager::InferenceManager(FFConfig const &_config,
   }
 }
 
+bool parallel_tensor_list_overlaps(std::vector<ParallelTensor> const &list1,
+                                   std::vector<ParallelTensor> const &list2) {
+  for (auto const &pt1 : list1) {
+    for (auto const &pt2 : list2) {
+      if (pt1 == pt2) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void InferenceManager::compile_model_and_allocate_buffer(
     FFModel *model,
     std::unordered_map<Tensor, std::vector<MachineView>> const
@@ -61,7 +74,8 @@ void InferenceManager::compile_model_and_allocate_buffer(
     assert(pt->owner_op != nullptr);
     mapping[pt->owner_op] = it.second;
   }
-  for (auto const &op : model->operators) {
+  for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
+    Op const *op = model->operators[op_idx];
     // Skip weight operators
     if (op->op_type == OP_WEIGHT) {
       continue;
@@ -99,20 +113,70 @@ void InferenceManager::compile_model_and_allocate_buffer(
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       std::vector<ParallelTensor> list;
-      for (int j = 0; j < max_num_inflight_batches; j++) {
-        // Copy the metadata from pt_base to pt
-        ParallelTensor pt = new ParallelTensorBase(*pt_base);
-        pt->region =
-            runtime->create_logical_region(ctx,
-                                           pt_base->region.get_index_space(),
-                                           pt_base->region.get_field_space());
-        pt->part = runtime->get_logical_partition(
-            ctx, pt->region, pt_base->part.get_index_partition());
-        pt->machine_view = machine_views[j];
-        Domain part_domain =
-            runtime->get_index_space_domain(ctx, pt_base->parallel_is);
-        assert(pt->machine_view.get_domain() == part_domain);
-        list.push_back(pt);
+      bool found_parallel_tensor = false;
+      if (model->cpu_offload) {
+        for (auto const &pre_pt : tensor_buffer) {
+          bool used_by_future_operator = false;
+          bool used_by_current_operator = false;
+          if (pre_pt.first->get_shape() != pt_base->get_shape()) {
+            // Continue if shape mismatches
+            continue;
+          }
+          // Check that pt cannot be used as an input to the current operator
+          for (int j = 0; j < op->numInputs; j++) {
+            if (parallel_tensor_list_overlaps(tensor_buffer[op->inputs[j]],
+                                              pre_pt.second)) {
+              used_by_current_operator = true;
+            }
+          }
+          for (int j = 0; j < i; j++) {
+            assert(tensor_buffer.find(op->outputs[j]) != tensor_buffer.end());
+            if (parallel_tensor_list_overlaps(tensor_buffer[op->outputs[j]],
+                                              pre_pt.second)) {
+              used_by_current_operator = true;
+            }
+          }
+          // Check that pt cannot be used by any subsequent operators
+          for (int op_idx2 = op_idx; op_idx2 < model->operators.size();
+               op_idx2++) {
+            Op const *op2 = model->operators[op_idx2];
+            for (int j = 0; j < op2->numInputs; j++) {
+              if (tensor_buffer.find(op2->inputs[j]) != tensor_buffer.end()) {
+                if (parallel_tensor_list_overlaps(tensor_buffer[op2->inputs[j]],
+                                                  pre_pt.second)) {
+                  used_by_future_operator = true;
+                }
+              }
+            }
+          }
+          if (!used_by_future_operator && !used_by_current_operator) {
+            found_parallel_tensor = true;
+            list = pre_pt.second;
+          }
+        }
+        if (!found_parallel_tensor) {
+          log_offload.print(
+              "Cannot find a previous tensor for operator(%d) output_idx(%d)",
+              op_idx,
+              i);
+        }
+      }
+      if (!found_parallel_tensor) {
+        for (int j = 0; j < max_num_inflight_batches; j++) {
+          // Copy the metadata from pt_base to pt
+          ParallelTensor pt = new ParallelTensorBase(*pt_base);
+          pt->region =
+              runtime->create_logical_region(ctx,
+                                             pt_base->region.get_index_space(),
+                                             pt_base->region.get_field_space());
+          pt->part = runtime->get_logical_partition(
+              ctx, pt->region, pt_base->part.get_index_partition());
+          pt->machine_view = machine_views[j];
+          Domain part_domain =
+              runtime->get_index_space_domain(ctx, pt_base->parallel_is);
+          assert(pt->machine_view.get_domain() == part_domain);
+          list.push_back(pt);
+        }
       }
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       tensor_buffer[pt_base] = list;

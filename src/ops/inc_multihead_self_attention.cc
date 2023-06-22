@@ -76,6 +76,8 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
+  DataType quantization_type = cpu_offload ? config.quantization_type : DT_NONE;
+  bool offload = cpu_offload;
   Layer *li = nullptr;
   int weight_num = bias ? 2 : 1;
   if (data_type != input->data_type) {
@@ -117,14 +119,22 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
     int kParas = kProjSize * kSize;
     int vParas = vProjSize * vSize;
     int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
-    li->weights[0] = create_weight_legion_ordering(2,
-                                                   dims,
-                                                   data_type,
-                                                   li,
-                                                   true /*create_grad*/,
-                                                   kernel_initializer,
-                                                   CHOSEN_SYNC_TYPE);
+    int one_head_size = qParas + kParas + vParas + oParas;
+
+    // compress the weight size if quantization.
+    if (quantization_type != DT_NONE) {
+      one_head_size = get_quantization_to_byte_size(
+          data_type, quantization_type, one_head_size);
+    }
+    int dims[2] = {one_head_size, num_heads};
+    li->weights[0] = create_weight_legion_ordering(
+        2,
+        dims,
+        quantization_type == DT_NONE ? data_type : quantization_type,
+        li,
+        true /*create_grad*/,
+        kernel_initializer,
+        CHOSEN_SYNC_TYPE);
   }
   if (bias) {
     // q, k, v, o
@@ -150,6 +160,8 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   li->add_int_property("scaling_query", scaling_query);
   li->add_float_property("scaling_factor", scaling_factor);
   li->add_int_property("qk_prod_scaling", qk_prod_scaling);
+  li->add_int_property("quantization_type", quantization_type);
+  li->add_int_property("offload", offload);
   layers.push_back(li);
 
   return li->outputs[0];
@@ -184,6 +196,10 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   layer->get_float_property("scaling_factor", scaling_factor);
   layer->get_int_property("qk_prod_scaling", value);
   bool qk_prod_scaling = (bool)value;
+  layer->get_int_property("quantization_type", value);
+  DataType quantization_type = (DataType)value;
+  layer->get_int_property("offload", value);
+  bool offload = (bool)value;
 
   return new IncMultiHeadSelfAttention(model,
                                        layer->layer_guid,
@@ -201,6 +217,8 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        scaling_factor,
                                        qk_prod_scaling,
                                        false /*allocate_weights*/,
+                                       quantization_type,
+                                       offload,
                                        layer->name);
 }
 
@@ -221,6 +239,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     float _scaling_factor,
     bool _qk_prod_scaling,
     bool allocate_weights,
+    DataType _quantization_type,
+    bool _offload,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
@@ -239,10 +259,10 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling) {
+      qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
+      offload(_offload) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
-
   numOutputs = 1;
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -267,6 +287,11 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_heads;
     dims[2].size = qParas + kParas + vParas + oParas;
+
+    if (quantization_type != DT_NONE) {
+      dims[2].size = get_quantization_to_byte_size(
+          data_type, quantization_type, dims[2].size);
+    }
     dims[2].degree = 1;
     dims[2].parallel_idx = -1;
     int seed = std::rand();
@@ -276,12 +301,13 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 this->data_type,
-                                                 nullptr /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
+    weights[0] = model.create_parallel_weight<3>(
+        dims,
+        quantization_type == DT_NONE ? this->data_type : quantization_type,
+        nullptr /*owner_op*/,
+        true /*create_grad*/,
+        initializer,
+        comm_type);
   }
   if (bias) {
     ParallelDim dims[2];
@@ -330,6 +356,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     float _scaling_factor,
     bool _qk_prod_scaling,
     bool allocate_weights,
+    DataType _quantization_type,
+    bool _offload,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
@@ -349,7 +377,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling)
+      qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
+      offload(_offload)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -376,6 +405,10 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_heads;
     dims[2].size = qParas + kParas + vParas + oParas;
+    if (quantization_type != DT_NONE) {
+      dims[2].size = get_quantization_to_byte_size(
+          data_type, quantization_type, dims[2].size);
+    }
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
 #ifdef USE_NCCL
@@ -383,12 +416,13 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 this->data_type,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
+    weights[0] = model.create_parallel_weight<3>(
+        dims,
+        quantization_type == DT_NONE ? this->data_type : quantization_type,
+        NULL /*owner_op*/,
+        true /*create_grad*/,
+        initializer,
+        comm_type);
   }
   if (bias) {
     ParallelDim dims[2];
@@ -441,6 +475,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 other.scaling_factor,
                                 other.qk_prod_scaling,
                                 allocate_weights,
+                                other.quantization_type,
+                                other.offload,
                                 other.name) {}
 
 IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
@@ -465,6 +501,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 params.scaling_factor,
                                 params.qk_prod_scaling,
                                 allocate_weights,
+                                params.quantization_type,
+                                params.offload,
                                 name) {}
 
 void IncMultiHeadSelfAttention::init_inference(
@@ -494,11 +532,13 @@ void IncMultiHeadSelfAttention::init_inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -596,12 +636,26 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  if (attn->offload) {
+    // cpu-offload enabled
+    // use offload_reserved_space
+    gpu_mem_allocator.register_reserved_work_space(
+        handle.offload_reserve_space, handle.offload_reserve_space_size);
+  }
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem, num_samples, num_heads);
-
+      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
+  if (handle.offload_reserve_space == nullptr) {
+    // assert that we didn't over allocate memory
+    assert(gpu_mem_allocator.reserved_allocated_size ==
+           gpu_mem_allocator.reserved_total_size);
+  }
   m->profiling = attn->profiling;
-  assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
-         m->weightSize);
+  if (attn->quantization_type == DT_NONE) {
+    assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
+           m->weightSize);
+  }
+
   return m;
 }
 
@@ -641,11 +695,13 @@ FutureMap IncMultiHeadSelfAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -655,11 +711,13 @@ FutureMap IncMultiHeadSelfAttention::inference(
   launcher.add_field(idx++, FID_DATA);
 
   if (bias) {
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[1]->region,
+                          ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
     launcher.add_field(idx++, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
@@ -1524,6 +1582,8 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.scaling_query = this->scaling_query;
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
+  params.quantization_type = this->quantization_type;
+  params.offload = this->offload;
 
   return params;
 }
@@ -1547,6 +1607,8 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.scaling_query);
   hash_combine(key, params.scaling_factor);
   hash_combine(key, params.qk_prod_scaling);
+  hash_combine(key, params.quantization_type);
+  hash_combine(key, params.offload);
   return key;
 }
 }; // namespace std

@@ -295,8 +295,8 @@ __device__ void mergeBeamShards(int num_shards,
       if (verbose && batch_index == 0) {
         printf("slot %d, value %.15f, prob %15f\n",
                slot,
-               entries[slot].value,
-               prob);
+               static_cast<float>(entries[slot].value),
+               static_cast<float>(prob));
       }
     }
     min_heap.build(heap_size);
@@ -312,8 +312,8 @@ __device__ void mergeBeamShards(int num_shards,
         printf("shard %d, index %d, value %.15f, prob %.15f\n",
                shard,
                entry.index,
-               entry.value,
-               prob);
+               static_cast<float>(entry.value),
+               static_cast<float>(prob));
       }
       if (entry.value * prob < root.value) {
         continue;
@@ -358,7 +358,6 @@ __device__ void mergeBeamShards(int num_shards,
       //          entries[next_shard_index].value,
       //          prob);
       // }
-
       max_heap.replace_root(
           {next_shard_index, entries[next_shard_index].value * prob},
           heap_size);
@@ -435,8 +434,9 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                (sub_request_id * token_nums * length),
            batch_input,
            request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id,
-           acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
-                     sub_request_id],
+           static_cast<float>(
+               acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+                         sub_request_id]),
            thread_count,
            request_id);
   }
@@ -716,7 +716,7 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler, Op const *op) : OpMeta(handler) {
                        sizeof(int) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
                            BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&acc_probs,
-                       sizeof(data_type_size(data_type)) *
+                       data_type_size(data_type) *
                            BeamSearchBatchConfig::MAX_BEAM_WIDTH *
                            BeamSearchBatchConfig::MAX_NUM_REQUESTS));
   checkCUDA(cudaMalloc(&block_start_index,

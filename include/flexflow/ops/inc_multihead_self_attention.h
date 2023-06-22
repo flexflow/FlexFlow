@@ -9,6 +9,7 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
+#include "flexflow/utils/memory_allocator.h"
 #include "math.h"
 #include <cfloat>
 #include <complex>
@@ -38,6 +39,8 @@ public:
                             float _scaling_factor,
                             bool _qk_prod_scaling,
                             bool allocate_weights,
+                            DataType _quantization_type,
+                            bool _offload,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
                             const ParallelTensor _input,
@@ -55,6 +58,8 @@ public:
                             float _scaling_factor,
                             bool _qk_prod_scaling,
                             bool allocate_weights,
+                            DataType _quantization_type,
+                            bool _offload,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
                             IncMultiHeadSelfAttention const &other,
@@ -114,6 +119,8 @@ public:
       qk_prod_scaling;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
+  DataType quantization_type;
+  bool offload;
 };
 
 class IncMultiHeadSelfAttentionMeta : public OpMeta {
@@ -121,7 +128,7 @@ public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 IncMultiHeadSelfAttention const *attn,
                                 GenericTensorAccessorR const &weight,
-                                Legion::Memory gpu_mem,
+                                MemoryAllocator &gpu_mem_allocator,
                                 int num_samples,
                                 int _num_heads);
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
@@ -141,14 +148,17 @@ public:
                                 bool _add_bias_kv,
                                 float _scaling_factor,
                                 GenericTensorAccessorR const &weight,
-                                Legion::Memory gpu_mem,
+                                MemoryAllocator &gpu_mem_allocator,
                                 int num_samples,
-                                int _num_heads);
+                                int _num_heads,
+                                DataType _quantization_type,
+                                bool _offload);
   ~IncMultiHeadSelfAttentionMeta(void);
 
 public:
   Realm::RegionInstance reserveInst;
-  size_t weights_params, weightSize, reserveSpaceSize;
+  size_t weights_params, weightSize, biasSize, reserveSpaceSize,
+      quantized_weightSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
   bool *has_load_weights;
@@ -160,10 +170,14 @@ public:
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif
+  void *weight_ptr, *bias_ptr; // for weight offload
   void *devQKVProjArray, *keyCache, *valueCache;
   void *qk_prods, *qk_prods_softmax;
   void *attn_heads, *W_out_contiguous;
+  char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
+  DataType quantization_type;
+  bool offload;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cuFloatComplex *complex_input;
 #endif
