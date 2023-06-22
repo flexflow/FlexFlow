@@ -61,7 +61,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     TreeIncMultiHeadSelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
@@ -83,7 +83,9 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem,
                                     num_samples,
-                                    _num_heads),
+                                    _num_heads,
+                                    attn->quantization_type,
+                                    attn->offload),
       num_active_tokens(0) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));

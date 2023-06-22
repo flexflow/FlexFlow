@@ -90,7 +90,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
-    int _num_heads)
+    int _num_heads,
+    DataType _quantization_type,
+    bool _offload)
     : OpMeta(handler, attn) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
