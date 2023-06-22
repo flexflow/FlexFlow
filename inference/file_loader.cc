@@ -381,17 +381,6 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 
   ParallelTensor weight_pt;
   ff->get_parallel_tensor_from_tensor(weight, weight_pt);
-  if (weight_pt->num_dims > 1 &&
-      weight_pt->dims[weight_pt->num_dims - 1].size > 1 &&
-      weight_pt->dims[weight_pt->num_dims - 1].is_replica_dim) {
-    int num_replicas = weight_pt->dims[weight_pt->num_dims - 1].size;
-    dims_vec.push_back(num_replicas);
-    DT *resizedArray = (DT *)realloc(data, sizeof(DT) * volume * num_replicas);
-    for (size_t i = 1; i < num_replicas; ++i) {
-      memcpy(resizedArray + (i * volume), resizedArray, volume * sizeof(DT));
-    }
-    data = resizedArray;
-  }
   weight_pt->set_tensor<DT>(ff, dims_vec, data);
 
   delete data;
