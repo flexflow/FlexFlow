@@ -81,7 +81,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
-                                    gpu_mem,
+                                    gpu_mem_allocator,
                                     num_samples,
                                     _num_heads,
                                     attn->quantization_type,
