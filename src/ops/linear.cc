@@ -230,7 +230,6 @@ Linear::Linear(FFModel &model,
   LinearParams params = this->get_params();
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
-  quantization_type = offload ? model.config.quantization_type : DT_NONE;
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
     if (quantization_type != DT_NONE) {
