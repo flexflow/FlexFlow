@@ -114,7 +114,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       std::vector<ParallelTensor> list;
       bool found_parallel_tensor = false;
-      if (model->config.cpu_offload) {
+      if (model->cpu_offload) {
         for (auto const &pre_pt : tensor_buffer) {
           bool used_by_future_operator = false;
           bool used_by_current_operator = false;

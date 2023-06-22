@@ -26,7 +26,6 @@ void OPT::create_opt_model(FFModel &ff,
                            int num_pipeline_stages,
                            InferenceMode mode,
                            bool use_full_precision) {
-  ff.cpu_offload = mode == BEAM_SEARCH_MODE ? false : ff.config.cpu_offload;
   Config opt_config(model_config_file_path);
   opt_config.printConfig();
   //------------------------------compute machine views ------------------

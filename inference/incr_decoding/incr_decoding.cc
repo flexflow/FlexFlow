@@ -122,7 +122,7 @@ void FlexFlow::top_level_task(Task const *task,
                     /*verbose*/ verbose,
                     file_paths.output_file_path);
 
-  FFModel model(ffconfig);
+  FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(model,
                               im,

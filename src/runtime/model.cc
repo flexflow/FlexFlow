@@ -1297,7 +1297,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
 
 FFRuntime *ffruntime_singleton = nullptr;
 
-FFModel::FFModel(FFConfig &_config)
+FFModel::FFModel(FFConfig &_config, bool cpu_offload)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
@@ -1306,6 +1306,7 @@ FFModel::FFModel(FFConfig &_config)
       loss_op(NULL), metrics_op(NULL), simulator(NULL) {
   this->search = new PCG::SearchHelper(this);
   this->graph_search = new PCG::GraphSearchHelper(this);
+  this->cpu_offload = cpu_offload;
 
   if (ffruntime_singleton == nullptr) {
     ffruntime_singleton = new FFRuntime(_config);
