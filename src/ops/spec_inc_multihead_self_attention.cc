@@ -600,7 +600,8 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
   SpecIncMultiHeadSelfAttentionMeta *m = new SpecIncMultiHeadSelfAttentionMeta(
       handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
   // assert that we didn't over allocate memory
-  assert(gpu_mem_allocator.allocated_size == gpu_mem_allocator.total_size);
+  assert(gpu_mem_allocator.instance_allocated_size ==
+         gpu_mem_allocator.instance_total_size);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
          m->weightSize);

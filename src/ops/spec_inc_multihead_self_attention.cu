@@ -604,7 +604,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem_allocator,
                                     num_samples,
-                                    _num_heads) {
+                                    _num_heads,
+                                    DT_NONE,
+                                    false) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
@@ -629,21 +631,23 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                              total_size);
     beam_token_infos =
         gpu_mem_allocator
-            .allocate<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
+            .allocate_instance<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
                 beam_tokeninfo_size);
     // offset += beam_tokeninfo_size *
     //           sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
-    request_infos = gpu_mem_allocator.allocate<BatchConfig::PerRequestInfo>(
-        requestinfo_size);
+    request_infos =
+        gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
+            requestinfo_size);
     // offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
     beam_request_infos =
         gpu_mem_allocator
-            .allocate<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
+            .allocate_instance<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
                 beam_requestinfo_size);
     // offset += beam_requestinfo_size *
     //           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
     // assert(offset == total_size);
-    assert(gpu_mem_allocator.total_size == gpu_mem_allocator.allocated_size);
+    assert(gpu_mem_allocator.instance_total_size ==
+           gpu_mem_allocator.instance_allocated_size);
   }
 
   cudaStreamSynchronize(stream);

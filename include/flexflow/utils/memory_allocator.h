@@ -25,24 +25,41 @@ public:
   MemoryAllocator(Legion::Memory memory);
   void create_legion_instance(Realm::RegionInstance &inst, size_t size);
   void register_reserved_work_space(void *base, size_t size);
-  inline void *allocate_untyped(size_t datalen) {
-    void *ptr = static_cast<char *>(base_ptr) + allocated_size;
-    allocated_size += datalen;
-    assert(allocated_size <= total_size);
+  inline void *allocate_reserved_untyped(size_t datalen) {
+    void *ptr = static_cast<char *>(reserved_ptr) + reserved_allocated_size;
+    reserved_allocated_size += datalen;
+    assert(reserved_allocated_size <= reserved_total_size);
     return ptr;
   }
   template <typename DT>
-  inline DT *allocate(size_t count) {
-    void *ptr = static_cast<char *>(base_ptr) + allocated_size;
-    allocated_size += sizeof(DT) * count;
-    assert(allocated_size <= total_size);
+  inline DT *allocate_reserved(size_t count) {
+    void *ptr = static_cast<char *>(reserved_ptr) + reserved_allocated_size;
+    reserved_allocated_size += sizeof(DT) * count;
+    assert(reserved_allocated_size <= reserved_total_size);
+    return static_cast<DT *>(ptr);
+  }
+
+  inline void *allocate_instance_untyped(size_t datalen) {
+    void *ptr = static_cast<char *>(instance_ptr) + instance_allocated_size;
+    instance_allocated_size += datalen;
+    assert(instance_allocated_size <= instance_total_size);
+    return ptr;
+  }
+
+  template <typename DT>
+  inline DT *allocate_instance(size_t count) {
+    void *ptr = static_cast<char *>(instance_ptr) + instance_allocated_size;
+    instance_allocated_size += sizeof(DT) * count;
+    assert(instance_allocated_size <= instance_total_size);
     return static_cast<DT *>(ptr);
   }
 
 public:
   Legion::Memory memory;
-  void *base_ptr;
-  size_t total_size, allocated_size;
+  void *reserved_ptr;
+  void *instance_ptr;
+  size_t reserved_total_size, reserved_allocated_size;
+  size_t instance_total_size, instance_allocated_size;
   bool use_reserved_work_space;
 };
 

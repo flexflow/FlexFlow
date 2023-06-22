@@ -358,7 +358,7 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // additional processing for weight uploading
   // Note that we update weight_ptr and bias_ptr when uploading weight and
   // bias
-  if (m->handle.quantization_type != DT_NONE) {
+  if (m->quantization_type != DT_NONE) {
     // copy weight_ptr to quantized_weight_ptr, do compression and store in
     // m->weight_ptr
     cudaMemcpyAsync(m->quantized_weight_ptr,
@@ -367,7 +367,7 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                     cudaMemcpyHostToDevice,
                     stream);
 
-    if (m->handle.quantization_type == DT_INT4) {
+    if (m->quantization_type == DT_INT4) {
       int parallelism = m->qProjSize * m->qSize * m->num_heads / 2;
       decompress_int4_attention_weights<<<GET_BLOCKS(parallelism),
                                           min(CUDA_NUM_THREADS, parallelism),
@@ -379,7 +379,7 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
           m->qSize,
           m->num_heads);
     } else {
-      assert(m->handle.quantization_type == DT_INT8);
+      assert(m->quantization_type == DT_INT8);
       int parallelism = m->qProjSize * m->qSize * m->num_heads;
       decompress_int8_attention_weights<<<GET_BLOCKS(parallelism),
                                           min(CUDA_NUM_THREADS, parallelism),
@@ -433,7 +433,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       cudaStream_t stream) {
   // here because we need postion info in infernece 1
 
-  if (m->handle.quantization_type != DT_NONE && m->biasSize > 0) {
+  if (m->quantization_type != DT_NONE && m->biasSize > 0) {
     cudaMemcpyAsync(
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
@@ -768,7 +768,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   }
 
   if (input.data_type == DT_HALF) {
-    if (m->handle.offload_reserve_space != nullptr) {
+    if (m->offload) {
       pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
     }
     half const *bias_ptr =
@@ -777,14 +777,12 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         m,
         bc,
         input.get_half_ptr(),
-        m->handle.offload_reserve_space == nullptr
-            ? weight.get_half_ptr()
-            : static_cast<half *>(m->weight_ptr),
+        m->offload ? static_cast<half *>(m->weight_ptr) : weight.get_half_ptr(),
         output.get_half_ptr(),
         bias_ptr,
         stream);
   } else if (input.data_type == DT_FLOAT) {
-    if (m->handle.offload_reserve_space != nullptr) {
+    if (m->offload) {
       pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
     }
     float const *bias_ptr =
@@ -793,9 +791,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         m,
         bc,
         input.get_float_ptr(),
-        m->handle.offload_reserve_space == nullptr
-            ? weight.get_float_ptr()
-            : static_cast<float *>(m->weight_ptr),
+        m->offload ? static_cast<float *>(m->weight_ptr)
+                   : weight.get_float_ptr(),
         output.get_float_ptr(),
         bias_ptr,
         stream);
@@ -842,7 +839,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem_allocator,
                                     num_samples,
-                                    _num_heads) {}
+                                    _num_heads,
+                                    attn->quantization_type,
+                                    attn->offload) {}
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
@@ -864,7 +863,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
-    int _num_heads)
+    int _num_heads,
+    DataType _quantization_type,
+    bool _offload)
     : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -881,14 +882,16 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   vProjSize = _vProjSize;
   oProjSize = _oProjSize;
   size_t size_of_dt = data_type_size(attn->data_type);
+  quantization_type = _quantization_type;
+  offload = _offload;
 
   num_heads = _num_heads;
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
                     oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   weightSize = weights_params * num_heads * size_of_dt;
-  if (handler.quantization_type != DT_NONE) {
+  if (quantization_type != DT_NONE) {
     quantized_weightSize = get_quantization_to_byte_size(
-        attn->data_type, handler.quantization_type, weightSize);
+        attn->data_type, quantization_type, weightSize);
   }
   biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
   // has_load_weights = (bool *)calloc(1, sizeof(bool));
@@ -906,15 +909,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   assert(!_add_bias_kv);
 
   // allocate weight and bias in the reserve space for cpu offloading
-  if (handler.offload_reserve_space != nullptr) {
-    assert(gpu_mem_allocator.use_reserved_work_space);
-    weight_ptr = gpu_mem_allocator.allocate_untyped(weightSize);
-    bias_ptr = gpu_mem_allocator.allocate_untyped(biasSize);
-    // allocate more size for quantization data
-    if (handler.quantization_type != DT_NONE) {
-      quantized_weight_ptr =
-          gpu_mem_allocator.allocate<char>(quantized_weightSize);
-    }
+  if (offload) {
+    // assert(gpu_mem_allocator.use_reserved_work_space);
+    weight_ptr = gpu_mem_allocator.allocate_reserved_untyped(weightSize);
+    bias_ptr = gpu_mem_allocator.allocate_reserved_untyped(biasSize);
   }
 
 #ifdef INFERENCE_TESTS
@@ -970,37 +968,105 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
         complex_size * sizeof(cuFloatComplex); // more components will
                                                // be added here later
-    if (gpu_mem_allocator.use_reserved_work_space) {
+    if (offload) {
       // assert that we have enough reserved work space left
-      assert(gpu_mem_allocator.total_size - gpu_mem_allocator.allocated_size >=
-             totalSize);
+      size_t totalSharedSize =
+          infer_mode == TREE_VERIFY_MODE
+              ? totalSize -
+                    (key_cache_size + value_cache_size + qkv_max_proj_size) *
+                        size_of_dt
+              : totalSize - (key_cache_size + value_cache_size) * size_of_dt;
+
+      size_t instance_size =
+          size_of_dt *
+          (infer_mode == TREE_VERIFY_MODE
+               ? key_cache_size + value_cache_size + qkv_max_proj_size
+               : key_cache_size + value_cache_size);
+
+      if (quantization_type != DT_NONE) {
+        totalSharedSize += quantized_weightSize;
+      }
+      assert(gpu_mem_allocator.reserved_total_size -
+                 gpu_mem_allocator.reserved_allocated_size >=
+             totalSharedSize);
+      gpu_mem_allocator.create_legion_instance(reserveInst, instance_size);
     } else {
       gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
     }
-    devQKVProjArray =
-        gpu_mem_allocator.allocate_untyped(qkv_max_proj_size * size_of_dt);
-    // offset += qkv_max_proj_size * size_of_dt;
-    keyCache = gpu_mem_allocator.allocate_untyped(key_cache_size * size_of_dt);
-    // offset += key_cache_size * size_of_dt;
-    valueCache =
-        gpu_mem_allocator.allocate_untyped(value_cache_size * size_of_dt);
-    // offset += value_cache_size * size_of_dt;
-    token_infos =
-        gpu_mem_allocator.allocate<BatchConfig::PerTokenInfo>(tokeninfo_size);
-    // offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
-    qk_prods = gpu_mem_allocator.allocate_untyped(qk_prod_size * size_of_dt);
-    // offset += qk_prod_size * size_of_dt;
-    qk_prods_softmax =
-        gpu_mem_allocator.allocate_untyped(qk_prod_size * size_of_dt);
-    // offset += qk_prod_size * size_of_dt;
-    attn_heads =
-        gpu_mem_allocator.allocate_untyped(attn_heads_size * size_of_dt);
-    // offset += attn_heads_size * size_of_dt;
-    W_out_contiguous =
-        gpu_mem_allocator.allocate_untyped(W_out_contiguous_size * size_of_dt);
-    // offset += W_out_contiguous_size * size_of_dt;
-    complex_input = gpu_mem_allocator.allocate<cuFloatComplex>(complex_size);
-    // offset += complex_size * sizeof(cuFloatComplex);
+
+    // in tree_verify, enable devQKVProjArray;
+    if (!offload || infer_mode == TREE_VERIFY_MODE) {
+      devQKVProjArray = gpu_mem_allocator.allocate_instance_untyped(
+          qkv_max_proj_size * size_of_dt);
+    } else {
+      devQKVProjArray = gpu_mem_allocator.allocate_reserved_untyped(
+          qkv_max_proj_size * size_of_dt);
+      // offset += qkv_max_proj_size * size_of_dt;
+    }
+
+    // use key value cache in all mode.
+    keyCache = gpu_mem_allocator.allocate_instance_untyped(key_cache_size *
+                                                           size_of_dt);
+    valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
+                                                             size_of_dt);
+
+    // if (offload && infer_mode == BEAM_SEARCH_MODE) {
+    //   keyCache = gpu_mem_allocator.allocate_reserved_untyped(key_cache_size *
+    //                                                          size_of_dt);
+    //   // offset += key_cache_size * size_of_dt;
+    //   valueCache = gpu_mem_allocator.allocate_reserved_untyped(
+    //       value_cache_size * size_of_dt);
+    //   // offset += value_cache_size * size_of_dt;
+    // } else {
+    //   keyCache = gpu_mem_allocator.allocate_instance_untyped(key_cache_size *
+    //                                                          size_of_dt);
+    //   valueCache = gpu_mem_allocator.allocate_instance_untyped(
+    //       value_cache_size * size_of_dt);
+    // }
+
+    if (offload) {
+      token_infos =
+          gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
+              tokeninfo_size);
+      // offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
+      qk_prods = gpu_mem_allocator.allocate_reserved_untyped(qk_prod_size *
+                                                             size_of_dt);
+      // offset += qk_prod_size * size_of_dt;
+      qk_prods_softmax = gpu_mem_allocator.allocate_reserved_untyped(
+          qk_prod_size * size_of_dt);
+      // offset += qk_prod_size * size_of_dt;
+      attn_heads = gpu_mem_allocator.allocate_reserved_untyped(attn_heads_size *
+                                                               size_of_dt);
+      // offset += attn_heads_size * size_of_dt;
+      W_out_contiguous = gpu_mem_allocator.allocate_reserved_untyped(
+          W_out_contiguous_size * size_of_dt);
+      // offset += W_out_contiguous_size * size_of_dt;
+      complex_input =
+          gpu_mem_allocator.allocate_reserved<cuFloatComplex>(complex_size);
+      // offset += complex_size * sizeof(cuFloatComplex);
+    } else {
+      token_infos =
+          gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
+              tokeninfo_size);
+      qk_prods = gpu_mem_allocator.allocate_instance_untyped(qk_prod_size *
+                                                             size_of_dt);
+      qk_prods_softmax = gpu_mem_allocator.allocate_instance_untyped(
+          qk_prod_size * size_of_dt);
+      attn_heads = gpu_mem_allocator.allocate_instance_untyped(attn_heads_size *
+                                                               size_of_dt);
+      W_out_contiguous = gpu_mem_allocator.allocate_instance_untyped(
+          W_out_contiguous_size * size_of_dt);
+      complex_input =
+          gpu_mem_allocator.allocate_instance<cuFloatComplex>(complex_size);
+    }
+
+    // allocate more size for quantization data
+    if (quantization_type != DT_NONE) {
+      assert(offload);
+      quantized_weight_ptr =
+          gpu_mem_allocator.allocate_reserved<char>(quantized_weightSize);
+    }
+
     if (weight.data_type == DT_FLOAT) {
       int parallelism = vProjSize * oProjSize * num_heads;
       build_w_out_tensor<<<GET_BLOCKS(parallelism),
@@ -1028,8 +1094,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     } else {
       assert(weight.data_type == DT_INT4 || weight.data_type == DT_INT8);
     }
-    if (!gpu_mem_allocator.use_reserved_work_space) {
-      assert(gpu_mem_allocator.total_size == gpu_mem_allocator.allocated_size);
+    if (!offload) {
+      assert(gpu_mem_allocator.reserved_total_size ==
+             gpu_mem_allocator.reserved_allocated_size);
     }
   }
   cudaStreamSynchronize(stream);
@@ -1044,5 +1111,17 @@ IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
   free(vcache);
 #endif
 }
+
+template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    cudaStream_t stream);
 
 }; // namespace FlexFlow

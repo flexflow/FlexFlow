@@ -129,6 +129,13 @@ void InferenceManager::compile_model_and_allocate_buffer(
               used_by_current_operator = true;
             }
           }
+          for (int j = 0; j < i; j++) {
+            assert(tensor_buffer.find(op->outputs[j]) != tensor_buffer.end());
+            if (parallel_tensor_list_overlaps(tensor_buffer[op->outputs[j]],
+                                              pre_pt.second)) {
+              used_by_current_operator = true;
+            }
+          }
           // Check that pt cannot be used by any subsequent operators
           for (int op_idx2 = op_idx; op_idx2 < model->operators.size();
                op_idx2++) {

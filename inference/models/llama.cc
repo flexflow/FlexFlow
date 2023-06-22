@@ -26,6 +26,8 @@ void LLAMA::create_llama_model(FFModel &ff,
                                int num_pipeline_stages,
                                InferenceMode mode,
                                bool use_full_precision) {
+  // do not apply cpu offload in beam search model.
+  ff.cpu_offload = mode == BEAM_SEARCH_MODE ? false : ff.config.cpu_offload;
   Config llama_config(model_config_file_path);
   llama_config.printConfig();
   //------------------------------compute machine views ------------------

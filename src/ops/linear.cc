@@ -46,7 +46,8 @@ Tensor FFModel::dense(const Tensor input,
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
-  DataType quantization_type = config.quantization_type;
+  DataType quantization_type = cpu_offload ? config.quantization_type : DT_NONE;
+  bool offload = cpu_offload;
   Layer *li = nullptr;
   if (data_type != input->data_type) {
     Tensor casted_input = cast(input, data_type, "type cast for dense");
@@ -109,6 +110,8 @@ Tensor FFModel::dense(const Tensor input,
   li->add_int_property("activation", activation);
   li->add_int_property("kernel_reg_type", kernel_reg_type);
   li->add_float_property("kernel_reg_lambda", kernel_reg_lambda);
+  li->add_int_property("quantization_type", quantization_type);
+  li->add_int_property("offload", offload);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -128,6 +131,10 @@ Op *Linear::create_operator_from_layer(
   RegularizerMode kernel_reg_type = (RegularizerMode)value;
   float kernel_reg_lambda;
   layer->get_float_property("kernel_reg_lambda", kernel_reg_lambda);
+  layer->get_int_property("quantization_type", value);
+  DataType quantization_type = (DataType)value;
+  layer->get_int_property("offload", value);
+  bool offload = (bool)value;
   return new Linear(model,
                     layer->layer_guid,
                     inputs[0],
@@ -137,6 +144,8 @@ Op *Linear::create_operator_from_layer(
                     kernel_reg_lambda,
                     use_bias,
                     layer->data_type,
+                    quantization_type,
+                    offload,
                     false /*allocate_weights*/,
                     layer->name);
 }
@@ -158,6 +167,8 @@ Linear::Linear(FFModel &model,
              other.kernel_reg_lambda,
              other.use_bias,
              other.data_type,
+             other.quantization_type,
+             other.offload,
              allocate_weights,
              other.name) {}
 
@@ -175,6 +186,8 @@ Linear::Linear(FFModel &model,
              params.kernel_reg_lambda,
              params.use_bias,
              params.data_type,
+             params.quantization_type,
+             params.offload,
              allocate_weights,
              name) {}
 
@@ -187,6 +200,8 @@ Linear::Linear(FFModel &model,
                float _kernel_reg_lambda,
                bool _use_bias,
                DataType _data_type,
+               DataType _quantization_type,
+               bool _offload,
                bool allocate_weights,
                char const *name)
     : Op(model,
@@ -200,6 +215,7 @@ Linear::Linear(FFModel &model,
          _input),
       out_channels(out_dim), activation(_activation), use_bias(_use_bias),
       kernel_reg_type(_kernel_reg_type), kernel_reg_lambda(_kernel_reg_lambda),
+      quantization_type(_quantization_type), offload(_offload),
       replica(ParallelTensorBase::NO_TENSOR) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
@@ -214,8 +230,7 @@ Linear::Linear(FFModel &model,
   LinearParams params = this->get_params();
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
-  DataType quantization_type = model.config.quantization_type;
-
+  quantization_type = offload ? model.config.quantization_type : DT_NONE;
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
     if (quantization_type != DT_NONE) {
@@ -349,7 +364,7 @@ void Linear::init_inference(FFModel const &ff,
                         READ_ONLY,
                         EXCLUSIVE,
                         weights[0]->region,
-                        ff.config.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(2, FID_DATA);
   // launcher.add_region_requirement(
   //     RegionRequirement(weights[1]->part, 0/*projection id*/,
@@ -389,7 +404,7 @@ OpMeta *Linear::init_task(Task const *task,
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
     if (output.data_type == DT_HALF) {                                         \
-      if (handle.quantization_type != DT_NONE) {                               \
+      if (linear->quantization_type != DT_NONE) {                              \
         return init_task_with_dim<half, char, DIM>(                            \
             task, regions, ctx, runtime);                                      \
       } else {                                                                 \
@@ -397,7 +412,7 @@ OpMeta *Linear::init_task(Task const *task,
             task, regions, ctx, runtime);                                      \
       }                                                                        \
     } else if (output.data_type == DT_FLOAT) {                                 \
-      if (handle.quantization_type != DT_NONE) {                               \
+      if (linear->quantization_type != DT_NONE) {                              \
         return init_task_with_dim<float, char, DIM>(                           \
             task, regions, ctx, runtime);                                      \
       } else {                                                                 \
@@ -456,7 +471,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
                        .best_affinity_to(task->target_proc)
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
-  if (handle.offload_reserve_space != nullptr) {
+  if (linear->offload) {
     // cpu-offload enabled
     // use offload_reserved_space
     gpu_mem_allocator.register_reserved_work_space(
@@ -475,6 +490,8 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->weight_type = linear->weights[0]->data_type;
   m->output_type = linear->outputs[0]->data_type;
   m->weight_ptr_type = m->input_type;
+  m->quantization_type = linear->quantization_type;
+  m->offload = linear->offload;
   std::strcpy(m->op_name, linear->name);
 
   init_kernel(m, batch_size, out_dim);
@@ -564,7 +581,7 @@ FutureMap Linear::inference(FFModel const &ff,
                         READ_ONLY,
                         EXCLUSIVE,
                         weights[0]->region,
-                        ff.config.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(2, FID_DATA);
   if (use_bias) {
     launcher.add_region_requirement(RegionRequirement(weights[1]->part,
@@ -584,7 +601,7 @@ void Linear::forward_task(Task const *task,
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
-  if (m->handle.quantization_type == DT_NONE) {
+  if (m->quantization_type == DT_NONE) {
     assert(m->input_type == m->weight_type);
   }
   assert(m->input_type == m->output_type);
@@ -592,7 +609,7 @@ void Linear::forward_task(Task const *task,
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
     if (m->output_type == DT_HALF) {                                           \
-      if (m->handle.quantization_type != DT_NONE) {                            \
+      if (m->quantization_type != DT_NONE) {                                   \
         return forward_task_with_dim<half, char, DIM>(                         \
             task, regions, ctx, runtime);                                      \
       } else {                                                                 \
@@ -600,7 +617,7 @@ void Linear::forward_task(Task const *task,
             task, regions, ctx, runtime);                                      \
       }                                                                        \
     } else if (m->output_type == DT_FLOAT) {                                   \
-      if (m->handle.quantization_type != DT_NONE) {                            \
+      if (m->quantization_type != DT_NONE) {                                   \
         return forward_task_with_dim<float, char, DIM>(                        \
             task, regions, ctx, runtime);                                      \
       } else {                                                                 \
@@ -750,7 +767,7 @@ void Linear::backward_task(Task const *task,
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
-  if (m->handle.quantization_type == DT_NONE) {
+  if (m->quantization_type == DT_NONE) {
     assert(m->input_type == m->weight_type);
   }
   assert(m->input_type == m->output_type);
@@ -1156,6 +1173,8 @@ void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->kernel_reg_lambda);
   sez.serialize(this->use_bias);
   sez.serialize(this->data_type);
+  sez.serialize(this->quantization_type);
+  sez.serialize(this->offload);
 }
 
 /* static */
@@ -1171,6 +1190,8 @@ Node Linear::deserialize(FFModel &ff,
   float kernel_reg_lambda;
   bool use_bias;
   DataType data_type;
+  DataType quantization_type;
+  bool offload;
   size_t id;
   dez.deserialize(id);
   LayerID layer_guid(id);
@@ -1180,6 +1201,8 @@ Node Linear::deserialize(FFModel &ff,
   dez.deserialize(kernel_reg_lambda);
   dez.deserialize(use_bias);
   dez.deserialize(data_type);
+  dez.deserialize(quantization_type);
+  dez.deserialize(offload);
 
   LinearParams params;
   params.activation = activation;
@@ -1189,6 +1212,8 @@ Node Linear::deserialize(FFModel &ff,
   params.use_bias = use_bias;
   params.data_type = data_type;
   params.layer_guid = layer_guid;
+  params.quantization_type = quantization_type;
+  params.offload = offload;
   return ff.get_or_create_node<Linear>(inputs[0], params);
 }
 
@@ -1201,6 +1226,8 @@ LinearParams Linear::get_params() const {
   params.activation = this->activation;
   params.kernel_reg_type = this->kernel_reg_type;
   params.kernel_reg_lambda = this->kernel_reg_lambda;
+  params.quantization_type = this->quantization_type;
+  params.offload = this->offload;
 
   return params;
 }
@@ -1404,6 +1431,8 @@ size_t hash<FlexFlow::LinearParams>::operator()(
   hash_combine(key, params.activation);
   hash_combine(key, params.kernel_reg_type);
   hash_combine(key, params.kernel_reg_lambda);
+  hash_combine(key, params.quantization_type);
+  hash_combine(key, params.offload);
   return key;
 }
 }; // namespace std

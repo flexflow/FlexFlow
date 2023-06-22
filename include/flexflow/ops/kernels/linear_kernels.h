@@ -25,6 +25,8 @@ public:
   void *one_ptr;
   void *weight_ptr;
   DataType weight_ptr_type;
+  DataType quantization_type;
+  bool offload;
   char *quantized_weight_ptr;
   size_t quantized_weightSize;
   ActiMode activation;

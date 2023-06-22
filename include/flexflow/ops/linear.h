@@ -26,6 +26,8 @@ public:
          float kernel_reg_lambda,
          bool _use_bias,
          DataType _data_type,
+         DataType _quantization_type,
+         bool offload,
          bool allocate_weights,
          char const *name);
   Linear(FFModel &model,
@@ -127,6 +129,8 @@ public:
   float kernel_reg_lambda;
   bool use_bias;
   ParallelTensor replica;
+  DataType quantization_type;
+  bool offload;
 };
 
 }; // namespace FlexFlow

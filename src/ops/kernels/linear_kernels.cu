@@ -28,14 +28,14 @@ LinearMeta::LinearMeta(FFHandler handler,
     : OpMeta(handler, li), weight_ptr(nullptr) {
   DataType data_type = li->data_type;
   // allocate weight and bias in the reserve space for cpu offloading
-  if (handler.offload_reserve_space != nullptr) {
-    weight_ptr = gpu_mem_allocator.allocate_untyped(weightSize *
-                                                    data_type_size(data_type));
-    if (handler.quantization_type != DT_NONE) {
+  if (li->offload) {
+    weight_ptr = gpu_mem_allocator.allocate_reserved_untyped(
+        weightSize * data_type_size(data_type));
+    if (li->quantization_type != DT_NONE) {
       quantized_weightSize = get_quantization_to_byte_size(
-          data_type, handler.quantization_type, weightSize);
+          data_type, li->quantization_type, weightSize);
       quantized_weight_ptr =
-          gpu_mem_allocator.allocate<char>(quantized_weightSize);
+          gpu_mem_allocator.allocate_reserved<char>(quantized_weightSize);
     }
   }
   // Allocate an all-one's vector
@@ -253,15 +253,15 @@ void forward_kernel(LinearMeta const *m,
                     int batch_size,
                     ffStream_t stream) {
   // additional processing for uploading weights
-  if (m->handle.offload_reserve_space != nullptr) {
+  if (m->offload) {
     // Note that we update weight_ptr when uploading weight
-    if (m->handle.quantization_type != DT_NONE) {
+    if (m->quantization_type != DT_NONE) {
       cudaMemcpyAsync(m->quantized_weight_ptr,
                       weight_ptr,
                       m->quantized_weightSize,
                       cudaMemcpyHostToDevice,
                       stream);
-      if (m->handle.quantization_type == DT_INT4) {
+      if (m->quantization_type == DT_INT4) {
         int parallelism = in_dim * out_dim / 2;
         decompress_int4_general_weights<DT>
             <<<GET_BLOCKS(parallelism),
@@ -272,7 +272,7 @@ void forward_kernel(LinearMeta const *m,
                          in_dim,
                          in_dim * out_dim);
       } else {
-        assert(m->handle.quantization_type == DT_INT8);
+        assert(m->quantization_type == DT_INT8);
         int parallelism = in_dim * out_dim;
         decompress_int8_general_weights<DT>
             <<<GET_BLOCKS(parallelism),
@@ -296,9 +296,9 @@ void forward_kernel(LinearMeta const *m,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
-  cudaDataType_t weight_type = m->handle.offload_reserve_space == nullptr
-                                   ? ff_to_cuda_datatype(m->weight_type)
-                                   : ff_to_cuda_datatype(m->weight_ptr_type);
+  cudaDataType_t weight_type = m->offload
+                                   ? ff_to_cuda_datatype(m->weight_ptr_type)
+                                   : ff_to_cuda_datatype(m->weight_type);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
   assert(input_type == weight_type && weight_type == output_type);
 #if CUDA_VERSION >= 11000
@@ -307,26 +307,25 @@ void forward_kernel(LinearMeta const *m,
 #else
   cudaDataType_t compute_type = input_type;
 #endif
-  checkCUDA(cublasGemmEx(
-      m->handle.blas,
-      CUBLAS_OP_T,
-      CUBLAS_OP_N,
-      out_dim,
-      batch_size,
-      in_dim,
-      &alpha,
-      m->handle.offload_reserve_space == nullptr ? weight_ptr : m->weight_ptr,
-      weight_type,
-      in_dim,
-      input_ptr,
-      input_type,
-      in_dim,
-      &beta,
-      output_ptr,
-      output_type,
-      out_dim,
-      compute_type,
-      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
+                         out_dim,
+                         batch_size,
+                         in_dim,
+                         &alpha,
+                         m->offload ? m->weight_ptr : weight_ptr,
+                         weight_type,
+                         in_dim,
+                         input_ptr,
+                         input_type,
+                         in_dim,
+                         &beta,
+                         output_ptr,
+                         output_type,
+                         out_dim,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // use_bias = True
   if (bias_ptr != NULL) {
     checkCUDA(cublasGemmEx(m->handle.blas,

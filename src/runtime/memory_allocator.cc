@@ -23,13 +23,15 @@ using Legion::Memory;
 using Realm::RegionInstance;
 
 MemoryAllocator::MemoryAllocator(Memory _memory)
-    : memory(_memory), base_ptr(nullptr), total_size(0), allocated_size(0),
+    : memory(_memory), reserved_ptr(nullptr), instance_ptr(nullptr),
+      reserved_total_size(0), reserved_allocated_size(0),
+      instance_total_size(0), instance_allocated_size(0),
       use_reserved_work_space(false) {}
 
 void MemoryAllocator::create_legion_instance(RegionInstance &inst,
                                              size_t size) {
   // Assert that we have used up previously created region instance
-  assert(total_size == allocated_size);
+  assert(instance_total_size == instance_allocated_size);
   Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                  Realm::Point<1, coord_t>(size - 1));
   std::vector<size_t> field_sizes;
@@ -37,17 +39,34 @@ void MemoryAllocator::create_legion_instance(RegionInstance &inst,
   Realm::RegionInstance::create_instance(
       inst, memory, bounds, field_sizes, 0, Realm::ProfilingRequestSet())
       .wait();
-  base_ptr = inst.pointer_untyped(0, 0);
-  total_size = size;
-  allocated_size = 0;
+  instance_ptr = inst.pointer_untyped(0, 0);
+  instance_total_size = size;
+  instance_allocated_size = 0;
 }
+
+// // create legion instance in offload mode. for kv cache.
+// void MemoryAllocator::create_additional_legion_instance(RegionInstance &inst,
+//                                                         size_t size) {
+//   // Assert that we have used up previously created region instance
+//   assert(addtional_size == additional_allocated_size);
+//   Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
+//                                  Realm::Point<1, coord_t>(size - 1));
+//   std::vector<size_t> field_sizes;
+//   field_sizes.push_back(sizeof(char));
+//   Realm::RegionInstance::create_instance(
+//       inst, memory, bounds, field_sizes, 0, Realm::ProfilingRequestSet())
+//       .wait();
+//   additional_ptr = inst.pointer_untyped(0, 0);
+//   addtional_size = size;
+//   additional_allocated_size = 0;
+// }
 
 void MemoryAllocator::register_reserved_work_space(void *base, size_t size) {
   // Assert that we haven't allocated anything before
-  assert(total_size == 0);
-  base_ptr = base;
-  total_size = size;
-  allocated_size = 0;
+  assert(reserved_total_size == 0);
+  reserved_ptr = base;
+  reserved_total_size = size;
+  reserved_allocated_size = 0;
   use_reserved_work_space = true;
 }
 

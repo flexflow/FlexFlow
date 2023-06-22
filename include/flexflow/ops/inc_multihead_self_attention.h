@@ -39,6 +39,8 @@ public:
                             float _scaling_factor,
                             bool _qk_prod_scaling,
                             bool allocate_weights,
+                            DataType _quantization_type,
+                            bool _offload,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
                             const ParallelTensor _input,
@@ -56,6 +58,8 @@ public:
                             float _scaling_factor,
                             bool _qk_prod_scaling,
                             bool allocate_weights,
+                            DataType _quantization_type,
+                            bool _offload,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
                             IncMultiHeadSelfAttention const &other,
@@ -115,6 +119,8 @@ public:
       qk_prod_scaling;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
+  DataType quantization_type;
+  bool offload;
 };
 
 class IncMultiHeadSelfAttentionMeta : public OpMeta {
@@ -144,7 +150,9 @@ public:
                                 GenericTensorAccessorR const &weight,
                                 MemoryAllocator &gpu_mem_allocator,
                                 int num_samples,
-                                int _num_heads);
+                                int _num_heads,
+                                DataType _quantization_type,
+                                bool _offload);
   ~IncMultiHeadSelfAttentionMeta(void);
 
 public:
@@ -168,6 +176,8 @@ public:
   void *attn_heads, *W_out_contiguous;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
+  DataType quantization_type;
+  bool offload;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cuFloatComplex *complex_input;
 #endif
