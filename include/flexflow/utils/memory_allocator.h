@@ -60,7 +60,6 @@ public:
   void *instance_ptr;
   size_t reserved_total_size, reserved_allocated_size;
   size_t instance_total_size, instance_allocated_size;
-  bool use_reserved_work_space;
 };
 
 }; // namespace FlexFlow

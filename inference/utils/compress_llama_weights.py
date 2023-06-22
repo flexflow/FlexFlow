@@ -55,10 +55,6 @@ def compress(tensor, config):
         data.mul_(scale)
 
         data = data.clamp_(0, B).round_().to(torch.uint8)
-        
-        # print(scale)
-        # print(mn)
-        # print('---sadas---')
         return data, mn, scale, original_shape
 
 
@@ -93,8 +89,8 @@ def decompress(packed_data, config):
         return data.view(original_shape)
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.HalfTensor)
-    torch.set_default_tensor_type(torch.cuda.HalfTensor)
+    # torch.set_default_tensor_type(torch.HalfTensor)
+    # torch.set_default_tensor_type(torch.cuda.HalfTensor)
     model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
     config = CompressionConfig(
         num_bits=8, group_size=32, group_dim=0, symmetric=False)
@@ -115,9 +111,7 @@ if __name__ == "__main__":
             .replace("embed_tokens", "tok_embeddings")
             .replace("lm_head", "output")
             .replace("model_", "")
-        )
-        torch.set_printoptions(precision=10)
-        
+        )        
         if "feed_forward" in name or "output" in name or "attention_w" in name:
             data, mn, scale, original_shape = compress(params, config)
             

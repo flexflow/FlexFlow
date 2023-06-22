@@ -910,7 +910,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate weight and bias in the reserve space for cpu offloading
   if (offload) {
-    // assert(gpu_mem_allocator.use_reserved_work_space);
     weight_ptr = gpu_mem_allocator.allocate_reserved_untyped(weightSize);
     bias_ptr = gpu_mem_allocator.allocate_reserved_untyped(biasSize);
   }
@@ -1009,20 +1008,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                            size_of_dt);
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
                                                              size_of_dt);
-
-    // if (offload && infer_mode == BEAM_SEARCH_MODE) {
-    //   keyCache = gpu_mem_allocator.allocate_reserved_untyped(key_cache_size *
-    //                                                          size_of_dt);
-    //   // offset += key_cache_size * size_of_dt;
-    //   valueCache = gpu_mem_allocator.allocate_reserved_untyped(
-    //       value_cache_size * size_of_dt);
-    //   // offset += value_cache_size * size_of_dt;
-    // } else {
-    //   keyCache = gpu_mem_allocator.allocate_instance_untyped(key_cache_size *
-    //                                                          size_of_dt);
-    //   valueCache = gpu_mem_allocator.allocate_instance_untyped(
-    //       value_cache_size * size_of_dt);
-    // }
 
     if (offload) {
       token_infos =

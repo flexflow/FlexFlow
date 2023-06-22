@@ -366,7 +366,7 @@ public:
   static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
   static constexpr float PROPAGATION_SIZE_WEIGHT = 1.0;
 
-  bool cpu_offload;
+  bool cpu_offload = false;
   // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor x, char const *name = NULL);
