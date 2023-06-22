@@ -433,7 +433,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       cudaStream_t stream) {
   // here because we need postion info in infernece 1
 
-  if (m->quantization_type != DT_NONE && m->biasSize > 0) {
+  if (m->offload && m->biasSize > 0) {
     cudaMemcpyAsync(
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
