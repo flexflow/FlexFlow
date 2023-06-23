@@ -38,6 +38,8 @@ public:
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
                                 bool allocate_weights,
+                                DataType _quantization_type,
+                                bool _offload,
                                 char const *name);
   TreeIncMultiHeadSelfAttention(FFModel &model,
                                 const ParallelTensor _input,
@@ -55,6 +57,8 @@ public:
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
                                 bool allocate_weights,
+                                DataType _quantization_type,
+                                bool _offload,
                                 char const *name);
   TreeIncMultiHeadSelfAttention(FFModel &model,
                                 TreeIncMultiHeadSelfAttention const &other,
@@ -115,6 +119,8 @@ public:
       qk_prod_scaling;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
+  DataType quantization_type;
+  bool offload;
 };
 
 class TreeIncMultiHeadSelfAttentionMeta : public IncMultiHeadSelfAttentionMeta {
@@ -122,7 +128,7 @@ public:
   TreeIncMultiHeadSelfAttentionMeta(FFHandler handler,
                                     TreeIncMultiHeadSelfAttention const *attn,
                                     GenericTensorAccessorR const &weight,
-                                    Legion::Memory gpu_mem,
+                                    MemoryAllocator &gpu_mem_allocator,
                                     int num_samples,
                                     int _num_heads);
   ~TreeIncMultiHeadSelfAttentionMeta(void);

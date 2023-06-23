@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -24,13 +24,12 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void IncMultiHeadSelfAttention::inference_kernel_wrapper(
-    IncMultiHeadSelfAttentionMeta const *m,
+void IncMultiQuerySelfAttention::inference_kernel_wrapper(
+    IncMultiQuerySelfAttentionMeta const *m,
     BatchConfig const *bc,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
-    GenericTensorAccessorW const &output,
-    GenericTensorAccessorR const &bias) {
+    GenericTensorAccessorW const &output) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -41,7 +40,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     hipEventRecord(t_start, stream);
   }
 
-  handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION);
+  handle_unimplemented_hip_kernel(OP_INC_MULTIQUERY_SELF_ATTENTION);
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);
@@ -50,27 +49,26 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
-    printf("IncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
+    printf("IncMultiQuerySelfAttention forward time = %.2fms\n", elapsed);
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
-IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
+IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(
     FFHandler handler,
-    IncMultiHeadSelfAttention const *attn,
+    IncMultiQuerySelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    MemoryAllocator &gpu_mem_allocator,
-    int num_samples,
-    int _num_heads)
+    Memory gpu_mem,
+    int num_samples)
     : OpMeta(handler, attn) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
-IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
+IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(
     FFHandler handler,
     InferenceMode infer_mode,
     Op const *attn,
@@ -81,24 +79,18 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _kProjSize,
     int _vProjSize,
     int _oProjSize,
-    bool _apply_rotary_embedding,
+    int _embed_dim,
     bool _bias,
-    bool _scaling_query,
-    bool _qk_prod_scaling,
     bool _add_bias_kv,
-    float _scaling_factor,
     GenericTensorAccessorR const &weight,
-    MemoryAllocator &gpu_mem_allocator,
-    int num_samples,
-    int _num_heads,
-    DataType _quantization_type,
-    bool _offload)
+    Legion::Memory gpu_mem,
+    int num_samples)
     : OpMeta(handler, attn) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
-IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {}
+IncMultiQuerySelfAttentionMeta::~IncMultiQuerySelfAttentionMeta(void) {}
 
 }; // namespace FlexFlow

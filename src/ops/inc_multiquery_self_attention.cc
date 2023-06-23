@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -49,42 +49,35 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-LegionRuntime::Logger::Category log_tree_verify("TreeVerifyIncMHA");
+LegionRuntime::Logger::Category log_inc_mqa("IncrementalMQA");
 
-bool TreeIncMultiHeadSelfAttentionParams::is_valid(
+bool IncMultiQuerySelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {
   bool is_valid = input.is_valid();
   return is_valid;
 }
 
-Tensor FFModel::inc_multihead_self_attention_verify(
-    const Tensor input,
-    int embed_dim,
-    int num_heads,
-    int kdim,
-    int vdim,
-    float dropout,
-    bool bias,
-    bool add_bias_kv,
-    bool add_zero_attn,
-    DataType data_type,
-    Initializer *kernel_initializer,
-    bool apply_rotary_embedding,
-    bool scaling_query,
-    float scaling_factor,
-    bool qk_prod_scaling,
-    char const *name) {
+Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
+                                              int embed_dim,
+                                              int num_heads,
+                                              int kdim,
+                                              int vdim,
+                                              float dropout,
+                                              bool bias,
+                                              bool add_bias_kv,
+                                              bool add_zero_attn,
+                                              DataType data_type,
+                                              Initializer *kernel_initializer,
+                                              char const *name) {
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
-  DataType quantization_type = cpu_offload ? config.quantization_type : DT_NONE;
-  bool offload = cpu_offload;
   Layer *li = nullptr;
   int weight_num = bias ? 2 : 1;
   if (data_type != input->data_type) {
-    Tensor casted_input = cast(input, data_type, "type cast for IncMHA");
+    Tensor casted_input = cast(input, data_type, "type cast for IncMQA");
     li = new Layer(this,
-                   OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
+                   OP_INC_MULTIQUERY_SELF_ATTENTION,
                    data_type,
                    name,
                    1 /*inputs*/,
@@ -93,7 +86,7 @@ Tensor FFModel::inc_multihead_self_attention_verify(
                    casted_input);
   } else {
     li = new Layer(this,
-                   OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
+                   OP_INC_MULTIQUERY_SELF_ATTENTION,
                    data_type,
                    name,
                    1 /*inputs*/,
@@ -115,32 +108,14 @@ Tensor FFModel::inc_multihead_self_attention_verify(
     // Compute weight size
     int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
         oProjSize = embed_dim;
-    int qSize = input->dims[0], kSize = input->dims[0], vSize = input->dims[0];
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    int one_head_size = qParas + kParas + vParas + oParas;
-    // compress the weight size if quantization.
-    if (quantization_type != DT_NONE) {
-      one_head_size = get_quantization_to_byte_size(
-          data_type, quantization_type, one_head_size);
-    }
+    // int qSize = input->dims[0], kSize = input->dims[0], vSize =
+    // input->dims[0]; int qParas = qSize; int kParas = kProjSize; int vParas =
+    // vProjSize; int oParas = oProjSize; int dims[2] = {qParas + kParas +
+    // vParas + oParas, num_heads};
 
-    int dims[2] = {one_head_size, num_heads};
-    li->weights[0] = create_weight_legion_ordering(
-        2,
-        dims,
-        quantization_type == DT_NONE ? data_type : quantization_type,
-        li,
-        true /*create_grad*/,
-        kernel_initializer,
-        CHOSEN_SYNC_TYPE);
-  }
-  if (bias) {
-    // q, k, v, o
-    int dims[1] = {embed_dim * 4};
-    li->weights[1] = create_weight_legion_ordering(1,
+    int dims[2] = {embed_dim + kProjSize + vProjSize + oProjSize, embed_dim};
+
+    li->weights[0] = create_weight_legion_ordering(2,
                                                    dims,
                                                    data_type,
                                                    li,
@@ -157,17 +132,12 @@ Tensor FFModel::inc_multihead_self_attention_verify(
   li->add_int_property("add_bias_kv", add_bias_kv);
   li->add_int_property("add_zero_attn", add_zero_attn);
   li->add_float_property("dropout", dropout);
-  li->add_int_property("apply_rotary_embedding", apply_rotary_embedding);
-  li->add_int_property("scaling_query", scaling_query);
-  li->add_float_property("scaling_factor", scaling_factor);
-  li->add_int_property("qk_prod_scaling", qk_prod_scaling);
-  li->add_int_property("quantization_type", quantization_type);
-  li->add_int_property("offload", offload);
   layers.push_back(li);
+
   return li->outputs[0];
 }
 
-Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
+Op *IncMultiQuerySelfAttention::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
@@ -188,40 +158,22 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
   bool add_bias_kv = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
-  layer->get_int_property("apply_rotary_embedding", value);
-  bool apply_rotary_embedding = (bool)value;
-  layer->get_int_property("scaling_query", value);
-  bool scaling_query = (bool)value;
-  float scaling_factor;
-  layer->get_float_property("scaling_factor", scaling_factor);
-  layer->get_int_property("qk_prod_scaling", value);
-  bool qk_prod_scaling = (bool)value;
-  layer->get_int_property("quantization_type", value);
-  DataType quantization_type = (DataType)value;
-  layer->get_int_property("offload", value);
-  bool offload = (bool)value;
-  return new TreeIncMultiHeadSelfAttention(model,
-                                           layer->layer_guid,
-                                           inputs[0],
-                                           embed_dim,
-                                           num_heads,
-                                           kdim,
-                                           vdim,
-                                           dropout,
-                                           bias,
-                                           add_bias_kv,
-                                           add_zero_attn,
-                                           apply_rotary_embedding,
-                                           scaling_query,
-                                           scaling_factor,
-                                           qk_prod_scaling,
-                                           false /*allocate_weights*/,
-                                           quantization_type,
-                                           offload,
-                                           layer->name);
+  return new IncMultiQuerySelfAttention(model,
+                                        layer->layer_guid,
+                                        inputs[0],
+                                        embed_dim,
+                                        num_heads,
+                                        kdim,
+                                        vdim,
+                                        dropout,
+                                        bias,
+                                        add_bias_kv,
+                                        add_zero_attn,
+                                        true /*allocate_weights*/,
+                                        layer->name);
 }
 
-TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     FFModel &model,
     LayerID const &_layer_guid,
     const ParallelTensor _input,
@@ -233,33 +185,23 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     bool _bias,
     bool _add_bias_kv,
     bool _add_zero_attn,
-    bool _apply_rotary_embedding,
-    bool _scaling_query,
-    float _scaling_factor,
-    bool _qk_prod_scaling,
     bool allocate_weights,
-    DataType _quantization_type,
-    bool _offload,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
+         OP_INC_MULTIQUERY_SELF_ATTENTION,
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_bias ? 2 : 1) /*weights*/,
+         (_bias ? 2 : 1), /*weights*/
          1 /*outputs*/,
          _input),
       num_heads(_num_heads), dropout(_dropout), bias(_bias),
       add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
-      apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
-      vProjSize(_vdim), oProjSize(_embed_dim),
-      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
-      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
-      offload(_offload) {
+      vProjSize(_vdim), oProjSize(_embed_dim), embed_dim(_embed_dim),
+      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -276,21 +218,19 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     // Create weight tensor
     int num_dims = inputs[0]->num_dims;
     // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = this->kProjSize * this->kSize;
-    int vParas = this->vProjSize * this->vSize;
-    int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
+    // int qParas = this->qProjSize * this->qSize;
+    // int kParas = this->kProjSize * this->kSize;
+    // int vParas = this->vProjSize * this->vSize;
+    // int oParas =
+    //     this->oProjSize * (this->vProjSize > 0 ? this->vProjSize :
+    //     this->vSize);
     ParallelDim dims[3];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads;
-    dims[2].size = qParas + kParas + vParas + oParas;
-    if (quantization_type != DT_NONE) {
-      dims[2].size = get_quantization_to_byte_size(
-          data_type, quantization_type, dims[2].size);
-    }
+    dims[1].size = this->embed_dim;
+    dims[2].size =
+        this->embed_dim + this->kProjSize + this->vProjSize + this->oProjSize;
     dims[2].degree = 1;
     dims[2].parallel_idx = -1;
     int seed = std::rand();
@@ -300,32 +240,11 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(
-        dims,
-        quantization_type == DT_NONE ? this->data_type : quantization_type,
-        NULL /*owner_op*/,
-        true /*create_grad*/,
-        initializer,
-        comm_type);
-  }
-  if (bias) {
-    ParallelDim dims[2];
-    int num_dims = inputs[0]->num_dims;
-    dims[0] = inputs[0]->dims[num_dims - 1];
-    dims[0].size = dims[0].degree;
-    dims[1].size = oProjSize * 4;
-    dims[1].degree = 1;
-    dims[1].parallel_idx = -1;
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-    weights[1] = model.create_parallel_weight<2>(dims,
+    weights[0] = model.create_parallel_weight<3>(dims,
                                                  this->data_type,
-                                                 NULL /*owner_op*/,
+                                                 nullptr /*owner_op*/,
                                                  true /*create_grad*/,
-                                                 NULL,
+                                                 initializer,
                                                  comm_type);
   }
 
@@ -338,7 +257,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     FFModel &model,
     const ParallelTensor _input,
     const ParallelTensor _weight,
@@ -350,34 +269,24 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     bool _bias,
     bool _add_bias_kv,
     bool _add_zero_attn,
-    bool _apply_rotary_embedding,
-    bool _scaling_query,
-    float _scaling_factor,
-    bool _qk_prod_scaling,
     bool allocate_weights,
-    DataType _quantization_type,
-    bool _offload,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
+         OP_INC_MULTIQUERY_SELF_ATTENTION,
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_bias ? 2 : 1) /*weights*/,
+         (_bias ? 2 : 1), /*weights*/
          1 /*outputs*/,
          _input,
          _weight),
       num_heads(_num_heads), dropout(_dropout), bias(_bias),
       add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
-      apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
-      vProjSize(_vdim), oProjSize(_embed_dim),
-      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
-      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
-      offload(_offload)
+      vProjSize(_vdim), oProjSize(_embed_dim), embed_dim(_embed_dim),
+      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -393,21 +302,19 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     // Create weight tensor
     int num_dims = inputs[0]->num_dims;
     // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = this->kProjSize * this->kSize;
-    int vParas = this->vProjSize * this->vSize;
-    int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
+    // int qParas = this->qProjSize * this->qSize;
+    // int kParas = this->kProjSize * this->kSize;
+    // int vParas = this->vProjSize * this->vSize;
+    // int oParas =
+    //     this->oProjSize * (this->vProjSize > 0 ? this->vProjSize :
+    //     this->vSize);
     ParallelDim dims[3];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads;
-    dims[2].size = qParas + kParas + vParas + oParas;
-    if (quantization_type != DT_NONE) {
-      dims[2].size = get_quantization_to_byte_size(
-          data_type, quantization_type, dims[2].size);
-    }
+    dims[1].size = this->embed_dim;
+    dims[2].size =
+        this->embed_dim + this->kProjSize + this->vProjSize + this->oProjSize;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
 #ifdef USE_NCCL
@@ -415,30 +322,11 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    weights[0] = model.create_parallel_weight<3>(
-        dims,
-        quantization_type == DT_NONE ? this->data_type : quantization_type,
-        NULL /*owner_op*/,
-        true /*create_grad*/,
-        initializer,
-        comm_type);
-  }
-  if (bias) {
-    ParallelDim dims[2];
-    int num_dims = inputs[0]->num_dims;
-    dims[0] = inputs[0]->dims[num_dims - 1];
-    dims[0].size = dims[0].degree;
-    dims[1].size = oProjSize * 4;
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-    weights[1] = model.create_parallel_weight<2>(dims,
+    weights[0] = model.create_parallel_weight<3>(dims,
                                                  this->data_type,
                                                  NULL /*owner_op*/,
                                                  true /*create_grad*/,
-                                                 NULL,
+                                                 initializer,
                                                  comm_type);
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -453,58 +341,46 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     FFModel &model,
-    TreeIncMultiHeadSelfAttention const &other,
+    IncMultiQuerySelfAttention const &other,
     const ParallelTensor input,
     bool allocate_weights)
-    : TreeIncMultiHeadSelfAttention(model,
-                                    other.layer_guid,
-                                    input,
-                                    other.oProjSize,
-                                    other.num_heads,
-                                    other.qProjSize,
-                                    other.vProjSize,
-                                    other.dropout,
-                                    other.bias,
-                                    other.add_bias_kv,
-                                    other.add_zero_attn,
-                                    other.apply_rotary_embedding,
-                                    other.scaling_query,
-                                    other.scaling_factor,
-                                    other.qk_prod_scaling,
-                                    allocate_weights,
-                                    other.quantization_type,
-                                    other.offload,
-                                    other.name) {}
+    : IncMultiQuerySelfAttention(model,
+                                 other.layer_guid,
+                                 input,
+                                 other.oProjSize,
+                                 other.num_heads,
+                                 other.qProjSize,
+                                 other.vProjSize,
+                                 other.dropout,
+                                 other.bias,
+                                 other.add_bias_kv,
+                                 other.add_zero_attn,
+                                 allocate_weights,
+                                 other.name) {}
 
-TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
+IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     FFModel &model,
-    TreeIncMultiHeadSelfAttentionParams const &params,
+    IncMultiQuerySelfAttentionParams const &params,
     ParallelTensor const &input,
     bool allocate_weights,
     char const *name)
-    : TreeIncMultiHeadSelfAttention(model,
-                                    params.layer_guid,
-                                    input,
-                                    params.embed_dim,
-                                    params.num_heads,
-                                    params.kdim,
-                                    params.vdim,
-                                    params.dropout,
-                                    params.bias,
-                                    params.add_bias_kv,
-                                    params.add_zero_attn,
-                                    params.apply_rotary_embedding,
-                                    params.scaling_query,
-                                    params.scaling_factor,
-                                    params.qk_prod_scaling,
-                                    allocate_weights,
-                                    params.quantization_type,
-                                    params.offload,
-                                    name) {}
+    : IncMultiQuerySelfAttention(model,
+                                 params.layer_guid,
+                                 input,
+                                 params.embed_dim,
+                                 params.num_heads,
+                                 params.kdim,
+                                 params.vdim,
+                                 params.dropout,
+                                 params.bias,
+                                 params.add_bias_kv,
+                                 params.add_zero_attn,
+                                 allocate_weights,
+                                 name) {}
 
-void TreeIncMultiHeadSelfAttention::init_inference(
+void IncMultiQuerySelfAttention::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
@@ -517,28 +393,25 @@ void TreeIncMultiHeadSelfAttention::init_inference(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(
-      TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-      parallel_is,
-      TaskArgument(this, sizeof(TreeIncMultiHeadSelfAttention)),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      machine_view_hash);
+  IndexLauncher launcher(INC_MULTIQUERY_SELF_ATTENTION_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(IncMultiQuerySelfAttention)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part,
-                        0 /*projection id*/,
-                        READ_ONLY,
-                        EXCLUSIVE,
-                        weights[0]->region,
-                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -551,22 +424,22 @@ void TreeIncMultiHeadSelfAttention::init_inference(
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
-void TreeIncMultiHeadSelfAttention::init(FFModel const &ff) {
+void IncMultiQuerySelfAttention::init(FFModel const &ff) {
+
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(
-      TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-      parallel_is,
-      TaskArgument(this, sizeof(TreeIncMultiHeadSelfAttention)),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      outputs[0]->machine_view.hash());
+  IndexLauncher launcher(INC_MULTIQUERY_SELF_ATTENTION_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(IncMultiQuerySelfAttention)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -595,15 +468,14 @@ void TreeIncMultiHeadSelfAttention::init(FFModel const &ff) {
   regions[1](I): weight
   regions[2](O): output
 */
-OpMeta *TreeIncMultiHeadSelfAttention::init_task(
+OpMeta *IncMultiQuerySelfAttention::init_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  TreeIncMultiHeadSelfAttention const *attn =
-      (TreeIncMultiHeadSelfAttention *)task->args;
+  IncMultiQuerySelfAttention const *attn =
+      (IncMultiQuerySelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-
   GenericTensorAccessorR input =
       helperGetGenericTensorAccessorRO(attn->inputs[0]->data_type,
                                        regions[0],
@@ -627,44 +499,32 @@ OpMeta *TreeIncMultiHeadSelfAttention::init_task(
                                        runtime);
 
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
-  assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
-  assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
-  int num_heads = weight.domain.hi()[1] - weight.domain.lo()[1] + 1;
-  assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
+  // assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] +
+  // 1); assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1]
+  // + 1);
+  int num_heads = (weight.domain.hi()[1] - weight.domain.lo()[1] + 1);
+  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] +
+  // 1);
 
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  MemoryAllocator gpu_mem_allocator(gpu_mem);
-  if (attn->offload) {
-    // cpu-offload enabled
-    // use offload_reserved_space
-    gpu_mem_allocator.register_reserved_work_space(
-        handle.offload_reserve_space, handle.offload_reserve_space_size);
-  }
-  TreeIncMultiHeadSelfAttentionMeta *m = new TreeIncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
-  if (!attn->offload) {
-    // assert that we didn't over allocate memory
-    assert(gpu_mem_allocator.reserved_allocated_size ==
-           gpu_mem_allocator.reserved_total_size);
-  }
-  m->profiling = attn->profiling;
+  IncMultiQuerySelfAttentionMeta *m = new IncMultiQuerySelfAttentionMeta(
+      handle, attn, weight, gpu_mem, num_samples);
 
-  if (attn->quantization_type == DT_NONE) {
-    assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
-           m->weightSize);
-  }
+  m->profiling = attn->profiling;
+  assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
+         m->weightSize);
   return m;
 }
 
-void TreeIncMultiHeadSelfAttention::forward(FFModel const &ff) {
-  // TreeIncMultiHeadSelfAttention doesn't support forward
+void IncMultiQuerySelfAttention::forward(FFModel const &ff) {
+  // IncMultiQuerySelfAttention doesn't support forward
   assert(false);
 }
 
-FutureMap TreeIncMultiHeadSelfAttention::inference(
+FutureMap IncMultiQuerySelfAttention::inference(
     FFModel const &ff,
     BatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
@@ -678,13 +538,12 @@ FutureMap TreeIncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  log_tree_verify.debug(
-      "TreeVerifyBatchConfig, num_tokens: %d, num_requests: %d",
-      bc.num_tokens,
-      bc.num_active_requests());
-  IndexLauncher launcher(TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+  log_inc_mqa.debug("BatchConfig, num_tokens: %d, num_requests: %d",
+                    bc.num_tokens,
+                    bc.num_active_requests());
+  IndexLauncher launcher(INC_MULTIQUERY_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(TreeVerifyBatchConfig)),
+                         TaskArgument(&bc, sizeof(BatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -696,13 +555,11 @@ FutureMap TreeIncMultiHeadSelfAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part,
-                        0 /*projection id*/,
-                        READ_ONLY,
-                        EXCLUSIVE,
-                        weights[0]->region,
-                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
   launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -710,16 +567,6 @@ FutureMap TreeIncMultiHeadSelfAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
-  if (bias) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[1]->part,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          weights[1]->region,
-                          ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
-    launcher.add_field(idx++, FID_DATA);
-  }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -728,17 +575,19 @@ FutureMap TreeIncMultiHeadSelfAttention::inference(
   regions[3](I): weight
   regions[4](O): output
 */
-void TreeIncMultiHeadSelfAttention::inference_task(
+void IncMultiQuerySelfAttention::inference_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
+
   assert(task->regions.size() == regions.size());
 
-  TreeVerifyBatchConfig const *bc = (TreeVerifyBatchConfig *)task->args;
-  TreeIncMultiHeadSelfAttentionMeta *m =
-      *((TreeIncMultiHeadSelfAttentionMeta **)task->local_args);
-  assert((*m->bias ? regions.size() == 4 : regions.size() == 3));
+  BatchConfig const *bc = (BatchConfig *)task->args;
+  IncMultiQuerySelfAttentionMeta const *m =
+      *((IncMultiQuerySelfAttentionMeta **)task->local_args);
+
+  assert(regions.size() == 3);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -746,18 +595,6 @@ void TreeIncMultiHeadSelfAttention::inference_task(
       m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR biases;
-  if (*m->bias) {
-    biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
-                                              regions[3],
-                                              task->regions[3],
-                                              FID_DATA,
-                                              ctx,
-                                              runtime);
-    Domain bias_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3].region.get_index_space());
-    assert(bias_domain.get_dim() == 2);
-  }
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -770,14 +607,10 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
 
-  /* print_tensor<float>(input.get_float_ptr(),
-                      input_domain.get_volume(),
-                      "[Attention:forward:query]"); */
-
-  TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, bc, input, weight, output, biases);
+  IncMultiQuerySelfAttention::inference_kernel_wrapper(
+      m, bc, input, weight, output);
 #ifdef INFERENCE_TESTS
-  printf("Checking TreeIncMultiHeadSelfAttention computations...\n");
+  printf("Checking IncMultiQuerySelfAttention computations...\n");
 
   // =============================================================================
   //  Define helper functions to handle row-major arrays
@@ -853,13 +686,11 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
 
-  // printf("m->kProjSize: %i, TreeVerifyBatchConfig::MAX_NUM_TOKENS: %i, "
+  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i, "
   //     "bc->num_active_tokens(): %i, num_heads: %lli,
-  //     TreeVerifyBatchConfig::MAX_NUM_REQUESTS: %i, "
-  //     "bc->num_active_requests(): %i\n", m->kProjSize,
-  //     TreeVerifyBatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
-  //     num_heads, TreeVerifyBatchConfig::MAX_NUM_REQUESTS,
-  //     bc->num_active_requests());
+  //     BatchConfig::MAX_NUM_REQUESTS: %i, " "bc->num_active_requests(): %i\n",
+  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
+  //     num_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
   // for (int t=0; t < bc->num_active_tokens(); t++) {
   //   printf("token %i has request_index: %li and token_position: %li\n",
   //   t, bc->token2ids.token_indexes[t].request_index,
@@ -945,9 +776,9 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   free(w_qkv);
 
   //  ----------------------- Loading CUDA results for this step ---------------
-  float *QKVProjArray_cpu = download_tensor<float>(
-      m->devQKVProjArray,
-      TreeVerifyBatchConfig::MAX_NUM_TOKENS * proj_sum * m->num_heads);
+  float *QKVProjArray_cpu = download_tensor<float>(m->devQKVProjArray,
+                                                   BatchConfig::MAX_NUM_TOKENS *
+                                                       proj_sum * m->num_heads);
   assert(QKVProjArray_cpu != nullptr);
 
   std::vector<int> QKVProjArray_converted_shape = {
@@ -1006,25 +837,21 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   for (size_t h = 0; h < num_heads; h++) {
     for (size_t t = 0; t < bc->num_active_tokens(); t++) {
       for (size_t d = 0; d < m->kProjSize; d++) {
-        size_t kcache_idx = d * MAX_SEQ_LEN * m->num_heads *
-                                TreeVerifyBatchConfig::MAX_NUM_REQUESTS +
-                            bc->tokensInfo[t].abs_depth_in_request *
-                                m->num_heads *
-                                TreeVerifyBatchConfig::MAX_NUM_REQUESTS +
-                            h * TreeVerifyBatchConfig::MAX_NUM_REQUESTS +
-                            bc->tokensInfo[t].request_index;
+        size_t kcache_idx =
+            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
+            bc->tokensInfo[t].abs_depth_in_request * m->num_heads *
+                BatchConfig::MAX_NUM_REQUESTS +
+            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
         m->kcache[kcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
                 .item<float>();
       }
       for (size_t d = 0; d < m->vProjSize; d++) {
-        size_t vcache_idx = d * MAX_SEQ_LEN * m->num_heads *
-                                TreeVerifyBatchConfig::MAX_NUM_REQUESTS +
-                            bc->tokensInfo[t].abs_depth_in_request *
-                                m->num_heads *
-                                TreeVerifyBatchConfig::MAX_NUM_REQUESTS +
-                            h * TreeVerifyBatchConfig::MAX_NUM_REQUESTS +
-                            bc->tokensInfo[t].request_index;
+        size_t vcache_idx =
+            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
+            bc->tokensInfo[t].abs_depth_in_request * m->num_heads *
+                BatchConfig::MAX_NUM_REQUESTS +
+            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
         m->vcache[vcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
                 .item<float>();
@@ -1032,20 +859,14 @@ void TreeIncMultiHeadSelfAttention::inference_task(
     }
   }
   // Create torch tensors from the arrays
-  torch::Tensor K_t =
-      torch::from_blob(m->kcache,
-                       {m->kProjSize,
-                        MAX_SEQ_LEN,
-                        num_heads,
-                        TreeVerifyBatchConfig::MAX_NUM_REQUESTS},
-                       torch::kFloat32);
-  torch::Tensor V_t =
-      torch::from_blob(m->vcache,
-                       {m->vProjSize,
-                        MAX_SEQ_LEN,
-                        num_heads,
-                        TreeVerifyBatchConfig::MAX_NUM_REQUESTS},
-                       torch::kFloat32);
+  torch::Tensor K_t = torch::from_blob(
+      m->kcache,
+      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
+  torch::Tensor V_t = torch::from_blob(
+      m->vcache,
+      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
 
   // Compute useful indices
   std::vector<size_t> req_idxs;
@@ -1070,30 +891,28 @@ void TreeIncMultiHeadSelfAttention::inference_task(
          bc->num_active_tokens());
 
   //  ----------------------- Loading CUDA results for this step ---------------
-  float *keyCache_cpu = download_tensor<float>(
-      m->keyCache,
-      m->num_heads * m->kProjSize * TreeVerifyBatchConfig::MAX_NUM_REQUESTS *
-          MAX_SEQ_LEN);
-  float *valueCache_cpu = download_tensor<float>(
-      m->valueCache,
-      m->num_heads * m->vProjSize * TreeVerifyBatchConfig::MAX_NUM_REQUESTS *
-          MAX_SEQ_LEN);
+  float *keyCache_cpu =
+      download_tensor<float>(m->keyCache,
+                             m->num_heads * m->kProjSize *
+                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
+  float *valueCache_cpu =
+      download_tensor<float>(m->valueCache,
+                             m->num_heads * m->vProjSize *
+                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
   assert(keyCache_cpu != nullptr);
   assert(valueCache_cpu != nullptr);
 
-  float *kcache_cuda =
-      (float *)calloc(m->kProjSize * MAX_SEQ_LEN * m->num_heads *
-                          TreeVerifyBatchConfig::MAX_NUM_REQUESTS,
-                      sizeof(float));
-  float *vcache_cuda =
-      (float *)calloc(m->vProjSize * MAX_SEQ_LEN * m->num_heads *
-                          TreeVerifyBatchConfig::MAX_NUM_REQUESTS,
-                      sizeof(float));
+  float *kcache_cuda = (float *)calloc(
+      m->kProjSize * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS,
+      sizeof(float));
+  float *vcache_cuda = (float *)calloc(
+      m->vProjSize * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS,
+      sizeof(float));
   int index = 0;
   for (int i = 0; i < m->kProjSize; i++) {
     for (int j = 0; j < MAX_SEQ_LEN; j++) {
       for (int k = 0; k < m->num_heads; k++) {
-        for (int l = 0; l < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; l++) {
+        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
           int col_major_index = l * m->kProjSize * MAX_SEQ_LEN * m->num_heads +
                                 k * m->kProjSize * MAX_SEQ_LEN +
                                 j * m->kProjSize + i;
@@ -1106,7 +925,7 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   for (int i = 0; i < m->vProjSize; i++) {
     for (int j = 0; j < MAX_SEQ_LEN; j++) {
       for (int k = 0; k < m->num_heads; k++) {
-        for (int l = 0; l < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; l++) {
+        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
           int col_major_index = l * m->vProjSize * MAX_SEQ_LEN * m->num_heads +
                                 k * m->vProjSize * MAX_SEQ_LEN +
                                 j * m->vProjSize + i;
@@ -1115,20 +934,14 @@ void TreeIncMultiHeadSelfAttention::inference_task(
       }
     }
   }
-  torch::Tensor K_t_cuda =
-      torch::from_blob(kcache_cuda,
-                       {m->kProjSize,
-                        MAX_SEQ_LEN,
-                        num_heads,
-                        TreeVerifyBatchConfig::MAX_NUM_REQUESTS},
-                       torch::kFloat32);
-  torch::Tensor V_t_cuda =
-      torch::from_blob(vcache_cuda,
-                       {m->vProjSize,
-                        MAX_SEQ_LEN,
-                        num_heads,
-                        TreeVerifyBatchConfig::MAX_NUM_REQUESTS},
-                       torch::kFloat32);
+  torch::Tensor K_t_cuda = torch::from_blob(
+      kcache_cuda,
+      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
+  torch::Tensor V_t_cuda = torch::from_blob(
+      vcache_cuda,
+      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
 
@@ -1138,11 +951,11 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   //     for (int l=0; l < m->kProjSize; l++) {
   //       for (int k=0; k < MAX_SEQ_LEN; k++) {
   //         size_t kcache_idx =
-  //           l * MAX_SEQ_LEN * num_heads *
-  //           TreeVerifyBatchConfig::MAX_NUM_REQUESTS + k * num_heads *
-  //           TreeVerifyBatchConfig::MAX_NUM_REQUESTS + j *
-  //           TreeVerifyBatchConfig::MAX_NUM_REQUESTS + i; if (
-  //           abs(m->kcache[kcache_idx] - keyCache_cpu[
+  //           l * MAX_SEQ_LEN * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //           k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //           j * BatchConfig::MAX_NUM_REQUESTS +
+  //           i;
+  //           if ( abs(m->kcache[kcache_idx] - keyCache_cpu[
   //               i * m->kProjSize * MAX_SEQ_LEN * num_heads +
   //               j * m->kProjSize * MAX_SEQ_LEN +
   //               k * m->kProjSize +
@@ -1203,10 +1016,10 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   //       for (int l=0; l < m->kProjSize; l++) {
   //         for (int k=0; k < MAX_SEQ_LEN; k++) {
   //           size_t kcache_idx =
-  //             l * MAX_SEQ_LEN * num_heads *
-  //             TreeVerifyBatchConfig::MAX_NUM_REQUESTS + k * num_heads *
-  //             TreeVerifyBatchConfig::MAX_NUM_REQUESTS + j *
-  //             TreeVerifyBatchConfig::MAX_NUM_REQUESTS + i;
+  //             l * MAX_SEQ_LEN * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //             k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //             j * BatchConfig::MAX_NUM_REQUESTS +
+  //             i;
   //           printf("%f ", m->kcache[kcache_idx]);
   //         }
   //         printf("\n");
@@ -1222,10 +1035,10 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   //       for (int l=0; l<m->vProjSize; l++) {
   //         for (int k=0; k< MAX_SEQ_LEN; k++) {
   //             size_t vcache_idx =
-  //               l * MAX_SEQ_LEN * num_heads *
-  //               TreeVerifyBatchConfig::MAX_NUM_REQUESTS + k * num_heads *
-  //               TreeVerifyBatchConfig::MAX_NUM_REQUESTS + j *
-  //               TreeVerifyBatchConfig::MAX_NUM_REQUESTS + i;
+  //               l * MAX_SEQ_LEN * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //               k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //               j * BatchConfig::MAX_NUM_REQUESTS +
+  //               i;
   //             printf("%f ", m->vcache[vcache_idx]);
   //         }
   //         printf("\n");
@@ -1314,19 +1127,16 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   //  ----------------------- Loading CUDA results for this step ---------------
   float *qk_prods_cpu = download_tensor<float>(
       m->qk_prods,
-      TreeVerifyBatchConfig::MAX_NUM_TOKENS *
-          TreeVerifyBatchConfig::MAX_NUM_TOKENS * num_heads);
+      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
   assert(qk_prods_cpu != nullptr);
 
   float *qk_prods_softmax_cpu = download_tensor<float>(
       m->qk_prods_softmax,
-      TreeVerifyBatchConfig::MAX_NUM_TOKENS *
-          TreeVerifyBatchConfig::MAX_NUM_TOKENS * num_heads);
+      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
   assert(qk_prods_softmax_cpu != nullptr);
 
   float *attn_heads_cpu = download_tensor<float>(
-      m->attn_heads,
-      TreeVerifyBatchConfig::MAX_NUM_TOKENS * m->num_heads * m->vProjSize);
+      m->attn_heads, BatchConfig::MAX_NUM_TOKENS * m->num_heads * m->vProjSize);
   assert(attn_heads_cpu != nullptr);
 
   //  ----------------------- Main loop (request by request) -------------------
@@ -1558,13 +1368,13 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   // Done with INFERENCE_TESTS block
 }
 
-void TreeIncMultiHeadSelfAttention::backward(FFModel const &ff) {
-  // TreeIncMultiHeadSelfAttention does not support backward
+void IncMultiQuerySelfAttention::backward(FFModel const &ff) {
+  // IncMultiQuerySelfAttention does not support backward
   assert(false);
 }
 
-bool TreeIncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
-                                                      int *value) const {
+bool IncMultiQuerySelfAttention::get_int_parameter(PMParameter para,
+                                                   int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
       *value = num_heads;
@@ -1574,27 +1384,23 @@ bool TreeIncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
   }
 }
 
-bool TreeIncMultiHeadSelfAttention::measure_operator_cost(
+bool IncMultiQuerySelfAttention::measure_operator_cost(
     Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
   return false;
 }
 
-bool operator==(TreeIncMultiHeadSelfAttentionParams const &lhs,
-                TreeIncMultiHeadSelfAttentionParams const &rhs) {
+bool operator==(IncMultiQuerySelfAttentionParams const &lhs,
+                IncMultiQuerySelfAttentionParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
          lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
          lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
-         lhs.add_zero_attn == rhs.add_zero_attn &&
-         lhs.apply_rotary_embedding == rhs.apply_rotary_embedding &&
-         lhs.scaling_query == rhs.scaling_query &&
-         lhs.scaling_factor == rhs.scaling_factor &&
-         lhs.qk_prod_scaling == rhs.qk_prod_scaling;
+         lhs.add_zero_attn == rhs.add_zero_attn;
 }
 
-TreeIncMultiHeadSelfAttentionParams
-    TreeIncMultiHeadSelfAttention::get_params() const {
-  TreeIncMultiHeadSelfAttentionParams params;
+IncMultiQuerySelfAttentionParams
+    IncMultiQuerySelfAttention::get_params() const {
+  IncMultiQuerySelfAttentionParams params;
   params.layer_guid = this->layer_guid;
   params.embed_dim = this->oProjSize;
   params.num_heads = this->num_heads;
@@ -1604,18 +1410,15 @@ TreeIncMultiHeadSelfAttentionParams
   params.bias = this->bias;
   params.add_bias_kv = this->add_bias_kv;
   params.add_zero_attn = this->add_zero_attn;
-  params.apply_rotary_embedding = this->apply_rotary_embedding;
-  params.scaling_query = this->scaling_query;
-  params.scaling_factor = this->scaling_factor;
-  params.qk_prod_scaling = this->qk_prod_scaling;
+
   return params;
 }
 
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::TreeIncMultiHeadSelfAttentionParams>::operator()(
-    FlexFlow::TreeIncMultiHeadSelfAttentionParams const &params) const {
+size_t hash<FlexFlow::IncMultiQuerySelfAttentionParams>::operator()(
+    FlexFlow::IncMultiQuerySelfAttentionParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.embed_dim);
@@ -1626,12 +1429,6 @@ size_t hash<FlexFlow::TreeIncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.bias);
   hash_combine(key, params.add_bias_kv);
   hash_combine(key, params.add_zero_attn);
-  hash_combine(key, params.apply_rotary_embedding);
-  hash_combine(key, params.scaling_query);
-  hash_combine(key, params.scaling_factor);
-  hash_combine(key, params.qk_prod_scaling);
-  hash_combine(key, params.quantization_type);
-  hash_combine(key, params.offload);
   return key;
 }
 }; // namespace std

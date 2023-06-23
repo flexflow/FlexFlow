@@ -63,8 +63,21 @@ SpecInfer supports two tokenizers:
 * The SentencePiece tokenizer is used to support the LLaMA model family (e.g., LLaMA-6B, LLaMA-13B, and LLaMA-190M in our demo). We used the pretrained sentencepiece tokenizer from LLAMA, which is also available on Hugging Face (model id: `decapoda-research/llama-7b-hf`). If you  are using our LLAMA-160M weights for the demo, however, you should use the tokenizer from the [JackFram/llama-160m](https://huggingface.co/JackFram/llama-160m/resolve/main/tokenizer.model) HuggingFace repo.
 * The GPT2 tokenizer is used to support the Open Pre-trained Transformer model family (e.g., OPT-13B and OPT-125M). To use it, download the [vocab](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json) and [merges](https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt) files and pass the folder containing them as a parameter. 
 
-### Mixed-precision support
+### Mixed-precision Support
 SpecInfer now supports single-precision floating points and half-precision floating points. By default we use half-precision. Add `--use-full-precision` to the command line to run the demo with single-precision, please make sure to use the correct weight files in the form below.
+
+### CPU Offloading
+SpecInfer offers offloading-based inference for running large models (e.g., llama-7B) on a single GPU. CPU offloading is a choice to save tensors in CPU memory, and only copy the tensor to GPU when doing calculation. Notice that now we selectively offload the largest weight tensors (weights tensor in Linear, Attention). Besides, since the small model occupies considerably less space, it it does not pose a bottleneck for GPU memory, the offloading will bring more runtime space and computational cost, so we only do the offloading for the large model. You can run the offloading example by adding `-offload` and `-offload-reserve-space-size` flags.
+#### Quantization
+To reduce data transferred between the CPU and GPU, SpecInfer provides int4 and int8 quantization. The compressed tensors are stored on the CPU side. Once copied to the GPU, these tensors undergo decompression and conversion back to their original precision. Please find the compressed weight files in our s3 bucket, or use [this script](../inference/utils/compress_llama_weights.py) from [FlexGen](https://github.com/FMInference/FlexGen) project to do the compression manually. The quantization method can be selected using the `--4bit-quantization` and `--8bit-quantization` flags.
+
+Below is an example command line to use offloading and quantization in SpecInfer.
+
+```bash
+./inference/spec_infer/spec_infer -ll:gpu 1 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight /path/to/llm/weights -llm-config /path/to/llm/config.json -ssm-model llama -ssm-weight /path/to/ssm1/weights -ssm-config /path/to/ssm/config.json -ssm-model llama -smm-weight /path/to/ssm2/weights -ssm-config /path/to/ssm2/config.json -tokenizer /path/to/tokenizer.model -prompt /path/to/prompt.json --use-full-precision -offload -offload-reserve-space-size 6000 --8bit-quantization
+```
+
+
 
 ### LLM Weights
 The weight files used in our demo are extracted from HuggingFace, and stored in our AWS S3 bucket.

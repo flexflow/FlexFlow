@@ -37,6 +37,11 @@ RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]
         rm ./amdgpu-install_22.20.50205-1_all.deb; \
         amdgpu-install -y --usecase=hip,rocm --no-dkms; \
         apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
+        # Install protobuf v3.20.x manually
+        apt-get update -y && sudo apt-get install -y pkg-config zip g++ zlib1g-dev autoconf automake libtool make; \
+        git clone -b 3.20.x https://github.com/protocolbuffers/protobuf.git; cd protobuf/ ; git submodule update --init --recursive; \
+        ./autogen.sh; ./configure; cores_available=$(nproc --all); n_build_cores=$(( cores_available -1 )); \
+        if (( n_build_cores < 1 )) ; then n_build_cores=1 ; fi; make -j $n_build_cores; make install; ldconfig; cd .. ; \
     else \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"; \
     fi
@@ -48,9 +53,14 @@ ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
 
 # Install python packages and other dependencies
-RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing 
+RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing
 # Install CPU-only Pytorch and related dependencies
 RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
-RUN conda install -c conda-forge onnx tensorflow transformers sentencepiece
+RUN conda install -c conda-forge onnx transformers sentencepiece
+RUN pip3 install tensorflow
+
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH /root/.cargo/bin:$PATH
 
 ENTRYPOINT ["/bin/bash"]

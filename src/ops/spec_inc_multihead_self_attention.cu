@@ -582,7 +582,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     SpecIncMultiHeadSelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
@@ -602,9 +602,11 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
-                                    gpu_mem,
+                                    gpu_mem_allocator,
                                     num_samples,
-                                    _num_heads) {
+                                    _num_heads,
+                                    DT_NONE,
+                                    false) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
@@ -624,39 +626,37 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                        BeamSearchPerRequestInfo); // more components will
                                                   // be added here later
 
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(total_size - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(beam_search_reserve_inst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    off_t offset = 0;
+    // We always directly allocate memory for small speculative models
+    gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
+                                             total_size);
     beam_token_infos =
-        beam_search_reserve_inst
-            .pointer<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(offset);
-    offset += beam_tokeninfo_size *
-              sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
+        gpu_mem_allocator
+            .allocate_instance<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
+                beam_tokeninfo_size);
+    // offset += beam_tokeninfo_size *
+    //           sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
     request_infos =
-        beam_search_reserve_inst.pointer<BatchConfig::PerRequestInfo>(offset);
-    offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
+        gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
+            requestinfo_size);
+    // offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
     beam_request_infos =
-        beam_search_reserve_inst
-            .pointer<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(offset);
-    offset += beam_requestinfo_size *
-              sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
-    assert(offset == total_size);
+        gpu_mem_allocator
+            .allocate_instance<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
+                beam_requestinfo_size);
+    // offset += beam_requestinfo_size *
+    //           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
+    // assert(offset == total_size);
+    assert(gpu_mem_allocator.instance_total_size ==
+           gpu_mem_allocator.instance_allocated_size);
   }
 
   cudaStreamSynchronize(stream);
 }
 
 SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(void) {
-  beam_search_reserve_inst.destroy();
+  if (beam_search_reserve_inst != Realm::RegionInstance::NO_INST) {
+    beam_search_reserve_inst.destroy();
+  }
 }
 
 }; // namespace FlexFlow

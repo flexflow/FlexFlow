@@ -37,8 +37,15 @@ public:
                                  Tensor weight,
                                  int weight_idx,
                                  std::string const &layername);
+
+  void load_quantization_weight(FFModel *ff,
+                                Tensor weight,
+                                int weight_idx,
+                                std::string const &layername,
+                                bool use_full_precision);
   void load_weights(FFModel *ff,
-                    std::unordered_map<std::string, Layer *> weights_layers);
+                    std::unordered_map<std::string, Layer *> weights_layers,
+                    bool use_full_precision);
 
   void load_positions(FFModel *ff,
                       Tensor pt,

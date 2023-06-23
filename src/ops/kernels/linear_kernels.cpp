@@ -19,7 +19,11 @@
 
 namespace FlexFlow {
 
-LinearMeta::LinearMeta(FFHandler handler, int batch_size, Linear const *li)
+LinearMeta::LinearMeta(FFHandler handler,
+                       int batch_size,
+                       Linear const *li,
+                       MemoryAllocator gpu_mem_allocator,
+                       int weightSize)
     : OpMeta(handler, li) {
   // Allocate an all-one's vector
   float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
