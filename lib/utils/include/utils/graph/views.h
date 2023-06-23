@@ -128,9 +128,12 @@ private:
 struct JoinedUndirectedGraphView : public IUndirectedGraphView {
 public:
   JoinedUndirectedGraphView() = delete;
+
   explicit JoinedUndirectedGraphView(
       maybe_owned_ref<IUndirectedGraphView const> lhs,
       maybe_owned_ref<IUndirectedGraphView const> rhs);
+  
+  UndirectedGraphView unsafe(const JoinedUndirectedGraphView& self) const;
 
   std::unordered_set<UndirectedEdge>
       query_edges(UndirectedEdgeQuery const &) const override;
@@ -151,6 +154,8 @@ public:
   JoinedDigraphView() = delete;
   explicit JoinedDigraphView(maybe_owned_ref<IDiGraphView const> lhs,
                              maybe_owned_ref<IDiGraphView const> rhs);
+
+  DiGraphView unsafe(const JoinedDigraphView& self) const ;
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -173,6 +178,8 @@ public:
   JoinedMultiDigraphView() = delete;
   JoinedMultiDigraphView(maybe_owned_ref<IMultiDiGraphView const> lhs,
                          maybe_owned_ref<IMultiDiGraphView const> rhs);
+
+  MultiDiGraphView unsafe(const JoinedMultiDigraphView& self) const;
 
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &) const override;
@@ -226,9 +233,9 @@ private:
 
 struct ContractNodeView : public IDiGraphView {
   ContractNodeView() = delete;
-  explicit ContractNodeView(IDiGraphView const &,
+  explicit ContractNodeView(IDiGraphView const & g,
                             Node const &removed,
-                            Node const &into);
+                            Node const &into):g(g), from(removed), to(into) {}
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;

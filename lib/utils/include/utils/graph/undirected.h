@@ -61,7 +61,9 @@ public:
 
   UndirectedGraphView() = delete;
 
-  operator GraphView const &() const;
+  operator GraphView const &() const {
+    return GraphView(this->ptr.get());//Note(lambda):this may have problem, because returning reference to temporary
+  }
 
   operator GraphView ();
 
