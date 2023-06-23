@@ -41,56 +41,19 @@ DiGraphView view_as_flipped(DiGraphView const & g) {
 }
 
 DiGraphView view_as_joined(DiGraphView const & lhs, DiGraphView const & rhs) {
-  auto lhs_nodes = lhs.query_nodes({});
-  auto rhs_nodes = rhs.query_nodes({});
-  auto lhs_edge = lhs.query_edges({});
-  auto rhs_edge = rhs.query_edges({});
-  
-  for(auto node : rhs_nodes) {
-    lhs_nodes.insert(node);
-  }
-  for(auto edge : rhs_edge) {
-    lhs_edge.insert(edge);
-  }
-  
-  DiGraph digraph = DiGraph::create<AdjacencyDiGraph>();
-  for(auto node : lhs_nodes) {
-    digraph.add_node_unsafe(node);
-  }
-  for(auto edge : lhs_edge) {
-    digraph.add_edge(edge);
-  }
-
-  return static_cast<DiGraphView>(digraph);
+  return DiGraphView::create<JoinedDigraphView>(lhs, rhs);
 } 
 
 //TODO, has problem
 MultiDiGraphView view_as_joined(MultiDiGraphView const & lhs,
                                 MultiDiGraphView const & rhs) {
-  auto lhs_nodes = lhs.query_nodes({});
-  auto rhs_nodes = rhs.query_nodes({});
-  auto lhs_edge = lhs.query_edges({});
-  auto rhs_edge = rhs.query_edges({});
-  
-  for(auto node : rhs_nodes) {
-    lhs_nodes.insert(node);
-  }
-  for(auto edge : rhs_edge) {
-    lhs_edge.insert(edge);
-  }
-  
-  MultiDiGraph multi_digraph = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-
-  for(auto node : lhs_nodes) {
-    multi_digraph.add_node_unsafe(node);
-  }
-
-  for(auto edge : lhs_edge) {
-    multi_digraph.add_edge(edge);
-  }
-
-  return static_cast<MultiDiGraphView>(multi_digraph);
+  return MultiDiGraphView::create<JoinedMultiDigraphView>(lhs, rhs);
 }
+
+UndirectedGraphView view_as_joined(UndirectedGraphView const & lhs,
+                                   UndirectedGraphView const & rhs){
+  return UndirectedGraphView::create<JoinedUndirectedGraphView>(lhs, rhs);
+  }
 
 UndirectedSubgraphView::UndirectedSubgraphView(
     maybe_owned_ref<IUndirectedGraphView const> g,
@@ -252,7 +215,7 @@ std::unordered_set<Node>
 // std::unordered_set<UndirectedEdge> JoinedUndirectedGraphView::query_edges(
 //     UndirectedEdgeQuery const &query) const {
 //   std::unordered_set<Node> nodes =
-//       query.nodes.value_or(get_nodes(unsafe(*this)));
+//       query.nodes.value_or(get_nodes());
 //   std::unordered_set<Node> left_nodes, right_nodes;
 //   for (Node const &n : nodes) {
 //     JoinNodeKey k = this->joined_nodes.at_node(n);
