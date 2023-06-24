@@ -28,8 +28,17 @@ void OPT::create_opt_model(FFModel &ff,
                            bool use_full_precision) {
   Config opt_config(model_config_file_path);
   opt_config.printConfig();
-  //------------------------------compute machine views ------------------
+  //---------------------- compute parallelization vars ----------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
+  int num_transformer_blocks = opt_config.num_hidden_layers;
+  int num_pipeline_parallelism_blocks =
+      num_transformer_blocks / ff.config.pipeline_parallelism_degree;
+  int num_devices_per_parallelism_block =
+      num_devices /
+      (ff.config.data_parallelism_degree * num_pipeline_parallelism_blocks);
+
+  //------------------------------compute machine views ------------------
+  // single device
   std::vector<MachineView> machine_views;
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
@@ -39,6 +48,19 @@ void OPT::create_opt_model(FFModel &ff,
     view.stride[0] = 0;
     view.start_device_id = i;
     machine_views.push_back(view);
+  }
+  // multiple devices
+  if (ff.config.tensor_parallelism_degree > 1) {
+    for (int i = 0; i < num_devices - num_devices_per_parallelism_block; i++) {
+      MachineView view;
+      view.device_type = MachineView::GPU;
+      view.ndims = 1;
+      view.dim[0] = num_devices_per_parallelism_block;
+      view.stride[0] = 1;
+      view.start_device_id = i;
+      // std::cout << "Registering machine view: " << view << std::endl;
+      machine_views.push_back(view);
+    }
   }
 
   std::unordered_map<Tensor, std::vector<MachineView>> mapping;
