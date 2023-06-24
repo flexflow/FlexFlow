@@ -301,7 +301,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         nullptr /*owner_op*/,
         true /*create_grad*/,
         initializer,
-        comm_type);
+        CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       bias_shape.dims[0].size =
@@ -405,7 +405,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         NULL /*owner_op*/,
         true /*create_grad*/,
         initializer,
-        comm_type);
+        CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       bias_shape.dims[0].size =

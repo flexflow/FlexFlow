@@ -120,7 +120,7 @@ Tensor FFModel::inc_multihead_self_attention_verify(
   int vParas = vProjSize * vSize;
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
   int one_head_size = qParas + kParas + vParas + oParas;
-  { 
+  {
     // compress the weight size if quantization.
     if (quantization_type != DT_NONE) {
       one_head_size = get_quantization_to_byte_size(
@@ -301,7 +301,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         NULL /*owner_op*/,
         true /*create_grad*/,
         initializer,
-        comm_type);
+        CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       bias_shape.dims[0].size =
@@ -405,7 +405,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         NULL /*owner_op*/,
         true /*create_grad*/,
         initializer,
-        comm_type);
+        CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       bias_shape.dims[0].size =
