@@ -29,10 +29,8 @@ LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
 LegionRuntime::Logger::Category log_offload("Offloading");
 
 InferenceManager::InferenceManager(FFConfig const &_config,
-                                   int _max_num_tokens_per_batch,
-                                   int _max_num_inflight_batches)
-    : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch),
-      max_num_inflight_batches(_max_num_inflight_batches) {
+                                   int _max_num_tokens_per_batch)
+    : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch) {
   // populate array of valid single-device machine views
   num_devices = ff_config.workersPerNode * ff_config.numNodes;
   for (int i = 0; i < num_devices; i++) {
@@ -90,6 +88,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
     assert(pt->owner_op != nullptr);
     mapping[pt->owner_op] = it.second;
   }
+  std::cout << std::endl << std::endl << "Operators MVs:" << std::endl;
   for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
     Op const *op = model->operators[op_idx];
     // Skip weight operators
@@ -100,12 +99,12 @@ void InferenceManager::compile_model_and_allocate_buffer(
     std::vector<MachineView> machine_views;
     if (mapping.find(op) != mapping.end()) {
       machine_views = mapping[op];
-      assert(machine_views.size() == max_num_inflight_batches);
+      assert(machine_views.size() == ff_config.data_parallelism_degree);
     } else {
       // Mapping the current operator using the same machine
       // view as the inputs
       assert(op->numInputs > 0);
-      for (int j = 0; j < max_num_inflight_batches; j++) {
+      for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
         MachineView mv = tensor_buffer[op->inputs[0]][j]->machine_view;
         for (int k = 1; k < op->numInputs; k++) {
           if (mv != tensor_buffer[op->inputs[k]][j]->machine_view) {
@@ -143,14 +142,14 @@ void InferenceManager::compile_model_and_allocate_buffer(
         assert(mv.start_device_id + mv.dim[0] <= num_devices);
         machine_views.push_back(mv);
       }
-      assert(machine_views.size() == max_num_inflight_batches);
+      assert(machine_views.size() == ff_config.data_parallelism_degree);
     }
     // std::cout << "operator: " << op->name << std::endl;
     // for (int i = 0; i < op->numInputs; i++) {
     //   op->inputs[i]->print("input pt");
     //   std::cout << "input mv: " << op->inputs[i]->machine_view << std::endl;
     // }
-
+    std::cout << "Op " << op->name << ": ";
     for (int i = 0; i < op->numOutputs; i++) {
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
@@ -211,7 +210,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
         }
       }
       if (!found_parallel_tensor) {
-        for (int j = 0; j < max_num_inflight_batches; j++) {
+        for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
           // Copy the metadata from pt_base to pt
           ParallelTensor pt = new ParallelTensorBase(*pt_base);
           pt->region =
@@ -230,11 +229,14 @@ void InferenceManager::compile_model_and_allocate_buffer(
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       tensor_buffer[pt_base] = list;
     }
+    std::cout << std::endl;
   }
+  // std::cout<< std::endl << std::endl;
+  assert(false);
 }
 
 void InferenceManager::init_operators_inference(FFModel *model) {
-  for (int batch_index = 0; batch_index < max_num_inflight_batches;
+  for (int batch_index = 0; batch_index < ff_config.data_parallelism_degree;
        batch_index++) {
     int expert_device_index = 0;
     int device_index = batch_index % num_devices;
@@ -290,7 +292,7 @@ FutureMap InferenceManager::inference(FFModel *model,
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
-  int batch_index = index % max_num_inflight_batches;
+  int batch_index = index % ff_config.data_parallelism_degree;
   FutureMap fm;
   bool found_input_operator = false;
   for (size_t o = 0; o < model->operators.size(); o++) {
