@@ -105,6 +105,9 @@ void FlexFlow::top_level_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffconfig;
+  if (ffconfig.cpu_offload == false && ffconfig.quantization_type != DT_NONE) {
+    assert(false && "Doesn't support quantization in non-offload mode");
+  }
   FilePaths file_paths;
   ModelType model_type;
   bool use_full_precision = false;
@@ -132,7 +135,7 @@ void FlexFlow::top_level_task(Task const *task,
                     /*verbose*/ verbose,
                     file_paths.output_file_path);
 
-  FFModel model(ffconfig);
+  FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(model,
                               im,

@@ -1271,6 +1271,9 @@ FFRuntime::FFRuntime(FFConfig &config) {
     // info.myRank = rank++;
     // info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
+    info.offload_reserve_space_size =
+        config.cpu_offload ? config.offload_reserve_space_size : 0;
+    info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
@@ -1294,7 +1297,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
 
 FFRuntime *ffruntime_singleton = nullptr;
 
-FFModel::FFModel(FFConfig &_config)
+FFModel::FFModel(FFConfig &_config, bool cpu_offload)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
@@ -1303,6 +1306,7 @@ FFModel::FFModel(FFConfig &_config)
       loss_op(NULL), metrics_op(NULL), simulator(NULL) {
   this->search = new PCG::SearchHelper(this);
   this->graph_search = new PCG::GraphSearchHelper(this);
+  this->cpu_offload = cpu_offload;
 
   if (ffruntime_singleton == nullptr) {
     ffruntime_singleton = new FFRuntime(_config);
@@ -1714,6 +1718,12 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
       break;
     case DT_INT64:
       allocator.allocate_field(sizeof(int64_t), FID_DATA);
+      break;
+    case DT_INT4:
+      allocator.allocate_field(sizeof(char), FID_DATA);
+      break;
+    case DT_INT8:
+      allocator.allocate_field(sizeof(char), FID_DATA);
       break;
     default:
       assert(false);
@@ -3706,9 +3716,12 @@ struct DefaultConfig {
   const static int cpusPerNode = 0;
   const static size_t searchBudget = -1;
   const static size_t simulatorWorkSpaceSize =
-      (size_t)2 * 1024 * 1024 * 1024; // 2GB
+      (size_t)2 * 1024 * 1024 * 1024; // 2 GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
+  const static size_t offloadReserveSpaceSize =
+      (size_t)8 * 1024 * 1024 * 1024; // 8 GB
+  const static bool cpuOffload = false;
   const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
@@ -3740,6 +3753,9 @@ FFConfig::FFConfig() {
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   computationMode = COMP_MODE_TRAINING;
+  cpu_offload = DefaultConfig::cpuOffload;
+  offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
+  quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
@@ -3831,6 +3847,22 @@ void FFConfig::parse_args(char **argv, int argc) {
     if ((!strcmp(argv[i], "--export")) ||
         (!strcmp(argv[i], "--export-strategy"))) {
       export_strategy_file = std::string(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "-offload"))) {
+      cpu_offload = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "-offload-reserve-space-size")) {
+      offload_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--4bit-quantization"))) {
+      quantization_type = DT_INT4;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--8bit-quantization"))) {
+      quantization_type = DT_INT8;
       continue;
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {

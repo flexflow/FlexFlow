@@ -205,7 +205,6 @@ void load_attention_weights(DT *ptr,
     size_t partial_size = one_weight_file_size;
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
-    // std::cout << "Loading attention filename: " << file << std::endl;
     if (!in.good()) {
       std::cout << "Could not open file: " << file << std::endl;
     }
@@ -278,7 +277,6 @@ void load_attention_weights(DT *ptr,
 
 template <typename DT>
 void load_from_file(DT *ptr, size_t size, std::string filename) {
-  // std::cout << "Loading filename: " << filename << std::endl;
   std::ifstream in(filename, std::ios::in | std::ios::binary);
   if (!in.good()) {
     std::cout << "Could not open file: " << filename << std::endl;
@@ -329,6 +327,320 @@ void FileDataLoader::load_positions(FFModel *ff,
 
   // ff->get_parallel_tensor_from_tensor(pt, position_pt);
   position_pt->set_tensor<int>(ff, dims_vec, data);
+}
+
+//--------------------- quantization functions ----------------------
+// the data layout is 32 * quantized data + 1 scaling factor + 1 offset factor
+// in the decompression mode, the real data = quantized data * scaling factor +
+// offset
+
+void load_attention_weights_quantized(char *ptr,
+                                      int num_heads,
+                                      size_t hidden_dim,
+                                      size_t qkv_inner_dim,
+                                      std::string layer_name,
+                                      std::string weight_path,
+                                      DataType data_type,
+                                      bool use_full_precision) {
+  // layers_0_attention_wq_weight
+  // layers_0_self_attn_q_proj_weight
+  std::string q_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wq_weight";
+  std::string k_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wk_weight";
+  std::string v_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wv_weight";
+  std::string o_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wo_weight";
+  std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
+
+  int file_index = 0;
+
+  size_t single_proj_size =
+      hidden_dim *
+      qkv_inner_dim; // size of each of Q,K,V,O weights for a single head
+  size_t one_weight_file_size =
+      num_heads * single_proj_size; // size of each of Q/K/V/O for all heads
+
+  // q, k, v, o -> 0, 1, 2, 3
+  for (auto file : weight_files) {
+    size_t partial_size = one_weight_file_size;
+    std::ifstream in(file, std::ios::in | std::ios::binary);
+    if (!in.good()) {
+      std::cout << "Could not open file: " << file << std::endl;
+    }
+    assert(in.good() && "incorrect weight file path");
+    std::vector<char> host_array(partial_size);
+    size_t loaded_data_size = sizeof(char) * partial_size;
+    in.seekg(0, in.end);
+    in.seekg(0, in.beg);
+    in.read((char *)host_array.data(), loaded_data_size);
+    size_t in_get_size = in.gcount();
+
+    if (in_get_size != loaded_data_size) {
+      std::cout << "load data error";
+      return;
+    }
+    assert(partial_size == host_array.size());
+
+    size_t one_head_size = data_type == DT_INT8
+                               ? hidden_dim * (hidden_dim / num_heads)
+                               : hidden_dim * (hidden_dim / num_heads) / 2;
+
+    size_t data_index = 0;
+    for (int i = 0; i < num_heads; i++) {
+      size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
+      for (size_t j = start_index; j < start_index + one_head_size; j++) {
+        if (data_type == DT_INT4) {
+          char v1 = host_array.at(data_index);
+          char v2 = host_array.at(data_index + 1);
+          ptr[j] = (v2 & 0XF) | (v1 << 4);
+          data_index += 2;
+        } else {
+          ptr[j] = host_array.at(data_index);
+          data_index += 1;
+        }
+      }
+    }
+    file_index++;
+    in.close();
+  }
+
+  // load scale and offset to the end of weight tensor
+  // the layout is like |values * 32 heads|offset|scale|
+  size_t offset = data_type == DT_INT8 ? one_weight_file_size * 4
+                                       : (one_weight_file_size * 4) / 2;
+  for (auto file : weight_files) {
+    for (int i = 0; i < 2; i++) {
+      std::string meta_file = i == 0 ? (file + "_offset") : (file + "_scale");
+      size_t partial_size =
+          one_weight_file_size / INT4_NUM_OF_ELEMENTS_PER_GROUP;
+      std::ifstream in(meta_file, std::ios::in | std::ios::binary);
+      if (!in.good()) {
+        std::cout << "Could not open file: " << meta_file << std::endl;
+      }
+      assert(in.good() && "incorrect weight file path");
+
+      if (use_full_precision) {
+        // float
+        std::vector<float> host_array(partial_size);
+        size_t loaded_data_size = sizeof(float) * partial_size;
+        in.seekg(0, in.end);
+        in.seekg(0, in.beg);
+        in.read((char *)host_array.data(), loaded_data_size);
+        size_t in_get_size = in.gcount();
+
+        if (in_get_size != loaded_data_size) {
+          std::cout << "load data error";
+          return;
+        }
+        assert(partial_size == host_array.size());
+
+        for (auto v : host_array) {
+          *(float *)(ptr + offset) = v;
+          offset += sizeof(float);
+        }
+      } else {
+        // half
+        std::vector<half> host_array(partial_size);
+        size_t loaded_data_size = sizeof(half) * partial_size;
+        in.seekg(0, in.end);
+        in.seekg(0, in.beg);
+        in.read((char *)host_array.data(), loaded_data_size);
+        size_t in_get_size = in.gcount();
+
+        if (in_get_size != loaded_data_size) {
+          std::cout << "load data error";
+          return;
+        }
+        assert(partial_size == host_array.size());
+        for (auto v : host_array) {
+          *(half *)(ptr + offset) = v;
+          offset += sizeof(half);
+        }
+      }
+    }
+  }
+}
+
+void load_from_quantized_file(char *ptr,
+                              size_t size,
+                              std::string filename,
+                              DataType data_type,
+                              bool use_full_precision) {
+  assert(data_type == DT_INT4 || data_type == DT_INT8);
+
+  std::string value_file = filename;
+  std::string offset_file = filename + "_offset";
+  std::string scaling_file = filename + "_scale";
+  size_t value_size = 0, offset_size = 0, scaling_size = 0;
+
+  if (data_type == DT_INT4) {
+    // float/half + 4bit quantization
+    // size1 = volume / 2, size2 = volume / 32 * (sizeof(DT)), size3 = size2
+    value_size = 2 * (use_full_precision ? (size * 2 / 3) : (size * 4 / 5));
+    offset_size = use_full_precision ? (size / 6) : (size / 10);
+    scaling_size = use_full_precision ? (size / 6) : (size / 10);
+  } else if (data_type == DT_INT8) {
+    // float/half + 8bit quantization
+    // size1 = volume * 1, size2 = volume / 32 * (sizeof(DT)), size3 = size2
+    value_size = use_full_precision ? (size * 4 / 5) : (size * 8 / 9);
+    offset_size = use_full_precision ? (size / 10) : (size / 18);
+    scaling_size = use_full_precision ? (size / 10) : (size / 18);
+  }
+
+  std::vector<std::string> quantized_files = {
+      value_file, offset_file, scaling_file};
+  std::vector<size_t> quantized_sizes = {value_size, offset_size, scaling_size};
+
+  int file_idx = 0;
+  long data_index = 0;
+  for (auto file : quantized_files) {
+    std::ifstream in(file, std::ios::in | std::ios::binary);
+    if (!in.good()) {
+      std::cout << "Could not open file: " << file << std::endl;
+    }
+    assert(in.good() && "incorrect weight file path");
+
+    // value file, every element is in one byte
+    if (file_idx == 0) {
+      size = quantized_sizes.at(file_idx);
+      std::vector<char> host_array(size);
+      size_t loaded_data_size = size;
+      in.seekg(0, in.end);
+      in.seekg(0, in.beg);
+      in.read((char *)host_array.data(), loaded_data_size);
+
+      size_t in_get_size = in.gcount();
+      if (in_get_size != loaded_data_size) {
+        std::cout << "load weight data error quantized" << in_get_size << ", "
+                  << loaded_data_size << ", " << sizeof(char) << std::endl;
+        return;
+      }
+      assert(size == host_array.size());
+
+      // normal
+      size_t idx = 0;
+      while (idx < host_array.size()) {
+        if (data_type == DT_INT4) {
+          // pack 2 elements into one byte
+          char v1 = host_array.at(idx);
+          char v2 = host_array.at(idx + 1);
+          // v1 in first 4 bit and v2 in last 4 bit;
+          ptr[data_index++] = (v2 & 0XF) | (v1 << 4);
+          idx += 2;
+        } else {
+          ptr[data_index++] = host_array.at(idx++);
+        }
+      }
+    } else if (use_full_precision) {
+      // load offset/scale in float type;
+      size = quantized_sizes.at(file_idx);
+      std::vector<float> host_array(size / sizeof(float));
+      size_t loaded_data_size = size;
+      in.seekg(0, in.end);
+      in.seekg(0, in.beg);
+      in.read((char *)host_array.data(), loaded_data_size);
+
+      size_t in_get_size = in.gcount();
+      if (in_get_size != loaded_data_size) {
+        std::cout << "load weight data error scale/offset" << in_get_size
+                  << ", " << loaded_data_size << ", " << sizeof(float) << ", "
+                  << file << ", " << size << std::endl;
+        return;
+      }
+      assert(size / sizeof(float) == host_array.size());
+      for (auto v : host_array) {
+        *(float *)(ptr + data_index) = v;
+        data_index += sizeof(float);
+      }
+
+    } else {
+      // load offset/scale in half type;
+      size = quantized_sizes.at(file_idx);
+      std::vector<half> host_array(size / sizeof(half));
+      size_t loaded_data_size = size;
+      in.seekg(0, in.end);
+      in.seekg(0, in.beg);
+      in.read((char *)host_array.data(), loaded_data_size);
+
+      size_t in_get_size = in.gcount();
+      if (in_get_size != loaded_data_size) {
+        std::cout << "load weight data error " << in_get_size << ", "
+                  << loaded_data_size << ", " << sizeof(half) << std::endl;
+        return;
+      }
+      assert(size / sizeof(half) == host_array.size());
+      // normal
+      for (auto v : host_array) {
+        *(half *)(ptr + data_index) = v;
+        data_index += sizeof(half);
+      }
+    }
+    in.close();
+    file_idx++;
+  }
+}
+
+void FileDataLoader::load_quantization_weight(FFModel *ff,
+                                              Tensor weight,
+                                              int weight_idx,
+                                              std::string const &layername,
+                                              bool use_full_precision) {
+  size_t volume = 1;
+  std::vector<int> dims_vec;
+  for (int i = 0; i < weight->num_dims; i++) {
+    dims_vec.push_back(weight->dims[i]);
+    volume *= weight->dims[i];
+  }
+
+  char *data = (char *)malloc(sizeof(char) * volume);
+
+  std::string file_path =
+      (layername.back() == '/') ? layername : "/" + layername;
+
+  if (file_path.find("attention_w") != std::string::npos) {
+    if (weight_idx == 0) {
+      load_attention_weights_quantized(data,
+                                       num_heads,
+                                       hidden_dim,
+                                       qkv_inner_dim,
+                                       file_path,
+                                       weight_file_path,
+                                       weight->data_type,
+                                       use_full_precision);
+    }
+    // else {
+    //   load_attention_bias_quantized(data,
+    //                                 num_heads,
+    //                                 hidden_dim,
+    //                                 qkv_inner_dim,
+    //                                 file_path,
+    //                                 weight_file_path);
+    // }
+
+  } else {
+    if (weight_idx > 0) {
+      int index = file_path.find("_weight");
+      assert(index != std::string::npos);
+      file_path = file_path.substr(0, index) + "_bias";
+    }
+    load_from_quantized_file(data,
+                             volume,
+                             weight_file_path + file_path,
+                             weight->data_type,
+                             use_full_precision);
+  }
+
+  ParallelTensor weight_pt;
+  ff->get_parallel_tensor_from_tensor(weight, weight_pt);
+  weight_pt->set_tensor<char>(ff, dims_vec, data);
+
+  delete data;
 }
 
 template <typename DT>
@@ -387,7 +699,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 }
 
 void FileDataLoader::load_weights(
-    FFModel *ff, std::unordered_map<std::string, Layer *> weights_layers) {
+    FFModel *ff,
+    std::unordered_map<std::string, Layer *> weights_layers,
+    bool use_full_precision) {
   for (auto &v : weights_layers) {
     int weights_num = v.second->numWeights;
     for (int i = 0; i < weights_num; i++) {
@@ -395,12 +709,18 @@ void FileDataLoader::load_weights(
       if (weight == NULL) {
         continue;
       }
+
       switch (weight->data_type) {
         case DT_HALF:
           load_single_weight_tensor<half>(ff, weight, i, v.first);
           break;
         case DT_FLOAT:
           load_single_weight_tensor<float>(ff, weight, i, v.first);
+          break;
+        case DT_INT4:
+        case DT_INT8:
+          // load weights in quantization
+          load_quantization_weight(ff, weight, i, v.first, use_full_precision);
           break;
         default:
           assert(false && "Unsupported data type");

@@ -185,7 +185,7 @@ void FlexFlow::top_level_task(Task const *task,
                     file_paths.output_file_path);
 
   // Create LLM model
-  FFModel tree_model(ffconfig);
+  FFModel tree_model(ffconfig, ffconfig.cpu_offload);
   if (model_types.llm_model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(tree_model,
                               im,

@@ -60,6 +60,12 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         DT *output_ptr,
                         DT const *bias_ptr,
                         cudaStream_t stream);
+
+template <typename DT>
+void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                             GenericTensorAccessorR const weight,
+                             DataType data_type,
+                             cudaStream_t stream);
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 } // namespace FlexFlow

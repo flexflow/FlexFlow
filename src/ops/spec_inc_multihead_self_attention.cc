@@ -577,8 +577,13 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  // We don't do offloading for SSMs (small speculative models)
   SpecIncMultiHeadSelfAttentionMeta *m = new SpecIncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem, num_samples, num_heads);
+      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
+  // assert that we didn't over allocate memory
+  assert(gpu_mem_allocator.instance_allocated_size ==
+         gpu_mem_allocator.instance_total_size);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
          m->weightSize);

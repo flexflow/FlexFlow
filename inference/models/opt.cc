@@ -249,7 +249,7 @@ void OPT::create_opt_model(FFModel &ff,
                             opt_config.hidden_size,
                             opt_config.hidden_size /
                                 opt_config.num_attention_heads);
-  fileloader.load_weights(&ff, weights_layers);
+  fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
   im.init_operators_inference(&ff);
 }

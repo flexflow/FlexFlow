@@ -33,6 +33,8 @@ enum DataType {
   DT_HALF = 43,
   DT_FLOAT = 44,
   DT_DOUBLE = 45,
+  DT_INT4 = 46,
+  DT_INT8 = 47,
   DT_NONE = 49,
 };
 
