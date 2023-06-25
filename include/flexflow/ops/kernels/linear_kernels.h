@@ -10,7 +10,11 @@ namespace FlexFlow {
 
 class LinearMeta : public OpMeta {
 public:
-  LinearMeta(FFHandler handle, int batch_size, Linear const *li);
+  LinearMeta(FFHandler handle,
+             int batch_size,
+             Linear const *li,
+             MemoryAllocator gpu_mem_allocator,
+             int weightSize);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
@@ -19,10 +23,16 @@ public:
   miopenActivationDescriptor_t actiDesc;
 #endif
   void *one_ptr;
+  void *weight_ptr;
+  DataType weight_ptr_type;
+  DataType quantization_type;
+  bool offload;
+  char *quantized_weight_ptr;
+  size_t quantized_weightSize;
   ActiMode activation;
   RegularizerMode kernel_reg_type;
   float kernel_reg_lambda;
-  bool use_bias;
+  bool use_bias, add_bias_only_once;
   DataType input_type, weight_type, output_type;
   char op_name[MAX_OPNAME];
 };

@@ -9,11 +9,15 @@ cleanup() {
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
+# Enable model parallelism tests, if desired
+TENSOR_PARALLELISM_TESTS=${TENSOR_PARALLELISM_TESTS:-OFF}
+
 # Clean up before test (just in case)
 cleanup
 
 # Update the transformers library to support the LLAMA model
-pip3 install --upgrade transformers sentencepiece 
+
+pip3 install --upgrade transformers sentencepiece
 
 # Download the weights in both half and full precision
 python3 ../inference/utils/download_llama_weights.py
@@ -42,6 +46,15 @@ mkdir -p ../inference/output
 # OPT (half precision)
 ../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../inference/weights/opt_6B_weights_half/ -llm-config ../inference/models/configs/opt_6B.json -ssm-model opt -ssm-weight ../inference/weights/opt_125M_weights_half/ -ssm-config ../inference/models/configs/opt_125M.json -tokenizer ../inference/tokenizer/ -prompt ../inference/prompt/test.json -output-file ../inference/output/spec_inference_opt_half.txt
 
+# Tensor parallelism tests
+if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
+    # LLAMA (half precision)
+    ../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../inference/weights/llama_7B_weights_half/ -llm-config ../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../inference/weights/llama_160M_weights_half/ -ssm-config ../inference/models/configs/llama_160M.json -tokenizer ../inference/tokenizer/tokenizer.model -prompt ../inference/prompt/test.json -output-file ../inference/output/spec_inference_llama_half_tp.txt -tensor-parallelism-degree 2
+    
+    # OPT (half precision)
+    ../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../inference/weights/opt_6B_weights_half/ -llm-config ../inference/models/configs/opt_6B.json -ssm-model opt -ssm-weight ../inference/weights/opt_125M_weights_half/ -ssm-config ../inference/models/configs/opt_125M.json -tokenizer ../inference/tokenizer/ -prompt ../inference/prompt/test.json -output-file ../inference/output/spec_inference_opt_half_tp.txt -tensor-parallelism-degree 2
+fi
+
 ###############################################################################################
 ############################ Incremental decoding tests #######################################
 ###############################################################################################
@@ -66,6 +79,24 @@ mkdir -p ../inference/output
 # OPT (big model, half precision)
 ../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../inference/weights/opt_6B_weights_half/ -llm-config ../inference/models/configs/opt_6B.json -tokenizer ../inference/tokenizer/ -prompt ../inference/prompt/test.json -output-file ../inference/output/incr_decoding_opt_6B_half.txt
 
+# Tensor parallelism tests
+if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
+    # LLAMA (small model)
+    ../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../inference/weights/llama_160M_weights/ -llm-config ../inference/models/configs/llama_160M.json -tokenizer ../inference/tokenizer/tokenizer.model -prompt ../inference/prompt/test.json -output-file ../inference/output/incr_decoding_llama_160M_tp.txt -tensor-parallelism-degree 2
+    # LLAMA (small model, half precision)
+    ../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../inference/weights/llama_160M_weights_half/ -llm-config ../inference/models/configs/llama_160M.json -tokenizer ../inference/tokenizer/tokenizer.model -prompt ../inference/prompt/test.json -output-file ../inference/output/incr_decoding_llama_160M_half_tp.txt -tensor-parallelism-degree 2
+
+    # LLAMA (big model, half precision)
+    ../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../inference/weights/llama_7B_weights_half/ -llm-config ../inference/models/configs/llama_7B.json -tokenizer ../inference/tokenizer/tokenizer.model -prompt ../inference/prompt/test.json -output-file ../inference/output/incr_decoding_llama_7B_half_tp.txt -tensor-parallelism-degree 2
+
+    # OPT (small model)
+    ../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../inference/weights/opt_125M_weights/ -llm-config ../inference/models/configs/opt_125M.json -tokenizer ../inference/tokenizer/ -prompt ../inference/prompt/test.json -output-file ../inference/output/incr_decoding_opt_125M_tp.txt -tensor-parallelism-degree 2
+    # OPT (small model, half precision)
+    ../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../inference/weights/opt_125M_weights_half/ -llm-config ../inference/models/configs/opt_125M.json -tokenizer ../inference/tokenizer/ -prompt ../inference/prompt/test.json -output-file ../inference/output/incr_decoding_opt_125M_half_tp.txt -tensor-parallelism-degree 2
+
+    # OPT (big model, half precision)
+    ../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../inference/weights/opt_6B_weights_half/ -llm-config ../inference/models/configs/opt_6B.json -tokenizer ../inference/tokenizer/ -prompt ../inference/prompt/test.json -output-file ../inference/output/incr_decoding_opt_6B_half_tp.txt -tensor-parallelism-degree 2
+fi
 
 ###############################################################################################
 ############################### Alignment and Speed tests #####################################
@@ -110,6 +141,18 @@ compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_opt_6B
 #compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_llama_7B_half.txt" "../inference/output/spec_inference_llama_half.txt"
 #compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_opt_6B_half.txt" "../inference/output/spec_inference_opt_half.txt"
 
+############ Alignment between tensor model parallelism and pipeline parallelism only #################
+if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
+    # diff <(tail -n +2 "../inference/output/spec_inference_llama_half_tp.txt") <(tail -n +2 "../inference/output/spec_inference_llama_half.txt")
+    diff <(tail -n +2 "../inference/output/spec_inference_opt_half_tp.txt") <(tail -n +2 "../inference/output/spec_inference_opt_half.txt")
+    diff <(tail -n +2 "../inference/output/incr_decoding_llama_160M_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_160M.txt")
+    diff <(tail -n +2 "../inference/output/incr_decoding_llama_160M_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_160M_half.txt")
+    diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half.txt")
+    diff <(tail -n +2 "../inference/output/incr_decoding_opt_125M_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_125M.txt")
+    diff <(tail -n +2 "../inference/output/incr_decoding_opt_125M_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_125M_half.txt")
+    diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half.txt")
+fi
+
 ######################### Alignment tests with HuggingFace ####################################
 pip3 install protobuf==3.20.3
 
@@ -126,10 +169,10 @@ python3 ./inference/huggingface_inference.py --model-name "decapoda-research/lla
 python3 ./inference/huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --tokenizer-model-name "JackFram/llama-160m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B_half.txt" --gpu
 
 # OPT (small model, full precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M.txt" --gpu --max-length 127
+python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M.txt" --gpu --max-length 128
 
 # OPT (small model, half precision)
-python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 127
+python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --tokenizer-model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 128
 
 # OPT (big model, full precision)
 #python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B.txt" --max-length 127

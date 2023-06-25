@@ -9,10 +9,9 @@ on:
     branches:
       - "inference"
       - "master"
-    paths:
-      - "docker/**"
-      - "!docker/README.md"
-      - ".github/workflows/docker-build.yml"
+  schedule:
+    # Run every week on Sunday at midnight PT (3am ET / 8am UTC) to keep the docker images updated
+    - cron: "0 8 * * 0"
   workflow_dispatch:
 
 # Cancel outdated workflows if they are still running
@@ -44,10 +43,15 @@ jobs:
           # On push to master, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
-          if [[ ${{ github.event_name }} == 'push' && (${GITHUB_REF#refs/heads/} == "master" || ${GITHUB_REF#refs/heads/} == "inference") ]]; then
+          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && (${GITHUB_REF#refs/heads/} == "master" || ${GITHUB_REF#refs/heads/} == "inference")]]; then
             export FF_CUDA_ARCH=all
           else
             export FF_CUDA_ARCH=70
+          fi
+          if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          else
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=OFF
           fi
           ./docker/build.sh flexflow
 
@@ -56,15 +60,28 @@ jobs:
         run: docker run --entrypoint python flexflow-cuda:latest -c "import flexflow.core; exit()"
 
       - name: Publish Docker environment image (on push to master)
+        if: github.repository_owner == 'flexflow'
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         run: |
-          if [[ ${{ github.event_name }} == 'push' && ${GITHUB_REF#refs/heads/} == "master"]]; then
+          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
             ./docker/publish.sh "flexflow-environment-${FF_GPU_BACKEND}"
             ./docker/publish.sh "flexflow-${FF_GPU_BACKEND}"
-          elif [[ ${{ github.event_name }} == 'push' && ${GITHUB_REF#refs/heads/} == "inference") ]]; then
+          elif [[ (${{ github.event_name }} == 'push'  || ${{ github.event_name }} == 'schedule') && ${GITHUB_REF#refs/heads/} == "inference") ]]; then
             ./docker/publish.sh "specinfer-${FF_GPU_BACKEND}"
           else
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi
+  
+  notify-slack:
+    name: Notify Slack in case of failure
+    runs-on: ubuntu-20.04
+    needs: docker-build
+    if: ${{ failure() && github.event_name == 'schedule' && github.repository_owner == 'flexflow' }}
+    steps:
+      - name: Send Slack message
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Weekly FlexFlow Docker images build failed! <https://github.com/flexflow/FlexFlow/actions/runs/$GITHUB_RUN_ID|(See here).> :x: \"}" $SLACK_WEBHOOK

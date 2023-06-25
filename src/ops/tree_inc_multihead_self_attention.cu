@@ -177,6 +177,7 @@ __global__ void tree_fill_entries_above_diagonal(DT *matrix,
 template <typename DT>
 void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                               TreeVerifyBatchConfig const *bc,
+                              int shard_id,
                               DT *output_ptr,
                               DT const *bias_ptr,
                               cudaStream_t stream) {
@@ -410,9 +411,10 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       k = m->vProjSize * m->num_heads;
       n = num_new_tokens;
       lda = k, ldb = n, ldc = m_;
-      A = m->W_out_contiguous;
+      A = static_cast<DT *>(m->W_out_contiguous);
       B = C;
-      C = (output_ptr + processed_tokens_in_batch * m->oProjSize);
+      C = static_cast<DT *>(output_ptr) +
+          processed_tokens_in_batch * m->oProjSize;
 
       checkCUDA(cublasGemmEx(m->handle.blas,
                              CUBLAS_OP_T,
@@ -439,7 +441,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
     // check that we have finished all tokens of the request
     assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
   }
-  if (*m->bias) {
+  if (*m->bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
@@ -454,11 +456,42 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       TreeVerifyBatchConfig const *bc,
+                      int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+  // additional processing for weight uploading
+  // if (m->handle.offload_reserve_space != nullptr) {
+  //   // Note that we update weight_ptr and bias_ptr when uploading weight and
+  //   // bias
+  //   cudaMemcpyAsync(m->weight_ptr,
+  //                   weight_ptr,
+  //                   m->weightSize,
+  //                   cudaMemcpyHostToDevice,
+  //                   stream);
+  //   weight_ptr = static_cast<DT *>(m->weight_ptr);
+  //   if (m->biasSize > 0) {
+  //     cudaMemcpyAsync(
+  //         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice,
+  //         stream);
+  //     bias_ptr = static_cast<DT *>(m->bias_ptr);
+  //   }
+  //   // reload weight_o for offloading case
+  //   int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
+  //   build_w_out_tensor<<<GET_BLOCKS(parallelism),
+  //                        min(CUDA_NUM_THREADS, parallelism),
+  //                        0,
+  //                        stream>>>(weight_ptr,
+  //                                  static_cast<DT *>(m->W_out_contiguous),
+  //                                  m->vProjSize,
+  //                                  m->oProjSize,
+  //                                  m->num_heads,
+  //                                  (m->qSize * m->qProjSize +
+  //                                   m->kSize * m->kProjSize +
+  //                                   m->vSize * m->vProjSize));
+  // }
   // copy committed tokens info to GPU for the commit_tokens kernel
   // Note that m->num_active_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
@@ -476,6 +509,11 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   m->num_active_tokens = bc->num_active_tokens();
 
   // here because we need postion info in infernece 1
+  if (m->offload && m->biasSize > 0) {
+    cudaMemcpyAsync(
+        m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
+    bias_ptr = static_cast<DT *>(m->bias_ptr);
+  }
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->MAX_NUM_TOKENS *
@@ -485,6 +523,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
+                     shard_id,
                      input_ptr,
                      weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
@@ -497,7 +536,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  compute_attention_kernel(m, bc, output_ptr, bias_ptr, stream);
+  compute_attention_kernel(m, bc, shard_id, output_ptr, bias_ptr, stream);
 }
 
 } // namespace TreeIncMultiHeadAttention
@@ -507,6 +546,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeIncMultiHeadSelfAttentionMeta *m,
     TreeVerifyBatchConfig const *bc,
+    int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output,
@@ -522,32 +562,44 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  assert(input.data_type == weight.data_type);
+  // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
   if (use_bias) {
     assert(input.data_type == bias.data_type);
   }
 
   if (input.data_type == DT_HALF) {
+    if (m->offload) {
+      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+    }
+
     half const *bias_ptr =
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
-    Kernels::TreeIncMultiHeadAttention::inference_kernel(m,
-                                                         bc,
-                                                         input.get_half_ptr(),
-                                                         weight.get_half_ptr(),
-                                                         output.get_half_ptr(),
-                                                         bias_ptr,
-                                                         stream);
+    Kernels::TreeIncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        shard_id,
+        input.get_half_ptr(),
+        m->offload ? static_cast<half *>(m->weight_ptr) : weight.get_half_ptr(),
+        output.get_half_ptr(),
+        bias_ptr,
+        stream);
   } else if (input.data_type == DT_FLOAT) {
+    if (m->offload) {
+      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+    }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
-    Kernels::TreeIncMultiHeadAttention::inference_kernel(m,
-                                                         bc,
-                                                         input.get_float_ptr(),
-                                                         weight.get_float_ptr(),
-                                                         output.get_float_ptr(),
-                                                         bias_ptr,
-                                                         stream);
+    Kernels::TreeIncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        shard_id,
+        input.get_float_ptr(),
+        m->offload ? static_cast<float *>(m->weight_ptr)
+                   : weight.get_float_ptr(),
+        output.get_float_ptr(),
+        bias_ptr,
+        stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -570,7 +622,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     TreeIncMultiHeadSelfAttention const *attn,
     GenericTensorAccessorR const &weight,
-    Memory gpu_mem,
+    MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
@@ -590,9 +642,12 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
-                                    gpu_mem,
+                                    gpu_mem_allocator,
                                     num_samples,
-                                    _num_heads),
+                                    attn->num_heads,
+                                    _num_heads,
+                                    attn->quantization_type,
+                                    attn->offload),
       num_active_tokens(0) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -601,30 +656,34 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
     size_t committed_tokeninfo_size = TreeVerifyBatchConfig::MAX_NUM_TOKENS;
-    size_t totalSize = committed_tokeninfo_size *
-                       sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
-
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(committed_token_reserve_inst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    committed_token_infos =
-        committed_token_reserve_inst
-            .pointer<TreeVerifyBatchConfig::CommittedTokensInfo>(0);
+    size_t total_size = committed_tokeninfo_size *
+                        sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
+    if (offload) {
+      // assert that we have enough reserved work space left
+      assert(gpu_mem_allocator.reserved_total_size -
+                 gpu_mem_allocator.reserved_allocated_size >=
+             total_size);
+      committed_token_infos =
+          gpu_mem_allocator
+              .allocate_reserved<TreeVerifyBatchConfig::CommittedTokensInfo>(
+                  committed_tokeninfo_size);
+    } else {
+      gpu_mem_allocator.create_legion_instance(committed_token_reserve_inst,
+                                               total_size);
+      committed_token_infos =
+          gpu_mem_allocator
+              .allocate_instance<TreeVerifyBatchConfig::CommittedTokensInfo>(
+                  committed_tokeninfo_size);
+    }
   }
 
   cudaStreamSynchronize(stream);
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
-  committed_token_reserve_inst.destroy();
+  if (committed_token_reserve_inst != Realm::RegionInstance::NO_INST) {
+    committed_token_reserve_inst.destroy();
+  }
 }
 
 }; // namespace FlexFlow

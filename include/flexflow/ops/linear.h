@@ -5,6 +5,7 @@
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/linear_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -25,6 +26,8 @@ public:
          float kernel_reg_lambda,
          bool _use_bias,
          DataType _data_type,
+         DataType _quantization_type,
+         bool offload,
          bool allocate_weights,
          char const *name);
   Linear(FFModel &model,
@@ -96,13 +99,13 @@ private:
          bool allocate_weights,
          char const *name);
 
-  template <typename DT, int NDIM>
+  template <typename DT, typename WT, int NDIM>
   static OpMeta *
       init_task_with_dim(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
-  template <typename DT, int NDIM>
+  template <typename DT, typename WT, int NDIM>
   static void
       forward_task_with_dim(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
@@ -126,6 +129,8 @@ public:
   float kernel_reg_lambda;
   bool use_bias;
   ParallelTensor replica;
+  DataType quantization_type;
+  bool offload;
 };
 
 }; // namespace FlexFlow

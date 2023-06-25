@@ -87,7 +87,7 @@ ifneq ($(strip $(FF_USE_PYTHON)), 1)
 endif
 
 
-INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include -I${FF_HOME}/deps/sentencepiece/src
+INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include -I${FF_HOME}/deps/tokenizers-cpp/include -I${FF_HOME}/deps/tokenizers-cpp/sentencepiece/src
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
@@ -96,6 +96,8 @@ GASNET_FLAGS	+=
 CC_FLAGS	+= -std=c++17
 NVCC_FLAGS	+= -std=c++17
 HIPCC_FLAGS     += -std=c++17
+
+LD_FLAGS += -L$(FF_HOME)/deps/tokenizers-cpp/example/tokenizers -ltokenizers_cpp -ltokenizers_c -L$(FF_HOME)/deps/tokenizers-cpp/example/tokenizers/sentencepiece/src -lsentencepiece
 
 ifeq ($(strip $(FF_USE_NCCL)), 1)
 INC_FLAGS	+= -I$(MPI_HOME)/include -I$(NCCL_HOME)/include

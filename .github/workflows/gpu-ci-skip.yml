@@ -45,7 +45,7 @@ jobs:
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: ubuntu-20.04
-    if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
+    # if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
     needs: inference-tests
     steps:
       - run: 'echo "No gpu-ci required"'

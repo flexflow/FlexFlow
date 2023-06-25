@@ -105,6 +105,7 @@ public:
   static void
       inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
                                BeamSearchBatchConfig const *bc,
+                               int shard_id,
                                GenericTensorAccessorR const &input,
                                GenericTensorAccessorR const &weight,
                                GenericTensorAccessorW const &output,
@@ -126,7 +127,7 @@ public:
   SpecIncMultiHeadSelfAttentionMeta(FFHandler handler,
                                     SpecIncMultiHeadSelfAttention const *attn,
                                     GenericTensorAccessorR const &weight,
-                                    Legion::Memory gpu_mem,
+                                    MemoryAllocator &gpu_mem_allocator,
                                     int num_samples,
                                     int _num_heads);
   ~SpecIncMultiHeadSelfAttentionMeta(void);
