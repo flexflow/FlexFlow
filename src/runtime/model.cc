@@ -2956,7 +2956,9 @@ Op *FFModel::create_operator_from_layer(
 
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
-  for (auto const &l : layers) {
+  // for (auto const &l : layers) {
+  for (int layer_idx = 0; layer_idx < layers.size(); layer_idx++) {
+    auto const &l = layers[layer_idx];
     std::vector<ParallelTensor> inputs;
     for (int i = 0; i < l->numInputs; i++) {
       // create new input tensors
@@ -2964,7 +2966,63 @@ void FFModel::create_operators_from_layers() {
              tensors_to_parallel_tensors.end());
       inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
     }
-    Op *op = create_operator_from_layer(l, inputs);
+    Op *op = nullptr;
+    // add replicate operators if needed
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+         (l->op_type == OP_LINEAR && layer_idx + 3 <= layers.size() &&
+          layers[layer_idx + 1]->op_type == OP_RELU &&
+          layers[layer_idx + 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 6 <= layers.size() &&
+          layers[layer_idx + 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 2]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 5]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 5 <= layers.size() &&
+          layer_idx >= 1 && layers[layer_idx - 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 1]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_LINEAR))) {
+      std::vector<ParallelTensor> partitioned_inputs;
+      assert(inputs.size() == 1);
+      Replicate *repl = new Replicate(*this,
+                                      inputs[0],
+                                      inputs[0]->num_dims - 1,
+                                      config.tensor_parallelism_degree);
+      partitioned_inputs.push_back(repl->outputs[0]);
+      operators.push_back(repl);
+      op = create_operator_from_layer(l, partitioned_inputs);
+    } else {
+      op = create_operator_from_layer(l, inputs);
+    }
+    // Op *op = create_operator_from_layer(l, inputs);
+    //  add reduce operators if needed
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+         (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+          layers[layer_idx - 1]->op_type == OP_RELU &&
+          layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+          layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+          layers[layer_idx - 4]->op_type == OP_LINEAR &&
+          layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+      assert(op->numOutputs == 1);
+      Reduction *reduct = new Reduction(*this,
+                                        op->outputs[0],
+                                        op->outputs[0]->num_dims - 1,
+                                        config.tensor_parallelism_degree);
+      operators.push_back(reduct);
+      op = reduct;
+    }
+
     assert(op->numOutputs == l->numOutputs);
     for (int i = 0; i < op->numOutputs; i++) {
       tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
@@ -4835,6 +4893,13 @@ void register_flexflow_internal_tasks() {
   }
   // Replicate
   {
+    TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Replicate::init_task>(
+        registrar, "Replicate init Task");
+  }
+  {
     TaskVariantRegistrar registrar(REPLICATE_FWD_TASK_ID, "Replicate Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -4849,6 +4914,13 @@ void register_flexflow_internal_tasks() {
         registrar, "Replicate Backward Task");
   }
   // Reduction
+  {
+    TaskVariantRegistrar registrar(REDUCTION_INIT_TASK_ID, "Reduction Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Reduction::init_task>(
+        registrar, "Reduction init Task");
+  }
   {
     TaskVariantRegistrar registrar(REDUCTION_FWD_TASK_ID, "Reduction Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));

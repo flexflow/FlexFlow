@@ -105,6 +105,7 @@ public:
 
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
                                        BatchConfig const *bc,
+                                       int shard_id,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorR const &weight,
                                        GenericTensorAccessorW const &output,
@@ -150,6 +151,7 @@ public:
                                 GenericTensorAccessorR const &weight,
                                 MemoryAllocator &gpu_mem_allocator,
                                 int num_samples,
+                                int _global_num_heads,
                                 int _num_heads,
                                 DataType _quantization_type,
                                 bool _offload);
@@ -160,7 +162,7 @@ public:
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int num_heads;
+  int global_num_heads, num_heads;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *bias;

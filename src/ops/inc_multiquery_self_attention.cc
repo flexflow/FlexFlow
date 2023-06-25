@@ -235,17 +235,12 @@ IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
     dims[2].parallel_idx = -1;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
     weights[0] = model.create_parallel_weight<3>(dims,
                                                  this->data_type,
                                                  nullptr /*owner_op*/,
                                                  true /*create_grad*/,
                                                  initializer,
-                                                 comm_type);
+                                                 CHOSEN_SYNC_TYPE);
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -317,17 +312,12 @@ IncMultiQuerySelfAttention::IncMultiQuerySelfAttention(
         this->embed_dim + this->kProjSize + this->vProjSize + this->oProjSize;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
     weights[0] = model.create_parallel_weight<3>(dims,
                                                  this->data_type,
                                                  NULL /*owner_op*/,
                                                  true /*create_grad*/,
                                                  initializer,
-                                                 comm_type);
+                                                 CHOSEN_SYNC_TYPE);
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, this->data_type, this);

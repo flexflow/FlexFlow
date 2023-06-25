@@ -27,6 +27,7 @@ using Legion::Memory;
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeIncMultiHeadSelfAttentionMeta *m,
     TreeVerifyBatchConfig const *bc,
+    int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output,
@@ -83,6 +84,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem_allocator,
                                     num_samples,
+                                    attn->num_heads,
                                     _num_heads,
                                     attn->quantization_type,
                                     attn->offload),
