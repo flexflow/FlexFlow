@@ -28,7 +28,15 @@ echo "$FLEXFLOW_CONTAINER_TOKEN" | docker login ghcr.io -u flexflow --password-s
 # Tag image to be uploaded
 git_sha=${GITHUB_SHA:-$(git rev-parse HEAD)}
 if [ -z "$git_sha" ]; then echo "Commit hash cannot be detected, cannot publish the docker image to ghrc.io"; exit; fi
-docker tag "$image":latest ghcr.io/flexflow/"$image":latest
+
+# If in "inference" branch, which tries to publish "specinfer" images,
+# tags the all images as "specinfer-{cuda, hip_cuda, hip_rocm, intel}"; if in others, do as orginal
+if [[ "${image}" == @(specinfer-cuda|specinfer-hip_cuda|specinfer-hip_rocm|specinfer-intel) ]]; then 
+  SUBSTR=${image:10}
+  docker tag flexflow-"$SUBSTR":latest ghcr.io/flexflow/specinfer-"$SUBSTR":latest
+else
+  docker tag "$image":latest ghcr.io/flexflow/"$image":latest
+fi
 
 # Upload image
 docker push ghcr.io/flexflow/"$image":latest
