@@ -227,11 +227,6 @@ LayerNorm::LayerNorm(FFModel &model,
     int seed = std::rand();
     Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
     Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
     weights[0] =
         model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,
@@ -239,7 +234,7 @@ LayerNorm::LayerNorm(FFModel &model,
                                                      NULL /*owner_op*/,
                                                      true /*create_grad*/,
                                                      gamma_initializer,
-                                                     comm_type);
+                                                     CHOSEN_SYNC_TYPE);
     weights[1] =
         model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,
@@ -247,7 +242,7 @@ LayerNorm::LayerNorm(FFModel &model,
                                                      NULL /*owner_op*/,
                                                      true /*create_grad*/,
                                                      beta_initializer,
-                                                     comm_type);
+                                                     CHOSEN_SYNC_TYPE);
   }
 }
 

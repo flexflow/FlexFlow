@@ -15,26 +15,71 @@
 
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
-#include "flexflow/tokenizers.h"
+// #include "flexflow/tokenizers.h"
+#include <filesystem>
 #include <iomanip>
 #include <new>
+#include <stack>
 #include <stdexcept>
 
 namespace FlexFlow {
 
 using namespace Legion;
+using tokenizers::Tokenizer;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
-RequestManager::RequestManager()
-    : tokenizer(nullptr), verbose(false), next_available_guid(1000000),
-      num_processed_requests(0) {}
+std::string LoadBytesFromFile(std::string const &path) {
+  std::ifstream fs(path, std::ios::in | std::ios::binary);
+  assert(!fs.fail() && "no such file");
+  std::string data;
+  fs.seekg(0, std::ios::end);
+  size_t size = static_cast<size_t>(fs.tellg());
+  fs.seekg(0, std::ios::beg);
+  data.resize(size);
+  fs.read(data.data(), size);
+  return data;
+}
 
-RequestManager::RequestManager(Tokenizer *_tokenizer,
+RequestManager::RequestManager()
+    : verbose(false), next_available_guid(1000000), num_processed_requests(0) {}
+
+RequestManager::RequestManager(ModelType model_type,
+                               std::string const &path,
                                bool _verbose,
                                std::string _output_filepath)
-    : tokenizer(_tokenizer), verbose(_verbose), next_available_guid(1000000),
-      num_processed_requests(0), output_filepath(_output_filepath) {}
+    : verbose(_verbose), next_available_guid(1000000),
+      num_processed_requests(0), output_filepath(_output_filepath) {
+
+  // bos id
+  this->model_type = model_type;
+  if (model_type == ModelType::LLAMA) {
+    this->tokenizer_ =
+        Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(path));
+  } else if (model_type == ModelType::OPT) {
+    std::string tokenizer_folder =
+        (!path.empty() && path.back() != '/') ? path + '/' : path;
+    std::string vocab_file = tokenizer_folder + "gpt2-vocab.json";
+    std::string merges_file = tokenizer_folder + "gpt2-merges.txt";
+    std::string added_tokens_file = tokenizer_folder + "added_tokens.json";
+    std::filesystem::path path1(vocab_file);
+    std::filesystem::path path2(merges_file);
+    std::filesystem::path path3(added_tokens_file);
+    assert(std::filesystem::exists(path1) &&
+           "Vocab file gpt2-vocab.json does not exist at the specified path");
+    assert(std::filesystem::exists(path2) &&
+           "Merge file gpt2-merges.txt does not exist at the specified path");
+    // opt_tokenizer = new OptTokenizer(vocab_file, merges_file);
+    std::string vocab = LoadBytesFromFile(path1.string());
+    std::string merges = LoadBytesFromFile(path2.string());
+    std::string added_tokens = LoadBytesFromFile(path3.string());
+
+    this->tokenizer_ =
+        Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
+  } else if (model_type == ModelType::FALCON) {
+    this->tokenizer_ = Tokenizer::FromBlobJSON(LoadBytesFromFile(path));
+  }
+}
 
 int RequestManager::register_new_model(FFModel *model) {
   int model_id = models.size();
@@ -63,7 +108,7 @@ RequestManager::RequestGuid
   request.tokens = prompt;
 
   if (num_ssms == 0) {
-    std::cout << "No small spective model registered yet, using increamental "
+    std::cout << "No small speculative model registered yet, using incremental "
                  "decoding."
               << std::endl;
   } else {
@@ -94,13 +139,19 @@ RequestManager::RequestGuid
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  request.tokens.push_back(tokenizer->bos_token_id);
-  std::vector<int32_t> tokens = tokenizer->Encode(prompt);
+  request.tokens.push_back(this->model_bos_map.at(this->model_type));
+  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
+
+  for (int i = 0; i < tokens.size(); i++) {
+    std::cout << tokens.at(i) << "\n";
+  }
+
+  // assert(false);
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
 
   if (num_ssms == 0) {
-    std::cout << "No small spective model registered yet, using increamental "
+    std::cout << "No small speculative model registered yet, using incremental "
                  "decoding."
               << std::endl;
   } else {
@@ -143,7 +194,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       // This is a decoding token
       log_req_mgr.print("Output token is: %d", result.token_ids[i]);
       request.tokens.push_back(result.token_ids[i]);
-      std::string output = tokenizer->Decode(request.tokens);
+      std::string output = this->tokenizer_->Decode(request.tokens);
       log_req_mgr.print("Output: %s", output.c_str());
     }
   }
@@ -165,7 +216,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
-      std::string output = tokenizer->Decode(request.tokens);
+      std::string output = this->tokenizer_->Decode(request.tokens);
+
+      for (int i = 0; i < request.tokens.size(); i++) {
+        std::cout << request.tokens.at(i) << "\n";
+      }
       log_req_mgr.print("Final output: %s", output.c_str());
       num_processed_requests++;
       ProfileInfo profile_info = profiling_requests[request.guid];
@@ -481,7 +536,7 @@ BeamSearchBatchConfig
       log_req_mgr.print("[Done] guid(%zu) with final length(%zu)",
                         request.guid,
                         request.tokens.size());
-      std::string output = tokenizer->Decode(request.tokens);
+      std::string output = this->tokenizer_->Decode(request.tokens);
       log_req_mgr.print("Final output: %s", output.c_str());
       new_bc.request_completed[i] = true;
       num_processed_requests++;
@@ -574,7 +629,7 @@ BeamSearchBatchConfig
         break;
       }
     }
-    std::string output = tokenizer->Decode(request.tokens);
+    std::string output = this->tokenizer_->Decode(request.tokens);
     log_req_mgr.print("Output: %s", output.c_str());
   }
 

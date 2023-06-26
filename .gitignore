@@ -17,6 +17,11 @@ __pycache__/
 # C extensions
 *.so
 
+/inference/weights/*
+/inference/tokenizer/*
+/inference/prompt/*
+/inference/output/*
+
 # Distribution / packaging
 .Python
 build/

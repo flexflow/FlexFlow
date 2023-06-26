@@ -340,11 +340,6 @@ Experts::Experts(FFModel &model,
   assert(outputs[0] != nullptr);
 
   if (allocate_weights) {
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
     {
       ParallelDim dims[3];
       int nparams = (experts_num_layers == 1)
@@ -367,7 +362,7 @@ Experts::Experts(FFModel &model,
                                                        NULL /*owner_op*/,
                                                        true /*create_grad*/,
                                                        kernel_initializer,
-                                                       comm_type);
+                                                       CHOSEN_SYNC_TYPE);
       assert(weights[0] != nullptr);
     }
     if (use_bias) {
@@ -391,7 +386,7 @@ Experts::Experts(FFModel &model,
                                                        NULL /*owner_op*/,
                                                        true /*create_grad*/,
                                                        bias_initializer,
-                                                       comm_type);
+                                                       CHOSEN_SYNC_TYPE);
       assert(weights[1] != nullptr);
     }
   }

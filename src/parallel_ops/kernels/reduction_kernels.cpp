@@ -18,6 +18,10 @@
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+
+ReductionMeta::ReductionMeta(FFHandler handle, Reduction const *reduct)
+    : OpMeta(handle) {}
+
 namespace Kernels {
 namespace Reduction {
 
@@ -70,10 +74,18 @@ template __global__ void reduction_forward_kernel<float>(float const *input_ptr,
                                                          float *output_ptr,
                                                          size_t num_elements,
                                                          size_t num_replicas);
+template __global__ void reduction_forward_kernel<half>(half const *input_ptr,
+                                                        half *output_ptr,
+                                                        size_t num_elements,
+                                                        size_t num_replicas);
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements,
                                     size_t num_replicas);
+template void forward_kernel<half>(half const *input_ptr,
+                                   half *output_ptr,
+                                   size_t num_elements,
+                                   size_t num_replicas);
 template void backward_kernel<float>(float const *output_grad_ptr,
                                      float *input_grad_ptr,
                                      size_t num_elements);

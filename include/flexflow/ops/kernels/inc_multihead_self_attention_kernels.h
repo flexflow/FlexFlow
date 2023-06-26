@@ -28,6 +28,7 @@ __global__ void apply_proj_bias_w(DT *input_ptr,
 template <typename DT>
 __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     DT const *bias_ptr,
+                                    int shard_id,
                                     int num_tokens,
                                     int qProjSize,
                                     int kProjSize,
@@ -53,11 +54,18 @@ __global__ void
 template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
+                        int shard_id,
                         DT const *input_ptr,
                         DT const *weight_ptr,
                         DT *output_ptr,
                         DT const *bias_ptr,
                         cudaStream_t stream);
+
+template <typename DT>
+void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                             GenericTensorAccessorR const weight,
+                             DataType data_type,
+                             cudaStream_t stream);
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 } // namespace FlexFlow

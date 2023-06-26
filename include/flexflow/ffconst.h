@@ -33,6 +33,8 @@ enum DataType {
   DT_HALF = 43,
   DT_FLOAT = 44,
   DT_DOUBLE = 45,
+  DT_INT4 = 46,
+  DT_INT8 = 47,
   DT_NONE = 49,
 };
 
@@ -164,6 +166,7 @@ enum OperatorType {
   OP_INC_MULTIHEAD_SELF_ATTENTION,
   OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
   OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
+  OP_INC_MULTIQUERY_SELF_ATTENTION,
   // Parallel Ops
   OP_REPARTITION,
   OP_COMBINE,
@@ -173,6 +176,8 @@ enum OperatorType {
   OP_FUSED_PARALLEL,
   OP_INVALID,
 };
+
+enum ModelType { UNKNOWN, LLAMA, OPT, FALCON };
 
 enum PMParameter {
   PM_OP_TYPE,            // AnyOp

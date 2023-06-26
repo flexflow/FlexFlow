@@ -18,6 +18,8 @@ public:
   ActiMode activation;
   RegularizerMode kernel_reg_type;
   float kernel_reg_lambda;
+  DataType quantization_type;
+  bool offload;
 
   bool is_valid(ParallelTensorShape const &input_shape) const;
   void solve_dims(const ParallelTensor input,

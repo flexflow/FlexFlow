@@ -26,6 +26,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                                int num_pipeline_stages,
                                InferenceMode mode,
                                bool use_full_precision) {
+  // do not apply cpu offload in beam search model.
   Config llama_config(model_config_file_path);
   llama_config.printConfig();
   //------------------------------compute machine views ------------------
@@ -214,7 +215,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                             llama_config.n_heads,
                             llama_config.dim,
                             llama_config.dim / llama_config.n_heads);
-  fileloader.load_weights(&ff, weights_layers);
+  fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
