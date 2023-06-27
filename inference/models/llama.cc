@@ -38,15 +38,15 @@ void LLAMA::create_llama_model(FFModel &ff,
   int num_devices_per_data_parallelism_line =
       num_devices / ff.config.data_parallelism_degree;
 
-  std::cout << "dp: " << ff.config.data_parallelism_degree
-            << " tp: " << ff.config.tensor_parallelism_degree
-            << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
-  std::cout << "num_devices: " << num_devices << std::endl;
-  std::cout << "num_transformer_layers: " << num_transformer_layers
-            << std::endl;
-  std::cout << "num_devices_per_data_parallelism_line: "
-            << num_devices_per_data_parallelism_line << std::endl;
-  std::cout << "num layers: " << llama_config.n_layers << std::endl;
+  // std::cout << "dp: " << ff.config.data_parallelism_degree
+  //           << " tp: " << ff.config.tensor_parallelism_degree
+  //           << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
+  // std::cout << "num_devices: " << num_devices << std::endl;
+  // std::cout << "num_transformer_layers: " << num_transformer_layers
+  //           << std::endl;
+  // std::cout << "num_devices_per_data_parallelism_line: "
+  //           << num_devices_per_data_parallelism_line << std::endl;
+  // std::cout << "num layers: " << llama_config.n_layers << std::endl;
 
   //------------------------------compute machine views ------------------
   // single device
@@ -125,10 +125,11 @@ void LLAMA::create_llama_model(FFModel &ff,
       int pp_block_idx = i / num_layers_per_pp_block;
       int first_device_idx = dp_index * num_devices_per_data_parallelism_line +
                              ff.config.tensor_parallelism_degree * pp_block_idx;
-      std::cout << "assigning layer " << i << " to devices " << first_device_idx
-                << "-"
-                << first_device_idx + ff.config.tensor_parallelism_degree - 1
-                << std::endl;
+      // std::cout << "assigning layer " << i << " to devices " <<
+      // first_device_idx
+      //           << "-"
+      //           << first_device_idx + ff.config.tensor_parallelism_degree - 1
+      //           << std::endl;
       assert(first_device_idx < num_devices);
       mapping[att_norm].push_back(machine_views[first_device_idx]);
     }

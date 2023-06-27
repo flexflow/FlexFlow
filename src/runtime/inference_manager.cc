@@ -254,7 +254,6 @@ void InferenceManager::compile_model_and_allocate_buffer(
     }
     // std::cout << std::endl;
   }
-  // std::cout<< std::endl << std::endl;
 }
 
 void InferenceManager::init_operators_inference(FFModel *model) {

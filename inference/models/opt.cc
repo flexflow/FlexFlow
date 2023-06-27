@@ -37,15 +37,15 @@ void OPT::create_opt_model(FFModel &ff,
   int num_devices_per_data_parallelism_line =
       num_devices / ff.config.data_parallelism_degree;
 
-  std::cout << "dp: " << ff.config.data_parallelism_degree
-            << " tp: " << ff.config.tensor_parallelism_degree
-            << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
-  std::cout << "num_devices: " << num_devices << std::endl;
-  std::cout << "num_transformer_layers: " << num_transformer_layers
-            << std::endl;
-  std::cout << "num_devices_per_data_parallelism_line: "
-            << num_devices_per_data_parallelism_line << std::endl;
-  std::cout << "num layers: " << opt_config.num_hidden_layers << std::endl;
+  // std::cout << "dp: " << ff.config.data_parallelism_degree
+  //           << " tp: " << ff.config.tensor_parallelism_degree
+  //           << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
+  // std::cout << "num_devices: " << num_devices << std::endl;
+  // std::cout << "num_transformer_layers: " << num_transformer_layers
+  //           << std::endl;
+  // std::cout << "num_devices_per_data_parallelism_line: "
+  //           << num_devices_per_data_parallelism_line << std::endl;
+  // std::cout << "num layers: " << opt_config.num_hidden_layers << std::endl;
 
   //------------------------------compute machine views ------------------
   // single device
@@ -60,20 +60,6 @@ void OPT::create_opt_model(FFModel &ff,
     machine_views.push_back(view);
   }
   assert(machine_views.size() == num_devices);
-  // multiple devices
-  // if (ff.config.tensor_parallelism_degree > 1) {
-  //   for (int i = 0; i < num_devices - num_devices_per_parallelism_block; i++)
-  //   {
-  //     MachineView view;
-  //     view.device_type = MachineView::GPU;
-  //     view.ndims = 1;
-  //     view.dim[0] = num_devices_per_parallelism_block;
-  //     view.stride[0] = 1;
-  //     view.start_device_id = i;
-  //     // std::cout << "Registering machine view: " << view << std::endl;
-  //     machine_views.push_back(view);
-  //   }
-  // }
 
   std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
@@ -161,10 +147,11 @@ void OPT::create_opt_model(FFModel &ff,
       int pp_block_idx = i / num_layers_per_pp_block;
       int first_device_idx = dp_index * num_devices_per_data_parallelism_line +
                              ff.config.tensor_parallelism_degree * pp_block_idx;
-      std::cout << "assigning layer " << i << " to devices " << first_device_idx
-                << "-"
-                << first_device_idx + ff.config.tensor_parallelism_degree - 1
-                << std::endl;
+      // std::cout << "assigning layer " << i << " to devices " <<
+      // first_device_idx
+      //           << "-"
+      //           << first_device_idx + ff.config.tensor_parallelism_degree - 1
+      //           << std::endl;
       assert(first_device_idx < num_devices);
       mapping[hidden_states].push_back(machine_views[first_device_idx]);
     }
