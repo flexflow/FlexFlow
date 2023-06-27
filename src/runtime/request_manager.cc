@@ -108,7 +108,7 @@ RequestManager::RequestGuid
   request.tokens = prompt;
 
   if (num_ssms == 0) {
-    std::cout << "No small spective model registered yet, using increamental "
+    std::cout << "No small speculative model registered yet, using incremental "
                  "decoding."
               << std::endl;
   } else {
@@ -151,7 +151,7 @@ RequestManager::RequestGuid
   request.initial_len = request.tokens.size();
 
   if (num_ssms == 0) {
-    std::cout << "No small spective model registered yet, using increamental "
+    std::cout << "No small speculative model registered yet, using incremental "
                  "decoding."
               << std::endl;
   } else {

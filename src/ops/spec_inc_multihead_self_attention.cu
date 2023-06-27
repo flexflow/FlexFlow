@@ -229,6 +229,7 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
 template <typename DT>
 void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                               BeamSearchBatchConfig const *bc,
+                              int shard_id,
                               DT *output_ptr,
                               DT const *bias_ptr,
                               cudaStream_t stream) {
@@ -425,9 +426,10 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       k = m->vProjSize * m->num_heads;
       n = num_new_tokens;
       lda = k, ldb = n, ldc = m_;
-      A = (void const *)m->W_out_contiguous;
-      B = (void const *)C;
-      C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
+      A = static_cast<DT *>(m->W_out_contiguous);
+      B = static_cast<DT *>(C);
+      C = static_cast<DT *>(output_ptr) +
+          tokens_previous_requests * m->oProjSize;
 
       checkCUDA(cublasGemmEx(m->handle.blas,
                              CUBLAS_OP_T,
@@ -451,7 +453,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       tokens_previous_requests += num_new_tokens;
       tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
-    if (*m->bias) {
+    if (*m->bias && shard_id == 0) {
       int parallelism = m->oProjSize * num_tokens;
       apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
@@ -467,6 +469,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       BeamSearchBatchConfig const *bc,
+                      int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
@@ -498,6 +501,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
+                     shard_id,
                      input_ptr,
                      weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
@@ -508,7 +512,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  compute_attention_kernel(m, bc, output_ptr, bias_ptr, stream);
+  compute_attention_kernel(m, bc, shard_id, output_ptr, bias_ptr, stream);
 }
 
 } // namespace SpecIncMultiHeadAttention
@@ -518,6 +522,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     SpecIncMultiHeadSelfAttentionMeta const *m,
     BeamSearchBatchConfig const *bc,
+    int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output,
@@ -544,6 +549,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::SpecIncMultiHeadAttention::inference_kernel(m,
                                                          bc,
+                                                         shard_id,
                                                          input.get_half_ptr(),
                                                          weight.get_half_ptr(),
                                                          output.get_half_ptr(),
@@ -554,6 +560,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::SpecIncMultiHeadAttention::inference_kernel(m,
                                                          bc,
+                                                         shard_id,
                                                          input.get_float_ptr(),
                                                          weight.get_float_ptr(),
                                                          output.get_float_ptr(),
@@ -604,6 +611,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem_allocator,
                                     num_samples,
+                                    attn->num_heads,
                                     _num_heads,
                                     DT_NONE,
                                     false) {

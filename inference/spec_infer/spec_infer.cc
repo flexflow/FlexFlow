@@ -43,7 +43,8 @@ void parse_input_args(char **argv,
                       FilePaths &paths,
                       ModelTypes &model_types,
                       bool &use_full_precision,
-                      bool &verbose) {
+                      bool &verbose,
+                      int &tensor_parallelism_degree) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -114,6 +115,11 @@ void parse_input_args(char **argv,
       paths.output_file_path = std::string(argv[++i]);
       continue;
     }
+    // tensor parallelism degree
+    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
+      tensor_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--use-full-precision")) {
       use_full_precision = true;
       continue;
@@ -135,12 +141,19 @@ void FlexFlow::top_level_task(Task const *task,
   ModelTypes model_types;
   bool use_full_precision = false;
   bool verbose = false;
+  int tensor_parallelism_degree = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(
-      argv, argc, file_paths, model_types, use_full_precision, verbose);
+  parse_input_args(argv,
+                   argc,
+                   file_paths,
+                   model_types,
+                   use_full_precision,
+                   verbose,
+                   tensor_parallelism_degree);
+  ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
 
   if (file_paths.ssm_weight_file_paths.size() == 0) {
     assert(false &&
@@ -178,7 +191,8 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
-                              ffconfig.workersPerNode * ffconfig.numNodes,
+                              ffconfig.workersPerNode * ffconfig.numNodes /
+                                  tensor_parallelism_degree,
                               TREE_VERIFY_MODE,
                               use_full_precision);
   } else if (model_types.llm_model_type == ModelType::OPT) {
@@ -186,7 +200,8 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
-                          ffconfig.workersPerNode * ffconfig.numNodes,
+                          ffconfig.workersPerNode * ffconfig.numNodes /
+                              tensor_parallelism_degree,
                           TREE_VERIFY_MODE,
                           use_full_precision);
   } else {
