@@ -101,9 +101,10 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  int num_transformer_layers = llama_config.n_layers;
-  int num_transformer_layers_per_stage =
-      (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
+  // int num_transformer_layers = llama_config.n_layers;
+  // int num_transformer_layers_per_stage =
+  //     (num_transformer_layers + num_pipeline_stages - 1) /
+  //     num_pipeline_stages;
 
   for (int i = 0; i < num_transformer_layers; i++) {
     // step 1: attention
