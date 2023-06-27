@@ -18,7 +18,12 @@ if [[ "${image}" != @(flexflow-environment-cuda|flexflow-environment-hip_cuda|fl
 fi
 
 # Check that image exists
-docker image inspect "${image}":latest > /dev/null
+if [[ "${image}" == @(specinfer-cuda|specinfer-hip_cuda|specinfer-hip_rocm|specinfer-intel) ]]; then 
+  SUBSTR="${image:10}"
+  docker image inspect "flexflow-${SUBSTR}":latest > /dev/null
+else
+  docker image inspect "${image}":latest > /dev/null
+fi
 
 # Log into container registry
 FLEXFLOW_CONTAINER_TOKEN=${FLEXFLOW_CONTAINER_TOKEN:-}
@@ -32,7 +37,7 @@ if [ -z "$git_sha" ]; then echo "Commit hash cannot be detected, cannot publish 
 # If in "inference" branch, which tries to publish "specinfer" images,
 # tags the all images as "specinfer-{cuda, hip_cuda, hip_rocm, intel}"; if in others, do as orginal
 if [[ "${image}" == @(specinfer-cuda|specinfer-hip_cuda|specinfer-hip_rocm|specinfer-intel) ]]; then 
-  SUBSTR=${image:10}
+  SUBSTR="${image:10}"
   docker tag flexflow-"$SUBSTR":latest ghcr.io/flexflow/specinfer-"$SUBSTR":latest
 else
   docker tag "$image":latest ghcr.io/flexflow/"$image":latest
