@@ -155,7 +155,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool verbose = false;
   size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
   int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
-      pipeline_parallelism_degree = num_devices;
+      pipeline_parallelism_degree = -1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -171,11 +171,10 @@ void FlexFlow::top_level_task(Task const *task,
                    pipeline_parallelism_degree);
   ffconfig.data_parallelism_degree = data_parallelism_degree;
   ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
-  ffconfig.pipeline_parallelism_degree = pipeline_parallelism_degree;
-  assert(data_parallelism_degree * tensor_parallelism_degree *
-             pipeline_parallelism_degree &&
-         "Product of data, tensor, and pipeline parallelism degrees does not "
-         "match the number of available devices");
+  ffconfig.pipeline_parallelism_degree =
+      pipeline_parallelism_degree == -1
+          ? num_devices / (tensor_parallelism_degree * data_parallelism_degree)
+          : pipeline_parallelism_degree;
 
   if (file_paths.ssm_weight_file_paths.size() == 0) {
     assert(false &&

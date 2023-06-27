@@ -28,14 +28,24 @@ void OPT::create_opt_model(FFModel &ff,
                            bool use_full_precision) {
   Config opt_config(model_config_file_path);
   opt_config.printConfig();
-  //---------------------- compute parallelization vars ----------------
+  //---------------------- parallelization setup work ----------------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
-  int num_transformer_blocks = opt_config.num_hidden_layers;
-  int num_pipeline_parallelism_blocks =
-      num_transformer_blocks / ff.config.pipeline_parallelism_degree;
-  int num_devices_per_parallelism_block =
-      num_devices /
-      (ff.config.data_parallelism_degree * num_pipeline_parallelism_blocks);
+  int num_transformer_layers = opt_config.num_hidden_layers;
+  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
+  int num_layers_per_pp_block =
+      num_transformer_layers / ff.config.pipeline_parallelism_degree;
+  int num_devices_per_data_parallelism_line =
+      num_devices / ff.config.data_parallelism_degree;
+
+  std::cout << "dp: " << ff.config.data_parallelism_degree
+            << " tp: " << ff.config.tensor_parallelism_degree
+            << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
+  std::cout << "num_devices: " << num_devices << std::endl;
+  std::cout << "num_transformer_layers: " << num_transformer_layers
+            << std::endl;
+  std::cout << "num_devices_per_data_parallelism_line: "
+            << num_devices_per_data_parallelism_line << std::endl;
+  std::cout << "num layers: " << opt_config.num_hidden_layers << std::endl;
 
   //------------------------------compute machine views ------------------
   // single device
@@ -49,19 +59,21 @@ void OPT::create_opt_model(FFModel &ff,
     view.start_device_id = i;
     machine_views.push_back(view);
   }
+  assert(machine_views.size() == num_devices);
   // multiple devices
-  if (ff.config.tensor_parallelism_degree > 1) {
-    for (int i = 0; i < num_devices - num_devices_per_parallelism_block; i++) {
-      MachineView view;
-      view.device_type = MachineView::GPU;
-      view.ndims = 1;
-      view.dim[0] = num_devices_per_parallelism_block;
-      view.stride[0] = 1;
-      view.start_device_id = i;
-      // std::cout << "Registering machine view: " << view << std::endl;
-      machine_views.push_back(view);
-    }
-  }
+  // if (ff.config.tensor_parallelism_degree > 1) {
+  //   for (int i = 0; i < num_devices - num_devices_per_parallelism_block; i++)
+  //   {
+  //     MachineView view;
+  //     view.device_type = MachineView::GPU;
+  //     view.ndims = 1;
+  //     view.dim[0] = num_devices_per_parallelism_block;
+  //     view.stride[0] = 1;
+  //     view.start_device_id = i;
+  //     // std::cout << "Registering machine view: " << view << std::endl;
+  //     machine_views.push_back(view);
+  //   }
+  // }
 
   std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
@@ -74,8 +86,12 @@ void OPT::create_opt_model(FFModel &ff,
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
-  mapping[input].push_back(machine_views[0]);
-  mapping[position_input].push_back(machine_views[0]);
+  for (int i = 0; i < ff.config.data_parallelism_degree; i++) {
+    mapping[input].push_back(
+        machine_views[i * num_devices_per_data_parallelism_line]);
+    mapping[position_input].push_back(
+        machine_views[i * num_devices_per_data_parallelism_line]);
+  }
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
   std::vector<int> axes = {0};
@@ -140,10 +156,22 @@ void OPT::create_opt_model(FFModel &ff,
                                "_attention_layer_norm_weight",
                            self_attn_layer_norm);
 
-    if (i % num_transformer_layers_per_stage == 0) {
-      mapping[hidden_states].push_back(
-          machine_views[i / num_transformer_layers_per_stage]);
+    for (int dp_index = 0; dp_index < ff.config.data_parallelism_degree;
+         dp_index++) {
+      int pp_block_idx = i / num_layers_per_pp_block;
+      int first_device_idx = dp_index * num_devices_per_data_parallelism_line +
+                             ff.config.tensor_parallelism_degree * pp_block_idx;
+      std::cout << "assigning layer " << i << " to devices " << first_device_idx
+                << "-"
+                << first_device_idx + ff.config.tensor_parallelism_degree - 1
+                << std::endl;
+      assert(first_device_idx < num_devices);
+      mapping[hidden_states].push_back(machine_views[first_device_idx]);
     }
+    // if (i % num_transformer_layers_per_stage == 0) {
+    //   mapping[hidden_states].push_back(
+    //       machine_views[i / num_transformer_layers_per_stage]);
+    // }
 
     Tensor mha;
     switch (mode) {

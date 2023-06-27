@@ -31,8 +31,30 @@ LegionRuntime::Logger::Category log_offload("Offloading");
 InferenceManager::InferenceManager(FFConfig const &_config,
                                    int _max_num_tokens_per_batch)
     : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch) {
-  // populate array of valid single-device machine views
   num_devices = ff_config.workersPerNode * ff_config.numNodes;
+  // Check parallelization degrees
+  assert(ff_config.data_parallelism_degree <= num_devices &&
+         "Data parallelism degree exceeds number of available devices");
+  assert(num_devices % ff_config.data_parallelism_degree == 0 &&
+         "Number of available devices is not divisible by data parallelism "
+         "degree");
+  assert(ff_config.tensor_parallelism_degree <= num_devices &&
+         "Tensor parallelism degree exceeds number of available devices");
+  assert(num_devices % ff_config.tensor_parallelism_degree == 0 &&
+         "Number of available devices is not divisible by tensor parallelism "
+         "degree");
+  assert(ff_config.pipeline_parallelism_degree <= num_devices &&
+         "Pipeline parallelism degree exceeds number of available devices");
+  assert(num_devices % ff_config.pipeline_parallelism_degree == 0 &&
+         "Number of available devices is not divisible by pipeline parallelism "
+         "degree");
+  assert(ff_config.data_parallelism_degree *
+                 ff_config.tensor_parallelism_degree *
+                 ff_config.pipeline_parallelism_degree ==
+             num_devices &&
+         "Product of data, tensor, and pipeline parallelism degrees does not "
+         "match the number of available devices");
+  // populate array of valid single-device machine views
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
     view.device_type = MachineView::GPU;
@@ -88,7 +110,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
     assert(pt->owner_op != nullptr);
     mapping[pt->owner_op] = it.second;
   }
-  std::cout << std::endl << std::endl << "Operators MVs:" << std::endl;
+  // std::cout << std::endl << std::endl << "Operators MVs:" << std::endl;
   for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
     Op const *op = model->operators[op_idx];
     // Skip weight operators
@@ -149,7 +171,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
     //   op->inputs[i]->print("input pt");
     //   std::cout << "input mv: " << op->inputs[i]->machine_view << std::endl;
     // }
-    std::cout << "Op " << op->name << ": ";
+    // std::cout << "Op " << op->name << ": ";
     for (int i = 0; i < op->numOutputs; i++) {
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
@@ -220,6 +242,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
           pt->part = runtime->get_logical_partition(
               ctx, pt->region, pt_base->part.get_index_partition());
           pt->machine_view = machine_views[j];
+          // std::cout << "output mv: " << pt->machine_view << std::endl;
           Domain part_domain =
               runtime->get_index_space_domain(ctx, pt_base->parallel_is);
           assert(pt->machine_view.get_domain() == part_domain);
@@ -229,10 +252,9 @@ void InferenceManager::compile_model_and_allocate_buffer(
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       tensor_buffer[pt_base] = list;
     }
-    std::cout << std::endl;
+    // std::cout << std::endl;
   }
   // std::cout<< std::endl << std::endl;
-  assert(false);
 }
 
 void InferenceManager::init_operators_inference(FFModel *model) {
