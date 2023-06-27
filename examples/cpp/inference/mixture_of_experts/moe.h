@@ -22,9 +22,9 @@ struct MoeConfig : InferenceConfig {
   MoeConfig(void) : InferenceConfig() {
     //----------------------- MoE layer --------------------------------
     // total number of experts
-    num_exp = 128;
+    num_exp = 64;
     // number of experts in each block of fused experts
-    experts_per_block = 32;
+    experts_per_block = 16;
     // number of experts to route each token to
     num_select = 2;
     // expert capacity parameters

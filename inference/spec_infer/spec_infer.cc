@@ -294,7 +294,7 @@ void FlexFlow::top_level_task(Task const *task,
 
         if (depth - 1 >= beam_bc_vec[i].max_beam_depth_all_requests() ||
             depth + 1 + rm.get_requests_init_length(beam_bc_vec[i]) >=
-              BatchConfig::MAX_NUM_TOKENS) {
+                BatchConfig::MAX_NUM_TOKENS) {
           break;
         } else {
           beam_bc_vec[i] = rm.prepare_next_batch_beam(beam_bc_vec[i], beam_ir);
