@@ -1,7 +1,7 @@
 name: "gpu-ci"
 on:
   pull_request:
-    paths:
+    paths-ignore:
       - "cmake/**"
       - "config/**"
       - "python/**"
