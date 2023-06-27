@@ -43,7 +43,7 @@ jobs:
           # On push to master, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
-          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && (${GITHUB_REF#refs/heads/} == "master" || ${GITHUB_REF#refs/heads/} == "inference")]]; then
+          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ( ${GITHUB_REF#refs/heads/} == "master" || ${GITHUB_REF#refs/heads/} == "inference" ) ]]; then
             export FF_CUDA_ARCH=all
           else
             export FF_CUDA_ARCH=70
@@ -68,7 +68,7 @@ jobs:
           if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
             ./docker/publish.sh "flexflow-environment-${FF_GPU_BACKEND}"
             ./docker/publish.sh "flexflow-${FF_GPU_BACKEND}"
-          elif [[ (${{ github.event_name }} == 'push'  || ${{ github.event_name }} == 'schedule') && ${GITHUB_REF#refs/heads/} == "inference") ]]; then
+          elif [[ ( ${{ github.event_name }} == 'push'  || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ]]; then
             ./docker/publish.sh "specinfer-${FF_GPU_BACKEND}"
           else
             echo "No need to update Docker containers in ghrc.io registry at this time."
