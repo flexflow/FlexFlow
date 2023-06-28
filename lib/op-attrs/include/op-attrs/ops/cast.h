@@ -8,23 +8,12 @@
 
 namespace FlexFlow {
 
-struct CastAttrs : public use_visitable_cmp<CastAttrs> {
-public:
-  CastAttrs() = delete;
-  CastAttrs(DataType);
-
-public:
-  DataType dtype;
+struct CastAttrs {
+  req<DataType> dtype;
 };
+FF_VISITABLE_STRUCT(CastAttrs, dtype);
 
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::CastAttrs, dtype);
-MAKE_VISIT_HASHABLE(::FlexFlow::CastAttrs);
-
-namespace FlexFlow {
-static_assert(is_valid_opattr<CastAttrs>::value,
-              "CastAttrs must be a valid opattr (see core.h)");
+CHECK_VALID_OP_ATTR(CastAttrs);
 }
 
 #endif

@@ -5,6 +5,10 @@
 
 namespace FlexFlow {
 
+#define CHECK_VALID_OP_ATTR(TYPENAME) \
+  CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME)
+  
+
 template <typename T, typename Enable = void>
 using is_valid_opattr = conjunction<is_equal_comparable<T>,
                                     is_neq_comparable<T>,

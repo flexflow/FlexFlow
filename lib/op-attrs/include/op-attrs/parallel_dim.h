@@ -5,37 +5,15 @@
 
 namespace FlexFlow {
 
-struct ParallelDim : public use_visitable_cmp<ParallelDim> {
-public:
-  ParallelDim() = delete;
-  ParallelDim(size_t size, int degree, bool is_replica_dim = false);
-
-public:
-  size_t size;
-  int degree;
-  bool is_replica_dim;
+struct ParallelDim {
+  req<size_t> size;
+  req<int> degree;
+  req<bool> is_replica_dim;
 };
+FF_VISITABLE_STRUCT(ParallelDim, size, degree, is_replica_dim);
 
 bool is_valid(ParallelDim const &);
 bool is_replica_dim(ParallelDim const &);
-
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ParallelDim, size, degree, is_replica_dim);
-MAKE_VISIT_HASHABLE(::FlexFlow::ParallelDim);
-
-namespace FlexFlow {
-
-static_assert(is_equal_comparable<ParallelDim>::value,
-              "ParallelDim must support ==");
-static_assert(is_neq_comparable<ParallelDim>::value,
-              "ParallelDim must support !=");
-static_assert(is_lt_comparable<ParallelDim>::value,
-              "ParallelDim must support <");
-static_assert(!is_default_constructible<ParallelDim>::value,
-              "ParallelDim must not be default constructible");
-static_assert(is_copy_constructible<ParallelDim>::value,
-              "ParallelDim must be copy constructible");
 
 } // namespace FlexFlow
 

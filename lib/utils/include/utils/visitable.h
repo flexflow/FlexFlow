@@ -180,7 +180,11 @@ template <typename T, typename Enable = void>
 struct is_visit_list_initializable : conjunction<is_visitable<T>, is_list_initializable_from_tuple<T, visit_as_tuple_t<T>>> { };
 
 template <typename T, typename Enable = void>
-struct is_only_visit_list_initializable : conjunction<is_visit_list_initializable<T>, negation<is_list_initializable_from_tuple<T, tuple_tail_t<1, visit_as_tuple_t<T>>>>> { };
+struct is_only_visit_list_initializable 
+  : conjunction<
+      is_visit_list_initializable<T>, 
+      negation<is_list_initializable_from_tuple<T, tuple_head_t<-1, visit_as_tuple_t<T>>>>
+    > { };
 
 template <typename T>
 struct use_visitable_eq {

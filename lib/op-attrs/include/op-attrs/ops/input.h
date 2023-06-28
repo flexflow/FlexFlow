@@ -6,18 +6,10 @@
 
 namespace FlexFlow {
 
-struct InputAttrs : public use_visitable_cmp<InputAttrs> {
-public:
-  InputAttrs() = default;
-};
+struct InputAttrs { };
+FF_VISITABLE_STRUCT(InputAttrs);
+CHECK_VALID_OP_ATTR(InputAttrs);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT_EMPTY(::FlexFlow::InputAttrs);
-MAKE_VISIT_HASHABLE(::FlexFlow::InputAttrs);
-
-namespace FlexFlow {
-static_assert(is_valid_opattr<InputAttrs>::value, "");
-}
 
 #endif

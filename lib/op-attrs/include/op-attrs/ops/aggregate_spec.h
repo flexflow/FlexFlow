@@ -7,15 +7,11 @@
 
 namespace FlexFlow {
 
-struct AggregateSpecAttrs : public use_visitable_cmp<AggregateSpecAttrs> {
-public:
-  AggregateSpecAttrs() = delete;
-  AggregateSpecAttrs(int n, float lambda_bal);
-
-public:
-  int n;
-  float lambda_bal;
+struct AggregateSpecAttrs {
+  req<int> n;
+  req<float> lambda_bal;
 };
+FF_VISITABLE_STRUCT(AggregateSpecAttrs, n, lambda_bal);
 
 ParallelTensorShape
     get_output_shape(AggregateSpecAttrs const &,
@@ -25,16 +21,7 @@ ParallelTensorShape
                      ParallelTensorShape const &gate_gradients_full,
                      std::vector<ParallelTensorShape> const &exp_preds);
 
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::AggregateSpecAttrs, n, lambda_bal);
-MAKE_VISIT_HASHABLE(::FlexFlow::AggregateSpecAttrs);
-
-namespace FlexFlow {
-
-static_assert(is_valid_opattr<AggregateSpecAttrs>::value,
-              "AggregateSpecAttrs must be a valid opattr (see core.h)");
-
+CHECK_VALID_OP_ATTR(AggregateSpecAttrs);
 }
 
 #endif

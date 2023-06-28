@@ -9,61 +9,30 @@
 
 namespace FlexFlow {
 
-struct L1RegularizerAttrs : public use_visitable_cmp<L1RegularizerAttrs> {
-public:
-  L1RegularizerAttrs() = delete;
-  explicit L1RegularizerAttrs(float);
-
-public:
-  float lambda;
+struct L1RegularizerAttrs {
+  req<float> lambda;
 };
+FF_VISITABLE_STRUCT(L1RegularizerAttrs, lambda);
+CHECK_VALID_OP_ATTR(L1RegularizerAttrs);
 
-struct L2RegularizerAttrs : public use_visitable_cmp<L2RegularizerAttrs> {
-public:
-  L2RegularizerAttrs() = delete;
-  explicit L2RegularizerAttrs(float);
-
-public:
-  float lambda;
+struct L2RegularizerAttrs {
+  req<float> lambda;
 };
+FF_VISITABLE_STRUCT(L2RegularizerAttrs, lambda);
+CHECK_VALID_OP_ATTR(L2RegularizerAttrs);
 
 using RegularizerAttrs = variant<L1RegularizerAttrs, L2RegularizerAttrs>;
 
-struct LinearAttrs : public use_visitable_cmp<LinearAttrs> {
-public:
-  LinearAttrs(int out_channels,
-              bool use_bias,
-              DataType data_type,
-              Activation activation,
-              optional<RegularizerAttrs> const &regularizer = nullopt);
-
-public:
-  int out_channels;
-  bool use_bias;
-  DataType data_type;
-  Activation activation;
-  optional<RegularizerAttrs> regularizer;
+struct LinearAttrs {
+  req<int> out_channels;
+  req<bool> use_bias;
+  req<DataType> data_type;
+  req<Activation> activation;
+  req<optional<RegularizerAttrs>> regularizer;
 };
+FF_VISITABLE_STRUCT(LinearAttrs, out_channels, use_bias, data_type, activation, regularizer);
+CHECK_VALID_OP_ATTR(LinearAttrs);
 
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::L1RegularizerAttrs, lambda);
-MAKE_VISIT_HASHABLE(::FlexFlow::L1RegularizerAttrs);
-
-VISITABLE_STRUCT(::FlexFlow::L2RegularizerAttrs, lambda);
-MAKE_VISIT_HASHABLE(::FlexFlow::L2RegularizerAttrs);
-
-VISITABLE_STRUCT(::FlexFlow::LinearAttrs,
-                 out_channels,
-                 use_bias,
-                 data_type,
-                 activation,
-                 regularizer);
-MAKE_VISIT_HASHABLE(::FlexFlow::LinearAttrs);
-
-namespace FlexFlow {
-static_assert(is_well_behaved_value_type<RegularizerAttrs>::value, "");
-static_assert(is_valid_opattr<LinearAttrs>::value, "");
 } // namespace FlexFlow
 
 #endif

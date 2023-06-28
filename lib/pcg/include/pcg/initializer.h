@@ -43,9 +43,8 @@ using Initializer = variant<GlorotUniform,
                             UniformInitializer,
                             NormInitializer,
                             ConstantInitializer>;
+CHECK_WELL_BEHAVED_VALUE_TYPE(Initializer);
 
-
-static_assert(is_well_behaved_value_type<Initializer>::value, "");
 }
 
 #endif

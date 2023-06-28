@@ -113,6 +113,9 @@ struct lazy_tuple_prepend {
   using type = typename tuple_prepend_type<typename T::type, typename Tup::type>::type;
 };
 
+template <int IDX, typename T>
+struct normalize_idx : std::integral_constant<int, ((IDX < 0) ? (std::tuple_size<T>::value + IDX) : IDX)> { };
+
 template <int start, int end, int cur, typename T>
 struct tuple_slice_impl
   : conditional_t<
@@ -128,7 +131,7 @@ struct tuple_slice_impl
       >> { };
 
 template <int start, int end, typename T>
-using tuple_slice_t = typename tuple_slice_impl<start, end, 0, T>::type;
+using tuple_slice_t = typename tuple_slice_impl<normalize_idx<start, T>::value, normalize_idx<end, T>::value, 0, T>::type;
 
 template <int start, typename T>
 using tuple_tail_t = tuple_slice_t<start, std::tuple_size<T>::value, T>;

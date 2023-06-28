@@ -1,23 +1,18 @@
 #ifndef _FLEXFLOW_RESHAPE_ATTRS_H
 #define _FLEXFLOW_RESHAPE_ATTRS_H
 
+#include "core.h"
 #include "op-attrs/tensor_shape.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct ReshapeAttrs : public use_visitable_cmp<ReshapeAttrs> {
-public:
-  ReshapeAttrs() = delete;
-  explicit ReshapeAttrs(TensorShape const &shape);
-
-public:
+struct ReshapeAttrs {
   TensorShape shape;
 };
+FF_VISITABLE_STRUCT(ReshapeAttrs, shape);
+CHECK_VALID_OP_ATTR(ReshapeAttrs);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ReshapeAttrs, shape);
-MAKE_VISIT_HASHABLE(::FlexFlow::ReshapeAttrs);
 
 #endif

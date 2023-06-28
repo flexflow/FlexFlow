@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_LOSS_FUNCTIONS_H
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_LOSS_FUNCTIONS_H
 
+#include "core.h"
 #include "utils/exception.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
@@ -17,24 +18,17 @@ enum class LossFunction {
 
 LossFunction parse_loss_function_name(std::string const &);
 
-struct SparseCategoricalCrossEntropyLossAttrs
-    : public use_visitable_cmp<SparseCategoricalCrossEntropyLossAttrs> {
-public:
-  SparseCategoricalCrossEntropyLossAttrs() = delete;
-  explicit SparseCategoricalCrossEntropyLossAttrs(bool replace_labels);
-
-public:
-  bool replace_labels; // for aggregate_spec: More predictions than labels
+struct SparseCategoricalCrossEntropyLossAttrs {
+  req<bool> replace_labels; // for aggregate_spec: More predictions than labels
 };
+FF_VISITABLE_STRUCT(SparseCategoricalCrossEntropyLossAttrs, replace_labels);
+CHECK_VALID_OP_ATTR(SparseCategoricalCrossEntropyLossAttrs);
 
 struct OtherLossAttrs {
-public:
-  explicit OtherLossAttrs() = delete;
-  OtherLossAttrs(LossFunction);
-
-public:
-  LossFunction loss_type;
+  req<LossFunction> loss_type;
 };
+FF_VISITABLE_STRUCT(OtherLossAttrs, loss_type);
+CHECK_VALID_OP_ATTR(OtherLossAttrs);
 
 using LossAttrs =
     variant<SparseCategoricalCrossEntropyLossAttrs, OtherLossAttrs>;
@@ -44,10 +38,6 @@ LossFunction get_loss_function(SparseCategoricalCrossEntropyLossAttrs const &);
 LossFunction get_loss_function(LossAttrs const &);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::SparseCategoricalCrossEntropyLossAttrs,
-                 replace_labels);
-VISITABLE_STRUCT(::FlexFlow::OtherLossAttrs, loss_type);
 
 namespace fmt {
 

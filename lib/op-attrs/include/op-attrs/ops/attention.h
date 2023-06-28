@@ -7,23 +7,12 @@
 
 namespace FlexFlow {
 
-struct MultiHeadAttentionAttrs : use_visitable_cmp<MultiHeadAttentionAttrs> {
-public:
-  MultiHeadAttentionAttrs() = delete;
-  MultiHeadAttentionAttrs(int embed_dim,
-                          int num_heads,
-                          int kdim,
-                          int vdim,
-                          float dropout,
-                          bool bias,
-                          bool add_bias_kv,
-                          bool add_zero_attn);
-
-public:
-  int embed_dim, num_heads, kdim, vdim;
-  float dropout;
-  bool bias, add_bias_kv, add_zero_attn;
+struct MultiHeadAttentionAttrs {
+  req<int> embed_dim, num_heads, kdim, vdim;
+  req<float> dropout;
+  req<bool> bias, add_bias_kv, add_zero_attn;
 };
+FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn);
 
 template <typename TensorType>
 struct MultiHeadAttentionInputs
@@ -73,22 +62,7 @@ ParallelTensorShape
 TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                              MultiHeadAttentionInputs<TensorShape> const &);
 
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::MultiHeadAttentionAttrs,
-                 embed_dim,
-                 num_heads,
-                 kdim,
-                 vdim,
-                 dropout,
-                 bias,
-                 add_bias_kv,
-                 add_zero_attn);
-MAKE_VISIT_HASHABLE(::FlexFlow::MultiHeadAttentionAttrs);
-
-namespace FlexFlow {
-static_assert(is_valid_opattr<MultiHeadAttentionAttrs>::value,
-              "MultiHeadAttentionAttrs must be a valid opattr (see core.h)");
+CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
 }
 
 #endif

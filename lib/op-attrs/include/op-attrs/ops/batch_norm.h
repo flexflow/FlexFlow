@@ -7,25 +7,15 @@
 
 namespace FlexFlow {
 
-struct BatchNormAttrs : public use_visitable_cmp<BatchNormAttrs> {
-public:
-  BatchNormAttrs() = delete;
-  explicit BatchNormAttrs(bool relu);
-
-public:
-  bool relu;
+struct BatchNormAttrs {
+  req<bool> relu;
 };
+FF_VISITABLE_STRUCT(BatchNormAttrs, relu);
 
 ParallelTensorShape get_output_shape(BatchNormAttrs const &);
 
-} // namespace FlexFlow
+CHECK_VALID_OP_ATTR(BatchNormAttrs);
 
-VISITABLE_STRUCT(::FlexFlow::BatchNormAttrs, relu);
-MAKE_VISIT_HASHABLE(::FlexFlow::BatchNormAttrs);
-
-namespace FlexFlow {
-static_assert(is_valid_opattr<BatchNormAttrs>::value,
-              "BatchNormAttrs must be a valid opattr (see core.h)");
 }
 
 #endif
