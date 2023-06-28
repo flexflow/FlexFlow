@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_GUID_T_H
-#define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_GUID_T_H
+#ifndef _FLEXFLOW_PCG_INCLUDE_PCG_PARALLEL_TENSOR_GUID_T_H
+#define _FLEXFLOW_PCG_INCLUDE_PCG_PARALLEL_TENSOR_GUID_T_H
 
 #include "utils/graph/labelled_graph_interfaces.h"
 #include "utils/strong_typedef.h"

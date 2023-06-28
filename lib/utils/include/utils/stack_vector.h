@@ -281,10 +281,7 @@ template <typename T, std::size_t MAXSIZE>
 struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
   size_t operator()(::FlexFlow::stack_vector<T, MAXSIZE> const &v) {
     size_t result = 0;
-    hash_combine(result, v.size());
-    for (auto const &ele : v) {
-      hash_combine(result, ele);
-    }
+    iter_hash(result, v);
     return result;
   }
 };

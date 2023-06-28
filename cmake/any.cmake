@@ -1,15 +1,15 @@
 add_library(
-  visit_struct
+  any
   INTERFACE
 )
 target_include_directories(
-  visit_struct
+  any
   INTERFACE
-  ${CMAKE_CURRENT_SOURCE_DIR}/deps/visit_struct/include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/deps/any/
 )
 set_target_properties(
-  visit_struct
-  PROPERTIES 
+  any
+  PROPERTIES
     CXX_STANDARD 11
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO

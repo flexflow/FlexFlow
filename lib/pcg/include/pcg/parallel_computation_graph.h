@@ -16,10 +16,8 @@ class ParallelComputationGraph
 
 } // namespace FlexFlow
 
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::ParallelComputationGraph);
-
 namespace FlexFlow {
-static_assert(is_well_behaved_value_type<ParallelComputationGraph>::value, "");
+static_assert(is_well_behaved_value_type_no_hash<ParallelComputationGraph>::value, "");
 }
 
 #endif

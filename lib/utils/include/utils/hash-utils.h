@@ -5,6 +5,8 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <unordered_set>
+#include "containers.h"
 
 template <class T>
 std::size_t get_std_hash(T const &v) {
@@ -24,6 +26,14 @@ template <class T, class... Ts>
 inline void hash_combine(std::size_t &seed, T const &v, Ts... rest) {
   hash_combine(seed, v);
   hash_combine(seed, rest...);
+}
+
+template <typename It>
+void iter_hash(std::size_t &seed, It start, It end) {
+  hash_combine(seed, std::distance(start, end));
+  for (; start < end; start++) {
+    hash_combine(seed, *start);
+  }
 }
 
 namespace std {
@@ -76,13 +86,26 @@ template <typename T>
 struct hash<std::vector<T>> {
   size_t operator()(std::vector<T> const &vec) const {
     size_t seed = 0;
-    hash_combine(seed, vec.size());
-    for (auto const &ele : vec) {
-      hash_combine(seed, ele);
-    }
+    iter_hash(seed, vec.start(), vec.end());
     return seed;
   }
 };
+
+template <typename T>
+struct hash<std::unordered_set<T>> {
+  size_t operator()(std::unordered_set<T> const &s) const {
+    auto sorted = sorted_by(s, get_std_hash);
+    return get_std_hash(sorted);
+  }
+};
+
+template <typename K, typename V>
+struct hash<std::unordered_map<K, V>> {
+  size_t operator()(std::unordered_map<K, V> const &m) const {
+    return get_std_hash(items(m));
+  }
+};
+
 } // namespace std
 
 #endif

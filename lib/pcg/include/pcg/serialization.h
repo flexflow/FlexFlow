@@ -53,6 +53,9 @@ void to_json(json &, TensorDims const &);
 void from_json(json const &, TensorMapping &);
 void to_json(json &, TensorMapping const &);
 
+void from_json(json const &, ParallelTensorShape &);
+void to_json(json &, ParallelTensorShape const &);
+
 } // namespace FlexFlow
 
 #endif

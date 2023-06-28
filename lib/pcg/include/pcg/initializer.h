@@ -3,50 +3,40 @@
 
 #include "op-attrs/datatype.h"
 #include "utils/visitable.h"
+#include "utils/required.h"
 
 namespace FlexFlow {
 
-class GlorotUniform : public use_visitable_cmp<GlorotUniform> {
-public:
-  GlorotUniform() = delete;
-  GlorotUniform(int seed);
-
-public:
-  int seed;
+struct GlorotUniform : public use_visitable_cmp<GlorotUniform> {
+  req<int> seed;
   /* float scale; */
   /* DataType data_type; */
 };
+FF_VISITABLE_STRUCT(GlorotUniform, seed);
 
-class ZeroInitializer : public use_visitable_cmp<ZeroInitializer> {
-public:
+struct ZeroInitializer : public use_visitable_cmp<ZeroInitializer> {
   ZeroInitializer() = default;
 };
+FF_VISITABLE_STRUCT(ZeroInitializer);
 
-class UniformInitializer : public use_visitable_cmp<UniformInitializer> {
-public:
-  UniformInitializer(int seed, float min, float max);
-
-public:
-  int seed;
-  float min_val, max_val;
+struct UniformInitializer : public use_visitable_cmp<UniformInitializer> {
+  req<int> seed;
+  req<float> min_val;
+  req<float> max_val;
 };
+FF_VISITABLE_STRUCT(UniformInitializer, seed, min_val, max_val);
 
-class NormInitializer : public use_visitable_cmp<NormInitializer> {
-public:
-  NormInitializer(int seed, float mean, float stddev);
-
-public:
-  int seed;
-  float mean, stddev;
+struct NormInitializer : public use_visitable_cmp<NormInitializer> {
+  req<int> seed;
+  req<float> mean;
+  req<float> stddev;
 };
+FF_VISITABLE_STRUCT(NormInitializer, seed, mean, stddev);
 
-class ConstantInitializer : public use_visitable_cmp<ConstantInitializer> {
-public:
-  ConstantInitializer(DataTypeValue const &value);
-
-public:
+struct ConstantInitializer : public use_visitable_cmp<ConstantInitializer> {
   DataTypeValue value;
 };
+FF_VISITABLE_STRUCT(ConstantInitializer, value);
 
 using Initializer = variant<GlorotUniform,
                             ZeroInitializer,
@@ -54,24 +44,7 @@ using Initializer = variant<GlorotUniform,
                             NormInitializer,
                             ConstantInitializer>;
 
-} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::GlorotUniform, seed);
-MAKE_VISIT_HASHABLE(::FlexFlow::GlorotUniform);
-
-VISITABLE_STRUCT_EMPTY(::FlexFlow::ZeroInitializer);
-MAKE_VISIT_HASHABLE(::FlexFlow::ZeroInitializer);
-
-VISITABLE_STRUCT(::FlexFlow::UniformInitializer, seed, min_val, max_val);
-MAKE_VISIT_HASHABLE(::FlexFlow::UniformInitializer);
-
-VISITABLE_STRUCT(::FlexFlow::NormInitializer, seed, mean, stddev);
-MAKE_VISIT_HASHABLE(::FlexFlow::NormInitializer);
-
-VISITABLE_STRUCT(::FlexFlow::ConstantInitializer, value);
-MAKE_VISIT_HASHABLE(::FlexFlow::ConstantInitializer);
-
-namespace FlexFlow {
 static_assert(is_well_behaved_value_type<Initializer>::value, "");
 }
 

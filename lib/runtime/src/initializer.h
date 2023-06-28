@@ -58,12 +58,6 @@ TaskInvocation apply_initializer(ConstantInitializer const &,
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::GlorotUniform, seed);
-VISITABLE_STRUCT_EMPTY(::FlexFlow::ZeroInitializer);
-VISITABLE_STRUCT(::FlexFlow::UniformInitializer, seed, min_val, max_val);
-VISITABLE_STRUCT(::FlexFlow::NormInitializer, seed, mean, stddev);
-VISITABLE_STRUCT(::FlexFlow::ConstantInitializer, value);
-
 namespace FlexFlow {
 static_assert(is_well_behaved_value_type<Initializer>::value, "");
 }

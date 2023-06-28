@@ -5,8 +5,12 @@
 #include "utils/visitable_core.h"
 #include <iostream>
 #include <type_traits>
+#include "utils/invoke.h"
 
 namespace FlexFlow {
+
+#define DEBUG_PRINT_TYPE(...) \
+  using Hello = typename __VA_ARGS__ ::some_type_field_that_probably_will_never_exist
 
 #define RC_COPY_VIRTUAL_MSG                                                    \
   "https://isocpp.github.io/CppCoreGuidelines/"                                \

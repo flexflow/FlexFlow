@@ -28,6 +28,8 @@ target_link_libraries(
   fmt
   rapidcheck
   invoke
+  json
+  any
 )
 ff_set_cxx_properties(${project_target})
 

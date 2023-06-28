@@ -22,8 +22,6 @@ target_link_libraries(
   PUBLIC
     utils-ffi
     op-attrs-ffi
-  PRIVATE
-    runtime
 )
 
 ff_set_cxx_properties(${target})

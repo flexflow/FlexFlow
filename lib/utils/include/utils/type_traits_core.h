@@ -33,6 +33,20 @@ struct disjunction<B1, Bn...>
 template <typename LHS, typename RHS>
 struct implies : disjunction<RHS, negation<LHS>> {};
 
+template<class T>
+struct type_identity { using type = T; };
+
+template <int idx>
+struct infinite_recursion {
+  using type = typename infinite_recursion<(idx+1)>::type;
+};
+
+template <bool Cond, typename True, typename False>
+using conditional_t = typename std::conditional<Cond, True, False>::type;
+
+static_assert(std::is_same<conditional_t<false, infinite_recursion<0>, type_identity<bool>>::type, bool>::value, "");
+/* static_assert(std::is_same<typename if_then_else<true, int, bool>::type, bool>::value, ""); */
+    
 } // namespace FlexFlow
 
 #endif

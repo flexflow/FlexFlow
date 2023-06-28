@@ -4,7 +4,6 @@
 #include "bidict.h"
 #include "invoke.h"
 #include "optional.h"
-#include "stack_map.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -116,18 +115,8 @@ bool contains(Container const &c, typename Container::value_type const &e) {
   return find<Container>(c, e) != c.cend();
 }
 
-template <typename K, typename V>
-bool contains_key(std::unordered_map<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
-}
-
-template <typename K, typename V>
-bool contains_key(std::map<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
-}
-
-template <typename K, typename V, size_t MAXSIZE>
-bool contains_key(stack_map<K, V, MAXSIZE> const &m, K const &k) {
+template <typename C>
+bool contains_key(C const &m, typename C::key_type const &k) {
   return m.find(k) != m.end();
 }
 
@@ -207,6 +196,17 @@ std::vector<typename C::mapped_type> values(C const &c) {
     result.push_back(kv.second);
   }
   return result;
+}
+
+template <typename C>
+std::unordered_set<
+  std::pair<
+    typename C::key_type,
+    typename C::value_type
+  >
+>
+items(C const &c) {
+  return {c.begin(), c.end()};
 }
 
 template <typename C, typename T = typename C::value_type>
@@ -478,6 +478,22 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
+template <typename T, typename F>
+std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
+  std::vector<T> result(s.begin(), s.end());
+  inplace_sorted_by(s, f);
+  return result;
+}
+
+template <typename T, typename F>
+void inplace_sorted_by(std::vector<T> &v, F const &f) {
+  struct {
+    bool operator()(T const &lhs, T const &rhs) { return f(lhs, rhs); }
+  } custom_comparator;
+  
+  std::sort(v.begin(), v.end(), custom_comparator);
+}
+
 template <typename C, typename F>
 C filter(C const &v, F const &f) {
   C result(v);
@@ -500,13 +516,8 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
   return {prefix, postfix};
 }
 
-template <typename T>
-T maximum(std::vector<T> const &v) {
-  return std::max_element(v.begin(), v.end());
-}
-
-template <typename T, size_t MAXSIZE>
-T maximum(stack_vector<T, MAXSIZE> const &v) {
+template <typename C>
+typename C::value_type maximum(C const &v) {
   return std::max_element(v.begin(), v.end());
 }
 

@@ -50,13 +50,19 @@ namespace FlexFlow {
 template <typename T>
 using is_visitable = ::visit_struct::traits::is_visitable<T>;
 
-template <typename... Args>
+template <typename T, typename Tup>
 struct tuple_prepend;
 
 template <typename T, typename... Args>
 struct tuple_prepend<T, std::tuple<Args...>> {
   using type = std::tuple<T, Args...>;
 };
+
+template <typename T, typename Tup>
+struct lazy_tuple_prepend {
+  using type = typename tuple_prepend<typename T::type, typename Tup::type>::type;
+};
+
 template <typename T, int i, typename Enable = void>
 struct visit_as_tuple_helper;
 

@@ -14,8 +14,8 @@
  */
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
-#include "computation_graph.h"
-#include "executable_task_invocation.h"
+#include "pcg/computation_graph.h"
+#include "task_spec/executable_task_invocation.h"
 #include "legion.h"
 #include "legion_backing.h"
 #include "op-attrs/ops/loss_functions.h"

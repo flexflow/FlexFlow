@@ -4,6 +4,11 @@
 #include "rapidcheck.h"
 #include "utils/hash-utils.h"
 #include "utils/type_traits.h"
+#include "utils/visitable_core.h"
+#include "utils/any.h"
+#include "utils/tuple.h"
+#include "utils/exception.h"
+#include "utils/sequence.h"
 
 namespace FlexFlow {
 
@@ -87,6 +92,66 @@ std::size_t visit_hash(T const &t) {
   return vis.result;
 }
 
+template <typename C, typename ...Args>
+struct construct_visitor {
+  construct_visitor(C &c, std::tuple<Args const &...> args)
+    : c(c), args(args) { }
+
+  std::size_t idx = 0;
+  std::tuple<Args const &...> args;
+  C &c;
+
+  template <typename T>
+  void operator()(char const *, T C::* ptr_to_member) {
+    c.*ptr_to_member = any_cast<T const &>(get(args, idx));
+    this->idx++;
+  };
+};
+
+template <typename T, typename ...Args>
+void visit_construct(T &t, Args &&... args) {
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(std::is_same<std::tuple<Args...>, visit_as_tuple<T>>::value, "");
+
+  std::tuple<Args...> tup(std::forward<Args>(args)...);
+  construct_visitor<T> vis{t, tup};
+  visit_struct::visit_pointers<T>(vis);
+}
+
+template <typename T, typename ...Args>
+void visit_construct_tuple(T &t, visit_as_tuple<T> const &tup) {
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+
+  construct_visitor<T> vis{t, tup};
+  visit_struct::visit_pointers<T>(vis);
+}
+
+template <typename T, typename ...Args>
+T make_visitable(Args && ...args) {
+  T t(std::forward<Args>(args)...);
+  return t;
+}
+
+template <typename T, typename ...Args>
+T visitable_from_tuple(std::tuple<Args...> const &t) {
+  using Idxs = typename seq_count<std::tuple_size<decltype(t)>::value>::type;
+
+  return visitable_from_tuple<T>(Idxs{}, t);
+};
+
+template <typename T, typename Tup, int ...S>
+T visitable_from_tuple_impl(seq<S...>, Tup const &tup) {
+  return T{std::get<S>(tup)...};
+}
+
+template <typename T> 
+struct use_visitable_constructor {
+  template <typename ...Args, typename = typename std::enable_if<std::is_same<std::tuple<Args...>, typename visit_struct::type_at<0, T>::type>::value>::type>
+  use_visitable_constructor(Args && ...args) {
+    visit_construct<T, Args...>(*this, std::forward<Args>(args)...);
+  }
+};
+
 template <typename T>
 struct use_visitable_eq {
   friend bool operator==(T const &lhs, T const &rhs) {
@@ -141,11 +206,43 @@ struct Arbitrary<
 
 } // namespace rc
 
+#define FF_VISITABLE_STRUCT_EMPTY(TYPENAME) \
+  } \
+  VISITABLE_STRUCT_EMPTY(::FlexFlow::TYPENAME); \
+  MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME); \
+  namespace FlexFlow { \
+  static_assert(true, "")
+
+#define FF_VISITABLE_STRUCT_NONEMPTY(TYPENAME, ...) \
+  } \
+  VISITABLE_STRUCT(::FlexFlow::TYPENAME, __VA_ARGS__); \
+  MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME); \
+  namespace FlexFlow { \
+  static_assert(true, "")
+
 #define MAKE_VISIT_HASHABLE(TYPENAME)                                          \
   namespace std {                                                              \
   template <>                                                                  \
   struct hash<TYPENAME> : ::FlexFlow::use_visitable_hash<TYPENAME> {};         \
   }                                                                            \
   static_assert(true, "")
+
+
+// see https://gustedt.wordpress.com/2010/06/03/default-arguments-for-c99/
+// for an explanation of how this works
+#define _COND2(...) VISIT_STRUCT_EXPAND(VISIT_STRUCT_PP_ARG_N(__VA_ARGS__,  \
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
+        2, 2, 2, 2, 2, 2, 2, 2, 1, 0))
+#define _ONE_OR_TWO_ARGS_1(a) FF_VISITABLE_STRUCT_EMPTY(a)
+#define _ONE_OR_TWO_ARGS_2(...) FF_VISITABLE_STRUCT_NONEMPTY(__VA_ARGS__)
+#define __ONE_OR_TWO_ARGS(N, ...) _ONE_OR_TWO_ARGS_ ## N (__VA_ARGS__)
+#define _ONE_OR_TWO_ARGS(N, ...) __ONE_OR_TWO_ARGS(N, __VA_ARGS__)
+#define ONE_OR_TWO_ARGS(...) _ONE_OR_TWO_ARGS(_COND2(__VA_ARGS__), __VA_ARGS__)
+#define FF_VISITABLE_STRUCT(...) ONE_OR_TWO_ARGS(__VA_ARGS__)
 
 #endif
