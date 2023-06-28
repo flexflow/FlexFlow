@@ -5,6 +5,8 @@
 #include "utils/visitable.h"
 #include "utils/type_traits.h"
 #include "utils/optional.h"
+#include "utils/variant.h"
+#include "utils/sequence.h"
 
 namespace FlexFlow {
 
@@ -26,8 +28,12 @@ struct is_json_deserializable<
     void_t<decltype(std::declval<json>().get<T>())>>
     : std::true_type {};
 
-template <typename T>
-using is_jsonable = conjunction<is_json_serializable<T>, is_json_deserializable<T>>;
+template <typename T, typename Enable = void> 
+struct is_jsonable : conjunction<is_json_serializable<T>, is_json_deserializable<T>> { };
+
+#define CHECK_IS_JSONABLE(TYPENAME) \
+  static_assert(is_json_serializable<TYPENAME>::value, #TYPENAME " should be json serializeable"); \
+  static_assert(is_json_deserializable<TYPENAME>::value, #TYPENAME " should be json deserializeable")
     
 struct json_serialization_visitor {
   json_serialization_visitor() = delete;
@@ -58,7 +64,7 @@ static_assert(std::is_same<tuple_tail_t<3, std::tuple<int, float, bool>>, std::t
 
 template <int idx, typename T>
 typename std::enable_if<
-  (idx >= std::tuple_size<visit_as_tuple<T>>::value),
+  (idx >= std::tuple_size<visit_as_tuple_t<T>>::value),
   std::tuple<>
 >::type
 tuple_from_json_impl(json const &j) {
@@ -67,7 +73,7 @@ tuple_from_json_impl(json const &j) {
 
 template <int idx, typename T, typename Enable = void>
 struct TupleFromJson {
-  tuple_tail_t<idx, visit_as_tuple<T>> operator()(json const &j) {
+  tuple_tail_t<idx, visit_as_tuple_t<T>> operator()(json const &j) {
     using FieldT = visit_struct::type_at<idx, T>;
 
     FieldT field = j.at(visit_struct::get_name<idx, T>()).template get<FieldT>();
@@ -77,14 +83,14 @@ struct TupleFromJson {
 };
 
 template <int idx, typename T>
-struct TupleFromJson<idx, T, typename std::enable_if<(idx > std::tuple_size<visit_as_tuple<T>>::value)>::type> {
+struct TupleFromJson<idx, T, typename std::enable_if<(idx > std::tuple_size<visit_as_tuple_t<T>>::value)>::type> {
   std::tuple<> operator()(json const &j) {
     return {};
   }
 };
 
 template <typename T>
-visit_as_tuple<T> tuple_from_json(json const &j) {
+visit_as_tuple_t<T> tuple_from_json(json const &j) {
   return TupleFromJson<0, T>{}(j);
 }
 
@@ -113,6 +119,53 @@ T moveonly_visit_json_deserialize(json const &j) {
   static_assert(elements_satisfy<is_json_deserializable, T>::value, "Elements must be deserializable");
   
   return visitable_from_tuple<T>(tuple_from_json<T>(j));
+}
+
+struct VariantToJsonFunctor {
+  VariantToJsonFunctor(json &j)
+    : j(j) { }
+
+  json &j;
+  
+  template <typename T>
+  void operator()(T const &t) {
+    static_assert(is_jsonable<T>::value, "");
+
+    j["type"] = get_name(t);
+    j["value"] = t;
+  }
+};
+
+template <typename ...Args>
+void variant_to_json(json &j, variant<Args...> const &v) { 
+  visit(::FlexFlow::VariantToJsonFunctor{j}, v.value);
+}
+
+template <typename Variant>
+struct VariantFromJsonFunctor {
+  VariantFromJsonFunctor(json const &j)
+    : j(j) { }
+
+  json const &j;
+
+  template <int Idx>
+  optional<Variant> operator()(std::integral_constant<int, Idx> const &) const {
+    using Type = typename variant_alternative<Idx, Variant>::type;
+
+    if (visit_struct::get_name<Type>()) {
+      return j.at("value").get<Type>();
+    }
+  }
+};
+
+template <typename ...Args>
+variant<Args...> variant_from_json(json const &j) {
+  ::FlexFlow::VariantFromJsonFunctor<::FlexFlow::variant<Args...>> func(j);
+  auto result = seq_map(func, seq_enumerate_args_t<Args...>{});
+  if (!result.has_value()) {
+    throw ::FlexFlow::mk_runtime_error("Invalid type {} found in json", j.at("type").get<std::string>());
+  }
+  return result.value();
 }
 
 }
@@ -179,6 +232,21 @@ struct adl_serializer<
     }
   }
 };
+
+template <typename ...Args> 
+struct adl_serializer<
+  ::FlexFlow::variant<Args...>, 
+  typename std::enable_if<::FlexFlow::elements_satisfy<::FlexFlow::is_json_serializable, ::FlexFlow::variant<Args...>>::value>::type> 
+{
+  static void to_json(json &j, ::FlexFlow::variant<Args...> const &v) {
+    return ::FlexFlow::variant_to_json(j, v);
+  }
+
+  static ::FlexFlow::variant<Args...> from_json(json const &j) {
+    return ::FlexFlow::variant_from_json<Args...>(j);
+  }
+};
+
 
 }
 

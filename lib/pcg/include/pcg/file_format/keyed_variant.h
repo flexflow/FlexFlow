@@ -66,16 +66,22 @@ struct FromJsonFunctor {
     if (idx == index_of_type<T, Variant>::value) {
       t = j.get<T>();
     }
-    idx++;
   }
 };
 
-template <typename Variant>
+template <typename T>
+std::string get_json_name(T const &t) {
+  return json{t}.get<std::string>();
+}
+
+
+template <typename Key, typename Variant>
 struct FromJsonMoveOnlyFunctor {
-  FromJsonMoveOnlyFunctor(json const &j) 
+  FromJsonMoveOnlyFunctor(json const &j, Key const &key) 
     : j(j) { }
 
   json const &j;
+  Key const &key;
 
   template <int Idx>
   Variant operator()(std::integral_constant<int, Idx> const &) const {
@@ -83,9 +89,9 @@ struct FromJsonMoveOnlyFunctor {
   }
 };
 
-template <typename Variant>
-Variant from_json_moveonly(json const &j, int idx) {
-  FromJsonMoveOnlyFunctor<Variant> func(j);
+template <typename K, typename Variant>
+Variant from_json_moveonly(json const &j, K const &key) {
+  FromJsonMoveOnlyFunctor<Key, Variant> func(j);
   return seq_get(func, idx, seq_count_t<variant_size<Variant>::value>{});
 }
 
@@ -93,8 +99,9 @@ template <typename K, typename Variant>
 typename std::enable_if<std::is_default_constructible<Variant>::value>::type
 from_json(json const &j, KeyedVariant<K, Variant> &v) {
   K key = j.at("type").get<K>();
+  std::string key_string = j.at("type").get<std::string>();
 
-  visit(FromJsonFunctor<Variant>{j.at("value"), static_cast<int>(key)}, v.value);
+  visit(FromJsonFunctor<Variant>{j.at("value"), key_string}, v.value);
 }
 
 template <typename K, typename Variant>
@@ -109,6 +116,7 @@ KeyedVariant<K, Variant> keyed_variant_from_json(json const &j) {
 }
 
 namespace nlohmann {
+
 
 template <typename K, typename V> 
 struct adl_serializer<::FlexFlow::KeyedVariant<K, V>> {

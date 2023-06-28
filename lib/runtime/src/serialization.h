@@ -68,7 +68,7 @@ template <typename T>
 struct is_trivially_serializable_t<
     T,
     typename std::enable_if<
-        visit_trivially_serializable<visit_as_tuple<T>>::value>::type>
+        visit_trivially_serializable<visit_as_tuple_t<T>>::value>::type>
     : std::true_type {};
 
 template <typename T>
@@ -147,7 +147,7 @@ static_assert(is_trivially_serializable<int64_t>, "");
 static_assert(is_trivially_serializable<half>, "");
 static_assert(is_trivially_serializable<bool>, "");
 static_assert(is_trivially_serializable<variant<float, double>>, "");
-static_assert(std::is_same<visit_as_tuple<InternalTestType>,
+static_assert(std::is_same<visit_as_tuple_t<InternalTestType>,
                            std::tuple<int, float>>::value,
               "");
 static_assert(visit_trivially_serializable<InternalTestType>::value, "");

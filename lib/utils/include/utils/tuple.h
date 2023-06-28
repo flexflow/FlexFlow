@@ -92,6 +92,27 @@ any get(std::tuple<Types...> const &t, int idx) {
   return result;
 }
 
+template <typename T, typename Tup>
+struct tuple_prepend_type;
+
+template <typename T, typename... Args>
+struct tuple_prepend_type<T, std::tuple<Args...>> {
+  using type = std::tuple<T, Args...>;
+};
+
+template <typename T, typename Tup>
+using tuple_prepend_type_t = typename tuple_prepend_type<T, Tup>::type;
+
+template <typename T, typename ...Args>
+auto tuple_prepend(T const &t, std::tuple<Args...> const &tup) -> std::tuple<T, Args...> {
+  return std::tuple_cat(std::make_tuple(t), tup);
+}
+
+template <typename T, typename Tup>
+struct lazy_tuple_prepend {
+  using type = typename tuple_prepend_type<typename T::type, typename Tup::type>::type;
+};
+
 template <int start, int end, int cur, typename T>
 struct tuple_slice_impl
   : conditional_t<

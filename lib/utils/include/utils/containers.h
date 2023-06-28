@@ -447,6 +447,16 @@ std::string transform(std::string const &s, F const &f) {
   return result;
 }
 
+template <typename C>
+std::unordered_map<size_t, typename C::value_type> enumerate(C const &c) {
+  std::unordered_map<size_t, typename C::value_type> m;
+  size_t idx = 0;
+  for (auto const &v : c) {
+    m[idx++] = c;
+  }
+  return m;
+}
+
 template <typename In,
           typename F,
           typename Out = typename decltype(std::declval<F>()(

@@ -4,6 +4,8 @@
 #include <type_traits>
 
 namespace FlexFlow {
+template< bool B, typename T = void >
+using enable_if_t = typename std::enable_if<B,T>::type;
 
 template <bool b>
 using bool_constant = std::integral_constant<bool, b>;
@@ -43,6 +45,31 @@ struct infinite_recursion {
 
 template <bool Cond, typename True, typename False>
 using conditional_t = typename std::conditional<Cond, True, False>::type;
+
+template <typename L, typename R>
+struct is_equal : bool_constant<(L::value == R::value)> { };
+
+template <typename L, typename R>
+struct biconditional : bool_constant<(bool(L::value) == bool(R::value))> { };
+
+template <typename... Ts>
+struct make_void {
+  typedef void type;
+};
+
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
+
+template <typename T, typename Enable = void, typename ...Args>
+struct is_list_initializable_impl : std::false_type { };
+
+template <typename T, typename ...Args>
+struct is_list_initializable_impl<T, void_t<decltype(T{std::declval<Args>()...})>, Args...> : std::true_type { };
+
+template <typename T, typename ...Args>
+using is_list_initializable = is_list_initializable_impl<T, void, Args...>;
+
+static_assert(is_list_initializable<int, int>::value, "");
 
 static_assert(std::is_same<conditional_t<false, infinite_recursion<0>, type_identity<bool>>::type, bool>::value, "");
 /* static_assert(std::is_same<typename if_then_else<true, int, bool>::type, bool>::value, ""); */

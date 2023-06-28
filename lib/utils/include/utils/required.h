@@ -1,28 +1,13 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_H
 
+#include "utils/required_core.h"
 #include "utils/json.h"
+#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
-template <typename T>
-struct required {
-public:
-  required() = delete;
-  required(T const &t) : value(t) { };
-  required(T &&t) : value(t) { };
-
-  using value_type = T;
-
-  operator T const &() const { 
-    return this->value;
-  }
-public:
-  T value;
-};
-
-template <typename T>
-using req = required<T>;
+static_assert(is_list_initializable<required<int>, int>::value, "");
 
 }
 

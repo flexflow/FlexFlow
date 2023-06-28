@@ -7,16 +7,18 @@
 #include "operator_attrs.h"
 #include "utils/json.h"
 #include "utils/required.h"
+#include "pcg/computation_graph.h"
+#include "pcg/parallel_computation_graph.h"
 
 namespace FlexFlow {
 
-struct V1GraphOutput : public use_visitable_cmp<V1GraphOutput> {
+struct V1GraphOutput {
   req<size_t> srcNode;
   req<size_t> srcIdx;
 };
 FF_VISITABLE_STRUCT(V1GraphOutput, srcNode, srcIdx);
 
-struct V1GraphEdge : public use_visitable_cmp<V1GraphEdge> {
+struct V1GraphEdge {
   req<size_t> srcNode;
   req<size_t> srcIdx;
   req<size_t> dstNode;
@@ -25,22 +27,29 @@ struct V1GraphEdge : public use_visitable_cmp<V1GraphEdge> {
 FF_VISITABLE_STRUCT(V1GraphEdge, srcNode, srcIdx, dstNode, dstIdx);
 
 template <typename NodeT, typename TensorT> 
-struct V1JsonableGraph : public use_visitable_cmp<V1JsonableGraph<NodeT, TensorT>> {
-  req<std::unordered_set<size_t, NodeT>> nodes;
-  req<int> edges;
-  req<std::unordered_map<NodeT, TensorT>> tensors;
+struct V1JsonableGraph {
+  using node_id = size_t;
+  using tensor_id = size_t;
+
+  req<std::vector<NodeT>> nodes;
+  req<std::vector<TensorT>> tensors;
+  req<std::set<std::tuple<tensor_id, node_id>>> edges;
 };
 
-struct V1Layer : public use_visitable_cmp<V1Layer> {
+struct V1Layer {
   V1CompGraphOperatorAttrs attrs;
   req<optional<std::string>> name;
 };
-FF_VISITABLE_STRUCT(V1Layer);
+FF_VISITABLE_STRUCT(V1Layer, attrs, name);
+V1Layer to_v1(Layer const &);
 
 using V1ComputationGraph = V1JsonableGraph<V1Layer, V1Tensor>;
-FF_VISITABLE_STRUCT(V1ComputationGraph, nodes, edges, tensors);
+FF_VISITABLE_STRUCT(V1ComputationGraph, nodes, tensors, edges);
+V1ComputationGraph to_v1(ComputationGraph const &);
+
 using V1ParallelComputationGraph = V1JsonableGraph<V1PCGOperatorAttrs, V1ParallelTensor>;
-FF_VISITABLE_STRUCT(V1ParallelComputationGraph, nodes, edges, tensors);
+FF_VISITABLE_STRUCT(V1ParallelComputationGraph, nodes, tensors, edges);
+V1ParallelComputationGraph to_v1(ParallelComputationGraph const &);
 
 }
 

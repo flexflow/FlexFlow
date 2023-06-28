@@ -45,32 +45,7 @@ static_assert(
     is_rc_copy_virtual_compliant<ILabelledMultiDiGraph<int, int>>::value,
     RC_COPY_VIRTUAL_MSG);
 
-struct MultiDiOutput : public use_visitable_cmp<MultiDiOutput> {
-public:
-  MultiDiOutput() = delete;
-  MultiDiOutput(Node const &, NodePort const &);
-
-public:
-  Node node;
-  NodePort idx;
-};
-
-struct MultiDiInput : public use_visitable_cmp<MultiDiInput> {
-public:
-  MultiDiInput(Node const &, NodePort const &);
-
-public:
-  Node node;
-  NodePort idx;
-};
-
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::MultiDiOutput, node, idx);
-MAKE_VISIT_HASHABLE(::FlexFlow::MultiDiOutput);
-
-VISITABLE_STRUCT(::FlexFlow::MultiDiInput, node, idx);
-MAKE_VISIT_HASHABLE(::FlexFlow::MultiDiInput);
 
 namespace FlexFlow {
 
@@ -139,24 +114,5 @@ struct formatter<::FlexFlow::MultiDiInput> : formatter<std::string> {
 };
 
 } // namespace fmt
-
-namespace FlexFlow {
-
-static_assert(is_hashable<MultiDiOutput>::value,
-              "MultiDiOutput must be hashable");
-static_assert(is_equal_comparable<MultiDiOutput>::value,
-              "MultiDiOutput must support ==");
-static_assert(is_neq_comparable<MultiDiOutput>::value,
-              "MultiDiOutput must support !=");
-static_assert(is_lt_comparable<MultiDiOutput>::value,
-              "MultiDiOutput must support <");
-static_assert(!is_default_constructible<MultiDiOutput>::value,
-              "MultiDiOutput must not be default constructible");
-static_assert(is_copy_constructible<MultiDiOutput>::value,
-              "MultiDiOutput must be copy constructible");
-static_assert(is_fmtable<MultiDiOutput>::value,
-              "MultiDiOutput must support fmt");
-
-} // namespace FlexFlow
 
 #endif

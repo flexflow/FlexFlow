@@ -2,9 +2,6 @@
 
 namespace FlexFlow {
 
-MultiDiEdge::MultiDiEdge(Node src, Node dst, NodePort srcIdx, NodePort dstIdx)
-    : src(src), dst(dst), srcIdx(srcIdx), dstIdx(dstIdx) {}
-
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(
     std::unordered_set<Node> const &nodes) const {
   MultiDiEdgeQuery e{*this};

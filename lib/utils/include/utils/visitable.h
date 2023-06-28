@@ -111,7 +111,7 @@ struct construct_visitor {
 template <typename T, typename ...Args>
 void visit_construct(T &t, Args &&... args) {
   static_assert(is_visitable<T>::value, "Type must be visitable");
-  static_assert(std::is_same<std::tuple<Args...>, visit_as_tuple<T>>::value, "");
+  static_assert(std::is_same<std::tuple<Args...>, visit_as_tuple_t<T>>::value, "");
 
   std::tuple<Args...> tup(std::forward<Args>(args)...);
   construct_visitor<T> vis{t, tup};
@@ -119,7 +119,7 @@ void visit_construct(T &t, Args &&... args) {
 }
 
 template <typename T, typename ...Args>
-void visit_construct_tuple(T &t, visit_as_tuple<T> const &tup) {
+void visit_construct_tuple(T &t, visit_as_tuple_t<T> const &tup) {
   static_assert(is_visitable<T>::value, "Type must be visitable");
 
   construct_visitor<T> vis{t, tup};
@@ -144,6 +144,24 @@ T visitable_from_tuple_impl(seq<S...>, Tup const &tup) {
   return T{std::get<S>(tup)...};
 }
 
+template <typename T>
+struct GetFunctor {
+  GetFunctor(T const &t) : t(t) {}
+
+  T const &t;
+
+  template <int IDX>
+  auto operator()(std::integral_constant<int, IDX> const &) const -> remove_req_t<decltype(visit_struct::get<IDX>(t))> {
+    return visit_struct::get<IDX>(t);
+  }
+};
+
+template <typename T>
+visit_as_tuple_t<T> as_tuple(T const &t) { 
+  GetFunctor<T> func(t);
+  return seq_transform(func, seq_enumerate_t<visit_as_tuple_t<T>>{});
+}
+
 template <typename T> 
 struct use_visitable_constructor {
   template <typename ...Args, typename = typename std::enable_if<std::is_same<std::tuple<Args...>, typename visit_struct::type_at<0, T>::type>::value>::type>
@@ -151,6 +169,18 @@ struct use_visitable_constructor {
     visit_construct<T, Args...>(*this, std::forward<Args>(args)...);
   }
 };
+
+template <typename T, typename Enable = void>
+struct is_list_initializable_from_tuple : std::false_type { };
+
+template <typename T, typename ...Args>
+struct is_list_initializable_from_tuple<T, std::tuple<Args...>> : is_list_initializable<T, Args...> { };
+
+template <typename T, typename Enable = void>
+struct is_visit_list_initializable : conjunction<is_visitable<T>, is_list_initializable_from_tuple<T, visit_as_tuple_t<T>>> { };
+
+template <typename T, typename Enable = void>
+struct is_only_visit_list_initializable : conjunction<is_visit_list_initializable<T>, negation<is_list_initializable_from_tuple<T, tuple_tail_t<1, visit_as_tuple_t<T>>>>> { };
 
 template <typename T>
 struct use_visitable_eq {
@@ -176,6 +206,34 @@ struct use_visitable_hash {
     return visit_hash(t);
   }
 };
+
+template <typename T, typename Enable = void>
+struct is_well_behaved_visitable_type : conjunction<is_visitable<T>,
+                                                    is_well_behaved_value_type<T>,
+                                                    is_visit_list_initializable<T>, 
+                                                    biconditional<is_equal<field_count<T>, std::integral_constant<size_t, 0>>, std::is_default_constructible<T>>> { };
+
+template <typename T>
+auto operator==(T const &lhs, T const &rhs) -> enable_if_t<
+  conjunction<is_visitable<T>, elements_satisfy<is_equal_comparable, T>>::value,
+bool> {
+  return as_tuple(lhs) == as_tuple(rhs);
+}
+
+template <typename T>
+auto operator!=(T const &lhs, T const &rhs) -> enable_if_t<
+  conjunction<is_visitable<T>, elements_satisfy<is_neq_comparable, T>>::value,
+bool> {
+  return as_tuple(lhs) != as_tuple(rhs);
+}
+
+template <typename T>
+auto operator<(T const &lhs, T const &rhs) -> enable_if_t<
+  conjunction<is_visitable<T>, elements_satisfy<is_lt_comparable, T>>::value, 
+bool> {
+  return as_tuple(lhs) < as_tuple(rhs);
+}
+
 } // namespace FlexFlow
 
 namespace rc {
@@ -206,19 +264,29 @@ struct Arbitrary<
 
 } // namespace rc
 
+#define CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME) \
+  static_assert(is_visitable<TYPENAME>::value, #TYPENAME " is not visitable (this should never happen--contact the FF developers)"); \
+  static_assert(sizeof(visit_as_tuple_t<TYPENAME>) == sizeof(TYPENAME), #TYPENAME " should be fully visitable"); \
+  static_assert(!std::is_base_of<use_visitable_cmp<TYPENAME>, TYPENAME>::value, #TYPENAME " should not have a base class"); \
+  CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME); \
+  static_assert(is_visit_list_initializable<TYPENAME>::value, #TYPENAME " should be list-initialializable by the visit field types"); \
+
 #define FF_VISITABLE_STRUCT_EMPTY(TYPENAME) \
   } \
   VISITABLE_STRUCT_EMPTY(::FlexFlow::TYPENAME); \
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME); \
   namespace FlexFlow { \
-  static_assert(true, "")
+  CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME); \
+  static_assert(std::is_default_constructible<TYPENAME>::value, #TYPENAME " should be default-constructible as it is empty")
 
 #define FF_VISITABLE_STRUCT_NONEMPTY(TYPENAME, ...) \
   } \
   VISITABLE_STRUCT(::FlexFlow::TYPENAME, __VA_ARGS__); \
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME); \
   namespace FlexFlow { \
-  static_assert(true, "")
+  CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME); \
+  static_assert(is_only_visit_list_initializable<TYPENAME>::value, #TYPENAME " should not be list-initialializable from any sub-tuples"); \
+  static_assert(!std::is_default_constructible<TYPENAME>::value, #TYPENAME " should not be default-constructible")
 
 #define MAKE_VISIT_HASHABLE(TYPENAME)                                          \
   namespace std {                                                              \
@@ -243,6 +311,8 @@ struct Arbitrary<
 #define __ONE_OR_TWO_ARGS(N, ...) _ONE_OR_TWO_ARGS_ ## N (__VA_ARGS__)
 #define _ONE_OR_TWO_ARGS(N, ...) __ONE_OR_TWO_ARGS(N, __VA_ARGS__)
 #define ONE_OR_TWO_ARGS(...) _ONE_OR_TWO_ARGS(_COND2(__VA_ARGS__), __VA_ARGS__)
-#define FF_VISITABLE_STRUCT(...) ONE_OR_TWO_ARGS(__VA_ARGS__)
+#define FF_VISITABLE_STRUCT(...) \
+  ONE_OR_TWO_ARGS(__VA_ARGS__); \
+
 
 #endif

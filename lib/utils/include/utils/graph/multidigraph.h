@@ -31,22 +31,12 @@ MAKE_TYPEDEF_PRINTABLE(::FlexFlow::NodePort, "NodePort");
 
 namespace FlexFlow {
 
-struct MultiDiEdge : public use_visitable_cmp<MultiDiEdge> {
-public:
-  MultiDiEdge() = delete;
-  MultiDiEdge(Node src, Node dst, NodePort srcIdx, NodePort dstIdx);
-
-public:
+struct MultiDiEdge {
   Node src, dst;
   NodePort srcIdx, dstIdx;
 };
+FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
 
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::MultiDiEdge, src, dst, srcIdx, dstIdx);
-MAKE_VISIT_HASHABLE(::FlexFlow::MultiDiEdge);
-
-namespace FlexFlow {
 
 struct MultiDiEdgeQuery {
   tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
@@ -70,6 +60,19 @@ struct MultiDiEdgeQuery {
 
   static MultiDiEdgeQuery all();
 };
+
+struct MultiDiInput {
+  Node node;
+  NodePort idx;
+};
+FF_VISITABLE_STRUCT(MultiDiInput, node, idx);
+static_assert(is_well_behaved_visitable_type<MultiDiInput>::value, "");
+
+struct MultiDiOutput {
+  Node node;
+  NodePort idx;
+};
+FF_VISITABLE_STRUCT(MultiDiOutput, node, idx);
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &,
                                     MultiDiEdgeQuery const &);

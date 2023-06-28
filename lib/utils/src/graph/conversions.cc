@@ -84,7 +84,7 @@ std::unordered_set<MultiDiEdge> ViewDiGraphAsMultiDiGraph::query_edges(
       this->directed->query_edges(directed_query);
 
   return transform(directed_edges, [](DirectedEdge const &e) {
-    return MultiDiEdge(e.src, e.dst, NodePort(0), NodePort(0));
+    return MultiDiEdge{e.src, e.dst, NodePort(0), NodePort(0)};
   });
 }
 

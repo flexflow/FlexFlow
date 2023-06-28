@@ -7,34 +7,34 @@
 
 namespace FlexFlow {
 
-struct GlorotUniform : public use_visitable_cmp<GlorotUniform> {
+struct GlorotUniform {
   req<int> seed;
   /* float scale; */
   /* DataType data_type; */
 };
 FF_VISITABLE_STRUCT(GlorotUniform, seed);
 
-struct ZeroInitializer : public use_visitable_cmp<ZeroInitializer> {
+struct ZeroInitializer {
   ZeroInitializer() = default;
 };
 FF_VISITABLE_STRUCT(ZeroInitializer);
 
-struct UniformInitializer : public use_visitable_cmp<UniformInitializer> {
+struct UniformInitializer {
   req<int> seed;
   req<float> min_val;
   req<float> max_val;
 };
 FF_VISITABLE_STRUCT(UniformInitializer, seed, min_val, max_val);
 
-struct NormInitializer : public use_visitable_cmp<NormInitializer> {
+struct NormInitializer {
   req<int> seed;
   req<float> mean;
   req<float> stddev;
 };
 FF_VISITABLE_STRUCT(NormInitializer, seed, mean, stddev);
 
-struct ConstantInitializer : public use_visitable_cmp<ConstantInitializer> {
-  DataTypeValue value;
+struct ConstantInitializer {
+  req<DataTypeValue> value;
 };
 FF_VISITABLE_STRUCT(ConstantInitializer, value);
 

@@ -2,11 +2,25 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_SEQUENCE_H
 
 #include <utility>
+#include "optional.h"
+#include "utils/tuple.h"
 
 namespace FlexFlow {
 
 template <int ...S>
 struct seq { };
+
+template <typename Seq> struct seq_head;
+
+template <int X, int ...S>
+struct seq_head<seq<X, S...>> : std::integral_constant<int, X> { };
+
+template <typename Seq> struct seq_tail;
+
+template <int X, int ...S>
+struct seq_tail<seq<X, S...>> {
+  using type = seq<S...>;  
+};
 
 template <int X, int ...S>
 struct seq_prepend {
@@ -27,18 +41,74 @@ struct seq_count {
 
 template <>
 struct seq_count<0> {
-  using type = seq<>;
+  using type = seq<0>;
 };
 
 template <int n>
 using seq_count_t = typename seq_count<n>::type;
+
+template <typename ...Args>
+struct seq_enumerate_args {
+  using type = seq_count_t<sizeof...(Args) - 1>;
+};
+
+template <typename ...Args>
+using seq_enumerate_args_t = typename seq_enumerate_args<Args...>::type;
+
+template <typename T> struct seq_enumerate;
+
+template <typename ...Args>
+struct seq_enumerate<std::tuple<Args...>> : seq_enumerate_args<Args...> { };
+
+template <typename T>
+using seq_enumerate_t = typename seq_enumerate<T>::type;
+
+template <typename F, typename Seq> struct seq_transform_type;
+
+template <typename F, int X, int ...S>
+struct seq_transform_type<F, seq<X, S...>> : tuple_prepend_type<
+    visit_struct::traits::clean_t<decltype(std::declval<F>()(std::declval<std::integral_constant<int, X>>()))>, 
+    typename seq_transform_type<F, seq<S...>>::type> { };
+
+template <typename F>
+struct seq_transform_type<F, seq<>> {
+  using type = std::tuple<>;
+};
+
+template <typename F, typename Seq>
+using seq_transform_type_t = typename seq_transform_type<F, Seq>::type;
+
+template <typename F, int X, int ...S>
+auto seq_transform(F const &f, seq<X, S...> const &) -> seq_transform_type_t<F, seq<X, S...>> {
+  return tuple_prepend(f(std::integral_constant<int, X>{}), seq_transform(f, seq<S...>{}));
+}
+
+template <typename F>
+std::tuple<> seq_transform(F const &f, seq<> const &) {
+  return {};
+}
+
+template <typename F, int X, int ...S> 
+auto seq_select(F const &f, seq<X, S...> const &s) -> decltype(f(std::declval<std::integral_constant<int, 0>>())) {
+  auto result = f(std::integral_constant<int, X>{});
+  if (f.has_value()) {
+    return f.value();
+  } else {
+    return seq_map(f, seq<S...>{});
+  }
+}
+
+template <typename F>
+auto seq_select(F const &f, int i, seq<> const &) -> decltype(f(std::declval<std::integral_constant<int, 0>>())) {
+  return nullopt;
+}
 
 template <typename F, int X, int ...S>
 auto seq_get(F const &f, int i, seq<X, S...> const &s) -> decltype(f(std::declval<std::integral_constant<int, 0>>())) {
   if (X == i) {
     return f(std::integral_constant<int, X>{});
   } else {
-    return seq_get(f, i+1, s);
+    return seq_get(f, i, seq<S...>{});
   }
 };
 
