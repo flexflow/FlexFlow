@@ -461,6 +461,24 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
   return CUDA_R_32F;
 }
 
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type) {
+  switch (type) {
+    case DT_HALF:
+      return ncclHalf;
+    case DT_FLOAT:
+      return ncclFloat;
+    case DT_DOUBLE:
+      return ncclDouble;
+    case DT_INT32:
+      return ncclInt;
+    default:
+      assert(false && "Unspoorted nccl data type");
+  }
+  return ncclFloat;
+}
+#endif
+
 cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type) {
   switch (type) {
     case CUDNN_DATA_FLOAT:

@@ -58,6 +58,7 @@
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -990,6 +991,7 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
   MachineView const view = output0->machine_view;
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   switch (domain.get_dim()) {
 #ifdef FF_USE_NCCL
 #define DIMFUNC(DIM)                                                           \
@@ -998,8 +1000,7 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
-      if (ff.config.computationMode == COMP_MODE_TRAINING &&                   \
-          op_type == OP_WEIGHT) {                                              \
+      if (op_type == OP_ALLREDUCE) {                                           \
         ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
         handle.ncclComm = nccl_comms[idx++];                                   \
       }                                                                        \
@@ -4934,6 +4935,28 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<Reduction::backward_task>(
         registrar, "Reduction Backward Task");
+  }
+  // AllReduce
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INIT_TASK_ID, "AllReduce Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
+        registrar, "AllReduce init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AllReduce::forward_task>(
+        registrar, "AllReduce Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AllReduce::backward_task>(
+        registrar, "AllReduce Backward Task");
   }
   // FusedParallelOp
   {

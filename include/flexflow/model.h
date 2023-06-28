@@ -212,6 +212,9 @@ enum TaskIDs {
   PIPELINE_INIT_TASK_ID,
   PIPELINE_FWD_TASK_ID,
   PIPELINE_BWD_TASK_ID,
+  ALLREDUCE_INIT_TASK_ID,
+  ALLREDUCE_FWD_TASK_ID,
+  ALLREDUCE_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
   FUSED_PARALLELOP_FWD_TASK_ID,
   FUSED_PARALLELOP_BWD_TASK_ID,
@@ -311,6 +314,7 @@ class Combine;
 class Repartition;
 class Reduction;
 class Replicate;
+class AllReduce;
 class FusedParallelOp;
 class ParallelOpInfo;
 
@@ -1078,6 +1082,8 @@ public:
                          Reduction *>,
       std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
                          Combine *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AllReduceParams>,
+                         AllReduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
                          FusedParallelOp *>>
       cached_ops;
