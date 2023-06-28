@@ -488,7 +488,14 @@ if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
                 OUTPUT_VARIABLE RUSTC_OUTPUT
                 ERROR_QUIET)
   if(NOT RUST_COMMAND_RESULT EQUAL 0)
-    message(FATAL_ERROR "Rust is not installed on the system. Cannot build the tokenizers.")
+    message(FATAL_ERROR "Rust is not installed on the system. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
+  endif()
+  # Ensure Cargo is installed
+  execute_process(COMMAND cargo --version
+                  RESULT_VARIABLE CARGO_RESULT
+                  OUTPUT_QUIET ERROR_QUIET)
+  if(NOT CARGO_RESULT EQUAL 0)
+    message(FATAL_ERROR "Rust is installed, but cargo is not. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
   endif()
   add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
   target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
