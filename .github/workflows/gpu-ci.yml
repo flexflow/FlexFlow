@@ -180,6 +180,7 @@ jobs:
           ./tests/gpt_tokenizer_test.sh
 
           # Inference tests
+          export TENSOR_PARALLELISM_TESTS=ON
           ./tests/inference_tests.sh
 
   gpu-ci-flexflow:

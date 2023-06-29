@@ -44,7 +44,9 @@ void parse_input_args(char **argv,
                       ModelTypes &model_types,
                       bool &use_full_precision,
                       bool &verbose,
-                      int &tensor_parallelism_degree) {
+                      int &data_parallelism_degree,
+                      int &tensor_parallelism_degree,
+                      int &pipeline_parallelism_degree) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -115,9 +117,19 @@ void parse_input_args(char **argv,
       paths.output_file_path = std::string(argv[++i]);
       continue;
     }
+    // data parallelism degree
+    if (!strcmp(argv[i], "-data-parallelism-degree")) {
+      data_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
     // tensor parallelism degree
     if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
       tensor_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // pipeline parallelism degree
+    if (!strcmp(argv[i], "-pipeline-parallelism-degree")) {
+      pipeline_parallelism_degree = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--use-full-precision")) {
@@ -141,7 +153,9 @@ void FlexFlow::top_level_task(Task const *task,
   ModelTypes model_types;
   bool use_full_precision = false;
   bool verbose = false;
-  int tensor_parallelism_degree = 1;
+  size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
+  int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
+      pipeline_parallelism_degree = -1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -152,8 +166,15 @@ void FlexFlow::top_level_task(Task const *task,
                    model_types,
                    use_full_precision,
                    verbose,
-                   tensor_parallelism_degree);
+                   data_parallelism_degree,
+                   tensor_parallelism_degree,
+                   pipeline_parallelism_degree);
+  ffconfig.data_parallelism_degree = data_parallelism_degree;
   ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
+  ffconfig.pipeline_parallelism_degree =
+      pipeline_parallelism_degree == -1
+          ? num_devices / (tensor_parallelism_degree * data_parallelism_degree)
+          : pipeline_parallelism_degree;
 
   if (file_paths.ssm_weight_file_paths.size() == 0) {
     assert(false &&
@@ -178,7 +199,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Create SentencePiece tokenizer or OPT tokenizer
-  InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS, 1);
+  InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
   RequestManager rm(model_types.llm_model_type,
                     file_paths.tokenizer_file_path,
                     /*verbose*/ verbose,
