@@ -306,7 +306,7 @@ void Linear::init(FFModel const &ff) {
   // launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     inputs[0]->region));
   launcher.add_field(0, FID_DATA);
@@ -365,7 +365,7 @@ void Linear::init_inference(FFModel const &ff,
   // launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
