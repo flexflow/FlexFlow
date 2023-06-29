@@ -2970,13 +2970,12 @@ void FFModel::create_operators_from_layers() {
     Op *op = nullptr;
     // add a combine before arg_topk
     if (config.computationMode == COMP_MODE_INFERENCE &&
-        config.tensor_parallelism_degree > 1 &&
-        l->op_type == OP_ARG_TOPK) {
+        config.tensor_parallelism_degree > 1 && l->op_type == OP_ARG_TOPK) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Combine *comb = new Combine(*this,
                                   inputs[0],
-                                  0/*inner most dim*/,
+                                  0 /*inner most dim*/,
                                   config.tensor_parallelism_degree);
       partitioned_inputs.push_back(comb->outputs[0]);
       operators.push_back(comb);
@@ -2986,8 +2985,7 @@ void FFModel::create_operators_from_layers() {
     }
     // add replicate operators after op if needed
     if (config.computationMode == COMP_MODE_INFERENCE &&
-        config.tensor_parallelism_degree > 1 &&
-        l->op_type == OP_EMBEDDING) {
+        config.tensor_parallelism_degree > 1 && l->op_type == OP_EMBEDDING) {
       assert(op->numOutputs == 1);
       Replicate *repl = new Replicate(*this,
                                       op->outputs[0],
@@ -2996,26 +2994,25 @@ void FFModel::create_operators_from_layers() {
       operators.push_back(repl);
       op = repl;
     } else if (config.computationMode == COMP_MODE_INFERENCE &&
-        config.tensor_parallelism_degree > 1 &&
-        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
-         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-         (l->op_type == OP_LINEAR && layer_idx >= 2 &&
-          layers[layer_idx - 1]->op_type == OP_RELU &&
-          layers[layer_idx - 2]->op_type == OP_LINEAR) ||
-         (l->op_type == OP_LINEAR && layer_idx >= 5 &&
-          layers[layer_idx - 1]->op_type == OP_EW_MUL &&
-          layers[layer_idx - 2]->op_type == OP_EW_MUL &&
-          layers[layer_idx - 3]->op_type == OP_SIGMOID &&
-          layers[layer_idx - 4]->op_type == OP_LINEAR &&
-          layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+               config.tensor_parallelism_degree > 1 &&
+               (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+                l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+                 layers[layer_idx - 1]->op_type == OP_RELU &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+                 layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+                 layers[layer_idx - 4]->op_type == OP_LINEAR &&
+                 layers[layer_idx - 5]->op_type == OP_LINEAR))) {
       assert(op->numOutputs == 1);
-      AllReduce *allreduce = new AllReduce(*this,
-                                           op->outputs[0],
-                                           op->outputs[0]->num_dims - 1);
+      AllReduce *allreduce =
+          new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
       operators.push_back(allreduce);
       op = allreduce;
     }
-#ifdef DEADCODE     
+#ifdef DEADCODE
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 &&
         (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
@@ -3414,7 +3411,8 @@ void FFModel::compile(LossType loss_type,
 #ifdef FF_USE_NCCL
   for (size_t l = 0; l < operators.size(); l++) {
     // Only create nccl for weights in training
-    if ((operators[l]->op_type == OP_WEIGHT && config.computationMode == COMP_MODE_TRAINING)) {
+    if ((operators[l]->op_type == OP_WEIGHT &&
+         config.computationMode == COMP_MODE_TRAINING)) {
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==
           view_hash_to_nccl_comms.end()) {

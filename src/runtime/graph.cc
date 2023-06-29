@@ -2959,8 +2959,7 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         int allreduce_dim;
         dez.deserialize(allreduce_dim);
-        node = get_or_create_node<AllReduce>(inputs[0],
-                                             {allreduce_dim});
+        node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
         break;
       }
       case OP_FUSED_PARALLEL: {

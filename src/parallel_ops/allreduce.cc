@@ -69,7 +69,7 @@ AllReduce::AllReduce(FFModel &model,
     dims[i] = _input->dims[i];
   }
   assert(dims[allreduce_dim].degree > 1);
-  //ParallelTensorBase::update_parallel_ids(numdim, dims);
+  // ParallelTensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, _input->data_type, this);
 }
@@ -78,10 +78,7 @@ AllReduce::AllReduce(FFModel &model,
                      AllReduceParams const &params,
                      ParallelTensor const input,
                      char const *name)
-    : AllReduce(model,
-                input,
-                params.allreduce_legion_dim,
-                name) {}
+    : AllReduce(model, input, params.allreduce_legion_dim, name) {}
 
 void AllReduce::create_input_partition(FFModel &ff) {
   // Do nothing
@@ -166,12 +163,11 @@ void AllReduce::init_inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-  launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[0]->part,
-                        0 /*projection id*/,
-                        READ_ONLY,
-                        EXCLUSIVE,
-                        batch_inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -208,12 +204,11 @@ FutureMap AllReduce::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-  launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[0]->part,
-                        0 /*projection id*/,
-                        READ_ONLY,
-                        EXCLUSIVE,
-                        batch_inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -240,8 +235,11 @@ void AllReduce::forward(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(
-      inputs[0]->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
                                                     0 /*projection id*/,
@@ -329,7 +327,7 @@ void AllReduce::forward_task(Task const *task,
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  
+
   assert(input.data_type == output.data_type);
   forward_kernel_wrapper(m, input, output);
 }
@@ -346,7 +344,7 @@ void AllReduce::backward_task(Task const *task,
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  
+
   assert(input_grad.data_type == output_grad.data_type);
   backward_kernel_wrapper(m, input_grad, output_grad);
 }
@@ -361,4 +359,4 @@ size_t hash<FlexFlow::AllReduceParams>::operator()(
   return key;
 }
 
-}
+} // namespace std

@@ -519,6 +519,8 @@ template __global__ void
     assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
 
 template __global__ void
+    add_kernel<half>(half *dst, half const *src, size_t size);
+template __global__ void
     add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
     add_kernel<double>(double *dst, double const *src, size_t size);
@@ -528,7 +530,11 @@ template __global__ void
     add_kernel<int64_t>(int64_t *dst, int64_t const *src, size_t size);
 
 template __global__ void
+    copy_kernel<half>(half *dst, half const *src, coord_t size);
+template __global__ void
     copy_kernel<float>(float *dst, float const *src, coord_t size);
+template __global__ void
+    copy_kernel<double>(double *dst, double const *src, coord_t size);
 template __global__ void
     copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
 template __global__ void

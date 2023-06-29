@@ -97,11 +97,13 @@ OpMeta *Combine::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  Combine *rep = (Combine *)task->args;
-  // FFHandler handle = *((FFHandler *)task->local_args);
-  // CombineMeta* m = new CombineMeta(handle);
-  // m->data_type = rep->outputs[0]->data_type;
-  return nullptr;
+  Combine *cmb = (Combine *)task->args;
+  FFHandler handle = *((FFHandler *)task->local_args);
+  CombineMeta *m = new CombineMeta(handle);
+  m->input_type[0] = cmb->inputs[0]->data_type;
+  m->output_type[0] = cmb->outputs[0]->data_type;
+  assert(m->input_type[0] == m->output_type[0]);
+  return m;
 }
 
 void Combine::init(FFModel const &ff) {
@@ -111,6 +113,7 @@ void Combine::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(COMBINE_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Combine)),
@@ -130,6 +133,7 @@ void Combine::init(FFModel const &ff) {
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 void Combine::init_inference(FFModel const &ff,
@@ -204,10 +208,10 @@ void Combine::create_input_partition_inference(
 }
 
 FutureMap Combine::inference(FFModel const &ff,
-                               BatchConfig const &bc,
-                               std::vector<ParallelTensor> const &batch_inputs,
-                               std::vector<ParallelTensor> const &batch_outputs,
-                               MachineView const *mv) {
+                             BatchConfig const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -221,7 +225,7 @@ FutureMap Combine::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(COMBINE_FWD_TASK_ID,
                          batch_outputs[0]->parallel_is,
-                         TaskArgument(&data_type, sizeof(data_type)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -253,7 +257,7 @@ void Combine::forward(FFModel const &ff) {
   DataType data_type = inputs[0]->data_type;
   IndexLauncher launcher(COMBINE_FWD_TASK_ID,
                          outputs[0]->parallel_is,
-                         TaskArgument(&data_type, sizeof(data_type)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -357,8 +361,11 @@ void Combine::forward_task(Task const *task,
                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  DataType data_type = *((DataType *)task->args);
-  if (data_type == DT_FLOAT) {
+  CombineMeta const *m = *((CombineMeta **)task->local_args);
+  DataType data_type = m->input_type[0];
+  if (data_type == DT_HALF) {
+    forward_task_with_type<half>(task, regions, ctx, runtime);
+  } else if (data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (data_type == DT_DOUBLE) {
     forward_task_with_type<double>(task, regions, ctx, runtime);

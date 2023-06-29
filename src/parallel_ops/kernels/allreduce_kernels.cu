@@ -45,7 +45,6 @@ void forward_kernel_wrapper(AllReduceMeta const *m,
 #endif
 }
 
-
 void backward_kernel_wrapper(AllReduceMeta const *m,
                              GenericTensorAccessorW const &input_grad,
                              GenericTensorAccessorR const &output_grad) {
