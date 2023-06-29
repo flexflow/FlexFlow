@@ -166,8 +166,6 @@ void AllReduce::init_inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-  assert(inference_input_lps.find(batch_inputs[0]) !=
-         inference_input_lps.end());
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part,
                         0 /*projection id*/,

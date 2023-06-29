@@ -132,6 +132,47 @@ void Combine::init(FFModel const &ff) {
   fm.wait_all_results();
 }
 
+void Combine::init_inference(FFModel const &ff,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
+  ArgumentMap argmap;
+  parallel_is = batch_outputs[0]->parallel_is;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(COMBINE_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Combine)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  assert(inference_input_lps.find(batch_inputs[0]) !=
+         inference_input_lps.end());
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
+
 void Combine::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);
   assert(inputs[0]->part != LogicalPartition::NO_PART);
@@ -145,6 +186,61 @@ void Combine::create_input_partition(FFModel &ff) {
                                inputs[0]->parallel_is,
                                outputs[0]->region_grad,
                                output_grad_lp);
+}
+
+void Combine::create_input_partition_inference(
+    FFModel &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
+  assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
+  // input_lp is a disjoint partition
+  ff.create_disjoint_partition(batch_outputs[0]->num_dims,
+                               batch_outputs[0]->dims,
+                               batch_outputs[0]->parallel_is,
+                               batch_inputs[0]->region,
+                               inference_input_lps[batch_inputs[0]]);
+}
+
+FutureMap Combine::inference(FFModel const &ff,
+                               BatchConfig const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
+  DataType data_type = batch_inputs[0]->data_type;
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(COMBINE_FWD_TASK_ID,
+                         batch_outputs[0]->parallel_is,
+                         TaskArgument(&data_type, sizeof(data_type)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Combine::forward(FFModel const &ff) {

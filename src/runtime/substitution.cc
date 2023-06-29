@@ -37,6 +37,7 @@
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -3775,6 +3776,14 @@ bool FFModel::convert_graph_to_operators(
                                inputs[0],
                                reduction->reduction_dim,
                                reduction->reduction_degree);
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(inList.size() == 1);
+        AllReduce *allreduce = (AllReduce *)node.ptr;
+        new_op = new AllReduce(*this,
+                               inputs[0],
+                               allreduce->allreduce_dim);
         break;
       }
       case OP_FUSED_PARALLEL: {

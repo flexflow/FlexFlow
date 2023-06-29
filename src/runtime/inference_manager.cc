@@ -223,6 +223,10 @@ void InferenceManager::compile_model_and_allocate_buffer(
           pt->machine_view = machine_views[j];
           Domain part_domain =
               runtime->get_index_space_domain(ctx, pt_base->parallel_is);
+          // FIXME: should not hack the machine view
+          pt->machine_view.dim[0] = part_domain.get_volume();
+          pt->machine_view.stride[0] = 1;
+          pt->machine_view.start_device_id = 0;
           assert(pt->machine_view.get_domain() == part_domain);
           list.push_back(pt);
         }
@@ -628,5 +632,40 @@ void FFModel::compile_inference() {
              handle.get_tree_id());
     }
   }
+#ifdef FF_USE_NCCL
+  for (size_t l = 0; l < operators.size(); l++) {
+    // Only create nccl for allreduce for inference
+    if (operators[l]->op_type == OP_ALLREDUCE) {
+      MachineView view = operators[l]->outputs[0]->machine_view;
+      if (view_hash_to_nccl_comms.find(view.hash()) ==
+          view_hash_to_nccl_comms.end()) {
+        TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
+        Future future = runtime->execute_task(ctx, launcher);
+        ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
+        IndexSpace task_is = get_or_create_task_is(view);
+        ArgumentMap argmap;
+        IndexLauncher index_launcher(
+            NCCL_INIT_COMMS_TASK_ID,
+            task_is,
+            TaskArgument(&ncclId, sizeof(ncclUniqueId)),
+            argmap,
+            Predicate::TRUE_PRED,
+            false /*must*/,
+            0 /*mapper_id*/,
+            view.hash() /*MappingTagID*/);
+        FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
+        fm.wait_all_results();
+        int idx = 0;
+        Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
+        ncclComm_t *nccl_comms =
+            (ncclComm_t *)malloc(sizeof(ncclComm_t) * task_domain.get_volume());
+        for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
+          nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
+        }
+        view_hash_to_nccl_comms[view.hash()] = nccl_comms;
+      }
+    }
+  }
+#endif
 }
 }; // namespace FlexFlow
