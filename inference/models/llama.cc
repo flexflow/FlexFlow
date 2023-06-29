@@ -29,8 +29,27 @@ void LLAMA::create_llama_model(FFModel &ff,
   // do not apply cpu offload in beam search model.
   Config llama_config(model_config_file_path);
   llama_config.printConfig();
-  //------------------------------compute machine views ------------------
+  //---------------------- parallelization setup work ----------------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
+  int num_transformer_layers = llama_config.n_layers;
+  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
+  int num_layers_per_pp_block =
+      num_transformer_layers / ff.config.pipeline_parallelism_degree;
+  int num_devices_per_data_parallelism_line =
+      num_devices / ff.config.data_parallelism_degree;
+
+  // std::cout << "dp: " << ff.config.data_parallelism_degree
+  //           << " tp: " << ff.config.tensor_parallelism_degree
+  //           << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
+  // std::cout << "num_devices: " << num_devices << std::endl;
+  // std::cout << "num_transformer_layers: " << num_transformer_layers
+  //           << std::endl;
+  // std::cout << "num_devices_per_data_parallelism_line: "
+  //           << num_devices_per_data_parallelism_line << std::endl;
+  // std::cout << "num layers: " << llama_config.n_layers << std::endl;
+
+  //------------------------------compute machine views ------------------
+  // single device
   std::vector<MachineView> machine_views;
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
@@ -41,6 +60,7 @@ void LLAMA::create_llama_model(FFModel &ff,
     view.start_device_id = i;
     machine_views.push_back(view);
   }
+  assert(machine_views.size() == num_devices);
 
   std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
@@ -51,7 +71,10 @@ void LLAMA::create_llama_model(FFModel &ff,
     int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
-  mapping[input].push_back(machine_views[0]);
+  for (int i = 0; i < ff.config.data_parallelism_degree; i++) {
+    mapping[input].push_back(
+        machine_views[i * num_devices_per_data_parallelism_line]);
+  }
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
 
@@ -78,9 +101,10 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  int num_transformer_layers = llama_config.n_layers;
-  int num_transformer_layers_per_stage =
-      (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
+  // int num_transformer_layers = llama_config.n_layers;
+  // int num_transformer_layers_per_stage =
+  //     (num_transformer_layers + num_pipeline_stages - 1) /
+  //     num_pipeline_stages;
 
   for (int i = 0; i < num_transformer_layers; i++) {
     // step 1: attention
@@ -89,12 +113,25 @@ void LLAMA::create_llama_model(FFModel &ff,
         ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
     Layer *attention_norm = ff.layers.back();
 
-    if (i % num_transformer_layers_per_stage == 0) {
-      // Map att_norm to the next GPU
-      // since the size of att_norm is minimum across
-      // all tensors
-      mapping[att_norm].push_back(
-          machine_views[i / num_transformer_layers_per_stage]);
+    // if (i % num_transformer_layers_per_stage == 0) {
+    //   // Map att_norm to the next GPU
+    //   // since the size of att_norm is minimum across
+    //   // all tensors
+    //   mapping[att_norm].push_back(
+    //       machine_views[i / num_transformer_layers_per_stage]);
+    // }
+    for (int dp_index = 0; dp_index < ff.config.data_parallelism_degree;
+         dp_index++) {
+      int pp_block_idx = i / num_layers_per_pp_block;
+      int first_device_idx = dp_index * num_devices_per_data_parallelism_line +
+                             ff.config.tensor_parallelism_degree * pp_block_idx;
+      // std::cout << "assigning layer " << i << " to devices " <<
+      // first_device_idx
+      //           << "-"
+      //           << first_device_idx + ff.config.tensor_parallelism_degree - 1
+      //           << std::endl;
+      assert(first_device_idx < num_devices);
+      mapping[att_norm].push_back(machine_views[first_device_idx]);
     }
 
     weights_layers.emplace("layers_" + std::to_string(i) +
