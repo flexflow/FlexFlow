@@ -660,8 +660,10 @@ bool ParallelTensorBase::set_tensor(FFModel const *ff,
   if (sync_type == ParameterSyncType::NCCL) {
     // Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
     // num_replicas = domain.get_volume();
-    if (this->num_dims >= 2 && this->dims[this->num_dims - 1].is_replica_dim) {
-      num_replicas = this->dims[this->num_dims - 1].size;
+    for (int i = 0; i < this->num_dims; i++) {
+      if (this->dims[i].is_replica_dim) {
+        num_replicas *= this->dims[i].size;
+      }
     }
   } else if (sync_type == ParameterSyncType::PS) {
     num_replicas = 1;
