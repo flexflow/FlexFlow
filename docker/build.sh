@@ -1,12 +1,22 @@
 #! /usr/bin/env bash
 set -euo pipefail
 
+# 1. pass the desired version of CUDA to build.sh 
+# (if not, build with the version on current machine, produce an error if no CUDA installed)
+# 2. pass the CUDA version to docker file and use CUDA images based on input version
+# 3. Add the CUDA version as a suffix to the image name (both for the environment and flexflow/specinfer images).
+# 4. Edit the publish.sh / workflow file to publish one image per version, using for example 11.1, 11.3, 11.5, 11.6, 11.7, 11.8 (you can start by just building only two versions, e.g. 11.1 and 11.8 to check if it works)
+
 # Usage: ./build.sh <docker_image_name>
 
 # https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "$SCRIPT_DIR/.."
+
+# Extract CUDA Version
+DefaultCuda=$(nvcc --version | grep "release" | awk '{print $NF}')
+CUDAVersion="${2:-DefaultCuda}"
 
 # Get name of desired Docker image as input
 image="${1:-flexflow}"
@@ -23,11 +33,18 @@ if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
 elif [[ "${FF_GPU_BACKEND}" != "cuda" ]]; then
   echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"
 else
+  # Obtain cuda version on current machine (cuda version often appears after "release")
+  if [[ -n "$CUDAVersion" ]]; then
+    echo "CUDA version: $cuda_version"
+  else
+    echo "Specinfer does not know which version of CUDA to build for"
+    exit 1
+  fi
   echo "Letting FlexFlow build for a default GPU backend: cuda"
 fi
 
 # Build the FlexFlow Enviroment docker image
-docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t "flexflow-environment-${FF_GPU_BACKEND}" -f docker/flexflow-environment/Dockerfile .
+docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "CUDAVersion=${CUDAVersion}" -t "flexflow-environment-${FF_GPU_BACKEND}" -f docker/flexflow-environment/Dockerfile .
 
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "flexflow-environment" ]]; then
