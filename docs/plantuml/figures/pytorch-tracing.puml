@@ -1,0 +1,307 @@
+@startuml pytorch-tracing
+
+title __**Potential PyTorch Tracing Interface**__
+
+skinparam defaultFontName Courier
+skinparam defaultFontStyle bold
+skinparam arrowFontStyle bold
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign left
+
+participant U as "User"
+participant P as "./bindings/python"
+participant F as "./lib/ffi"
+participant G as "./lib/pcg"
+participant R as "./lib/runtime"
+participant C as "./lib/compiler"
+participant I as "ModelTrainingInstance"
+
+U->>P:\
+import flexflow.torch as torch\l\
+import flexflow.torch.nn as nn\l\
+\l\
+~# borrowed from [[https://pytorch.org/tutorials/beginner/basics/optimization_tutorial.html the pytorch tutorial]]\l\
+class NeuralNetwork(nn.Module):\l\
+  def ~__init__(self):\l\
+    super(NeuralNetwork, self).~__init__()\l\
+    self.flatten = nn.Flatten()\l\
+    self.linear_relu_stack = nn.Sequential(\l\
+      nn.Linear(28*28, 512),\l\
+      nn.ReLU(),\l\
+      nn.Linear(512, 512),\l\
+      nn.ReLU(),\l\
+      nn.Linear(512, 10),\l\
+    )\l\
+    \l\
+    def forward(self, x):\l\
+      x = self.flatten(x)\l\
+      logits = self.linear_relu_stack(x)\l\
+      return logits\l\
+\l\
+if ~__name~__ == '~__main__':\l\
+  model = NeuralNetwork()\l\
+  \l\
+  compiled_model = model.compile(\l\
+    algorithm=...,\l\
+    optimizer=...\l\
+  )
+
+group tracing
+
+  |||
+
+  note over P, G #FFAAAA
+    TODO: Move this to use torch dynamo tracing
+  end note
+
+  P->>P:\
+  model.forward(<tracing tensor>)
+
+  P->>F: flexflow_computation_graph_create(...)
+
+	|||
+
+  F->>P:\
+typedef struct {\l\
+  ComputationGraphBuilder *ptr;\l\
+} flexflow_computation_graph_builder_t;
+
+	|||
+
+  P->>F: flexflow_computation_graph_add_op_flat(...)
+
+  F->>G:\
+ComputationGraphBuilder::flat(...);
+
+	|||
+
+  G->>F:\
+struct Tensor { ... };
+
+  F->>P:\
+typedef struct {\l\
+  Tensor *ptr;\l\
+} flexflow_tensor_t;
+
+
+  P->>F: flexflow_computation_graph_add_op_dense(...)
+
+	F->>G:\
+ComputationGraphBuilder::dense(...);
+
+	|||
+
+	G->>F: Tensor
+
+	F->>P: flexflow_tensor_t
+
+	|||
+
+	P->>F: flexflow_computation_graph_add_op_relu(...)
+
+	F->>G:\
+ComputationGraphbuilder::relu(...);
+
+	|||
+
+	G->>F: Tensor
+
+	F->>P: flexflow_tensor_t
+
+	|||
+
+end
+
+|||
+
+group compilation
+
+P->>F:\l\
+flexflow_error_t\l\
+flexflow_computation_graph_compile(\l\
+  flexflow_computation_graph_t,\l\
+  flexflow_optimizer_t,\l\
+  flexflow_compilation_algorithm_t,\l\
+  flexflow_model_compilation_result *out\l\
+);
+
+F->>R:\
+ModelCompilationResult optimize(\l\
+  ComputationGraph const &,\l\
+  AlgorithmConfig const &\l\
+);
+
+R->>C:\
+SearchResult optimize(\l\
+  ComputationGraph const &,\l\
+  MachineSpecification const &,\l\
+  CostEstimator const &,\l\
+  AlgorithmConfig const &\l\
+);
+
+|||
+
+C->>R:\
+struct SearchResult {\l\
+  ParallelComputationGraph pcg;\l\
+  TensorMapping tensor_mapping;\l\
+  SearchSolution solution;\l\
+  CostValues cost_values;\l\
+};
+
+R->>F:\
+struct ModelCompilationResult {\l\
+  ComputationGraph computation_graph;\l\
+  ParallelComputationGraph pcg;\l\
+  TensorMapping tensor_mapping;\l\
+};
+
+F->>P:\
+typedef struct {\l\
+  ModelCompilationResult *ptr;\l\
+} model_compilation_result_t;
+
+|||
+
+end
+
+P->>U: compiled_model: CompiledModel
+
+
+|||
+|||
+
+loop 
+
+  group fwd
+
+    U->>P:\
+pred = compiled_model(batch)
+
+    opt if first iteration
+      P->>F:\
+flexflow_error_t\l\
+flexflow_start_training(\l\
+  flexflow_model_compilation_result_t,\l\
+  flexflow_model_compilation_result_t *out\l\
+);
+
+      |||
+
+      F->>P:\
+typedef struct {\l\
+  ModelTrainingInstance *ptr;\l\
+} flexflow_model_training_instance_t;
+
+      |||
+
+      P->>P: model.training_instance = ...
+    end
+
+    P->>U:\
+pred: TensorFuture
+
+    |||
+
+    U->>P:\
+loss = loss_fn(pred, label)
+
+    P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_forward(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+    F->>R:\
+forward(\l\
+  ModelTrainingInstance const &\l\
+);
+
+    R->>I:
+
+    I->>R:
+
+    R->>F:
+
+    F->>P:
+
+    P->>U:\
+loss: LossTensor
+
+  end
+
+  group bwd
+
+  U->>P:\
+loss.backward()
+
+  P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_backward(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+  F->>R:\
+
+  R->>I:
+
+  I->>R:
+
+  R->>F:
+
+  F->>P:
+
+  end
+
+  group update
+
+  U->>P:\
+optimizer.step()
+
+  P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_update(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+  F->>R:
+
+  R->>I:
+
+  I->>R:
+
+  R->>F:
+
+  F->>P:
+
+  end
+end
+
+P->>F:\
+flexflow_error_t\l\
+flexflow_stop_training(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+
+opt Reading tensor elements
+    U->>P: get_tensor
+    P->>F:
+    F->>R:
+    R->>I:
+    R->>F:
+    F->>P:
+    P->>U:
+end
+opt Writing to tensor elements
+    U->>P: set_tensor
+    P->>F:
+    F->>R: 
+    R->>I:
+    I->>R:
+    R->>F:
+    F->>P:
+    P->>U:
+end
+
+@enduml
