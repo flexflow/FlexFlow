@@ -171,14 +171,15 @@ void InferenceManager::compile_model_and_allocate_buffer(
     }
 #else
     for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
-      MachineView  mv;
+      MachineView mv;
       mv.device_type == MachineView::GPU;
       mv.ndims = 1;
       mv.start_device_id = 0;
       mv.stride[0] = 1;
       int parallel_degree = 1;
-      for (int k = 0; k < op->outputs[0]->num_dims; k++)
+      for (int k = 0; k < op->outputs[0]->num_dims; k++) {
         parallel_degree *= op->outputs[0]->dims[k].degree;
+      }
       mv.dim[0] = parallel_degree;
       machine_views.push_back(mv);
     }
@@ -672,7 +673,8 @@ void FFModel::compile_inference() {
   for (size_t l = 0; l < operators.size(); l++) {
     // Only create nccl for allreduce and fusedop for inference
     // (fusedop may include allreduces)
-    if (operators[l]->op_type == OP_ALLREDUCE || operators[l]->op_type == OP_FUSED) {
+    if (operators[l]->op_type == OP_ALLREDUCE ||
+        operators[l]->op_type == OP_FUSED) {
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==
           view_hash_to_nccl_comms.end()) {

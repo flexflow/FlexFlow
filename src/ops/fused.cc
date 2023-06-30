@@ -127,8 +127,8 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   // assert(model.config.find_parallel_config(my_domain.get_dim(), name,
   // my_config)); assert(model.config.find_parallel_config(op_domain.get_dim(),
   // op->name, op_config));
-  // Cannot fuse parallel operators (except allreduce) since they have different paralel_is
-  // in forward and backward
+  // Cannot fuse parallel operators (except allreduce) since they have different
+  // paralel_is in forward and backward
   assert(!op->is_parallel_op() || op->op_type == OP_ALLREDUCE);
   // Currently don't consider nested fusion
   assert(op->op_type != OP_FUSED);
@@ -367,7 +367,8 @@ void FusedOp::init_inference(FFModel const &ff,
     ooff += op_num_outputs[op];
     operators[op]->init_inference(ff, my_batch_inputs, my_batch_outputs, mv);
     for (size_t j = 0; j < domain.get_volume(); j++) {
-      fused_meta[j].meta[op] = operators[op]->inference_meta[my_batch_outputs[0]][j];
+      fused_meta[j].meta[op] =
+          operators[op]->inference_meta[my_batch_outputs[0]][j];
     }
   }
   for (size_t j = 0; j < domain.get_volume(); j++) {
@@ -467,12 +468,11 @@ void FusedOp::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-FutureMap FusedOp::inference(
-    FFModel const &ff,
-    BatchConfig const &bc,
-    std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs,
-    MachineView const *mv) {
+FutureMap FusedOp::inference(FFModel const &ff,
+                             BatchConfig const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
   // Set iter_config
   iter_config = ff.iter_config;
   ArgumentMap argmap;
@@ -513,11 +513,12 @@ FutureMap FusedOp::inference(
   offset += numWeights;
   for (int i = 0; i < numOutputs; i++) {
     assert(outputs[i]->region != LogicalRegion::NO_REGION);
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region));
     launcher.add_field(offset + i, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);

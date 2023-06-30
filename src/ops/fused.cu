@@ -20,6 +20,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
@@ -30,10 +31,9 @@
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
-#include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
+#include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
-#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -458,10 +458,11 @@ __host__ void FusedOp::forward_task(Task const *task,
   regions[...](I): weights
   regions[...](O): outputs
 */
-__host__ void FusedOp::inference_task(Task const *task,
-                                      std::vector<PhysicalRegion> const &regions,
-                                      Context ctx,
-                                      Runtime *runtime) {
+__host__ void
+    FusedOp::inference_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
@@ -608,15 +609,14 @@ __host__ void FusedOp::inference_task(Task const *task,
         LinearMeta *m = (LinearMeta *)metas->meta[op];
         assert(m->input_type == my_input_accessor[0].data_type);
         assert(m->input_type == my_output_accessor[0].data_type);
-        Kernels::Linear::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].ptr,
-            my_output_accessor[0].ptr,
-            my_weight_accessor[0].ptr,
-            bias_ptr,
-            in_dim,
-            out_dim,
-            batch_size);
+        Kernels::Linear::forward_kernel_wrapper(m,
+                                                my_input_accessor[0].ptr,
+                                                my_output_accessor[0].ptr,
+                                                my_weight_accessor[0].ptr,
+                                                bias_ptr,
+                                                in_dim,
+                                                out_dim,
+                                                batch_size);
         break;
       }
       case OP_BATCHMATMUL: {
@@ -770,17 +770,17 @@ __host__ void FusedOp::inference_task(Task const *task,
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         RMSNormMeta const *m = (RMSNormMeta *)metas->meta[op];
-        Kernels::RMSNorm::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0],
-            my_weight_accessor[0],
-            my_output_accessor[0]);
+        Kernels::RMSNorm::forward_kernel_wrapper(m,
+                                                 my_input_accessor[0],
+                                                 my_weight_accessor[0],
+                                                 my_output_accessor[0]);
         break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        IncMultiHeadSelfAttentionMeta const *m = (IncMultiHeadSelfAttentionMeta *) metas->meta[op];
+        IncMultiHeadSelfAttentionMeta const *m =
+            (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
         assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
         GenericTensorAccessorR biases;
         if (*m->bias) {
@@ -788,7 +788,9 @@ __host__ void FusedOp::inference_task(Task const *task,
           biases = my_weight_accessor[1];
         }
         IncMultiHeadSelfAttention::inference_kernel_wrapper(
-            m, bc, task->index_point.point_data[0],
+            m,
+            bc,
+            task->index_point.point_data[0],
             my_input_accessor[0],
             my_weight_accessor[0],
             my_output_accessor[0],
@@ -798,11 +800,9 @@ __host__ void FusedOp::inference_task(Task const *task,
       case OP_ALLREDUCE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        AllReduceMeta const *m = (AllReduceMeta *) metas->meta[op];
+        AllReduceMeta const *m = (AllReduceMeta *)metas->meta[op];
         Kernels::AllReduce::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0],
-            my_output_accessor[0]);
+            m, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       default: {

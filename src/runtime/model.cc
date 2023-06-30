@@ -2631,9 +2631,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type == OP_WEIGHT) {
       continue;
     }
-    // don't fuse parallel op except allReduce since they have different parallel_is in
-    // forward/backward
-    if (operators[l]->is_parallel_op() && operators[l]->op_type != OP_ALLREDUCE) {
+    // don't fuse parallel op except allReduce since they have different
+    // parallel_is in forward/backward
+    if (operators[l]->is_parallel_op() &&
+        operators[l]->op_type != OP_ALLREDUCE) {
       continue;
     }
     size_t start = 0;
@@ -2676,9 +2677,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
               operators[i]->op_type == OP_WEIGHT) {
             continue;
           }
-          // don't fuse parallel op except allReduce since they have different parallel_is in
-          // forward/backward
-          if (operators[i]->is_parallel_op() && operators[i]->op_type != OP_ALLREDUCE) {
+          // don't fuse parallel op except allReduce since they have different
+          // parallel_is in forward/backward
+          if (operators[i]->is_parallel_op() &&
+              operators[i]->op_type != OP_ALLREDUCE) {
             continue;
           }
           fused_op = new FusedOp(*this, operators[i]);
