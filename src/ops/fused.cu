@@ -588,16 +588,6 @@ __host__ void FusedOp::inference_task(Task const *task,
                                   my_weight_accessor[1].get_float_ptr());
         break;
       }
-      case OP_DROPOUT: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Kernels::Dropout::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr());
-        break;
-      }
       case OP_LINEAR: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
@@ -608,19 +598,21 @@ __host__ void FusedOp::inference_task(Task const *task,
         assert(my_output_accessor[0].domain.get_volume() ==
                out_dim * batch_size);
         assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
-        float const *bias_ptr = nullptr;
+        void const *bias_ptr = nullptr;
         if (fused->op_num_weights[op] == 2) {
           assert(my_weight_accessor[1].domain.get_volume() == out_dim);
-          bias_ptr = my_weight_accessor[1].get_float_ptr();
+          bias_ptr = my_weight_accessor[1].ptr;
         } else {
           assert(fused->op_num_weights[op] == 1);
         }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
+        assert(m->input_type == my_input_accessor[0].data_type);
+        assert(m->input_type == my_output_accessor[0].data_type);
         Kernels::Linear::forward_kernel_wrapper(
             m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_weight_accessor[0].get_float_ptr(),
+            my_input_accessor[0].ptr,
+            my_output_accessor[0].ptr,
+            my_weight_accessor[0].ptr,
             bias_ptr,
             in_dim,
             out_dim,
@@ -756,11 +748,21 @@ __host__ void FusedOp::inference_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        ElementUnary::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_input_accessor[0].domain.get_volume());
+        if (m->data_type == DT_HALF) {
+          ElementUnary::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_half_ptr(),
+              my_output_accessor[0].get_half_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else if (m->data_type == DT_FLOAT) {
+          ElementUnary::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else {
+          assert(false && "Unsupported data type in ElementUnary forward");
+        }
         break;
       }
       case OP_RMS_NORM: {
