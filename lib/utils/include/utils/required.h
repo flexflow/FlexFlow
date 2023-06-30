@@ -24,6 +24,17 @@ template <typename T>
   };
 }
 
+namespace std {
+
+template <typename T>
+struct hash<::FlexFlow::required<T>> {
+  size_t operator()(::FlexFlow::required<T> const &r) const {
+    return get_std_hash(r.value);
+  }
+};
+
+}
+
 namespace FlexFlow {
 static_assert(is_json_serializable<req<int>>::value, "");
 static_assert(is_json_deserializable<req<int>>::value, "");

@@ -231,12 +231,12 @@ bool> {
   return as_tuple(lhs) != as_tuple(rhs);
 }
 
-template <typename T>
-auto operator<(T const &lhs, T const &rhs) -> enable_if_t<
-  conjunction<is_visitable<T>, elements_satisfy<is_lt_comparable, T>>::value, 
-bool> {
-  return as_tuple(lhs) < as_tuple(rhs);
-}
+/* template <typename T> */
+/* auto operator<(T const &lhs, T const &rhs) -> enable_if_t< */
+/*   conjunction<is_visitable<T>, elements_satisfy<is_lt_comparable, T>>::value, */ 
+/* bool> { */
+/*   return as_tuple(lhs) < as_tuple(rhs); */
+/* } */
 
 } // namespace FlexFlow
 
@@ -289,8 +289,8 @@ struct Arbitrary<
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME); \
   namespace FlexFlow { \
   CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME); \
-  static_assert(is_only_visit_list_initializable<TYPENAME>::value, #TYPENAME " should not be list-initialializable from any sub-tuples"); \
-  static_assert(!std::is_default_constructible<TYPENAME>::value, #TYPENAME " should not be default-constructible")
+  static_assert(is_only_visit_list_initializable<TYPENAME>::value, #TYPENAME " should not be list-initialializable from any sub-tuples (you probably need to insert req<...>s)"); \
+  static_assert(!std::is_default_constructible<TYPENAME>::value, #TYPENAME " should not be default-constructible (you probably need to insert req<...>s)")
 
 #define MAKE_VISIT_HASHABLE(TYPENAME)                                          \
   namespace std {                                                              \
@@ -302,21 +302,20 @@ struct Arbitrary<
 
 // see https://gustedt.wordpress.com/2010/06/03/default-arguments-for-c99/
 // for an explanation of how this works
-#define _COND2(...) VISIT_STRUCT_EXPAND(VISIT_STRUCT_PP_ARG_N(__VA_ARGS__,  \
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  \
-        2, 2, 2, 2, 2, 2, 2, 2, 1, 0))
-#define _ONE_OR_TWO_ARGS_1(a) FF_VISITABLE_STRUCT_EMPTY(a)
-#define _ONE_OR_TWO_ARGS_2(...) FF_VISITABLE_STRUCT_NONEMPTY(__VA_ARGS__)
-#define __ONE_OR_TWO_ARGS(N, ...) _ONE_OR_TWO_ARGS_ ## N (__VA_ARGS__)
-#define _ONE_OR_TWO_ARGS(N, ...) __ONE_OR_TWO_ARGS(N, __VA_ARGS__)
-#define ONE_OR_TWO_ARGS(...) _ONE_OR_TWO_ARGS(_COND2(__VA_ARGS__), __VA_ARGS__)
+#define _GET_VISITABLE_CASE_FROM_NUM_ARGS(...) VISIT_STRUCT_EXPAND(VISIT_STRUCT_PP_ARG_N(__VA_ARGS__,  \
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
+        1, 1, 1, 1, 1, 1, 1, 1, 0, 0))
+#define _VISITABLE_STRUCT_CASE_0(a) FF_VISITABLE_STRUCT_EMPTY(a)
+#define _VISITABLE_STRUCT_CASE_1(...) FF_VISITABLE_STRUCT_NONEMPTY(__VA_ARGS__)
+#define __DISPATCH_VISITABLE_CASE(N, ...) _VISITABLE_STRUCT_CASE_ ## N (__VA_ARGS__)
+#define _DISPATCH_VISITABLE_CASE(N, ...) __DISPATCH_VISITABLE_CASE(N, __VA_ARGS__)
 #define FF_VISITABLE_STRUCT(...) \
-  ONE_OR_TWO_ARGS(__VA_ARGS__); \
+  _DISPATCH_VISITABLE_CASE(_GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 
 
 #endif

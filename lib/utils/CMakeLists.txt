@@ -31,6 +31,7 @@ target_link_libraries(
   json
   any
 )
+define_ff_vars(${project_target})
 ff_set_cxx_properties(${project_target})
 
 add_subdirectory(ffi)

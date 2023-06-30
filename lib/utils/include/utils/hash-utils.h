@@ -86,7 +86,7 @@ template <typename T>
 struct hash<std::vector<T>> {
   size_t operator()(std::vector<T> const &vec) const {
     size_t seed = 0;
-    iter_hash(seed, vec.start(), vec.end());
+    iter_hash(seed, vec.cbegin(), vec.cend());
     return seed;
   }
 };

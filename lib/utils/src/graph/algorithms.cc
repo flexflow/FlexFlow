@@ -146,6 +146,14 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
   return g.query_edges(query);
 }
 
+std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &g) {
+  return transform(get_edges(g), [&](MultiDiEdge const &e) { return get_output(e); });
+}
+
+std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &g) {
+  return transform(get_edges(g), [&](MultiDiEdge const &e) { return get_input(e); });
+}
+
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &g,
                                                    Node const &n) {
   return get_incoming_edges(g, std::unordered_set<Node>{n});

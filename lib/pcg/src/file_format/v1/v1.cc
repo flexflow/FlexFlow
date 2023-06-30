@@ -2,8 +2,4 @@
 
 namespace FlexFlow {
 
-V1ComputationGraph to_v1(ComputationGraph const &j) {
-
-}
-
 }

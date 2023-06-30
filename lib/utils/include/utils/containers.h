@@ -134,11 +134,24 @@ template <typename K,
           typename V,
           typename F,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
-std::unordered_map<K2, V> map_values(std::unordered_map<K, V> const &m,
+std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
                                      F const &f) {
   std::unordered_map<K2, V> result;
   for (auto const &kv : f) {
     result.insert({f(kv.first), kv.second});
+  }
+  return result;
+}
+
+template <typename K,
+          typename V,
+          typename F,
+          typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
+bidict<K2, V> map_keys(bidict<K, V> const &m,
+                                     F const &f) {
+  bidict<K2, V> result;
+  for (auto const &kv : f) {
+    result.equate(f(kv.first), kv.second);
   }
   return result;
 }
@@ -167,6 +180,20 @@ std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
   }
   return result;
 }
+
+template <typename K,
+          typename V,
+          typename F,
+          typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
+bidict<K, V2> map_values(bidict<K, V> const &m,
+                                     F const &f) {
+  bidict<K, V2> result;
+  for (auto const &kv : m) {
+    result.equate({kv.first, f(kv.second)});
+  }
+  return result;
+}
+
 
 template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
@@ -447,15 +474,17 @@ std::string transform(std::string const &s, F const &f) {
   return result;
 }
 
-template <typename C>
-std::unordered_map<size_t, typename C::value_type> enumerate(C const &c) {
-  std::unordered_map<size_t, typename C::value_type> m;
+template <typename T>
+bidict<size_t, T> enumerate(std::unordered_set<T> const &c) {
+  bidict<size_t, T> m;
   size_t idx = 0;
   for (auto const &v : c) {
-    m[idx++] = c;
+    m.equate(idx++, v);
   }
   return m;
 }
+
+std::vector<size_t> count(size_t n);
 
 template <typename In,
           typename F,

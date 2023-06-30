@@ -66,13 +66,16 @@ struct MultiDiInput {
   NodePort idx;
 };
 FF_VISITABLE_STRUCT(MultiDiInput, node, idx);
-static_assert(is_well_behaved_visitable_type<MultiDiInput>::value, "");
+
+MultiDiInput get_input(MultiDiEdge const &);
 
 struct MultiDiOutput {
   Node node;
   NodePort idx;
 };
 FF_VISITABLE_STRUCT(MultiDiOutput, node, idx);
+
+MultiDiOutput get_output(MultiDiEdge const &);
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &,
                                     MultiDiEdgeQuery const &);

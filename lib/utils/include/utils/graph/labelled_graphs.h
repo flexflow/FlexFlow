@@ -143,6 +143,9 @@ public:
     return *this;
   }
 
+  operator MultiDiGraphView() const;
+  operator GraphView() const;
+
   friend void swap(OutputLabelledMultiDiGraph &lhs,
                    OutputLabelledMultiDiGraph &rhs) {
     using std::swap;

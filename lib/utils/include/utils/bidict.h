@@ -42,11 +42,21 @@ struct bidict {
     bwd_map.insert({r, l});
   }
 
+  void equate(std::pair<L, R> const &lr) {
+    fwd_map.insert(lr);
+    bwd_map.insert({lr.second, lr.first});
+  }
+
   R const &at_l(L const &l) const {
     return fwd_map.at(l);
   }
   L const &at_r(R const &r) const {
     return bwd_map.at(r);
+  }
+
+  std::size_t size() const {
+    assert (fwd_map.size() == bwd_map.size());
+    return fwd_map.size(); 
   }
 
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;
@@ -131,10 +141,15 @@ struct bidict {
     return bidict<R, L>(bwd_map, fwd_map);
   }
 
+  operator std::unordered_map<L, R> const &() const {
+    return this->fwd_map;
+  }
 private:
   bidict(std::unordered_map<L, R> const &fwd_map,
          std::unordered_map<R, L> const &bwd_map)
       : fwd_map(fwd_map), bwd_map(bwd_map) {}
+
+  friend struct bidict<R, L>;
 
   std::unordered_map<L, R> fwd_map;
   std::unordered_map<R, L> bwd_map;

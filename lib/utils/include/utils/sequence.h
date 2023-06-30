@@ -40,8 +40,8 @@ struct seq_count {
 };
 
 template <>
-struct seq_count<0> {
-  using type = seq<0>;
+struct seq_count<-1> {
+  using type = seq<>;
 };
 
 template <int n>
@@ -49,7 +49,7 @@ using seq_count_t = typename seq_count<n>::type;
 
 template <typename ...Args>
 struct seq_enumerate_args {
-  using type = seq_count_t<sizeof...(Args) - 1>;
+  using type = seq_count_t<(int)(sizeof...(Args)) - 1>;
 };
 
 template <typename ...Args>

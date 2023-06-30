@@ -59,8 +59,10 @@ public:
   virtual void add_edge(MultiDiOutput const &output,
                         MultiDiInput const &input) = 0;
 
-  virtual OutputLabel &at(MultiDiOutput const &output) = 0;
-  virtual OutputLabel const &at(MultiDiOutput const &output) const = 0;
+  virtual NodeLabel &at(Node const &) = 0;
+  virtual NodeLabel const &at(Node const &) const = 0;
+  virtual OutputLabel &at(MultiDiOutput const &) = 0;
+  virtual OutputLabel const &at(MultiDiOutput const &) const = 0;
 };
 
 static_assert(

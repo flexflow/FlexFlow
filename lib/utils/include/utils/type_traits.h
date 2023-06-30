@@ -112,7 +112,6 @@ template <typename T>
 struct is_well_behaved_value_type_no_hash
     : conjunction<is_equal_comparable<T>,
                   is_neq_comparable<T>,
-                  is_lt_comparable<T>,
                   is_copy_constructible<T>,
                   is_move_constructible<T>,
                   is_copy_assignable<T>,
@@ -121,20 +120,13 @@ struct is_well_behaved_value_type_no_hash
 #define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TYPENAME) \
   static_assert(is_equal_comparable<TYPENAME>::value, #TYPENAME " should support operator=="); \
   static_assert(is_neq_comparable<TYPENAME>::value, #TYPENAME " should support operator!="); \
-  static_assert(is_lt_comparable<TYPENAME>::value, #TYPENAME " should support operator<"); \
   static_assert(is_copy_constructible<TYPENAME>::value, #TYPENAME " should be copy-constructible"); \
   static_assert(is_move_constructible<TYPENAME>::value, #TYPENAME " should be move-constructible"); \
   static_assert(is_copy_assignable<TYPENAME>::value, #TYPENAME " should be copy-assignable"); \
   static_assert(is_move_assignable<TYPENAME>::value, #TYPENAME " should be move-assignable")
 
 template <typename T>
-struct is_well_behaved_value_type : conjunction<is_equal_comparable<T>,
-                                                is_neq_comparable<T>,
-                                                is_lt_comparable<T>,
-                                                is_copy_constructible<T>,
-                                                is_move_constructible<T>,
-                                                is_copy_assignable<T>,
-                                                is_move_assignable<T>,
+struct is_well_behaved_value_type : conjunction<is_well_behaved_value_type_no_hash<T>,
                                                 is_hashable<T>> {};
 
 #define CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME) \
