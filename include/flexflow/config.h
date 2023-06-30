@@ -37,11 +37,11 @@ namespace FlexFlow {
 // ========================================================
 // Define Runtime Constants
 // ========================================================
-#define MAX_NUM_INPUTS 256
-#define MAX_NUM_WEIGHTS 64
-#define MAX_NUM_OUTPUTS 256
-#define MAX_NUM_FUSED_OPERATORS 64
-#define MAX_NUM_FUSED_TENSORS 64
+#define MAX_NUM_INPUTS 2048
+#define MAX_NUM_WEIGHTS 2048
+#define MAX_NUM_OUTPUTS 2048
+#define MAX_NUM_FUSED_OPERATORS 2048
+#define MAX_NUM_FUSED_TENSORS 2048
 #define MAX_NUM_WORKERS 1024
 #define MAX_FILENAME 200
 #define MAX_OPNAME 128

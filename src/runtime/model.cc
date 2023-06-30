@@ -2631,9 +2631,9 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type == OP_WEIGHT) {
       continue;
     }
-    // don't fuse parallel op since they have different parallel_is in
+    // don't fuse parallel op except allReduce since they have different parallel_is in
     // forward/backward
-    if (operators[l]->is_parallel_op()) {
+    if (operators[l]->is_parallel_op() && operators[l]->op_type != OP_ALLREDUCE) {
       continue;
     }
     size_t start = 0;
@@ -2676,9 +2676,9 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
               operators[i]->op_type == OP_WEIGHT) {
             continue;
           }
-          // don't fuse parallel op since they have different parallel_is in
+          // don't fuse parallel op except allReduce since they have different parallel_is in
           // forward/backward
-          if (operators[i]->is_parallel_op()) {
+          if (operators[i]->is_parallel_op() && operators[i]->op_type != OP_ALLREDUCE) {
             continue;
           }
           fused_op = new FusedOp(*this, operators[i]);
@@ -4877,6 +4877,13 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<FusedOp::forward_task>(
         registrar, "FusedOp Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FusedOp::inference_task>(
+        registrar, "FusedOp Inference Task");
   }
   {
     TaskVariantRegistrar registrar(FUSEDOP_BWD_TASK_ID, "FusedOp Backward");

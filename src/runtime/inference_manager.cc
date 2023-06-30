@@ -104,12 +104,14 @@ void InferenceManager::compile_model_and_allocate_buffer(
   Runtime *runtime = model->config.lg_hlr;
 
   std::unordered_map<Op const *, std::vector<MachineView>> mapping;
+#ifdef FIXME
   for (auto const &it : tensor_mapping) {
     ParallelTensor pt;
     model->get_parallel_tensor_from_tensor(it.first, pt);
     assert(pt->owner_op != nullptr);
     mapping[pt->owner_op] = it.second;
   }
+#endif
   // std::cout << std::endl << std::endl << "Operators MVs:" << std::endl;
   for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
     Op const *op = model->operators[op_idx];
@@ -119,6 +121,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
     }
     // Get machine views
     std::vector<MachineView> machine_views;
+#ifdef FIXME
     if (mapping.find(op) != mapping.end()) {
       machine_views = mapping[op];
       assert(machine_views.size() == ff_config.data_parallelism_degree);
@@ -166,6 +169,20 @@ void InferenceManager::compile_model_and_allocate_buffer(
       }
       assert(machine_views.size() == ff_config.data_parallelism_degree);
     }
+#else
+    for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
+      MachineView  mv;
+      mv.device_type == MachineView::GPU;
+      mv.ndims = 1;
+      mv.start_device_id = 0;
+      mv.stride[0] = 1;
+      int parallel_degree = 1;
+      for (int k = 0; k < op->outputs[0]->num_dims; k++)
+        parallel_degree *= op->outputs[0]->dims[k].degree;
+      mv.dim[0] = parallel_degree;
+      machine_views.push_back(mv);
+    }
+#endif
     // std::cout << "operator: " << op->name << std::endl;
     // for (int i = 0; i < op->numInputs; i++) {
     //   op->inputs[i]->print("input pt");
@@ -245,10 +262,6 @@ void InferenceManager::compile_model_and_allocate_buffer(
           // std::cout << "output mv: " << pt->machine_view << std::endl;
           Domain part_domain =
               runtime->get_index_space_domain(ctx, pt_base->parallel_is);
-          // FIXME: should not hack the machine view
-          pt->machine_view.dim[0] = part_domain.get_volume();
-          pt->machine_view.stride[0] = 1;
-          pt->machine_view.start_device_id = 0;
           assert(pt->machine_view.get_domain() == part_domain);
           list.push_back(pt);
         }
@@ -657,8 +670,9 @@ void FFModel::compile_inference() {
   }
 #ifdef FF_USE_NCCL
   for (size_t l = 0; l < operators.size(); l++) {
-    // Only create nccl for allreduce for inference
-    if (operators[l]->op_type == OP_ALLREDUCE) {
+    // Only create nccl for allreduce and fusedop for inference
+    // (fusedop may include allreduces)
+    if (operators[l]->op_type == OP_ALLREDUCE || operators[l]->op_type == OP_FUSED) {
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==
           view_hash_to_nccl_comms.end()) {
