@@ -334,6 +334,25 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 
 /* ----- Speculative Inference Specific functions ----- */
 
+int RequestManager::get_requests_init_length(
+    BeamSearchBatchConfig const &old_bc) {
+  int init_length = 0;
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (old_bc.request_completed[i]) {
+      continue;
+    }
+    Request &request =
+        running_request_queue[old_bc.requestsInfo[i].request_guid];
+    if (old_bc.requestsInfo[i].token_start_offset + 1 >=
+        request.tokens.size()) {
+      init_length = 0;
+    } else if (request.initial_len > init_length) {
+      init_length = request.initial_len;
+    }
+  }
+  return init_length;
+}
+
 // update beam search metadata
 BeamSearchBatchConfig
     RequestManager::prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
@@ -345,7 +364,7 @@ BeamSearchBatchConfig
   if (verbose) {
     std::cout << "print all results"
               << "\n";
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 64; i++) {
       std::cout << result.token_ids[i] << ", ";
     }
     std::cout << "Current Beam Depth: "
@@ -404,7 +423,7 @@ BeamSearchBatchConfig
       new_bc.beamRequestsInfo[i].beam_size =
           old_bc.beamRequestsInfo[i].beam_size;
       new_bc.beamRequestsInfo[i].max_depth =
-          old_bc.beamRequestsInfo[i].max_depth;
+          old_bc.beamRequestsInfo[i].current_depth;
 
       // do the slot exchange to minimize the cache exchange in kernel.
       std::cout << "update metadata" << std::endl;
