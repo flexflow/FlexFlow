@@ -475,15 +475,30 @@ tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n)
 }
 
 
-// std::vector<std::unordered_set<Node>>
-//     get_weakly_connected_components(DiGraphView const & g) {
+tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const & nodes ){
+    std::unordered_set<Node> commonDoms = get_post_dominators(g).at(*nodes.begin());
 
-//     }
-//TODO 
-// tl::optional<Node> get_imm_post_dominator(DiGraphView const &,
-//                                           std::unordered_set<Node> const &){
+    for (auto it = std::next(nodes.begin()); it != nodes.end(); ++it) {
+    Node currNode = *it;
+    std::unordered_set<Node> currDoms = get_post_dominators(g).at(currNode);
 
-// }
+    std::unordered_set<Node> intersection;
+    for (const auto &dom : commonDoms) {
+      if (currDoms.count(dom) > 0) {
+        intersection.insert(dom);
+      }
+    }
+
+    commonDoms = std::move(intersection);
+  }
+
+  if (!commonDoms.empty()) {
+    return *commonDoms.begin();
+  } else {
+    return tl::nullopt;
+  }
+
+}
 
 
 std::unordered_map<Node, tl::optional<Node>>
