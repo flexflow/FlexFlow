@@ -222,6 +222,56 @@ std::unordered_set<Node> get_predecessors(MultiDiGraphView const &g,
   return get_predecessors(g, {n});
 }
 
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_sucessors(DiGraphView const &g,
+                     std::unordered_set<Node> const &nodes) {
+  std::unordered_map<Node, std::unordered_set<Node>> sucessors;
+  for (Node const &n : nodes) {
+    sucessors[n];
+  }
+  for (DirectedEdge const &e : get_outgoing_edges(g, nodes)) {
+    sucessors.at(e.src).insert(e.dst);
+  }
+  return sucessors;
+}
+
+std::unordered_set<Node> get_sucessors(DiGraphView const &g, Node const &n) {
+  return get_sucessors(g, {n});
+}
+
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_sucessors(MultiDiGraphView const &g,
+                     std::unordered_set<Node> const &nodes) {
+  return get_sucessors(view_as_digraph(g), nodes);
+}
+
+std::unordered_set<Node> get_sucessors(MultiDiGraphView const &g,
+                                          Node const &n) {
+  return get_sucessors(g, {n});
+}
+
+std::vector<Node> get_neighbors(DiGraphView const & g, Node const & n) {
+  std::vector<Node> neighbors;
+  for (DirectedEdge const & e : get_outgoing_edges(g, n)){
+    neighbors.push_back(e.dst);
+  }
+  for (DirectedEdge const & e : get_incoming_edges(g, n)){
+    neighbors.push_back(e.src);
+  }
+  return neighbors;
+}
+
+std::vector<Node> get_neighbors(MultiDiGraphView const & g, Node const & n) {
+  std::vector<Node> neighbors;
+  for (MultiDiEdge const & e : get_outgoing_edges(g, n)){
+    neighbors.push_back(e.dst);
+  }
+  for (MultiDiEdge const & e : get_incoming_edges(g, n)){
+    neighbors.push_back(e.src);
+  }
+  return neighbors;
+}
+
 std::vector<Node> get_unchecked_dfs_ordering(
     DiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   UncheckedDFSView dfs_view = unchecked_dfs(g, starting_points);
@@ -559,5 +609,52 @@ UndirectedGraphView join(UndirectedGraphView const &lhs,
                          UndirectedGraphView const &rhs) {
   return view_as_joined(lhs, rhs);
 }
+
+std::vector<std::unordered_set<Node>>
+    get_weakly_connected_components(DiGraphView const & g) {
+    std::unordered_set<Node> start_pointes = get_sources(g);
+    std::vector<Node>  dfs_order = get_dfs_ordering(g, start_pointes);
+
+    std::vector<std::unordered_set<Node>> components;
+    std::unordered_set<Node> visited;
+
+    for (const auto& node : dfs_order) {
+        if (visited.find(node) != visited.end()) {
+            continue; // Skip nodes already in a component
+        }
+
+        std::unordered_set<Node> component;
+        std::stack<Node> stack;
+        stack.push(node);
+
+        while (!stack.empty()) {
+            Node current = stack.top();
+            stack.pop();
+
+            if (visited.find(current) != visited.end()) {
+                continue;
+            }
+
+            component.insert(current);
+            visited.insert(current);
+
+            std::vector<Node> neighbors = get_neighbors(g, current); // Replace with your own function to get neighbors
+
+            for (const auto& neighbor : neighbors) {
+                stack.push(neighbor);
+            }
+        }
+
+        components.push_back(std::move(component));
+    }
+
+    return components;
+}
+
+std::vector<std::unordered_set<Node>>
+    get_weakly_connected_components(MultiDiGraphView const & g) {
+      DiGraphView dg = view_as_digraph(g);
+      return get_weakly_connected_components(dg);
+  }
 
 } // namespace FlexFlow

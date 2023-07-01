@@ -113,6 +113,19 @@ std::unordered_map<Node, std::unordered_set<Node>>
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
+std::unordered_set<Node> get_sucessors(MultiDiGraphView const &,
+                                          Node const &);
+std::unordered_set<Node> get_sucessors(DiGraphView const &, Node const &);
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_sucessors(MultiDiGraphView const &,
+                     std::unordered_set<Node> const &);
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_sucessors(DiGraphView const &, std::unordered_set<Node> const &);
+
+std::vector<Node> get_neighbors(DiGraphView const &, Node const &);
+std::vector<Node> get_neighbors(MultiDiGraphView const &,
+                                       Node const &);
+
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 
