@@ -475,10 +475,10 @@ tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n)
 }
 
 
-std::vector<std::unordered_set<Node>>
-    get_weakly_connected_components(DiGraphView const & g) {
+// std::vector<std::unordered_set<Node>>
+//     get_weakly_connected_components(DiGraphView const & g) {
 
-    }
+//     }
 //TODO 
 // tl::optional<Node> get_imm_post_dominator(DiGraphView const &,
 //                                           std::unordered_set<Node> const &){

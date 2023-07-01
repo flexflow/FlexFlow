@@ -59,6 +59,17 @@ DiGraphView view_as_contracted(DiGraphView const &g, Node const &from, Node cons
   return DiGraphView::create<ContractNodeView>(*(g.unsafe()),from, into);
 }
 
+DiGraphView view_as_contracted(DiGraphView const & g, std::unordered_map<Node, Node> const &  m) {
+  DiGraphView contractedView = g;  // 创建一个新的DiGraphView对象
+  for(auto kv : m){
+    Node from = kv.first;
+    Node into = kv.second;
+    contractedView = view_as_contracted(contractedView, from, into);
+  }
+  return contractedView;
+}
+
+
 std::unordered_set<DirectedEdge> ContractNodeView::query_edges(DirectedEdgeQuery const & q) const {
       return g.query_edges(q);
 }
