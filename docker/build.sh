@@ -16,7 +16,19 @@ cd "$SCRIPT_DIR/.."
 
 # Extract CUDA Version
 DefaultCuda=$(nvcc --version | grep "release" | awk '{print $NF}')
+# Change DefaultCuda eg. V11.7.99 to 11.7
+DefaultCuda=${DefaultCuda:1:4}
 CUDAVersion="${2:-DefaultCuda}"
+if [[ -n "$CUDAVersion" ]]; then
+  # echo the CUDA version that will be built 
+  # input cuda version will be modified to 11.7.0 to build the image 
+  CUDAVersion="$CUDAVersion.0"
+  echo "CUDA version: $CUDAVersion"
+else
+  # if empty input and no available cuda version installed on current machine
+  echo "Specinfer does not know which version of CUDA to build for"
+  exit 1
+fi
 
 # Get name of desired Docker image as input
 image="${1:-flexflow}"
@@ -33,13 +45,6 @@ if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
 elif [[ "${FF_GPU_BACKEND}" != "cuda" ]]; then
   echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"
 else
-  # Obtain cuda version on current machine (cuda version often appears after "release")
-  if [[ -n "$CUDAVersion" ]]; then
-    echo "CUDA version: $cuda_version"
-  else
-    echo "Specinfer does not know which version of CUDA to build for"
-    exit 1
-  fi
   echo "Letting FlexFlow build for a default GPU backend: cuda"
 fi
 
