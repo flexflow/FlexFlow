@@ -18,7 +18,7 @@ fx.torch_to_flexflow(model, "mymodel.ff")
 
 Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance for a given parallel machine.
 
-```
+```python
 from flexflow.pytorch.model import PyTorchModel
 
 def top_level_task():
