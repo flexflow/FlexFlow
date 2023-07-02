@@ -525,10 +525,11 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
 # -----------------------------------------------------------------------
 
 class FFConfig(object):
-  __slots__ = ['handle', '_handle']
+  __slots__ = ['handle', '_handle', 'enable_tracing']
   def __init__(self):
     self.handle = ffc.flexflow_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_config_destroy)
+    self.enable_tracing = True
 
   def parse_args(self):
     ffc.flexflow_config_parse_args_default(self.handle)
@@ -2091,14 +2092,16 @@ class FFModel(object):
       self.reset_metrics()
       iterations = num_samples / batch_size
       for iter in range(0, int(iterations)):
-        self._ffconfig.begin_trace(self._tracing_id)
+        if self._ffconfig.enable_tracing:
+          self._ffconfig.begin_trace(self._tracing_id)
         for d in dataloaders:
           d.next_batch(self)
         self.forward()
         self.zero_gradients()
         self.backward()
         self.update()
-        self._ffconfig.end_trace(self._tracing_id)
+        if self._ffconfig.enable_tracing:
+          self._ffconfig.end_trace(self._tracing_id)
           
   def eval(self, x=None, y=None, batch_size=None):
     """Returns the loss value & metrics values for the model in test mode. 
@@ -2136,10 +2139,12 @@ class FFModel(object):
     for iter in range(0, int(iterations)):
       for d in dataloaders:
         d.next_batch(self)
-      self._ffconfig.begin_trace(self._tracing_id)
+      if self._ffconfig.enable_tracing:
+        self._ffconfig.begin_trace(self._tracing_id)
       self.forward()
       self.compute_metrics()
-      self._ffconfig.end_trace(self._tracing_id)
+      if self._ffconfig.enable_tracing:
+        self._ffconfig.end_trace(self._tracing_id)
 
   def zero_gradients(self):
     """Empty the gradients of all layers.
