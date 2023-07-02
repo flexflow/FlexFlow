@@ -39,7 +39,7 @@ FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Ten
 ## C++ Interface
 For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
 
-**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/c++).
+**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp).
 
 
 ## Command-Line Flags
