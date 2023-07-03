@@ -607,8 +607,8 @@ __host__ void
           assert(fused->op_num_weights[op] == 1);
         }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        assert(m->input_type == my_input_accessor[0].data_type);
-        assert(m->input_type == my_output_accessor[0].data_type);
+        assert(m->input_type[0] == my_input_accessor[0].data_type);
+        assert(m->input_type[0] == my_output_accessor[0].data_type);
         Kernels::Linear::forward_kernel_wrapper(m,
                                                 my_input_accessor[0].ptr,
                                                 my_output_accessor[0].ptr,

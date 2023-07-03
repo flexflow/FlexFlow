@@ -4472,6 +4472,13 @@ void register_flexflow_internal_tasks() {
         registrar, "Linear Init Task");
   }
   {
+    TaskVariantRegistrar registrar(LINEAR_INF_TASK_ID, "Linear Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::inference_task>(
+        registrar, "Linear Inference Task");
+  }
+  {
     TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "Linear Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
