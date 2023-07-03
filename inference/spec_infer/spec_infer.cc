@@ -171,10 +171,10 @@ void FlexFlow::top_level_task(Task const *task,
                    pipeline_parallelism_degree);
   ffconfig.data_parallelism_degree = data_parallelism_degree;
   ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
-  ffconfig.pipeline_parallelism_degree =
-      pipeline_parallelism_degree == -1
-          ? num_devices / (tensor_parallelism_degree * data_parallelism_degree)
-          : pipeline_parallelism_degree;
+  ffconfig.pipeline_parallelism_degree = pipeline_parallelism_degree;
+  assert(data_parallelism_degree * tensor_parallelism_degree *
+             pipeline_parallelism_degree ==
+         ffconfig.numNodes * ffconfig.workersPerNode);
 
   if (file_paths.ssm_weight_file_paths.size() == 0) {
     assert(false &&

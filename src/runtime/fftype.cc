@@ -4,6 +4,8 @@
 
 namespace FlexFlow {
 
+const LayerID LayerID::NO_ID = LayerID();
+
 LayerID::LayerID() : id(0), transformer_layer_id(MAX_NUM_TRANSFORMER_LAYERS) {}
 
 LayerID::LayerID(size_t _id, size_t _transformer_layer_id)

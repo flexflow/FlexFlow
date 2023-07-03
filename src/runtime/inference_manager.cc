@@ -123,6 +123,7 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
         parallel_degree *= op->outputs[0]->dims[k].degree;
       }
       mv.dim[0] = parallel_degree;
+      assert(mv == op->outputs[0]->machine_view);
       machine_views.push_back(mv);
     }
     // std::cout << "operator: " << op->name << std::endl;

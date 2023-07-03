@@ -8,6 +8,7 @@ namespace FlexFlow {
 
 class LayerID {
 public:
+  static const LayerID NO_ID;
   LayerID();
   LayerID(size_t id, size_t transformer_layer_id);
   bool is_valid_id() const;
