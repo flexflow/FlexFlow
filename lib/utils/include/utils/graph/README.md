@@ -58,12 +58,12 @@ flowchart TD
 Example of `MultiDiGraph`:
 ```mermaid
 flowchart TD
-    A(" ")
-    B(" ")
-    C(" ")
-    D(" ")
-    E(" ")
-    F(" ")
+    A("A")
+    B("B")
+    C("C")
+    D("D")
+    E("E")
+    F("F")
 
     A -->|"(&#x25A0, &#x2605)"| B
     B -->|"(&#x25CF, &#x2605)"| C
@@ -79,51 +79,51 @@ flowchart TD
 or visualized a different way,
 ```mermaid
 flowchart TD
-    Acirc(" ")
-    Asqua(" ")
-    Bcirc(" ")
-    Bstar(" ")
-    Bsqua(" ")
-    Chear(" ")
-    Cstar(" ")
-    Dsqua(" ")
-    Dcirc(" ")
-    Dtria(" ")
-    Ecirc(" ")
-    Esqua(" ")
-    F(" ")
+    Acirc("&#x25CF")
+    Asqua("&#x25A0")
+    Bcirc("&#x25CF")
+    Bstar("&#x2605")
+    Bsqua("&#x25A0")
+    Chear("&#x2665")
+    Cstar("&#x2605")
+    Dsqua("&#x25A0")
+    Dcirc("&#x25CF")
+    Dtria("&#x25B2")
+    Ecirc("&#x25CF")
+    Esqua("&#x25A0")
+    Fsqua(" ")
 
     style F fill:#0000,stroke:#0000
 
-    subgraph " "
+    subgraph "A"
       Acirc
       Asqua
     end
 
-    subgraph " "
+    subgraph "B"
         Bsqua
         Bcirc
         Bstar
     end
 
-    subgraph " "
+    subgraph "C"
         Chear
         Cstar
     end
 
-    subgraph " "
+    subgraph "D"
         Dsqua 
         Dcirc
         Dtria
     end
 
-    subgraph " "
+    subgraph "E"
         Ecirc 
         Esqua
     end
 
-    subgraph " "
-        F
+    subgraph "F"
+        Fsqua
     end
 
     Asqua --> Bstar 
