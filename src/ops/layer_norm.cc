@@ -730,6 +730,7 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
 
 void LayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->axes.size());
   for (size_t i = 0; i < this->axes.size(); i++) {
     sez.serialize(this->axes[i]);
@@ -749,9 +750,10 @@ Node LayerNorm::deserialize(FFModel &ff,
   std::vector<int> axes;
   bool elementwise_affine;
   float eps;
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
   dez.deserialize(num_axes);
   for (size_t i = 0; i < num_axes; i++) {
     int axis_idx;

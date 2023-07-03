@@ -94,24 +94,15 @@ bool parallel_tensor_list_overlaps(std::vector<ParallelTensor> const &list1,
   return false;
 }
 
-void InferenceManager::compile_model_and_allocate_buffer(
-    FFModel *model,
-    std::unordered_map<Tensor, std::vector<MachineView>> const
-        &tensor_mapping) {
+void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
+  // TODO: currently assume there is a single data-parallel pipeline
+  // (i.e., data-parallel-degree == 1)
+  assert(model->config.data_parallelism_degree == 1);
   model->config.batchSize = max_num_tokens_per_batch;
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
 
-  std::unordered_map<Op const *, std::vector<MachineView>> mapping;
-#ifdef FIXME
-  for (auto const &it : tensor_mapping) {
-    ParallelTensor pt;
-    model->get_parallel_tensor_from_tensor(it.first, pt);
-    assert(pt->owner_op != nullptr);
-    mapping[pt->owner_op] = it.second;
-  }
-#endif
   // std::cout << std::endl << std::endl << "Operators MVs:" << std::endl;
   for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
     Op const *op = model->operators[op_idx];
@@ -121,55 +112,6 @@ void InferenceManager::compile_model_and_allocate_buffer(
     }
     // Get machine views
     std::vector<MachineView> machine_views;
-#ifdef FIXME
-    if (mapping.find(op) != mapping.end()) {
-      machine_views = mapping[op];
-      assert(machine_views.size() == ff_config.data_parallelism_degree);
-    } else {
-      // Mapping the current operator using the same machine
-      // view as the inputs
-      assert(op->numInputs > 0);
-      for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
-        MachineView mv = tensor_buffer[op->inputs[0]][j]->machine_view;
-        for (int k = 1; k < op->numInputs; k++) {
-          if (mv != tensor_buffer[op->inputs[k]][j]->machine_view) {
-            fprintf(stderr,
-                    "[Warning] a potentially unnecessary "
-                    " inter-GPU copy of size %zu\n",
-                    op->inputs[k]->get_volume());
-            // Heuristics: we use the mv with a larger start_device_id
-            // to promote load balancing
-            if (mv.start_device_id <
-                tensor_buffer[op->inputs[k]][j]->machine_view.start_device_id) {
-              mv = tensor_buffer[op->inputs[k]][j]->machine_view;
-            }
-          }
-        }
-        if (op->op_type == OP_REPLICATE) {
-          // std::cout << "Replicate operator got machine view: " << mv
-          //           << std::endl;
-          assert(model->config.tensor_parallelism_degree > 1);
-          mv.dim[0] = ff_config.tensor_parallelism_degree;
-          mv.stride[0] = 1;
-          if (mv.start_device_id + mv.dim[0] > num_devices) {
-            mv.start_device_id -=
-                (mv.start_device_id + mv.dim[0]) - num_devices;
-          }
-          // std::cout << "Corrected machine view: " << mv << std::endl;
-        } else if (op->op_type == OP_REDUCTION) {
-          // std::cout << "Reduction operator got machine view: " << mv
-          //           << std::endl;
-          assert(model->config.tensor_parallelism_degree > 1);
-          mv.dim[0] = 1;
-          mv.stride[0] = 0;
-          // std::cout << "Corrected machine view: " << mv << std::endl;
-        }
-        assert(mv.start_device_id + mv.dim[0] <= num_devices);
-        machine_views.push_back(mv);
-      }
-      assert(machine_views.size() == ff_config.data_parallelism_degree);
-    }
-#else
     for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
       MachineView mv;
       mv.device_type == MachineView::GPU;
@@ -183,7 +125,6 @@ void InferenceManager::compile_model_and_allocate_buffer(
       mv.dim[0] = parallel_degree;
       machine_views.push_back(mv);
     }
-#endif
     // std::cout << "operator: " << op->name << std::endl;
     // for (int i = 0; i < op->numInputs; i++) {
     //   op->inputs[i]->print("input pt");
@@ -428,15 +369,19 @@ void InferenceManager::load_positions(BatchConfig const &bc,
   runtime->execute_index_space(ctx, launcher);
 }
 
+void FFModel::set_transformer_layer_id(int id) {
+  // We assume that users call this function with
+  // monotonically increasing ids
+  assert(id == current_transformer_layer_id + 1 ||
+         (id == 0 && current_transformer_layer_id == 0));
+  current_transformer_layer_id = id;
+  assert(id < MAX_NUM_TRANSFORMER_LAYERS);
+}
+
 void FFModel::compile_inference() {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   config.computationMode = COMP_MODE_INFERENCE;
-  {
-    fprintf(
-        stderr,
-        "Note: inference currently only supports data/pipeline parallel.\n");
-  }
   create_operators_from_layers();
   // Launch the graph optimize task
   {

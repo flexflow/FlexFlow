@@ -45,6 +45,7 @@ namespace FlexFlow {
 #define MAX_NUM_WORKERS 1024
 #define MAX_FILENAME 200
 #define MAX_OPNAME 128
+#define MAX_NUM_TRANSFORMER_LAYERS 100
 // DataLoader
 #define MAX_SAMPLES_PER_LOAD 64
 #define MAX_FILE_LENGTH 128

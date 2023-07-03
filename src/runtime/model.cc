@@ -1303,8 +1303,9 @@ FFModel::FFModel(FFConfig &_config, bool cpu_offload)
       layer_global_guid(LAYER_GUID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
       parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
-      node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
-      loss_op(NULL), metrics_op(NULL), simulator(NULL) {
+      node_global_guid(NODE_GUID_FIRST_VALID), current_transformer_layer_id(0),
+      config(_config), optimizer(NULL), loss_op(NULL), metrics_op(NULL),
+      simulator(NULL) {
   this->search = new PCG::SearchHelper(this);
   this->graph_search = new PCG::GraphSearchHelper(this);
   this->cpu_offload = cpu_offload;

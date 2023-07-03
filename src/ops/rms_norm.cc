@@ -392,6 +392,7 @@ void RMSNorm::forward_task(Task const *task,
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->eps);
   sez.serialize(this->dim);
 }
@@ -404,11 +405,12 @@ Node RMSNorm::deserialize(FFModel &ff,
                           int num_inputs) {
   assert(num_inputs == 1);
   float eps;
-  size_t id;
+  size_t id, transformer_layer_id;
   int dim;
   dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
 
-  LayerID layer_guid(id);
+  LayerID layer_guid(id, transformer_layer_id);
   dez.deserialize(eps);
   dez.deserialize(dim);
   RMSNormParams params;

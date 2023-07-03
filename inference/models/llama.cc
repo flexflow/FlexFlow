@@ -62,7 +62,6 @@ void LLAMA::create_llama_model(FFModel &ff,
   }
   assert(machine_views.size() == num_devices);
 
-  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
 
   Tensor input;
@@ -70,10 +69,6 @@ void LLAMA::create_llama_model(FFModel &ff,
     assert(llama_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
     int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
-  }
-  for (int i = 0; i < ff.config.data_parallelism_degree; i++) {
-    mapping[input].push_back(
-        machine_views[i * num_devices_per_data_parallelism_line]);
   }
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
@@ -107,33 +102,13 @@ void LLAMA::create_llama_model(FFModel &ff,
   //     num_pipeline_stages;
 
   for (int i = 0; i < num_transformer_layers; i++) {
+    // set transformer layer id
+    ff.set_transformer_layer_id(i);
     // step 1: attention
     std::vector<int> axes = {2};
     Tensor att_norm =
         ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
     Layer *attention_norm = ff.layers.back();
-
-    // if (i % num_transformer_layers_per_stage == 0) {
-    //   // Map att_norm to the next GPU
-    //   // since the size of att_norm is minimum across
-    //   // all tensors
-    //   mapping[att_norm].push_back(
-    //       machine_views[i / num_transformer_layers_per_stage]);
-    // }
-    for (int dp_index = 0; dp_index < ff.config.data_parallelism_degree;
-         dp_index++) {
-      int pp_block_idx = i / num_layers_per_pp_block;
-      int first_device_idx = dp_index * num_devices_per_data_parallelism_line +
-                             ff.config.tensor_parallelism_degree * pp_block_idx;
-      // std::cout << "assigning layer " << i << " to devices " <<
-      // first_device_idx
-      //           << "-"
-      //           << first_device_idx + ff.config.tensor_parallelism_degree - 1
-      //           << std::endl;
-      assert(first_device_idx < num_devices);
-      mapping[att_norm].push_back(machine_views[first_device_idx]);
-    }
-
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
                            attention_norm);
@@ -246,7 +221,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff, mapping);
+  im.compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             llama_config.n_heads,

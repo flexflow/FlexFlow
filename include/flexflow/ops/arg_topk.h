@@ -19,11 +19,15 @@ public:
   using Params = ArgTopKParams;
   using Input = ParallelTensor;
   ArgTopK(FFModel &model,
+          LayerID const &layer_guid,
           const ParallelTensor input,
           int k,
           bool sorted,
           char const *name);
-  ArgTopK(FFModel &model, ArgTopK const &other, const ParallelTensor input);
+  ArgTopK(FFModel &model,
+          LayerID const &layer_guid,
+          ArgTopK const &other,
+          const ParallelTensor input);
   ArgTopK(FFModel &model,
           Params const &params,
           Input const input,
