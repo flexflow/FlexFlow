@@ -7,6 +7,7 @@ namespace FlexFlow {
 
 struct GatherParams {
   int legion_dim;
+  LayerID layer_guid;
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const;
 };

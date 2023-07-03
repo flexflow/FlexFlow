@@ -23,11 +23,115 @@ jobs:
 
       - name: Wait for daemon to be done
         run: |
-          pip install pygithub
+          pip3 install pip --upgrade
+          pip3 install pyopenssl --upgrade
+          pip3 install pygithub
           python3 .github/workflows/helpers/gpu_ci_helper.py
 
-  multinode-gpu-test:
-    name: Multinode GPU Test
+  multinode-gpu-test-mpi:
+    name: Multinode GPU Test with MPI
+    # Prevent Github from running the workflow on forks
+    if: github.repository_owner == 'flexflow'
+    runs-on: self-hosted
+    needs: gpu-ci-concierge
+    # 10h timeout, instead of default of 360min (6h)
+    timeout-minutes: 600
+    container:
+      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      options: --gpus all --shm-size=8192m
+    steps:
+      - name: Install updated git version
+        run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install MPI
+        run: sudo apt-get install -y --no-install-recommends openmpi-bin openmpi-common libopenmpi-dev
+
+      - name: Build and Install FlexFlow
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          export FF_LEGION_NETWORKS=gasnet
+          export FF_GASNET_CONDUIT=mpi
+          pip install . --verbose
+
+      - name: Check FlexFlow Python interface (pip)
+        run: |
+          export FF_HOME=$(pwd)
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
+          ./tests/python_interface_test.sh after-installation
+
+      - name: Run multi-gpu tests
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
+          export OMPI_ALLOW_RUN_AS_ROOT=1
+          export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+          export OMPI_MCA_btl_vader_single_copy_mechanism=none
+          ./tests/multi_gpu_tests.sh 2 2
+  
+  multinode-gpu-test-ucx:
+    name: Multinode GPU Test with UCX
+    # Prevent Github from running the workflow on forks
+    if: github.repository_owner == 'flexflow'
+    runs-on: self-hosted
+    needs: gpu-ci-concierge
+    container:
+      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      options: --gpus all --shm-size=8192m
+    # 10h timeout, instead of default of 360min (6h)
+    timeout-minutes: 600
+    steps:
+      - name: Install updated git version
+        run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install MPI
+        run: sudo apt-get install -y --no-install-recommends openmpi-bin openmpi-common libopenmpi-dev
+
+      - name: Build and Install FlexFlow
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          export FF_LEGION_NETWORKS=gasnet
+          export FF_GASNET_CONDUIT=ucx
+          pip install . --verbose
+
+      - name: Check FlexFlow Python interface (pip)
+        run: |
+          export FF_HOME=$(pwd)
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
+          ./tests/python_interface_test.sh after-installation
+
+      - name: Run multi-gpu tests
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
+          export OMPI_ALLOW_RUN_AS_ROOT=1
+          export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+          export OMPI_MCA_btl_vader_single_copy_mechanism=none
+          ./tests/multi_gpu_tests.sh 2 2
+  
+  multinode-gpu-test-native-ucx:
+    name: Multinode GPU Test with native UCX
     # Prevent Github from running the workflow on forks
     if: github.repository_owner == 'flexflow'
     runs-on: self-hosted
@@ -51,8 +155,7 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-          export FF_USE_GASNET=ON
-          export FF_GASNET_CONDUIT=mpi
+          export FF_LEGION_NETWORKS=ucx
           pip install . --verbose
 
       - name: Check FlexFlow Python interface (pip)
@@ -60,6 +163,7 @@ jobs:
           export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -68,6 +172,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
@@ -76,11 +181,11 @@ jobs:
   notify-slack:
     name: Notify Slack in case of failure
     runs-on: ubuntu-20.04
-    needs: multinode-gpu-test
+    needs: [multinode-gpu-test-mpi, multinode-gpu-test-ucx, multinode-gpu-test-native-ucx]
     if: ${{ failure() && github.event_name == 'schedule' }}
     steps:
       - name: Send Slack message
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
-          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Weekly multinode GPU test failed! <https://github.com/flexflow/flexflow-third-party/actions/runs/$GITHUB_RUN_ID|(See here).> :x: \"}" $SLACK_WEBHOOK
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Weekly multinode GPU test failed! <https://github.com/flexflow/FlexFlow/actions/runs/$GITHUB_RUN_ID|(See here).> :x: \"}" $SLACK_WEBHOOK

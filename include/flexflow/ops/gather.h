@@ -15,6 +15,12 @@ public:
          Input const &input,
          char const *name = nullptr);
   Gather(FFModel &model,
+         LayerID const &layer_guid,
+         const ParallelTensor input,
+         const ParallelTensor index,
+         int legion_dim,
+         char const *name = nullptr);
+  Gather(FFModel &model,
          const ParallelTensor input,
          const ParallelTensor index,
          int legion_dim,

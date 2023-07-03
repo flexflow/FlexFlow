@@ -2551,6 +2551,7 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_POW:
       case OP_IDENTITY:
       case OP_GELU:
+      case OP_RSQRT:
       case OP_ELU: {
         node = ElementUnary::deserialize(*this, dez, inputs, num_inputs);
         break;

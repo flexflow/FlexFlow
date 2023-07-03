@@ -18,7 +18,7 @@ fx.torch_to_flexflow(model, "mymodel.ff")
 
 Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance for a given parallel machine.
 
-```
+```python
 from flexflow.pytorch.model import PyTorchModel
 
 def top_level_task():
@@ -39,7 +39,7 @@ FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Ten
 ## C++ Interface
 For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
 
-**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/c++).
+**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp).
 
 
 ## Command-Line Flags
@@ -69,11 +69,10 @@ Performance auto-tuning flags:
 For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
 
 ## Contributing
+
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
 
 We welcome all contributions to FlexFlow from bug fixes to new features and extensions.
-
-Please subscribe to the FlexFlow users mailing list for 
 
 ## Citations
 * Colin Unger, Zhihao Jia, Wei Wu, Sina Lin, Mandeep Baines, Carlos Efrain Quintero Narvaez, Vinay Ramakrishnaiah, Nirmal Prajapati, Pat McCormick, Jamaludin Mohd-Yusof, Xi Luo, Dheevatsa Mudigere, Jongsoo Park, Misha Smelyanskiy, and Alex Aiken. [Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization](https://www.usenix.org/conference/osdi22/presentation/unger). In Proceedings of the Symposium on Operating Systems Design and Implementation (OSDI), July 2022. 

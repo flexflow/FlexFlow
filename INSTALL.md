@@ -30,7 +30,7 @@ If you are planning to build the Python interface, you will need to install seve
 
 The `conda` environment can be created and activated as:
 ```
-conda env create -f environment.yml
+conda env create -f conda/environment.yml
 conda activate flexflow
 ```
 
@@ -42,10 +42,12 @@ You can configure a FlexFlow build by running the `config/config.linux` file in 
 3. `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. To build for more than one architecture, pass a list of comma separated values (e.g. `FF_CUDA_ARCH=70,75`). To compile FlexFlow for all GPU architectures that are detected on the machine, pass `FF_CUDA_ARCH=autodetect` (this is the default value, so you can also leave `FF_CUDA_ARCH` unset. If you want to build for all GPU architectures compatible with FlexFlow, pass `FF_CUDA_ARCH=all`. **If your machine does not have any GPU, you have to set FF_CUDA_ARCH to at least one valid architecture code (or `all`)**, since the compiler won't be able to detect the architecture(s) automatically.
 4. `FF_USE_PYTHON` controls whether to build the FlexFlow Python interface.
 5. `FF_USE_NCCL` controls whether to build FlexFlow with NCCL support. By default, it is set to ON.
-6. `FF_USE_GASNET` is used to enable distributed run of FlexFlow. You can then set the preferred GASNET conduit with `FF_USE_GASNET`. For instance, to run FlexFlow on multiple nodes using MPI, set `FF_USE_GASNET=ON` and `FF_GASNET_CONDUIT=mpi`
-7. `FF_BUILD_EXAMPLES` controls whether to build all C++ example programs.
-8. `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
-9. `FF_USE_{NCCL,LEGION,ALL}_PRECOMPILED_LIBRARY`, controls whether to build FlexFlow using a pre-compiled version of the Legion, NCCL (if `FF_USE_NCCL` is `ON`), or both libraries . By default, `FF_USE_NCCL_PRECOMPILED_LIBRARY` and `FF_USE_LEGION_PRECOMPILED_LIBRARY` are both set to `ON`, allowing you to build FlexFlow faster. If you want to build Legion and NCCL from source, set them to `OFF`.
+6. `FF_LEGION_NETWORKS` is used to enable distributed run of FlexFlow. If you want to run FlexFlow on multiple nodes, follow instructions in [MULTI-NODE.md](MULTI-NODE.md) and set the corresponding parameters as follows:
+* To build FlexFlow with GASNet, set `FF_LEGION_NETWORKS=gasnet` and `FF_GASNET_CONDUIT` as a specific conduit (e.g. `ibv`, `mpi`, `udp`, `ucx`) in `config/config.linux` when configuring the FlexFlow build. Set `FF_UCX_URL` when you want to customize the URL to download UCX.
+* To build FlexFlow with native UCX, set `FF_LEGION_NETWORKS=ucx` in `config/config.linux` when configuring the FlexFlow build. Set `FF_UCX_URL` when you want to customize the URL to download UCX.
+8. `FF_BUILD_EXAMPLES` controls whether to build all C++ example programs.
+9. `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
+10. `FF_USE_{NCCL,LEGION,ALL}_PRECOMPILED_LIBRARY`, controls whether to build FlexFlow using a pre-compiled version of the Legion, NCCL (if `FF_USE_NCCL` is `ON`), or both libraries . By default, `FF_USE_NCCL_PRECOMPILED_LIBRARY` and `FF_USE_LEGION_PRECOMPILED_LIBRARY` are both set to `ON`, allowing you to build FlexFlow faster. If you want to build Legion and NCCL from source, set them to `OFF`.
 
 More options are available in cmake, please run `ccmake` and search for options starting with FF. 
 
@@ -88,11 +90,11 @@ To run the Python examples, you have two options: you can use the `flexflow_pyth
 * `export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python"`
 * `export FF_USE_NATIVE_PYTHON=1`
 
-**We recommend that you run the `mnist_mlp` test under `native` using the following cmd to check if FlexFlow has been installed correctly:**
+**We recommend that you run the** `mnist_mlp` **test under** `native` **using the following cmd to check if FlexFlow has been installed correctly:**
 
 ```
-cd python
-./flexflow_python examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
+cd "$FF_HOME"
+./python/flexflow_python examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
 ```
 A script to run all the Python examples is available at `tests/multi_gpu_tests.sh`
 

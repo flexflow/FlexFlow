@@ -20,6 +20,8 @@ public:
          const ParallelTensor input,
          int out_dim,
          ActiMode activation,
+         RegularizerMode kernel_reg_type,
+         float kernel_reg_lambda,
          bool _use_bias,
          DataType _data_type,
          bool allocate_weights,
@@ -110,6 +112,8 @@ private:
 public:
   int in_channels, out_channels;
   ActiMode activation;
+  RegularizerMode kernel_reg_type;
+  float kernel_reg_lambda;
   bool use_bias;
   ParallelTensor replica;
 };
