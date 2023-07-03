@@ -1,9 +1,9 @@
 #include "flexflow/utils/hip_helper.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
+#include "realm/hip/hip_module.h"
 #include <hip/hip_runtime.h>
 #include <stdexcept>
-#include "realm/hip/hip_module.h"
 
 using Legion::coord_t;
 using Legion::Domain;
@@ -22,7 +22,7 @@ hipStream_t hipGetTaskStream();
 hipError_t get_legion_stream(hipStream_t *stream) {
   *stream = Realm::Hip::get_task_hip_stream();
   Realm::Hip::set_task_ctxsync_required(false);
-  assert (*stream!=0);
+  assert(*stream != 0);
   return hipSuccess;
 }
 }; // namespace FlexFlow

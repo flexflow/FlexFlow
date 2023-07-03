@@ -18,14 +18,14 @@ namespace FlexFlow {
 cudaError_t get_legion_stream(cudaStream_t *stream) {
   *stream = Realm::Cuda::get_task_cuda_stream();
   Realm::Cuda::set_task_ctxsync_required(false);
-  assert (*stream!=0);
+  assert(*stream != 0);
   return cudaSuccess;
 }
 #elif FF_USE_HIP_CUDA
 cudaError_t get_legion_stream(cudaStream_t *stream) {
   *stream = Realm::Hip::get_task_hip_stream();
   Realm::Hip::set_task_ctxsync_required(false);
-  assert (*stream!=0);
+  assert(*stream != 0);
   return cudaSuccess;
 }
 #else
