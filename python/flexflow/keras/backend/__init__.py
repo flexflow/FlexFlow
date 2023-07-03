@@ -24,6 +24,7 @@ _BACKEND = 'flexflow'
 # import backend
 if _BACKEND == 'flexflow':
     sys.stderr.write('Using flexflow backend.\n')
+    assert 0
     from .flexflow_backend import *
 else:
     raise ValueError('Unknown backend: ' + str(_BACKEND))

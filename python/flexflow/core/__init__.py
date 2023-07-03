@@ -22,6 +22,7 @@ import os
 import sys
 
 from flexflow.config import *
+from flexflow.jupyter import *
 
 def rerun_if_needed():
   def update_ld_library_path_if_needed(path):
@@ -71,9 +72,17 @@ if flexflow_init_import():
           legion_canonical_python_cleanup,
       )
       import atexit, sys, os
-      sys_argv = [
-        "python",
-      ] + sys.argv
+      # run from jupyter
+      if "ipykernel_launcher.py" in sys.argv[0]:
+        sys_argv = ["python", "dummy.py"]
+        argv_dict = load_jupyter_config()
+        for key, value in argv_dict.items():
+          sys_argv.append(key)
+          sys_argv.append(str(value))
+      else:
+        sys_argv = [
+          "python",
+        ] + sys.argv
       legion_canonical_python_main(sys_argv)
       atexit.register(legion_canonical_python_cleanup)
   else:
