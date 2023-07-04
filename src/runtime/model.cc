@@ -3834,6 +3834,9 @@ FFConfig::FFConfig() {
   }
   // Use Real::Machine::get_address_space_count() to obtain the number of nodes
   numNodes = Realm::Machine::get_machine().get_address_space_count();
+  data_parallelism_degree = numNodes;
+  tensor_parallelism_degree = 1;
+  pipeline_parallelism_degree = 1;
 
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;

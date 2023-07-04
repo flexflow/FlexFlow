@@ -1961,46 +1961,61 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
       }
     }
     curr_best_graph = std::unique_ptr<Graph>(graph);
-    // Currently assume a 1D machine view is needed
-    assert(model->config.data_parallelism_degree == 1 ||
-           model->config.tensor_parallelism_degree == 1);
-    int degree = model->config.data_parallelism_degree *
-                 model->config.tensor_parallelism_degree;
-    int num_transformer_layers_per_stage =
-        model->current_transformer_layer_id /
-            model->config.pipeline_parallelism_degree +
-        1;
+    MachineView data_parallel_view;
+    int degree, num_transformer_layers_per_stage;
+    if (model->config.computationMode == COMP_MODE_TRAINING) {
+      data_parallel_view.device_type = MachineView::GPU;
+      data_parallel_view.ndims = 1;
+      data_parallel_view.dim[0] =
+          model->config.numNodes * model->config.workersPerNode;
+      data_parallel_view.stride[0] = 1;
+      data_parallel_view.start_device_id = 0;
+    } else {
+      // Currently assume a 1D machine view is needed
+      assert(model->config.data_parallelism_degree == 1 ||
+             model->config.tensor_parallelism_degree == 1);
+      int degree = model->config.data_parallelism_degree *
+                   model->config.tensor_parallelism_degree;
+      int num_transformer_layers_per_stage =
+          model->current_transformer_layer_id /
+              model->config.pipeline_parallelism_degree +
+          1;
+    }
     for (auto const &node : curr_best_graph->inEdges) {
       Op const *op = node.first.ptr;
-      MachineView mv;
-      mv.device_type = MachineView::GPU;
-      mv.ndims = 1;
-      int total_parallel_degree = 1;
-      for (int i = 0; i < op->outputs[0]->num_dims; i++) {
-        total_parallel_degree *= op->outputs[0]->dims[i].degree;
-      }
-      mv.dim[0] = total_parallel_degree;
-      mv.stride[0] = 1;
-      LayerID layer_guid = op->layer_guid;
-      if (op->op_type == OP_INPUT) {
-        // All inputs are assigned to the first stage
-        layer_guid.transformer_layer_id = 0;
-      } else if (layer_guid == LayerID::NO_ID) {
-        // Assert that we only have a single input
-        while (op->layer_guid == LayerID::NO_ID) {
-          assert(op->numInputs == 1);
-          op = op->inputs[0]->owner_op;
-          assert(op != nullptr);
+      if (model->config.computationMode == COMP_MODE_TRAINING) {
+        curr_optimal_views[node.first] = data_parallel_view;
+      } else {
+        MachineView mv;
+        mv.device_type = MachineView::GPU;
+        mv.ndims = 1;
+        int total_parallel_degree = 1;
+        for (int i = 0; i < op->outputs[0]->num_dims; i++) {
+          total_parallel_degree *= op->outputs[0]->dims[i].degree;
         }
-        layer_guid = op->layer_guid;
-      }
-      mv.start_device_id = degree * (layer_guid.transformer_layer_id /
-                                     num_transformer_layers_per_stage);
-      assert(mv.start_device_id + degree - 1 <
-             model->config.numNodes * model->config.workersPerNode);
-      curr_optimal_views[node.first] = mv;
-      for (int i = 0; i < node.first.ptr->numOutputs; i++) {
-        assert(node.first.ptr->outputs[i]->is_valid_machine_view(mv));
+        mv.dim[0] = total_parallel_degree;
+        mv.stride[0] = 1;
+        LayerID layer_guid = op->layer_guid;
+        if (op->op_type == OP_INPUT) {
+          // All inputs are assigned to the first stage
+          layer_guid.transformer_layer_id = 0;
+        } else if (layer_guid == LayerID::NO_ID) {
+          // Assert that we only have a single input
+          while (op->layer_guid == LayerID::NO_ID) {
+            assert(op->numInputs == 1);
+            op = op->inputs[0]->owner_op;
+            assert(op != nullptr);
+          }
+          layer_guid = op->layer_guid;
+        }
+        mv.start_device_id = degree * (layer_guid.transformer_layer_id /
+                                       num_transformer_layers_per_stage);
+        assert(mv.start_device_id + degree - 1 <
+               model->config.numNodes * model->config.workersPerNode);
+        curr_optimal_views[node.first] = mv;
+        for (int i = 0; i < node.first.ptr->numOutputs; i++) {
+          assert(node.first.ptr->outputs[i]->is_valid_machine_view(mv));
+        }
       }
     }
   } else {
