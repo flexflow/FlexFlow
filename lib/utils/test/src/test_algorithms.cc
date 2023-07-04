@@ -42,34 +42,37 @@ TEST_CASE("MultiDiGraph") {
   }
 }
 
-// TEST_CASE("DiGraph") {
-//   AdjacencyDiGraph g;
-//   Node n0 = g.add_node();
-//   Node n1 = g.add_node();
-//   Node n2 = g.add_node();
-//   Node n3 = g.add_node();
-//   DirectedEdge e0{n0, n3};
-//   DirectedEdge e1{n0, n1};
-//   DirectedEdge e2{n0, n2};
-//   DirectedEdge e3{n1, n2};
-//   g.add_edge(e0);
-//   g.add_edge(e1);
-//   g.add_edge(e2);
-//   g.add_edge(e3);
+TEST_CASE("DiGraph") {
+  AdjacencyDiGraph g;
+  Node n0 = g.add_node();
+  Node n1 = g.add_node();
+  Node n2 = g.add_node();
+  Node n3 = g.add_node();
+  DirectedEdge e0{n0, n3};
+  DirectedEdge e1{n0, n1};
+  DirectedEdge e2{n0, n2};
+  DirectedEdge e3{n1, n2};
+  g.add_edge(e0);
+  g.add_edge(e1);
+  g.add_edge(e2);
+  g.add_edge(e3);
 
-//   CHECK(get_nodes(g) == std::unordered_set<Node>{n0, n1, n2, n3});
-//   CHECK(get_edges(g) == std::unordered_set<DirectedEdge>{e0, e1, e2, e3});
-//   CHECK(get_incoming_edges(g, {n2, n3}) ==
-//         std::unordered_set<DirectedEdge>{e0, e2, e3});
-//   CHECK(get_outgoing_edges(g, {n2, n3}) ==
-//         std::unordered_set<DirectedEdge>{});
-//   CHECK(get_predecessors(g, {n1, n2, n3}) ==
-//         std::unordered_map<Node, std::unordered_set<Node>>{
-//             {n1, {n0}},
-//             {n2, {n0, n1}},
-//             {n3, {n0}},
-//         });
-// }
+  CHECK(get_nodes(g) == std::unordered_set<Node>{n0, n1, n2, n3});
+  CHECK(get_edges(g) == std::unordered_set<DirectedEdge>{e0, e1, e2, e3});
+  CHECK(get_incoming_edges(g, {n2, n3}) ==
+        std::unordered_set<DirectedEdge>{e0, e2, e3});
+  CHECK(get_outgoing_edges(g, {n2, n3}) ==
+        std::unordered_set<DirectedEdge>{});
+  auto expected_result =  std::unordered_map<Node, std::unordered_set<Node>>{
+            {n1, {n0}},
+            {n2, {n0, n1}},
+            {n3, {n0}},
+  };
+  auto res = get_predecessors(g, {n1, n2, n3});
+  for(auto kv : res) {
+    CHECK(expected_result[kv.first] == kv.second);
+  }
+}
 
 // TEST_CASE("traversal") {
 //   AdjacencyDiGraph g;

@@ -23,6 +23,7 @@ std::unordered_set<Node> get_nodes(GraphView const &);
 
 std::unordered_set<Node> get_nodes(IMultiDiGraph const &);
 
+std::unordered_set<Node> get_nodes(IDiGraphView const &);
 
 std::unordered_set<Node> query_nodes(GraphView const &,
                                      std::unordered_set<Node> const &);
@@ -57,6 +58,7 @@ void remove_edges(UndirectedGraph &, std::vector<UndirectedEdge> const &);
 std::unordered_set<MultiDiEdge> get_edges(IMultiDiGraphView const &);
 std::unordered_set<MultiDiEdge> get_edges(MultiDiGraphView const &);
 std::unordered_set<DirectedEdge> get_edges(DiGraphView const &);
+std::unordered_set<DirectedEdge> get_edges(IDiGraphView const &);
 std::unordered_set<UndirectedEdge> get_edges(UndirectedGraphView const &);
 std::unordered_set<UpwardOpenMultiDiEdge>
     get_edges(UpwardOpenMultiDiGraphView const &);
@@ -74,6 +76,8 @@ std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    Node const &);
 std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &,
                                                     Node const &);
+std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &,
+                                                    Node const &);                                                    
 std::unordered_set<UpwardOpenMultiDiEdge>
     get_incoming_edges(UpwardOpenMultiDiGraphView const &, Node const &);
 std::unordered_set<MultiDiEdge>
@@ -87,7 +91,8 @@ std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    std::unordered_set<Node> const &);
 std::unordered_set<DirectedEdge>
     get_incoming_edges(DiGraphView const &, std::unordered_set<Node> const &);
-
+std::unordered_set<DirectedEdge>
+    get_incoming_edges(IDiGraphView const &, std::unordered_set<Node> const &);
 std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>>
     get_incoming_edges_by_idx(MultiDiGraphView const &, Node const &);
 std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>>
@@ -97,6 +102,8 @@ std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &,
                                                    Node const &);
 std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &,
                                                    Node const &);
+std::unordered_set<DirectedEdge> get_outgoing_edges(IDiGraphView const &,
+                                                    Node const &);
 std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &,
                                                     Node const &);
 std::unordered_set<MultiDiEdge>
@@ -115,6 +122,9 @@ std::unordered_set<MultiDiEdge>
 std::unordered_set<DirectedEdge>
     get_outgoing_edges(DiGraphView const &, std::unordered_set<Node> const &);
 
+std::unordered_set<DirectedEdge>
+    get_outgoing_edges(IDiGraphView const &, std::unordered_set<Node> const &);
+
 std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
                                                   Node const &);
 std::unordered_set<UndirectedEdge>
@@ -126,6 +136,7 @@ std::unordered_set<Node> get_predecessors(IMultiDiGraphView const &,
 std::unordered_set<Node> get_predecessors(MultiDiGraphView const &,
                                           Node const &);
 std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
+std::unordered_set<Node> get_predecessors(IDiGraphView const &, Node const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(IMultiDiGraphView const &,
                      std::unordered_set<Node> const &);
@@ -134,6 +145,8 @@ std::unordered_map<Node, std::unordered_set<Node>>
                      std::unordered_set<Node> const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_predecessors(IDiGraphView const &, std::unordered_set<Node> const &);
 
 std::unordered_set<Node> get_sucessors(MultiDiGraphView const &,
                                           Node const &);
