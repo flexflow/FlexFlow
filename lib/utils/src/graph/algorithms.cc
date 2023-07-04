@@ -18,7 +18,12 @@ std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
   return nodes;
 }
 
+
 std::unordered_set<Node> get_nodes(GraphView const &g) {
+  return g.query_nodes({});
+}
+
+std::unordered_set<Node> get_nodes(IMultiDiGraph const &g) {
   return g.query_nodes({});
 }
 
@@ -129,6 +134,10 @@ void remove_edges(UndirectedGraph &g,
   }
 }
 
+std::unordered_set<MultiDiEdge> get_edges(IMultiDiGraphView const & g){
+  return g.query_edges({});
+}
+
 std::unordered_set<MultiDiEdge> get_edges(MultiDiGraphView const &g) {
   return g.query_edges({});
 }
@@ -147,6 +156,12 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
   return g.query_edges(query);
 }
 
+std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const & g,
+                                                   Node const & n) {
+  return  get_incoming_edges(g, std::unordered_set<Node>{n}); 
+  }
+
+
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &g,
                                                    Node const &n) {
   return get_incoming_edges(g, std::unordered_set<Node>{n});
@@ -155,6 +170,12 @@ std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &g,
 std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g,
                                                     Node const &n) {
   return get_incoming_edges(g, std::unordered_set<Node>{n});
+}
+
+std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const & g,
+                                                   std::unordered_set<Node>dsts)  {
+
+  return g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(dsts));
 }
 
 std::unordered_set<MultiDiEdge>
@@ -175,6 +196,17 @@ std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const & g,
 
   return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
+
+std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const & g,
+                                                   Node const & n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
+}
+
+std::unordered_set<MultiDiEdge>
+    get_outgoing_edges(IMultiDiGraphView const & g,
+                       std::unordered_set<Node> const & srcs){
+  return g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(srcs));
+                       }
 
 std::unordered_set<MultiDiEdge>
     get_outgoing_edges(MultiDiGraphView const &g,
@@ -206,6 +238,24 @@ std::unordered_map<Node, std::unordered_set<Node>>
   }
   return predecessors;
 }
+
+// std::unordered_map<Node, std::unordered_set<Node>>
+//     get_predecessors(IMultiDiGraphView const & g,
+//                      std::unordered_set<Node> const & nodes){
+//   std::unordered_map<Node, std::unordered_set<Node>> predecessors;
+//   for (Node const &n : nodes) {
+//     predecessors[n];
+//   }
+//   for (DirectedEdge const &e : get_incoming_edges(g, nodes)) {
+//     predecessors.at(e.dst).insert(e.src);
+//   }
+//   return predecessors;
+// }
+
+// std::unordered_set<Node> get_predecessors(IMultiDiGraphView const &g,
+//                                           Node const & n){
+//   return get_predecessors(g, {n});
+// }
 
 std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
   return get_predecessors(g, {n});
