@@ -209,7 +209,7 @@ std::unordered_set<DirectedEdge>
   std::unordered_set<DirectedEdge> edges = get_edges(g);
   std::unordered_set<DirectedEdge> incoming_edges;
   for(auto const edge: edges ){
-    if(!dsts.count(edge.dst)){
+    if(dsts.count(edge.dst)){
       incoming_edges.insert(edge);
     }
   }
@@ -255,7 +255,7 @@ std::unordered_set<DirectedEdge>
   std::unordered_set<DirectedEdge> edges = get_edges(g);
   std::unordered_set<DirectedEdge> outgoing_edges;
   for(auto const edge: edges ){
-    if(!srcs.count(edge.src)){
+    if(srcs.count(edge.src)){
       outgoing_edges.insert(edge);
     }
   }
