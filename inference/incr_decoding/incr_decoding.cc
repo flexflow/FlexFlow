@@ -125,8 +125,8 @@ void FlexFlow::top_level_task(Task const *task,
   bool use_full_precision = false;
   bool verbose = false;
   size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
-  int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
-      pipeline_parallelism_degree = 1;
+  int data_parallelism_degree = 1, tensor_parallelism_degree = 1;
+  int pipeline_parallelism_degree = num_devices / (data_parallelism_degree*tensor_parallelism_degree);
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
