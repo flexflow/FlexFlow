@@ -82,9 +82,9 @@ std::unordered_set<UpwardOpenMultiDiEdge>
     get_incoming_edges(OpenMultiDiGraphView const &, Node const &);
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &,
-                                                   std::unordered_set<Node>);
+                                                   std::unordered_set<Node> const &);
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
-                                                   std::unordered_set<Node>);
+                                                   std::unordered_set<Node> const &);
 std::unordered_set<DirectedEdge>
     get_incoming_edges(DiGraphView const &, std::unordered_set<Node> const &);
 

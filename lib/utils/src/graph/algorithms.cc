@@ -173,14 +173,14 @@ std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g,
 }
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const & g,
-                                                   std::unordered_set<Node>dsts)  {
+                                                   std::unordered_set<Node> const & dsts)  {
 
   return g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(dsts));
 }
 
 std::unordered_set<MultiDiEdge>
     get_incoming_edges(MultiDiGraphView const &g,
-                       std::unordered_set<Node> dsts) {
+                       std::unordered_set<Node> const & dsts) {
   return g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(dsts));
 }
 
@@ -239,23 +239,23 @@ std::unordered_map<Node, std::unordered_set<Node>>
   return predecessors;
 }
 
-// std::unordered_map<Node, std::unordered_set<Node>>
-//     get_predecessors(IMultiDiGraphView const & g,
-//                      std::unordered_set<Node> const & nodes){
-//   std::unordered_map<Node, std::unordered_set<Node>> predecessors;
-//   for (Node const &n : nodes) {
-//     predecessors[n];
-//   }
-//   for (DirectedEdge const &e : get_incoming_edges(g, nodes)) {
-//     predecessors.at(e.dst).insert(e.src);
-//   }
-//   return predecessors;
-// }
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_predecessors(IMultiDiGraphView const & g,
+                     std::unordered_set<Node> const & nodes){
+  std::unordered_map<Node, std::unordered_set<Node>> predecessors;
+  for (Node const &n : nodes) {
+    predecessors[n];
+  }
+  for (MultiDiEdge const &e : get_incoming_edges(g, nodes)) {
+    predecessors.at(e.dst).insert(e.src);
+  }
+  return predecessors;
+}
 
-// std::unordered_set<Node> get_predecessors(IMultiDiGraphView const &g,
-//                                           Node const & n){
-//   return get_predecessors(g, {n});
-// }
+std::unordered_set<Node> get_predecessors(IMultiDiGraphView const &g,
+                                          Node const & n){
+  return get_predecessors(g, {n});
+}
 
 std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
   return get_predecessors(g, {n});
