@@ -91,9 +91,9 @@ flowchart TD
     Dtria("&#x25B2")
     Ecirc("&#x25CF")
     Esqua("&#x25A0")
-    Fsqua(" ")
+    Fplaceholder(" ")
 
-    style F fill:#0000,stroke:#0000
+    style Fplaceholder fill:#0000,stroke:#0000
 
     subgraph "A"
       Acirc
@@ -123,7 +123,7 @@ flowchart TD
     end
 
     subgraph "F"
-        Fsqua
+        Fplaceholder
     end
 
     Asqua --> Bstar 
