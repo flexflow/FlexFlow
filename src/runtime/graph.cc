@@ -1718,6 +1718,7 @@ GraphOptimalViewSerialized
       case OP_SOFTMAX: {
         Softmax *softmax = (Softmax *)op;
         sez.serialize(softmax->dim);
+        sez.serialize(softmax->last_layer);
         break;
       }
       case OP_REPARTITION: {
@@ -2098,8 +2099,11 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_SOFTMAX: {
         assert(num_inputs == 1);
         int softmax_dim;
+        bool last_layer;
         dez.deserialize(softmax_dim);
-        node = get_or_create_node<Softmax>(inputs[0], {softmax_dim});
+        dez.deserialize(last_layer);
+        node =
+            get_or_create_node<Softmax>(inputs[0], {softmax_dim, last_layer});
         break;
       }
       case OP_TRANSPOSE: {

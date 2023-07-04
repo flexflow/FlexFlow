@@ -472,6 +472,7 @@ public:
                     std::vector<int> const &axes,
                     bool elementwise_affine,
                     float eps,
+                    DataType data_type = DT_NONE,
                     char const *name = NULL);
   // Add a batch_norm layer
   Tensor
@@ -518,7 +519,10 @@ public:
   // Add a flat layer
   Tensor flat(const Tensor input, char const *name = NULL);
   // Add a softmax layer
-  Tensor softmax(const Tensor input, int dim = -1, char const *name = NULL);
+  Tensor softmax(const Tensor input,
+                 int dim = -1,
+                 bool last_layer = false,
+                 char const *name = NULL);
   // Create input tensors and constants
   Tensor transpose(const Tensor input,
                    std::vector<int> const &perm,

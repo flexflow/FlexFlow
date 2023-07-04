@@ -18,6 +18,7 @@
 
 namespace FlexFlow {
 
+int const MASK_TOKEN = -100;
 using namespace Legion;
 
 __global__ void
@@ -29,6 +30,25 @@ __global__ void
   CUDA_KERNEL_LOOP(i, num_samples) {
     int label_idx = label[i / k];
     logit_grad[i * num_classes + label_idx] -= 1.0f;
+  }
+}
+
+__global__ void
+    sparse_categorical_crossentropy_loss_backward_with_mask(float *logit_grad,
+                                                            int const *label,
+                                                            coord_t num_samples,
+                                                            coord_t num_classes,
+                                                            int const k,
+                                                            float *num) {
+  CUDA_KERNEL_LOOP(i, num_samples * num_classes) {
+    int sample_id = i / num_classes;
+    int label_idx = label[i / (k * num_classes)];
+    if (label_idx != MASK_TOKEN && (i == sample_id * num_classes + label_idx)) {
+      logit_grad[i] -= 1.0f;
+      atomicAdd(&num[0], 1.0f);
+    } else if (label_idx == MASK_TOKEN) {
+      logit_grad[i] = 0.0f;
+    }
   }
 }
 
@@ -74,14 +94,25 @@ void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
                        logit_ptr,
                        logit_volume * sizeof(float),
                        cudaMemcpyDeviceToDevice));
-  sparse_categorical_crossentropy_loss_backward<<<GET_BLOCKS(num_samples),
-                                                  CUDA_NUM_THREADS,
-                                                  0,
-                                                  stream>>>(
-      logit_grad_ptr, label_ptr, num_samples, num_classes, k);
-  // Scale logit gradients by op->scale_factor
+  // calculate the scale factor inside kernel;
+  assert(scale_factor == 1.0f);
+  float *num;
+  checkCUDA(cudaMalloc(&num, sizeof(float)));
+  float effective_tokens;
+  int parallelism = num_samples * num_classes;
+  // sparse_categorical_crossentropy_loss_backward<<<GET_BLOCKS(num_samples),
+  //                                                 CUDA_NUM_THREADS,
+  //                                                 0,
+  //                                                 stream>>>(
+  //     logit_grad_ptr, label_ptr, num_samples, num_classes, k, num);
+  sparse_categorical_crossentropy_loss_backward_with_mask<<<
+      GET_BLOCKS(parallelism),
+      CUDA_NUM_THREADS,
+      0,
+      stream>>>(logit_grad_ptr, label_ptr, num_samples, num_classes, k, num);
+  cudaMemcpy(&effective_tokens, num, sizeof(float), cudaMemcpyDeviceToHost);
   scale_kernel<<<GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
-      logit_grad_ptr, logit_grad_volume, 0, scale_factor * k);
+      logit_grad_ptr, logit_grad_volume, 0, 1.0f / effective_tokens);
 }
 
 void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
@@ -122,19 +153,17 @@ void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
       logit_grad_ptr, logit_grad_volume, 0, scale_factor);
 }
 
-void Loss::identity_loss_backward_kernel_wrapper(
-    float *loss_grad_ptr,
-    float const *loss_ptr,
-    size_t loss_volume,
-    size_t loss_grad_volume,
-    float scale_factor) {
+void Loss::identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
+                                                 float const *loss_ptr,
+                                                 size_t loss_volume,
+                                                 size_t loss_grad_volume,
+                                                 float scale_factor) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   identity_loss_backward<<<GET_BLOCKS(loss_volume),
                            CUDA_NUM_THREADS,
                            0,
-                           stream>>>(
-      loss_grad_ptr, loss_ptr, loss_volume);
+                           stream>>>(loss_grad_ptr, loss_ptr, loss_volume);
   // Scale logit gradients by loss->scale_factor
   scale_kernel<<<GET_BLOCKS(loss_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
       loss_grad_ptr, loss_grad_volume, 0, scale_factor);

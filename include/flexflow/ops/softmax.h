@@ -15,6 +15,7 @@ public:
   Softmax(FFModel &model,
           const ParallelTensor logit,
           int dim,
+          bool _last_layer,
           char const *name);
   Softmax(FFModel &model,
           Params const &params,
@@ -64,6 +65,7 @@ private:
 
 public:
   int dim;
+  bool last_layer;
 };
 
 }; // namespace FlexFlow
