@@ -215,83 +215,13 @@ __host__ void
   int idx = 0;
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
-    printf(" %.10lf", (float)host_ptr[idx]);
+    printf(" %.4lf", (float)host_ptr[idx]);
     if (idx >= 16) {
       break;
     }
   }
   printf("\n");
   checkCUDA(cudaFreeHost(host_ptr));
-}
-
-template <typename T>
-__host__ void
-    save_tensor(T const *ptr, size_t num_elements, char const *file_name) {
-  T *host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr,
-                          sizeof(T) * num_elements,
-                          cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  FILE *tensor_file;
-  tensor_file = fopen(file_name, "w");
-  for (unsigned i = 0; i < num_elements; i++) {
-    fprintf(tensor_file, "%.8f, ", (float)host_ptr[i]);
-  }
-
-  fclose(tensor_file);
-  checkCUDA(cudaFreeHost(host_ptr));
-}
-
-cudnnStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(
-    cudnnTensorDescriptor_t tensor, Domain domain, DataType data_type) {
-  int dims[MAX_TENSOR_DIM];
-  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(data_type);
-  switch (domain.get_dim()) {
-    case 1: {
-      Rect<1> rect = domain;
-      dims[0] = rect.hi[0] - rect.lo[0] + 1;
-      return cudnnSetTensor4dDescriptor(
-          tensor, CUDNN_TENSOR_NCHW, cudnn_data_type, dims[0], 1, 1, 1);
-    }
-    case 2: {
-      Rect<2> rect = domain;
-      dims[0] = rect.hi[0] - rect.lo[0] + 1;
-      dims[1] = rect.hi[1] - rect.lo[1] + 1;
-      return cudnnSetTensor4dDescriptor(
-          tensor, CUDNN_TENSOR_NCHW, cudnn_data_type, dims[1], dims[0], 1, 1);
-    }
-    case 3: {
-      Rect<3> rect = domain;
-      dims[0] = rect.hi[0] - rect.lo[0] + 1;
-      dims[1] = rect.hi[1] - rect.lo[1] + 1;
-      dims[2] = rect.hi[2] - rect.lo[2] + 1;
-      return cudnnSetTensor4dDescriptor(tensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        cudnn_data_type,
-                                        dims[2] * dims[1],
-                                        dims[0],
-                                        1,
-                                        1);
-    }
-    case 4: {
-      Rect<4> rect = domain;
-      dims[0] = rect.hi[0] - rect.lo[0] + 1;
-      dims[1] = rect.hi[1] - rect.lo[1] + 1;
-      dims[2] = rect.hi[2] - rect.lo[2] + 1;
-      dims[3] = rect.hi[3] - rect.lo[3] + 1;
-      return cudnnSetTensor4dDescriptor(tensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        cudnn_data_type,
-                                        dims[3] * dims[2] * dims[1],
-                                        dims[0],
-                                        1,
-                                        1);
-    }
-    default:
-      assert(false && "Unsupported dim number");
-  }
-  return CUDNN_STATUS_BAD_PARAM;
 }
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
@@ -440,8 +370,3 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
-template __host__ void save_tensor<int32_t>(int32_t const *ptr,
-                                            size_t rect,
-                                            char const *file_name);

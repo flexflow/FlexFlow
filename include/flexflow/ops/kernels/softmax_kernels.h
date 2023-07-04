@@ -20,7 +20,6 @@ public:
 #endif
   bool profiling;
   int dim;
-  bool last_layer;
   char op_name[MAX_OPNAME];
 };
 
@@ -34,7 +33,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
 void backward_kernel_wrapper(SoftmaxMeta const *m,
                              float *input_grad_ptr,
                              float const *output_grad_ptr,
-                             float const *output_ptr,
                              size_t num_elements);
 
 namespace Internal {
@@ -42,10 +40,8 @@ void forward_kernel(SoftmaxMeta const *m,
                     float const *input_ptr,
                     float *output_ptr,
                     ffStream_t stream);
-void backward_kernel(SoftmaxMeta const *m,
-                     float *input_grad_ptr,
+void backward_kernel(float *input_grad_ptr,
                      float const *output_grad_ptr,
-                     float const *output_ptr,
                      size_t num_elements,
                      ffStream_t stream);
 } // namespace Internal

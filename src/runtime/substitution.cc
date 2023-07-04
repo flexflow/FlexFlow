@@ -1930,8 +1930,8 @@ void GraphSearchHelper::graph_optimize(
     }
   }
   best_graph->print_strategy_computation_graph(optimal.views);
-  // std::cout << "PCG:" << std::endl;
-  // best_graph->print_dot();
+  //std::cout << "PCG:" << std::endl; 
+  //best_graph->print_dot(); 
   optimal_views = real_optimal_views;
 }
 
@@ -3120,7 +3120,7 @@ void FFModel::graph_optimize(
     std::unordered_map<Node, MachineView> &optimal_views) {
   this->graph_search->graph_optimize(
       budget, only_data_parallel, best_graph, optimal_views);
-  best_graph->print_dot();
+    best_graph->print_dot();
 }
 
 bool FFModel::convert_graph_to_operators(
@@ -3221,8 +3221,7 @@ bool FFModel::convert_graph_to_operators(
       case OP_SOFTMAX: {
         assert(inList.size() == 1);
         Softmax *softmax = (Softmax *)node.ptr;
-        new_op = new Softmax(
-            *this, inputs[0], softmax->dim, softmax->last_layer, NULL);
+        new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
         break;
       }
       case OP_COMBINE: {

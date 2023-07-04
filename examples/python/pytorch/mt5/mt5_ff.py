@@ -64,8 +64,8 @@ def preprocess_train() -> None:
     y_shape = y.shape
     assert len(y.shape) == 2, \
         "`y` should have shape (num examples, sequence length)"
-    y_ids = np.empty((y_shape[0], y_shape[1] - 1), dtype=np.int32)
-    lm_labels = np.empty((y_shape[0], y_shape[1] - 1), dtype=np.int32)
+    y_ids = np.empty((y_shape[0], y_shape[1] - 1), dtype=np.long)
+    lm_labels = np.empty((y_shape[0], y_shape[1] - 1), dtype=np.long)
     y_ids[:, :] = y[:, :-1]
     lm_labels[:, :] = y[:, 1:]
 
@@ -89,29 +89,26 @@ def top_level_task():
     #model = BertModel.from_pretrained("bert-base-uncased")
     # Load train data as numpy arrays
     print("Loading data...")
-    ids = np.load(os.path.join(NUMPY_DIR, "train_input_ids.npy")).astype('int32')
+    ids = np.load(os.path.join(NUMPY_DIR, "train_input_ids.npy"))
     ids = np.pad(ids, ((0,0), (0,17)), 'constant')
     #ids = np.random.randint(0, 5, (1000, 512))
     #print('ids_shape', ids.shape)
     #print('ids', ids)
-    mask = np.load(os.path.join(NUMPY_DIR, "train_attention_mask.npy")).astype('int32')
+    mask = np.load(os.path.join(NUMPY_DIR, "train_attention_mask.npy"))
     mask = np.pad(mask, ((0,0), (0,17)), 'constant')
     #mask = np.random.randint(0, 2, (1000, 512))
     #y_ids = np.load(os.path.join(NUMPY_DIR, "train_y_ids.npy"))
-    lm_labels = np.load(os.path.join(NUMPY_DIR, "train_labels.npy")).astype('int32')
+    lm_labels = np.load(os.path.join(NUMPY_DIR, "train_labels.npy"))
     lm_labels = np.pad(lm_labels, ((0,0), (0,17)), 'constant')
     #lm_labels = np.random.randint(-1, 5, (1000, 512))
-    position_id = torch.arange(ids.shape[1], dtype=torch.int32).expand((1, -1)).numpy()
-    token_type_ids = torch.zeros(ids.shape[1], dtype=torch.int32).expand((1, -1)).numpy()
-
 
     batch_size = ffconfig.batch_size
     input_ids_shape = (batch_size, ids.shape[1])
     attention_mask_shape = (batch_size, mask.shape[1])
     #decoder_input_ids_shape = (batch_size, y_ids.shape[1])
     input_tensors = [
-        ffmodel.create_tensor(input_ids_shape, DataType.DT_INT32),          # input_ids
-        ffmodel.create_tensor(attention_mask_shape, DataType.DT_INT32),     # attention_mask
+        ffmodel.create_tensor(input_ids_shape, DataType.DT_INT64),          # input_ids
+        ffmodel.create_tensor(attention_mask_shape, DataType.DT_INT64),     # attention_mask
         #ffmodel.create_tensor(decoder_input_ids_shape, DataType.DT_INT64),  # decoder_input_ids
     ]
     encoder_seq_length = ids.shape[1]
@@ -129,7 +126,7 @@ def top_level_task():
     output_tensors = hf_model.torch_to_ff(ffmodel, input_tensors, verbose=True)
     #from flexflow.torch.model import file_to_ff
     #file_to_ff("mt5.ff", ffmodel, input_tensors)
-    ffoptimizer = AdamOptimizer(ffmodel, alpha=1e-4, beta1=0.9, beta2=0.98, weight_decay=0.0, epsilon=2e-8)
+    ffoptimizer = AdamOptimizer(ffmodel, alpha=1e-4, adam_beta1=0.9, adam_beta2=0.98, weight_decay=0.0, adam_epsilon=2e-8)
     # ffoptimizer = SGDOptimizer(ffmodel, lr=0.01)
 
     print("Compiling the model...")
@@ -141,9 +138,6 @@ def top_level_task():
             MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY,
         ],
     )
-    
-    # load weights here
-    ffmodel.load_bert_pretrained(checkpoint=model)
 
     print("Creating data loaders...")
     print('id_dtype', ids.dtype)
@@ -154,8 +148,6 @@ def top_level_task():
     #decoder_input_ids_dl = ffmodel.create_data_loader(input_tensors[2], y_ids)
     # NOTE: We cast down the label tensor data to 32-bit to accommodate the
     # label tensor's required dtype
-    token_type_ids_dl = ffmodel.create_data_loader(input_tensors[2], token_type_ids)
-    position_id_dl = ffmodel.create_data_loader(input_tensors[3], position_id)
     labels_dl = ffmodel.create_data_loader(
         ffmodel.label_tensor, lm_labels.astype("int32")
     )
@@ -167,7 +159,7 @@ def top_level_task():
     epochs = ffconfig.epochs
     ffmodel.fit(
         #x=[input_ids_dl, attention_mask_dl, decoder_input_ids_dl],
-        x=[input_ids_dl, attention_mask_dl, position_id_dl, token_type_ids_dl],
+        x=[input_ids_dl, attention_mask_dl],
         y=labels_dl, batch_size=batch_size, epochs=epochs,
     )
 

@@ -91,8 +91,8 @@ void Metrics::compute(FFModel *model,
                          false /*must*/,
                          0 /*mapper_id*/,
                          logit->machine_view.hash());
-  // std::cout << "logit shape: " << logit->get_shape() << std::endl;
-  // std::cout << "label shape: " << label->get_shape() << std::endl;
+  std::cout << "logit shape: " << logit->get_shape() << std::endl;
+  std::cout << "label shape: " << label->get_shape() << std::endl;
   launcher.add_region_requirement(RegionRequirement(
       logit->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, logit->region));
   launcher.add_field(0, FID_DATA);
@@ -157,7 +157,7 @@ PerfMetrics
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
     // Cannot measure categorical_crossentropy w/ sparse labels
     // Use measure_sparse_categorical_crossentropy instead
-    // std::cout << "num_classes: " << num_classes << std::endl;
+    std::cout << "num_classes: " << num_classes << std::endl;
     assert(!me->measure_categorical_crossentropy);
     Metrics::update_metrics_sparse_label_kernel_wrapper(acc_logit.ptr,
                                                         acc_label.ptr,

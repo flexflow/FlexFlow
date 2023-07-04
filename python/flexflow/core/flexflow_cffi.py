@@ -1595,7 +1595,7 @@ class FFModel(object):
     self.add_layer(OpType.FLAT, name)
     return Tensor(handle, owner_op_type=OpType.FLAT)
 
-  def softmax(self, input, axis=-1, last_layer=False, name=None):
+  def softmax(self, input, axis=-1, name=None):
     """Softmax activation function.
              
     :param input: the input Tensor.
@@ -1607,7 +1607,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, axis, last_layer, c_name)
+    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, axis, c_name)
     self.add_layer(OpType.SOFTMAX, name)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 
@@ -2041,25 +2041,6 @@ class FFModel(object):
       ff_tensor.set_tensor(self, np_tensor)
     print("Compiled ffmodel!")
 
-  def load_bert_pretrained(self, checkpoint=None):
-      # store weights in dict
-      weights_dict = {}
-      for name, params in checkpoint.named_parameters():
-           weights_dict[name.replace("LayerNorm", "layer_norm").replace(".", "_")] = params.detach().cpu().numpy()
-           print(name.replace("LayerNorm", "layer_norm").replace(".", "_")) 
-      # some weights not in params
-      weights_dict['cls_predictions_decoder_weight'] = checkpoint.cls.predictions.decoder.weight.detach().cpu().numpy()
-      weights_dict['cls_predictions_decoder_bias'] = checkpoint.cls.predictions.decoder.bias.detach().cpu().numpy()
-      for i in range (self._nb_layers):
-          layer = self._layers[i]
-          if (layer.name + "_weight") in weights_dict:
-                print('weight: ' + layer.name)
-                weight = layer.get_parameter_by_id(0);
-                weight.set_tensor(self, weights_dict[layer.name + "_weight"])
-          if (layer.name + "_bias") in weights_dict:
-                print('bias: ' + layer.name)
-                bias = layer.get_parameter_by_id(1);
-                bias.set_tensor(self, weights_dict[layer.name + "_bias"])
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     """Trains the model for a fixed number of epochs (iterations on a dataset).
              

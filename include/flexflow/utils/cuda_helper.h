@@ -132,15 +132,9 @@ __host__ void updateGAS(float *para_ptr,
 
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
-template <typename T>
-void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
-cudnnStatus_t
-    cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
-                                               Legion::Domain domain,
-                                               DataType data_type = DT_FLOAT);
 
 cudaDataType_t ff_to_cuda_datatype(DataType type);
 

@@ -52,10 +52,7 @@ SoftmaxParams Softmax::get_params() const {
   return params;
 }
 
-Tensor FFModel::softmax(const Tensor _input,
-                        int dim,
-                        bool last_layer,
-                        char const *name) {
+Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
   Layer *sm = new Layer(this,
                         OP_SOFTMAX,
                         DT_FLOAT,
@@ -72,8 +69,6 @@ Tensor FFModel::softmax(const Tensor _input,
   sm->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, DT_FLOAT, sm, 0, true /*create_grad*/);
   sm->add_int_property("softmax_dim", dim);
-
-  sm->add_int_property("last_layer", last_layer);
   layers.push_back(sm);
   return sm->outputs[0];
 }
@@ -85,19 +80,15 @@ Op *Softmax::create_operator_from_layer(
   long long value;
   layer->get_int_property("softmax_dim", value);
   int dim = (int)value;
-  layer->get_int_property("last_layer", value);
-  bool last_layer = (bool)value;
   return new Softmax(model,
                      inputs[0],
                      (inputs[0]->num_dims - 1 - dim) % inputs[0]->num_dims,
-                     last_layer,
                      layer->name);
 }
 
 Softmax::Softmax(FFModel &model,
                  const ParallelTensor _input,
                  int _dim,
-                 bool _last_layer,
                  char const *name)
     : Op(model,
          OP_SOFTMAX,
@@ -107,7 +98,7 @@ Softmax::Softmax(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          _input),
-      dim(_dim), last_layer(_last_layer) {
+      dim(_dim) {
   // Currently assume we always perform softmax along the inner most dim
   assert(dim == 0);
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -122,7 +113,7 @@ Softmax::Softmax(FFModel &model,
                  SoftmaxParams const &params,
                  const ParallelTensor input,
                  char const *name)
-    : Softmax(model, input, params.dim, params.last_layer, name) {}
+    : Softmax(model, input, params.dim, name) {}
 
 void Softmax::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -292,13 +283,6 @@ void Softmax::backward(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
-
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -331,8 +315,8 @@ void Softmax::backward_task_with_dim(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   // const Softmax* softmax = (Softmax*) task->args;
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   TensorAccessorW<float, NDIM> acc_input_grad(regions[0],
@@ -343,16 +327,11 @@ void Softmax::backward_task_with_dim(Task const *task,
                                               true /*readOutput*/);
   TensorAccessorR<float, NDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, NDIM> acc_output(
-      regions[2], task->regions[1], FID_DATA, ctx, runtime);
   // make sure the image indices match!
   assert(acc_input_grad.rect == acc_output_grad.rect);
 
-  backward_kernel_wrapper(m,
-                          acc_input_grad.ptr,
-                          acc_output_grad.ptr,
-                          acc_output.ptr,
-                          acc_input_grad.rect.volume());
+  backward_kernel_wrapper(
+      m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {
@@ -398,17 +377,11 @@ bool Softmax::measure_operator_cost(Simulator *sim,
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
-    float *output_ptr =
-        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     backward = [&] {
-      backward_kernel_wrapper(m,
-                              input_grad_ptr,
-                              output_grad_ptr,
-                              output_ptr,
-                              sub_output.get_volume());
+      backward_kernel_wrapper(
+          m, input_grad_ptr, output_grad_ptr, sub_output.get_volume());
     };
   }
 
@@ -440,7 +413,6 @@ size_t hash<FlexFlow::SoftmaxParams>::operator()(
     FlexFlow::SoftmaxParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.dim);
-  hash_combine(key, params.last_layer);
   return key;
 }
 }; // namespace std
