@@ -664,12 +664,13 @@ class LayerNormNode(ModuleNode):
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
-        axes = [len(input_tensor.dims) - 1]
+        axes = [0]
+        eps = self.module.eps
         return ffmodel.layer_norm(
             input=input_tensor,
             axes=axes,
             elementwise_affine=True,
-            eps=1e-6,
+            eps=eps,
             name=self.name,
         )
 
@@ -1197,16 +1198,24 @@ class ScalarSubNode(FunctionNode):
         input_tensor = node_to_output[data.innodes[0]]
         scalar = float(data.items[4])
         return ffmodel.scalar_sub(
-            input=input_tensor, scalar=scalar, name=name,
+            input=input_tensor, scalar=scalar, inplace=False, name=name,
         )
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor, scalar = \
             FunctionNode.parse_scalar_op(self, node_to_output)
-        return ffmodel.scalar_sub(
-            input=input_tensor, scalar=scalar, name=self.name,
-        )
-
+        if self.scalar_pos == FunctionNode.ScalarPosition.RIGHT:
+            return ffmodel.scalar_sub(
+                input=input_tensor, scalar=scalar, inplace=False, name=self.name,
+            )
+        else: 
+            negative_input = ffmodel.scalar_multiply(
+                input=input_tensor, scalar=-1, inplace=False, name=self.name + '_negative',
+            )
+            return ffmodel.scalar_sub(
+                input=negative_input, scalar=-scalar, inplace=False, name=self.name,
+            )
+        
 
 class ScalarTrueDivNode(FunctionNode):
     def __init__(self, node):
@@ -1231,15 +1240,16 @@ class ScalarTrueDivNode(FunctionNode):
         input_tensor = node_to_output[data.innodes[0]]
         scalar = float(data.items[4])
         return ffmodel.scalar_true_divide(
-            input=input_tensor, scalar=scalar, name=name,
+            input=input_tensor, scalar=scalar, inplace=False, name=name,
         )
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
         scalar = self.innodes[1]
         assert type(scalar) is float
+        
         return ffmodel.scalar_true_divide(
-            input=input_tensor, scalar=scalar, name=self.name,
+            input=input_tensor, scalar=scalar, inplace=False, name=self.name,
         )
 
 
@@ -1652,14 +1662,14 @@ class ScalarMulNode(FunctionNode):
         input_tensor = node_to_output[data.innodes[0]]
         scalar = float(data.items[4])
         return ffmodel.scalar_multiply(
-            input=input_tensor, scalar=scalar, name=name,
+            input=input_tensor, scalar=scalar, inplace=False, name=name,
         )
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor, scalar = \
             FunctionNode.parse_scalar_op(self, node_to_output)
         return ffmodel.scalar_multiply(
-            input=input_tensor, scalar=scalar, name=self.name,
+            input=input_tensor, scalar=scalar, inplace=False, name=self.name,
         )
 
 
@@ -2359,11 +2369,13 @@ class AttributeNode(Node):
             "since attributes require access to the PyTorch model"
         )
 
-    def to_ff(self, ffmodel, node_to_output):
-        return self.attr_to_ff_tensor(ffmodel)
+    def to_ff(self, ffmodel, node_to_output, input_tensors):
+        return self.attr_to_ff_tensor(ffmodel, input_tensors)
 
-    def attr_to_ff_tensor(self, ffmodel):
-        torch_tensor = self.attr
+    def attr_to_ff_tensor(self, ffmodel, input_tensors):
+
+
+        torch_tensor = self.attr       
         assert (torch_tensor.shape[0] == 1)
         batch_size = ffmodel._ffconfig.batch_size
         torch_tensor = np.repeat(torch_tensor, batch_size, axis=0)
@@ -2382,15 +2394,16 @@ class AttributeNode(Node):
             np_tensor = np_tensor.astype(np.float32)
 
         print('attr: ', torch_tensor.shape)
-        assert (torch_tensor.shape[0] == batch_size)
+        assert (torch_tensor.shape[0] == batch_size)        
         ff_tensor = ffmodel.create_tensor(
-            torch_tensor.shape, ff_dtype, requires_grad,
+            torch_tensor.shape, ff_dtype, True,
         )
         # delay set_tensor, add to ffmodel
         ffmodel.attr_tensors[ff_tensor] = np_tensor
         # ff_tensor.set_tensor(
         #     ffmodel, np_tensor
         # )
+        input_tensors.append(ff_tensor)
         return ff_tensor
 
 
@@ -2472,7 +2485,7 @@ class OutputNode(Node):
                     # `CrossEntropyLoss()` implementation
                     logits = node_to_output[other["logits"].name]
                     softmax_logits = ffmodel.softmax(
-                        input=logits, name=self.name,
+                        input=logits, last_layer=True, name=self.name,
                     )
                     output_tensors[:] += [softmax_logits]
             else:
@@ -2606,6 +2619,8 @@ class PyTorchModel():
             elif isinstance(node, OutputNode):
                 node.to_ff(ffmodel, node_to_output, output_tensors)
                 node_output = None
+            elif isinstance(node, AttributeNode):
+                node_output = node.to_ff(ffmodel, node_to_output, input_tensors)
             else:
                 node_output = node.to_ff(ffmodel, node_to_output)
 

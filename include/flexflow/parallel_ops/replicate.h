@@ -32,9 +32,9 @@ public:
   bool append_parallel_op_info(
       std::vector<ParallelOpInfo> &parallel_ops) const override;
   static void init_task(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime);
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -46,16 +46,17 @@ public:
 
   template <typename T>
   static void
-      forward_task_with_type(Legion::Task const *task, 
+      forward_task_with_type(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
 
   template <typename T>
-  static void backward_task_with_type(Legion::Task const *task, 
-                                      std::vector<Legion::PhysicalRegion> const &regions,
-                                      Legion::Context ctx, 
-                                      Legion::Runtime *runtime);
+  static void backward_task_with_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
 
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,

@@ -19,6 +19,7 @@
 namespace FlexFlow {
 
 float const LOG_MIN_VALUE = 0.00000001f;
+int const MASK_TOKEN = -100;
 
 __global__ void update_metrics_sparse_label_kernel(float const *logits,
                                                    int const *labels,
@@ -29,7 +30,7 @@ __global__ void update_metrics_sparse_label_kernel(float const *logits,
   CUDA_KERNEL_LOOP(b, num_samples) {
     if (metrics.measure_accuracy) {
       float max_val = -1.0f;
-      int my_label = 0; 
+      int my_label = 0;
       for (int i = 0; i < num_classes; i++) {
         float my_logit = logits[b * num_classes + i];
         if (my_logit > max_val) {
@@ -38,14 +39,19 @@ __global__ void update_metrics_sparse_label_kernel(float const *logits,
         }
       }
       assert(my_label >= 0);
-      atomicAdd(&(perf->train_all), 1);
-      if (labels[b] == my_label) {
-        atomicAdd(&(perf->train_correct), 1);
+      if (labels[b] != MASK_TOKEN) {
+        atomicAdd(&(perf->train_all), 1);
+        if (labels[b] == my_label) {
+          atomicAdd(&(perf->train_correct), 1);
+        }
       }
     }
     if (metrics.measure_sparse_categorical_crossentropy) {
-      float my_logit = max(logits[b * num_classes + labels[b]], LOG_MIN_VALUE);
-      atomicAdd(&(perf->sparse_cce_loss), -log(my_logit));
+      if (labels[b] != MASK_TOKEN) {
+        float my_logit =
+            max(logits[b * num_classes + labels[b]], LOG_MIN_VALUE);
+        atomicAdd(&(perf->sparse_cce_loss), -log(my_logit));
+      }
     }
     if (metrics.measure_mean_squared_error ||
         metrics.measure_root_mean_squared_error ||

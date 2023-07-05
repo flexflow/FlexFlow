@@ -49,6 +49,8 @@ void Loss::backward(FFModel *model,
   if (loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
     assert(logit->get_volume() == label->get_volume());
     scale_factor = 2.0f / logit->get_volume();
+  } else if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
+    scale_factor = 1.0f;
   } else {
     scale_factor = 1.0f / model->config.batchSize;
   }
@@ -131,9 +133,12 @@ void Loss::backward_task_with_dim(Task const *task,
         regions[2], task->regions[2], FID_DATA, ctx, runtime);
     // assertion the outter-most dim is replica dim and replica degree is 1
     assert(acc_logit.rect.hi[NDIM - 1] == acc_logit.rect.lo[NDIM - 1]);
-    int num_samples =
-        acc_logit.rect.hi[NDIM - 2] - acc_logit.rect.lo[NDIM - 2] + 1;
-    int num_classes = acc_logit.rect.volume() / num_samples;
+
+    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
+    int num_samples = acc_logit.rect.volume() / num_classes;
+    // int num_samples =
+    //     acc_logit.rect.hi[NDIM - 2] - acc_logit.rect.lo[NDIM - 2] + 1;
+    // int num_classes = acc_logit.rect.volume() / num_samples;
     assert(acc_logit_grad.rect == acc_logit.rect);
     int k = 1;
     if (loss->repl_labels) {
