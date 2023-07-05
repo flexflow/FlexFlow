@@ -30,6 +30,7 @@ target_link_libraries(
   invoke
   json
   any
+  cuda
 )
 define_ff_vars(${project_target})
 ff_set_cxx_properties(${project_target})
