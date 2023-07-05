@@ -7,9 +7,12 @@ skinparam defaultFontStyle bold
 skinparam arrowFontStyle bold
 skinparam responseMessageBelowArrow true
 skinparam sequenceMessageAlign left
+skinparam sequenceReferenceAlign left
+skinparam sequenceReferenceFontStyle bold
 
 participant U as "User"
 participant P as "./bindings/python"
+participant T as "torch"
 participant F as "./lib/ffi"
 participant G as "./lib/pcg"
 participant R as "./lib/runtime"
@@ -38,138 +41,196 @@ class NeuralNetwork(nn.Module):\l\
       logits = self.linear_relu_stack(x)\l\
       return logits\l\
 \l\
-if ~__name~__ == '~__main__':\l\
-  model = NeuralNetwork()\l\
-  \l\
+def top_level_task():\l\
+  model = NeuralNetwork()
+
+alt fx
+U->>P:\l\
   compiled_model = model.compile(\l\
     algorithm=...,\l\
     optimizer=...\l\
   )
 
-group tracing
+  P->>T:\
+from torch.fx import symbolic_trace\l\
+\l\
+symbolic_traced  = symbolic_trace(model)\l\
+
+  T->>T:\
+  model.forward(<tracing tensor>)
+
+  T->>P:\
+symbolic_traced : torch.fx.GraphModule
+
+  ref over P 
+    compiled_model = compilation(symbolic_traced) # see below 
+  end
+
+  P->>U:\
+    compiled_model: CompiledModel
+else dynamo
+  U->>T:\l\
+  compiled_model = torch.compile(\l\
+    model,\l\
+    backend='flexflow',\l\
+    options=dict(\l\
+      algorithm=...,\l\
+      optimizer=...\l\
+    )\l\
+  )
+
+  T->>P:\
+def flexflow_compiler(\l\
+  gm: torch.fx.GraphModule,\l\
+  example_inputs: List[torch.Tensor]):\l\
+  ...
+
+  ref over P 
+    compiled_model = compilation(gm) # see below 
+  end
+
+  P->>T: compiled_model: CompiledModel
+
+  T->>U:\
+  compiled_model: CompiledModel
+
+end
+
+group compilation [def compilation(g: torch.fx.GraphModule) -> CompiledModel]
+
+    ?-->P: g: torch.fx.GraphModule
+
+    P->>P:\
+  ff_model = flexflow.torch.from_fx(symbolic_traced)
+
+    group flexflow.torch.from_fx [def from_fx(g: torch.fx.GraphModule) -> ComputationGraph]
+      ?-->P: g: torch.fx.GraphModule
+
+      P->>F: flexflow_computation_graph_create(...)
+    
+      |||
+
+      F->>P:\
+    typedef struct {\l\
+      ComputationGraphBuilder *ptr;\l\
+    } flexflow_computation_graph_builder_t;
+
+      |||
+
+      P->>F: flexflow_computation_graph_add_op_flat(...)
+
+      F->>G:\
+    ComputationGraphBuilder::flat(...);
+
+      |||
+
+      G->>F:\
+    struct Tensor { ... };
+
+      F->>P:\
+    typedef struct {\l\
+      Tensor *ptr;\l\
+    } flexflow_tensor_t;
+
+
+      P->>F: flexflow_computation_graph_add_op_dense(...)
+
+      F->>G:\
+    ComputationGraphBuilder::dense(...);
+
+      |||
+
+      G->>F: Tensor
+
+      F->>P: flexflow_tensor_t
+
+      |||
+
+      P->>F: flexflow_computation_graph_add_op_relu(...)
+
+      F->>G:\
+    ComputationGraphbuilder::relu(...);
+
+      |||
+
+      G->>F: Tensor
+
+      F->>P: flexflow_tensor_t
+
+      note over P, G
+        ..., etc.
+      end note
+
+      ?<--P: comp_graph\l : ComputationGraph
+    end
+
+    |||
+
+  group compilation [def compilation(comp_graph: ComputationGraph) -> CompiledModel]
+
+  ?-->P: comp_graph\l : ComputationGraph
+
+  P->>F:\l\
+  flexflow_error_t\l\
+  flexflow_computation_graph_compile(\l\
+    flexflow_computation_graph_t,\l\
+    flexflow_optimizer_t,\l\
+    flexflow_compilation_algorithm_t,\l\
+    flexflow_model_compilation_result *out\l\
+  );
+
+  F->>R:\
+  ModelCompilationResult optimize(\l\
+    ComputationGraph const &,\l\
+    AlgorithmConfig const &\l\
+  );
+
+  R->>C:\
+  SearchResult optimize(\l\
+    ComputationGraph const &,\l\
+    MachineSpecification const &,\l\
+    CostEstimator const &,\l\
+    AlgorithmConfig const &\l\
+  );
 
   |||
 
-  note over P, G #FFAAAA
-    TODO: Move this to use torch dynamo tracing
-  end note
+  C->>R:\
+  struct SearchResult {\l\
+    ParallelComputationGraph pcg;\l\
+    TensorMapping tensor_mapping;\l\
+    SearchSolution solution;\l\
+    CostValues cost_values;\l\
+  };
 
-  P->>P:\
-  model.forward(<tracing tensor>)
-
-  P->>F: flexflow_computation_graph_create(...)
-
-	|||
-
-  F->>P:\
-typedef struct {\l\
-  ComputationGraphBuilder *ptr;\l\
-} flexflow_computation_graph_builder_t;
-
-	|||
-
-  P->>F: flexflow_computation_graph_add_op_flat(...)
-
-  F->>G:\
-ComputationGraphBuilder::flat(...);
-
-	|||
-
-  G->>F:\
-struct Tensor { ... };
+  R->>F:\
+  struct ModelCompilationResult {\l\
+    ComputationGraph computation_graph;\l\
+    ParallelComputationGraph pcg;\l\
+    TensorMapping tensor_mapping;\l\
+  };
 
   F->>P:\
-typedef struct {\l\
-  Tensor *ptr;\l\
-} flexflow_tensor_t;
+  typedef struct {\l\
+    ModelCompilationResult *ptr;\l\
+  } model_compilation_result_t;
 
+  |||
 
-  P->>F: flexflow_computation_graph_add_op_dense(...)
+  ?<--P: compiled_model\l : CompiledModel
+end
 
-	F->>G:\
-ComputationGraphBuilder::dense(...);
-
-	|||
-
-	G->>F: Tensor
-
-	F->>P: flexflow_tensor_t
-
-	|||
-
-	P->>F: flexflow_computation_graph_add_op_relu(...)
-
-	F->>G:\
-ComputationGraphbuilder::relu(...);
-
-	|||
-
-	G->>F: Tensor
-
-	F->>P: flexflow_tensor_t
-
-	|||
+?<--P: compiled_model : CompiledModel
 
 end
 
-|||
-
-group compilation
-
-P->>F:\l\
-flexflow_error_t\l\
-flexflow_computation_graph_compile(\l\
-  flexflow_computation_graph_t,\l\
-  flexflow_optimizer_t,\l\
-  flexflow_compilation_algorithm_t,\l\
-  flexflow_model_compilation_result *out\l\
-);
-
-F->>R:\
-ModelCompilationResult optimize(\l\
-  ComputationGraph const &,\l\
-  AlgorithmConfig const &\l\
-);
-
-R->>C:\
-SearchResult optimize(\l\
-  ComputationGraph const &,\l\
-  MachineSpecification const &,\l\
-  CostEstimator const &,\l\
-  AlgorithmConfig const &\l\
-);
 
 |||
-
-C->>R:\
-struct SearchResult {\l\
-  ParallelComputationGraph pcg;\l\
-  TensorMapping tensor_mapping;\l\
-  SearchSolution solution;\l\
-  CostValues cost_values;\l\
-};
-
-R->>F:\
-struct ModelCompilationResult {\l\
-  ComputationGraph computation_graph;\l\
-  ParallelComputationGraph pcg;\l\
-  TensorMapping tensor_mapping;\l\
-};
-
-F->>P:\
-typedef struct {\l\
-  ModelCompilationResult *ptr;\l\
-} model_compilation_result_t;
-
 |||
+
+group serialization
 
 end
-
-P->>U: compiled_model: CompiledModel
-
-
-|||
-|||
 
 loop 
 
