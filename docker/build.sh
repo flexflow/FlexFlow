@@ -14,13 +14,14 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "$SCRIPT_DIR/.."
 
+####### Add flag to solve the issue 
 # Extract CUDA Version
 DefaultCuda=$(nvcc --version | grep "release" | awk '{print $NF}')
 # Change DefaultCuda eg. V11.7.99 to 11.7
 DefaultCuda=${DefaultCuda:1:4}
 CUDAVersion="${2:-DefaultCuda}"
 if [[ -n "$CUDAVersion" ]]; then
-  # echo the CUDA version that will be built 
+  ### validate the verison of CUDA against a list of supported ones
   # input cuda version will be modified to 11.7.0 to build the image 
   CUDAVersion="$CUDAVersion.0"
   echo "CUDA version: $CUDAVersion"
