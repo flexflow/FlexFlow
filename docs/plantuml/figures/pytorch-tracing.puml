@@ -12,6 +12,7 @@ title __**Potential PyTorch Tracing Interface**__
 !$runtimeBacking = "RuntimeBacking"
 !$legion = "legion"
 !$participantBGColor = "#FFFFFF"
+!$codeColor = "#F0F6FF"
 
 skinparam defaultFontName Courier
 skinparam defaultFontStyle bold
@@ -90,6 +91,51 @@ participant L as "$legion"
   !endif
   |||
 !endprocedure
+
+
+
+rnote across $codeColor
+
+Example source code (adapted from [[https://pytorch.org/tutorials/beginner/basics/optimization_tutorial.html the pytorch tutorial]])
+
+ 1 import flexflow.torch as torch
+ 2 import flexflow.torch.nn as nn
+ 3 
+ 4 class NeuralNetwork(nn.Module):
+ 5   def ~__init__(self):
+ 6     super(NeuralNetwork, self).~__init__()
+ 7     self.flatten = nn.Flatten()
+ 8     self.linear_relu_stack = nn.Sequential(
+ 9       nn.Linear(28*28, 512),
+10       nn.ReLU(),
+11       nn.Linear(512, 512),
+12       nn.ReLU(),
+13       nn.Linear(512, 10),
+14     )
+15     
+16     def forward(self, x):
+17       x = self.flatten(x)
+18       logits = self.linear_relu_stack(x)
+19       return logits
+20 
+21 def top_level_task():
+22   model = NeuralNetwork()
+23 
+24   dataloader = ...
+25 
+26   for batch_id, (X, y) in enumerate(dataloader):
+27     pred = compiled_model(X)
+28     loss = loss_fn(pred, y)
+29     loss.backward()
+30     optimizer.step()
+31     optimizer.zero_grad()
+32     
+33     if batch_id % 100 == 0:
+34       loss, current = loss.item(), (batch_num + 1) * len(X)
+35       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+
+end note
+
 
 U->>P:\
 import flexflow.torch as torch\l\
@@ -307,14 +353,59 @@ end
 
 $remind_participants()
 
-
 group serialization
-
-  
 
 end
 
-loop 
+$remind_participants()
+
+== Training Starts ==
+
+rnote across $codeColor
+
+...
+26   for batch_id, (X, y) in enumerate(dataloader):
+27     pred = compiled_model(X)
+28     loss = loss_fn(pred, y)
+29     loss.backward()
+30     optimizer.step()
+31     optimizer.zero_grad()
+32     
+33     if batch_id % 100 == 0:
+34       loss, current = loss.item(), (batch_num + 1) * len(X)
+35       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+...
+
+end note
+
+loop training loop
+
+  $remind_participants()
+
+  opt reading tensor elements
+      U->>P: get_tensor
+      P->>F:
+      F->>R:
+      R->>B:
+      R->>F:
+      F->>P:
+      P->>U:
+  end
+
+  $remind_participants()
+
+  opt writing to tensor elements
+      U->>P: set_tensor
+      P->>F:
+      F->>R: 
+      R->>B:
+      B->>R:
+      R->>F:
+      F->>P:
+      P->>U:
+  end
+
+  $remind_participants()
 
   group fwd
 
@@ -378,6 +469,18 @@ loss: LossTensor
 
   end
 
+  $remind_participants()
+
+  ref over U, L
+    [optional] reading tensor elements
+  end
+
+  ref over U, L
+    [optional] writing to tensor elements
+  end
+
+  $remind_participants()
+
   group bwd
 
   U->>P:\
@@ -401,7 +504,21 @@ flexflow_model_training_instance_backward(\l\
 
   end
 
+  $remind_participants()
+
+  ref over U, L
+    [optional] reading tensor elements
+  end
+
+  ref over U, L
+    [optional] writing to tensor elements
+  end
+
+  $remind_participants()
+
   group update
+
+  $remind_participants()
 
   U->>P:\
 optimizer.step()
@@ -425,6 +542,10 @@ flexflow_model_training_instance_update(\l\
   end
 end
 
+$remind_participants()
+
+== Training Stops ==
+
 P->>F:\
 flexflow_error_t\l\
 flexflow_stop_training(\l\
@@ -432,24 +553,5 @@ flexflow_stop_training(\l\
 );
 
 
-opt Reading tensor elements
-    U->>P: get_tensor
-    P->>F:
-    F->>R:
-    R->>B:
-    R->>F:
-    F->>P:
-    P->>U:
-end
-opt Writing to tensor elements
-    U->>P: set_tensor
-    P->>F:
-    F->>R: 
-    R->>B:
-    B->>R:
-    R->>F:
-    F->>P:
-    P->>U:
-end
 
 @enduml
