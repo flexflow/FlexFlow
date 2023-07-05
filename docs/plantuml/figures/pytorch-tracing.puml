@@ -2,6 +2,17 @@
 
 title __**Potential PyTorch Tracing Interface**__
 
+!$user = "User"
+!$python = "./bindings/python"
+!$torch = "torch"
+!$ffi = "./lib/ffi"
+!$pcg = "./lib/pcg"
+!$runtime = "./lib/runtime"
+!$compiler = "./lib/compiler"
+!$runtimeBacking = "RuntimeBacking"
+!$legion = "legion"
+!$participantBGColor = "#FFFFFF"
+
 skinparam defaultFontName Courier
 skinparam defaultFontStyle bold
 skinparam arrowFontStyle bold
@@ -9,15 +20,76 @@ skinparam responseMessageBelowArrow true
 skinparam sequenceMessageAlign left
 skinparam sequenceReferenceAlign left
 skinparam sequenceReferenceFontStyle bold
+skinparam participantBackgroundColor #F0F0F0
 
-participant U as "User"
-participant P as "./bindings/python"
-participant T as "torch"
-participant F as "./lib/ffi"
-participant G as "./lib/pcg"
-participant R as "./lib/runtime"
-participant C as "./lib/compiler"
-participant I as "ModelTrainingInstance"
+participant U as "$user"
+participant P as "$python"
+participant T as "$torch"
+participant F as "$ffi"
+participant G as "$pcg"
+participant R as "$runtime"
+participant C as "$compiler"
+participant B as "$runtimeBacking"
+participant L as "$legion"
+
+!function $get_idx($participant)
+  !if ($participant == "$user")
+    !return 0
+  !elseif ($participant == "$python")
+    !return 1
+  !elseif ($participant == "$torch")
+    !return 2
+  !elseif ($participant == "$ffi")
+    !return 3
+  !elseif ($participant == "$pcg")
+    !return 4
+  !elseif ($participant == "$runtime")
+    !return 5
+  !elseif ($participant == "$compiler")
+    !return 6
+  !elseif ($participant == "$runtimeBacking")
+    !return 7
+  !elseif ($participant == "$legion")
+    !return 8
+  !endif
+!endfunction
+
+!procedure $remind_participants($start="$user", $end="$legion")
+  |||
+  !$start_idx = $get_idx($start)
+  !$end_idx = $get_idx($end) + 1
+  !log start_idx is $start_idx, end_idx is $end_idx
+  !if ($start_idx <= 0 && $end_idx > 0)
+    !log User
+    rnote over U $participantBGColor: $user
+  !endif
+  !if ($start_idx <= 1 && $end_idx > 1)
+    /rnote over P $participantBGColor: $python
+  !endif
+  !if ($start_idx <= 2 && $end_idx > 2)
+    /rnote over T $participantBGColor: $torch
+  !endif
+  !if ($start_idx <= 3 && $end_idx > 3)
+    /rnote over F $participantBGColor: $ffi
+  !endif
+  !if ($start_idx <= 4 && $end_idx > 4)
+    /rnote over G $participantBGColor: $pcg
+  !endif
+  !if ($start_idx <= 5 && $end_idx > 5)
+    /rnote over R $participantBGColor: $runtime
+  !endif
+  !if ($start_idx <= 6 && $end_idx > 6)
+    /rnote over C $participantBGColor: $compiler
+  !endif
+  !if ($start_idx <= 7 && $end_idx > 7)
+    /rnote over B $participantBGColor: $runtimeBacking
+  !endif
+  !if ($start_idx <= 8 && $end_idx > 8)
+    !log Legion
+    /rnote over L $participantBGColor: $legion
+  !endif
+  |||
+!endprocedure
 
 U->>P:\
 import flexflow.torch as torch\l\
@@ -43,6 +115,8 @@ class NeuralNetwork(nn.Module):\l\
 \l\
 def top_level_task():\l\
   model = NeuralNetwork()
+
+$remind_participants()
 
 alt fx
 U->>P:\l\
@@ -82,8 +156,8 @@ else dynamo
   T->>P:\
 def flexflow_compiler(\l\
   gm: torch.fx.GraphModule,\l\
-  example_inputs: List[torch.Tensor]):\l\
-  ...
+  example_inputs: List[torch.Tensor])\l\
+    -> CompiledModel
 
   ref over P 
     compiled_model = compilation(gm) # see below 
@@ -96,6 +170,8 @@ def flexflow_compiler(\l\
 
 end
 
+$remind_participants()
+
 group compilation [def compilation(g: torch.fx.GraphModule) -> CompiledModel]
 
     ?-->P: g: torch.fx.GraphModule
@@ -104,6 +180,8 @@ group compilation [def compilation(g: torch.fx.GraphModule) -> CompiledModel]
   ff_model = flexflow.torch.from_fx(symbolic_traced)
 
     group flexflow.torch.from_fx [def from_fx(g: torch.fx.GraphModule) -> ComputationGraph]
+      $remind_participants("$python", "$pcg")
+
       ?-->P: g: torch.fx.GraphModule
 
       P->>F: flexflow_computation_graph_create(...)
@@ -166,7 +244,9 @@ group compilation [def compilation(g: torch.fx.GraphModule) -> CompiledModel]
 
     |||
 
-  group compilation [def compilation(comp_graph: ComputationGraph) -> CompiledModel]
+  group optimization [def optimization(comp_graph: ComputationGraph) -> CompiledModel]
+
+  $remind_participants("$python", "$compiler")
 
   ?-->P: comp_graph\l : ComputationGraph
 
@@ -225,10 +305,12 @@ end
 end
 
 
-|||
-|||
+$remind_participants()
+
 
 group serialization
+
+  
 
 end
 
@@ -274,13 +356,18 @@ flexflow_model_training_instance_forward(\l\
 );
 
     F->>R:\
-forward(\l\
-  ModelTrainingInstance const &\l\
-);
+forward(ModelTrainingInstance const &);
 
-    R->>I:
+    loop
+      R->>B:\
+    execute(OpTaskInvocation const &);
 
-    I->>R:
+      B->>L:\
+IndexLauncher launcher;\l\
+...\l\
+runtime->execute_index_space(ctx, launcher);\l\
+    end
+  end
 
     R->>F:
 
@@ -304,9 +391,9 @@ flexflow_model_training_instance_backward(\l\
 
   F->>R:\
 
-  R->>I:
+  R->>B:
 
-  I->>R:
+  B->>R:
 
   R->>F:
 
@@ -327,9 +414,9 @@ flexflow_model_training_instance_update(\l\
 
   F->>R:
 
-  R->>I:
+  R->>B:
 
-  I->>R:
+  B->>R:
 
   R->>F:
 
@@ -349,7 +436,7 @@ opt Reading tensor elements
     U->>P: get_tensor
     P->>F:
     F->>R:
-    R->>I:
+    R->>B:
     R->>F:
     F->>P:
     P->>U:
@@ -358,8 +445,8 @@ opt Writing to tensor elements
     U->>P: set_tensor
     P->>F:
     F->>R: 
-    R->>I:
-    I->>R:
+    R->>B:
+    B->>R:
     R->>F:
     F->>P:
     P->>U:
