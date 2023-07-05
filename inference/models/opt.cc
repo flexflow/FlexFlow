@@ -23,7 +23,6 @@ void OPT::create_opt_model(FFModel &ff,
                            InferenceManager &im,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
-                           int num_pipeline_stages,
                            InferenceMode mode,
                            bool use_full_precision) {
   Config opt_config(model_config_file_path);

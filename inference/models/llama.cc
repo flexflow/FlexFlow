@@ -23,7 +23,6 @@ void LLAMA::create_llama_model(FFModel &ff,
                                InferenceManager &im,
                                std::string const &model_config_file_path,
                                std::string const &weight_file_path,
-                               int num_pipeline_stages,
                                InferenceMode mode,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
@@ -95,11 +94,6 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
-
-  // int num_transformer_layers = llama_config.n_layers;
-  // int num_transformer_layers_per_stage =
-  //     (num_transformer_layers + num_pipeline_stages - 1) /
-  //     num_pipeline_stages;
 
   for (int i = 0; i < num_transformer_layers; i++) {
     // set transformer layer id

@@ -154,8 +154,8 @@ void FlexFlow::top_level_task(Task const *task,
   bool use_full_precision = false;
   bool verbose = false;
   size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
-  int data_parallelism_degree = 1, tensor_parallelism_degree = 1;
-  int pipeline_parallelism_degree = num_devices / (data_parallelism_degree*tensor_parallelism_degree);
+  int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
+      pipeline_parallelism_degree = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -212,8 +212,6 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
-                              ffconfig.workersPerNode * ffconfig.numNodes /
-                                  tensor_parallelism_degree,
                               TREE_VERIFY_MODE,
                               use_full_precision);
   } else if (model_types.llm_model_type == ModelType::OPT) {
@@ -221,8 +219,6 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
-                          ffconfig.workersPerNode * ffconfig.numNodes /
-                              tensor_parallelism_degree,
                           TREE_VERIFY_MODE,
                           use_full_precision);
   } else {
@@ -233,8 +229,11 @@ void FlexFlow::top_level_task(Task const *task,
   int num_ssms = model_types.ssm_model_types.size();
   std::vector<int> ssm_model_ids;
   std::vector<FFModel> ssm_models;
+  FFConfig bm_config = ffconfig;
+  bm_config.data_parallelism_degree = bm_config.tensor_parallelism_degree =
+      bm_config.pipeline_parallelism_degree = 1;
   for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
-    FFModel beam_model(ffconfig);
+    FFModel beam_model(bm_config);
     ssm_models.push_back(beam_model);
   }
 
@@ -245,7 +244,6 @@ void FlexFlow::top_level_task(Task const *task,
                                 im,
                                 file_paths.ssm_config_file_paths[ssm_id],
                                 file_paths.ssm_weight_file_paths[ssm_id],
-                                1,
                                 BEAM_SEARCH_MODE,
                                 use_full_precision);
     } else if (model_types.ssm_model_types[ssm_id] == ModelType::OPT) {
@@ -253,7 +251,6 @@ void FlexFlow::top_level_task(Task const *task,
                             im,
                             file_paths.ssm_config_file_paths[ssm_id],
                             file_paths.ssm_weight_file_paths[ssm_id],
-                            1,
                             BEAM_SEARCH_MODE,
                             use_full_precision);
     } else {

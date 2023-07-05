@@ -1974,9 +1974,9 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
       // Currently assume a 1D machine view is needed
       assert(model->config.data_parallelism_degree == 1 ||
              model->config.tensor_parallelism_degree == 1);
-      int degree = model->config.data_parallelism_degree *
-                   model->config.tensor_parallelism_degree;
-      int num_transformer_layers_per_stage =
+      degree = model->config.data_parallelism_degree *
+               model->config.tensor_parallelism_degree;
+      num_transformer_layers_per_stage =
           model->current_transformer_layer_id /
               model->config.pipeline_parallelism_degree +
           1;

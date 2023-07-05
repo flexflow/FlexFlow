@@ -216,33 +216,39 @@ LayerNorm::LayerNorm(FFModel &model,
   for (int i = 0; i < axes.size(); i++) {
     M *= inputs[0]->dims[axes[i]].size;
   }
+  int num_replicas = 1;
+  for (int i = 0; i < inputs[0]->num_dims; i++) {
+    if (inputs[0]->dims[i].is_replica_dim) {
+      num_replicas *= inputs[0]->dims[i].size;
+    }
+  }
   effective_num_elements = M;
-  effective_batch_size = inputs[0]->get_volume() / M;
+  effective_batch_size = (inputs[0]->get_volume() / num_replicas) / M;
   assert(elementwise_affine == (numWeights == 2));
   if (numWeights > 0 && allocate_weights) {
-    ParallelDim dims[axes.size()];
-    for (int i = 0; i < axes.size(); i++) {
-      dims[i] = inputs[0]->dims[i];
+    ParallelTensorShape beta_gamma_shape = _input->get_shape();
+    for (int i = axes.size(); i < beta_gamma_shape.num_dims - 1; i++) {
+      beta_gamma_shape.dims[i].size = 1;
     }
     int seed = std::rand();
     Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
     Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
-    weights[0] =
-        model.create_parallel_weight_legion_ordering(axes.size(),
-                                                     dims,
-                                                     _input->data_type,
-                                                     NULL /*owner_op*/,
-                                                     true /*create_grad*/,
-                                                     gamma_initializer,
-                                                     CHOSEN_SYNC_TYPE);
-    weights[1] =
-        model.create_parallel_weight_legion_ordering(axes.size(),
-                                                     dims,
-                                                     _input->data_type,
-                                                     NULL /*owner_op*/,
-                                                     true /*create_grad*/,
-                                                     beta_initializer,
-                                                     CHOSEN_SYNC_TYPE);
+    weights[0] = model.create_parallel_weight_legion_ordering(
+        beta_gamma_shape.num_dims, // axes.size(),
+        beta_gamma_shape.dims,
+        _input->data_type,
+        NULL /*owner_op*/,
+        true /*create_grad*/,
+        gamma_initializer,
+        CHOSEN_SYNC_TYPE);
+    weights[1] = model.create_parallel_weight_legion_ordering(
+        beta_gamma_shape.num_dims, //.size(),
+        beta_gamma_shape.dims,
+        _input->data_type,
+        NULL /*owner_op*/,
+        true /*create_grad*/,
+        beta_initializer,
+        CHOSEN_SYNC_TYPE);
   }
 }
 
@@ -497,10 +503,14 @@ void LayerNorm::forward_task(Task const *task,
     assert(gamma_domain == beta_domain);
     assert(gamma_domain.get_volume() == m->effective_num_elements);
     int numdims = gamma_domain.get_dim();
-    for (int i = 0; i < numdims; i++) {
+    size_t vol = 1;
+    int i = 0;
+    while (vol < gamma_domain.get_volume()) {
       int g_d = gamma_domain.hi()[i] - gamma_domain.lo()[i] + 1;
       int in_d = in_domain.hi()[i] - in_domain.lo()[i] + 1;
       assert(g_d == in_d);
+      vol *= g_d;
+      i++;
     }
   } else {
     assert(regions.size() == 2);

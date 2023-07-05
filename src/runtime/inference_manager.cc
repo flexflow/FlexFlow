@@ -54,6 +54,7 @@ InferenceManager::InferenceManager(FFConfig const &_config,
              num_devices &&
          "Product of data, tensor, and pipeline parallelism degrees does not "
          "match the number of available devices");
+  // Deprecated logic below
   // populate array of valid single-device machine views
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
@@ -104,6 +105,13 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
   Runtime *runtime = model->config.lg_hlr;
 
   // std::cout << std::endl << std::endl << "Operators MVs:" << std::endl;
+  int num_transformer_layers_per_stage =
+      model->current_transformer_layer_id /
+          model->config.pipeline_parallelism_degree +
+      1;
+  int degree = model->config.data_parallelism_degree *
+               model->config.tensor_parallelism_degree;
+
   for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
     Op const *op = model->operators[op_idx];
     // Skip weight operators
@@ -112,17 +120,33 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
     }
     // Get machine views
     std::vector<MachineView> machine_views;
-    for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
+    for (int j = 0; j < model->config.data_parallelism_degree; j++) {
       MachineView mv;
       mv.device_type == MachineView::GPU;
       mv.ndims = 1;
-      mv.start_device_id = 0;
+      // mv.start_device_id = 0;
       mv.stride[0] = 1;
       int parallel_degree = 1;
       for (int k = 0; k < op->outputs[0]->num_dims; k++) {
         parallel_degree *= op->outputs[0]->dims[k].degree;
       }
       mv.dim[0] = parallel_degree;
+      LayerID layer_guid = op->layer_guid;
+      if (op->op_type == OP_INPUT) {
+        // All inputs are assigned to the first stage
+        layer_guid.transformer_layer_id = 0;
+      } else if (layer_guid == LayerID::NO_ID) {
+        Op const *op_with_guid = op;
+        // Assert that we only have a single input
+        while (op_with_guid->layer_guid == LayerID::NO_ID) {
+          assert(op_with_guid->numInputs == 1);
+          op_with_guid = op_with_guid->inputs[0]->owner_op;
+          assert(op_with_guid != nullptr);
+        }
+        layer_guid = op_with_guid->layer_guid;
+      }
+      mv.start_device_id = degree * (layer_guid.transformer_layer_id /
+                                     num_transformer_layers_per_stage);
       assert(mv == op->outputs[0]->machine_view);
       machine_views.push_back(mv);
     }
@@ -192,7 +216,7 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
         }
       }
       if (!found_parallel_tensor) {
-        for (int j = 0; j < ff_config.data_parallelism_degree; j++) {
+        for (int j = 0; j < model->config.data_parallelism_degree; j++) {
           // Copy the metadata from pt_base to pt
           ParallelTensor pt = new ParallelTensorBase(*pt_base);
           pt->region =
@@ -217,7 +241,7 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
 }
 
 void InferenceManager::init_operators_inference(FFModel *model) {
-  for (int batch_index = 0; batch_index < ff_config.data_parallelism_degree;
+  for (int batch_index = 0; batch_index < model->config.data_parallelism_degree;
        batch_index++) {
     int expert_device_index = 0;
     int device_index = batch_index % num_devices;
@@ -273,7 +297,7 @@ FutureMap InferenceManager::inference(FFModel *model,
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
-  int batch_index = index % ff_config.data_parallelism_degree;
+  int batch_index = index % model->config.data_parallelism_degree;
   FutureMap fm;
   bool found_input_operator = false;
   for (size_t o = 0; o < model->operators.size(); o++) {
