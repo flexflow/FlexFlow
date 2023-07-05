@@ -3834,7 +3834,7 @@ FFConfig::FFConfig() {
   }
   // Use Real::Machine::get_address_space_count() to obtain the number of nodes
   numNodes = Realm::Machine::get_machine().get_address_space_count();
-  data_parallelism_degree = numNodes;
+  data_parallelism_degree = 1;
   tensor_parallelism_degree = 1;
   pipeline_parallelism_degree = 1;
 
