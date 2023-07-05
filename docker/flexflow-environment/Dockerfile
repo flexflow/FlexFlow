@@ -1,6 +1,6 @@
-ARG CUDAVersion 
+ARG cuda_version 
 
-FROM nvidia/cuda:${CUDAVersion}-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:${cuda_version}-cudnn8-devel-ubuntu20.04
 
 LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow environment container"
