@@ -33,6 +33,7 @@
 #include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
+#include "flexflow/ops/layer_norm.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -360,7 +361,8 @@ __host__ void FusedOp::forward_task(Task const *task,
                  my_input_accessor[0].domain.get_volume());
         }
 
-        assert(my_input_accessor[0].data_type == DT_INT64);
+        assert(my_input_accessor[0].data_type == DT_INT32 ||
+               my_input_accessor[0].data_type == DT_INT64);
         Kernels::Embedding::forward_kernel_wrapper(m,
                                                    my_input_accessor[0],
                                                    my_output_accessor[0],
@@ -729,7 +731,8 @@ __host__ void
                  my_input_accessor[0].domain.get_volume());
         }
 
-        assert(my_input_accessor[0].data_type == DT_INT64);
+        assert(my_input_accessor[0].data_type == DT_INT32 ||
+               my_input_accessor[0].data_type == DT_INT64);
         Kernels::Embedding::forward_kernel_wrapper(m,
                                                    my_input_accessor[0],
                                                    my_output_accessor[0],
@@ -795,6 +798,20 @@ __host__ void
             my_weight_accessor[0],
             my_output_accessor[0],
             biases);
+        break;
+      }
+      case OP_LAYERNORM: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
+        assert(fused->op_num_weights[op] == 2 * (int)(m->elementwise_affine));
+        GenericTensorAccessorR gamma, beta;
+        if (m->elementwise_affine) {
+          gamma = my_weight_accessor[0];
+          beta = my_weight_accessor[1];
+        }
+        LayerNorm::forward_kernel_wrapper(
+            m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
         break;
       }
       case OP_ALLREDUCE: {

@@ -100,6 +100,7 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   op_num_outputs[0] = op->numOutputs;
   op_op_type[0] = op->op_type;
   operators[0] = op;
+  layer_guid = op->layer_guid;
   // for (int i = 0; i < numInputs; i++) {
   //   op_input_source[i] = SOURCE_INPUT;
   //   op_input_idx[i] = i;

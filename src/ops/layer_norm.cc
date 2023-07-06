@@ -389,13 +389,13 @@ void LayerNorm::forward(FFModel const &ff) {
   if (elementwise_affine) {
     launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[0]->region));
     launcher.add_field(2, FID_DATA);
     launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[1]->region));
     launcher.add_field(3, FID_DATA);
@@ -440,13 +440,13 @@ FutureMap LayerNorm::inference(FFModel const &ff,
   if (elementwise_affine) {
     launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[0]->region));
     launcher.add_field(2, FID_DATA);
     launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[1]->region));
     launcher.add_field(3, FID_DATA);
@@ -468,8 +468,8 @@ void LayerNorm::forward_task(Task const *task,
   assert(task->regions.size() == regions.size());
   float const *in_ptr = NULL;
   float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
-  GenericTensorAccessorR in;
-  GenericTensorAccessorW out, gamma, beta;
+  GenericTensorAccessorR in, gamma, beta;
+  GenericTensorAccessorW out;
 
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -492,13 +492,13 @@ void LayerNorm::forward_task(Task const *task,
         ctx, task->regions[2].region.get_index_space());
     // gamma_ptr = helperGetTensorPointerRW<float>(
     //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    gamma = helperGetGenericTensorAccessorRW(
+    gamma = helperGetGenericTensorAccessorRO(
         m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
     Domain beta_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
     // beta_ptr = helperGetTensorPointerRW<float>(
     //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    beta = helperGetGenericTensorAccessorRW(
+    beta = helperGetGenericTensorAccessorRO(
         m->input_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(gamma_domain == beta_domain);
     assert(gamma_domain.get_volume() == m->effective_num_elements);
