@@ -36,4 +36,4 @@ define_ff_vars(${project_target})
 ff_set_cxx_properties(${project_target})
 
 add_subdirectory(ffi)
-# add_subdirectory(test)
+add_subdirectory(test)

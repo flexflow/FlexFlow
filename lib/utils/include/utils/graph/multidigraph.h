@@ -34,6 +34,9 @@ struct MultiDiEdge {
   Node src, dst;
   NodePort srcIdx, dstIdx;
 };
+
+
+
 FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
 
 

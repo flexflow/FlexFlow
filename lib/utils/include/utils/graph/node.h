@@ -80,6 +80,7 @@ static_assert(is_rc_copy_virtual_compliant<IGraphView>::value,
 
 struct IGraph : IGraphView {
   IGraph(IGraph const &) = delete;
+  IGraph()=default;
   IGraph &operator=(IGraph const &) = delete;
 
   virtual Node add_node() = 0;

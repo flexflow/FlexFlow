@@ -525,11 +525,16 @@ std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
 }
 
 template <typename T, typename F>
-void inplace_sorted_by(std::vector<T> &v, F const &f) {
-  struct {
-    bool operator()(T const &lhs, T const &rhs) { return f(lhs, rhs); }
-  } custom_comparator;
-  
+void inplace_sorted_by(std::vector<T>& v, F const& f) {
+  struct CustomComparator {
+    F const& f;
+
+    bool operator()(T const& lhs, T const& rhs) {
+      return f(lhs, rhs);
+    }
+  };
+
+  CustomComparator custom_comparator{f};
   std::sort(v.begin(), v.end(), custom_comparator);
 }
 
