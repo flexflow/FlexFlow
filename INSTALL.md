@@ -90,11 +90,11 @@ To run the Python examples, you have two options: you can use the `flexflow_pyth
 * `export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python"`
 * `export FF_USE_NATIVE_PYTHON=1`
 
-**We recommend that you run the `mnist_mlp` test under `native` using the following cmd to check if FlexFlow has been installed correctly:**
+**We recommend that you run the** `mnist_mlp` **test under** `native` **using the following cmd to check if FlexFlow has been installed correctly:**
 
 ```
-cd python
-./flexflow_python examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
+cd "$FF_HOME"
+./python/flexflow_python examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
 ```
 A script to run all the Python examples is available at `tests/multi_gpu_tests.sh`
 

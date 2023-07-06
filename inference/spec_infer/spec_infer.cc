@@ -303,16 +303,15 @@ void FlexFlow::top_level_task(Task const *task,
 
     for (int i = 0; i < num_ssms; i++) {
       while (true) {
-        depth = beam_bc_vec[i].current_depth_all_requests();
+        beam_bc = beam_bc_vec[i];
+        depth = beam_bc.beamRequestsInfo[0].current_depth;
 
         FutureMap fm = im.inference(rm.get_model(0), 0, beam_bc_vec[i]);
         assert(fm.get_future_map_domain().get_volume() == 1);
         Future future = fm.get_future(0);
         BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
 
-        if (depth - 1 >= beam_bc_vec[i].max_beam_depth_all_requests() ||
-            depth + 1 + rm.get_requests_init_length(beam_bc_vec[i]) >=
-                BatchConfig::MAX_NUM_TOKENS) {
+        if (depth - 1 >= BeamSearchBatchConfig::MAX_BEAM_DEPTH) {
           break;
         } else {
           beam_bc_vec[i] = rm.prepare_next_batch_beam(beam_bc_vec[i], beam_ir);

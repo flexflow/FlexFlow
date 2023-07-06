@@ -128,7 +128,6 @@ public:
           &inputSerializedTree,
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
-  int get_requests_init_length(BeamSearchBatchConfig const &old_bc);
 
   static void
       load_tokens_task(Legion::Task const *task,
