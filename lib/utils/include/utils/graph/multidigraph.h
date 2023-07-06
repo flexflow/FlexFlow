@@ -4,7 +4,6 @@
 #include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
-#include "utils/maybe_owned_ref.h"
 #include "utils/type_traits.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
@@ -117,10 +116,6 @@ public:
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
-  operator maybe_owned_ref<IMultiDiGraphView const>() const {
-    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
-  }
-
   IMultiDiGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -154,11 +149,11 @@ public:
   using EdgeQuery = MultiDiEdgeQuery;
 
   MultiDiGraph() = delete;
-  MultiDiGraph(MultiDiGraph const &);
+  MultiDiGraph(MultiDiGraph const &) = default;
+  MultiDiGraph &operator=(MultiDiGraph const &) = default;
 
   operator MultiDiGraphView() const;
 
-  MultiDiGraph &operator=(MultiDiGraph);
 
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 

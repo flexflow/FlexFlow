@@ -271,7 +271,6 @@ struct Arbitrary<
 #define CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME) \
   static_assert(is_visitable<TYPENAME>::value, #TYPENAME " is not visitable (this should never happen--contact the FF developers)"); \
   static_assert(sizeof(visit_as_tuple_t<TYPENAME>) == sizeof(TYPENAME), #TYPENAME " should be fully visitable"); \
-  static_assert(!std::is_base_of<use_visitable_cmp<TYPENAME>, TYPENAME>::value, #TYPENAME " should not have a base class"); \
   CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME); \
   static_assert(is_visit_list_initializable<TYPENAME>::value, #TYPENAME " should be list-initialializable by the visit field types"); \
 

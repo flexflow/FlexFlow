@@ -2,7 +2,6 @@
 #include "serialparallel_internal.h"
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
-#include "utils/graph/conversions.h"
 #include "utils/graph/digraph.h"
 
 namespace FlexFlow {
@@ -18,7 +17,7 @@ Node find_sink_node(DiGraphView const &g) {
 }
 
 optional<Node> find_bottleneck_node(MultiDiGraphView const &g) {
-  return find_bottleneck_node(unsafe_view_as_digraph(g));
+  return find_bottleneck_node(as_digraph(g));
 }
 
 optional<Node> find_bottleneck_node(DiGraphView const &g) {
@@ -66,7 +65,7 @@ std::unordered_set<Node>
   for (Node const &sink : sinks) {
     contraction.insert({sink, contracted_sink});
   }
-  auto contracted_view = unsafe_view_as_contracted(g, contraction);
+  auto contracted_view = apply_contraction(g, contraction);
 
   std::unordered_set<Node> result =
       from_source_to_sink(contracted_view, contracted_src, contracted_sink);
@@ -83,12 +82,12 @@ std::unordered_set<Node>
 }
 
 DiGraphView
-    unsafe_source_to_sink_subgraph(DiGraphView const &g,
+    source_to_sink_subgraph(DiGraphView const &g,
                                    std::unordered_set<Node> const &srcs,
                                    std::unordered_set<Node> const &sinks,
                                    SourceSettings include_src,
                                    SinkSettings include_sink) {
-  return unsafe_view_subgraph(
+  return get_subgraph(
       g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
 }
 
@@ -103,13 +102,13 @@ SplitAST sp_decomposition(DiGraphView const &g) {
   optional<Node> bottleneck = find_bottleneck_node(g);
   if (bottleneck.has_value()) {
     return SplitASTNode(SplitType::SERIAL,
-                        sp_decomposition(unsafe_source_to_sink_subgraph(
+                        sp_decomposition(source_to_sink_subgraph(
                             g,
                             sources,
                             {bottleneck.value()},
                             SourceSettings::INCLUDE_SOURCE_NODES,
                             SinkSettings::INCLUDE_SINK_NODES)),
-                        sp_decomposition(unsafe_source_to_sink_subgraph(
+                        sp_decomposition(source_to_sink_subgraph(
                             g,
                             {bottleneck.value()},
                             sinks,
@@ -128,7 +127,7 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
   SplitASTNode split(SplitType::PARALLEL);
   for (auto const &component : weakly_connected_components) {
     split.children.push_back(
-        sp_decomposition(unsafe_view_subgraph(g, component)));
+        sp_decomposition(get_subgraph(g, component)));
   }
 
   return split;

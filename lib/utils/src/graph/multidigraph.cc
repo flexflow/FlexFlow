@@ -76,13 +76,6 @@ void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) : ptr(other.ptr) {}
-
-MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
-  swap(*this, other);
-  return *this;
-}
-
 void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
   using std::swap;
 

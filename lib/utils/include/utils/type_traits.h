@@ -16,6 +16,14 @@ namespace FlexFlow {
   "https://isocpp.github.io/CppCoreGuidelines/"                                \
   "CppCoreGuidelines#Rc-copy-virtual"
 
+#define CHECK_RC_COPY_VIRTUAL_COMPLIANT(TYPENAME) \
+  static_assert(!std::is_copy_constructible<TYPENAME>::value, #TYPENAME " should not be copy-constructible. See " RC_COPY_VIRTUAL_MSG); \
+  static_assert(!std::is_copy_assignable<TYPENAME>::value, #TYPENAME " should not be copy-assignable. See " RC_COPY_VIRTUAL_MSG); \
+  static_assert(!std::is_move_constructible<TYPENAME>::value, #TYPENAME " should not be move-constructible. See " RC_COPY_VIRTUAL_MSG); \
+  static_assert(!std::is_move_assignable<TYPENAME>::value, #TYPENAME " should not be move-assignable. See " RC_COPY_VIRTUAL_MSG); \
+  static_assert(std::has_virtual_destructor<TYPENAME>::value, #TYPENAME " should have a virtual destructor. See " RC_COPY_VIRTUAL_MSG)
+
+
 template <typename T>
 struct is_rc_copy_virtual_compliant
     : conjunction<negation<disjunction<std::is_copy_constructible<T>,
@@ -117,13 +125,16 @@ struct is_well_behaved_value_type_no_hash
                   is_copy_assignable<T>,
                   is_move_assignable<T>> {};
 
-#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TYPENAME) \
-  static_assert(is_equal_comparable<TYPENAME>::value, #TYPENAME " should support operator=="); \
-  static_assert(is_neq_comparable<TYPENAME>::value, #TYPENAME " should support operator!="); \
+#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(TYPENAME) \
   static_assert(is_copy_constructible<TYPENAME>::value, #TYPENAME " should be copy-constructible"); \
   static_assert(is_move_constructible<TYPENAME>::value, #TYPENAME " should be move-constructible"); \
   static_assert(is_copy_assignable<TYPENAME>::value, #TYPENAME " should be copy-assignable"); \
   static_assert(is_move_assignable<TYPENAME>::value, #TYPENAME " should be move-assignable")
+
+#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TYPENAME) \
+  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(TYPENAME); \
+  static_assert(is_equal_comparable<TYPENAME>::value, #TYPENAME " should support operator=="); \
+  static_assert(is_neq_comparable<TYPENAME>::value, #TYPENAME " should support operator!="); \
 
 template <typename T>
 struct is_well_behaved_value_type : conjunction<is_well_behaved_value_type_no_hash<T>,

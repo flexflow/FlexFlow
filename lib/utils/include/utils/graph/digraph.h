@@ -3,29 +3,18 @@
 
 #include "node.h"
 #include "tl/optional.hpp"
-#include "utils/maybe_owned_ref.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
+#include "cow_ptr_t.h"
 
 namespace FlexFlow {
 
-struct DirectedEdge : use_visitable_cmp<DirectedEdge> {
-public:
-  DirectedEdge() = delete;
-  DirectedEdge(Node src, Node dst);
-
-public:
-  Node src, dst;
+struct DirectedEdge {
+  Node src;
+  Node dst;
 };
-std::ostream &operator<<(std::ostream &, DirectedEdge const &);
-
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::DirectedEdge, src, dst);
-MAKE_VISIT_HASHABLE(::FlexFlow::DirectedEdge);
-
-namespace FlexFlow {
+FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
 
 struct DirectedEdgeQuery {
   DirectedEdgeQuery() = default;
@@ -51,9 +40,7 @@ public:
 protected:
   IDiGraphView() = default;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IDiGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraphView);
 
 struct DiGraphView {
 public:
@@ -71,10 +58,6 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-
-  operator maybe_owned_ref<IDiGraphView const>() const {
-    return maybe_owned_ref<IDiGraphView const>(this->ptr);
-  }
 
   IDiGraphView const *unsafe() const {
     return this->ptr.get();
@@ -95,6 +78,7 @@ private:
 private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
 DiGraphView unsafe(IDiGraphView const &);
 
@@ -103,9 +87,7 @@ struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void remove_edge(Edge const &) = 0;
   virtual IDiGraph *clone() const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IDiGraph>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraph);
 
 struct DiGraph {
 public:
@@ -113,9 +95,8 @@ public:
   using EdgeQuery = DirectedEdgeQuery;
 
   DiGraph() = delete;
-  DiGraph(DiGraph const &);
-
-  DiGraph &operator=(DiGraph);
+  DiGraph(DiGraph const &) = default;
+  DiGraph &operator=(DiGraph const &) = default;
 
   operator DiGraphView() const;
 
@@ -142,13 +123,9 @@ private:
   DiGraph(std::unique_ptr<IDiGraph>);
 
 private:
-  std::unique_ptr<IDiGraph> ptr;
+  cow_ptr_t<IDiGraph> ptr;
 };
-
-static_assert(std::is_copy_constructible<DiGraph>::value, "");
-static_assert(std::is_move_constructible<DiGraph>::value, "");
-static_assert(std::is_copy_assignable<DiGraph>::value, "");
-static_assert(std::is_move_assignable<DiGraph>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);
 
 } // namespace FlexFlow
 
