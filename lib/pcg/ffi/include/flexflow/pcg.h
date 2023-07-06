@@ -26,7 +26,10 @@ FF_NEW_OPAQUE_TYPE(flexflow_layer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
 FF_NEW_OPAQUE_TYPE(flexflow_machine_view_t);
 FF_NEW_OPAQUE_TYPE(flexflow_initializer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_optimizer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_machine_specification_t);
+FF_NEW_OPAQUE_TYPE(flexflow_model_compilation_input_t);
+FF_NEW_OPAQUE_TYPE(flexflow_model_compilation_result_t);
 
 extern flexflow_initializer_t NO_INITIALIZER;
 
@@ -35,14 +38,19 @@ flexflow_error_t make_pcg_error(flexflow_pcg_error_t);
 char *flexflow_pcg_get_error_string(flexflow_pcg_error_t);
 
 flexflow_error_t
-    flexflow_computation_graph_create(flexflow_computation_graph_t *out);
+  flexflow_computation_graph_create(flexflow_computation_graph_t *out);
 flexflow_error_t
-    flexflow_computation_graph_destroy(flexflow_computation_graph_t);
+  flexflow_computation_graph_destroy(flexflow_computation_graph_t);
 
 flexflow_error_t
-    flexflow_computation_graph_serialize(flexflow_computation_graph_t, FILE *);
+  flexflow_computation_graph_serialize_to_buf(flexflow_computation_graph_t, void *buf, size_t buf_size);
 flexflow_error_t
-    flexflow_computation_graph_deserialize(FILE *,
+  flexflow_computation_graph_deserialize_from_buf(flexflow_computation_graph_t, void *buf, size_t buf_size);
+
+flexflow_error_t
+    flexflow_computation_graph_serialize_to_file(flexflow_computation_graph_t, FILE *);
+flexflow_error_t
+    flexflow_computation_graph_deserialize_from_file(FILE *,
                                            flexflow_computation_graph_t *);
 
 flexflow_error_t flexflow_tensor_create(flexflow_computation_graph_t,

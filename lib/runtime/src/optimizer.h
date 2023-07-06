@@ -19,6 +19,7 @@
 #include "kernels/per_device_op_state.h"
 #include "legion.h"
 #include "parallel_tensor.h"
+#include "pcg/optimizer.h"
 
 namespace FlexFlow {
 
@@ -42,46 +43,11 @@ void register_task<ADAM_UPD_NCCL_TASK_ID>();
 /*   FFModel const *model; */
 /* }; */
 
-struct SGDOptimizer : public use_visitable_cmp<SGDOptimizer> {
-public:
-  SGDOptimizer() = delete;
-  SGDOptimizer(double lr, double momentum, bool nesterov, double weight_decay);
-
-public:
-  double lr;
-  double momentum;
-  bool nesterov;
-  double weight_decay;
-};
-
 TaskInvocation init(SGDOptimizer const &);
 std::vector<TaskInvocation> update(SGDOptimizer const &,
                                    parallel_tensor_guid_t const &,
                                    ParallelTensor const &,
                                    parallel_tensor_guid_t const &sgd_v);
-
-struct AdamOptimizer : public use_visitable_cmp<AdamOptimizer> {
-public:
-  AdamOptimizer() = delete;
-  AdamOptimizer(double alpha,
-                double beta1,
-                double beta2,
-                double weight_decay,
-                double epsilon,
-                double alpha_t,
-                double beta_t,
-                double beta2_t);
-
-public:
-  double alpha;
-  double beta1;
-  double beta2;
-  double weight_decay;
-  double epsilon;
-  double alpha_t;
-  double beta_t;
-  double beta2_t;
-};
 
 std::vector<TaskInvocation> update(AdamOptimizer const &,
                                    parallel_tensor_guid_t const &,

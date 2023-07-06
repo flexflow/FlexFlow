@@ -59,9 +59,7 @@ participant L as "$legion"
   |||
   !$start_idx = $get_idx($start)
   !$end_idx = $get_idx($end) + 1
-  !log start_idx is $start_idx, end_idx is $end_idx
   !if ($start_idx <= 0 && $end_idx > 0)
-    !log User
     rnote over U $participantBGColor: $user
   !endif
   !if ($start_idx <= 1 && $end_idx > 1)
@@ -86,7 +84,6 @@ participant L as "$legion"
     /rnote over B $participantBGColor: $runtimeBacking
   !endif
   !if ($start_idx <= 8 && $end_idx > 8)
-    !log Legion
     /rnote over L $participantBGColor: $legion
   !endif
   |||
@@ -122,17 +119,32 @@ Example source code (adapted from [[https://pytorch.org/tutorials/beginner/basic
 22   model = NeuralNetwork()
 23 
 24   dataloader = ...
-25 
-26   for batch_id, (X, y) in enumerate(dataloader):
-27     pred = compiled_model(X)
-28     loss = loss_fn(pred, y)
-29     loss.backward()
-30     optimizer.step()
-31     optimizer.zero_grad()
-32     
-33     if batch_id % 100 == 0:
-34       loss, current = loss.item(), (batch_num + 1) * len(X)
-35       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+25
+26   if tracing_mechanism == 'symbolic_trace':
+27     compiled_model = model.compile(
+28       algorithm=...,
+29       optimizer=...
+30     )
+31   elif tracing_mechanism == 'dynamo':
+32     compiled_model = torch.compile(
+33       model,
+34       backend='flexflow',
+35       options=dict(
+36         algorithm=...,
+37         optimizer=...,
+38       )
+39     )
+40 
+41   for batch_id, (X, y) in enumerate(dataloader):
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+44     loss.backward()
+45     optimizer.step()
+46     optimizer.zero_grad()
+47     
+48     if batch_id % 100 == 0:
+49       loss, current = loss.item(), (batch_num + 1) * len(X)
+50       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
 
 end note
 
@@ -281,7 +293,7 @@ group compilation [def compilation(g: torch.fx.GraphModule) -> CompiledModel]
 
       F->>P: flexflow_tensor_t
 
-      note over P, G
+      rnote over P, G
         ..., etc.
       end note
 
@@ -354,6 +366,17 @@ end
 $remind_participants()
 
 group serialization
+  U->>P:\
+  model_json = compiled_model.as_json()
+
+  U->>P:\
+with open('compiled.json', 'w') as f:\l\
+  compiled_model.dump(f)
+
+  P->>F:\
+end
+
+group deserialization
 
 end
 
@@ -364,16 +387,16 @@ $remind_participants()
 rnote across $codeColor
 
 ...
-26   for batch_id, (X, y) in enumerate(dataloader):
-27     pred = compiled_model(X)
-28     loss = loss_fn(pred, y)
-29     loss.backward()
-30     optimizer.step()
-31     optimizer.zero_grad()
-32     
-33     if batch_id % 100 == 0:
-34       loss, current = loss.item(), (batch_num + 1) * len(X)
-35       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+41   for batch_id, (X, y) in enumerate(dataloader):
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+44     loss.backward()
+45     optimizer.step()
+46     optimizer.zero_grad()
+47     
+48     if batch_id % 100 == 0:
+49       loss, current = loss.item(), (batch_num + 1) * len(X)
+50       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
 ...
 
 end note
@@ -408,6 +431,15 @@ loop training loop
   $remind_participants()
 
   group fwd
+
+rnote across $codeColor
+
+...
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+...
+
+end note
 
     U->>P:\
 pred = compiled_model(batch)
@@ -457,12 +489,18 @@ forward(ModelTrainingInstance const &);
 IndexLauncher launcher;\l\
 ...\l\
 runtime->execute_index_space(ctx, launcher);\l\
+
+      L->>R:\
+TaskReturnAccessor
     end
   end
 
-    R->>F:
+    R->>R:\
+TaskReturnAcessor ret_acc = ...;\l\
+ret_acc.wait();
 
-    F->>P:
+    F->>P:\
+flexflow_tensor_t
 
     P->>U:\
 loss: LossTensor
@@ -483,6 +521,14 @@ loss: LossTensor
 
   group bwd
 
+rnote across $codeColor
+
+...
+44     loss.backward()
+...
+
+end note
+
   U->>P:\
 loss.backward()
 
@@ -493,14 +539,24 @@ flexflow_model_training_instance_backward(\l\
 );
 
   F->>R:\
+backward(ModelTrainingInstance const &);
 
-  R->>B:
+  loop
+    R->>B:\
+  execute(OpTaskInvocation const &);
 
-  B->>R:
+    B->>L:\
+IndexLauncher launcher;\l\
+...\l\
+runtime->execute_index_space(ctx, launcher);\l\
 
-  R->>F:
+    L->>R:\
+TaskReturnAccessor
+  end
 
-  F->>P:
+  R->>R:\
+TaskReturnAcessor ret_acc = ...;\l\
+ret_acc.wait();
 
   end
 
@@ -518,10 +574,22 @@ flexflow_model_training_instance_backward(\l\
 
   group update
 
+rnote across $codeColor
+
+...
+45     optimizer.step()
+46     optimizer.zero_grad()
+...
+
+end note
+
   $remind_participants()
 
   U->>P:\
 optimizer.step()
+
+  U->>P:\
+optimizer.zero_grad()
 
   P->>F:\
 flexflow_error_t\l\
@@ -529,22 +597,34 @@ flexflow_model_training_instance_update(\l\
   flexflow_model_training_instance_t\l\
 );
 
-  F->>R:
+  F->>R:\
+update(ModelTrainingInstance const &);
 
-  R->>B:
+  loop
+    R->>B:\
+execute(IndexTaskInvocation const &);
 
-  B->>R:
+    B->>L:\
+IndexLauncher launcher;\l\
+...\l\
+runtime->execute_index_space(ctx, launcher);\l\
 
-  R->>F:
+    L->>R:\
+TaskReturnAccessor
+  end
 
-  F->>P:
-
+  R->>R:\
+TaskReturnAcessor ret_acc = ...;\l\
+ret_acc.wait();
   end
 end
 
 $remind_participants()
 
 == Training Stops ==
+
+U->>P:\
+<compiled_model goes out of scope>
 
 P->>F:\
 flexflow_error_t\l\

@@ -20,8 +20,10 @@ target_include_directories(
 target_link_libraries(
   ${target}
   PUBLIC
+    pcg
     utils-ffi
     op-attrs-ffi
 )
 
+define_ff_vars(${target})
 ff_set_cxx_properties(${target})

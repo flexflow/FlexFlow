@@ -19,6 +19,8 @@ struct TaskReturnAccessor {
   TaskReturnAccessor(optional<std::type_index>, Legion::Future const &);
   TaskReturnAccessor(optional<std::type_index>, Legion::FutureMap const &);
 
+  void wait() const;
+
   template <typename T>
   TypedFuture<T> get_returned_future() const;
 

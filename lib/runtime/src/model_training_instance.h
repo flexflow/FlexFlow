@@ -3,19 +3,6 @@
 
 namespace FlexFlow {
 
-struct ModelCompilationInput {
-public:
-  ComputationGraph computation_graph;
-  Optimizer optimizer;
-};
-
-struct ModelCompilationResult {
-public:
-  ComputationGraph computation_graph;
-  ParallelComputationGraph pcg;
-  TensorMapping tensor_mapping;
-};
-
 struct ModelTrainingInstance {
 public:
   ComputationGraph computation_graph;

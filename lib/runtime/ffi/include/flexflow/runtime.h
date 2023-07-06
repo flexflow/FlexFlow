@@ -12,8 +12,6 @@ FLEXFLOW_FFI_BEGIN()
 
 FF_NEW_OPAQUE_TYPE(flexflow_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_config_t);
-FF_NEW_OPAQUE_TYPE(flexflow_optimizer_t);
-FF_NEW_OPAQUE_TYPE(flexflow_model_compilation_result_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_training_instance_t);
 
 typedef enum {
