@@ -134,28 +134,32 @@ function compare_speed_spec_infer_incr_decoding {
         exit 1
     fi
 }
+
 function check_partial_token_match {
     local file1="$1"
     local file2="$2"
+    local num_tokens_to_match=30
 
     # Read the second line of the first file
-    read -r _ line1 < "$file1"
+    second_line=$(sed -n '2p' "$file1")
+    read -r line1 <<< "$second_line"
     tokens1=${line1#*: }
     IFS=',' read -ra arr1 <<< "$tokens1"
 
     # Read the second line of the second file
-    read -r _ line2 < "$file2"
+    second_line=$(sed -n '2p' "$file2")
+    read -r line2 <<< "$second_line"
     tokens2=${line2#*: }
     IFS=',' read -ra arr2 <<< "$tokens2"
 
-    # Compare the first 30 integers in the two lists
-    for ((i = 0; i < 30; i++)); do
+    # Compare the first few integers in the two lists
+    for ((i = 0; i < num_tokens_to_match; i++)); do
         if [[ "${arr1[$i]}" != "${arr2[$i]}" ]]; then
-            echo "The first 30 tokens in files $file1 and $file2 are not identical."
+            echo "The first $num_tokens_to_match tokens in files $file1 and $file2 are not identical."
             exit 1
         fi
     done
-    #echo "The first 30 integers are identical."
+    #echo "The first $num_tokens_to_match integers are identical."
 }
 
 ############ Alignment between speculative inference and incremental decoding #################
