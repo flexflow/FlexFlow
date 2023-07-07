@@ -26,6 +26,7 @@ HIP_TARGET      ?= ROCM
 GPU_ARCH        ?= 60 61 62 70 72 75 80 86
 USE_GPU_REDUCTIONS ?= 0
 FF_USE_NCCL  ?= 0
+USE_CUDART_HIJACK  ?= 0  # Disable CUDART hijack
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
 INSTALL_TOKENIZERS := $(shell $(FF_HOME)/scripts/install_tokenizer.sh)

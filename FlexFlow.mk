@@ -47,6 +47,16 @@ ifeq ($(strip $(USE_GASNET)),1)
   endif
 endif
 
+# disable cudart hijack by default
+ifndef USE_CUDART_HIJACK
+	USE_CUDART_HIJACK = 0
+endif
+
+ifeq ($(strip $(USE_CUDART_HIJACK)),0)
+  CC_FLAGS		+= -DDISABLE_LEGION_CUDA_HIJACK -DDISABLE_LEGION_HIP_HIJACK
+  NVCC_FLAGS	+= -DDISABLE_LEGION_CUDA_HIJACK -DDISABLE_LEGION_HIP_HIJACK
+endif
+
 GEN_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/mapper/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/metrics_functions/ -name '*.cc')\
