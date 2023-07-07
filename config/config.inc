@@ -80,7 +80,6 @@ else
   SET_NCCL="-DFF_USE_NCCL=ON"
 fi
 
-<<<<<<< HEAD
 # control cudart hijack
 if [ "$FF_DISABLE_CUDART_HIJACK" = "ON" ]; then
   SET_CUDART_HIJACK="-DFF_DISABLE_CUDART_HIJACK=ON"
@@ -88,11 +87,9 @@ elif [ "$FF_DISABLE_CUDART_HIJACK" = "OFF" ]; then
   SET_CUDART_HIJACK="-DFF_DISABLE_CUDART_HIJACK=OFF"
 else
   SET_CUDART_HIJACK="-DFF_DISABLE_CUDART_HIJACK=ON"
-=======
 # set nccl dir
 if [ -n "$NCCL_DIR" ]; then
   SET_NCCL_DIR="-DNCCL_PATH=${NCCL_DIR}"
->>>>>>> 68512057... use nccl from conda
 fi
 
 # set Legion networks
