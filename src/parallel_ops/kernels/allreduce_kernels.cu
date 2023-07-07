@@ -40,7 +40,7 @@ void forward_kernel_wrapper(AllReduceMeta const *m,
                           ncclSum,
                           m->handle.ncclComm,
                           stream));
-#elif
+#else
   assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
 #endif
 }
