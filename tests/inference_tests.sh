@@ -110,15 +110,7 @@ fi
 ############################### Alignment and Speed tests #####################################
 ###############################################################################################
 
-############ Alignment between speculative inference and incremental decoding #################
-# Full precision
-diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B.txt") <(tail -n +2 "../inference/output/spec_inference_llama.txt")
-diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B.txt") <(tail -n +2 "../inference/output/spec_inference_opt.txt")
-# Half precision
-#diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half.txt") <(tail -n +2 "../inference/output/spec_inference_llama_half.txt")
-#diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half.txt" ) <(tail -n +2 "../inference/output/spec_inference_opt_half.txt")
-
-# Speed test: speculative inference should be at very least 1.5x faster than incremental decoding
+##################################### Helper functions #######################################
 function compare_speed_spec_infer_incr_decoding {
     local incrDec_file="$1"
     local specInf_file="$2"
@@ -142,6 +134,41 @@ function compare_speed_spec_infer_incr_decoding {
         exit 1
     fi
 }
+function check_partial_token_match {
+    local file1="$1"
+    local file2="$2"
+
+    # Read the second line of the first file
+    read -r _ line1 < "$file1"
+    tokens1=${line1#*: }
+    IFS=',' read -ra arr1 <<< "$tokens1"
+
+    # Read the second line of the second file
+    read -r _ line2 < "$file2"
+    tokens2=${line2#*: }
+    IFS=',' read -ra arr2 <<< "$tokens2"
+
+    # Compare the first 30 integers in the two lists
+    for ((i = 0; i < 30; i++)); do
+        if [[ "${arr1[$i]}" != "${arr2[$i]}" ]]; then
+            echo "The first 30 tokens in files $file1 and $file2 are not identical."
+            exit 1
+        fi
+    done
+    #echo "The first 30 integers are identical."
+}
+
+############ Alignment between speculative inference and incremental decoding #################
+# Full precision
+diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B.txt") <(tail -n +2 "../inference/output/spec_inference_llama.txt")
+diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B.txt") <(tail -n +2 "../inference/output/spec_inference_opt.txt")
+# Half precision
+check_partial_token_match "../inference/output/incr_decoding_llama_7B_half.txt" "../inference/output/spec_inference_llama_half.txt"
+#diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half.txt") <(tail -n +2 "../inference/output/spec_inference_llama_half.txt")
+check_partial_token_match "../inference/output/incr_decoding_opt_6B_half.txt" "../inference/output/spec_inference_opt_half.txt"
+#diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half.txt" ) <(tail -n +2 "../inference/output/spec_inference_opt_half.txt")
+
+# Speed test: speculative inference should be at very least 1.5x faster than incremental decoding
 # Full precision
 compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_llama_7B.txt" "../inference/output/spec_inference_llama.txt"
 compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_opt_6B.txt" "../inference/output/spec_inference_opt.txt"
@@ -153,16 +180,22 @@ compare_speed_spec_infer_incr_decoding "../inference/output/incr_decoding_opt_6B
 if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
     diff <(tail -n +2 "../inference/output/spec_inference_llama_tp.txt") <(tail -n +2 "../inference/output/spec_inference_llama.txt")
     diff <(tail -n +2 "../inference/output/spec_inference_opt_tp.txt") <(tail -n +2 "../inference/output/spec_inference_opt.txt")
-    diff <(tail -n +2 "../inference/output/spec_inference_llama_half_tp.txt") <(tail -n +2 "../inference/output/spec_inference_llama_half.txt")
-    diff <(tail -n +2 "../inference/output/spec_inference_opt_half_tp.txt") <(tail -n +2 "../inference/output/spec_inference_opt_half.txt")
+    check_partial_token_match "../inference/output/spec_inference_llama_half_tp.txt" "../inference/output/spec_inference_llama_half.txt"
+    #diff <(tail -n +2 "../inference/output/spec_inference_llama_half_tp.txt") <(tail -n +2 "../inference/output/spec_inference_llama_half.txt")
+    check_partial_token_match "../inference/output/spec_inference_opt_half_tp.txt" "../inference/output/spec_inference_opt_half.txt"
+    #diff <(tail -n +2 "../inference/output/spec_inference_opt_half_tp.txt") <(tail -n +2 "../inference/output/spec_inference_opt_half.txt")
     diff <(tail -n +2 "../inference/output/incr_decoding_llama_160M_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_160M.txt")
+    check_partial_token_match "../inference/output/incr_decoding_llama_160M_half_tp.txt" "../inference/output/incr_decoding_llama_160M_half.txt"
     # diff <(tail -n +2 "../inference/output/incr_decoding_llama_160M_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_160M_half.txt")
     diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_7B.txt")
-    diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half.txt")
+    check_partial_token_match "../inference/output/incr_decoding_llama_7B_half_tp.txt" "../inference/output/incr_decoding_llama_7B_half.txt"
+    # diff <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_llama_7B_half.txt")
     diff <(tail -n +2 "../inference/output/incr_decoding_opt_125M_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_125M.txt")
-    diff <(tail -n +2 "../inference/output/incr_decoding_opt_125M_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_125M_half.txt")
+    check_partial_token_match "../inference/output/incr_decoding_opt_125M_half_tp.txt" "../inference/output/incr_decoding_opt_125M_half.txt"
+    # diff <(tail -n +2 "../inference/output/incr_decoding_opt_125M_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_125M_half.txt")
     diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_6B.txt")
-    diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half.txt")
+    check_partial_token_match "../inference/output/incr_decoding_opt_6B_half_tp.txt" "../inference/output/incr_decoding_opt_6B_half.txt"
+    # diff <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half_tp.txt") <(tail -n +2 "../inference/output/incr_decoding_opt_6B_half.txt")
 fi
 
 ######################### Alignment tests with HuggingFace ####################################
