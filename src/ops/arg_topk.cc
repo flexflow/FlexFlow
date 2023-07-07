@@ -265,7 +265,7 @@ FutureMap ArgTopK::inference(FFModel const &ff,
             << std::endl; */
   IndexLauncher launcher(ARG_TOPK_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(&bc, sizeof(BatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -300,6 +300,7 @@ InferenceResult
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
+  BatchConfig const *bc = (BatchConfig *)task->args;
   ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -307,10 +308,11 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  ArgTopK::forward_kernel_wrapper(m, input, indices);
+  int batch_size = bc->num_active_tokens();
+  ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
 
   int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-  int batch_size = input.domain.get_volume() / length;
+  batch_size = input.domain.get_volume() / length;
 
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(

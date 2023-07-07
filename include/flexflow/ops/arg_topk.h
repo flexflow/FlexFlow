@@ -84,7 +84,8 @@ public:
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorW const &indices);
+                                     GenericTensorAccessorW const &indices,
+                                     int batch_size);
   Params get_params() const;
 
 public:
