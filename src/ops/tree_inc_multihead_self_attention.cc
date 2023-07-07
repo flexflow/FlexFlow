@@ -286,6 +286,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_heads;
+    dims[1].is_replica_dim = false;
     dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
       dims[2].size = get_quantization_to_byte_size(
@@ -392,6 +393,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_heads;
+    dims[1].is_replica_dim = false;
     dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
       dims[2].size = get_quantization_to_byte_size(
