@@ -41,11 +41,11 @@ if [[ "$cuda_version" != @(11.1|11.3|11.5|11.6|11.7|11.8) ]]; then
 fi
 
 # modify cuda version to available versions
-if [[ "$cuda_version" != @(11.1|11.3|11.7) ]]; then
+if [[ "$cuda_version" == @(11.1|11.3|11.7) ]]; then
   cuda_version=${cuda_version}.1
-elif [[ "$cuda_version" != @(11.2|11.5|11.6) ]]; then 
+elif [[ "$cuda_version" == @(11.2|11.5|11.6) ]]; then 
   cuda_version=${cuda_version}.2
-elif [[ "$cuda_version" != @(11.8) ]]; then 
+elif [[ "$cuda_version" == @(11.8) ]]; then 
   cuda_version=${cuda_version}.0
 fi
 
