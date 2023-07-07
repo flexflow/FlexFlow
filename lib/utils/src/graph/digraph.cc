@@ -7,6 +7,8 @@ std::ostream &operator<<(std::ostream &s, DirectedEdge const &e) {
             << "}");
 }
 
+
+
 DirectedEdgeQuery::DirectedEdgeQuery(
     optional<std::unordered_set<Node>> const &srcs,
     optional<std::unordered_set<Node>> const &dsts)
@@ -44,5 +46,16 @@ std::unordered_set<DirectedEdge>
 }
 
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
+
+DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs, DirectedEdgeQuery const &rhs){
+  assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
+
+  tl::optional<std::unordered_set<Node>> srcs_t1 = intersection(*lhs.srcs, *rhs.srcs);
+  tl::optional<std::unordered_set<Node>> dsts_t1 = intersection(*lhs.dsts, *rhs.dsts);
+
+  return DirectedEdgeQuery(srcs_t1, dsts_t1);
+}
+
+
 
 } // namespace FlexFlow

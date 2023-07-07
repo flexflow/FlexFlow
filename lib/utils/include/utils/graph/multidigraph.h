@@ -87,7 +87,7 @@ struct IMultiDiGraphView : public IGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IMultiDiGraphView();
+  virtual ~IMultiDiGraphView()=default;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value,
@@ -104,7 +104,9 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
     return static_cast<IMultiDiGraphView const *>(this)->query_nodes(query);
   }
 
-  virtual IMultiDiGraph *clone() const override = 0;
+  virtual IMultiDiGraph *clone() const override = 0;  
+  private:
+    std::size_t next_node_idx = 0;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraph>::value,
@@ -133,10 +135,9 @@ public:
     return MultiDiGraphView(
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
-
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){}
 private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
-
+  
   friend struct MultiDiGraph;
   friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
 

@@ -176,6 +176,11 @@ std::unordered_set<DirectedEdge>
   return to_directed_edges(get_incoming_edges(multidigraph_view, dsts));
 }
 
+std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g,
+                                                   Node const &n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
+}
+
 std::unordered_set<MultiDiEdge>
     get_outgoing_edges(MultiDiGraphView const &g,
                        std::unordered_set<Node> const &srcs) {
@@ -235,6 +240,34 @@ std::vector<Node>
                      std::unordered_set<Node> const &starting_points) {
   BFSView bfs_view = bfs(g, starting_points);
   return {bfs_view.begin(), bfs_view.end()};
+}
+
+
+std::unordered_set<Node> get_sinks(DiGraphView const & g){
+  std::unordered_set<Node> dsts ;
+  for(Node const &n : get_nodes(g)) {
+    auto outgoing = get_outgoing_edges(g, n);
+    if(outgoing.size() == 0){
+      dsts.insert(n);
+    }
+  }
+  return dsts;
+}
+
+std::unordered_set<Node> get_sinks(MultiDiGraphView const & g){
+  std::unordered_set<Node> dsts ;
+  for(Node const &n : get_nodes(g)) {
+    auto outgoing = get_outgoing_edges(g, n);
+    if(outgoing.size() == 0){
+      dsts.insert(n);
+    }
+  }
+  return dsts;
+}
+
+DiGraphView flipped(DiGraphView const & g) {
+  return DiGraphView::create<FlippedView>(g);//TODO, maybe exists porblems
+
 }
 
 std::unordered_set<Node> get_sources(DiGraphView const &g) {

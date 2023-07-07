@@ -17,7 +17,7 @@ namespace FlexFlow {
 struct FlippedView : public IDiGraphView {
 public:
   FlippedView() = delete;
-  explicit FlippedView(DiGraphView const &);
+  explicit FlippedView(DiGraphView const & g);
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -222,9 +222,9 @@ private:
 
 struct ContractNodeView : public IDiGraphView {
   ContractNodeView() = delete;
-  explicit ContractNodeView(DiGraphView const &,
+  explicit ContractNodeView(DiGraphView const & g,
                             Node const &removed,
-                            Node const &into);
+                            Node const &into): g(g), from(removed), to(into) {}
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;

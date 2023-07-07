@@ -21,9 +21,9 @@ struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
 
 struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
   OutputMultiDiEdge() = delete;
-  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &,
-                    Node const &,
-                    NodePort const &);
+  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid,
+                    Node const & src,
+                    NodePort const &srcIdx):uid(uid), src(src), srcIdx(srcIdx) {}
 
   std::pair<std::size_t, std::size_t>
       uid; // necessary to differentiate multiple output edges from different

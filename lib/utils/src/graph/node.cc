@@ -9,4 +9,5 @@ NodeQuery::NodeQuery(std::unordered_set<Node> const &nodes)
 NodeQuery::NodeQuery(tl::optional<std::unordered_set<Node>> const &nodes)
     : nodes(nodes) {}
 
+
 } // namespace FlexFlow
