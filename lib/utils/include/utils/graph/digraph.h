@@ -73,14 +73,14 @@ public:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr): ptr(ptr) {}
 
 private:
-  friend DiGraphView unsafe(IDiGraphView const &);
+  friend DiGraphView unsafe_create(IDiGraphView const &);
 
 private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
-DiGraphView unsafe(IDiGraphView const &);
+DiGraphView unsafe_create(IDiGraphView const &);
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;

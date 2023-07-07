@@ -17,4 +17,10 @@ std::unordered_set<Node> GraphView::query_nodes(NodeQuery const & g) const {
     return this->ptr->query_nodes(g);
 }  
 
+GraphView GraphView::unsafe_create(IGraphView const &graphView) {
+    std::shared_ptr<IGraphView const> ptr((&graphView),
+        [](IGraphView const *) { });
+    return GraphView(ptr);
+  }
+
 } // namespace FlexFlow

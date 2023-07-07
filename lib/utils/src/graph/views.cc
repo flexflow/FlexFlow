@@ -243,8 +243,8 @@ std::unordered_set<Node>
 
 std::unordered_set<DirectedEdge>
     JoinedDigraphView::query_edges(DirectedEdgeQuery const &query) const {
-  std::unordered_set<Node> srcs = query.srcs.value_or(get_nodes(unsafe(*this)));
-  std::unordered_set<Node> dsts = query.dsts.value_or(get_nodes(unsafe(*this)));
+  std::unordered_set<Node> srcs = query.srcs.value_or(get_nodes(unsafe_create(*this)));
+  std::unordered_set<Node> dsts = query.dsts.value_or(get_nodes(unsafe_create(*this)));
   auto traced_srcs = this->joined_nodes.trace_nodes(srcs);
   auto traced_dsts = this->joined_nodes.trace_nodes(dsts);
   DirectedEdgeQuery left_query(traced_srcs.first, traced_dsts.first);
@@ -283,8 +283,8 @@ std::unordered_set<Node>
 
 std::unordered_set<MultiDiEdge>
     JoinedMultiDigraphView::query_edges(MultiDiEdgeQuery const &query) const {
-  std::unordered_set<Node> srcs = query.srcs.value_or(get_nodes(unsafe(*this)));
-  std::unordered_set<Node> dsts = query.dsts.value_or(get_nodes(unsafe(*this)));
+  std::unordered_set<Node> srcs = query.srcs.value_or(get_nodes(unsafe_create(*this)));
+  std::unordered_set<Node> dsts = query.dsts.value_or(get_nodes(unsafe_create(*this)));
 
   auto traced_srcs = this->joined_nodes.trace_nodes(srcs);
   auto traced_dsts = this->joined_nodes.trace_nodes(dsts);

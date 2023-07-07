@@ -67,6 +67,12 @@ std::unordered_set<DirectedEdge> DiGraphView::query_edges(EdgeQuery const & quer
   return ptr->query_edges(query);
 }
 
+DiGraphView unsafe_create(IDiGraphView const &graphView) {
+  std::shared_ptr<IDiGraphView const> ptr((&graphView),
+  [](IDiGraphView const *){});
+  return DiGraphView(ptr);
+}
+
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs, DirectedEdgeQuery const &rhs){
   assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
 

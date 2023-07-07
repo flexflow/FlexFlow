@@ -107,6 +107,13 @@ MultiDiGraphView::operator GraphView() const {
   return GraphView(this->ptr);
 }
 
+MultiDiGraphView unsafe_create(IMultiDiGraphView const &graphView) {
+  std::shared_ptr<IMultiDiGraphView const> ptr((&graphView),
+      [](IMultiDiGraphView const *ptr) {});
+  return MultiDiGraphView(ptr);
+}
+
+
 void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   using std::swap;
 
