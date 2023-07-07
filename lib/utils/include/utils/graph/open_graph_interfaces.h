@@ -8,9 +8,9 @@ namespace FlexFlow {
 
 struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
   InputMultiDiEdge() = delete;
-  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const &,
-                   Node const &,
-                   NodePort const &);
+  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid,
+                   Node const & dst,
+                   NodePort const & dstIdx):uid(uid), dst(dst), dstIdx(dstIdx) {};
 
   std::pair<std::size_t, std::size_t>
       uid; // necessary to differentiate multiple input edges from different
@@ -32,8 +32,7 @@ struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
   NodePort srcIdx;
 };
 
-using OpenMultiDiEdge =
-    variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
+using OpenMultiDiEdge =variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
 
 using DownwardOpenMultiDiEdge = variant<OutputMultiDiEdge, MultiDiEdge>;
 

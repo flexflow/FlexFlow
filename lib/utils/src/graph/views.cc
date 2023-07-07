@@ -3,6 +3,8 @@
 #include "utils/disjoint_set.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
+#include <type_traits>
+#include <variant>
 
 namespace FlexFlow {
 
@@ -24,6 +26,36 @@ std::unordered_set<Node>
 bool JoinNodeKey::operator==(JoinNodeKey const & jnk) const {
   return node== jnk.node && direction == jnk.direction;
 }
+
+std::unordered_set<DirectedEdge> ContractNodeView::query_edges(DirectedEdgeQuery const & q) const {
+      return g.query_edges(q);
+}
+
+std::unordered_set<Node>  ContractNodeView::query_nodes(NodeQuery const& q) const {
+  return g.query_nodes(q);
+}
+
+
+std::unordered_set<Node>  ViewOpenMultiDiGraphAsMultiDiGraph::query_nodes(NodeQuery const & query) const {
+  return g.query_nodes(query);
+}
+
+std::unordered_set<MultiDiEdge>
+      ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(MultiDiEdgeQuery const & query) const {
+    OpenMultiDiEdgeQuery q;
+    q.standard_edge_query = query; 
+    std::unordered_set<OpenMultiDiEdge> edges =  g.query_edges(q);
+    std::unordered_set<MultiDiEdge> result;
+   
+    for (const auto& edge : edges) {
+      if(holds_alternative<MultiDiEdge>(edge)){
+          result.insert(get<MultiDiEdge>(edge));
+      }
+      
+  }
+
+    return  result;
+  }
 
 DirectedEdge flipped(DirectedEdge const &e) {
   return {e.src, e.dst};
@@ -74,6 +106,11 @@ std::unordered_set<MultiDiEdge>
                                         .with_src_nodes(this->subgraph_nodes)
                                         .with_dst_nodes(this->subgraph_nodes);
   return this->g.query_edges(query_intersection(query, subgraph_query));
+}
+
+std::unordered_set<Node>
+    MultiDiSubgraphView::query_nodes(NodeQuery const &query) const {
+  return this->g.query_nodes(query);
 }
 
 UndirectedGraphView

@@ -22,14 +22,16 @@ public:
     return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
   }
 
-private:
-  using ContentsType = std::unordered_map<
+    using ContentsType = std::unordered_map<
       Node,
       std::unordered_map<
           Node,
           std::unordered_map<NodePort, std::unordered_set<NodePort>>>>;
 
-  AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
+  AdjacencyMultiDiGraph(std::size_t next_node_idx, ContentsType const & adjacency):
+      next_node_idx(next_node_idx), adjacency(adjacency) {
+        next_node_port = 0;
+      }
 
 private:
   std::size_t next_node_idx = 0;

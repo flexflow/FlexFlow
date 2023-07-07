@@ -86,6 +86,20 @@ std::size_t num_nodes(GraphView const &g) {
   return get_nodes(g).size();
 }
 
+DiGraphView contract_node(DiGraphView const &g , Node const &from, Node const &into) {
+  return DiGraphView::create<ContractNodeView>(g, from, into);
+}
+
+DiGraphView apply_contraction(DiGraphView const & g, std::unordered_map<Node, Node> const & nodes){
+  DiGraphView contractedView = g;  
+  for(auto kv : nodes){
+    Node from = kv.first;
+    Node into = kv.second;
+    contractedView = contract_node(contractedView, from, into);
+  }
+  return contractedView;
+}
+
 void add_edges(MultiDiGraph &g, std::vector<MultiDiEdge> const &edges) {
   for (MultiDiEdge const &e : edges) {
     g.add_edge(e);
@@ -192,6 +206,11 @@ std::unordered_set<DirectedEdge>
                        std::unordered_set<Node> const &dsts) {
   auto multidigraph_view = as_multidigraph(g);
   return to_directed_edges(get_outgoing_edges(multidigraph_view, dsts));
+}
+
+std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const & g,
+                                                    Node const & n){
+      return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -354,9 +373,21 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
     }
   }
 
+
   assert(result.size() == get_edges(g).size());
 
   return result;
+}
+
+std::vector<Node> get_neighbors(DiGraphView const & g, Node const & n) {
+  std::vector<Node> neighbors;
+  for (DirectedEdge const & e : get_outgoing_edges(g, n)){
+    neighbors.push_back(e.dst);
+  }
+  for (DirectedEdge const & e : get_incoming_edges(g, n)){
+    neighbors.push_back(e.src);
+  }
+  return neighbors;
 }
 
 std::vector<MultiDiEdge>
@@ -470,6 +501,36 @@ optional<Node> imm_post_dominator(MultiDiGraphView const &g,
   return get_imm_post_dominators(g).at(n);
 }
 
+tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
+  return get_imm_post_dominators(g).at(n);
+}
+
+
+tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const & nodes ){
+    std::unordered_set<Node> commonDoms = get_post_dominators(g).at(*nodes.begin());
+
+    for (auto it = std::next(nodes.begin()); it != nodes.end(); ++it) {
+    Node currNode = *it;
+    std::unordered_set<Node> currDoms = get_post_dominators(g).at(currNode);
+
+    std::unordered_set<Node> intersection;
+    for (const auto &dom : commonDoms) {
+      if (currDoms.count(dom) > 0) {
+        intersection.insert(dom);
+      }
+    }
+
+    commonDoms = std::move(intersection);
+  }
+
+  if (!commonDoms.empty()) {
+    return *commonDoms.begin();
+  } else {
+    return tl::nullopt;
+  }
+
+}
+
 std::pair<OutputMultiDiEdge, InputMultiDiEdge>
     split_edge(MultiDiEdge const &e) {
   return {OutputMultiDiEdge{{e.dst.value(), e.dstIdx.value()}, e.src, e.srcIdx},
@@ -529,6 +590,47 @@ DiGraphView as_digraph(MultiDiGraphView const &g) {
 
 MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &g) {
   return MultiDiGraphView::create<ViewOpenMultiDiGraphAsMultiDiGraph>(g);
+}
+
+std::vector<std::unordered_set<Node>>
+    get_weakly_connected_components(DiGraphView const & g) {
+    std::unordered_set<Node> start_pointes = get_sources(g);
+    std::vector<Node>  dfs_order = get_dfs_ordering(g, start_pointes);
+
+    std::vector<std::unordered_set<Node>> components;
+    std::unordered_set<Node> visited;
+
+    for (const auto& node : dfs_order) {
+        if (visited.find(node) != visited.end()) {
+            continue; // Skip nodes already in a component
+        }
+
+        std::unordered_set<Node> component;
+        std::stack<Node> stack;
+        stack.push(node);
+
+        while (!stack.empty()) {
+            Node current = stack.top();
+            stack.pop();
+
+            if (visited.find(current) != visited.end()) {
+                continue;
+            }
+
+            component.insert(current);
+            visited.insert(current);
+
+            std::vector<Node> neighbors = get_neighbors(g, current); // Replace with your own function to get neighbors
+
+            for (const auto& neighbor : neighbors) {
+                stack.push(neighbor);
+            }
+        }
+
+        components.push_back(std::move(component));
+    }
+
+    return components;
 }
 
 } // namespace FlexFlow

@@ -18,7 +18,7 @@ struct SplitASTNode;
 using SplitAST = mpark::variant<SplitASTNode, Node>;
 
 struct SplitASTNode {
-  SplitASTNode(SplitType);
+  SplitASTNode(SplitType type): type(type) {}
   SplitASTNode(SplitType, SplitAST const &, SplitAST const &);
   SplitASTNode(SplitType, std::vector<SplitAST> const &);
 

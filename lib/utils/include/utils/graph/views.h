@@ -60,8 +60,8 @@ private:
 struct MultiDiSubgraphView : public IMultiDiGraphView {
 public:
   MultiDiSubgraphView() = delete;
-  explicit MultiDiSubgraphView(MultiDiGraphView const &,
-                               std::unordered_set<Node> const &);
+  explicit MultiDiSubgraphView(MultiDiGraphView const & g,
+                               std::unordered_set<Node> const & subgraph_nodes);
 
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &) const override;
@@ -86,7 +86,8 @@ enum class LRDirection { LEFT, RIGHT };
 
 struct JoinNodeKey {
   JoinNodeKey() = delete;
-  JoinNodeKey(Node const &, LRDirection);
+  JoinNodeKey(Node const & node, LRDirection direction):
+    node(node), direction(direction) {}
 
   bool operator==(JoinNodeKey const &) const;
   bool operator<(JoinNodeKey const &) const;
@@ -100,7 +101,9 @@ struct JoinNodeKey {
 namespace std {
 template <>
 struct hash<::FlexFlow::JoinNodeKey> {
-  std::size_t operator()(::FlexFlow::JoinNodeKey const &) const;
+  std::size_t operator()(::FlexFlow::JoinNodeKey const & key) const {
+    return std::hash<size_t>{}(static_cast<size_t>(key.node));
+  }
 };
 } // namespace std
 
@@ -307,7 +310,8 @@ private:
 struct ViewOpenMultiDiGraphAsMultiDiGraph : public IMultiDiGraphView {
 public:
   ViewOpenMultiDiGraphAsMultiDiGraph() = delete;
-  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const &);
+  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const & g)
+      : g(g) {}
 
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &) const override;

@@ -19,8 +19,8 @@ public:
 
   friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
-  std::unordered_set<Edge> query_edges(EdgeQuery const &);
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   IOpenMultiDiGraphView const *unsafe() const {
     return this->ptr.get();
@@ -35,8 +35,7 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
-  OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const>);
+   OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr):ptr(ptr){}
 
 private:
   std::shared_ptr<IOpenMultiDiGraphView const> ptr;

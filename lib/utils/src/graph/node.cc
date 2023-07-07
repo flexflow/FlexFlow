@@ -9,5 +9,12 @@ NodeQuery::NodeQuery(std::unordered_set<Node> const &nodes)
 NodeQuery::NodeQuery(tl::optional<std::unordered_set<Node>> const &nodes)
     : nodes(nodes) {}
 
+NodeQuery query_intersection(NodeQuery const & lhs, NodeQuery const & rhs){
+    return  intersection(*lhs.nodes, *rhs.nodes) ;
+    }
+
+std::unordered_set<Node> GraphView::query_nodes(NodeQuery const & g) const {
+    return this->ptr->query_nodes(g);
+}  
 
 } // namespace FlexFlow

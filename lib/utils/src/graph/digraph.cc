@@ -47,6 +47,26 @@ std::unordered_set<DirectedEdge>
 
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
 
+DiGraphView::operator GraphView() const {
+  return GraphView(this->ptr);
+}
+
+bool DiGraphView::operator==(DiGraphView const &other) const {
+  return ptr == other.ptr;
+}
+
+bool DiGraphView::operator!=(DiGraphView const &other) const {
+  return ptr != other.ptr;
+}
+
+std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const& q) const {
+  return this->ptr->query_nodes(q);
+}
+
+std::unordered_set<DirectedEdge> DiGraphView::query_edges(EdgeQuery const & query) const {
+  return ptr->query_edges(query);
+}
+
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs, DirectedEdgeQuery const &rhs){
   assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
 
