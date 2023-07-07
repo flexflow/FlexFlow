@@ -17,7 +17,7 @@
 #include "pcg/computation_graph.h"
 #include "task_spec/executable_task_invocation.h"
 #include "legion.h"
-#include "legion_backing.h"
+#include "runtime/legion_backing.h"
 #include "op-attrs/ops/loss_functions.h"
 #include "op-attrs/tensor_shape.h"
 #include "optimizer.h"
@@ -26,7 +26,7 @@
 #include "recompile.h"
 #include "runtime/config.h"
 #include "sim_environment.h"
-#include "tensor_mapping.h"
+#include "pcg/tensor_mapping.h"
 #include "training_pcg.h"
 #include <functional>
 #include <unistd.h>
@@ -45,7 +45,7 @@ public:
           ComputationGraph const &,
           TrainingPCG const &,
           Optimizer const &,
-          RuntimeBacking const &,
+          LegionBacking const &,
           EnableProfiling const &,
           SimEnvFactory const &,
           TensorMapping const &);
@@ -87,7 +87,7 @@ public:
                             // at best an approximation at the moment
 
   // where we put all the legion stuff -- all the runtime state
-  RuntimeBacking runtime_backing;
+  LegionBacking runtime_backing;
 
   // profiling operators
   SimEnvFactory sim_factory;
@@ -112,7 +112,7 @@ void get_tensor(FFModel const &, tensor_guid_t, T *data);
 
 ExecutableTaskInvocation resolve(TaskInvocation const &,
                                  EnableProfiling enable_profiling,
-                                 RuntimeBacking const &runtime_backing);
+                                 LegionBacking const &runtime_backing);
 
 void top_level_task(Legion::Task const *task,
                     std::vector<Legion::PhysicalRegion> const &regions,

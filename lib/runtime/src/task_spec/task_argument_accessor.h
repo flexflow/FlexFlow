@@ -6,6 +6,7 @@
 #include "task_invocation.h"
 #include "utils/strong_typedef.h"
 #include <vector>
+#include "utils/stack_map.h"
 
 namespace FlexFlow {
 

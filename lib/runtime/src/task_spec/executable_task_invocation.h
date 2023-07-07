@@ -2,7 +2,7 @@
 #define _FLEXFLOW_RUNTIME_SRC_EXECUTABLE_TASK_INVOCATION_H
 
 #include "task_invocation.h"
-#include "tensorless_task_invocation.h"
+#include "runtime/task_spec/tensorless_task_invocation.h"
 
 namespace FlexFlow {
 

@@ -1,8 +1,12 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TENSORLESS_TASK_INVOCATION_H
 #define _FLEXFLOW_RUNTIME_SRC_TENSORLESS_TASK_INVOCATION_H
 
-#include "task_invocation.h"
 #include "utils/visitable.h"
+#include "concrete_arg.h"
+#include "typed_future.h"
+#include "typed_future_map.h"
+#include "typed_task_invocation.h"
+#include "index_arg.h"
 
 namespace FlexFlow {
 
@@ -31,7 +35,7 @@ public:
 public:
   std::unordered_map<slot_id, StandardExecutableArgSpec> arg_bindings;
 };
-static_assert(is_well_behaved_value_type<TensorlessTaskBinding>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TensorlessTaskBinding);
 
 struct TensorlessIndexTaskBinding
     : public use_visitable_cmp<TensorlessIndexTaskBinding> {
@@ -59,8 +63,7 @@ public:
   TensorlessTaskBinding standard;
   std::unordered_map<slot_id, IndexExecutableArgSpec> arg_bindings;
 };
-static_assert(is_well_behaved_value_type<TensorlessIndexTaskBinding>::value,
-              "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TensorlessIndexTaskBinding);
 
 template <typename BindingType, typename T>
 std::unordered_map<slot_id, T> get_args_of_type(BindingType const &binding) {
@@ -84,32 +87,17 @@ std::unordered_map<slot_id, T>
   return get_args_of_type<TensorlessIndexTaskBinding, T>(binding);
 }
 
-struct TensorlessTaskInvocation
-    : public use_visitable_cmp<TensorlessTaskInvocation> {
-public:
-  TensorlessTaskInvocation() = delete;
-  TensorlessTaskInvocation(task_id_t const &task_id,
-                           TensorlessTaskBinding const &binding);
-
-public:
-  task_id_t task_id;
-  TensorlessTaskBinding binding;
+struct TensorlessTaskInvocation {
+  req<task_id_t> task_id;
+  req<TensorlessTaskBinding> binding;
 };
-static_assert(is_well_behaved_value_type<TensorlessTaskInvocation>::value, "");
+FF_VISITABLE_STRUCT(TensorlessTaskInvocation, task_id, binding);
 
-struct TensorlessIndexTaskInvocation
-    : public use_visitable_cmp<TensorlessIndexTaskInvocation> {
-public:
-  TensorlessIndexTaskInvocation() = delete;
-  TensorlessIndexTaskInvocation(task_id_t const &task_id,
-                                TensorlessIndexTaskBinding const &binding);
-
-public:
-  task_id_t task_id;
-  TensorlessIndexTaskBinding binding;
+struct TensorlessIndexTaskInvocation {
+  req<task_id_t> task_id;
+  req<TensorlessIndexTaskBinding> binding;
 };
-static_assert(is_well_behaved_value_type<TensorlessIndexTaskInvocation>::value,
-              "");
+FF_VISITABLE_STRUCT(TensorlessIndexTaskInvocation, task_id, binding);
 
 } // namespace FlexFlow
 

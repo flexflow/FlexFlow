@@ -21,8 +21,8 @@
 #include "op-attrs/tensor_shape.h"
 #include "pcg/parallel_tensor.h"
 #include "runtime/config.h"
-#include "task_invocation.h"
-#include "task_signature.h"
+#include "task_spec/task_invocation.h"
+#include "task_spec/task_signature.h"
 
 namespace FlexFlow {
 
@@ -57,9 +57,5 @@ TaskInvocation apply_initializer(ConstantInitializer const &,
                                  ParallelTensor const &);
 
 } // namespace FlexFlow
-
-namespace FlexFlow {
-static_assert(is_well_behaved_value_type<Initializer>::value, "");
-}
 
 #endif

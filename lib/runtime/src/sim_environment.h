@@ -5,8 +5,8 @@
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op_task_invocation.h"
-#include "task_argument_accessor.h"
+#include "task_spec/op_task_invocation.h"
+#include "task_spec/task_argument_accessor.h"
 #include <vector>
 
 namespace FlexFlow {

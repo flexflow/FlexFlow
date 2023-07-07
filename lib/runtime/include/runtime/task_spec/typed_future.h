@@ -2,7 +2,6 @@
 #define _FLEXFLOW_RUNTIME_SRC_TYPED_FUTURE_H
 
 #include "legion.h"
-#include "task_return_accessor.h"
 #include "utils/type_index.h"
 
 namespace FlexFlow {

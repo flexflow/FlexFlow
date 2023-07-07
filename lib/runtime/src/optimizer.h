@@ -18,7 +18,7 @@
 
 #include "kernels/per_device_op_state.h"
 #include "legion.h"
-#include "parallel_tensor.h"
+#include "pcg/parallel_tensor.h"
 #include "pcg/optimizer.h"
 
 namespace FlexFlow {

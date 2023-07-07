@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_LEGION_BACKING_H
-#define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_LEGION_BACKING_H
+#ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_RUNTIME_BACKING_H
+#define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_RUNTIME_BACKING_H
 
 #include "kernels/per_device_op_state.h"
 #include "legion.h"
@@ -7,9 +7,10 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "parallel_computation_graph.h"
 #include "pcg/machine_view.h"
-#include "tensorless_task_invocation.h"
+#include "task_spec/tensorless_task_invocation.h"
 #include "utils/visitable.h"
 #include <map>
+#include "task_spec/task_return_accessor.h"
 
 namespace FlexFlow {
 
@@ -78,8 +79,8 @@ public:
   Legion::PhysicalRegion physical_region;
 };
 
-struct RuntimeBacking {
-  RuntimeBacking() = delete;
+struct LegionBacking {
+  LegionBacking() = delete;
 
   OperatorLegionBacking at(operator_guid_t const &) const;
   ParallelTensorBacking at(parallel_tensor_guid_t const &) const;
@@ -109,7 +110,7 @@ struct NcclCommunicators {
 
 std::vector<MachineView>
     get_all_machine_views(int num_nodes, int gpus_per_node, int cpus_per_node);
-RuntimeBacking initialize_runtime(LegionConfig const &);
+LegionBacking initialize_runtime(LegionConfig const &);
 NcclCommunicators initialize_nccl_communicator(LegionConfig const &);
 
 } // namespace FlexFlow

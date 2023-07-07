@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 #define _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 
-#include "arg_type_runtime_tag.h"
+#include "runtime/task_spec/arg_type_runtime_tag.h"
 #include "kernels/ff_handle.h"
 #include "profiling.h"
 #include "utils/type_index.h"
@@ -40,7 +40,7 @@ public:
 
   template <typename T>
   static ArgRefSpec create(ArgRef<T> const &r) {
-    static_assert(is_serializable<T>, "Type must be serializeable");
+    static_assert(is_serializable<T>::value, "Type must be serializeable");
 
     return ArgRefSpec(ArgTypeRuntimeTag::create<T>(), r.ref_type);
   }

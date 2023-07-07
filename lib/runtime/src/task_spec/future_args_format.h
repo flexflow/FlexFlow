@@ -3,7 +3,7 @@
 
 #include "legion.h"
 #include "task_argument_accessor.h"
-#include "tensorless_task_invocation.h"
+#include "runtime/task_spec/tensorless_task_invocation.h"
 #include "utils/stack_map.h"
 
 namespace FlexFlow {

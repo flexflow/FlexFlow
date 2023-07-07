@@ -65,7 +65,7 @@ struct OpTaskSignature {
 
   template <typename T>
   void add_arg_slot(slot_id name) {
-    static_assert(is_serializable<T>, "Type must be serializable");
+    static_assert(is_serializable<T>::value, "Type must be serializable");
   }
 
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots();

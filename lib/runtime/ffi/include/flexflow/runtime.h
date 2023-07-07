@@ -13,10 +13,13 @@ FLEXFLOW_FFI_BEGIN()
 FF_NEW_OPAQUE_TYPE(flexflow_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_training_instance_t);
+FF_NEW_OPAQUE_TYPE(flexflow_void_future_t);
 
 typedef enum {
   FLEXFLOW_RUNTIME_STATUS_OK,
   FLEXFLOW_RUNTIME_ERROR_UNKNOWN,
+  FLEXFLOW_RUNTIME_ERROR_DYNAMIC_ALLOCATION_FAILED,
+  FLEXFLOW_RUNTIME_ERROR_UNEXPECTED_EMPTY_HANDLE,
 } flexflow_runtime_error_t;
 
 typedef enum {
@@ -42,6 +45,9 @@ typedef enum {
 } flexflow_computation_mode_t;
 
 char *flexflow_runtime_get_error_string(flexflow_runtime_error_t);
+
+flexflow_runtime_error_t flexflow_void_future_wait(flexflow_void_future_t);
+flexflow_runtime_error_t flexflow_void_future_destroy(flexflow_void_future_t);
 
 flexflow_runtime_error_t flexflow_config_parse_argv(int *argc,
                                                     char **argv,
@@ -77,7 +83,8 @@ flexflow_runtime_error_t
     flexflow_start_training(flexflow_model_compilation_result_t,
                             flexflow_model_training_instance_t *);
 flexflow_runtime_error_t flexflow_model_training_instance_forward(
-    flexflow_model_training_instance_t);
+    flexflow_model_training_instance_t,
+    flexflow_void_future_t *out);
 flexflow_runtime_error_t flexflow_model_training_instance_backward(
     flexflow_model_training_instance_t);
 flexflow_runtime_error_t
@@ -107,6 +114,6 @@ flexflow_runtime_error_t
 flexflow_runtime_error_t flexflow_set_tensor_int(
     flexflow_model_training_instance_t, flexflow_tensor_t, int32_t *data);
 
-FLEXFLOW_FFI_END();
+FLEXFLOW_FFI_END()
 
 #endif

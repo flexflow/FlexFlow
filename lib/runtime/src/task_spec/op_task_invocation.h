@@ -66,7 +66,7 @@ public:
 
   template <typename T>
   static OpArgRefSpec create(OpArgRef<T> const &r) {
-    static_assert(is_serializable<T>, "Type must be serializable");
+    static_assert(is_serializable<T>::value, "Type must be serializable");
 
     return OpArgRefSpec(std::type_index(typeid(T)), r.ref_type);
   }

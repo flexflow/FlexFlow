@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_TYPED_TASK_INVOCATION_H
-#define _FLEXFLOW_RUNTIME_SRC_TYPED_TASK_INVOCATION_H
+#ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_TYPED_TASK_INVOCATION_H
+#define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_TYPED_TASK_INVOCATION_H
 
 #include "utils/type_index.h"
 #include "utils/type_traits.h"
@@ -39,7 +39,7 @@ private:
 
   std::shared_ptr<TaskInvocation const> invocation;
 };
-static_assert(is_well_behaved_value_type<TypedTaskInvocation<int>>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TypedTaskInvocation<int>);
 
 template <typename T>
 TypedIndexTaskInvocation<T> ensure_return_type(IndexTaskInvocation const &);
@@ -65,8 +65,7 @@ private:
 
   std::shared_ptr<IndexTaskInvocation const> invocation;
 };
-static_assert(is_well_behaved_value_type<TypedIndexTaskInvocation<int>>::value,
-              "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TypedIndexTaskInvocation<int>);
 
 struct TaskInvocationSpec {
   TaskInvocationSpec() = delete;
@@ -92,7 +91,7 @@ private:
   std::type_index type_idx;
   std::shared_ptr<TaskInvocation const> invocation;
 };
-static_assert(is_well_behaved_value_type<TaskInvocationSpec>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TaskInvocationSpec);
 
 struct IndexTaskInvocationSpec {
   IndexTaskInvocationSpec() = delete;
@@ -120,7 +119,7 @@ private:
   std::type_index type_idx;
   std::shared_ptr<IndexTaskInvocation const> invocation;
 };
-static_assert(is_well_behaved_value_type<IndexTaskInvocationSpec>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(IndexTaskInvocationSpec);
 
 template <typename T>
 TaskInvocationSpec

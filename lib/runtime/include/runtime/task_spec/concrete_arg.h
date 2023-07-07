@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_CONCRETE_ARG_H
-#define _FLEXFLOW_RUNTIME_SRC_CONCRETE_ARG_H
+#ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_CONCRETE_ARG_H
+#define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_CONCRETE_ARG_H
 
 #include "arg_type_runtime_tag.h"
 #include "utils/type_index.h"
@@ -25,7 +25,7 @@ public:
 
   template <typename T>
   static ConcreteArgSpec create(T const &t) {
-    static_assert(is_serializable<T>, "Type must be serializable");
+    static_assert(is_serializable<T>::value, "Type must be serializable");
 
     return ConcreteArgSpec(type_index<T>(),
                            std::make_shared<T>(t),

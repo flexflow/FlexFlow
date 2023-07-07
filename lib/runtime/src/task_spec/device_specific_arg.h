@@ -23,10 +23,10 @@ private:
   size_t device_idx;
 };
 
-// manually force serialization to belive that DeviceSpecificArgs are trivially
+// manually force serialization to make DeviceSpecificArgs trivially
 // serializable
 template <typename T>
-struct is_trivially_serializable_t<DeviceSpecificArg<T>> : std::true_type {};
+struct is_trivially_serializable<DeviceSpecificArg<T>> : std::true_type {};
 
 } // namespace FlexFlow
 

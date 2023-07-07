@@ -19,7 +19,7 @@
 #include "kernels/perf_metrics.h"
 #include "legion.h"
 #include "op-attrs/ops/loss_functions.h"
-#include "task_invocation.h"
+#include "task_spec/task_invocation.h"
 #include "utils/fmt.h"
 
 namespace FlexFlow {

@@ -1,8 +1,17 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_INDEX_TASK_INVOCATION_H
-#define _FLEXFLOW_RUNTIME_SRC_INDEX_TASK_INVOCATION_H
+#ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_TASK_INVOCATION_H
+#define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_TASK_INVOCATION_H
 
+#include "parallel_tensor_spec.h"
+#include "runtime/task_spec/typed_task_invocation.h"
+#include "runtime/task_spec/concrete_arg.h"
+#include "runtime/task_spec/index_arg.h"
+#include "runtime/task_spec/typed_future.h"
+#include "runtime/task_spec/typed_future_map.h"
+#include "arg_ref.h"
+#include "pcg/parallel_tensor_guid_t.h"
+#include "pcg/machine_view.h"
+#include "slot_id.h"
 #include "task_invocation.h"
-#include "typed_task_invocation.h"
 
 namespace FlexFlow {
 
