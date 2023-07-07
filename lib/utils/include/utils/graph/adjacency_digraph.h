@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_GRAPH_ADJACENCY_DIGRAPH_H
 
 #include "digraph.h"
+#include "multidigraph.h"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -11,6 +12,7 @@ class AdjacencyDiGraph : public IDiGraph {
 public:
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
+  NodePort add_node_port();
   void remove_node_unsafe(Node const &) override;
   void add_edge(Edge const &) override;
   void remove_edge(Edge const &) override;
@@ -29,9 +31,10 @@ public:
   
   AdjacencyDiGraph(std::size_t next_node_idx, ContentsType adjacency)
       : next_node_idx(next_node_idx), adjacency(adjacency) {}
-
+  AdjacencyDiGraph() = default;
 private:
   std::size_t next_node_idx = 0;
+  std::size_t next_nodeport_idx = 0;
   ContentsType adjacency;
 };
 
