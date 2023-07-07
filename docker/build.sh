@@ -16,8 +16,9 @@ cd "$SCRIPT_DIR/.."
 
 #!/bin/bash
 
-# Default values
-cuda_version=$(nvcc --version | grep "release" | awk '{print $NF}')
+# Use default value on current machine, if cuda is not installed, cuda_version will be empty,
+# which will cause an error later 
+cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}')
 # Change cuda_version eg. V11.7.99 to 11.7
 cuda_version=${cuda_version:1:4}
 image="flexflow"
@@ -45,15 +46,23 @@ done
 if [[ "$cuda_version" != @(11.1|11.3|11.5|11.6|11.7|11.8) ]]; then
   # validate the verison of CUDA against a list of supported ones
   # 11.1, 11.3, 11.5, 11.6, 11.7, 11.8
+  # Available versions: 11.1.1 | 11.2.2 | 11.3.1 | 11.5.2 | 11.6.2 | 11.7.1 | 11.8.0
   echo "cuda_version is not supported, please choose among {11.1,11.3,11.5,11.6,11.7,11.8}"
   exit 1
 fi
 
-# modify cuda version to xx.x.0
-cuda_version=${cuda_version}.0
+# modify cuda version to available versions
+if [[ "$cuda_version" != @(11.1|11.3|11.7) ]]; then
+  cuda_version=${cuda_version}.1
+elif [[ "$cuda_version" != @(11.2|11.5|11.6) ]]; then 
+  cuda_version=${cuda_version}.2
+elif [[ "$cuda_version" != @(11.8) ]]; then 
+  cuda_version=${cuda_version}.0
+fi
+
+
 
 # Get name of desired Docker image as input
-# image="${1:-flexflow}"
 if [[ "$image" != @(flexflow-environment|flexflow) ]]; then
   echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment' and 'flexflow'."
   exit 1
@@ -129,4 +138,4 @@ fi
 # Set value of BUILD_CONFIGS
 get_build_configs
 
-docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" -t "flexflow-${FF_GPU_BACKEND}-${cuda_version}" -f docker/flexflow/Dockerfile .
+docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" --build-arg "cuda_version=${cuda_version}" -t "flexflow-${FF_GPU_BACKEND}-${cuda_version}" -f docker/flexflow/Dockerfile .

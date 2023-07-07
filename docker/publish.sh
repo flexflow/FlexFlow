@@ -4,8 +4,9 @@ set -euo pipefail
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
-# Default values
-cuda_version=$(nvcc --version | grep "release" | awk '{print $NF}')
+# Use default value on current machine, if cuda is not installed, cuda_version will be empty,
+# which will cause an error later 
+cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}')
 # Change cuda_version eg. V11.7.99 to 11.7
 cuda_version=${cuda_version:1:4}
 image="flexflow-cuda"
@@ -37,8 +38,14 @@ if [[ "$cuda_version" != @(11.1|11.3|11.5|11.6|11.7|11.8) ]]; then
   exit 1
 fi
 
-# modify cuda version to xx.x.0
-cuda_version=${cuda_version}.0
+# modify cuda version to available versions
+if [[ "$cuda_version" != @(11.1|11.3|11.7) ]]; then
+  cuda_version=${cuda_version}.1
+elif [[ "$cuda_version" != @(11.2|11.5|11.6) ]]; then 
+  cuda_version=${cuda_version}.2
+elif [[ "$cuda_version" != @(11.8) ]]; then 
+  cuda_version=${cuda_version}.0
+fi
 
 
 # Check publish specinfer environment image
@@ -63,7 +70,7 @@ fi
 
 # Log into container registry
 FLEXFLOW_CONTAINER_TOKEN=${FLEXFLOW_CONTAINER_TOKEN:-}
-if [ -z "$FLEXFLOW_CONTAINER_TOKEN" ]; then echo "FLEXFLOW_CONTAINER_TOKEN secret is not available, cannot publish the docker image to ghrc.io"; exit; fi
+if [ -z "$FLEXFLOW_CONTAINER_TOKEN" ]; then echo "FLEXFLOW_CONTAINER_TOKsecret is not available, cannot publish the docker image to ghrc.io"; exit; fi
 echo "$FLEXFLOW_CONTAINER_TOKEN" | docker login ghcr.io -u flexflow --password-stdin
 
 # Tag image to be uploaded
