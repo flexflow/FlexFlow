@@ -4,11 +4,7 @@ set -euo pipefail
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
-# Use default value on current machine, if cuda is not installed, cuda_version will be empty,
-# which will cause an error later 
-cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}')
-# Change cuda_version eg. V11.7.99 to 11.7
-cuda_version=${cuda_version:1:4}
+cuda_version="empty"
 image="flexflow-cuda"
 
 # Parse command-line options
@@ -30,6 +26,12 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ $cuda_version == "empty" ]]; then
+  cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}')
+  # Change cuda_version eg. V11.7.99 to 11.7
+  cuda_version=${cuda_version:1:4}
+fi
 
 if [[ "$cuda_version" != @(11.1|11.3|11.5|11.6|11.7|11.8) ]]; then
   # validate the verison of CUDA against a list of supported ones
