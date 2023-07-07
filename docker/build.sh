@@ -18,10 +18,12 @@ cd "$SCRIPT_DIR/.."
 
 # Use default value on current machine, if cuda is not installed, cuda_version will be empty,
 # which will cause an error later 
+echo "error comes from nvcc"
 cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}')
 # Change cuda_version eg. V11.7.99 to 11.7
 cuda_version=${cuda_version:1:4}
 image="flexflow"
+echo "error comes after nvcc"
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do

@@ -36,7 +36,7 @@ jobs:
       - name: Free additional space on runner
         run: .github/workflows/helpers/free_space_on_runner.sh
 
-      - name: Build Docker container
+      - name: Build Docker containeri
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         run: |
