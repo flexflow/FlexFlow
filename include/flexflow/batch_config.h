@@ -116,6 +116,7 @@ public:
   inline static int const MAX_BEAM_DEPTH = 8;
 
   int model_id;
+  int max_init_length = 0;
 
   struct BeamSearchPerRequestInfo {
     int beam_size;

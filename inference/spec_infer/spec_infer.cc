@@ -314,7 +314,11 @@ void FlexFlow::top_level_task(Task const *task,
         Future future = fm.get_future(0);
         BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
 
-        if (depth - 1 >= BeamSearchBatchConfig::MAX_BEAM_DEPTH) {
+        int iteration =
+            std::min(BeamSearchBatchConfig::MAX_BEAM_DEPTH,
+                     BatchConfig::MAX_SEQ_LENGTH - beam_bc.max_init_length);
+
+        if (depth - 1 >= iteration) {
           break;
         } else {
           beam_bc_vec[i] = rm.prepare_next_batch_beam(beam_bc_vec[i], beam_ir);
