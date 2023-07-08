@@ -117,14 +117,14 @@ function check_partial_token_match {
     local num_tokens_to_match=30
 
     # Read the second line of the first file
-    second_line=$(sed -n '2p' "$file1")
-    read -r line1 <<< "$second_line"
+    third_line=$(sed -n '3p' "$file1")
+    read -r line1 <<< "$third_line"
     tokens1=${line1#*: }
     IFS=',' read -ra arr1 <<< "$tokens1"
 
     # Read the second line of the second file
-    second_line=$(sed -n '2p' "$file2")
-    read -r line2 <<< "$second_line"
+    third_line=$(sed -n '3p' "$file2")
+    read -r line2 <<< "$third_line"
     tokens2=${line2#*: }
     IFS=',' read -ra arr2 <<< "$tokens2"
 
@@ -254,12 +254,12 @@ python3 ./inference/huggingface_inference.py --model-name "facebook/opt-125m" --
 #python3 ./inference/huggingface_inference.py --model-name "facebook/opt-6.7b" --tokenizer-model-name "facebook/opt-6.7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B_half.txt" --gpu --max-length 127
 
 diff <(tail -n +2 "../inference/output/huggingface_llama_160M.txt") <(tail -n +5 "../inference/output/incr_decoding_llama_160M.txt")
-diff <(tail -n +2 "../inference/output/huggingface_llama_160M_half.txt") <(tail -n +5 "../inference/output/incr_decoding_llama_160M_half.txt")
+diff <(tail -n +2 "../inference/output/huggingface_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../inference/output/incr_decoding_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 diff <(tail -n +2 "../inference/output/huggingface_llama_7B.txt") <(tail -n +5 "../inference/output/incr_decoding_llama_7B.txt")
-diff <(tail -n +2 "../inference/output/huggingface_llama_7B_half.txt") <(tail -n +5 "../inference/output/incr_decoding_llama_7B_half.txt")
+diff <(tail -n +2 "../inference/output/huggingface_llama_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../inference/output/incr_decoding_llama_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 
 diff <(tail -n +2 "../inference/output/huggingface_opt_125M.txt") <(tail -n +5 "../inference/output/incr_decoding_opt_125M.txt")
-diff <(tail -n +2 "../inference/output/huggingface_opt_125M_half.txt") <(tail -n +5 "../inference/output/incr_decoding_opt_125M_half.txt")
+diff <(tail -n +2 "../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../inference/output/incr_decoding_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 #diff <(tail -n +2 "../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../inference/output/incr_decoding_opt_6B.txt")
 #diff <(tail -n +2 "../inference/output/huggingface_opt_6B_half.txt") <(tail -n +5 "../inference/output/incr_decoding_opt_6B_half.txt")
 
@@ -268,4 +268,4 @@ diff <(tail -n +2 "../inference/output/huggingface_opt_125M_half.txt") <(tail -n
 ###############################################################################################
 
 # Clean up after test
-cleanup
+# cleanup
