@@ -207,4 +207,4 @@ diff <(tail -n +2 "../inference/output/huggingface_opt_125M_half.txt") <(tail -n
 ###############################################################################################
 
 # Clean up after test
-cleanup
+# cleanup
