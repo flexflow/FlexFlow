@@ -29,10 +29,10 @@ void forward_kernel_wrapper(AllReduceMeta const *m,
                             GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
   assert(input.data_type == output.data_type);
   assert(input.domain == output.domain);
 #ifdef FF_USE_NCCL
+  ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
   checkNCCL(ncclAllReduce(input.ptr,
                           output.ptr,
                           input.domain.get_volume(),
