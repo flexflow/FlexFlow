@@ -373,15 +373,22 @@ template __global__ void
     assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
 
 template __global__ void
+    add_kernel<half>(half *dst, half const *src, size_t size);
+template __global__ void
     add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
     add_kernel<double>(double *dst, double const *src, size_t size);
-template __global__ void add_kernel<int>(int *dst, int const *src, size_t size);
 template __global__ void
-    add_kernel<long>(long *dst, long const *src, size_t size);
+    add_kernel<int32_t>(int32_t *dst, int32_t const *src, size_t size);
+template __global__ void
+    add_kernel<int64_t>(int64_t *dst, int64_t const *src, size_t size);
 
 template __global__ void
+    copy_kernel<half>(half *dst, half const *src, coord_t size);
+template __global__ void
     copy_kernel<float>(float *dst, float const *src, coord_t size);
+template __global__ void
+    copy_kernel<double>(double *dst, double const *src, coord_t size);
 template __global__ void
     copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
 template __global__ void
@@ -407,12 +414,18 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
 template __host__ void
     print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
 template __host__ void
+    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
+template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+template __host__ void
+    print_tensor<half>(half const *ptr, size_t rect, char const *prefix);
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);
+template __host__ half *download_tensor<half>(half const *ptr,
+                                              size_t num_elements);
 template __host__ double *download_tensor<double>(double const *ptr,
                                                   size_t num_elements);
 template __host__ int32_t *download_tensor<int32_t>(int32_t const *ptr,
