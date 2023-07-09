@@ -2638,6 +2638,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type != OP_ALLREDUCE) {
       continue;
     }
+    // don't fuse softmax since it returns inference results
+    if (operators[l]->op_type == OP_SOFTMAX) {
+      continue;
+    }
     size_t start = 0;
     {
       Op *opl = operators[l];

@@ -34,6 +34,8 @@
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -794,6 +796,52 @@ __host__ void
         IncMultiHeadSelfAttention::inference_kernel_wrapper(
             m,
             bc,
+            task->index_point.point_data[0],
+            my_input_accessor[0],
+            my_weight_accessor[0],
+            my_output_accessor[0],
+            biases);
+        break;
+      }
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        TreeIncMultiHeadSelfAttentionMeta *m =
+            (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
+        TreeVerifyBatchConfig const *tree_bc =
+            (TreeVerifyBatchConfig *)task->args;
+        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        GenericTensorAccessorR biases;
+        if (*m->bias) {
+          assert(fused->op_num_weights[op] == 2);
+          biases = my_weight_accessor[1];
+        }
+        TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
+            m,
+            tree_bc,
+            task->index_point.point_data[0],
+            my_input_accessor[0],
+            my_weight_accessor[0],
+            my_output_accessor[0],
+            biases);
+        break;
+      }
+      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        SpecIncMultiHeadSelfAttentionMeta const *m =
+            (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
+        BeamSearchBatchConfig const *beam_bc =
+            (BeamSearchBatchConfig *)task->args;
+        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        GenericTensorAccessorR biases;
+        if (*m->bias) {
+          assert(fused->op_num_weights[op] == 2);
+          biases = my_weight_accessor[1];
+        }
+        SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
+            m,
+            beam_bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
             my_weight_accessor[0],
