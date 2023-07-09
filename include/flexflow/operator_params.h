@@ -30,6 +30,7 @@
 #include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "flexflow/ops/split_params.h"
 #include "flexflow/ops/topk_params.h"
+#include "flexflow/ops/sampling_params.h"
 #include "flexflow/ops/transpose_params.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention_params.h"
 #include "flexflow/parallel_ops/combine_params.h"

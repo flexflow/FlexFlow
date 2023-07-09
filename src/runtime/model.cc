@@ -56,6 +56,7 @@
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
+#include "flexflow/ops/sampling.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/combine.h"
@@ -2929,6 +2930,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_SAMPLING: {
+      Op *op = Sampling::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -4686,6 +4692,21 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<BeamInferenceResult,
                                       BeamTopK::inference_task>(
         registrar, "BeamTopK Inference Task");
+  }
+  // Sampling task
+  {
+    TaskVariantRegistrar registrar(SAMPLING_INIT_TASK_ID, "Sampling Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Sampling::init_task>(
+        registrar, "Sampling Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(SAMPLING_INF_TASK_ID, "Sampling Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<InferenceResult, Sampling::inference_task>(
+        registrar, "Sampling Inference Task");
   }
   // Transpose task
   {
