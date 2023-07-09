@@ -23,6 +23,8 @@
 #include "runtime/config.h"
 #include "task_spec/task_invocation.h"
 #include "task_spec/task_signature.h"
+#include "pcg/initializer.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 

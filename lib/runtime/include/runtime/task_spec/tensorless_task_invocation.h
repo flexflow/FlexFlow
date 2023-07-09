@@ -1,12 +1,14 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TENSORLESS_TASK_INVOCATION_H
 #define _FLEXFLOW_RUNTIME_SRC_TENSORLESS_TASK_INVOCATION_H
 
+#include "slot_id.h"
 #include "utils/visitable.h"
 #include "concrete_arg.h"
 #include "typed_future.h"
 #include "typed_future_map.h"
 #include "typed_task_invocation.h"
 #include "index_arg.h"
+#include "pcg/machine_view.h"
 
 namespace FlexFlow {
 
@@ -30,7 +32,7 @@ public:
   template <typename T>
   void bind_arg(slot_id name, TypedFutureMap<T> const &);
   template <typename T>
-  void bind_arg(TypedTaskInvocation<T> const &);
+  void bind_arg(TypedStandardTaskInvocation<T> const &);
 
 public:
   std::unordered_map<slot_id, StandardExecutableArgSpec> arg_bindings;
@@ -52,7 +54,7 @@ struct TensorlessIndexTaskBinding
   template <typename T>
   void bind_arg(slot_id name, TypedFutureMap<T> const &);
   template <typename T>
-  void bind_arg(TypedTaskInvocation<T> const &);
+  void bind_arg(TypedStandardTaskInvocation<T> const &);
 
   template <typename F,
             typename T = decltype(std::declval<F>()(

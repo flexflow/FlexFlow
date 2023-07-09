@@ -38,6 +38,8 @@ struct SimTaskBinding {
   void bind_arg(slot_id, T const &);
 };
 
+SimTaskBinding infer_bwd_binding(SimTaskBinding const &);
+
 struct SimEnvironment {
   TaskArgumentAccessor get_fwd_accessor(task_id_t, SimTaskBinding const &);
   TaskArgumentAccessor get_bwd_accessor(task_id_t, SimTaskBinding const &);

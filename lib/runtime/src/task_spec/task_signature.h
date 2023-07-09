@@ -8,7 +8,7 @@
 #include "utils/strong_typedef.h"
 #include "utils/type_index.h"
 #include <unordered_map>
-#include "slot_id.h"
+#include "runtime/task_spec/slot_id.h"
 #include "slot_type.h"
 
 namespace FlexFlow {

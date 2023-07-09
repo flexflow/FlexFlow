@@ -30,6 +30,7 @@ public:
 };
 FF_VISITABLE_STRUCT(Tensor, dims, data_type, initializer, create_gradients, sync_type);
 
+
 using Parameter = Tensor;
 
 } // namespace FlexFlow

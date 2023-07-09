@@ -16,8 +16,8 @@
 #include "loss_functions.h"
 #include "kernels/loss_function_kernels.h"
 #include "legion.h"
-#include "profiling.h"
-#include "task_argument_accessor.h"
+#include "runtime/profiling.h"
+#include "task_spec/task_argument_accessor.h"
 
 namespace FlexFlow {
 
@@ -34,7 +34,8 @@ TaskInvocation backward_invocation(LossAttrs const &attrs,
                                    EnableProfiling enable_profiling,
                                    parallel_tensor_guid_t logit,
                                    parallel_tensor_guid_t label) {
-  auto binding = TaskBinding::index_launch(LOGIT);
+  auto binding = IndexTaskBinding{LOGIT};
+  StandardTypedTaskArg<LossAttrs> arg = attrs;
   binding.bind_arg(LOSS_ATTRS, attrs);
   binding.bind(LOGIT, logit);
   binding.bind(LABEL, label);
@@ -98,7 +99,7 @@ static void
             get_float_ptr(logit),
             get_int32_ptr(label),
             logit.shape.get_volume(),
-            logit_grad.shape.get_volume(),
+            get_volume(logit_grad.shape),
             num_samples,
             num_classes,
             k,
@@ -119,8 +120,8 @@ static void
                 get_float_ptr(logit_grad),
                 get_float_ptr(logit),
                 get_float_ptr(label),
-                logit.shape.get_volume(),
-                logit_grad.shape.get_volume(),
+                get_volume(logit.shape),
+                get_volume(logit_grad.shape),
                 scale_factor);
         break;
       }
@@ -131,8 +132,8 @@ static void
                 get_float_ptr(logit_grad),
                 get_float_ptr(logit),
                 get_float_ptr(label),
-                logit.shape.get_volume(),
-                logit_grad.shape.get_volume(),
+                get_volume(logit.shape),
+                get_volume(logit_grad.shape),
                 scale_factor);
         break;
       }
@@ -142,8 +143,8 @@ static void
                 "[IdentityLoss] backward_time = %.2lfms\n",
                 get_float_ptr(logit_grad),
                 get_float_ptr(logit),
-                logit.shape.get_volume(),
-                logit_grad.shape.get_volume(),
+                get_volume(logit.shape),
+                get_volume(logit_grad.shape),
                 scale_factor);
         break;
       }

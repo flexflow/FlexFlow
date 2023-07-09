@@ -3,6 +3,8 @@
 
 namespace FlexFlow {
 
+OpTaskSignature get_signature(task_id_t const &) { NOT_IMPLEMENTED(); }
+
 OpTensorSpec::OpTensorSpec(TensorRole _role, int _idx)
     : role(_role), idx(_idx) {}
 

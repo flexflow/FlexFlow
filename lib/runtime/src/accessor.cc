@@ -182,7 +182,7 @@ GenericTensorAccessorR getGenericTensorAccessorRO(DataType datatype,
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   void const *ptr = DataTypeDispatch1<GetTensorPointerROFunctor>{}(
       datatype, region, req, fid, ctx, runtime);
-  return GenericTensorAccessorR(datatype, to_array_shape(domain), ptr);
+  return {datatype, to_array_shape(domain), ptr};
 }
 
 GenericTensorAccessorW
@@ -197,7 +197,7 @@ GenericTensorAccessorW
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   void *ptr = DataTypeDispatch1<GetTensorPointerWOFunctor>{}(
       datatype, region, req, fid, ctx, runtime);
-  return GenericTensorAccessorW(datatype, to_array_shape(domain), ptr);
+  return {datatype, to_array_shape(domain), ptr};
 }
 
 GenericTensorAccessorW
@@ -211,7 +211,7 @@ GenericTensorAccessorW
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
   void *ptr = DataTypeDispatch1<GetTensorPointerRWFUnctor>{}(
       datatype, region, req, fid, ctx, runtime);
-  return GenericTensorAccessorW(datatype, to_array_shape(domain), ptr);
+  return {datatype, to_array_shape(domain), ptr};
 }
 
 } // namespace FlexFlow

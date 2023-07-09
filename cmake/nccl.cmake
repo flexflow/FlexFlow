@@ -89,7 +89,7 @@ else()
    BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/deps/nccl/lib/libnccl${LIBEXT}
    INSTALL_COMMAND ""
    CONFIGURE_COMMAND ""
-   BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}" "CXX=${CMAKE_CXX_COMPILER}" CC="${CMAKE_CC_COMPILER}"
+   BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/nccl" "CXX=${CMAKE_CXX_COMPILER}" CC="${CMAKE_CC_COMPILER}"
    BUILD_IN_SOURCE 1
   )
 
@@ -105,8 +105,9 @@ else()
   set(NCCL_LIB "${INSTALL_DIR}/lib/libnccl${LIBEXT}")
 endif()
 message("NCCL_LIB = ${NCCL_LIB}")
+message("INSTALL_DIR = ${INSTALL_DIR}")
 
 add_library(nccl INTERFACE)
 target_include_directories(nccl SYSTEM INTERFACE ${NCCL_INCLUDE_DIR})
-#add_dependencies(nccli nccl)
+add_dependencies(nccl ${NCCL_NAME})
 target_link_libraries(nccl INTERFACE ${NCCL_LIB})

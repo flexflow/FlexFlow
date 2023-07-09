@@ -73,6 +73,13 @@ static_assert(is_list_initializable<int, int>::value, "");
 
 static_assert(std::is_same<conditional_t<false, infinite_recursion<0>, type_identity<bool>>::type, bool>::value, "");
 /* static_assert(std::is_same<typename if_then_else<true, int, bool>::type, bool>::value, ""); */
+
+template <typename From, typename To, typename Enable = void>
+struct is_static_castable : std::false_type { };
+
+template <typename From, typename To>
+struct is_static_castable<From, To, void_t<decltype(static_cast<To>(std::declval<From>()))>> 
+  : std::true_type { };
     
 } // namespace FlexFlow
 

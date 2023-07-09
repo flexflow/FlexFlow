@@ -7,66 +7,59 @@
 #include "op-attrs/datatype.h"
 #include "utils/exception.h"
 #include "utils/variant.h"
+#include "utils/required.h"
 
 namespace FlexFlow {
 
-class GenericTensorAccessorW
-    : public use_visitable_cmp<GenericTensorAccessorW> {
+class GenericTensorAccessorW {
 public:
-  GenericTensorAccessorW() = delete;
+  template <DataType DT>
+  typename data_type_enum_to_class<DT>::type *get() const {
+    if (this->data_type == DT) {
+      return static_cast<real_type<DT> *>(this->ptr);
+    } else {
+  throw mk_runtime_error("Invalid access data type ({} != {})",
+    this->data_type, DT);
+    }
+  }
 
-  explicit GenericTensorAccessorW(DataType data_type,
-                                  ArrayShape const &shape,
-                                  void *ptr);
+  int32_t *get_int32_ptr() const;
+  int64_t *get_int64_ptr() const;
+  float *get_float_ptr() const;
+  double *get_double_ptr() const;
+  half *get_half_ptr() const;
 
-  /* template <DataType DT> */
-  /* typename data_type_enum_to_class<DT>::type *get() const { */
-  /*   if (this->data_type == DT) { */
-  /*     return static_cast<real_type<DT> *>(this->ptr); */
-  /*   } else { */
-  /*     throw mk_runtime_error("Invalid access data type ({} != {})",
-   * this->data_type, DT); */
-  /*   } */
-  /* } */
-
-  /* int32_t *get_int32_ptr() const; */
-  /* int64_t *get_int64_ptr() const; */
-  /* float *get_float_ptr() const; */
-  /* double *get_double_ptr() const; */
-  /* half *get_half_ptr() const; */
+public:
   DataType data_type;
   ArrayShape shape;
-  void *ptr;
+  req<void *> ptr;
 };
+FF_VISITABLE_STRUCT(GenericTensorAccessorW, data_type, shape, ptr);
 
-class GenericTensorAccessorR
-    : public use_visitable_cmp<GenericTensorAccessorR> {
+class GenericTensorAccessorR {
 public:
-  GenericTensorAccessorR() = delete;
-  GenericTensorAccessorR(DataType data_type,
-                         ArrayShape const &shape,
-                         void const *ptr);
-  explicit GenericTensorAccessorR(GenericTensorAccessorW const &);
+  template <DataType DT>
+  typename data_type_enum_to_class<DT>::type const *get() const {
+    if (this->data_type == DT) {
+      return static_cast<real_type<DT> const *>(this->ptr);
+    } else {
+       throw mk_runtime_error("Invalid access data type ({} != {})",
+    this->data_type, DT);
+    }
+  }
 
-  /* template <DataType DT> */
-  /* typename data_type_enum_to_class<DT>::type const *get() const { */
-  /*   if (this->data_type == DT) { */
-  /*     return static_cast<real_type<DT> const *>(this->ptr); */
-  /*   } else { */
-  /*     throw mk_runtime_error("Invalid access data type ({} != {})",
-   * this->data_type, DT); */
-  /*   } */
-  /* } */
+  int32_t const *get_int32_ptr() const;
+  int64_t const *get_int64_ptr() const;
+  float const *get_float_ptr() const;
+  double const *get_double_ptr() const;
+  half const *get_half_ptr() const;
 
-  /* int32_t const *get_int32_ptr() const; */
-  /* int64_t const *get_int64_ptr() const; */
-  /* float const *get_float_ptr() const; */
-  /* double const *get_double_ptr() const; */
-  /* half const *get_half_ptr() const; */
+public:
   DataType data_type;
   ArrayShape shape;
-  void const *ptr;
+  req<void const *> ptr;
 };
+FF_VISITABLE_STRUCT(GenericTensorAccessorR, data_type, shape, ptr);
 
 int32_t *get_int32_ptr(GenericTensorAccessorW const &);
 int64_t *get_int64_ptr(GenericTensorAccessorW const &);
@@ -82,6 +75,8 @@ std::vector<float *>
 std::vector<double *>
     get_double_ptrs(std::vector<GenericTensorAccessorW> const &);
 std::vector<half *> get_half_ptrs(std::vector<GenericTensorAccessorW> const &);
+
+static_assert(is_fmtable<req<DataType> const &>::value, "");
 
 template <DataType DT>
 typename data_type_enum_to_class<DT>::type *
@@ -142,9 +137,6 @@ std::vector<real_type<DT> const *>
 }
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorW, data_type, shape, ptr);
-VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorR, data_type, shape, ptr);
 
 namespace FlexFlow {
 static_assert(is_well_behaved_value_type_no_hash<GenericTensorAccessorR>::value,

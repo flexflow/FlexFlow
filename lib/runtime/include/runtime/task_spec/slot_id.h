@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-struct slot_id : strong_typedef<slot_id, int> {
+struct slot_id : public strong_typedef<slot_id, int> {
   using strong_typedef::strong_typedef;
 
   slot_id(int);

@@ -4,20 +4,22 @@
 #include "pcg/computation_graph.h"
 #include "pcg/optimizer.h"
 #include "pcg/tensor_mapping.h"
-#include "runtime_backing.h"
 #include "task_spec/typed_future.h"
+#include "training_pcg.h"
+#include "profiling.h"
+#include "legion_backing.h"
 
 namespace FlexFlow {
 
 struct ModelTrainingInstance {
-public:
   ComputationGraph computation_graph;
   Optimizer optimizer;
   EnableProfiling enable_profiling;
   TrainingPCG training_pcg;
   TensorMapping tensor_map;
-  RuntimeBacking runtime_backing;
+  LegionBacking legion_backing;
 };
+FF_VISITABLE_STRUCT(ModelTrainingInstance, computation_graph, optimizer, enable_profiling, training_pcg, tensor_map, legion_backing);
 
 TypedFuture<void> forward(ModelTrainingInstance const &);
 TypedFuture<void> backward(ModelTrainingInstance const &);

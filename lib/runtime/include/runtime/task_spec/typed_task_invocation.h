@@ -7,39 +7,43 @@
 
 namespace FlexFlow {
 
+struct TaskBinding;
 struct TaskInvocation;
+struct StandardTaskInvocation;
 struct IndexTaskInvocation;
+struct StandardTaskBinding;
+struct IndexTaskBinding;
 
 template <typename T>
-struct TypedTaskInvocation;
+struct TypedStandardTaskInvocation;
 template <typename T>
 struct TypedIndexTaskInvocation;
 
 template <typename T>
-TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &);
+TypedStandardTaskInvocation<T> ensure_return_type(StandardTaskInvocation const &);
 
 template <typename T>
-struct TypedTaskInvocation {
+struct TypedStandardTaskInvocation {
 public:
-  TypedTaskInvocation() = delete;
+  TypedStandardTaskInvocation() = delete;
 
-  friend TypedTaskInvocation ensure_return_type<T>(TaskInvocation const &);
+  friend TypedStandardTaskInvocation ensure_return_type<T>(StandardTaskInvocation const &);
 
-  friend bool operator==(TypedTaskInvocation const &,
-                         TypedTaskInvocation const &);
-  friend bool operator!=(TypedTaskInvocation const &,
-                         TypedTaskInvocation const &);
-  friend bool operator<(TypedTaskInvocation const &,
-                        TypedTaskInvocation const &);
+  friend bool operator==(TypedStandardTaskInvocation const &,
+                         TypedStandardTaskInvocation const &);
+  friend bool operator!=(TypedStandardTaskInvocation const &,
+                         TypedStandardTaskInvocation const &);
+  friend bool operator<(TypedStandardTaskInvocation const &,
+                        TypedStandardTaskInvocation const &);
 
-  operator TaskInvocation() const;
+  operator StandardTaskInvocation() const;
 
 private:
-  TypedTaskInvocation(TaskInvocation const &);
+  TypedStandardTaskInvocation(StandardTaskInvocation const &);
 
-  std::shared_ptr<TaskInvocation const> invocation;
+  std::shared_ptr<StandardTaskInvocation const> invocation;
 };
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TypedTaskInvocation<int>);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(TypedStandardTaskInvocation<int>);
 
 template <typename T>
 TypedIndexTaskInvocation<T> ensure_return_type(IndexTaskInvocation const &);
@@ -75,7 +79,7 @@ struct TaskInvocationSpec {
   }
 
   template <typename T>
-  static TaskInvocationSpec create(TypedTaskInvocation<T> const &invocation) {
+  static TaskInvocationSpec create(TypedStandardTaskInvocation<T> const &invocation) {
     return TaskInvocationSpec(type_index<T>(), invocation.invocation);
   }
 
@@ -123,7 +127,7 @@ CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(IndexTaskInvocationSpec);
 
 template <typename T>
 TaskInvocationSpec
-    create_task_invocation_spec(TypedTaskInvocation<T> const &invoc) {
+    create_task_invocation_spec(TypedStandardTaskInvocation<T> const &invoc) {
   return TaskInvocationSpec::create<T>(invoc);
 }
 

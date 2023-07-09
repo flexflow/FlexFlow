@@ -24,8 +24,8 @@ RetType internal_ensure_return_type(InvocType const &invocation) {
 }
 
 template <typename T>
-TypedTaskInvocation<T> ensure_return_type(TaskInvocation const &invocation) {
-  return internal_ensure_return_type<TaskInvocation, TypedTaskInvocation<T>, T>(
+TypedStandardTaskInvocation<T> ensure_return_type(TaskInvocation const &invocation) {
+  return internal_ensure_return_type<TaskInvocation, TypedStandardTaskInvocation<T>, T>(
       invocation);
 }
 

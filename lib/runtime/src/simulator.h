@@ -18,8 +18,8 @@
 #include "cost_metrics.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/operator_attrs.h"
-#include "operator_guid_t.h"
-#include "parallel_tensor.h"
+#include "pcg/operator_guid_t.h"
+#include "pcg/parallel_tensor.h"
 #include "runtime/config.h"
 #include "utils/hash-utils.h"
 #include "utils/variant.h"
@@ -28,6 +28,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include "pcg/machine_view.h"
 
 namespace FlexFlow {
 

@@ -224,6 +224,25 @@ bool> {
   return as_tuple(lhs) == as_tuple(rhs);
 }
 
+template <typename T, typename TT>
+auto operator==(T const &lhs, TT const &rhs) -> enable_if_t<conjunction<is_visitable<T>, std::is_convertible<TT, T>>::value, bool> {
+  return lhs == static_cast<T>(rhs);
+}
+
+template <typename T, typename TT>
+auto operator==(T const &lhs, TT const &rhs) -> enable_if_t<conjunction<is_visitable<TT>, negation<is_visitable<T>>, std::is_convertible<T, TT>>::value, bool> {
+  return static_cast<TT>(lhs) == rhs;
+}
+
+/* template <typename T, typename TT> */
+/* auto operator==(TT const &lhs, T const &rhs) -> enable_if_t< */
+/*   conjunction<is_visitable<T>, elements_satisfy<is_equal_comparable, T>, std::is_convertible<TT, T>, */ 
+/*   negation<conjunction<is_visitable<T>, elements_satisfy<is_equal_comparable, T>, std::is_convertible<TT, T>>> */
+/*   >::value, */
+/* bool> { */
+/*   return as_tuple(lhs) == as_tuple(rhs); */
+/* } */
+
 template <typename T>
 auto operator!=(T const &lhs, T const &rhs) -> enable_if_t<
   conjunction<is_visitable<T>, elements_satisfy<is_neq_comparable, T>>::value,
@@ -268,11 +287,14 @@ struct Arbitrary<
 
 } // namespace rc
 
-#define CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME) \
+#define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME) \
   static_assert(is_visitable<TYPENAME>::value, #TYPENAME " is not visitable (this should never happen--contact the FF developers)"); \
   static_assert(sizeof(visit_as_tuple_t<TYPENAME>) == sizeof(TYPENAME), #TYPENAME " should be fully visitable"); \
-  CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME); \
-  static_assert(is_visit_list_initializable<TYPENAME>::value, #TYPENAME " should be list-initialializable by the visit field types"); \
+  CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME);
+
+#define CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME) \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME); \
+  static_assert(is_visit_list_initializable<TYPENAME>::value, #TYPENAME " should be list-initialializable by the visit field types");
 
 #define FF_VISITABLE_STRUCT_EMPTY(TYPENAME) \
   } \
@@ -290,6 +312,20 @@ struct Arbitrary<
   CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME); \
   static_assert(is_only_visit_list_initializable<TYPENAME>::value, #TYPENAME " should not be list-initialializable from any sub-tuples (you probably need to insert req<...>s)"); \
   static_assert(!std::is_default_constructible<TYPENAME>::value, #TYPENAME " should not be default-constructible (you probably need to insert req<...>s)")
+
+#define FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION_EMPTY(TYPENAME) \
+  } \
+  VISITABLE_STRUCT_EMPTY(::FlexFlow::TYPENAME); \
+  MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME); \
+  namespace FlexFlow { \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME);
+
+#define FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION_NONEMPTY(TYPENAME, ...) \
+  } \
+  VISITABLE_STRUCT(::FlexFlow::TYPENAME, __VA_ARGS__); \
+  MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME); \
+  namespace FlexFlow { \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME);
 
 #define MAKE_VISIT_HASHABLE(TYPENAME)                                          \
   namespace std {                                                              \
@@ -309,12 +345,15 @@ struct Arbitrary<
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  \
         1, 1, 1, 1, 1, 1, 1, 1, 0, 0))
-#define _VISITABLE_STRUCT_CASE_0(a) FF_VISITABLE_STRUCT_EMPTY(a)
-#define _VISITABLE_STRUCT_CASE_1(...) FF_VISITABLE_STRUCT_NONEMPTY(__VA_ARGS__)
-#define __DISPATCH_VISITABLE_CASE(N, ...) _VISITABLE_STRUCT_CASE_ ## N (__VA_ARGS__)
-#define _DISPATCH_VISITABLE_CASE(N, ...) __DISPATCH_VISITABLE_CASE(N, __VA_ARGS__)
+#define _VISITABLE_STRUCT_CASE_0(MACRO_BASE_NAME, a) MACRO_BASE_NAME ## _EMPTY (a)
+#define _VISITABLE_STRUCT_CASE_1(MACRO_BASE_NAME, ...) MACRO_BASE_NAME ## _NONEMPTY (__VA_ARGS__)
+#define __DISPATCH_VISITABLE_CASE(MACRO_BASE_NAME, N, ...) _VISITABLE_STRUCT_CASE_ ## N (MACRO_BASE_NAME, __VA_ARGS__)
+#define _DISPATCH_VISITABLE_CASE(MACRO_BASE_NAME, N, ...) __DISPATCH_VISITABLE_CASE(MACRO_BASE_NAME, N, __VA_ARGS__)
 #define FF_VISITABLE_STRUCT(...) \
-  _DISPATCH_VISITABLE_CASE(_GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
+  _DISPATCH_VISITABLE_CASE(FF_VISITABLE_STRUCT, _GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
+
+#define FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(...) \
+  _DISPATCH_VISITABLE_CASE(FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION, _GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__), __VA_ARGS__)
 
 
 #endif

@@ -2,7 +2,7 @@
 #define _FLEXFLOW_AGGREGATE_H_
 
 #include "op-attrs/ops/aggregate.h"
-#include "op_task_invocation.h"
+#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

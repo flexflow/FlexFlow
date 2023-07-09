@@ -7,6 +7,7 @@
 #include "utils/strong_typedef.h"
 #include <vector>
 #include "utils/stack_map.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -103,10 +104,14 @@ struct TaskArgumentAccessor {
   }
 
   template <typename T>
-  optional<T> get_optional_argument(slot_id) const;
+  optional<T> get_optional_argument(slot_id) const {
+    NOT_IMPLEMENTED();
+  }
 
   template <typename T>
-  std::vector<T> get_variadic_argument(slot_id) const;
+  std::vector<T> get_variadic_argument(slot_id) const {
+    NOT_IMPLEMENTED();
+  }
 
   template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV>
@@ -138,7 +143,7 @@ struct TaskArgumentAccessor {
 
   template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const {
-    return this->get_tensor<PRIV>(slot, IsGrad::YES);
+    NOT_IMPLEMENTED();
   }
 
   template <Permissions PRIV>
@@ -158,10 +163,12 @@ struct TaskArgumentAccessor {
   template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>>
       get_variadic_tensor_grad(slot_id slot) const {
-    return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES);
+    NOT_IMPLEMENTED();
   }
 
-  size_t get_device_idx() const;
+  size_t get_device_idx() const {
+    NOT_IMPLEMENTED();
+  }
 
 private:
   Legion::Task const *task;

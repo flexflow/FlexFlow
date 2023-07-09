@@ -6,7 +6,7 @@
 #include "utils/disjoint_set.h"
 #include "utils/graph.h"
 #include "utils/hash-utils.h"
-#include "utils/not_implemented_exception.h"
+#include "utils/exception.h"
 #include "utils/optional.h"
 #include "utils/record_formatter.h"
 #include "utils/stack_map.h"

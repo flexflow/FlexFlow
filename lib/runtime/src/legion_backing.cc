@@ -6,6 +6,7 @@
 #include "model.h"
 #include "task_spec/task_argument_accessor.h"
 #include "task_spec/task_invocation_args_format.h"
+#include "runtime/task_spec/typed_task_invocation.h"
 
 using namespace Legion;
 using namespace FlexFlow::Kernels;
@@ -20,6 +21,7 @@ static void allocate_region_fields(LegionConfig const &config) {
 
 LegionBacking initialize_runtime(LegionConfig const &config) {
   allocate_region_fields(config);
+  NOT_IMPLEMENTED();
 }
 
 IndexSpaceManager::IndexSpaceManager(LegionConfig const &config)
@@ -201,9 +203,9 @@ static ncclComm_t
   return NCCL::create_comm(ncclId, allRanks, myRank);
 }
 
-TypedTaskInvocation<ncclUniqueId> get_unique_id() {
+TypedStandardTaskInvocation<ncclUniqueId> get_unique_id() {
   return ensure_return_type<ncclUniqueId>(
-      {NCCL_GETUNIQUEID_TASK_ID, TaskBinding::standard_launch()});
+      {NCCL_GETUNIQUEID_TASK_ID, StandardTaskBinding{}});
 }
 
 /* TypedTaskInvocation<ncclComm_t>
@@ -258,10 +260,10 @@ static void ff_init_task(Legion::Task const *task,
                          Legion::Context ctx,
                          Legion::Runtime *runtime) {}
 
-TensorlessTaskInvocation ff_init(FFConfig const &config,
+TensorlessIndexTaskInvocation ff_init(FFConfig const &config,
                                  FFInitInfo const &info) {
   MachineView mv = get_basic_data_parallel_machine_view(config);
-  auto b = TensorlessTaskBinding::index_launch(mv);
+  TensorlessIndexTaskBinding b(mv);
   b.bind_arg(FF_INIT_INFO, info);
 
   return {FF_INIT_TASK_ID, b};

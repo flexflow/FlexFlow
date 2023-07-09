@@ -19,7 +19,7 @@ template <typename T>
     }
 
     static void to_json(json& j, ::FlexFlow::required<T> const &t) {
-      j = t.value;
+      j = t.value();
     }
   };
 }
@@ -29,16 +29,30 @@ namespace std {
 template <typename T>
 struct hash<::FlexFlow::required<T>> {
   size_t operator()(::FlexFlow::required<T> const &r) const {
-    return get_std_hash(r.value);
+    return get_std_hash(r.value());
   }
 };
 
 }
 
+namespace fmt {
+
+template <typename T>
+struct formatter<::FlexFlow::req<T>> : formatter<T> { 
+  template <typename FormatContext>
+  auto format(::FlexFlow::req<T> const &t, FormatContext &ctx)
+      -> decltype(ctx.out()) {
+    return formatter<T>::format(t.value(), ctx);
+  }
+};
+
+} // namespace fmt
+
 namespace FlexFlow {
 static_assert(is_json_serializable<req<int>>::value, "");
 static_assert(is_json_deserializable<req<int>>::value, "");
 static_assert(is_jsonable<req<int>>::value, "");
+static_assert(is_fmtable<req<int>>::value, "");
 }
 
 #endif 

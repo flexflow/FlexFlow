@@ -1,5 +1,5 @@
 #include "utils/recursive_logger.h"
-#include "utils/not_implemented_exception.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 namespace utils {
