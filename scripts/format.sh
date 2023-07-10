@@ -52,11 +52,12 @@ download_clang_tool() {
       error "Unknown return value from get_os: $OS. Exiting..."
   esac
   URL="$BASE_URL/clang-${TOOL}-${VERSION}_${URL_OS}-amd64"
+  echo "Downloading from $URL..."
 
   if command -v wget &> /dev/null; then
     wget "$URL" -O "$TARGET_PATH"
   elif command -v curl &> /dev/null; then
-    curl "$URL" -o "$TARGET_PATH"
+    curl -L "$URL" -o "$TARGET_PATH"
   else
     error "Could not find either wget or curl. Exiting..."
   fi
@@ -67,5 +68,7 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
   chmod u+x "$CLANG_FORMAT_PATH"
 fi
 
-mapfile -t FILES < <(git ls-files | grep -E '\.(h|cc|cpp|cu)$')
+mapfile -t FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
+mv "$GIT_ROOT/".clang-format{.old,}
 "$CLANG_FORMAT_PATH" -i "${FILES[@]}"
+mv "$GIT_ROOT/".clang-format{,.old}
