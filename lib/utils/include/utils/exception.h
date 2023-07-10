@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 #ifdef FF_REQUIRE_IMPLEMENTED
 #define NOT_IMPLEMENTED() \
-    static_assert("Function not yet implemented");
+    static_assert(false, "Function not yet implemented");
 #else
 #define NOT_IMPLEMENTED() \
     throw not_implemented();
