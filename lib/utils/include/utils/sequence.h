@@ -4,6 +4,7 @@
 #include "optional.h"
 #include "utils/tuple.h"
 #include <utility>
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 
