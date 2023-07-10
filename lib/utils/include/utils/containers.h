@@ -135,7 +135,7 @@ template <typename K,
           typename F,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
 std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
-                                     F const &f) {
+                                   F const &f) {
   std::unordered_map<K2, V> result;
   for (auto const &kv : f) {
     result.insert({f(kv.first), kv.second});
@@ -147,8 +147,7 @@ template <typename K,
           typename V,
           typename F,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
-bidict<K2, V> map_keys(bidict<K, V> const &m,
-                                     F const &f) {
+bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
   bidict<K2, V> result;
   for (auto const &kv : f) {
     result.equate(f(kv.first), kv.second);
@@ -185,15 +184,13 @@ template <typename K,
           typename V,
           typename F,
           typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
-bidict<K, V2> map_values(bidict<K, V> const &m,
-                                     F const &f) {
+bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
   bidict<K, V2> result;
   for (auto const &kv : m) {
     result.equate({kv.first, f(kv.second)});
   }
   return result;
 }
-
 
 template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
@@ -226,13 +223,8 @@ std::vector<typename C::mapped_type> values(C const &c) {
 }
 
 template <typename C>
-std::unordered_set<
-  std::pair<
-    typename C::key_type,
-    typename C::value_type
-  >
->
-items(C const &c) {
+std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
+    items(C const &c) {
   return {c.begin(), c.end()};
 }
 
@@ -529,7 +521,7 @@ void inplace_sorted_by(std::vector<T> &v, F const &f) {
   auto custom_comparator = [&](T const &lhs, T const &rhs) -> bool {
     return f(lhs, rhs);
   };
-  
+
   std::sort(v.begin(), v.end(), custom_comparator);
 }
 
