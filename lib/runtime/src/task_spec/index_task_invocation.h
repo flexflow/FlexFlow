@@ -1,16 +1,16 @@
 #ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_TASK_INVOCATION_H
 #define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_TASK_INVOCATION_H
 
+#include "arg_ref.h"
 #include "parallel_tensor_spec.h"
-#include "runtime/task_spec/typed_task_invocation.h"
+#include "pcg/machine_view.h"
+#include "pcg/parallel_tensor_guid_t.h"
 #include "runtime/task_spec/concrete_arg.h"
 #include "runtime/task_spec/index_arg.h"
+#include "runtime/task_spec/slot_id.h"
 #include "runtime/task_spec/typed_future.h"
 #include "runtime/task_spec/typed_future_map.h"
-#include "arg_ref.h"
-#include "pcg/parallel_tensor_guid_t.h"
-#include "pcg/machine_view.h"
-#include "runtime/task_spec/slot_id.h"
+#include "runtime/task_spec/typed_task_invocation.h"
 #include "standard_task_invocation.h"
 #include "tasks.h"
 
@@ -60,7 +60,8 @@ public:
 
   StandardTaskBinding standard_binding;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(IndexTaskBinding, standard_binding);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(IndexTaskBinding,
+                                             standard_binding);
 
 struct IndexTaskInvocation {
   req<task_id_t> task_id;

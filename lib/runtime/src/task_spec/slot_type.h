@@ -31,6 +31,6 @@ struct formatter<::FlexFlow::SlotType> : formatter<string_view> {
   }
 };
 
-}
+} // namespace fmt
 
 #endif

@@ -4,10 +4,10 @@
 #include "accessor.h"
 #include "runtime/config.h"
 #include "task_invocation.h"
+#include "utils/exception.h"
+#include "utils/stack_map.h"
 #include "utils/strong_typedef.h"
 #include <vector>
-#include "utils/stack_map.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -56,12 +56,8 @@ struct TaskArgumentsFormat {
   void insert(slot_id, region_idx_t);
   void insert(slot_id, std::vector<region_idx_t> const &);
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(TaskArgumentsFormat,
-                                             region_idxs,
-                                             args,
-                                             futures,
-                                             regions,
-                                             data_types);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
+    TaskArgumentsFormat, region_idxs, args, futures, regions, data_types);
 
 Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &,
                                      region_idx_t const &);

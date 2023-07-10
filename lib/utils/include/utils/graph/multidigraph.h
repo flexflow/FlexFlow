@@ -36,7 +36,6 @@ struct MultiDiEdge {
 };
 FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
 
-
 struct MultiDiEdgeQuery {
   tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
   tl::optional<std::unordered_set<NodePort>> srcIdxs = tl::nullopt,
@@ -153,7 +152,6 @@ public:
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
 
   operator MultiDiGraphView() const;
-
 
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 

@@ -14,12 +14,12 @@
  */
 
 #include "metrics_functions.h"
-#include "task_spec/index_task_invocation.h"
 #include "kernels/metrics_kernels.h"
 #include "runtime/profiling.h"
+#include "runtime/task_spec/typed_task_invocation.h"
+#include "task_spec/index_task_invocation.h"
 #include "task_spec/task_argument_accessor.h"
 #include "tasks.h"
-#include "runtime/task_spec/typed_task_invocation.h"
 
 namespace FlexFlow {
 

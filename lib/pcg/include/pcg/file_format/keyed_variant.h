@@ -2,17 +2,16 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_KEYED_VARIANT_H
 
 #include "utils/json.h"
-#include "utils/variant.h"
-#include "utils/strong_typedef.h"
 #include "utils/sequence.h"
+#include "utils/strong_typedef.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
-template <typename K, typename Variant> 
+template <typename K, typename Variant>
 struct KeyedVariant {
   KeyedVariant() = delete;
-  KeyedVariant(Variant const &v)
-    : v(v) { }
+  KeyedVariant(Variant const &v) : v(v) {}
 
   Variant v;
 
@@ -30,11 +29,10 @@ struct KeyedVariant {
 };
 
 struct ToJsonFunctor {
-  ToJsonFunctor(json &j)
-    : j(j) { }
+  ToJsonFunctor(json &j) : j(j) {}
 
   json &j;
-  
+
   template <typename T>
   void operator()(T const &t) {
     static_assert(is_jsonable<T>::value, "");
@@ -55,8 +53,7 @@ void to_json(json &j, KeyedVariant<K, Variant> const &v) {
 
 template <typename Variant>
 struct FromJsonFunctor {
-  FromJsonFunctor(json const &j, int idx) 
-    : j(j), idx(idx) { }
+  FromJsonFunctor(json const &j, int idx) : j(j), idx(idx) {}
 
   json const &j;
   int idx;
@@ -74,11 +71,9 @@ std::string get_json_name(T const &t) {
   return json{t}.get<std::string>();
 }
 
-
 template <typename Key, typename Variant>
 struct FromJsonMoveOnlyFunctor {
-  FromJsonMoveOnlyFunctor(json const &j, Key const &key) 
-    : j(j) { }
+  FromJsonMoveOnlyFunctor(json const &j, Key const &key) : j(j) {}
 
   json const &j;
   Key const &key;
@@ -97,7 +92,7 @@ Variant from_json_moveonly(json const &j, K const &key) {
 
 template <typename K, typename Variant>
 typename std::enable_if<std::is_default_constructible<Variant>::value>::type
-from_json(json const &j, KeyedVariant<K, Variant> &v) {
+    from_json(json const &j, KeyedVariant<K, Variant> &v) {
   K key = j.at("type").get<K>();
   std::string key_string = j.at("type").get<std::string>();
 
@@ -109,16 +104,14 @@ KeyedVariant<K, Variant> keyed_variant_from_json(json const &j) {
   K key = j.at("type").get<K>();
 
   return KeyedVariant<K, Variant>{
-    from_json_moveonly<Variant>(j, static_cast<int>(key))
-  };
+      from_json_moveonly<Variant>(j, static_cast<int>(key))};
 }
 
-}
+} // namespace FlexFlow
 
 namespace nlohmann {
 
-
-template <typename K, typename V> 
+template <typename K, typename V>
 struct adl_serializer<::FlexFlow::KeyedVariant<K, V>> {
   static void to_json(json &j, ::FlexFlow::KeyedVariant<K, V> const &v) {
     return ::FlexFlow::to_json(v);
@@ -129,7 +122,7 @@ struct adl_serializer<::FlexFlow::KeyedVariant<K, V>> {
   }
 };
 
-}
+} // namespace nlohmann
 
 namespace FlexFlow {
 static_assert(is_jsonable<KeyedVariant<int, variant<int, float>>>::value, "");

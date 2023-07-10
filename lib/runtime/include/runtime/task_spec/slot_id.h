@@ -11,7 +11,7 @@ struct slot_id : public strong_typedef<slot_id, int> {
   slot_id(int);
 };
 
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::slot_id);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::slot_id, "slot_id");

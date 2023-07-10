@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct FlatAttrs { };
+struct FlatAttrs {};
 FF_VISITABLE_STRUCT(FlatAttrs);
 CHECK_VALID_OP_ATTR(FlatAttrs);
 

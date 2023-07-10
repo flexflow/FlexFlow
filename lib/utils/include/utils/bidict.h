@@ -55,8 +55,8 @@ struct bidict {
   }
 
   std::size_t size() const {
-    assert (fwd_map.size() == bwd_map.size());
-    return fwd_map.size(); 
+    assert(fwd_map.size() == bwd_map.size());
+    return fwd_map.size();
   }
 
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;
@@ -144,6 +144,7 @@ struct bidict {
   operator std::unordered_map<L, R> const &() const {
     return this->fwd_map;
   }
+
 private:
   bidict(std::unordered_map<L, R> const &fwd_map,
          std::unordered_map<R, L> const &bwd_map)

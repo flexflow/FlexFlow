@@ -1,5 +1,3 @@
 #include "pcg/serialization.h"
 
-namespace FlexFlow {
-
-}
+namespace FlexFlow {}

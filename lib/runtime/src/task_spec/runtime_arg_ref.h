@@ -15,7 +15,6 @@ using RuntimeArgRefSpec = ArgRefSpec<RuntimeArgRefType>;
 RuntimeArgRef<ProfilingSettings> profiling_settings();
 RuntimeArgRef<PerDeviceFFHandle> ff_handle();
 
-
-}
+} // namespace FlexFlow
 
 #endif

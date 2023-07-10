@@ -10,4 +10,4 @@ std::vector<size_t> count(size_t n) {
   return v;
 }
 
-}
+} // namespace FlexFlow

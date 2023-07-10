@@ -82,9 +82,9 @@ flexflow_runtime_error_t
 flexflow_runtime_error_t
     flexflow_start_training(flexflow_model_compilation_result_t,
                             flexflow_model_training_instance_t *);
-flexflow_runtime_error_t flexflow_model_training_instance_forward(
-    flexflow_model_training_instance_t,
-    flexflow_void_future_t *out);
+flexflow_runtime_error_t
+    flexflow_model_training_instance_forward(flexflow_model_training_instance_t,
+                                             flexflow_void_future_t *out);
 flexflow_runtime_error_t flexflow_model_training_instance_backward(
     flexflow_model_training_instance_t);
 flexflow_runtime_error_t

@@ -6,8 +6,8 @@
 #include "kernels/ff_handle.h"
 #include "op-attrs/datatype.h"
 #include "utils/exception.h"
-#include "utils/variant.h"
 #include "utils/required.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
@@ -18,8 +18,8 @@ public:
     if (this->data_type == DT) {
       return static_cast<real_type<DT> *>(this->ptr);
     } else {
-  throw mk_runtime_error("Invalid access data type ({} != {})",
-    this->data_type, DT);
+      throw mk_runtime_error(
+          "Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
 
@@ -43,8 +43,8 @@ public:
     if (this->data_type == DT) {
       return static_cast<real_type<DT> const *>(this->ptr);
     } else {
-       throw mk_runtime_error("Invalid access data type ({} != {})",
-    this->data_type, DT);
+      throw mk_runtime_error(
+          "Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
 

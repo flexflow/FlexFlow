@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct NoopAttrs { };
+struct NoopAttrs {};
 FF_VISITABLE_STRUCT(NoopAttrs);
 CHECK_VALID_OP_ATTR(NoopAttrs);
 

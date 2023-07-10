@@ -2,8 +2,8 @@
 #define _FLEXFLOW_AGGREGATE_SPEC_H_
 
 #include "op-attrs/ops/aggregate_spec.h"
-#include "task_spec/op_task_signature.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_signature.h"
 
 namespace FlexFlow {
 
