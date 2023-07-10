@@ -121,7 +121,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   size_t batch_size = gate_pred.shape[legion_dim_t(1)];
   assert(batch_size == gate_assign.shape[legion_dim_t(1)]);
-  assert(gate_pred.shape[legion_dim_t(0)] == gate_assign.shape[legion_dim_t(0)]);
+  assert(gate_pred.shape[legion_dim_t(0)] ==
+         gate_assign.shape[legion_dim_t(0)]);
   assert(batch_size == output.shape[legion_dim_t(1)]);
   size_t out_dim = output.shape[legion_dim_t(0)];
 
@@ -175,7 +176,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto gate_pred = acc.get_tensor<Permissions::RO>(GATE_PREDS);
   auto gate_assign = acc.get_tensor<Permissions::RO>(GATE_ASSIGN);
   auto true_gate_assign = acc.get_tensor<Permissions::RO>(TRUE_GATE_ASSIGN);
-  auto full_gate_grad = acc.get_tensor_grad<Permissions::RW>(FULL_GATE_GRADIENTS);
+  auto full_gate_grad =
+      acc.get_tensor_grad<Permissions::RW>(FULL_GATE_GRADIENTS);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   size_t batch_size = gate_pred.shape[legion_dim_t(1)];

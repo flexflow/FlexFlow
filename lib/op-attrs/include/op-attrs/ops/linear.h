@@ -30,7 +30,8 @@ struct LinearAttrs {
   req<Activation> activation;
   req<optional<RegularizerAttrs>> regularizer;
 };
-FF_VISITABLE_STRUCT(LinearAttrs, out_channels, use_bias, data_type, activation, regularizer);
+FF_VISITABLE_STRUCT(
+    LinearAttrs, out_channels, use_bias, data_type, activation, regularizer);
 CHECK_VALID_OP_ATTR(LinearAttrs);
 
 } // namespace FlexFlow

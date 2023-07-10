@@ -102,8 +102,7 @@ struct is_trivially_serializable<variant<Ts...>>
     : elements_satisfy<is_trivially_serializable, variant<Ts...>> {};
 
 template <typename T>
-struct is_trivially_serializable<optional<T>>
-    : is_trivially_serializable<T> {};
+struct is_trivially_serializable<optional<T>> : is_trivially_serializable<T> {};
 
 template <typename T>
 struct std_array_size_helper;

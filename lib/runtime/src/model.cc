@@ -73,35 +73,35 @@ namespace FlexFlow {
 /*       optimizer(_optimizer), runtime_backing(_runtime_backing), */
 /*       enable_profiling(_enable_profiling), sim_factory(_sim_factory), */
 /*       tensor_map(_tensor_map) { */
-  /* ArgumentMap argmap; */
-  /* Rect<1> task_rect(Point<1>(0), */
-  /*                   Point<1>(config.workersPerNode * config.numNodes - 1));
-   */
-  /* IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect); */
+/* ArgumentMap argmap; */
+/* Rect<1> task_rect(Point<1>(0), */
+/*                   Point<1>(config.workersPerNode * config.numNodes - 1));
+ */
+/* IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect); */
 
-  /* for (PointInRectIterator<1> it(task_rect); it(); it++) { */
-  /*   FFInitInfo info; */
-  /*   info.workSpaceSize = config.workSpaceSize; */
-  /*   info.allowTensorOpMathConversion =
-   * config.allow_tensor_op_math_conversion; */
-  /*   argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo))); */
-  /* } */
+/* for (PointInRectIterator<1> it(task_rect); it(); it++) { */
+/*   FFInitInfo info; */
+/*   info.workSpaceSize = config.workSpaceSize; */
+/*   info.allowTensorOpMathConversion =
+ * config.allow_tensor_op_math_conversion; */
+/*   argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo))); */
+/* } */
 
-  // Init CUDA library on each worker
-  // IndexLauncher initLauncher(FF_INIT_TASK_ID,
-  //                            task_is,
-  //                            TaskArgument(NULL, 0),
-  //                            argmap,
-  //                            Predicate::TRUE_PRED,
-  //                            false /*must*/,
-  //                            0 /*mapper_id*/,
-  //                            FFConfig::DataParallelism_GPU);
-  // FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
-  // fm.wait_all_results();
-  // int idx = 0;
-  // for (PointInRectIterator<1> it(task_rect); it(); it++) {
-  //   handlers[idx++] = fm.get_result<FFHandler>(*it);
-  // }
+// Init CUDA library on each worker
+// IndexLauncher initLauncher(FF_INIT_TASK_ID,
+//                            task_is,
+//                            TaskArgument(NULL, 0),
+//                            argmap,
+//                            Predicate::TRUE_PRED,
+//                            false /*must*/,
+//                            0 /*mapper_id*/,
+//                            FFConfig::DataParallelism_GPU);
+// FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
+// fm.wait_all_results();
+// int idx = 0;
+// for (PointInRectIterator<1> it(task_rect); it(); it++) {
+//   handlers[idx++] = fm.get_result<FFHandler>(*it);
+// }
 /* } */
 
 /* using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>;
@@ -258,12 +258,14 @@ namespace FlexFlow {
 /*   return acc.get_returned_future<PerfMetrics>().get(); */
 /* } */
 
-/* void backward(FFModel const &ff, int seq_length, PerfMetrics const &metrics) { */
+/* void backward(FFModel const &ff, int seq_length, PerfMetrics const &metrics)
+ * { */
 /*   iter_config.seq_length = seq_length; */
 /*   assert(ff.config.computationMode == ComputationMode::TRAINING); */
 /*   // Compute metrics */
 /*   compute_metrics(ff, metrics).get(); // TODO FIXME @lockshaw actually do */
-/*                                       // something with the computed metrics */
+/*                                       // something with the computed metrics
+ */
 /*   // Compute the gradients of the final operator wrt loss */
 /*   ff.execute(backward(ff.training_pcg)); */
 /*   /1* Op const *final_operator = get_final_operator(); *1/ */
@@ -274,7 +276,8 @@ namespace FlexFlow {
 /*   /1* // std::set<LogicalRegion> resetedInputGrads; *1/ */
 /*   /1* for (int l = operators.size() - 1; l >= 0; l--) { *1/ */
 /*   /1*   // TODO: If operator serves for metrics and for further prop *1/ */
-/*   /1*   // if(l == metrics_input && metrics_input < (int)operators.size()-1) *1/ */
+/*   /1*   // if(l == metrics_input && metrics_input < (int)operators.size()-1)
+ * *1/ */
 /*   /1*   //  continue; *1/ */
 /*   /1*   operators[l]->backward(*this); *1/ */
 /*   /1* } *1/ */
@@ -301,7 +304,8 @@ namespace FlexFlow {
 /* } */
 
 /* MachineView */
-/*     get_basic_data_parallel_machine_view(MachineSpecification const &spec) { */
+/*     get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
+ */
 /*   gpu_id_t start = gpu_id_t(0); */
 /*   gpu_id_t stop = gpu_id_t(spec.num_nodes * spec.workersPerNode); */
 /*   return make_1d_machine_view(start, stop, 1); */
@@ -313,7 +317,8 @@ namespace FlexFlow {
 /*   return make_1d_machine_view(start, stop, 1); */
 /* } */
 
-/* static ParallelTensorShape get_parallel_tensor_shape(Tensor const &tensor) { */
+/* static ParallelTensorShape get_parallel_tensor_shape(Tensor const &tensor) {
+ */
 /*   int num_dims = tensor->num_dims(); */
 /*   std::vector<ParallelDim> dims; */
 /*   for (int j = 0; j < num_dims; j++) { */
@@ -375,7 +380,7 @@ namespace FlexFlow {
 
 /*   // create label tensor */
 /*   label_tensor = */
-      //create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);
+// create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);
 /*   parallel_label_tensor = create_parallel_tensor(label_p_shape); */
 /*   label_tensor.value()->parallel_tensor = parallel_label_tensor; */
 /*   parallel_label_tensor.value()->machine_view = */
@@ -433,13 +438,15 @@ namespace FlexFlow {
 /*   // Launch the graph optimize task */
 /*   this->execute_graph_optimize(); */
 
-/*   bool repl_labels = (operators[operators.size() - 1]->op_type == OP_AGG_SPEC); */
+/*   bool repl_labels = (operators[operators.size() - 1]->op_type ==
+ * OP_AGG_SPEC); */
 /*   loss_op = {loss_type, repl_labels}; */
 /*   metrics_op = {loss_type, metrics}; */
 
 /*   // Init performance metrics */
 /*   TaskLauncher launcher(UPDATE_METRICS_TASK_ID, */
-/*                         TaskArgument(&metrics_op.value(), sizeof(Metrics))); */
+/*                         TaskArgument(&metrics_op.value(), sizeof(Metrics)));
+ */
 /*   current_metrics = runtime->execute_task(ctx, launcher); */
 
 /*   if (config.enable_inplace_optimizations) { */

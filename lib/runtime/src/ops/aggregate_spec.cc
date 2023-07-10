@@ -158,7 +158,8 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<AggregateSpecPerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_FWD_TASK_ID, binding};
 }
@@ -179,7 +180,8 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, enable_profiling());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<AggregateSpecPerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_BWD_TASK_ID, binding};
 }
@@ -293,17 +295,17 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   assert(exp_preds.size() == n);
 
   return profile(forward_kernel,
-          profiling_settings,
-          "[AggregateSpec] forward_time = %.2lfms\n",
-          &per_device_state,
-          exp_preds.data(),
-          gate_assign.get_int32_ptr(),
-          output.get_float_ptr(),
-          n,
-          k,
-          rows,
-          batch_size,
-          out_dim);
+                 profiling_settings,
+                 "[AggregateSpec] forward_time = %.2lfms\n",
+                 &per_device_state,
+                 exp_preds.data(),
+                 gate_assign.get_int32_ptr(),
+                 output.get_float_ptr(),
+                 n,
+                 k,
+                 rows,
+                 batch_size,
+                 out_dim);
 }
 
 static void forward_task(Legion::Task const *task,
@@ -313,7 +315,6 @@ static void forward_task(Legion::Task const *task,
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   forward_task_impl(acc);
 }
-
 
 // ArgumentMap argmap;
 // Context ctx = ff.config.lg_ctx;
@@ -393,7 +394,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto gate_pred = acc.get_tensor<Permissions::RO>(GATE_PREDS);
   auto gate_assign = acc.get_tensor<Permissions::RO>(GATE_ASSIGN);
   auto true_gate_assign = acc.get_tensor<Permissions::RO>(TRUE_GATE_ASSIGN);
-  auto full_gate_grad = acc.get_tensor_grad<Permissions::RW>(FULL_GATE_GRADIENTS);
+  auto full_gate_grad =
+      acc.get_tensor_grad<Permissions::RW>(FULL_GATE_GRADIENTS);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   size_t batch_size = gate_pred.shape[legion_dim_t(1)];
@@ -419,21 +421,21 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(acc_exp_grads.size() == n);
 
   return profile(backward_kernel,
-          profiling_settings,
-          "[AggregateSpec] backward_time = %.2lfms\n",
-          &per_device_state,
-          get_float_ptrs(acc_exp_grads).data(),
-          get_int32_ptr(gate_assign),
-          get_int32_ptr(true_gate_assign),
-          get_float_ptr(gate_pred),
-          get_float_ptr(full_gate_grad),
-          get_float_ptr(output_grad),
-          n,
-          k,
-          rows,
-          lambda_bal,
-          batch_size,
-          out_dim);
+                 profiling_settings,
+                 "[AggregateSpec] backward_time = %.2lfms\n",
+                 &per_device_state,
+                 get_float_ptrs(acc_exp_grads).data(),
+                 get_int32_ptr(gate_assign),
+                 get_int32_ptr(true_gate_assign),
+                 get_float_ptr(gate_pred),
+                 get_float_ptr(full_gate_grad),
+                 get_float_ptr(output_grad),
+                 n,
+                 k,
+                 rows,
+                 lambda_bal,
+                 batch_size,
+                 out_dim);
 }
 
 static void backward_task(Legion::Task const *task,
@@ -517,7 +519,8 @@ void register_task<AGG_SPEC_FWD_TASK_ID>() {
 
 template <>
 void register_task<AGG_SPEC_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(AGG_SPEC_FWD_TASK_ID));
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(AGG_SPEC_FWD_TASK_ID));
 
   register_task(AGG_SPEC_BWD_TASK_ID, "AggregateSpec Bwd", bwd, backward_task);
 }

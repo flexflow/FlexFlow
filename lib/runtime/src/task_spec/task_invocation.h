@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_TASK_INVOCATION_H
 #define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_TASK_INVOCATION_H
 
-#include "utils/variant.h"
-#include "utils/strong_typedef.h"
-#include "standard_task_invocation.h"
 #include "index_task_invocation.h"
+#include "standard_task_invocation.h"
+#include "utils/strong_typedef.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
@@ -17,7 +17,7 @@ struct TaskBinding {
   void bind(slot_id, parallel_tensor_guid_t const &);
   void bind(slot_id, ParallelTensorSpec const &);
 
-  template <typename T> 
+  template <typename T>
   void bind_arg(slot_id, RuntimeArgRef<T> const &);
 
   template <typename T>
@@ -28,12 +28,13 @@ public:
 };
 
 struct TaskInvocation
-  : strong_typedef<TaskInvocation, variant<StandardTaskInvocation, IndexTaskInvocation>> {
+    : strong_typedef<TaskInvocation,
+                     variant<StandardTaskInvocation, IndexTaskInvocation>> {
   using strong_typedef::strong_typedef;
 
   TaskInvocation(slot_id, TaskBinding const &);
 };
 
-}
+} // namespace FlexFlow
 
 #endif

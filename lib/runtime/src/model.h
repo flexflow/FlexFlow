@@ -14,19 +14,19 @@
  */
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
-#include "pcg/computation_graph.h"
-#include "task_spec/executable_task_invocation.h"
 #include "legion.h"
-#include "runtime/legion_backing.h"
 #include "op-attrs/ops/loss_functions.h"
 #include "op-attrs/tensor_shape.h"
 #include "optimizer.h"
 #include "parallel_computation_graph.h"
+#include "pcg/computation_graph.h"
 #include "pcg/machine_specification.h"
+#include "pcg/tensor_mapping.h"
 #include "recompile.h"
 #include "runtime/config.h"
+#include "runtime/legion_backing.h"
 #include "sim_environment.h"
-#include "pcg/tensor_mapping.h"
+#include "task_spec/executable_task_invocation.h"
 #include "training_pcg.h"
 #include <functional>
 #include <unistd.h>

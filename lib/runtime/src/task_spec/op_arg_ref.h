@@ -17,6 +17,6 @@ OpArgRef<T> per_device_op_state() {
   return {OpArgRefType::PER_DEVICE_OP_STATE};
 }
 
-}
+} // namespace FlexFlow
 
 #endif

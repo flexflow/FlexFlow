@@ -81,12 +81,11 @@ std::unordered_set<Node>
   return result;
 }
 
-DiGraphView
-    source_to_sink_subgraph(DiGraphView const &g,
-                                   std::unordered_set<Node> const &srcs,
-                                   std::unordered_set<Node> const &sinks,
-                                   SourceSettings include_src,
-                                   SinkSettings include_sink) {
+DiGraphView source_to_sink_subgraph(DiGraphView const &g,
+                                    std::unordered_set<Node> const &srcs,
+                                    std::unordered_set<Node> const &sinks,
+                                    SourceSettings include_src,
+                                    SinkSettings include_sink) {
   return get_subgraph(
       g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
 }
@@ -126,8 +125,7 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
 
   SplitASTNode split(SplitType::PARALLEL);
   for (auto const &component : weakly_connected_components) {
-    split.children.push_back(
-        sp_decomposition(get_subgraph(g, component)));
+    split.children.push_back(sp_decomposition(get_subgraph(g, component)));
   }
 
   return split;

@@ -16,6 +16,6 @@ ParallelTensorShape get_output_shape(BatchNormAttrs const &);
 
 CHECK_VALID_OP_ATTR(BatchNormAttrs);
 
-}
+} // namespace FlexFlow
 
 #endif

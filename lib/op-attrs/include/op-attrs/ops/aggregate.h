@@ -33,6 +33,6 @@ ParallelTensorShape
                      std::vector<ParallelTensorShape> const &exp_preds);
 
 CHECK_VALID_OP_ATTR(AggregateAttrs);
-}
+} // namespace FlexFlow
 
 #endif

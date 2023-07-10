@@ -10,4 +10,4 @@ RuntimeArgRef<PerDeviceFFHandle> ff_handle() {
   return {RuntimeArgRefType::FF_HANDLE};
 }
 
-}
+} // namespace FlexFlow

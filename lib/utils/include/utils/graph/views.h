@@ -45,8 +45,7 @@ private:
 struct DiSubgraphView : public IDiGraphView {
 public:
   DiSubgraphView() = delete;
-  DiSubgraphView(DiGraphView const &,
-                 std::unordered_set<Node> const &);
+  DiSubgraphView(DiGraphView const &, std::unordered_set<Node> const &);
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -146,8 +145,7 @@ private:
 struct JoinedDigraphView : public IDiGraphView {
 public:
   JoinedDigraphView() = delete;
-  explicit JoinedDigraphView(DiGraphView const &lhs,
-                             DiGraphView const &rhs);
+  explicit JoinedDigraphView(DiGraphView const &lhs, DiGraphView const &rhs);
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -168,7 +166,7 @@ private:
 struct JoinedMultiDigraphView : public IMultiDiGraphView {
 public:
   JoinedMultiDigraphView() = delete;
-  JoinedMultiDigraphView(MultiDiGraphView const &lhs, 
+  JoinedMultiDigraphView(MultiDiGraphView const &lhs,
                          MultiDiGraphView const &rhs);
 
   std::unordered_set<MultiDiEdge>
@@ -266,7 +264,6 @@ DirectedEdge to_directed_edge(MultiDiEdge const &);
 std::unordered_set<DirectedEdge>
     to_directed_edges(std::unordered_set<MultiDiEdge> const &);
 
-
 struct ViewDiGraphAsUndirectedGraph : public IUndirectedGraphView {
 public:
   explicit ViewDiGraphAsUndirectedGraph(DiGraphView const &);
@@ -316,7 +313,6 @@ public:
 private:
   OpenMultiDiGraphView const &g;
 };
-
 
 DirectedEdge flipped(DirectedEdge const &);
 

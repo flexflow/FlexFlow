@@ -165,7 +165,8 @@ namespace std {
 template <typename Idx, typename T>
 struct hash<::FlexFlow::DimOrdered<Idx, T>> {
   size_t operator()(::FlexFlow::DimOrdered<Idx, T> const &t) const {
-    static_assert(::FlexFlow::is_hashable<T>::value, "Elements must be hashable");
+    static_assert(::FlexFlow::is_hashable<T>::value,
+                  "Elements must be hashable");
 
     return get_std_hash(t.contents);
   }

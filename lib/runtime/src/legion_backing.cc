@@ -1,12 +1,12 @@
 #include "runtime/legion_backing.h"
+#include "kernels/nccl.h"
+#include "model.h"
+#include "runtime/task_spec/typed_task_invocation.h"
 #include "task_spec/concrete_args_format.h"
 #include "task_spec/device_specific_arg.h"
 #include "task_spec/future_args_format.h"
-#include "kernels/nccl.h"
-#include "model.h"
 #include "task_spec/task_argument_accessor.h"
 #include "task_spec/task_invocation_args_format.h"
-#include "runtime/task_spec/typed_task_invocation.h"
 
 using namespace Legion;
 using namespace FlexFlow::Kernels;
@@ -261,7 +261,7 @@ static void ff_init_task(Legion::Task const *task,
                          Legion::Runtime *runtime) {}
 
 TensorlessIndexTaskInvocation ff_init(FFConfig const &config,
-                                 FFInitInfo const &info) {
+                                      FFInitInfo const &info) {
   MachineView mv = get_basic_data_parallel_machine_view(config);
   TensorlessIndexTaskBinding b(mv);
   b.bind_arg(FF_INIT_INFO, info);

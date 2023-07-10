@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
-#include "cow_ptr_t.h"
 
 namespace FlexFlow {
 

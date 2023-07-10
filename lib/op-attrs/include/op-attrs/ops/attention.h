@@ -12,7 +12,15 @@ struct MultiHeadAttentionAttrs {
   req<float> dropout;
   req<bool> bias, add_bias_kv, add_zero_attn;
 };
-FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn);
+FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
+                    embed_dim,
+                    num_heads,
+                    kdim,
+                    vdim,
+                    dropout,
+                    bias,
+                    add_bias_kv,
+                    add_zero_attn);
 
 template <typename TensorType>
 struct MultiHeadAttentionInputs
@@ -63,6 +71,6 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                              MultiHeadAttentionInputs<TensorShape> const &);
 
 CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
-}
+} // namespace FlexFlow
 
 #endif

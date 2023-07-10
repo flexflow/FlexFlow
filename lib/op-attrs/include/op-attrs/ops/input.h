@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct InputAttrs { };
+struct InputAttrs {};
 FF_VISITABLE_STRUCT(InputAttrs);
 CHECK_VALID_OP_ATTR(InputAttrs);
 

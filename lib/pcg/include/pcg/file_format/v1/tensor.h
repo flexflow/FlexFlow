@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_TENSOR_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_TENSOR_H
 
-#include <vector>
 #include "data_type.h"
 #include "initializer.h"
+#include "op-attrs/tensor_shape.h"
+#include "param_sync.h"
 #include "pcg/tensor.h"
 #include "utils/visitable.h"
-#include "param_sync.h"
-#include "op-attrs/tensor_shape.h"
+#include <vector>
 
 namespace FlexFlow {
 
@@ -26,10 +26,11 @@ struct V1Tensor {
   req<optional<V1ParamSync>> sync_type;
   req<optional<std::string>> name;
 };
-FF_VISITABLE_STRUCT(V1Tensor, shape, initializer, create_gradients, sync_type, name);
+FF_VISITABLE_STRUCT(
+    V1Tensor, shape, initializer, create_gradients, sync_type, name);
 CHECK_IS_JSONABLE(V1Tensor);
 V1Tensor to_v1(Tensor const &);
 
-}
+} // namespace FlexFlow
 
 #endif

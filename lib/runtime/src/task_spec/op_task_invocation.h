@@ -3,12 +3,13 @@
 
 #include "accessor.h"
 #include "index_task_invocation.h"
-#include "standard_task_invocation.h"
 #include "legion.h"
+#include "op_arg_ref.h"
 #include "op_task_signature.h"
-#include "runtime/profiling.h"
 #include "runtime/config.h"
+#include "runtime/profiling.h"
 #include "serialization.h"
+#include "standard_task_invocation.h"
 #include "tasks.h"
 #include "utils/bidict.h"
 #include "utils/optional.h"
@@ -16,7 +17,6 @@
 #include <typeindex>
 #include <unordered_map>
 #include <unordered_set>
-#include "op_arg_ref.h"
 
 namespace FlexFlow {
 
@@ -49,10 +49,14 @@ struct OpTaskBinding {
   void bind_grad(slot_id, OpTensorSpec const &);
 
   template <typename T>
-  void bind_device_specific_arg(slot_id name, T const &t) { NOT_IMPLEMENTED(); }
+  void bind_device_specific_arg(slot_id name, T const &t) {
+    NOT_IMPLEMENTED();
+  }
 
   template <typename T>
-  void bind_device_specific_arg(slot_id name, OpArgRef<T> const &t) { NOT_IMPLEMENTED(); }
+  void bind_device_specific_arg(slot_id name, OpArgRef<T> const &t) {
+    NOT_IMPLEMENTED();
+  }
 
   template <typename T>
   void bind_arg(slot_id name, T const &t) {

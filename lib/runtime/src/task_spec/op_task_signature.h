@@ -34,7 +34,8 @@ public:
   IsGrad is_grad;
   OpSlotOptions slot_option;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTensorSlotSpec, name, slot_type, tensor_role, is_grad, slot_option);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
+    OpTensorSlotSpec, name, slot_type, tensor_role, is_grad, slot_option);
 
 struct OpTaskSignature {
   OpTaskSignature() = delete;

@@ -2,9 +2,9 @@
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_MAPPING_H
 
 #include "legion.h"
-#include "runtime/legion_backing.h"
 #include "pcg/operator.h"
 #include "runtime/config.h"
+#include "runtime/legion_backing.h"
 #include <string>
 
 namespace FlexFlow {

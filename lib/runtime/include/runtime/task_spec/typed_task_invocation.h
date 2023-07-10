@@ -20,14 +20,16 @@ template <typename T>
 struct TypedIndexTaskInvocation;
 
 template <typename T>
-TypedStandardTaskInvocation<T> ensure_return_type(StandardTaskInvocation const &);
+TypedStandardTaskInvocation<T>
+    ensure_return_type(StandardTaskInvocation const &);
 
 template <typename T>
 struct TypedStandardTaskInvocation {
 public:
   TypedStandardTaskInvocation() = delete;
 
-  friend TypedStandardTaskInvocation ensure_return_type<T>(StandardTaskInvocation const &);
+  friend TypedStandardTaskInvocation
+      ensure_return_type<T>(StandardTaskInvocation const &);
 
   friend bool operator==(TypedStandardTaskInvocation const &,
                          TypedStandardTaskInvocation const &);
@@ -79,7 +81,8 @@ struct TaskInvocationSpec {
   }
 
   template <typename T>
-  static TaskInvocationSpec create(TypedStandardTaskInvocation<T> const &invocation) {
+  static TaskInvocationSpec
+      create(TypedStandardTaskInvocation<T> const &invocation) {
     return TaskInvocationSpec(type_index<T>(), invocation.invocation);
   }
 

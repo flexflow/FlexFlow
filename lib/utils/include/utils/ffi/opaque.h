@@ -8,7 +8,7 @@
 namespace FlexFlow {
 
 template <typename ErrorCodeType,
-          ErrorCodeType StatusOK, 
+          ErrorCodeType StatusOK,
           ErrorCodeType UnexpectedNull,
           ErrorCodeType AllocationFailed>
 struct LibraryUtils {
@@ -17,7 +17,7 @@ struct LibraryUtils {
 
   template <typename T>
   static err<T *> allocate_opaque(T const &t) {
-    T *ptr = new(std::nothrow) T(t);
+    T *ptr = new (std::nothrow) T(t);
     if (ptr == nullptr) {
       return StatusOK;
     }
@@ -26,19 +26,19 @@ struct LibraryUtils {
 
   template <typename T>
   static err<T> allocate_opaque(T &&t) {
-    T *ptr = new(std::nothrow) T(std::move(t));
+    T *ptr = new (std::nothrow) T(std::move(t));
     if (ptr == nullptr) {
       return AllocationFailed;
     }
     return ptr;
   }
 
-  template <typename Opaque,
-            typename Unwrapped = decltype(*unwrap_opaque(std::declval<Opaque>()))>
+  template <
+      typename Opaque,
+      typename Unwrapped = decltype(*unwrap_opaque(std::declval<Opaque>()))>
   static err<Opaque> new_opaque(Unwrapped const &f) {
     return allocate_opaque<Opaque>(f).map([](Unwrapped *ptr) { return ptr; });
   }
-
 
   template <typename T>
   static ErrorCodeType output_stored(T const &t, T *out) {
@@ -67,6 +67,6 @@ struct LibraryUtils {
   }
 };
 
-}
+} // namespace FlexFlow
 
 #endif

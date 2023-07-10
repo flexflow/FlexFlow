@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_INITIALIZER_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_INITIALIZER_H
 
-#include "utils/visitable.h"
-#include "utils/json.h"
-#include "utils/variant.h"
 #include "data_type.h"
-#include "visit_struct/visit_struct_intrusive.hpp"
+#include "utils/json.h"
 #include "utils/required.h"
+#include "utils/variant.h"
+#include "utils/visitable.h"
+#include "visit_struct/visit_struct_intrusive.hpp"
 
 namespace FlexFlow {
 
@@ -15,7 +15,7 @@ struct V1GlorotInitializer {
 };
 FF_VISITABLE_STRUCT(V1GlorotInitializer, seed);
 
-struct V1ZeroInitializer { };
+struct V1ZeroInitializer {};
 FF_VISITABLE_STRUCT(V1ZeroInitializer);
 
 struct V1UniformInitializer {
@@ -37,9 +37,13 @@ struct V1ConstantInitializer {
 };
 FF_VISITABLE_STRUCT(V1ConstantInitializer, value);
 
-using V1Initializer = variant<V1GlorotInitializer, V1ZeroInitializer, V1UniformInitializer, V1NormInitializer, V1ConstantInitializer>;
+using V1Initializer = variant<V1GlorotInitializer,
+                              V1ZeroInitializer,
+                              V1UniformInitializer,
+                              V1NormInitializer,
+                              V1ConstantInitializer>;
 
-}
+} // namespace FlexFlow
 
 namespace FlexFlow {
 CHECK_IS_JSONABLE(V1GlorotInitializer);
@@ -48,6 +52,6 @@ CHECK_IS_JSONABLE(V1UniformInitializer);
 CHECK_IS_JSONABLE(V1NormInitializer);
 CHECK_IS_JSONABLE(V1ConstantInitializer);
 CHECK_IS_JSONABLE(V1Initializer);
-}
+} // namespace FlexFlow
 
 #endif

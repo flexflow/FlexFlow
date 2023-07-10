@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_PARALLEL_TENSOR_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_PARALLEL_TENSOR_H
 
+#include "data_type.h"
+#include "initializer.h"
+#include "param_sync.h"
 #include "utils/json.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
-#include "initializer.h"
-#include "data_type.h"
-#include "param_sync.h"
 
 namespace FlexFlow {
 
@@ -29,8 +29,9 @@ struct V1ParallelTensor {
   req<optional<V1Initializer>> initializer;
   req<bool> create_grad;
 };
-FF_VISITABLE_STRUCT(V1ParallelTensor, shape, sync_type, initializer, create_grad);
+FF_VISITABLE_STRUCT(
+    V1ParallelTensor, shape, sync_type, initializer, create_grad);
 
-}
+} // namespace FlexFlow
 
 #endif
