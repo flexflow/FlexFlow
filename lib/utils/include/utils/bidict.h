@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_BIDICT_H
 
 #include <unordered_map>
+#include <cassert>
 
 namespace FlexFlow {
 
@@ -31,7 +32,7 @@ struct bidict {
     this->bwd_map.erase(r);
     for (auto const &kv : this->fwd_map) {
       if (kv.second == r) {
-        bwd_map.erase(kv.first);
+        fwd_map.erase(kv.first);
         break;
       }
     }
