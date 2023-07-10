@@ -1,5 +1,4 @@
-ARG cuda_version 
-
+ARG cuda_version
 FROM nvidia/cuda:${cuda_version}-cudnn8-devel-ubuntu20.04
 
 LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
