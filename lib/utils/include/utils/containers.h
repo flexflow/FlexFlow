@@ -526,9 +526,9 @@ std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
 
 template <typename T, typename F>
 void inplace_sorted_by(std::vector<T> &v, F const &f) {
-  struct {
-    bool operator()(T const &lhs, T const &rhs) { return f(lhs, rhs); }
-  } custom_comparator;
+  auto custom_comparator = [&](T const &lhs, T const &rhs) -> bool {
+    return f(lhs, rhs);
+  };
   
   std::sort(v.begin(), v.end(), custom_comparator);
 }
