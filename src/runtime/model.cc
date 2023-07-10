@@ -58,6 +58,7 @@
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -990,6 +991,7 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
   MachineView const view = output0->machine_view;
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   switch (domain.get_dim()) {
 #ifdef FF_USE_NCCL
 #define DIMFUNC(DIM)                                                           \
@@ -998,8 +1000,7 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
-      if (ff.config.computationMode == COMP_MODE_TRAINING &&                   \
-          op_type == OP_WEIGHT) {                                              \
+      if (op_type == OP_ALLREDUCE) {                                           \
         ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
         handle.ncclComm = nccl_comms[idx++];                                   \
       }                                                                        \
@@ -1302,8 +1303,9 @@ FFModel::FFModel(FFConfig &_config, bool cpu_offload)
       layer_global_guid(LAYER_GUID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
       parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
-      node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
-      loss_op(NULL), metrics_op(NULL), simulator(NULL) {
+      node_global_guid(NODE_GUID_FIRST_VALID), current_transformer_layer_id(0),
+      config(_config), optimizer(NULL), loss_op(NULL), metrics_op(NULL),
+      simulator(NULL) {
   this->search = new PCG::SearchHelper(this);
   this->graph_search = new PCG::GraphSearchHelper(this);
   this->cpu_offload = cpu_offload;
@@ -1348,7 +1350,7 @@ ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
   auto const &it = view_hash_to_nccl_comms.find(view.hash());
   if (it == view_hash_to_nccl_comms.end()) {
     assert(config.computationMode == COMP_MODE_INFERENCE);
-    return NULL;
+    return nullptr;
   } else {
     return it->second;
   }
@@ -2630,9 +2632,14 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type == OP_WEIGHT) {
       continue;
     }
-    // don't fuse parallel op since they have different parallel_is in
-    // forward/backward
-    if (operators[l]->is_parallel_op()) {
+    // don't fuse parallel op except allReduce since they have different
+    // parallel_is in forward/backward
+    if (operators[l]->is_parallel_op() &&
+        operators[l]->op_type != OP_ALLREDUCE) {
+      continue;
+    }
+    // don't fuse softmax since it returns inference results
+    if (operators[l]->op_type == OP_SOFTMAX) {
       continue;
     }
     size_t start = 0;
@@ -2675,9 +2682,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
               operators[i]->op_type == OP_WEIGHT) {
             continue;
           }
-          // don't fuse parallel op since they have different parallel_is in
-          // forward/backward
-          if (operators[i]->is_parallel_op()) {
+          // don't fuse parallel op except allReduce since they have different
+          // parallel_is in forward/backward
+          if (operators[i]->is_parallel_op() &&
+              operators[i]->op_type != OP_ALLREDUCE) {
             continue;
           }
           fused_op = new FusedOp(*this, operators[i]);
@@ -2967,7 +2975,51 @@ void FFModel::create_operators_from_layers() {
       inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
     }
     Op *op = nullptr;
-    // add replicate operators if needed
+    // add a combine before arg_topk
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 && l->op_type == OP_ARG_TOPK) {
+      std::vector<ParallelTensor> partitioned_inputs;
+      assert(inputs.size() == 1);
+      Combine *comb = new Combine(*this,
+                                  inputs[0],
+                                  0 /*inner most dim*/,
+                                  config.tensor_parallelism_degree);
+      partitioned_inputs.push_back(comb->outputs[0]);
+      operators.push_back(comb);
+      op = create_operator_from_layer(l, partitioned_inputs);
+    } else {
+      op = create_operator_from_layer(l, inputs);
+    }
+    // add replicate operators after op if needed
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 && l->op_type == OP_EMBEDDING) {
+      assert(op->numOutputs == 1);
+      Replicate *repl = new Replicate(*this,
+                                      op->outputs[0],
+                                      op->outputs[0]->num_dims - 1,
+                                      config.tensor_parallelism_degree);
+      operators.push_back(repl);
+      op = repl;
+    } else if (config.computationMode == COMP_MODE_INFERENCE &&
+               config.tensor_parallelism_degree > 1 &&
+               (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+                l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+                 layers[layer_idx - 1]->op_type == OP_RELU &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+                 layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+                 layers[layer_idx - 4]->op_type == OP_LINEAR &&
+                 layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+      assert(op->numOutputs == 1);
+      AllReduce *allreduce =
+          new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
+      operators.push_back(allreduce);
+      op = allreduce;
+    }
+#ifdef DEADCODE
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 &&
         (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
@@ -3022,7 +3074,7 @@ void FFModel::create_operators_from_layers() {
       operators.push_back(reduct);
       op = reduct;
     }
-
+#endif
     assert(op->numOutputs == l->numOutputs);
     for (int i = 0; i < op->numOutputs; i++) {
       tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
@@ -3364,13 +3416,10 @@ void FFModel::compile(LossType loss_type,
   }
 
 #ifdef FF_USE_NCCL
-  if (config.computationMode == COMP_MODE_TRAINING) {
-    // init all nccl communicators
-    for (size_t l = 0; l < operators.size(); l++) {
-      // Only create nccl for weights
-      if (operators[l]->op_type != OP_WEIGHT) {
-        continue;
-      }
+  for (size_t l = 0; l < operators.size(); l++) {
+    // Only create nccl for weights in training
+    if ((operators[l]->op_type == OP_WEIGHT &&
+         config.computationMode == COMP_MODE_TRAINING)) {
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==
           view_hash_to_nccl_comms.end()) {
@@ -3789,6 +3838,9 @@ FFConfig::FFConfig() {
   }
   // Use Real::Machine::get_address_space_count() to obtain the number of nodes
   numNodes = Realm::Machine::get_machine().get_address_space_count();
+  data_parallelism_degree = 1;
+  tensor_parallelism_degree = 1;
+  pipeline_parallelism_degree = 1;
 
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
@@ -4427,6 +4479,13 @@ void register_flexflow_internal_tasks() {
         registrar, "Linear Init Task");
   }
   {
+    TaskVariantRegistrar registrar(LINEAR_INF_TASK_ID, "Linear Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::inference_task>(
+        registrar, "Linear Inference Task");
+  }
+  {
     TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "Linear Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -4837,6 +4896,13 @@ void register_flexflow_internal_tasks() {
         registrar, "FusedOp Forward Task");
   }
   {
+    TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FusedOp::inference_task>(
+        registrar, "FusedOp Inference Task");
+  }
+  {
     TaskVariantRegistrar registrar(FUSEDOP_BWD_TASK_ID, "FusedOp Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -4934,6 +5000,28 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<Reduction::backward_task>(
         registrar, "Reduction Backward Task");
+  }
+  // AllReduce
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INIT_TASK_ID, "AllReduce Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
+        registrar, "AllReduce init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AllReduce::forward_task>(
+        registrar, "AllReduce Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AllReduce::backward_task>(
+        registrar, "AllReduce Backward Task");
   }
   // FusedParallelOp
   {

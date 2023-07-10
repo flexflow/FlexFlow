@@ -461,6 +461,24 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
   return CUDA_R_32F;
 }
 
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type) {
+  switch (type) {
+    case DT_HALF:
+      return ncclHalf;
+    case DT_FLOAT:
+      return ncclFloat;
+    case DT_DOUBLE:
+      return ncclDouble;
+    case DT_INT32:
+      return ncclInt;
+    default:
+      assert(false && "Unspoorted nccl data type");
+  }
+  return ncclFloat;
+}
+#endif
+
 cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type) {
   switch (type) {
     case CUDNN_DATA_FLOAT:
@@ -501,6 +519,8 @@ template __global__ void
     assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
 
 template __global__ void
+    add_kernel<half>(half *dst, half const *src, size_t size);
+template __global__ void
     add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
     add_kernel<double>(double *dst, double const *src, size_t size);
@@ -510,7 +530,11 @@ template __global__ void
     add_kernel<int64_t>(int64_t *dst, int64_t const *src, size_t size);
 
 template __global__ void
+    copy_kernel<half>(half *dst, half const *src, coord_t size);
+template __global__ void
     copy_kernel<float>(float *dst, float const *src, coord_t size);
+template __global__ void
+    copy_kernel<double>(double *dst, double const *src, coord_t size);
 template __global__ void
     copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
 template __global__ void

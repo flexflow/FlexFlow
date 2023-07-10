@@ -28,20 +28,6 @@ void FALCON::create_falcon_model(FFModel &ff,
                                  bool use_full_precision) {
   Config falcon_config(model_config_file_path);
   falcon_config.printConfig();
-  //------------------------------compute machine views ------------------
-  int num_devices = ff.config.workersPerNode * ff.config.numNodes;
-  std::vector<MachineView> machine_views;
-  for (int i = 0; i < num_devices; i++) {
-    MachineView view;
-    view.device_type = MachineView::GPU;
-    view.ndims = 1;
-    view.dim[0] = 1;
-    view.stride[0] = 0;
-    view.start_device_id = i;
-    machine_views.push_back(view);
-  }
-
-  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
 
   Tensor input;
@@ -50,7 +36,6 @@ void FALCON::create_falcon_model(FFModel &ff,
     int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
-  mapping[input].push_back(machine_views[0]);
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
 
@@ -83,17 +68,11 @@ void FALCON::create_falcon_model(FFModel &ff,
       (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
 
   for (int i = 0; i < num_transformer_layers; i++) {
+    // set transformer layer id
+    ff.set_transformer_layer_id(i);
     // step 1: attention
     Tensor att_norm = ff.layer_norm(token, axes, true, falcon_config.norm_eps);
     Layer *attention_norm = ff.layers.back();
-
-    if (i % num_transformer_layers_per_stage == 0) {
-      // Map att_norm to the next GPU
-      // since the size of att_norm is minimum across
-      // all tensors
-      mapping[att_norm].push_back(
-          machine_views[i / num_transformer_layers_per_stage]);
-    }
 
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_input_layernorm_weight",
@@ -162,7 +141,7 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff, mapping);
+  im.compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             falcon_config.n_heads,

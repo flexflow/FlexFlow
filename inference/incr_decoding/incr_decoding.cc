@@ -126,7 +126,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool verbose = false;
   size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
   int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
-      pipeline_parallelism_degree = -1;
+      pipeline_parallelism_degree = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -142,10 +142,10 @@ void FlexFlow::top_level_task(Task const *task,
                    pipeline_parallelism_degree);
   ffconfig.data_parallelism_degree = data_parallelism_degree;
   ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
-  ffconfig.pipeline_parallelism_degree =
-      pipeline_parallelism_degree == -1
-          ? num_devices / (tensor_parallelism_degree * data_parallelism_degree)
-          : pipeline_parallelism_degree;
+  ffconfig.pipeline_parallelism_degree = pipeline_parallelism_degree;
+  assert(data_parallelism_degree * tensor_parallelism_degree *
+             pipeline_parallelism_degree ==
+         ffconfig.numNodes * ffconfig.workersPerNode);
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
@@ -162,8 +162,6 @@ void FlexFlow::top_level_task(Task const *task,
                               im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
-                              ffconfig.workersPerNode * ffconfig.numNodes /
-                                  tensor_parallelism_degree,
                               INC_DECODING_MODE,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
@@ -171,8 +169,6 @@ void FlexFlow::top_level_task(Task const *task,
                           im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
-                          ffconfig.workersPerNode * ffconfig.numNodes /
-                              tensor_parallelism_degree,
                           INC_DECODING_MODE,
                           use_full_precision);
   } else if (model_type == ModelType::FALCON) {

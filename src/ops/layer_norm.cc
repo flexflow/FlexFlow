@@ -216,33 +216,39 @@ LayerNorm::LayerNorm(FFModel &model,
   for (int i = 0; i < axes.size(); i++) {
     M *= inputs[0]->dims[axes[i]].size;
   }
+  int num_replicas = 1;
+  for (int i = 0; i < inputs[0]->num_dims; i++) {
+    if (inputs[0]->dims[i].is_replica_dim) {
+      num_replicas *= inputs[0]->dims[i].size;
+    }
+  }
   effective_num_elements = M;
-  effective_batch_size = inputs[0]->get_volume() / M;
+  effective_batch_size = (inputs[0]->get_volume() / num_replicas) / M;
   assert(elementwise_affine == (numWeights == 2));
   if (numWeights > 0 && allocate_weights) {
-    ParallelDim dims[axes.size()];
-    for (int i = 0; i < axes.size(); i++) {
-      dims[i] = inputs[0]->dims[i];
+    ParallelTensorShape beta_gamma_shape = _input->get_shape();
+    for (int i = axes.size(); i < beta_gamma_shape.num_dims - 1; i++) {
+      beta_gamma_shape.dims[i].size = 1;
     }
     int seed = std::rand();
     Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
     Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
-    weights[0] =
-        model.create_parallel_weight_legion_ordering(axes.size(),
-                                                     dims,
-                                                     _input->data_type,
-                                                     NULL /*owner_op*/,
-                                                     true /*create_grad*/,
-                                                     gamma_initializer,
-                                                     CHOSEN_SYNC_TYPE);
-    weights[1] =
-        model.create_parallel_weight_legion_ordering(axes.size(),
-                                                     dims,
-                                                     _input->data_type,
-                                                     NULL /*owner_op*/,
-                                                     true /*create_grad*/,
-                                                     beta_initializer,
-                                                     CHOSEN_SYNC_TYPE);
+    weights[0] = model.create_parallel_weight_legion_ordering(
+        beta_gamma_shape.num_dims, // axes.size(),
+        beta_gamma_shape.dims,
+        _input->data_type,
+        NULL /*owner_op*/,
+        true /*create_grad*/,
+        gamma_initializer,
+        CHOSEN_SYNC_TYPE);
+    weights[1] = model.create_parallel_weight_legion_ordering(
+        beta_gamma_shape.num_dims, //.size(),
+        beta_gamma_shape.dims,
+        _input->data_type,
+        NULL /*owner_op*/,
+        true /*create_grad*/,
+        beta_initializer,
+        CHOSEN_SYNC_TYPE);
   }
 }
 
@@ -383,13 +389,13 @@ void LayerNorm::forward(FFModel const &ff) {
   if (elementwise_affine) {
     launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[0]->region));
     launcher.add_field(2, FID_DATA);
     launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[1]->region));
     launcher.add_field(3, FID_DATA);
@@ -434,13 +440,13 @@ FutureMap LayerNorm::inference(FFModel const &ff,
   if (elementwise_affine) {
     launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[0]->region));
     launcher.add_field(2, FID_DATA);
     launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[1]->region));
     launcher.add_field(3, FID_DATA);
@@ -462,8 +468,8 @@ void LayerNorm::forward_task(Task const *task,
   assert(task->regions.size() == regions.size());
   float const *in_ptr = NULL;
   float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
-  GenericTensorAccessorR in;
-  GenericTensorAccessorW out, gamma, beta;
+  GenericTensorAccessorR in, gamma, beta;
+  GenericTensorAccessorW out;
 
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -486,21 +492,25 @@ void LayerNorm::forward_task(Task const *task,
         ctx, task->regions[2].region.get_index_space());
     // gamma_ptr = helperGetTensorPointerRW<float>(
     //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    gamma = helperGetGenericTensorAccessorRW(
+    gamma = helperGetGenericTensorAccessorRO(
         m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
     Domain beta_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
     // beta_ptr = helperGetTensorPointerRW<float>(
     //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    beta = helperGetGenericTensorAccessorRW(
+    beta = helperGetGenericTensorAccessorRO(
         m->input_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(gamma_domain == beta_domain);
     assert(gamma_domain.get_volume() == m->effective_num_elements);
     int numdims = gamma_domain.get_dim();
-    for (int i = 0; i < numdims; i++) {
+    size_t vol = 1;
+    int i = 0;
+    while (vol < gamma_domain.get_volume()) {
       int g_d = gamma_domain.hi()[i] - gamma_domain.lo()[i] + 1;
       int in_d = in_domain.hi()[i] - in_domain.lo()[i] + 1;
       assert(g_d == in_d);
+      vol *= g_d;
+      i++;
     }
   } else {
     assert(regions.size() == 2);
@@ -730,6 +740,7 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
 
 void LayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->axes.size());
   for (size_t i = 0; i < this->axes.size(); i++) {
     sez.serialize(this->axes[i]);
@@ -749,9 +760,10 @@ Node LayerNorm::deserialize(FFModel &ff,
   std::vector<int> axes;
   bool elementwise_affine;
   float eps;
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
   dez.deserialize(num_axes);
   for (size_t i = 0; i < num_axes; i++) {
     int axis_idx;

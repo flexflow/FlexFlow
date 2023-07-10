@@ -104,6 +104,7 @@ enum TaskIDs {
   LAYERNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
+  LINEAR_INF_TASK_ID,
   LINEAR_FWD_TASK_ID,
   LINEAR_BWD_TASK_ID,
   LINEAR_BWD2_TASK_ID,
@@ -159,6 +160,7 @@ enum TaskIDs {
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
   FUSEDOP_BWD_TASK_ID,
+  FUSEDOP_INF_TASK_ID,
   NOOP_INIT_TASK_ID,
   // Metrics tasks
   METRICS_COMP_TASK_ID,
@@ -212,6 +214,9 @@ enum TaskIDs {
   PIPELINE_INIT_TASK_ID,
   PIPELINE_FWD_TASK_ID,
   PIPELINE_BWD_TASK_ID,
+  ALLREDUCE_INIT_TASK_ID,
+  ALLREDUCE_FWD_TASK_ID,
+  ALLREDUCE_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
   FUSED_PARALLELOP_FWD_TASK_ID,
   FUSED_PARALLELOP_BWD_TASK_ID,
@@ -311,6 +316,7 @@ class Combine;
 class Repartition;
 class Reduction;
 class Replicate;
+class AllReduce;
 class FusedParallelOp;
 class ParallelOpInfo;
 
@@ -897,6 +903,9 @@ public:
                           std::vector<Legion::PhysicalRegion> const &regions,
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
+  // ========================================
+  // Internal APIs that should not be invoked from applications
+  // ========================================
   void reset_metrics();
   void init_operators();
   void init_operators_inference(
@@ -919,6 +928,7 @@ public:
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
   void compile_inference();
+  void set_transformer_layer_id(int id);
   void graph_optimize(size_t budget,
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
@@ -975,6 +985,7 @@ public:
 public:
   size_t op_global_guid, layer_global_guid;
   size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
+  size_t current_transformer_layer_id;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;
@@ -1078,6 +1089,8 @@ public:
                          Reduction *>,
       std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
                          Combine *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AllReduceParams>,
+                         AllReduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
                          FusedParallelOp *>>
       cached_ops;

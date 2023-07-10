@@ -243,6 +243,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           outputFile << "end-to-end latency: " << std::fixed
                      << std::setprecision(3) << total_request_run_time
                      << std::endl;
+          outputFile << "num decoding steps: " << profile_info.decoding_steps
+                     << std::endl;
           outputFile << "token IDs: ";
           for (int i = 0; i < request.tokens.size(); i++) {
             outputFile << request.tokens[i];
@@ -561,6 +563,8 @@ BeamSearchBatchConfig
         if (outputFile.is_open()) {
           outputFile << "end-to-end latency: " << std::fixed
                      << std::setprecision(3) << total_request_run_time
+                     << std::endl;
+          outputFile << "num decoding steps: " << profile_info.decoding_steps
                      << std::endl;
           outputFile << "token IDs: ";
           for (int i = 0; i < request.tokens.size(); i++) {

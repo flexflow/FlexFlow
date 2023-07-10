@@ -672,6 +672,7 @@ void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->inplace);
   sez.serialize(scalar);
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
@@ -782,9 +783,10 @@ Node ElementUnary::deserialize(FFModel &ff,
   dez.deserialize(op_type);
   dez.deserialize(inplace);
   dez.deserialize(scalar);
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
 
   ElementUnaryParams params;
   params.op_type = op_type;

@@ -2,11 +2,13 @@
 #define _FLEXFLOW_ARG_TOPK_PARAMS_H
 
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
 
 struct ArgTopKParams {
+  LayerID layer_guid;
   int k;
   bool sorted;
   bool is_valid(ParallelTensorShape const &) const;
