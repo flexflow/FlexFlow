@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+#include "cub/cub.cuh"
 #include "flexflow/ops/sampling.h"
 #include "flexflow/utils/cuda_helper.h"
-#include <thrust/scan.h>
-#include <thrust/sort.h>
+#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 
@@ -32,141 +32,21 @@ __global__ void mask_value_above_top_p(DT *input_ptr,
   }
 }
 
-template <typename DT>
-__global__ void re_normalized(DT *input_ptr, DT div, int length) {
-  CUDA_KERNEL_LOOP(i, length) {
-    input_ptr[i] /= div;
+__global__ void init_idxs(int batch_size,
+                          int vocab_size,
+                          int total_eles,
+                          int *idx,
+                          int *begin_offset,
+                          int *end_offset) {
+  CUDA_KERNEL_LOOP(i, total_eles) {
+    idx[i] = i % vocab_size;
+    if (i % vocab_size == 0) {
+      // printf("adfadf :%d\n", i);
+      begin_offset[i / vocab_size] = i;
+      end_offset[i / vocab_size] = i;
+    }
   }
 }
-
-template <typename DT>
-__global__ void sampleMultinomialOnce(long long N, DT *input_ptr) {
-  extern __shared__ unsigned char my_smem[];
-  __shared__ bool found;
-  __shared__ unsigned foundPos;
-
-  float *smem = reinterpret_cast<float *>(my_smem);
-
-  float accZero = static_cast<float>(0);
-  DT zero = static_cast<DT>(0);
-
-  for (int64_t curDist = blockIdx.x; curDist < distributions;
-       curDist += gridDim.x) {
-
-    float sum = accZero;
-    DT val;
-
-    for (int cat = threadIdx.x; cat < N; cat += blockDim.x) {
-      val = dist[curDist * stride_dist + cat * stride_categories];
-      CUDA_KERNEL_ASSERT(!at::_isnan(val));
-      CUDA_KERNEL_ASSERT(!_isinf(val));
-      CUDA_KERNEL_ASSERT(!(val < zero));
-      sum = sum + static_cast<float>(val);
-    }
-
-
-    //sum
-    sum = BlockReduceSum(sum, smem);
-
-    if (threadIdx.x == 0) {
-      foundPos = 0;
-      smem[0] = sum;
-      smem[1] = sampled[curDist];
-    }
-
-    __syncthreads();
-    sum = smem[0];
-
-    DT sample = static_cast<DT>(smem[1]);
-    __syncthreads();
-
-    if (sum == accZero) {
-      // Choose the first element
-      if (threadIdx.x == 0) {
-        dest[curDist] = 0;
-      }
-
-      continue;
-    }
-
-    //ELSE
-    int chunks = (categories + (int)blockDim.x - 1) / blockDim.x;
-    float prevHighProb = accZero;
-
-    found = false;
-    for (int chunk = 0; chunk < chunks && !found; ++chunk) {
-
-       int cat = chunk * blockDim.x + threadIdx.x;
-       float dist_val = cat < categories ?
-                             static_cast<float>(dist[curDist * stride_dist + cat * stride_categories]) / sum :
-                             accZero;
-
-        smem[threadIdx.x] = dist_val;
-      __syncthreads();
-
-      // Perform an inclusive prefix sum of the shared memory contents
-      for (int offset = 1; offset < blockDim.x; offset *= 2) {
-        float val = accZero;
-
-        if (threadIdx.x >= offset) {
-          val = smem[threadIdx.x - offset] + smem[threadIdx.x];
-        }
-
-        __syncthreads();
-        if (threadIdx.x >= offset) {
-          smem[threadIdx.x] = val;
-        }
-        __syncthreads();
-      }
-
-      // Each thread will check to see if the sample falls in its
-      // bucket
-      DT curBucket =
-          static_cast<DT>(smem[threadIdx.x] + prevHighProb);
-      DT prevBucket = static_cast<DT>(
-          threadIdx.x == 0 ? prevHighProb
-                          : smem[threadIdx.x - 1] + prevHighProb);
-      bool inBucket =
-          (cat < categories) &&
-          (!(sample >= curBucket) &&
-          (sample >= prevBucket) &&
-          (dist_val > zero));
-
-      if (inBucket) {
-        // We're done; we have the sample
-        // Torch indices are 1-based
-        atomicMax(&foundPos, cat);
-        found = true;
-      }
-
-      // Store the previous scan's high value for future use
-      prevHighProb = prevHighProb + smem[blockDim.x - 1];
-      __syncthreads();                     
-    }
-
-    if (threadIdx.x == 0) {
-      if (found) {
-          dest[curDist] = foundPos;
-      } else {
-        // This should address a rare bug where we don't select a valid index. This likely occurs when
-        // due to floating point arithmetic rounding errors, our cumulative sum does not add up to 1, but
-        // and our uniform sample is greater than this value. In this case we likely have unitialized memory
-        // in dest[curDist]. So basically we will loop through the distribution and pick the largest index
-        // where the distribution is non-zero. This is obviously terribly inefficient, but due to the
-        // rarity in which this occurs, this should not be an issue.
-        for (int cat = categories - 1; cat >= 0; --cat) {
-          if (dist[curDist * stride_dist + cat * stride_categories] > zero) {
-            dest[curDist] = cat;
-            break;
-          }
-        }
-      }
-    }
-
-
-  }
-}
-
 
 /*static*/
 template <typename DT>
@@ -180,81 +60,62 @@ void Sampling::forward_kernel(SamplingMeta const *m,
   // 1. sort
   // 2. cumsum
   // how to do it in parallel?
+  // init
+  print_tensor<float>((float *)input_ptr+ 32000, 32, "inputttt");
+  std::cout<< "meta " << length << ", " << batch_size << "\n";
+  int parallelism = length * batch_size;
+  init_idxs<<<GET_BLOCKS(parallelism),
+              min(CUDA_NUM_THREADS, parallelism),
+              0,
+              stream>>>(batch_size,
+                        length,
+                        length * batch_size,
+                        m->idx,
+                        m->begin_offset,
+                        m->end_offset);
 
-  checkCUDA(cudaMemcpy(static_cast<DT *>(m->origin_ptr),
-                       input_ptr,
-                       sizeof(DT) * 15 * length,
-                       cudaMemcpyDeviceToDevice));
+  checkCUDA(cudaDeviceSynchronize());                         
+  // print_tensor<int>(m->begin_offset, 64, "ofsset");
+  // print_tensor<int>(m->end_offset, 64, "ofsset");  
 
-  std::cout << "asdqs: " << length << "\n";
+  std::cout<<"-------------------------sampling kernel _--------------------" << "\n";                                 
+  // sort
+  size_t temp_storage_bytes = 0;
+  void *d_temp_storage = nullptr;
+  cub::DeviceSegmentedRadixSort::SortPairsDescending(
+      m->d_temp_storage,
+      temp_storage_bytes,
+      input_ptr,
+      static_cast<DT *>(m->sorted_logits),
+      m->idx,
+      m->sorted_idx,
+      length * batch_size,
+      batch_size,
+      m->begin_offset,
+      m->end_offset + 1,
+      0,              // begin_bit
+      sizeof(DT) * 8, // end_bit = sizeof(KeyT) * 8
+      stream);
 
-  for (int i = 0; i < 15; i++) {
-    thrust::sort(thrust::device,
-                 input_ptr + i * length,
-                 input_ptr + (i + 1) * length,
-                 thrust::greater<DT>());
-    thrust::sort(thrust::device,
-                 static_cast<DT *>(m->origin_ptr) + i * length,
-                 static_cast<DT *>(m->origin_ptr) + (i + 1) * length,
-                 thrust::greater<DT>());
-    thrust::inclusive_scan(thrust::device,
-                           input_ptr + i * length,
-                           input_ptr + (i + 1) * length,
-                           static_cast<DT *>(m->cumsum_ptr) + i * length);
-  }
-  std::cout << "sdsd"
-            << "\n";
-
-  // 3. mask
-  int parallelism = 15 * length;
-  mask_value_above_top_p<DT><<<GET_BLOCKS(parallelism),
-                               min(CUDA_NUM_THREADS, parallelism),
-                               0,
-                               stream>>>(
-      input_ptr, static_cast<DT *>(m->cumsum_ptr), top_p, parallelism);
-
-  // 4. sum/div
-  std::cout << "sadsd2www"
-            << "\n";
-  for (int i = 0; i < 15; i++) {
-    DT sum = thrust::reduce(
-        thrust::device, input_ptr + i * length, input_ptr + (i + 1) * length);
-    parallelism = length;
-
-    re_normalized<DT><<<GET_BLOCKS(parallelism),
-                        min(CUDA_NUM_THREADS, parallelism),
-                        0,
-                        stream>>>(input_ptr + i * length, sum, length);
-  }
-  std::cout << "sdds332"
-            << "\n";
-
-  // 5.multinominal
-  for (int i = 0; i < 15; i++) {
-    parallelism = length;
-    DT random = static_cast<DT>(((float)std::rand()) / RAND_MAX);
-    thrust::inclusive_scan(thrust::device,
-                           input_ptr + i * length,
-                           input_ptr + (i + 1) * length,
-                           static_cast<DT *>(m->cumsum_ptr) + i * length);
-
-    // find_idx<DT><<<GET_BLOCKS(parallelism),
-    //                min(CUDA_NUM_THREADS, parallelism),
-    //                0,
-    //                stream>>>(static_cast<DT *>(m->cumsum_ptr) + i * length,
-    //                          static_cast<DT *>(m->origin_ptr) + i * length,
-    //                          random,
-    //                          length,
-    //                          indices_ptr,
-    //                          i);
-    for (int j = 0; j < length; j++) {
-      if ((static_cast<DT *>(m->cumsum_ptr) + i * length)[j] >= random) {
-        indices_ptr[i] = (static_cast<DT *>(m->origin_ptr) + i * length)[i];
-        printf("k value is:%d. %f\n", i, indices_ptr[i]);
-        break;
-      }
-    }
-  }
+  
+  checkCUDA(cudaDeviceSynchronize()); 
+  cudaMalloc(&d_temp_storage, temp_storage_bytes);  
+  cub::DeviceSegmentedRadixSort::SortPairsDescending(
+      d_temp_storage,
+      temp_storage_bytes,
+      input_ptr,
+      static_cast<DT *>(m->sorted_logits),
+      m->idx,
+      m->sorted_idx,
+      length * batch_size,
+      batch_size,
+      m->begin_offset,
+      m->end_offset + 1,
+      0,              // begin_bit
+      sizeof(DT) * 8, // end_bit = sizeof(KeyT) * 8
+      stream);
+  print_tensor<float>((float *)m->sorted_logits + 32000, 32, "after sort");    
+  print_tensor<int>(m->sorted_idx+ 32000, 32, "after sort");
   // print_tensor<int>((int *)indices_ptr, 15, "sdsdasd");
   assert(false);
 }
@@ -306,10 +167,19 @@ void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
   }
 }
 
-SamplingMeta::SamplingMeta(FFHandler handler, Op const *op)
+SamplingMeta::SamplingMeta(FFHandler handler,
+                           Op const *op,
+                           int batch_size,
+                           int total_ele)
     : OpMeta(handler, op) {
-  checkCUDA(cudaMalloc(&cumsum_ptr, 15 * 32000 * sizeof(float)));
-  checkCUDA(cudaMalloc(&sampled, 15 * 32000 * sizeof(float)));
+  DataType data_type = op->data_type;
+  checkCUDA(cudaMalloc(&begin_offset, (batch_size + 1) * sizeof(int)));
+  checkCUDA(cudaMalloc(&end_offset, (batch_size + 1) * sizeof(int)));
+  checkCUDA(cudaMalloc(&idx, total_ele * sizeof(int)));
+
+  checkCUDA(cudaMalloc(&sorted_idx, total_ele * sizeof(int)));
+  checkCUDA(cudaMalloc(&sorted_logits, total_ele * data_type_size(data_type)));
+  
 }
 
 }; // namespace FlexFlow
