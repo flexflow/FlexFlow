@@ -90,7 +90,7 @@ struct TaskArgumentAccessor {
     }
 
     void *start_ptr = &((std::uint8_t *)this->task->args)[arg_fmt.start];
-    Legion::Deserializer dez(start_ptr, arg_fmt.size());
+    Legion::Deserializer dez(start_ptr, (arg_fmt.end() - arg_fmt.start()));
 
     return ff_task_deserialize<T>(dez);
   }
