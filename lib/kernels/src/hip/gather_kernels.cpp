@@ -13,54 +13,71 @@
  * limitations under the License.
  */
 
-#include "kernels/datatype_dispatch.h"
 #include "kernels/gather_kernels.h"
+#include "kernels/datatype_dispatch.h"
 #include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-GatherPerDeviceState::GatherPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {};
+GatherPerDeviceState::GatherPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler){};
 
 namespace Kernels {
 namespace Gather {
 
 template <DataType IndexTxype>
 struct ForwardKernel {
-  void operator() (hipStream_t stream, GatherPerDeviceState const *m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorR const &index,
-                            GenericTensorAccessorW const &output,
-                            size_t stride, size_t dim_size) {
+  void operator()(hipStream_t stream,
+                  GatherPerDeviceState const *m,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorR const &index,
+                  GenericTensorAccessorW const &output,
+                  size_t stride,
+                  size_t dim_size) {
     handle_unimplemented_hip_kernel(OP_GATHER);
-}
+  }
 
-void forward_kernel(hipStream_t stream, GatherPerDeviceState const *m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorR const &index,
-                            GenericTensorAccessorW const &output,
-                            size_t stride, size_t dim_size) {
-  DataTypeDispatch1<ForwardKernel>{}(m->index_data_type, stream, m, input, index, output, stride, dim_size);
-}
+  void forward_kernel(hipStream_t stream,
+                      GatherPerDeviceState const *m,
+                      GenericTensorAccessorR const &input,
+                      GenericTensorAccessorR const &index,
+                      GenericTensorAccessorW const &output,
+                      size_t stride,
+                      size_t dim_size) {
+    DataTypeDispatch1<ForwardKernel>{}(
+        m->index_data_type, stream, m, input, index, output, stride, dim_size);
+  }
 
-template <DataType IndexType>
-struct BackwardKernel {
-  void operator() (hipStream_t stream, GatherPerDeviceState const *m,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorR const &index,
-                             GenericTensorAccessorW const &input_grad,
-                             size_t stride, size_t dim_size) {
-    handle_unimplemented_hip_kernel(OP_GATHER);
-}
+  template <DataType IndexType>
+  struct BackwardKernel {
+    void operator()(hipStream_t stream,
+                    GatherPerDeviceState const *m,
+                    GenericTensorAccessorR const &output_grad,
+                    GenericTensorAccessorR const &index,
+                    GenericTensorAccessorW const &input_grad,
+                    size_t stride,
+                    size_t dim_size) {
+      handle_unimplemented_hip_kernel(OP_GATHER);
+    }
 
-void backward_kernel(hipStream_t stream, GatherPerDeviceState const *m,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorR const &index,
-                             GenericTensorAccessorW const &input_grad,
-                             size_t stride, size_t dim_size) {
-  DataTypeDispatch1<BackwardKernel>{}(m->index_data_type, stream, m, output_grad, index, input_grad, stride, dim_size);
-}
+    void backward_kernel(hipStream_t stream,
+                         GatherPerDeviceState const *m,
+                         GenericTensorAccessorR const &output_grad,
+                         GenericTensorAccessorR const &index,
+                         GenericTensorAccessorW const &input_grad,
+                         size_t stride,
+                         size_t dim_size) {
+      DataTypeDispatch1<BackwardKernel>{}(m->index_data_type,
+                                          stream,
+                                          m,
+                                          output_grad,
+                                          index,
+                                          input_grad,
+                                          stride,
+                                          dim_size);
+    }
 
-} // namespace Gather
+  } // namespace Gather
 } // namespace Kernels
 } // namespace FlexFlow

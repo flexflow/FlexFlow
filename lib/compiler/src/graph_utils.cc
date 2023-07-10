@@ -10,8 +10,8 @@ SerialParallelDecomposition
 
 std::vector<MultiDiEdge> get_sorted_node_input_edges(OptimizerPCG const &pcg,
                                                      Node const &n) {
-  std::unordered_map<size_t, std::unordered_set<MultiDiEdge>>
-      incoming_edges = get_incoming_edges_by_idx(MultiDiGraphView(pcg), n);
+  std::unordered_map<size_t, std::unordered_set<MultiDiEdge>> incoming_edges =
+      get_incoming_edges_by_idx(MultiDiGraphView(pcg), n);
 
   std::vector<MultiDiEdge> result;
   for (auto const &p_id_edge_set : incoming_edges) {
@@ -131,4 +131,4 @@ std::unordered_set<Node> get_nodes(Node const &node) {
   return {node};
 }
 
-}
+} // namespace FlexFlow

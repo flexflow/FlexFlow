@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_RECURSIVE_LOGGER_H
 #define _FLEXFLOW_RECURSIVE_LOGGER_H
 
-#include <memory>
 #include "spdlog/spdlog.h"
+#include <memory>
 
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 #define CONCAT_INNER(a, b) a##b
@@ -32,21 +32,18 @@ public:
 
   RecursiveLogger(RecursiveLogger const &) = delete;
 
-  template<typename... Args>
-  void info(std::string const &fmt, Args &&... args)
-  {
+  template <typename... Args>
+  void info(std::string const &fmt, Args &&...args) {
     this->logger->info(this->get_prefix() + fmt, std::forward<Args>(args)...);
   }
 
-  template<typename... Args>
-  void debug(std::string const &fmt, Args &&... args)
-  {
+  template <typename... Args>
+  void debug(std::string const &fmt, Args &&...args) {
     this->logger->debug(this->get_prefix() + fmt, std::forward<Args>(args)...);
   }
 
-  template<typename... Args>
-  void spew(std::string const &fmt, Args &&... args)
-  {
+  template <typename... Args>
+  void spew(std::string const &fmt, Args &&...args) {
     this->logger->trace(this->get_prefix() + fmt, std::forward<Args>(args)...);
   }
 
@@ -54,14 +51,16 @@ public:
   void leave();
 
   std::unique_ptr<DepthTag> enter_tag();
+
 private:
   std::string get_prefix() const;
+
 private:
   int depth = 0;
   std::shared_ptr<spdlog::logger> logger;
 };
 
-}
-}
+} // namespace utils
+} // namespace FlexFlow
 
-#endif 
+#endif

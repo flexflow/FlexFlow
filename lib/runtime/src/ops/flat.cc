@@ -57,8 +57,6 @@ int FlatParams::output_size(ParallelTensorShape const &input,
   return FlatOutput::NUMDIM;
 }
 
-
-
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,
          OP_FLAT,
@@ -122,9 +120,9 @@ void Flat::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *Flat::init_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions,
-                        Context ctx,
-                        Runtime *runtime) {
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   FFHandler handler = *((FFHandler const *)task->local_args);
   FlatMeta *m = new FlatMeta(handler);
   return m;

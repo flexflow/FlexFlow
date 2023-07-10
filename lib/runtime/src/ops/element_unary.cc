@@ -1,7 +1,7 @@
 #include "element_unary.h"
 #include "kernels/element_unary_kernels.h"
-#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -263,10 +263,11 @@ void ElementUnary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-PerDeviceOpState *ElementUnary::init_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {
+PerDeviceOpState *
+    ElementUnary::init_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
   ElementUnary *eu = (ElementUnary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementUnaryMeta *m = new ElementUnaryMeta(handle);
@@ -521,11 +522,11 @@ void ElementUnary::backward_task_with_type(
   }
 
   backward_kernel_wrapper<DT>(m,
-                                            input_ptr,
-                                            input_grad_ptr,
-                                            output_ptr,
-                                            output_grad_ptr,
-                                            input_domain.get_volume());
+                              input_ptr,
+                              input_grad_ptr,
+                              output_ptr,
+                              output_grad_ptr,
+                              input_domain.get_volume());
 }
 
 void ElementUnary::serialize(Legion::Serializer &sez) const {
@@ -555,8 +556,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
   output_domain.dim = sub_output.num_dims;
   for (int i = 0; i < sub_output.num_dims; i++) {
     output_domain.rect_data[i] = 0;
-    output_domain.rect_data[i + input_domain.dim] =
-        sub_output.dims[i].size - 1;
+    output_domain.rect_data[i + input_domain.dim] = sub_output.dims[i].size - 1;
   }
   init_kernel(m, input_domain, output_domain);
   sim->free_all();

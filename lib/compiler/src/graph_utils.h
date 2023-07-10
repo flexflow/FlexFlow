@@ -11,8 +11,8 @@ SerialParallelDecomposition
 OptimizerPCG cg_to_pcg(OptimizerComputationGraph const &g);
 SubParallelComputationGraph pcg_to_subpcg(OptimizerPCG const &g);
 
-
-// NOTE(@wmdi): I think we should have the following interfaces in the graph library eventually.
+// NOTE(@wmdi): I think we should have the following interfaces in the graph
+// library eventually.
 
 std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g);
 std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);
@@ -57,12 +57,12 @@ void minimize(T &t, T const &v) {
   t = std::min(t, v);
 }
 
-}
+} // namespace FlexFlow
 
 namespace std {
 template <>
 struct hash<::FlexFlow::Serial> {
-  size_t operator()(::FlexFlow::Serial const &) const; 
+  size_t operator()(::FlexFlow::Serial const &) const;
 };
 
 template <>
@@ -70,18 +70,17 @@ struct hash<::FlexFlow::Parallel> {
   size_t operator()(::FlexFlow::Parallel const &) const;
 };
 
-template<typename N, typename E>
+template <typename N, typename E>
 struct hash<::FlexFlow::LabelledMultiDiGraph<N, E>> {
-  size_t operator()(::FlexFlow::LabelledOpenMultiDiGraph<N, E> const &) const {
-  }
+  size_t operator()(::FlexFlow::LabelledOpenMultiDiGraph<N, E> const &) const {}
 };
 
-template<typename N, typename E, typename I, typename O>
+template <typename N, typename E, typename I, typename O>
 struct hash<::FlexFlow::LabelledOpenMultiDiGraph<N, E, I, O>> {
-  size_t operator()(::FlexFlow::LabelledOpenMultiDiGraph<N, E, I, O> const &) const {
-  }
+  size_t operator()(
+      ::FlexFlow::LabelledOpenMultiDiGraph<N, E, I, O> const &) const {}
 };
 
-}
+} // namespace std
 
 #endif

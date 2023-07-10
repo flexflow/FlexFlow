@@ -11,8 +11,7 @@ struct LegionParallelTensorShape {
 
   template <typename C>
   LegionParallelTensorShape(C const &dims, DataType data_type)
-    : dims(dims), data_type(data_type)
-  { }
+      : dims(dims), data_type(data_type) {}
 
   bool operator==(LegionParallelTensorShape const &) const;
   bool operator!=(LegionParallelTensorShape const &) const;
@@ -20,7 +19,7 @@ struct LegionParallelTensorShape {
   operator ParallelTensorShape() const;
 
   /* RecordFormatter as_dot() const; */
-  
+
   /* size_t get_piece_size() const; */
   bool is_valid() const;
 
@@ -34,7 +33,8 @@ struct LegionParallelTensorShape {
   size_t num_dims() const;
 
   using iterator = stack_vector<ParallelDim, MAX_TENSOR_DIM>::iterator;
-  using const_iterator = stack_vector<ParallelDim, MAX_TENSOR_DIM>::const_iterator;
+  using const_iterator =
+      stack_vector<ParallelDim, MAX_TENSOR_DIM>::const_iterator;
 
   iterator begin();
   const_iterator begin() const;
@@ -49,7 +49,7 @@ public:
 };
 
 std::ostream &operator<<(std::ostream &, LegionParallelTensorShape const &);
-}
+} // namespace FlexFlow
 
 namespace std {
 
@@ -58,6 +58,6 @@ struct hash<::FlexFlow::LegionParallelTensorShape> {
   size_t operator()(::FlexFlow::LegionParallelTensorShape const &) const;
 };
 
-}
+} // namespace std
 
 #endif

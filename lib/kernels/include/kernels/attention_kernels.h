@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ATTENTION_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ATTENTION_KERNELS_H
 
-#include "kernels/device.h"
-#include "kernels/per_device_op_state.h"
-#include "kernels/ff_handle.h"
 #include "kernels/allocation.h"
-#include <memory>
+#include "kernels/device.h"
+#include "kernels/ff_handle.h"
+#include "kernels/per_device_op_state.h"
 #include "op-attrs/ops/attention.h"
+#include <memory>
 
 namespace FlexFlow {
 
@@ -27,6 +27,7 @@ public:
                     int *hiWinIdx,
                     void *reserveSpace,
                     Allocator const &allocator);
+
 public:
   PerDeviceFFHandle handle;
   size_t weightSize;
@@ -43,7 +44,6 @@ public:
   void *reserveSpace;
   Allocator allocator;
 };
-
 
 namespace Kernels {
 namespace MultiHeadAttention {
@@ -83,8 +83,8 @@ void backward_kernel(ffStream_t stream,
                      float *weight_grad_ptr,
                      float const *output_grad_ptr);
 
-} 
-}
-}
+} // namespace MultiHeadAttention
+} // namespace Kernels
+} // namespace FlexFlow
 
-#endif 
+#endif

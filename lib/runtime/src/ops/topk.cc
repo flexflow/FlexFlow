@@ -175,9 +175,9 @@ void TopK::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *TopK::init_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions,
-                        Context ctx,
-                        Runtime *runtime) {
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   TopK *topk = (TopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   TopKMeta *m = new TopKMeta(handle);

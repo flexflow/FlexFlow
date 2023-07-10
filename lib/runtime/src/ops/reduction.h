@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_REDUCTION_H
 #define _FLEXFLOW_REDUCTION_H
 
+#include "op-attrs/ops/combine.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/combine.h"
 
 namespace FlexFlow {
 
-template <> void register_task<REDUCTION_INIT_TASK_ID>();
-template <> void register_task<REDUCTION_FWD_TASK_ID>();
-template <> void register_task<REDUCTION_BWD_TASK_ID>();
+template <>
+void register_task<REDUCTION_INIT_TASK_ID>();
+template <>
+void register_task<REDUCTION_FWD_TASK_ID>();
+template <>
+void register_task<REDUCTION_BWD_TASK_ID>();
 
 OpTaskInvocation init(ReductionAttrs const &);
 OpTaskInvocation forward(ReductionAttrs const &);
@@ -39,11 +42,13 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   bool append_parallel_op_info( */
 /*       std::vector<ParallelOpInfo> &parallel_ops) const override; */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -54,6 +59,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   int reduction_dim, reduction_degree; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

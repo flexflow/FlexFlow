@@ -21,4 +21,4 @@ bool is_parallel_op(OperatorType const &t) {
   }
 }
 
-}
+} // namespace FlexFlow

@@ -29,17 +29,30 @@ TEST_CASE("get_subgraph_labelled_open_graph") {
   g.add_edge(e4, 4);
   g.add_edge(e5, 5);
 
-  auto subgraph0 = get_subgraph(g, std::unordered_set<Node>{n3, n4}, InputSettings::INCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS);
-  auto subgraph1 = get_subgraph(g, std::unordered_set<Node>{n3, n4}, InputSettings::INCLUDE_INPUTS, OutputSettings::EXCLUDE_OUTPUTS);
-  auto subgraph2 = get_subgraph(g, std::unordered_set<Node>{n3, n4}, InputSettings::EXCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS);
-  auto subgraph3 = get_subgraph(g, std::unordered_set<Node>{n3, n4}, InputSettings::EXCLUDE_INPUTS, OutputSettings::EXCLUDE_OUTPUTS);
+  auto subgraph0 = get_subgraph(g,
+                                std::unordered_set<Node>{n3, n4},
+                                InputSettings::INCLUDE_INPUTS,
+                                OutputSettings::INCLUDE_OUTPUTS);
+  auto subgraph1 = get_subgraph(g,
+                                std::unordered_set<Node>{n3, n4},
+                                InputSettings::INCLUDE_INPUTS,
+                                OutputSettings::EXCLUDE_OUTPUTS);
+  auto subgraph2 = get_subgraph(g,
+                                std::unordered_set<Node>{n3, n4},
+                                InputSettings::EXCLUDE_INPUTS,
+                                OutputSettings::INCLUDE_OUTPUTS);
+  auto subgraph3 = get_subgraph(g,
+                                std::unordered_set<Node>{n3, n4},
+                                InputSettings::EXCLUDE_INPUTS,
+                                OutputSettings::EXCLUDE_OUTPUTS);
 
   CHECK(get_nodes(subgraph0) == std::unordered_set<Node>{n3, n4});
   CHECK(get_nodes(subgraph1) == std::unordered_set<Node>{n3, n4});
   CHECK(get_nodes(subgraph2) == std::unordered_set<Node>{n3, n4});
   CHECK(get_nodes(subgraph3) == std::unordered_set<Node>{n3, n4});
 
-  std::unordered_set<InputMultiDiEdge> input_set{split_edge(e2).second, split_edge(e3).second};
+  std::unordered_set<InputMultiDiEdge> input_set{split_edge(e2).second,
+                                                 split_edge(e3).second};
   std::unordered_set<OutputMultiDiEdge> output_set{e5};
 
   CHECK(get_inputs(subgraph0) == input_set);
@@ -52,8 +65,12 @@ TEST_CASE("get_subgraph_labelled_open_graph") {
   CHECK(get_outputs(subgraph2) == output_set);
   CHECK(get_outputs(subgraph3).empty());
 
-  CHECK(get_edges(subgraph0) == std::unordered_set<OpenMultiDiEdge>{split_edge(e2).second, split_edge(e3).second, e4, e5});
-  CHECK(get_edges(subgraph1) == std::unordered_set<OpenMultiDiEdge>{split_edge(e2).second, split_edge(e3).second, e4});
+  CHECK(get_edges(subgraph0) ==
+        std::unordered_set<OpenMultiDiEdge>{
+            split_edge(e2).second, split_edge(e3).second, e4, e5});
+  CHECK(get_edges(subgraph1) ==
+        std::unordered_set<OpenMultiDiEdge>{
+            split_edge(e2).second, split_edge(e3).second, e4});
   CHECK(get_edges(subgraph2) == std::unordered_set<OpenMultiDiEdge>{e4, e5});
   CHECK(get_edges(subgraph3) == std::unordered_set<OpenMultiDiEdge>{e4});
 }

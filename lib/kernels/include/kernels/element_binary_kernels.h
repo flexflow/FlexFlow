@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ELEMENT_BINARY_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ELEMENT_BINARY_KERNELS_H
 
+#include "kernels/array_shape.h"
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/array_shape.h"
 
 namespace FlexFlow {
 
@@ -40,8 +40,8 @@ void backward_kernel(ffStream_t stream,
                      float *in1_grad_ptr,
                      float *in2_grad_ptr);
 
-}
-}
-}
+} // namespace ElementBinary
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif

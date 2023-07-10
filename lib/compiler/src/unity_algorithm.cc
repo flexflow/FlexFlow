@@ -5,7 +5,8 @@
 
 namespace FlexFlow {
 
-Strategy::Strategy(OptimizerPCG const &pcg, MachineMapping const &machine_mapping)
+Strategy::Strategy(OptimizerPCG const &pcg,
+                   MachineMapping const &machine_mapping)
     : pcg(pcg), machine_mapping(machine_mapping) {}
 
 bool StrategyRuntimeCmp::operator()(Strategy const &lhs, Strategy const &rhs) {
@@ -75,14 +76,15 @@ Strategy graph_optimize(
   return best_result;
 }
 
-}
+} // namespace FlexFlow
 
 namespace std {
-  
-size_t hash<::FlexFlow::Strategy>::operator()(::FlexFlow::Strategy const &s) const {
+
+size_t hash<::FlexFlow::Strategy>::operator()(
+    ::FlexFlow::Strategy const &s) const {
   size_t h = hash<FlexFlow::OptimizerPCG>{}(s.pcg);
   hash_combine(h, s.machine_mapping);
   return h;
 }
 
-}
+} // namespace std

@@ -4,31 +4,32 @@
 namespace FlexFlow {
 namespace substitutions {
 
-tl::optional<OperatorAttributeValue> get_attribute(AggregateAttrs const &p, OperatorAttributeKey key)
-{
-  switch (key) {
-    default: 
-      return tl::nullopt; 
-  }
-}
-
-tl::optional<OperatorAttributeValue> get_attribute(AggregateSpecAttrs const &p, OperatorAttributeKey key)
-{
+tl::optional<OperatorAttributeValue> get_attribute(AggregateAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p, OperatorAttributeKey key) 
-{
+tl::optional<OperatorAttributeValue> get_attribute(AggregateSpecAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(CastAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p,
+                                                   OperatorAttributeKey key) {
+  switch (key) {
+    default:
+      return tl::nullopt;
+  }
+}
+
+tl::optional<OperatorAttributeValue> get_attribute(CastAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::DATA_TYPE:
       return p.dtype;
@@ -37,7 +38,8 @@ tl::optional<OperatorAttributeValue> get_attribute(CastAttrs const &p, OperatorA
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(CombineAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(CombineAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
       return p.combine_legion_dim;
@@ -48,7 +50,8 @@ tl::optional<OperatorAttributeValue> get_attribute(CombineAttrs const &p, Operat
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(ConcatAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(ConcatAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::AXIS:
       return p.axis;
@@ -57,7 +60,8 @@ tl::optional<OperatorAttributeValue> get_attribute(ConcatAttrs const &p, Operato
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(Conv2DAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(Conv2DAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::KERNEL_H:
       return p.kernel_h;
@@ -82,14 +86,16 @@ tl::optional<OperatorAttributeValue> get_attribute(Conv2DAttrs const &p, Operato
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(ElementBinaryAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(ElementBinaryAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::SCALAR:
       return p.scalar;
@@ -98,14 +104,16 @@ tl::optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p, O
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(EmbeddingAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(EmbeddingAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::DATA_TYPE:
       return p.data_type;
@@ -120,14 +128,16 @@ tl::optional<OperatorAttributeValue> get_attribute(EmbeddingAttrs const &p, Oper
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(FlatAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(FlatAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::AXIS:
       return p.legion_dim;
@@ -136,21 +146,24 @@ tl::optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p, Operato
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(Group_byAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(Group_byAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(LayerNormAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(LayerNormAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::OUT_CHANNELS:
       return p.out_channels;
@@ -165,7 +178,8 @@ tl::optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p, Operato
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(MultiHeadAttentionAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue>
+    get_attribute(MultiHeadAttentionAttrs const &p, OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::NUM_HEADS:
       return p.num_heads;
@@ -176,7 +190,8 @@ tl::optional<OperatorAttributeValue> get_attribute(MultiHeadAttentionAttrs const
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(Pool2DAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(Pool2DAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::KERNEL_H:
       return p.kernel_h;
@@ -199,14 +214,16 @@ tl::optional<OperatorAttributeValue> get_attribute(Pool2DAttrs const &p, Operato
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(ReduceAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(ReduceAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(ReductionAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(ReductionAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
       return p.reduction_legion_dim;
@@ -217,7 +234,8 @@ tl::optional<OperatorAttributeValue> get_attribute(ReductionAttrs const &p, Oper
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(RepartitionAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(RepartitionAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
       return p.repartition_legion_dim;
@@ -228,7 +246,8 @@ tl::optional<OperatorAttributeValue> get_attribute(RepartitionAttrs const &p, Op
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(ReplicateAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(ReplicateAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
       return p.replicate_legion_dim;
@@ -239,23 +258,26 @@ tl::optional<OperatorAttributeValue> get_attribute(ReplicateAttrs const &p, Oper
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(ReshapeAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(ReshapeAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(SplitAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(SplitAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::AXIS:
       return p.legion_axis;
-    default: 
+    default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(SoftmaxAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(SoftmaxAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::AXIS:
       return p.dim;
@@ -264,14 +286,16 @@ tl::optional<OperatorAttributeValue> get_attribute(SoftmaxAttrs const &p, Operat
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(TopKAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(TopKAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
+                                                   OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PERMUTATION:
       return p.perm;
@@ -280,7 +304,8 @@ tl::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p, Oper
   }
 }
 
-tl::optional<OperatorAttributeValue> get_attribute(FusedParallelOpAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue>
+    get_attribute(FusedParallelOpAttrs const &p, OperatorAttributeKey key) {
   switch (key) {
     default:
       return tl::nullopt;
@@ -288,7 +313,7 @@ tl::optional<OperatorAttributeValue> get_attribute(FusedParallelOpAttrs const &p
 }
 
 struct GetAttribute {
-  GetAttribute(OperatorAttributeKey key) : key(key) { }
+  GetAttribute(OperatorAttributeKey key) : key(key) {}
 
   template <typename T>
   tl::optional<OperatorAttributeValue> operator()(T const &t) {
@@ -296,13 +321,13 @@ struct GetAttribute {
   }
 
 private:
-  OperatorAttributeKey key; 
+  OperatorAttributeKey key;
 };
 
-
-tl::optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &p,
+                                                   OperatorAttributeKey key) {
   return mpark::visit(GetAttribute(key), p);
 }
 
-}
-}
+} // namespace substitutions
+} // namespace FlexFlow

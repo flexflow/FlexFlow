@@ -31,13 +31,13 @@ struct TransposeStrides {
 namespace Kernels {
 namespace Transpose {
 
-void forward_kernel( hipStream_t stream, TransposePerDeviceState const *m,
-                            float const *input_ptr,
-                            float *output_ptr,
-                            Domain in_domain,
-                            Domain out_domain) {
+void forward_kernel(hipStream_t stream,
+                    TransposePerDeviceState const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    Domain in_domain,
+                    Domain out_domain) {
 
-  
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
   assert(info.num_dim == m->num_dim);
@@ -60,13 +60,13 @@ void forward_kernel( hipStream_t stream, TransposePerDeviceState const *m,
                      0.0f /*beta*/);
 }
 
-void backward_kernel(hipStream_t stream, TransposePerDeviceState const *m,
-                             float *input_grad_ptr,
-                             float const *output_grad_ptr,
-                             Domain in_grad_domain,
-                             Domain out_grad_domain) {
-  
-  
+void backward_kernel(hipStream_t stream,
+                     TransposePerDeviceState const *m,
+                     float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     Domain in_grad_domain,
+                     Domain out_grad_domain) {
+
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
   assert(info.num_dim == m->num_dim);

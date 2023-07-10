@@ -3,26 +3,29 @@
 
 namespace FlexFlow {
 
-MachineMapping::MachineMapping(float runtime,
-                   std::unordered_map<Node, MachineView> machine_views)
+MachineMapping::MachineMapping(
+    float runtime, std::unordered_map<Node, MachineView> machine_views)
     : runtime(runtime), machine_views(machine_views) {}
 
-MachineMapping MachineMapping::sequential_combine(MachineMapping const &s1, MachineMapping const &s2) {
+MachineMapping MachineMapping::sequential_combine(MachineMapping const &s1,
+                                                  MachineMapping const &s2) {
   return MachineMapping(s1.runtime + s2.runtime,
-                  merge_maps(s1.machine_views, s2.machine_views));
+                        merge_maps(s1.machine_views, s2.machine_views));
 }
 
-MachineMapping MachineMapping::parallel_combine(MachineMapping const &s1, MachineMapping const &s2) {
+MachineMapping MachineMapping::parallel_combine(MachineMapping const &s1,
+                                                MachineMapping const &s2) {
   return MachineMapping(std::max(s1.runtime, s2.runtime),
-                  merge_maps(s1.machine_views, s2.machine_views));
+                        merge_maps(s1.machine_views, s2.machine_views));
 }
 
 MachineMapping MachineMapping::infinity() {
   return MachineMapping(std::numeric_limits<float>::infinity(),
-                  std::unordered_map<Node, MachineView>{});
+                        std::unordered_map<Node, MachineView>{});
 }
 
-bool MachineMappingRuntimeCmp::operator()(MachineMapping const &lhs, MachineMapping const &rhs) {
+bool MachineMappingRuntimeCmp::operator()(MachineMapping const &lhs,
+                                          MachineMapping const &rhs) {
   return lhs.runtime < rhs.runtime;
 }
 
@@ -138,7 +141,8 @@ struct OptimalCost {
     return nullopt;
   }
 
-  void save_result_to_cache(size_t hash_value, MachineMapping const &strategy) const {
+  void save_result_to_cache(size_t hash_value,
+                            MachineMapping const &strategy) const {
     assert(!contains_key(cached_subgraph_costs, hash_value));
     cached_subgraph_costs.emplace(hash_value, strategy);
   }
@@ -146,7 +150,8 @@ struct OptimalCost {
   template <typename T>
   MachineMapping operator()(T const &t) const {
     size_t state_hash_value = hash_state(t);
-    optional<MachineMapping> cached_result = load_result_from_cache(state_hash_value);
+    optional<MachineMapping> cached_result =
+        load_result_from_cache(state_hash_value);
     if (cached_result) {
       return cached_result.value();
     }
@@ -187,24 +192,24 @@ struct OptimalCost {
       optional<MachineView> post_source_mv =
           contains(post_graph_sources, split_point) ? make_optional(mv)
                                                     : nullopt;
-      minimize(
-          optimal_result,
-          MachineMapping::sequential_combine(visit(OptimalCost(pre_graph,
-                                                         cost_estimator,
-                                                         resource,
-                                                         source_machine_view,
-                                                         pre_sink_mv,
-                                                         allowed_machine_views,
-                                                         cached_subgraph_costs),
-                                             pre_decompn),
-                                       visit(OptimalCost(post_graph,
-                                                         cost_estimator,
-                                                         resource,
-                                                         post_source_mv,
-                                                         sink_machine_view,
-                                                         allowed_machine_views,
-                                                         cached_subgraph_costs),
-                                             post_decompn)));
+      minimize(optimal_result,
+               MachineMapping::sequential_combine(
+                   visit(OptimalCost(pre_graph,
+                                     cost_estimator,
+                                     resource,
+                                     source_machine_view,
+                                     pre_sink_mv,
+                                     allowed_machine_views,
+                                     cached_subgraph_costs),
+                         pre_decompn),
+                   visit(OptimalCost(post_graph,
+                                     cost_estimator,
+                                     resource,
+                                     post_source_mv,
+                                     sink_machine_view,
+                                     allowed_machine_views,
+                                     cached_subgraph_costs),
+                         post_decompn)));
     }
 
     return optimal_result;
@@ -218,43 +223,43 @@ struct OptimalCost {
     auto subgraphs = apply_split(g, get_graph_split(decompn1, decompn2));
     SubParallelComputationGraph g1 = subgraphs.first, g2 = subgraphs.second;
 
-    MachineMapping optimal_result =
-        MachineMapping::sequential_combine(visit(OptimalCost(g1,
-                                                       cost_estimator,
-                                                       resource,
-                                                       source_machine_view,
-                                                       sink_machine_view,
-                                                       allowed_machine_views,
-                                                       cached_subgraph_costs),
-                                           decompn1),
-                                     visit(OptimalCost(g2,
-                                                       cost_estimator,
-                                                       resource,
-                                                       source_machine_view,
-                                                       sink_machine_view,
-                                                       allowed_machine_views,
-                                                       cached_subgraph_costs),
-                                           decompn2));
+    MachineMapping optimal_result = MachineMapping::sequential_combine(
+        visit(OptimalCost(g1,
+                          cost_estimator,
+                          resource,
+                          source_machine_view,
+                          sink_machine_view,
+                          allowed_machine_views,
+                          cached_subgraph_costs),
+              decompn1),
+        visit(OptimalCost(g2,
+                          cost_estimator,
+                          resource,
+                          source_machine_view,
+                          sink_machine_view,
+                          allowed_machine_views,
+                          cached_subgraph_costs),
+              decompn2));
 
     for (auto const &resource_split : get_resource_split(resource)) {
-      minimize(
-          optimal_result,
-          MachineMapping::parallel_combine(visit(OptimalCost(g1,
-                                                       cost_estimator,
-                                                       resource_split.first,
-                                                       source_machine_view,
-                                                       sink_machine_view,
-                                                       allowed_machine_views,
-                                                       cached_subgraph_costs),
-                                           decompn1),
-                                     visit(OptimalCost(g2,
-                                                       cost_estimator,
-                                                       resource_split.second,
-                                                       source_machine_view,
-                                                       sink_machine_view,
-                                                       allowed_machine_views,
-                                                       cached_subgraph_costs),
-                                           decompn2)));
+      minimize(optimal_result,
+               MachineMapping::parallel_combine(
+                   visit(OptimalCost(g1,
+                                     cost_estimator,
+                                     resource_split.first,
+                                     source_machine_view,
+                                     sink_machine_view,
+                                     allowed_machine_views,
+                                     cached_subgraph_costs),
+                         decompn1),
+                   visit(OptimalCost(g2,
+                                     cost_estimator,
+                                     resource_split.second,
+                                     source_machine_view,
+                                     sink_machine_view,
+                                     allowed_machine_views,
+                                     cached_subgraph_costs),
+                         decompn2)));
     }
 
     return optimal_result;
@@ -279,8 +284,9 @@ struct OptimalCost {
       MachineMapping optimal_result = MachineMapping::infinity();
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
         std::unordered_map<Node, MachineView> mv_map{{node, mv}};
-        minimize(optimal_result,
-                 MachineMapping(estimate_cost(g, cost_estimator, mv_map), mv_map));
+        minimize(
+            optimal_result,
+            MachineMapping(estimate_cost(g, cost_estimator, mv_map), mv_map));
       }
       return optimal_result;
     }
@@ -315,4 +321,4 @@ MachineMapping optimal_cost(
                get_serial_parallel_decomposition(g));
 }
 
-}
+} // namespace FlexFlow

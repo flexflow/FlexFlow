@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/layer_norm_kernels.h"
-#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 
@@ -24,12 +24,13 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormPerDeviceState::LayerNormPerDeviceState(FFHandler handle, 
-                          bool elementwise_affine_,
-                          int64_t effective_batch_size_,
-                          int64_t effective_num_elements_,
-                          bool profiling_,
-                          float eps_)
+LayerNormPerDeviceState::LayerNormPerDeviceState(
+    FFHandler handle,
+    bool elementwise_affine_,
+    int64_t effective_batch_size_,
+    int64_t effective_num_elements_,
+    bool profiling_,
+    float eps_)
     : PerDeviceOpState(handle) {
   elementwise_affine = elementwise_affine_;
   effective_batch_size = effective_batch_size_;
@@ -49,43 +50,50 @@ namespace LayerNorm {
 
 template <DataType T>
 struct ForwardKernel {
-  void operator() (cudaStream_t stream,
-                            LayerNormPerDeviceState const *m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &output,
-                            GenericTensorAccessorW const &gamma,
-                            GenericTensorAccessorW const &beta)
-  {
+  void operator()(cudaStream_t stream,
+                  LayerNormPerDeviceState const *m,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output,
+                  GenericTensorAccessorW const &gamma,
+                  GenericTensorAccessorW const &beta) {
     RowwiseMomentsCUDAKernel<float>
-      <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->effective_num_elements, m->eps, input.get<T>(), m->mean_ptr, m->rstd_ptr);
+        <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
+            m->effective_num_elements,
+            m->eps,
+            input.get<T>(),
+            m->mean_ptr,
+            m->rstd_ptr);
     LayerNormForwardCUDAKernel<float>
-      <<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
-          m->effective_num_elements,
-          input.get<T>(),
-          m->mean_ptr,
-          m->rstd_ptr,
-          gamma.get<T>(),
-          beta.get<T>(),
-          output.get<T>());
+        <<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
+            m->effective_num_elements,
+            input.get<T>(),
+            m->mean_ptr,
+            m->rstd_ptr,
+            gamma.get<T>(),
+            beta.get<T>(),
+            output.get<T>());
   }
 }
 
 template <DataType T>
 struct BackwardKernel {
-  void operator() (cudaStream_t stream,
-                            LayerNormPerDeviceState const *m,
-                            GenericTensorAccessorR const &output_grad,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &input_grad,
-                            GenericTensorAccessorR const &gamma,
-                            GenericTensorAccessorW const &gamma_grad,
-                            GenericTensorAccessorW const &beta_grad) {
+  void operator()(cudaStream_t stream,
+                  LayerNormPerDeviceState const *m,
+                  GenericTensorAccessorR const &output_grad,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &input_grad,
+                  GenericTensorAccessorR const &gamma,
+                  GenericTensorAccessorW const &gamma_grad,
+                  GenericTensorAccessorW const &beta_grad) {
     const int64_t M = m->effective_batch_size;
     const int64_t N = m->effective_num_elements;
     ComputeInternalGradientsCUDAKernel<T>
-        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-            N, output_grad.get<T>(), input.get<T>(), gamma.get<T>(), m->ds_ptr, m->db_ptr);
+        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(N,
+                                                       output_grad.get<T>(),
+                                                       input.get<T>(),
+                                                       gamma.get<T>(),
+                                                       m->ds_ptr,
+                                                       m->db_ptr);
     const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
     ComputeGradientFusedParamsCUDAKernel<T>
         <<<B, kCUDANumThreads, 0, stream>>>(M,
@@ -116,36 +124,45 @@ struct BackwardKernel {
         constexpr int kThreadY = kColwiseReduceTileSize / 2;
         GammaBetaBackwardCUDAKernel<T>
             <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(M,
-                                                        N,
-                                                        output_grad.get<T>(),
-                                                        input.get<T>(),
-                                                        m->mean_ptr,
-                                                        m->rstd_ptr,
-                                                        gamma_grad.get<T>(),
-                                                        beta_grad.get<T>());
+                                                         N,
+                                                         output_grad.get<T>(),
+                                                         input.get<T>(),
+                                                         m->mean_ptr,
+                                                         m->rstd_ptr,
+                                                         gamma_grad.get<T>(),
+                                                         beta_grad.get<T>());
       }
     }
   }
 }
 
 void forward_kernel(cudaStream_t stream,
-                            LayerNormPerDeviceState const *m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &output,
-                            GenericTensorAccessorW const &gamma,
-                            GenericTensorAccessorW const &beta) {
-  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output, gamma, beta);
+                    LayerNormPerDeviceState const *m,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output,
+                    GenericTensorAccessorW const &gamma,
+                    GenericTensorAccessorW const &beta) {
+  DataTypeDispatch1<ForwardKernel>{}(
+      m->data_type, stream, m, input, output, gamma, beta);
 }
 
 void backward_kernel(cudaStream_t stream,
-                            LayerNormPerDeviceState const *m,
-                            GenericTensorAccessorR const &output_grad,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &input_grad,
-                            GenericTensorAccessorR const &gamma,
-                            GenericTensorAccessorW const &gamma_grad,
-                            GenericTensorAccessorW const &beta_grad) {
-  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, output_grad, input, input_grad, gamma, gamma_grad, beta_grad);
+                     LayerNormPerDeviceState const *m,
+                     GenericTensorAccessorR const &output_grad,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &input_grad,
+                     GenericTensorAccessorR const &gamma,
+                     GenericTensorAccessorW const &gamma_grad,
+                     GenericTensorAccessorW const &beta_grad) {
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type,
+                                      stream,
+                                      m,
+                                      output_grad,
+                                      input,
+                                      input_grad,
+                                      gamma,
+                                      gamma_grad,
+                                      beta_grad);
 }
 
 template <typename T>
@@ -231,7 +248,6 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N,
                beta_v;
   }
 }
-
 
 template <typename T>
 __global__ void ComputeInternalGradientsCUDAKernel(

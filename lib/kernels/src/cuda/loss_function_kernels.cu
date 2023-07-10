@@ -139,4 +139,4 @@ void Loss::identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
       loss_grad_ptr, loss_grad_volume, 0, scale_factor);
 }
 
-}
+} // namespace FlexFlow

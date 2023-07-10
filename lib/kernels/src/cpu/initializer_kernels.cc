@@ -1,6 +1,6 @@
 #include "kernels/initializer_kernels.h"
-#include "kernels/datatype_dispatch.h"
 #include "kernels/accessor.h"
+#include "kernels/datatype_dispatch.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,8 @@ void zero_init_kernel_cpu(GenericTensorAccessorW const &tensor) {
 
 template <DataType DT>
 struct ConstantInitKernel {
-  void operator()(GenericTensorAccessorW const &tensor, DataTypeValue value) const {
+  void operator()(GenericTensorAccessorW const &tensor,
+                  DataTypeValue value) const {
     auto arr = get<DT>(tensor);
     auto unwrapped_value = get<real_type<DT>>(value);
     for (size_t i = 0; i < tensor.shape.get_volume(); i++) {
@@ -29,11 +30,13 @@ struct ConstantInitKernel {
   }
 };
 
-void constant_init_kernel_cpu(GenericTensorAccessorW const &tensor, DataTypeValue value) {
+void constant_init_kernel_cpu(GenericTensorAccessorW const &tensor,
+                              DataTypeValue value) {
   DataTypeDispatch1<ConstantInitKernel>{}(tensor.data_type, tensor, value);
 }
 
-void zero_init_kernel(TaskLocation const &loc, GenericTensorAccessorW const &tensor) {
+void zero_init_kernel(TaskLocation const &loc,
+                      GenericTensorAccessorW const &tensor) {
   if (loc == TaskLocation::CPU) {
     return zero_init_kernel_cpu(tensor);
   } else if (loc == TaskLocation::GPU) {
@@ -41,4 +44,4 @@ void zero_init_kernel(TaskLocation const &loc, GenericTensorAccessorW const &ten
   }
 }
 
-}
+} // namespace FlexFlow

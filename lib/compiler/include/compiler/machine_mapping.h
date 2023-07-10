@@ -9,10 +9,13 @@
 namespace FlexFlow {
 
 struct MachineMapping : use_visitable_cmp<MachineMapping> {
-  MachineMapping(float runtime, std::unordered_map<Node, MachineView> machine_views);
+  MachineMapping(float runtime,
+                 std::unordered_map<Node, MachineView> machine_views);
 
-  static MachineMapping sequential_combine(MachineMapping const &s1, MachineMapping const &s2);
-  static MachineMapping parallel_combine(MachineMapping const &s1, MachineMapping const &s2);
+  static MachineMapping sequential_combine(MachineMapping const &s1,
+                                           MachineMapping const &s2);
+  static MachineMapping parallel_combine(MachineMapping const &s1,
+                                         MachineMapping const &s2);
   static MachineMapping infinity();
 
   float runtime;
@@ -32,7 +35,7 @@ MachineMapping optimal_cost(
     MachineSpecification const &resources,
     std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs);
 
-}
+} // namespace FlexFlow
 
 MAKE_VISIT_HASHABLE(::FlexFlow::MachineMapping);
 

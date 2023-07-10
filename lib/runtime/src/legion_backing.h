@@ -1,21 +1,24 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_LEGION_BACKING_H
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_LEGION_BACKING_H
 
-#include "legion.h"
-#include "utils/visitable.h"
 #include "kernels/per_device_op_state.h"
+#include "legion.h"
+#include "mapping_id_t.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "parallel_computation_graph.h"
 #include "pcg/machine_view.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include <map>
 #include "tensorless_task_invocation.h"
-#include "mapping_id_t.h"
+#include "utils/visitable.h"
+#include <map>
 
 namespace FlexFlow {
 
-template <> void register_task<NCCL_GETUNIQUEID_TASK_ID>();
-template <> void register_task<NCCL_INIT_COMMS_TASK_ID>();
-template <> void register_task<FF_INIT_TASK_ID>();
+template <>
+void register_task<NCCL_GETUNIQUEID_TASK_ID>();
+template <>
+void register_task<NCCL_INIT_COMMS_TASK_ID>();
+template <>
+void register_task<FF_INIT_TASK_ID>();
 
 struct LegionConfig : public use_visitable_cmp<LegionConfig> {
   LegionConfig();
@@ -32,6 +35,7 @@ public:
 
   Legion::IndexSpace const &at(MachineView const &) const;
   Legion::IndexSpace const &at(Legion::Domain const &) const;
+
 private:
   LegionConfig config;
   mutable std::unordered_map<MachineView, Legion::IndexSpace> all_task_is;
@@ -49,6 +53,7 @@ public:
   MachineViewBacking() = delete;
   MachineViewBacking(mapping_id_t mapping_id,
                      Legion::IndexSpace const &parallel_is);
+
 public:
   mapping_id_t mapping_id;
   Legion::IndexSpace parallel_is;
@@ -90,7 +95,8 @@ struct RuntimeBacking {
 public:
   LegionConfig legion_config;
   std::unordered_map<operator_guid_t, OperatorLegionBacking> op_backing;
-  std::unordered_map<parallel_tensor_guid_t, ParallelTensorBacking> parallel_tensor_backing;
+  std::unordered_map<parallel_tensor_guid_t, ParallelTensorBacking>
+      parallel_tensor_backing;
   bidict<mapping_id_t, MachineView> mappings;
   IndexSpaceManager index_space_mgr;
 };
@@ -101,18 +107,21 @@ struct NcclCommunicators {
   std::unordered_map<MachineView, ncclComm_t *> view_to_comms;
 };
 
-std::vector<MachineView> get_all_machine_views(int num_nodes,
-                                               int gpus_per_node,
-                                               int cpus_per_node);
+std::vector<MachineView>
+    get_all_machine_views(int num_nodes, int gpus_per_node, int cpus_per_node);
 RuntimeBacking initialize_runtime(LegionConfig const &);
 NcclCommunicators initialize_nccl_communicator(LegionConfig const &);
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT_EMPTY(::FlexFlow::OperatorLegionBacking);
 VISITABLE_STRUCT(::FlexFlow::LegionConfig, context, runtime, field_space);
 VISITABLE_STRUCT(::FlexFlow::MachineViewBacking, mapping_id, parallel_is);
-VISITABLE_STRUCT(::FlexFlow::ParallelTensorBacking, region, region_grad, part, part_grad, physical_region);
-
+VISITABLE_STRUCT(::FlexFlow::ParallelTensorBacking,
+                 region,
+                 region_grad,
+                 part,
+                 part_grad,
+                 physical_region);
 
 #endif

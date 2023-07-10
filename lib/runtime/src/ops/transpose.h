@@ -1,25 +1,29 @@
 #ifndef _FLEXFLOW_TRANSPOSE_H_
 #define _FLEXFLOW_TRANSPOSE_H_
 
+#include "op-attrs/ops/transpose.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/transpose.h"
 
 namespace FlexFlow {
 
-template <> void register_task<TRANSPOSE_INIT_TASK_ID>();
-template <> void register_task<TRANSPOSE_FWD_TASK_ID>();
-template <> void register_task<TRANSPOSE_BWD_TASK_ID>();
+template <>
+void register_task<TRANSPOSE_INIT_TASK_ID>();
+template <>
+void register_task<TRANSPOSE_FWD_TASK_ID>();
+template <>
+void register_task<TRANSPOSE_BWD_TASK_ID>();
 
 OpTaskInvocation init(TransposeAttrs const &);
 OpTaskInvocation forward(TransposeAttrs const &);
 OpTaskInvocation backward(TransposeAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  TransposeAttrs const &attrs,
-                                  std::vector<ParallelTensorShape> const &input_shapes,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
+CostMetrics
+    measure_operator_cost(SimEnvFactory const &sim_factory,
+                          TransposeAttrs const &attrs,
+                          std::vector<ParallelTensorShape> const &input_shapes,
+                          ProfilingSettings const &settings,
+                          MachineView const &machine_view);
 
 /* class Transpose : public Op { */
 /* public: */
@@ -38,21 +42,25 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   void init_meta(TransposePerDeviceState *m, */
 /*                  Legion::Domain const &in_domain, */
 /*                  Legion::Domain const &out_domain) const; */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -71,6 +79,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   stack_vector<int, MAX_TENSOR_DIM> perm; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

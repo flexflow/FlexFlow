@@ -65,12 +65,11 @@ static int as_int(Permissions p) {
     default:
       throw mk_runtime_error("Unknown permission {}", static_cast<int>(p));
   }
-
 }
 
 static bool comparable(Permissions lhs, Permissions rhs) {
-  return !(lhs == Permissions::RO && rhs == Permissions::WO
-      || lhs == Permissions::WO && rhs == Permissions::RO);
+  return !(lhs == Permissions::RO && rhs == Permissions::WO ||
+           lhs == Permissions::WO && rhs == Permissions::RO);
 }
 
 bool operator<(Permissions lhs, Permissions rhs) {
@@ -99,4 +98,4 @@ bool operator>=(Permissions lhs, Permissions rhs) {
   return (lhs > rhs) || (lhs == rhs);
 }
 
-}
+} // namespace FlexFlow

@@ -2,9 +2,7 @@
 
 namespace FlexFlow {
 
-ConcatAttrs::ConcatAttrs(ff_dim_t _axis)
-  : axis(_axis)
-{ }
+ConcatAttrs::ConcatAttrs(ff_dim_t _axis) : axis(_axis) {}
 
 /* bool ConcatAttrs::is_valid( */
 /*     std::vector<ParallelTensorShape> const &input) const { */
@@ -15,4 +13,4 @@ ConcatAttrs::ConcatAttrs(ff_dim_t _axis)
 /*   return valid; */
 /* } */
 
-}
+} // namespace FlexFlow

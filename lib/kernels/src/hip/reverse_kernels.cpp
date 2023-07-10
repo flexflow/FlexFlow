@@ -24,13 +24,14 @@ using Legion::coord_t;
 namespace Kernels {
 namespace Reverse {
 
-void forward_kernel(hipStream_t stream, float const *in_ptr,
-                                     float *out_ptr,
-                                     coord_t num_out_blks,
-                                     coord_t reverse_dim_size,
-                                     coord_t in_blk_size,
-                                     coord_t output_size) {
-  
+void forward_kernel(hipStream_t stream,
+                    float const *in_ptr,
+                    float *out_ptr,
+                    coord_t num_out_blks,
+                    coord_t reverse_dim_size,
+                    coord_t in_blk_size,
+                    coord_t output_size) {
+
   hipLaunchKernelGGL(reverse_forward_kernel,
                      GET_BLOCKS(output_size),
                      CUDA_NUM_THREADS,
@@ -43,14 +44,14 @@ void forward_kernel(hipStream_t stream, float const *in_ptr,
                      in_blk_size);
 }
 
+void backward_kernel(hipStream_t stream,
+                     float const *out_grad_ptr,
+                     float *in_grad_ptr,
+                     coord_t num_out_blks,
+                     coord_t reverse_dim_size,
+                     coord_t in_blk_size,
+                     coord_t input_size) {
 
-void backward_kernel(hipStream_t stream, float const *out_grad_ptr,
-                                      float *in_grad_ptr,
-                                      coord_t num_out_blks,
-                                      coord_t reverse_dim_size,
-                                      coord_t in_blk_size,
-                                      coord_t input_size) {
-  
   hipLaunchKernelGGL(reverse_forward_kernel,
                      GET_BLOCKS(input_size),
                      CUDA_NUM_THREADS,

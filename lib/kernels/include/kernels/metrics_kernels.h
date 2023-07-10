@@ -20,7 +20,6 @@ void update_metrics_label_kernel(ffStream_t,
                                  int num_classes,
                                  PerfMetrics &perf_zc);
 
-}
-
+} // namespace FlexFlow
 
 #endif

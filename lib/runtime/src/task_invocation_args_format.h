@@ -6,12 +6,11 @@
 
 namespace FlexFlow {
 
-struct TaskInvocationArgsFormat { };
+struct TaskInvocationArgsFormat {};
 
-std::vector<ExecutableArgSpec> process_task_invocation_args(TensorlessTaskBinding const &,
-                                                            EnableProfiling,
-                                                            RuntimeBacking const &);
+std::vector<ExecutableArgSpec> process_task_invocation_args(
+    TensorlessTaskBinding const &, EnableProfiling, RuntimeBacking const &);
 
-}
+} // namespace FlexFlow
 
 #endif

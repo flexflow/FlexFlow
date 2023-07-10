@@ -17,6 +17,6 @@ using SubParallelComputationGraph =
                              ParallelTensorShape,
                              MachineView>;
 
-}
+} // namespace FlexFlow
 
 #endif /* _FLEXFLOW_COMPILER_OPTIMIZER_GRAPH_H */

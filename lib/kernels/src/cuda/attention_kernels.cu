@@ -80,8 +80,11 @@ void init_kernel(MHAPerDeviceState *m,
                                     num_samples,
                                     maxBeamSize));
   size_t workSpaceSize;
-  checkCUDNN(cudnnGetMultiHeadAttnBuffers(
-      m->handle.dnn, m->attnDesc, &m->weightSize, &workSpaceSize, &m->reserveSpaceSize));
+  checkCUDNN(cudnnGetMultiHeadAttnBuffers(m->handle.dnn,
+                                          m->attnDesc,
+                                          &m->weightSize,
+                                          &workSpaceSize,
+                                          &m->reserveSpaceSize));
   assert(workSpaceSize <= m->handle.workSpaceSize);
   // printf("weightSize(%zu) workSpaceSize(%zu) reserveSpaceSize(%zu)\n",
   // weightSize, workSpaceSize, reserveSpaceSize);
@@ -212,7 +215,8 @@ void init_kernel(MHAPerDeviceState *m,
 /*     cudaEventDestroy(t_end); */
 /*     printf("MultiHeadAttention forward time = %.2fms\n", elapsed); */
 /*     // print_tensor<3, float>(acc_query.ptr, acc_query.rect, */
-/*     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr, */
+/*     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
+ */
 /*     // acc_output.rect, "[Attention:forward:output]"); */
 /*   } */
 /* } */
@@ -356,21 +360,20 @@ void backward_kernel(cudaStream_t stream,
 } // namespace Kernels
 
 MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,
-                                               Memory gpu_mem,
-                                               int num_samples,
-                                               int num_heads,
-                                               int qSize,
-                                               int kSize,
-                                               int vSize,
-                                               int qProjSize,
-                                               int kProjSize,
-                                               int vProjSize,
-                                               int oProjSize,
-                                               int qoSeqLength,
-                                               int kvSeqLength,
-                                               bool add_bias_kv)
-    : PerDeviceOpState(handler) {
-}
+                                     Memory gpu_mem,
+                                     int num_samples,
+                                     int num_heads,
+                                     int qSize,
+                                     int kSize,
+                                     int vSize,
+                                     int qProjSize,
+                                     int kProjSize,
+                                     int vProjSize,
+                                     int oProjSize,
+                                     int qoSeqLength,
+                                     int kvSeqLength,
+                                     bool add_bias_kv)
+    : PerDeviceOpState(handler) {}
 
 MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,
                                      std::unique_ptr<IAllocator> allocator,
@@ -394,16 +397,14 @@ MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,
                       attrs.add_bias_kv)
 { }
 
-
-
-MHAPerDeviceState::~MHAPerDeviceState(void) {
-  free(loWinIdx);
-  free(hiWinIdx);
-  checkCUDNN(cudnnDestroyAttnDescriptor(attnDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(qDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(kDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(vDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(oDesc));
-}
+  MHAPerDeviceState::~MHAPerDeviceState(void) {
+    free(loWinIdx);
+    free(hiWinIdx);
+    checkCUDNN(cudnnDestroyAttnDescriptor(attnDesc));
+    checkCUDNN(cudnnDestroySeqDataDescriptor(qDesc));
+    checkCUDNN(cudnnDestroySeqDataDescriptor(kDesc));
+    checkCUDNN(cudnnDestroySeqDataDescriptor(vDesc));
+    checkCUDNN(cudnnDestroySeqDataDescriptor(oDesc));
+  }
 
 } // namespace FlexFlow

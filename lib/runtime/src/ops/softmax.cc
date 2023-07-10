@@ -150,9 +150,9 @@ void Softmax::init(FFModel const &ff) {
   regions[1]: output
  */
 PerDeviceOpState *Softmax::init_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Softmax const *softmax = (Softmax *)task->args;

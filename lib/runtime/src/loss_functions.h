@@ -16,20 +16,21 @@
 #ifndef _FF_LOSS_FUNCTIONS_H_
 #define _FF_LOSS_FUNCTIONS_H_
 
-#include "parallel_tensor.h"
 #include "op-attrs/ops/loss_functions.h"
 #include "operator.h"
+#include "parallel_tensor.h"
 #include "tasks.h"
 
 namespace FlexFlow {
 
-template <> void register_task<LOSS_BWD_TASK_ID>();
+template <>
+void register_task<LOSS_BWD_TASK_ID>();
 
-TaskInvocation backward_invocation(LossAttrs const &, 
-                                   EnableProfiling, 
-                                   parallel_tensor_guid_t logit, 
+TaskInvocation backward_invocation(LossAttrs const &,
+                                   EnableProfiling,
+                                   parallel_tensor_guid_t logit,
                                    parallel_tensor_guid_t label);
 
-}
+} // namespace FlexFlow
 
 #endif

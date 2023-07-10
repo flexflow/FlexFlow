@@ -6,14 +6,15 @@
 namespace FlexFlow {
 
 template <typename NodeLabel>
-struct UnorderedNodeLabelledMultiDiGraph : public INodeLabelledMultiDiGraph<NodeLabel>, 
-                                           protected MultiDiGraph {
+struct UnorderedNodeLabelledMultiDiGraph
+    : public INodeLabelledMultiDiGraph<NodeLabel>,
+      protected MultiDiGraph {
 public:
   UnorderedNodeLabelledMultiDiGraph() = delete;
 
   Node add_node(NodeLabel const &label) override {
     Node n = this->add_node();
-    node_map.insert({ n, label });
+    node_map.insert({n, label});
     return n;
   }
 
@@ -24,19 +25,21 @@ public:
   NodeLabel const &at(Node const &n) const override {
     return this->node_map.at(n);
   }
-  
-  using MultiDiGraph::query_nodes;
+
   using MultiDiGraph::query_edges;
+  using MultiDiGraph::query_nodes;
+
 private:
   std::unordered_map<Node, NodeLabel> node_map;
 };
 
 template <typename NodeLabel, typename EdgeLabel>
-struct UnorderedLabelledMultiDiGraph : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel>,
-                                       public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {
+struct UnorderedLabelledMultiDiGraph
+    : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel>,
+      public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {
   void add_edge(MultiDiEdge const &e, EdgeLabel const &label) override {
     this->add_edge(e);
-    edge_map.insert({ e, label });
+    edge_map.insert({e, label});
     return label;
   }
 
@@ -47,6 +50,7 @@ struct UnorderedLabelledMultiDiGraph : public ILabelledMultiDiGraph<NodeLabel, E
   EdgeLabel const &at(MultiDiEdge const &n) const override {
     return this->edge_map.at(n);
   }
+
 private:
   std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
 };
@@ -54,11 +58,13 @@ private:
 MultiDiOutput get_output(MultiDiEdge const &e);
 
 template <typename NodeLabel, typename OutputLabel>
-struct UnorderedOutputLabelledMultiDiGraph : public IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>, 
-                                             public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {
+struct UnorderedOutputLabelledMultiDiGraph
+    : public IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>,
+      public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {
 public:
-  void add_output(MultiDiOutput const &output, OutputLabel const &label) override {
-    this->output_map.insert({ output, label });
+  void add_output(MultiDiOutput const &output,
+                  OutputLabel const &label) override {
+    this->output_map.insert({output, label});
   }
 
   void add_edge(MultiDiEdge const &e) override {
@@ -69,19 +75,25 @@ public:
     this->add_edge(e);
   }
 
-  void add_edge(MultiDiOutput const &output, MultiDiInput const &input) override {
+  void add_edge(MultiDiOutput const &output,
+                MultiDiInput const &input) override {
     this->add_edge(MultiDiEdge{output.node, input.node, output.idx, input.idx});
   }
+
 private:
   std::unordered_map<MultiDiOutput, OutputLabel> output_map;
 };
 
-template<typename NodeLabel, 
-         typename EdgeLabel, 
-         typename InputLabel = EdgeLabel, 
-         typename OutputLabel = InputLabel>
-struct UnorderedLabelledOpenMultiDiGraph : public ILabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>,
-                                           public UnorderedLabelledMultiDiGraph<NodeLabel, EdgeLabel> {
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel,
+          typename OutputLabel = InputLabel>
+struct UnorderedLabelledOpenMultiDiGraph
+    : public ILabelledOpenMultiDiGraph<NodeLabel,
+                                       EdgeLabel,
+                                       InputLabel,
+                                       OutputLabel>,
+      public UnorderedLabelledMultiDiGraph<NodeLabel, EdgeLabel> {
 public:
   void add_edge(InputMultiDiEdge const &e, InputLabel const &label) {
     this->add_edge(e);
@@ -115,6 +127,6 @@ private:
   std::unordered_map<OutputMultiDiEdge, OutputLabel> output_map;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

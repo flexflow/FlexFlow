@@ -4,7 +4,6 @@
 #include "node.h"
 #include "pcg/machine_view.h"
 
-
 namespace FlexFlow {
 namespace PCG {
 
@@ -25,10 +24,9 @@ struct NodeAssignment {
   MachineView view;
 };
 
-
 using SequenceSplit = NodeAssignment;
 
-}
-}
+} // namespace PCG
+} // namespace FlexFlow
 
 #endif

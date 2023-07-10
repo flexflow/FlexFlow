@@ -2,8 +2,6 @@
 
 namespace FlexFlow {
 
-ReshapeAttrs::ReshapeAttrs(TensorShape const &_shape)
-  : shape(_shape)
-{ }
+ReshapeAttrs::ReshapeAttrs(TensorShape const &_shape) : shape(_shape) {}
 
-}
+} // namespace FlexFlow

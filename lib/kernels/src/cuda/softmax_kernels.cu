@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-#include "kernels/softmax_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/softmax_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::Domain;
 
 SoftmaxPerDeviceState::SoftmaxPerDeviceState(FFHandler handler,
-                         Softmax const *softmax,
-                         Domain const &input_domain)
+                                             Softmax const *softmax,
+                                             Domain const &input_domain)
     : PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
@@ -34,9 +34,10 @@ SoftmaxPerDeviceState::SoftmaxPerDeviceState(FFHandler handler,
 namespace Kernels {
 namespace Softmax {
 
-void forward_kernel(cudaStream_t stream, SoftmaxPerDeviceState const *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
+void forward_kernel(cudaStream_t stream,
+                    SoftmaxPerDeviceState const *m,
+                    float const *input_ptr,
+                    float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -52,16 +53,15 @@ void forward_kernel(cudaStream_t stream, SoftmaxPerDeviceState const *m,
 }
 
 void backward_kernel(cudaStream_t stream,
-                             float *input_grad_ptr,
-                             float const *output_grad_ptr,
-                             size_t num_elements) {
-  
+                     float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     size_t num_elements) {
+
   checkCUDA(cudaMemcpyAsync(input_grad_ptr,
                             output_grad_ptr,
                             num_elements * sizeof(float),
                             cudaMemcpyDeviceToDevice,
                             stream));
-
 }
 
 } // namespace Softmax

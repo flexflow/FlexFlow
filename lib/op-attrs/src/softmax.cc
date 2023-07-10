@@ -2,8 +2,6 @@
 
 namespace FlexFlow {
 
-SoftmaxAttrs::SoftmaxAttrs(ff_dim_t _dim)
-  : dim(_dim)
-{ }
+SoftmaxAttrs::SoftmaxAttrs(ff_dim_t _dim) : dim(_dim) {}
 
-}
+} // namespace FlexFlow

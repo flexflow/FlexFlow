@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-#include "kernels/topk_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/topk_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 
-
-TopKPerDeviceState::TopKPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
+TopKPerDeviceState::TopKPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace TopK {
@@ -370,14 +370,14 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
 }
 
 void forward_kernel(cudaStream_t stream,
-                          TopKPerDeviceState const *m,
-                          float const *input_ptr,
-                          float *output_ptr,
-                          int *indices_ptr,
-                          size_t batch_size,
-                          int length,
-                          int k,
-                          bool sorted) {
+                    TopKPerDeviceState const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    int *indices_ptr,
+                    size_t batch_size,
+                    int length,
+                    int k,
+                    bool sorted) {
   // Adopted from TensorFlow's TopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
@@ -406,7 +406,6 @@ void forward_kernel(cudaStream_t stream,
                                                              indices_ptr);
 }
 
-
 template <typename T>
 __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
                                      int const *__restrict__ indices_ptr,
@@ -423,13 +422,13 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
 }
 
 void backward_kernel(cudaStream_t stream,
-                           TopKPerDeviceState const *m,
-                           float const *value_grad_ptr,
-                           int const *indices_ptr,
-                           float *in_grad_ptr,
-                           size_t batch_size,
-                           int length,
-                           int k) {
+                     TopKPerDeviceState const *m,
+                     float const *value_grad_ptr,
+                     int const *indices_ptr,
+                     float *in_grad_ptr,
+                     size_t batch_size,
+                     int length,
+                     int k) {
   topk_backward_kernel<<<GET_BLOCKS(batch_size * k),
                          CUDA_NUM_THREADS,
                          0,

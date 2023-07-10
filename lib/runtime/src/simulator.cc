@@ -20,8 +20,8 @@
 #include "parallel_ops/replicate.h"
 #include "utils/dot_file.h"
 #include "utils/hash-utils.h"
-#include <queue>
 #include <memory>
+#include <queue>
 #include <random>
 #include <unordered_set>
 

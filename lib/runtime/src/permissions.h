@@ -2,18 +2,13 @@
 #define _FLEXFLOW_RUNTIME_SRC_PERMISSION_H
 
 #include "legion.h"
-#include "utils/optional.h"
-#include "utils/fmt.h"
 #include "utils/exception.h"
+#include "utils/fmt.h"
+#include "utils/optional.h"
 
 namespace FlexFlow {
 
-enum class Permissions {
-  NONE,
-  RO,
-  WO,
-  RW
-};
+enum class Permissions { NONE, RO, WO, RW };
 
 Legion::PrivilegeMode to_legion(Permissions);
 optional<Permissions> from_legion(Legion::PrivilegeMode);
@@ -25,29 +20,40 @@ bool operator<(Permissions lhs, Permissions rhs);
 bool operator<=(Permissions lhs, Permissions rhs);
 bool operator>(Permissions lhs, Permissions rhs);
 bool operator>=(Permissions lhs, Permissions rhs);
-  
-}
+
+} // namespace FlexFlow
 
 namespace fmt {
 
 template <>
 struct formatter<::FlexFlow::Permissions> : formatter<string_view> {
   template <typename FormatContext>
-  auto format(::FlexFlow::Permissions p, FormatContext& ctx) const -> decltype(ctx.out()) {
+  auto format(::FlexFlow::Permissions p, FormatContext &ctx) const
+      -> decltype(ctx.out()) {
     using ::FlexFlow::Permissions;
 
     string_view name = "unknown";
     switch (p) {
-      case Permissions::NONE: name = "NO_PERMISSIONS"; break;
-      case Permissions::RO: name = "READ_ONLY"; break;
-      case Permissions::WO: name = "WRITE_ONLY"; break;
-      case Permissions::RW: name = "READ_WRITE"; break;
-      default: throw ::FlexFlow::mk_runtime_error("Unknown permission {}", static_cast<int>(p));
+      case Permissions::NONE:
+        name = "NO_PERMISSIONS";
+        break;
+      case Permissions::RO:
+        name = "READ_ONLY";
+        break;
+      case Permissions::WO:
+        name = "WRITE_ONLY";
+        break;
+      case Permissions::RW:
+        name = "READ_WRITE";
+        break;
+      default:
+        throw ::FlexFlow::mk_runtime_error("Unknown permission {}",
+                                           static_cast<int>(p));
     }
     return formatter<string_view>::format(name, ctx);
   }
 };
 
-}
+} // namespace fmt
 
 #endif

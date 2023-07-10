@@ -16,17 +16,22 @@
 #ifndef _FLEXFLOW_OPTIMIZER_H_
 #define _FLEXFLOW_OPTIMIZER_H_
 
-#include "parallel_tensor.h"
-#include "legion.h"
 #include "kernels/per_device_op_state.h"
+#include "legion.h"
+#include "parallel_tensor.h"
 
 namespace FlexFlow {
 
-template <> void register_task<PS_PREFETCH_TASK_ID>();
-template <> void register_task<SGD_UPD_PS_TASK_ID>();
-template <> void register_task<SGD_UPD_NCCL_TASK_ID>();
-template <> void register_task<ADAM_UPD_PS_TASK_ID>();
-template <> void register_task<ADAM_UPD_NCCL_TASK_ID>();
+template <>
+void register_task<PS_PREFETCH_TASK_ID>();
+template <>
+void register_task<SGD_UPD_PS_TASK_ID>();
+template <>
+void register_task<SGD_UPD_NCCL_TASK_ID>();
+template <>
+void register_task<ADAM_UPD_PS_TASK_ID>();
+template <>
+void register_task<ADAM_UPD_NCCL_TASK_ID>();
 
 /* class Optimizer { */
 /* public: */
@@ -50,19 +55,19 @@ public:
 };
 
 TaskInvocation init(SGDOptimizer const &);
-std::vector<TaskInvocation> update(SGDOptimizer const &, 
-                                   parallel_tensor_guid_t const &, 
-                                   ParallelTensor const &, 
+std::vector<TaskInvocation> update(SGDOptimizer const &,
+                                   parallel_tensor_guid_t const &,
+                                   ParallelTensor const &,
                                    parallel_tensor_guid_t const &sgd_v);
 
 struct AdamOptimizer : public use_visitable_cmp<AdamOptimizer> {
 public:
   AdamOptimizer() = delete;
   AdamOptimizer(double alpha,
-                double beta1, 
+                double beta1,
                 double beta2,
                 double weight_decay,
-                double epsilon, 
+                double epsilon,
                 double alpha_t,
                 double beta_t,
                 double beta2_t);
@@ -78,10 +83,10 @@ public:
   double beta2_t;
 };
 
-std::vector<TaskInvocation> update(AdamOptimizer const &, 
-                                   parallel_tensor_guid_t const &, 
-                                   ParallelTensor const &, 
-                                   parallel_tensor_guid_t const &adam_m, 
+std::vector<TaskInvocation> update(AdamOptimizer const &,
+                                   parallel_tensor_guid_t const &,
+                                   ParallelTensor const &,
+                                   parallel_tensor_guid_t const &adam_m,
                                    parallel_tensor_guid_t const &adam_w);
 AdamOptimizer next(AdamOptimizer const &);
 
@@ -119,5 +124,5 @@ using Optimizer = variant<SGDOptimizer, AdamOptimizer>;
 /*   std::map<Legion::LogicalRegion, ParallelTensor> v_values, m_values; */
 /* }; */
 
-}
+} // namespace FlexFlow
 #endif

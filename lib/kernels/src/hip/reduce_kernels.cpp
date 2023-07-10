@@ -23,8 +23,8 @@ using Legion::coord_t;
 using Legion::Domain;
 
 ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
-                       Reduce const *rd,
-                       Domain const &input_domain)
+                                           Reduce const *rd,
+                                           Domain const &input_domain)
     : op_type(rd->op_type), PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
@@ -69,9 +69,9 @@ namespace Kernels {
 namespace Reduce {
 
 void forward_kernel(hipStream_t stream,
-                            ReducePerDeviceState const *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
+                    ReducePerDeviceState const *m,
+                    float const *input_ptr,
+                    float *output_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(miopenReduceTensor(m->handle.dnn,
@@ -88,11 +88,10 @@ void forward_kernel(hipStream_t stream,
                                 output_ptr));
 };
 
-
 void backward_kernel(hipStream_t stream,
-                             ReducePerDeviceState const *m,
-                             float const *output_grad_ptr,
-                             float *input_grad_ptr) {
+                     ReducePerDeviceState const *m,
+                     float const *output_grad_ptr,
+                     float *input_grad_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   switch (m->op_type) {

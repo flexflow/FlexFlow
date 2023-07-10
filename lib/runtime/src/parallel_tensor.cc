@@ -58,7 +58,6 @@ RecordFormatter ParallelTensorShape::as_dot() const {
   return r;
 }
 
-
 bool ParallelTensorBase::update_parallel_ids(int numdim, ParallelDim *dims) {
   int next_parallel_idx = 0;
   for (int i = 0; i < numdim; i++) {
@@ -367,7 +366,6 @@ ParallelTensorShape ParallelTensorBase::get_shape() const {
 
   return shape;
 }
-
 
 bool ParallelTensorBase::is_valid_machine_view(MachineView const &view) const {
   int is_dim = 0;

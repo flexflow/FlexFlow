@@ -6,7 +6,7 @@ namespace FlexFlow {
 namespace PCG {
 
 Simplifier::Simplifier(std::string const &logger_name)
-  : logger(spdlog::get(logger_name)) { }
+    : logger(spdlog::get(logger_name)) {}
 
 void Simplifier::simplify_parallel_ops() {
   logger->debug("Trying to simplify parallel ops");
@@ -185,5 +185,5 @@ void Graph::simplify(SimplificationSettings const &settings) {
   }
 }
 
-}
-}
+} // namespace PCG
+} // namespace FlexFlow

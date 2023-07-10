@@ -18,7 +18,8 @@
 
 namespace FlexFlow {
 
-AggregateSpecPerDeviceState::AggregateSpecPerDeviceState(FFHandler handler, int n)
+AggregateSpecPerDeviceState::AggregateSpecPerDeviceState(FFHandler handler,
+                                                         int n)
     : PerDeviceOpState(handler) {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
@@ -29,16 +30,17 @@ AggregateSpecPerDeviceState::~AggregateSpecPerDeviceState(void) {
 namespace Kernels {
 namespace AggregateSpec {
 
-void forward_kernel(cudaStream_t stream, AggregateSpecPerDeviceState const *m,
-                                           float **exp_preds,
-                                           int const *acc_gate_assign_ptr,
-                                           float *acc_output_ptr,
-                                           int n,
-                                           int const k,
-                                           int rows,
-                                           int const batch_size,
-                                           int out_dim) {
-  
+void forward_kernel(cudaStream_t stream,
+                    AggregateSpecPerDeviceState const *m,
+                    float **exp_preds,
+                    int const *acc_gate_assign_ptr,
+                    float *acc_output_ptr,
+                    int n,
+                    int const k,
+                    int rows,
+                    int const batch_size,
+                    int out_dim) {
+
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -62,20 +64,21 @@ void forward_kernel(cudaStream_t stream, AggregateSpecPerDeviceState const *m,
                                      out_dim);
 }
 
-void backward_kernel(cudaStream_t stream, AggregateSpecPerDeviceState const *m,
-                                            float **exp_grads,
-                                            int const *acc_gate_assign_ptr,
-                                            int const *acc_true_gate_assign_ptr,
-                                            float const *acc_gate_pred_ptr,
-                                            float *acc_full_gate_grad_ptr,
-                                            float const *acc_output_grad_ptr,
-                                            int n,
-                                            int const k,
-                                            int rows,
-                                            float lambda_bal,
-                                            int const batch_size,
-                                            int out_dim) {
-  
+void backward_kernel(cudaStream_t stream,
+                     AggregateSpecPerDeviceState const *m,
+                     float **exp_grads,
+                     int const *acc_gate_assign_ptr,
+                     int const *acc_true_gate_assign_ptr,
+                     float const *acc_gate_pred_ptr,
+                     float *acc_full_gate_grad_ptr,
+                     float const *acc_output_grad_ptr,
+                     int n,
+                     int const k,
+                     int rows,
+                     float lambda_bal,
+                     int const batch_size,
+                     int out_dim) {
+
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -102,7 +105,6 @@ void backward_kernel(cudaStream_t stream, AggregateSpecPerDeviceState const *m,
                                       batch_size,
                                       out_dim);
 }
-
 
 __global__ void
     aggspec_forward_kernel(float **exp_preds,

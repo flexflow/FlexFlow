@@ -45,7 +45,7 @@ void backward_kernel(ffStream_t stream,
                      int in_dim,
                      int out_dim,
                      int batch_size);
-                     
+
 } // namespace Linear
 } // namespace Kernels
 } // namespace FlexFlow

@@ -1,16 +1,19 @@
 #ifndef _FLEXFLOW_BATCH_MATMUL_H
 #define _FLEXFLOW_BATCH_MATMUL_H
 
-#include "op_task_signature.h"
-#include "sim_environment.h"
 #include "op-attrs/ops/batch_matmul.h"
 #include "op_task_invocation.h"
+#include "op_task_signature.h"
+#include "sim_environment.h"
 
 namespace FlexFlow {
 
-template <> void register_task<BATCHMATMUL_INIT_TASK_ID>();
-template <> void register_task<BATCHMATMUL_FWD_TASK_ID>();
-template <> void register_task<BATCHMATMUL_BWD_TASK_ID>();
+template <>
+void register_task<BATCHMATMUL_INIT_TASK_ID>();
+template <>
+void register_task<BATCHMATMUL_FWD_TASK_ID>();
+template <>
+void register_task<BATCHMATMUL_BWD_TASK_ID>();
 
 OpTaskInvocation init(BatchMatmulAttrs const &);
 OpTaskInvocation forward(BatchMatmulAttrs const &);
@@ -23,7 +26,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ProfilingSettings const &settings,
                                   MachineView const &);
 
-
 /* class BatchMatmul : public Op { */
 /* public: */
 /*   BatchMatmul(FFModel &model, */
@@ -35,7 +37,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 
 /*   void init(FFModel const &) override; */
 /*   void forward(FFModel const &) override; */
@@ -45,15 +48,18 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   /1*                              ParallelTensor inputs[], *1/ */
 /*   /1*                              int num_inputs); *1/ */
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -75,6 +81,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   int a_seq_length_dim, b_seq_length_dim; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -2,7 +2,7 @@
 #define _FLEXFLOW_DEDUPLICATED_PRIORITY_QUEUE_H
 
 namespace FlexFlow {
-    
+
 template <typename Elem,
           typename Container = std::vector<Elem>,
           typename Compare = std::less<typename Container::value_type>,
@@ -39,7 +39,6 @@ private:
   std::unordered_set<size_t> hashmap;
 };
 
-}
-
+} // namespace FlexFlow
 
 #endif /* _FLEXFLOW_DEDUPLICATED_PRIORITY_QUEUE_H */

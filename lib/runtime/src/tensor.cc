@@ -65,4 +65,4 @@ bool TensorBase::get_output_parallel_tensor(FFModel const *ff,
   return true;
 }
 
-}
+} // namespace FlexFlow

@@ -2,9 +2,6 @@
 
 namespace FlexFlow {
 
-ParallelTensor ParallelComputationGraph:: {
+ParallelTensor ParallelComputationGraph::{}
 
-}
-
-
-}
+} // namespace FlexFlow

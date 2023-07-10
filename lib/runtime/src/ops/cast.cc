@@ -15,9 +15,9 @@
 
 #include "cast.h"
 #include "kernels/cast_kernels.h"
-#include "utils/hash-utils.h"
-#include "task_spec.h"
 #include "legion/legion_utilities.h"
+#include "task_spec.h"
+#include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Cast;
 
@@ -183,7 +183,7 @@ OpTaskBinding Cast::get_bwd_task_binding() const {
 }
 
 void Cast::init(FFModel const &ff) {
-  this->execute_task(ff, CAST_INIT_TASK_ID, get_init_task_signature()); 
+  this->execute_task(ff, CAST_INIT_TASK_ID, get_init_task_signature());
   // assert(check_output_input_weight_same_parallel_is());
   // parallel_is = outputs[0]->parallel_is;
   // ArgumentMap argmap;
@@ -216,9 +216,9 @@ void Cast::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *Cast::init_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions,
-                        Context ctx,
-                        Runtime *runtime) {
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   FFHandler handler = *((FFHandler const *)task->local_args);
@@ -233,7 +233,7 @@ PerDeviceOpState *Cast::init_task(Task const *task,
 }
 
 void Cast::forward(FFModel const &ff) {
-  this->execute_task(ff, CAST_FWD_TASK_ID, get_fwd_task_signature()); 
+  this->execute_task(ff, CAST_FWD_TASK_ID, get_fwd_task_signature());
   // ArgumentMap argmap;
   // Context ctx = ff.config.lg_ctx;
   // Runtime *runtime = ff.config.lg_hlr;
@@ -263,26 +263,28 @@ void Cast::forward(FFModel const &ff) {
 
 // template <typename IDT>
 // void Cast::forward_task_with_1_type(Task const *task,
-//                                     std::vector<PhysicalRegion> const &regions,
-//                                     Context ctx,
-//                                     Runtime *runtime) {
+//                                     std::vector<PhysicalRegion> const
+//                                     &regions, Context ctx, Runtime *runtime)
+//                                     {
 //   CastPerDeviceState const *m = *((CastPerDeviceState **)task->local_args);
 //   if (m->output_data_type == DT_FLOAT) {
 //     Cast::forward_task_with_2_type<IDT, float>(task, regions, ctx, runtime);
 //   } else if (m->output_data_type == DT_DOUBLE) {
 //     Cast::forward_task_with_2_type<IDT, double>(task, regions, ctx, runtime);
 //   } else if (m->output_data_type == DT_INT32) {
-//     Cast::forward_task_with_2_type<IDT, int32_t>(task, regions, ctx, runtime);
+//     Cast::forward_task_with_2_type<IDT, int32_t>(task, regions, ctx,
+//     runtime);
 //   } else if (m->output_data_type == DT_INT64) {
-//     Cast::forward_task_with_2_type<IDT, int64_t>(task, regions, ctx, runtime);
+//     Cast::forward_task_with_2_type<IDT, int64_t>(task, regions, ctx,
+//     runtime);
 //   }
 // }
 
 // template <typename IDT, typename ODT>
 // void Cast::forward_task_with_2_type(Task const *task,
-//                                     std::vector<PhysicalRegion> const &regions,
-//                                     Context ctx,
-//                                     Runtime *runtime) {
+//                                     std::vector<PhysicalRegion> const
+//                                     &regions, Context ctx, Runtime *runtime)
+//                                     {
 //   assert(regions.size() == 2);
 //   assert(task->regions.size() == regions.size());
 //   CastPerDeviceState const *m = *((CastPerDeviceState **)task->local_args);
@@ -315,18 +317,16 @@ void Cast::forward_task(Task const *task,
   auto input = acc.get_tensor<READ_ONLY>(INPUT);
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  profile(
-    forward_kernel,
-    m->profiling,
-    "[Cast] forward_time = %.2lfms\n",
-    m,
-    input,
-    output
-  )
+  profile(forward_kernel,
+          m->profiling,
+          "[Cast] forward_time = %.2lfms\n",
+          m,
+          input,
+          output)
 }
 
 void Cast::backward(FFModel const &ff) {
-  this->execute_task(ff, CAST_BWD_TASK_ID, get_bwd_task_signature()); 
+  this->execute_task(ff, CAST_BWD_TASK_ID, get_bwd_task_signature());
   // ArgumentMap argmap;
   // Context ctx = ff.config.lg_ctx;
   // Runtime *runtime = ff.config.lg_hlr;
@@ -356,26 +356,29 @@ void Cast::backward(FFModel const &ff) {
 
 // template <typename IDT>
 // void Cast::backward_task_with_1_type(Task const *task,
-//                                      std::vector<PhysicalRegion> const &regions,
-//                                      Context ctx,
-//                                      Runtime *runtime) {
+//                                      std::vector<PhysicalRegion> const
+//                                      &regions, Context ctx, Runtime *runtime)
+//                                      {
 //   CastPerDeviceState const *m = *((CastPerDeviceState **)task->local_args);
 //   if (m->input_data_type == DT_FLOAT) {
 //     Cast::backward_task_with_2_type<IDT, float>(task, regions, ctx, runtime);
 //   } else if (m->input_data_type == DT_DOUBLE) {
-//     Cast::backward_task_with_2_type<IDT, double>(task, regions, ctx, runtime);
+//     Cast::backward_task_with_2_type<IDT, double>(task, regions, ctx,
+//     runtime);
 //   } else if (m->input_data_type == DT_INT32) {
-//     Cast::backward_task_with_2_type<IDT, int32_t>(task, regions, ctx, runtime);
+//     Cast::backward_task_with_2_type<IDT, int32_t>(task, regions, ctx,
+//     runtime);
 //   } else if (m->input_data_type == DT_INT64) {
-//     Cast::backward_task_with_2_type<IDT, int64_t>(task, regions, ctx, runtime);
+//     Cast::backward_task_with_2_type<IDT, int64_t>(task, regions, ctx,
+//     runtime);
 //   }
 // }
 
 // template <typename IDT, typename ODT>
 // void Cast::backward_task_with_2_type(Task const *task,
-//                                      std::vector<PhysicalRegion> const &regions,
-//                                      Context ctx,
-//                                      Runtime *runtime) {
+//                                      std::vector<PhysicalRegion> const
+//                                      &regions, Context ctx, Runtime *runtime)
+//                                      {
 //   assert(regions.size() == 2);
 //   assert(task->regions.size() == regions.size());
 //   // Domain input_domain = runtime->get_index_space_domain(
@@ -407,14 +410,12 @@ void Cast::backward_task(Task const *task,
   auto input_grad = acc.get_tensor<READ_ONLY>(INPUT);
   auto output_grad = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  profile(
-    backward_kernel,
-    m->profiling,
-    "[Cast] forward_time = %.2lfms\n",
-    m,
-    input_grad,
-    output_grad
-  )
+  profile(backward_kernel,
+          m->profiling,
+          "[Cast] forward_time = %.2lfms\n",
+          m,
+          input_grad,
+          output_grad)
 }
 
 bool Cast::measure_operator_cost(Simulator *sim,
@@ -453,4 +454,3 @@ Op *Cast::materialize(FFModel &ff,
 }
 
 }; // namespace FlexFlow
-

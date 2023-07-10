@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/replicate_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/replicate_kernels.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -42,8 +42,11 @@ struct BackwardKernel {
                   size_t num_replicas) {
     size_t total_elements = input.shape.num_elements() * num_replicas;
     replicate_backward_kernel<T>
-      <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
-          input.get<T>(), output.get<T>(), input.shape.num_elements(), num_replicas);
+        <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
+            input.get<T>(),
+            output.get<T>(),
+            input.shape.num_elements(),
+            num_replicas);
   }
 }
 
@@ -69,7 +72,8 @@ void backward_kernel(cudaStream_t stream,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output,
                      size_t num_replicas) {
-  DataTypeDispatch1<BackwardKernel>{}(input->data_type, stream, input, output, num_replicas);
+  DataTypeDispatch1<BackwardKernel>{}(
+      input->data_type, stream, input, output, num_replicas);
 }
 
 } // namespace Replicate

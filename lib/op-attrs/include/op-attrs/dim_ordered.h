@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_FF_STACK_VECTOR_H
 #define _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_FF_STACK_VECTOR_H
 
-#include "utils/stack_vector.h"
 #include "op-attrs/ff_dim.h"
+#include "utils/stack_vector.h"
 
 namespace FlexFlow {
 
@@ -10,25 +10,22 @@ template <typename Idx, typename T>
 struct DimOrdered {
   DimOrdered() = delete;
 
-  DimOrdered(std::initializer_list<T> const &l) 
-    : contents(l.begin(), l.end())
-  { }
+  DimOrdered(std::initializer_list<T> const &l)
+      : contents(l.begin(), l.end()) {}
 
-  /* template <typename I, typename std::enable_if<std::is_convertible<I, T>::value>::type> */
+  /* template <typename I, typename std::enable_if<std::is_convertible<I,
+   * T>::value>::type> */
   DimOrdered(std::vector<T> const &contents)
-    : contents(contents.begin(), contents.end())
-  { }
+      : contents(contents.begin(), contents.end()) {}
 
-  /* template <typename It, typename std::enable_if<std::is_convertible<typename It::value_type, T>::value>::type> */
+  /* template <typename It, typename std::enable_if<std::is_convertible<typename
+   * It::value_type, T>::value>::type> */
   template <typename It>
-  DimOrdered(It begin, It end)
-    : contents(begin, end)
-  { }
+  DimOrdered(It begin, It end) : contents(begin, end) {}
 
   template <size_t MAXSIZE>
-  DimOrdered(stack_vector<T, MAXSIZE> const &contents) 
-    : contents(contents.begin(), contents.end())
-  { }
+  DimOrdered(stack_vector<T, MAXSIZE> const &contents)
+      : contents(contents.begin(), contents.end()) {}
 
   T const &at(Idx idx) const {
     return this->contents.at(idx.value());
@@ -59,9 +56,12 @@ struct DimOrdered {
   }
 
   using iterator = typename stack_vector<T, MAX_TENSOR_DIM>::iterator;
-  using const_iterator = typename stack_vector<T, MAX_TENSOR_DIM>::const_iterator;
-  using reverse_iterator = typename stack_vector<T, MAX_TENSOR_DIM>::reverse_iterator;
-  using const_reverse_iterator = typename stack_vector<T, MAX_TENSOR_DIM>::const_reverse_iterator;
+  using const_iterator =
+      typename stack_vector<T, MAX_TENSOR_DIM>::const_iterator;
+  using reverse_iterator =
+      typename stack_vector<T, MAX_TENSOR_DIM>::reverse_iterator;
+  using const_reverse_iterator =
+      typename stack_vector<T, MAX_TENSOR_DIM>::const_reverse_iterator;
   using value_type = T;
   using pointer = value_type *;
   using const_pointer = value_type const *;
@@ -125,6 +125,7 @@ struct DimOrdered {
   }
 
   friend struct ::std::hash<DimOrdered>;
+
 private:
   stack_vector<T, MAX_TENSOR_DIM> contents;
 };
@@ -133,7 +134,8 @@ template <typename T>
 using FFOrdered = DimOrdered<ff_dim_t, T>;
 
 template <typename T>
-auto inner_to_outer(FFOrdered<T> const &ff_ordered) -> decltype(reversed_container(ff_ordered)) {
+auto inner_to_outer(FFOrdered<T> const &ff_ordered)
+    -> decltype(reversed_container(ff_ordered)) {
   return reversed_container(ff_ordered);
 }
 
@@ -156,7 +158,7 @@ FFOrdered<T> const &outer_to_inner(FFOrdered<T> const &ff_ordered) {
   return ff_ordered;
 }
 
-}
+} // namespace FlexFlow
 
 namespace std {
 
@@ -167,7 +169,6 @@ struct hash<::FlexFlow::DimOrdered<Idx, T>> {
   }
 };
 
-}
-
+} // namespace std
 
 #endif

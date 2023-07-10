@@ -16,19 +16,19 @@
 #include "fused.h"
 #include "kernels/accessor.h"
 #include "kernels/batch_matmul_kernels.h"
+#include "kernels/batch_norm_kernels.h"
 #include "kernels/concat_kernels.h"
 #include "kernels/conv_2d_kernels.h"
+#include "kernels/cuda_helper.h"
+#include "kernels/dropout_kernels.h"
 #include "kernels/element_binary_kernels.h"
+#include "kernels/element_unary_kernels.h"
+#include "kernels/embedding_kernels.h"
+#include "kernels/flat_kernels.h"
 #include "kernels/linear_kernels.h"
 #include "kernels/pool_2d_kernels.h"
 #include "kernels/reshape_kernels.h"
 #include "kernels/transpose_kernels.h"
-#include "kernels/element_unary_kernels.h"
-#include "kernels/batch_norm_kernels.h"
-#include "kernels/dropout_kernels.h"
-#include "kernels/embedding_kernels.h"
-#include "kernels/flat_kernels.h"
-#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -305,7 +305,7 @@ void FusedOp::init(FFModel const &ff) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      meta[idx++] = fm.get_result<PerDeviceOpState *>(*it);                              \
+      meta[idx++] = fm.get_result<PerDeviceOpState *>(*it);                    \
     }                                                                          \
     break;                                                                     \
   }
@@ -441,11 +441,12 @@ bool FusedOp::measure_operator_cost(Simulator *sim,
 }
 
 PerDeviceOpState *FusedOp::init_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   FusedOp const *fused = (FusedOp *)task->args;
-  FusedOpPerDeviceState const *metas = (FusedOpPerDeviceState *)task->local_args;
+  FusedOpPerDeviceState const *metas =
+      (FusedOpPerDeviceState *)task->local_args;
   FusedOpPerDeviceState *local_meta = new FusedOpPerDeviceState();
   memcpy(local_meta, metas, sizeof(FusedOpPerDeviceState));
   local_meta->fused_op = (FusedOp *)malloc(sizeof(FusedOp));
@@ -456,11 +457,12 @@ PerDeviceOpState *FusedOp::init_task(Task const *task,
 }
 
 void FusedOp::forward_task(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+                           std::vector<PhysicalRegion> const &regions,
+                           Context ctx,
+                           Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpPerDeviceState const *metas = *((FusedOpPerDeviceState **)task->local_args);
+  FusedOpPerDeviceState const *metas =
+      *((FusedOpPerDeviceState **)task->local_args);
   FusedOp const *fused = metas->fused_op;
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
@@ -563,10 +565,10 @@ void FusedOp::forward_task(Task const *task,
         ConcatPerDeviceState *m = (ConcatPerDeviceState *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
         Kernels::Concat::forward_kernel(m,
-                                                my_output_accessor[0],
-                                                my_input_accessor,
-                                                num_inputs,
-                                                m->legion_axis);
+                                        my_output_accessor[0],
+                                        my_input_accessor,
+                                        num_inputs,
+                                        m->legion_axis);
         break;
       }
       case OP_CONV2D: {
@@ -576,12 +578,11 @@ void FusedOp::forward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 5);
         assert(my_output_accessor[0].domain.get_dim() == 5);
         Conv2DPerDeviceState *m = (Conv2DPerDeviceState *)metas->meta[op];
-        Kernels::Conv2D::forward_kernel(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_weight_accessor[0].get_float_ptr(),
-            my_weight_accessor[1].get_float_ptr());
+        Kernels::Conv2D::forward_kernel(m,
+                                        my_input_accessor[0].get_float_ptr(),
+                                        my_output_accessor[0].get_float_ptr(),
+                                        my_weight_accessor[0].get_float_ptr(),
+                                        my_weight_accessor[1].get_float_ptr());
         break;
       }
       case OP_BATCHNORM: {
@@ -592,21 +593,21 @@ void FusedOp::forward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 2);
         assert(my_weight_accessor[1].domain.get_dim() == 2);
         BatchNormPerDeviceState *m = (BatchNormPerDeviceState *)metas->meta[op];
-        Kernels::BatchNorm::Internal::forward_kernel(m,
-                                  my_input_accessor[0].get_float_ptr(),
-                                  my_output_accessor[0].get_float_ptr(),
-                                  my_weight_accessor[0].get_float_ptr(),
-                                  my_weight_accessor[1].get_float_ptr());
+        Kernels::BatchNorm::Internal::forward_kernel(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_accessor[1].get_float_ptr());
         break;
       }
       case OP_DROPOUT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         Dropout *m = (DropoutPerDeviceState *)metas->meta[op];
-        Kernels::Dropout::forward_kernel(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr());
+        Kernels::Dropout::forward_kernel(m,
+                                         my_input_accessor[0].get_float_ptr(),
+                                         my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {
@@ -627,15 +628,14 @@ void FusedOp::forward_task(Task const *task,
           assert(fused->op_num_weights[op] == 1);
         }
         LinearPerDeviceState *m = (LinearPerDeviceState *)metas->meta[op];
-        Kernels::Linear::forward_kernel(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_weight_accessor[0].get_float_ptr(),
-            bias_ptr,
-            in_dim,
-            out_dim,
-            batch_size);
+        Kernels::Linear::forward_kernel(m,
+                                        my_input_accessor[0].get_float_ptr(),
+                                        my_output_accessor[0].get_float_ptr(),
+                                        my_weight_accessor[0].get_float_ptr(),
+                                        bias_ptr,
+                                        in_dim,
+                                        out_dim,
+                                        batch_size);
         break;
       }
       case OP_BATCHMATMUL: {
@@ -660,7 +660,8 @@ void FusedOp::forward_task(Task const *task,
           assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
           batch *= dim_size;
         }
-        BatchMatmulPerDeviceState *meta = (BatchMatmulPerDeviceState *)metas->meta[op];
+        BatchMatmulPerDeviceState *meta =
+            (BatchMatmulPerDeviceState *)metas->meta[op];
         Kernels::BatchMatmul::forward_kernel(
             meta,
             my_output_accessor[0].get_float_ptr(),
@@ -687,7 +688,8 @@ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementBinaryPerDeviceState *m = (ElementBinaryPerDeviceState *)metas->meta[op];
+        ElementBinaryPerDeviceState *m =
+            (ElementBinaryPerDeviceState *)metas->meta[op];
         Kernels::ElementBinary::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
@@ -751,12 +753,12 @@ void FusedOp::forward_task(Task const *task,
 
         assert(my_input_accessor[0].data_type == DT_INT64);
         Kernels::Embedding::forward_kernel(m,
-                                                   my_input_accessor[0],
-                                                   my_output_accessor[0],
-                                                   my_weight_accessor[0],
-                                                   in_dim,
-                                                   out_dim,
-                                                   effective_batch_size);
+                                           my_input_accessor[0],
+                                           my_output_accessor[0],
+                                           my_weight_accessor[0],
+                                           in_dim,
+                                           out_dim,
+                                           effective_batch_size);
         break;
       }
       case OP_RELU:
@@ -767,7 +769,8 @@ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementUnaryPerDeviceState *m = (ElementUnaryPerDeviceState *)metas->meta[op];
+        ElementUnaryPerDeviceState *m =
+            (ElementUnaryPerDeviceState *)metas->meta[op];
         Kernels::ElementUnary::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
@@ -781,10 +784,9 @@ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DPerDeviceState *m = (Pool2DPerDeviceState *)metas->meta[op];
-        Kernels::Pool2D::forward_kernel(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr());
+        Kernels::Pool2D::forward_kernel(m,
+                                        my_input_accessor[0].get_float_ptr(),
+                                        my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_FLAT: {
@@ -793,10 +795,9 @@ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Kernels::Flat::forward_kernel(
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_input_accessor[0].domain.get_volume());
+        Kernels::Flat::forward_kernel(my_input_accessor[0].get_float_ptr(),
+                                      my_output_accessor[0].get_float_ptr(),
+                                      my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
@@ -843,11 +844,12 @@ void FusedOp::forward_task(Task const *task,
 }
 
 void FusedOp::backward_task(Task const *task,
-                                     std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpPerDeviceState const *metas = *((FusedOpPerDeviceState **)task->local_args);
+  FusedOpPerDeviceState const *metas =
+      *((FusedOpPerDeviceState **)task->local_args);
   FusedOp const *fused = metas->fused_op;
 
   assert(metas->numOperators == fused->numOperators);
@@ -1049,7 +1051,8 @@ void FusedOp::backward_task(Task const *task,
           assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
           batch *= dim_size;
         }
-        BatchMatmulPerDeviceState *meta = (BatchMatmulPerDeviceState *)metas->meta[op];
+        BatchMatmulPerDeviceState *meta =
+            (BatchMatmulPerDeviceState *)metas->meta[op];
         Kernels::BatchMatmul::backward_kernel(
             meta,
             (float const *)my_output_accessor[0].get_float_ptr(),
@@ -1091,10 +1094,10 @@ void FusedOp::backward_task(Task const *task,
         ConcatPerDeviceState *m = (ConcatPerDeviceState *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
         Kernels::Concat::backward_kernel(m,
-                                                 my_output_grad_accessor[0],
-                                                 my_input_grad_accessor,
-                                                 num_inputs,
-                                                 m->legion_axis);
+                                         my_output_grad_accessor[0],
+                                         my_input_grad_accessor,
+                                         num_inputs,
+                                         m->legion_axis);
         break;
       }
       case OP_CONV2D: {
@@ -1136,7 +1139,8 @@ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementBinaryPerDeviceState *m = (ElementBinaryPerDeviceState *)metas->meta[op];
+        ElementBinaryPerDeviceState *m =
+            (ElementBinaryPerDeviceState *)metas->meta[op];
         Kernels::ElementBinary::backward_kernel(
             m,
             my_output_grad_accessor[0].get_float_ptr(),
@@ -1172,12 +1176,12 @@ void FusedOp::backward_task(Task const *task,
                  my_input_accessor[0].domain.get_volume());
         }
         Kernels::Embedding::backward_kernel(m,
-                                                    my_input_accessor[0],
-                                                    my_output_grad_accessor[0],
-                                                    my_weight_grad_accessor[0],
-                                                    in_dim,
-                                                    out_dim,
-                                                    effective_batch_size);
+                                            my_input_accessor[0],
+                                            my_output_grad_accessor[0],
+                                            my_weight_grad_accessor[0],
+                                            in_dim,
+                                            out_dim,
+                                            effective_batch_size);
         break;
       }
       case OP_LINEAR: {
@@ -1220,7 +1224,8 @@ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementUnaryPerDeviceState *m = (ElementUnaryPerDeviceState *)metas->meta[op];
+        ElementUnaryPerDeviceState *m =
+            (ElementUnaryPerDeviceState *)metas->meta[op];
         Kernels::ElementUnary::backward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),

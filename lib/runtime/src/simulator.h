@@ -15,19 +15,19 @@
 #ifndef _FLEXFLOW_SIMULATOR_H_
 #define _FLEXFLOW_SIMULATOR_H_
 
-#include "operator_guid_t.h"
-#include "runtime/config.h"
+#include "cost_metrics.h"
+#include "kernels/ff_handle.h"
 #include "op-attrs/operator_attrs.h"
+#include "operator_guid_t.h"
+#include "parallel_tensor.h"
+#include "runtime/config.h"
 #include "utils/hash-utils.h"
 #include "utils/variant.h"
-#include "parallel_tensor.h"
 #include <fstream>
 #include <memory>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-#include "kernels/ff_handle.h"
-#include "cost_metrics.h"
 
 namespace FlexFlow {
 
@@ -650,7 +650,8 @@ public:
                                        SimTask *dst_task,
                                        size_t message_size,
                                        bool force_zero_cost = false);
-  CostMetrics measure_operator_cost(operator_guid_t const &, MachineView const &view);
+  CostMetrics measure_operator_cost(operator_guid_t const &,
+                                    MachineView const &view);
   float estimate_xfer_cost(operator_guid_t const &,
                            int input_idx,
                            MachineView const &source_view,
@@ -709,5 +710,5 @@ private:
       MachineView const &target_view) const;
 };
 
-}
+} // namespace FlexFlow
 #endif

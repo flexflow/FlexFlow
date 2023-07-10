@@ -97,9 +97,9 @@ void Reverse::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *Reverse::init_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   return NULL;
 }
 
@@ -160,11 +160,11 @@ void Reverse::forward_task(Task const *task,
   int output_size = out_domain.get_volume();
 
   forward_kernel_wrapper(in_ptr,
-                                  out_ptr,
-                                  num_out_blks,
-                                  reverse_dim_size,
-                                  in_blk_size,
-                                  output_size);
+                         out_ptr,
+                         num_out_blks,
+                         reverse_dim_size,
+                         in_blk_size,
+                         output_size);
 }
 
 void Reverse::backward(FFModel const &ff) {
@@ -226,11 +226,11 @@ void Reverse::backward_task(Task const *task,
   }
 
   backward_kernel_wrapper(out_grad_ptr,
-                                   in_grad_ptr,
-                                   num_out_blks,
-                                   reverse_dim_size,
-                                   in_blk_size,
-                                   in_grad_domain.get_volume());
+                          in_grad_ptr,
+                          num_out_blks,
+                          reverse_dim_size,
+                          in_blk_size,
+                          in_grad_domain.get_volume());
 }
 
 bool Reverse::measure_operator_cost(Simulator *sim,

@@ -47,11 +47,11 @@ struct GetOpTypeFunctor {
   }
 };
 
-template <typename ...Ts> 
+template <typename... Ts>
 OperatorType get_op_type(variant<Ts...> const &attrs) {
   return visit(GetOpTypeFunctor{}, attrs);
 }
 
-}
+} // namespace FlexFlow
 
 #endif

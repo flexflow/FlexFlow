@@ -69,6 +69,4 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
 fi
 
 mapfile -t FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
-mv "$GIT_ROOT/".clang-format{.old,}
 "$CLANG_FORMAT_PATH" -i "${FILES[@]}"
-mv "$GIT_ROOT/".clang-format{,.old}

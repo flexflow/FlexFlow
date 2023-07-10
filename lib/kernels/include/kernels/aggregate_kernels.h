@@ -2,8 +2,8 @@
 #define _FLEXFLOW_OPS_KERNELS_AGGREGATE_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/per_device_op_state.h"
 #include "kernels/ff_handle.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
@@ -36,8 +36,8 @@ void backward_kernel(ffStream_t stream,
                      int const batch_size,
                      int out_dim);
 
-} 
-}
-}
+} // namespace Aggregate
+} // namespace Kernels
+} // namespace FlexFlow
 
-#endif 
+#endif

@@ -14,9 +14,9 @@
  */
 
 #include "substitution.h"
-#include "op-meta/op-meta.h"
 #include "graph.h"
 #include "graph_structures.h"
+#include "op-meta/op-meta.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/fused_parallel_op.h"
 #include "parallel_ops/partition.h"
@@ -43,17 +43,32 @@ bool TensorX::operator!=(TensorX const &other) const {
 
 Rule create_combine_inception(int num_convs, int num_dims, int num_parts);
 Rule create_combine_concat(int num_inputs, int num_dims, int num_parts);
-Rule create_replicate_linear_combine(int num_dims, int num_parts, ActiMode activation, bool use_bias);
-Rule create_partition_linear_combine(int num_dims, int num_parts, ActiMode activation, bool use_bias);
+Rule create_replicate_linear_combine(int num_dims,
+                                     int num_parts,
+                                     ActiMode activation,
+                                     bool use_bias);
+Rule create_partition_linear_combine(int num_dims,
+                                     int num_parts,
+                                     ActiMode activation,
+                                     bool use_bias);
 Rule create_partition_conv2d_combine(int num_dims, int num_parts);
 Rule create_partition_attention_combine(int num_heads, int num_parts);
 Rule create_replicate_attention_reduce(int num_heads, int num_parts);
 Rule create_partition_add_combine(int parallel_dim, int num_parts);
 Rule create_partition_relu_combine(int parallel_dim, int num_parts);
-Rule create_partition_concat_combine(int num_inputs, int concat_dim, int parallel_dim, int num_parts);
-Rule create_partition_softmax_combine(int softmax_dim, int part_dim, int num_parts);
-Rule leading_relu_branch_combine(int parallel_dim, int num_parts, int num_combines);
-Rule leading_relu_branch_partition(int parallel_dim, int num_parts, int num_partitions);
+Rule create_partition_concat_combine(int num_inputs,
+                                     int concat_dim,
+                                     int parallel_dim,
+                                     int num_parts);
+Rule create_partition_softmax_combine(int softmax_dim,
+                                      int part_dim,
+                                      int num_parts);
+Rule leading_relu_branch_combine(int parallel_dim,
+                                 int num_parts,
+                                 int num_combines);
+Rule leading_relu_branch_partition(int parallel_dim,
+                                   int num_parts,
+                                   int num_partitions);
 Rule create_linear_relu_merge(int num_dims, bool use_bias);
 
 PMConstraint::PMConstraint(Compare c, PMParameter p, int v)
@@ -3483,7 +3498,7 @@ GraphXfer *
   return subst;
 }
 
-}  // namespace PCG
+} // namespace ffc
 
 using PCG::Edge;
 using PCG::Graph;
@@ -3715,4 +3730,4 @@ bool FFModel::convert_graph_to_operators(
   return true;
 }
 
-}  // namespace FlexFlow
+} // namespace FlexFlow

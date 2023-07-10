@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_KERNELS_BATCH_NORM_KERNELS_H
 #define _FLEXFLOW_KERNELS_BATCH_NORM_KERNELS_H
 
+#include "kernels/allocation.h"
 #include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/allocation.h"
 #include <memory>
 
 namespace FlexFlow {
@@ -12,13 +12,13 @@ namespace FlexFlow {
 class BatchNormPerDeviceState : public PerDeviceOpState {
 public:
   BatchNormPerDeviceState(FFHandler handle,
-                std::unique_ptr<IAllocator> allocator,
-                int output_n,
-                int output_c,
-                int output_h,
-                int output_w, 
-                bool relu,
-                bool profiling);
+                          std::unique_ptr<IAllocator> allocator,
+                          int output_n,
+                          int output_c,
+                          int output_h,
+                          int output_w,
+                          bool relu,
+                          bool profiling);
   ~BatchNormPerDeviceState(void);
 
   ffTensorDescriptor_t inputTensor, outputTensor, biasTensor;
@@ -51,8 +51,8 @@ void backward_kernel(ffStream_t stream,
                      float *bias_grad_ptr,
                      size_t numElements);
 
-}
-}
-}
+} // namespace BatchNorm
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif

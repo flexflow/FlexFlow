@@ -7,12 +7,14 @@
 
 namespace FlexFlow {
 
-template <typename T> struct TypedFuture;
-template <typename T> struct TypedFutureMap;
+template <typename T>
+struct TypedFuture;
+template <typename T>
+struct TypedFutureMap;
 struct CheckedTypedFuture;
 struct CheckedTypedFutureMap;
 
-struct TaskReturnAccessor { 
+struct TaskReturnAccessor {
   TaskReturnAccessor(optional<std::type_index>, Legion::Future const &);
   TaskReturnAccessor(optional<std::type_index>, Legion::FutureMap const &);
 
@@ -25,11 +27,10 @@ struct TaskReturnAccessor {
   CheckedTypedFuture get_returned_future() const;
   CheckedTypedFutureMap get_returned_future_map() const;
 
-
   variant<Legion::Future, Legion::FutureMap> get_future_unsafe() const;
   optional<std::type_index> get_type_index() const;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

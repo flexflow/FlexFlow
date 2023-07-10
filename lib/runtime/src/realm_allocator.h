@@ -16,6 +16,7 @@ struct RealmAllocator : public IAllocator {
 
   void *allocate(size_t) override;
   void deallocate(void *) override;
+
 private:
   Legion::Memory memory;
   stack_vector<Realm::RegionInstance, MAX_INSTANCE_ALLOCATIONS> instances;
@@ -23,6 +24,6 @@ private:
 
 std::unique_ptr<IAllocator> get_gpu_memory_allocator(Legion::Task const *);
 
-}
+} // namespace FlexFlow
 
 #endif

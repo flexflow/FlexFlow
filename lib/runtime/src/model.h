@@ -14,27 +14,28 @@
  */
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
-#include "pcg/machine_specification.h"
-#include "runtime/config.h"
+#include "computation_graph.h"
+#include "executable_task_invocation.h"
 #include "legion.h"
+#include "legion_backing.h"
+#include "metrics_node.h"
+#include "op-attrs/ops/loss_functions.h"
+#include "op-attrs/tensor_shape.h"
 #include "optimizer.h"
+#include "parallel_computation_graph.h"
+#include "pcg/machine_specification.h"
 #include "recompile.h"
+#include "runtime/config.h"
+#include "sim_environment.h"
+#include "tensor_mapping.h"
 #include <functional>
 #include <unistd.h>
 #include <utility>
-#include "op-attrs/tensor_shape.h"
-#include "computation_graph.h"
-#include "parallel_computation_graph.h"
-#include "tensor_mapping.h"
-#include "legion_backing.h"
-#include "sim_environment.h"
-#include "executable_task_invocation.h"
-#include "op-attrs/ops/loss_functions.h"
-#include "metrics_node.h"
 
 namespace FlexFlow {
 
-template <> void register_task<FF_INIT_TASK_ID>();
+template <>
+void register_task<FF_INIT_TASK_ID>();
 
 enum ShardingID {
   DataParallelShardingID = 135,
@@ -48,9 +49,9 @@ class FFModel {
 public:
   FFModel() = delete;
   FFModel(FFConfig const &,
-          ComputationGraph const &, 
+          ComputationGraph const &,
           ParallelComputationGraph const &,
-          Optimizer const &, 
+          Optimizer const &,
           RuntimeBacking const &,
           EnableProfiling const &,
           MetricsNode const &,
@@ -59,11 +60,12 @@ public:
           TensorMapping const &);
 
   TaskReturnAccessor execute(operator_guid_t, OpTaskInvocation const &) const;
-  std::unordered_map<operator_guid_t, TaskReturnAccessor> execute(std::unordered_map<operator_guid_t, OpTaskInvocation> const &) const;
+  std::unordered_map<operator_guid_t, TaskReturnAccessor> execute(
+      std::unordered_map<operator_guid_t, OpTaskInvocation> const &) const;
   TaskReturnAccessor execute(TaskInvocation const &) const;
   TaskReturnAccessor execute(ExecutableTaskInvocation const &) const;
-  std::vector<TaskReturnAccessor> execute(std::vector<ExecutableTaskInvocation> const &) const;
-
+  std::vector<TaskReturnAccessor>
+      execute(std::vector<ExecutableTaskInvocation> const &) const;
 
   // ========================================
   // Internal APIs that should not be invoked from applications
@@ -79,6 +81,7 @@ public:
   // APIs for setting iteration configs
 private:
   void create_label_tensor(LossFunction);
+
 public:
   FFConfig config;
   ComputationGraph computation_graph;
@@ -94,23 +97,22 @@ public:
   FFIterationConfig iter_config;
   /* optional<ParallelTensor> parallel_label_tensor; */
   /* optional<Tensor> label_tensor; */
-
-
 };
 
 void init_operators(FFModel const &);
-void forward(FFModel const &, int seq_length = -1);  
+void forward(FFModel const &, int seq_length = -1);
 void backward(FFModel const &, int seq_length = -1);
 void update(FFModel const &);
 void zero_gradients(FFModel const &);
 void reset_metrics(FFModel const &);
 void compute_metrics(FFModel const &);
 void recompile_on_condition(FFModel const &, RecompileState &r);
-template <typename T> void set_tensor(FFModel const &, TensorDims const &, T const *);
-template <typename T> void get_tensor(FFModel const &, tensor_guid_t, T *data);
-  
+template <typename T>
+void set_tensor(FFModel const &, TensorDims const &, T const *);
+template <typename T>
+void get_tensor(FFModel const &, tensor_guid_t, T *data);
 
-ExecutableTaskInvocation resolve(TaskInvocation const &, 
+ExecutableTaskInvocation resolve(TaskInvocation const &,
                                  EnableProfiling enable_profiling,
                                  RuntimeBacking const &runtime_backing);
 
@@ -126,6 +128,6 @@ void data_load_task(Legion::Task const *task,
 
 void register_custom_tasks();
 
-}
+} // namespace FlexFlow
 
 #endif

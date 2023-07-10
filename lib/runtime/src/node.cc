@@ -2,7 +2,7 @@
 
 /* namespace FlexFlow { */
 
-/* Node::Node(size_t guid, Op const *ptr) */ 
+/* Node::Node(size_t guid, Op const *ptr) */
 /*   : guid(guid), ptr(ptr) */
 /* { } */
 

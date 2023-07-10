@@ -36,7 +36,7 @@ Strategy graph_optimize(
         &allowed_machine_views,
     OptimizerConfig const &opt_config);
 
-}
+} // namespace FlexFlow
 
 namespace std {
 
@@ -45,6 +45,6 @@ struct hash<::FlexFlow::Strategy> {
   size_t operator()(::FlexFlow::Strategy const &) const;
 };
 
-}
+} // namespace std
 
 #endif /* _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H */

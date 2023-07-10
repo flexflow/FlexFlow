@@ -1,28 +1,28 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_NODE_H
 #define _FLEXFLOW_UTILS_GRAPH_NODE_H
 
+#include "utils/fmt.h"
+#include "utils/maybe_owned_ref.h"
+#include "utils/optional.h"
+#include "utils/strong_typedef.h"
+#include "utils/type_traits.h"
+#include "utils/unique.h"
+#include "utils/visitable.h"
 #include <cstddef>
 #include <functional>
-#include <unordered_set>
-#include <ostream>
-#include "utils/visitable.h"
-#include "utils/optional.h"
-#include "utils/fmt.h"
 #include <memory>
-#include "utils/type_traits.h"
-#include "utils/strong_typedef.h"
-#include "utils/maybe_owned_ref.h"
-#include "utils/unique.h"
+#include <ostream>
+#include <unordered_set>
 
 namespace FlexFlow {
 
-struct Node : public strong_typedef<Node, size_t> { 
+struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
 };
 
 std::ostream &operator<<(std::ostream &, Node const &);
 
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::Node);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::Node, "Node");
@@ -46,7 +46,7 @@ struct IGraphView {
   IGraphView &operator=(IGraphView const &) = delete;
 
   virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
-  virtual ~IGraphView() {};
+  virtual ~IGraphView(){};
 };
 
 struct GraphView {
@@ -61,24 +61,27 @@ struct GraphView {
   }
 
   IGraphView const *unsafe() const {
-    return this->ptr.get(); 
+    return this->ptr.get();
   }
 
   static GraphView unsafe(IGraphView const &);
 
-  template <typename T, typename ...Args>
-  static
-  typename std::enable_if<std::is_base_of<IGraphView, T>::value, GraphView>::type
-  create(Args &&... args) {
+  template <typename T, typename... Args>
+  static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
+                                 GraphView>::type
+      create(Args &&...args) {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
+
 private:
   GraphView(std::shared_ptr<IGraphView const>);
+
 private:
   std::shared_ptr<IGraphView const> ptr;
 };
 
-static_assert(is_rc_copy_virtual_compliant<IGraphView>::value, RC_COPY_VIRTUAL_MSG);
+static_assert(is_rc_copy_virtual_compliant<IGraphView>::value,
+              RC_COPY_VIRTUAL_MSG);
 
 struct IGraph : IGraphView {
   IGraph(IGraph const &) = delete;
@@ -93,7 +96,7 @@ struct IGraph : IGraphView {
 static_assert(is_rc_copy_virtual_compliant<IGraph>::value, RC_COPY_VIRTUAL_MSG);
 
 struct Graph {
-public: 
+public:
   Graph() = delete;
   Graph(Graph const &);
 
@@ -108,17 +111,18 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
   template <typename T>
-  static 
-  typename std::enable_if<std::is_base_of<IGraph, T>::value, Graph>::type 
-  create() { 
+  static typename std::enable_if<std::is_base_of<IGraph, T>::value, Graph>::type
+      create() {
     return Graph(make_unique<T>());
   }
+
 private:
   Graph(std::unique_ptr<IGraph>);
+
 private:
   std::unique_ptr<IGraph> ptr;
 };
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

@@ -151,8 +151,8 @@ struct GraphStructure<BasicGraph<T>> {
   }
 };
 
-}  // namespace Utils
-}  // namespace PCG
-}  // namespace FlexFlow
+} // namespace Utils
+} // namespace PCG
+} // namespace FlexFlow
 
 #endif // _BASIC_GRAPH_H

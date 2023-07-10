@@ -14,10 +14,11 @@ ncclUniqueId generate_unique_id() {
 #endif
 }
 
-ncclComm_t create_comm_raw(ncclUniqueId const &unique_id, int num_ranks, int my_rank) {
+ncclComm_t
+    create_comm_raw(ncclUniqueId const &unique_id, int num_ranks, int my_rank) {
 #ifdef FF_USE_NCCL
   ncclComm_t ncclComm;
-  assert (my_rank < num_ranks);
+  assert(my_rank < num_ranks);
   checkNCCL(ncclCommInitRank(&ncclComm, num_ranks, unique_id, my_rank));
   // fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
   //     ncclComm, allRanks, myRank, ncclId);
@@ -27,4 +28,4 @@ ncclComm_t create_comm_raw(ncclUniqueId const &unique_id, int num_ranks, int my_
 #endif
 }
 
-}
+} // namespace FlexFlow

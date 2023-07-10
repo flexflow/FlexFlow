@@ -36,6 +36,7 @@ class Metrics {
 public:
   Metrics() = delete;
   Metrics(LossFunction, std::vector<Metric> const &);
+
 public:
   LossFunction loss_type;
   bool measure_accuracy;
@@ -54,15 +55,17 @@ TaskInvocation update_metrics(Metrics const &,
                               parallel_tensor_guid_t const &label);
 TaskInvocation reset_metrics(Metrics const &);
 
-template <> void register_task<METRICS_COMP_TASK_ID>();
-template <> void register_task<UPDATE_METRICS_TASK_ID>();
+template <>
+void register_task<METRICS_COMP_TASK_ID>();
+template <>
+void register_task<UPDATE_METRICS_TASK_ID>();
 
-}
+} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::Metrics, 
-                 loss_type, 
-                 measure_accuracy, 
-                 measure_categorical_crossentropy, 
+VISITABLE_STRUCT(::FlexFlow::Metrics,
+                 loss_type,
+                 measure_accuracy,
+                 measure_categorical_crossentropy,
                  measure_sparse_categorical_crossentropy,
                  measure_mean_squared_error,
                  measure_root_mean_squared_error,
@@ -73,23 +76,35 @@ namespace fmt {
 template <>
 struct formatter<::FlexFlow::Metric> : formatter<string_view> {
   template <typename FormatContext>
-  auto format(::FlexFlow::Metric m, FormatContext& ctx) const -> decltype(ctx.out()) {
+  auto format(::FlexFlow::Metric m, FormatContext &ctx) const
+      -> decltype(ctx.out()) {
     using namespace FlexFlow;
 
     string_view name = "unknown";
     switch (m) {
-      case Metric::ACCURACY: name = "Accuracy"; break;
-      case Metric::CATEGORICAL_CROSSENTROPY: name = "CategoricalCrossEntropy"; break;
-      case Metric::SPARSE_CATEGORICAL_CROSSENTROPY: name = "SparseCategoricalCrossEntropy"; break;
-      case Metric::MEAN_SQUARED_ERROR: name = "MeanSquaredError"; break;
-      case Metric::ROOT_MEAN_SQUARED_ERROR: name = "RootMeanSquaredError"; break;
-      case Metric::MEAN_ABSOLUTE_ERROR: name = "MeanAbsoluteError"; break;
+      case Metric::ACCURACY:
+        name = "Accuracy";
+        break;
+      case Metric::CATEGORICAL_CROSSENTROPY:
+        name = "CategoricalCrossEntropy";
+        break;
+      case Metric::SPARSE_CATEGORICAL_CROSSENTROPY:
+        name = "SparseCategoricalCrossEntropy";
+        break;
+      case Metric::MEAN_SQUARED_ERROR:
+        name = "MeanSquaredError";
+        break;
+      case Metric::ROOT_MEAN_SQUARED_ERROR:
+        name = "RootMeanSquaredError";
+        break;
+      case Metric::MEAN_ABSOLUTE_ERROR:
+        name = "MeanAbsoluteError";
+        break;
     }
     return formatter<string_view>::format(name, ctx);
-  } 
-  
+  }
 };
 
-}
+} // namespace fmt
 
 #endif

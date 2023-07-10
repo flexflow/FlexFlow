@@ -18,7 +18,7 @@ namespace Repartition {
 
 void forward_kernel(ffStream_t stream,
                     RepartitionPerDeviceState const *m,
-                    GenericTensorAccessorR const &input, 
+                    GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,

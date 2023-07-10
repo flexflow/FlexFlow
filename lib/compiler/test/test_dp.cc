@@ -19,7 +19,7 @@ struct TestCostEstimator : public ICostEstimator {
 TEST_CASE("optimal_cost") {
   auto g(NodeLabelledMultiDiGraph<PCGOperatorAttrs>::create<
          UnorderedNodeLabelledMultiDiGraph<PCGOperatorAttrs>>());
-  
+
   Node n0 = g.add_node(InputAttrs());
   Node n1 = g.add_node(RepartitionAttrs(ff_dim_t(0), 2));
   Node n2 = g.add_node(ElementScalarUnaryAttrs(OP_SCALAR_ADD, 0));
@@ -41,12 +41,14 @@ TEST_CASE("optimal_cost") {
   g.add_edge(e4);
 
   OptimizerPCG pcg = infer_tensor_shape(g);
-  auto allowed_machine_views = [](PCGOperatorAttrs const &, MachineResource const &) {
+  auto allowed_machine_views = [](PCGOperatorAttrs const &,
+                                  MachineResource const &) {
     // TODO
     return std::unordered_set<MachineView>{};
   };
   MachineResource resource(1, 1, 2);
-  Strategy s = optimal_cost(pcg, allowed_machine_views, TestCostEstimator{}, resource);
+  Strategy s =
+      optimal_cost(pcg, allowed_machine_views, TestCostEstimator{}, resource);
 
   // TODO: check result
 }

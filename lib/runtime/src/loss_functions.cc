@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/loss_function_kernels.h"
 #include "loss_functions.h"
+#include "kernels/loss_function_kernels.h"
 #include "legion.h"
 #include "profiling.h"
 #include "task_argument_accessor.h"
@@ -30,7 +30,7 @@ enum LossSlots {
   PROFILING_SETTINGS
 };
 
-TaskInvocation backward_invocation(LossAttrs const &attrs, 
+TaskInvocation backward_invocation(LossAttrs const &attrs,
                                    EnableProfiling enable_profiling,
                                    parallel_tensor_guid_t logit,
                                    parallel_tensor_guid_t label) {
@@ -40,22 +40,24 @@ TaskInvocation backward_invocation(LossAttrs const &attrs,
   binding.bind(LABEL, label);
   binding.bind(LOGIT_GRAD, grad(logit));
   binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
-  
+
   /* if ((logit_domain != part_domain) || (label_domain != part_domain)) { */ // TODO @lockshaw make sure this is still checked
   /*   fprintf(stderr, */
   /*           "Encounter inconsistency in parallelizing loss computation"); */
   /*   assert(false); */
   /* } */
-  return { LOSS_BWD_TASK_ID, binding };
+  return {LOSS_BWD_TASK_ID, binding};
 }
 
-static void loss_backward_task(Legion::Task const *task,
-                               std::vector<Legion::PhysicalRegion> const &regions,
-                               Legion::Context ctx,
-                               Legion::Runtime *runtime) {
+static void
+    loss_backward_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto attrs = acc.get_argument<LossAttrs>(LOSS_ATTRS);
-  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING_SETTINGS);
+  auto profiling_settings =
+      acc.get_argument<ProfilingSettings>(PROFILING_SETTINGS);
   auto batch_size = acc.get_argument<int>(BATCH_SIZE);
   auto logit_grad = acc.get_tensor<Permissions::RW>(LOGIT_GRAD);
   auto logit = acc.get_tensor<Permissions::RO>(LOGIT);
@@ -72,83 +74,83 @@ static void loss_backward_task(Legion::Task const *task,
     // assertion the outter-most dim is replica dim and replica degree is 1
     auto scce_attrs = get<SparseCategoricalCrossEntropyLossAttrs>(attrs);
     size_t ndim = logit.shape.num_dims();
-    assert (logit.shape.at(legion_dim_t(ndim - 1)) == 1);
+    assert(logit.shape.at(legion_dim_t(ndim - 1)) == 1);
     int num_samples = logit.shape.at(legion_dim_t(ndim - 2));
     int num_classes = logit.shape.get_volume() / num_samples;
     assert(logit_grad.shape == logit.shape);
     int k = 1;
     if (scce_attrs.replace_labels) {
-      k = logit.shape.at(legion_dim_t(ndim - 1)) / label.shape.at(legion_dim_t(ndim - 1)); // TODO FIXME something seems wrong here, isn't the numerator guaranteed to be 1?
+      k = logit.shape.at(legion_dim_t(ndim - 1)) /
+          label.shape.at(legion_dim_t(
+              ndim - 1)); // TODO FIXME something seems wrong here, isn't the
+                          // numerator guaranteed to be 1?
     }
-    assert (label.shape.sub_shape(legion_dim_t(1), nullopt) == logit.shape.sub_shape(legion_dim_t(1), nullopt));
-    assert(k * label.shape.at(legion_dim_t(ndim - 1)) == logit.shape.at(legion_dim_t(ndim - 1)));
-    assert (label.shape.at(legion_dim_t(0)) == 1);
+    assert(label.shape.sub_shape(legion_dim_t(1), nullopt) ==
+           logit.shape.sub_shape(legion_dim_t(1), nullopt));
+    assert(k * label.shape.at(legion_dim_t(ndim - 1)) ==
+           logit.shape.at(legion_dim_t(ndim - 1)));
+    assert(label.shape.at(legion_dim_t(0)) == 1);
 
-    profile(
-      sparse_categorical_crossentropy_loss_backward_kernel,
-      profiling_settings,
-      "[SparseCategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
-      get_float_ptr(logit_grad),
-      get_float_ptr(logit),
-      get_int32_ptr(label),
-      logit.shape.get_volume(),
-      logit_grad.shape.get_volume(),
-      num_samples,
-      num_classes,
-      k,
-      scale_factor);
+    profile(sparse_categorical_crossentropy_loss_backward_kernel,
+            profiling_settings,
+            "[SparseCategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
+            get_float_ptr(logit_grad),
+            get_float_ptr(logit),
+            get_int32_ptr(label),
+            logit.shape.get_volume(),
+            logit_grad.shape.get_volume(),
+            num_samples,
+            num_classes,
+            k,
+            scale_factor);
   } else {
-    assert (logit.shape == label.shape);
-    assert (logit_grad.shape == logit.shape);
+    assert(logit.shape == label.shape);
+    assert(logit_grad.shape == logit.shape);
     // assertion the outter-most dim is replica dim and replica degree is 1
     size_t ndim = logit.shape.num_dims();
-    assert (logit.shape.at(legion_dim_t(ndim - 1)) == 1);
+    assert(logit.shape.at(legion_dim_t(ndim - 1)) == 1);
     int num_samples = label.shape.at(legion_dim_t(ndim - 1));
     int num_channels = logit.shape.get_volume() / num_samples;
     switch (loss_type) {
-      case LossFunction::CATEGORICAL_CROSSENTROPY:
-      {
-        profile(
-          categorical_crossentropy_loss_backward_kernel,
-          profiling_settings,
-          "[CategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
-          get_float_ptr(logit_grad),
-          get_float_ptr(logit),
-          get_float_ptr(label),
-          logit.shape.get_volume(),
-          logit_grad.shape.get_volume(),
-          scale_factor);
+      case LossFunction::CATEGORICAL_CROSSENTROPY: {
+        profile(categorical_crossentropy_loss_backward_kernel,
+                profiling_settings,
+                "[CategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
+                get_float_ptr(logit_grad),
+                get_float_ptr(logit),
+                get_float_ptr(label),
+                logit.shape.get_volume(),
+                logit_grad.shape.get_volume(),
+                scale_factor);
         break;
       }
-      case LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE:
-      {
-        profile(
-          mean_squared_error_avg_loss_backward_kernel,
-          profiling_settings,
-          "[MeanSquaredErrorAvgLoss] backward_time = %.2lfms\n",
-          get_float_ptr(logit_grad),
-          get_float_ptr(logit),
-          get_float_ptr(label),
-          logit.shape.get_volume(),
-          logit_grad.shape.get_volume(),
-          scale_factor);
+      case LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE: {
+        profile(mean_squared_error_avg_loss_backward_kernel,
+                profiling_settings,
+                "[MeanSquaredErrorAvgLoss] backward_time = %.2lfms\n",
+                get_float_ptr(logit_grad),
+                get_float_ptr(logit),
+                get_float_ptr(label),
+                logit.shape.get_volume(),
+                logit_grad.shape.get_volume(),
+                scale_factor);
         break;
       }
-      case LossFunction::IDENTITY:
-      {
-        profile(
-          identity_loss_backward_kernel,
-          profiling_settings,
-          "[IdentityLoss] backward_time = %.2lfms\n",
-          get_float_ptr(logit_grad),
-          get_float_ptr(logit),
-          logit.shape.get_volume(),
-          logit_grad.shape.get_volume(),
-          scale_factor);
+      case LossFunction::IDENTITY: {
+        profile(identity_loss_backward_kernel,
+                profiling_settings,
+                "[IdentityLoss] backward_time = %.2lfms\n",
+                get_float_ptr(logit_grad),
+                get_float_ptr(logit),
+                logit.shape.get_volume(),
+                logit_grad.shape.get_volume(),
+                scale_factor);
         break;
       }
       default:
-        throw mk_runtime_error("Unsupported loss function {}. Please report this as an issue.", loss_type);
+        throw mk_runtime_error(
+            "Unsupported loss function {}. Please report this as an issue.",
+            loss_type);
     }
   }
 }
@@ -158,11 +160,11 @@ void register_task<LOSS_BWD_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<LossAttrs>(LOSS_ATTRS);
   sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);
-  sig.add_slot(LOGIT, { SlotType::TENSOR, Permissions::RO });
-  sig.add_slot(LABEL, { SlotType::TENSOR, Permissions::RO });
-  sig.add_slot(LOGIT_GRAD, { SlotType::TENSOR, Permissions::RW });
+  sig.add_slot(LOGIT, {SlotType::TENSOR, Permissions::RO});
+  sig.add_slot(LABEL, {SlotType::TENSOR, Permissions::RO});
+  sig.add_slot(LOGIT_GRAD, {SlotType::TENSOR, Permissions::RW});
 
   register_task(LOSS_BWD_TASK_ID, "Loss Backward", sig, loss_backward_task);
 }
 
-}
+} // namespace FlexFlow

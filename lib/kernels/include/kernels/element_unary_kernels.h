@@ -29,7 +29,6 @@ void init_kernel(ElementUnaryPerDeviceState *m,
                  Legion::Domain const &input_domain,
                  Legion::Domain const &output_domain);
 
-
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
@@ -39,11 +38,11 @@ void backward_kernel(ffStream_t stream,
                      ElementUnaryPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorR const &input_grad,
-                     GenericTensorAccessorW const &output,                     
+                     GenericTensorAccessorW const &output,
                      GenericTensorAccessorW const &output_grad);
 
-} 
-}
-}
+} // namespace ElementUnary
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif

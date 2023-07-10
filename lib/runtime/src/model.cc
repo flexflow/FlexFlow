@@ -19,24 +19,23 @@
 /* #else */
 /* #include "utils/hip_helper.h" */
 /* #endif */
+#include "legion/legion_utilities.h"
 #include "legion_parallel_tensor_shape.h"
 #include "mapper.h"
+#include "op-attrs/ops/noop.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "parallel_tensor_mapping.h"
 #include "task_argument_accessor.h"
-#include "utils/random_utils.h"
 #include "test_utils.h"
-#include "legion/legion_utilities.h"
+#include "utils/containers.h"
+#include "utils/random_utils.h"
 #include <dirent.h>
 #include <queue>
 #include <unordered_set>
-#include "utils/containers.h"
-#include "parallel_tensor_mapping.h"
-#include "op-attrs/ops/noop.h"
 
 using namespace Legion;
 
 namespace FlexFlow {
-
 
 /* std::unordered_map<int, int> output_to_input_mapping( */
 /*     std::vector<ParallelDimMappingRecord> const &mapping) { */
@@ -63,8 +62,8 @@ namespace FlexFlow {
 /* } */
 
 FFModel::FFModel(FFConfig const &_config,
-                 ComputationGraph const &cg, 
-                 ParallelComputationGraph const &pcg, 
+                 ComputationGraph const &cg,
+                 ParallelComputationGraph const &pcg,
                  Optimizer const &_optimizer,
                  RuntimeBacking const &_runtime_backing,
                  EnableProfiling const &_enable_profiling,
@@ -72,26 +71,21 @@ FFModel::FFModel(FFConfig const &_config,
                  SimEnvFactory const &_sim_factory,
                  LossAttrs const &_loss,
                  TensorMapping const &_tensor_map)
-    : config(_config),
-      computation_graph(cg),
-      pcg(pcg),
-      optimizer(_optimizer),
-      runtime_backing(_runtime_backing),
-      enable_profiling(_enable_profiling),
-      metrics(_metrics),
-      sim_factory(_sim_factory),
-      loss(_loss),
-      tensor_map(_tensor_map)
-  {
+    : config(_config), computation_graph(cg), pcg(pcg), optimizer(_optimizer),
+      runtime_backing(_runtime_backing), enable_profiling(_enable_profiling),
+      metrics(_metrics), sim_factory(_sim_factory), loss(_loss),
+      tensor_map(_tensor_map) {
   /* ArgumentMap argmap; */
   /* Rect<1> task_rect(Point<1>(0), */
-  /*                   Point<1>(config.workersPerNode * config.numNodes - 1)); */
+  /*                   Point<1>(config.workersPerNode * config.numNodes - 1));
+   */
   /* IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect); */
 
   /* for (PointInRectIterator<1> it(task_rect); it(); it++) { */
   /*   FFInitInfo info; */
   /*   info.workSpaceSize = config.workSpaceSize; */
-  /*   info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion; */
+  /*   info.allowTensorOpMathConversion =
+   * config.allow_tensor_op_math_conversion; */
   /*   argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo))); */
   /* } */
 
@@ -112,7 +106,8 @@ FFModel::FFModel(FFConfig const &_config,
   // }
 }
 
-/* using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>; */
+/* using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>;
+ */
 
 /* struct ArgumentsConstructionState { */
 /*   variant<Legion::TaskLauncher, Legion::IndexLauncher> launcher; */
@@ -122,69 +117,83 @@ FFModel::FFModel(FFConfig const &_config,
 /* }; */
 
 /* struct AddArgumentToTaskFunctor { */
-/*   AddArgumentToTaskFunctor(ArgumentsConstructionState &state, slot_id slot) : state(state), slot(slot) { } */
+/*   AddArgumentToTaskFunctor(ArgumentsConstructionState &state, slot_id slot) :
+ * state(state), slot(slot) { } */
 
 /*   ArgumentsConstructionState &state; */
 /*   slot_id slot; */
 
-/*   void operator()(ConcreteArgSpec const &a) { */ 
+/*   void operator()(ConcreteArgSpec const &a) { */
 /*     size_t start = state.sez.get_used_bytes(); */
 /*     a.serialize(state.sez); */
 /*     size_t end = state.sez.get_used_bytes(); */
-/*     state.args_fmt.insert({slot, TaskArgumentFormat(a.get_type_tag().get_type_idx(), start, end)}); */
+/*     state.args_fmt.insert({slot,
+ * TaskArgumentFormat(a.get_type_tag().get_type_idx(), start, end)}); */
 /*   } */
 
-/*   void operator()(CheckedTypedFuture const &a) { */ 
+/*   void operator()(CheckedTypedFuture const &a) { */
 /*     if (holds_alternative<Legion::TaskLauncher>(state.launcher)) { */
-/*       get<Legion::TaskLauncher>(state.launcher).add_future(a.get_unsafe()); */
+/*       get<Legion::TaskLauncher>(state.launcher).add_future(a.get_unsafe());
+ */
 /*     } else { */
-/*       get<Legion::IndexLauncher>(state.launcher).add_future(a.get_unsafe()); */
+/*       get<Legion::IndexLauncher>(state.launcher).add_future(a.get_unsafe());
+ */
 /*     } */
-/*     state.args_fmt.insert({slot, FutureArgumentFormat(a.get_type_tag().get_type_idx(), state.num_futures)}); */
+/*     state.args_fmt.insert({slot,
+ * FutureArgumentFormat(a.get_type_tag().get_type_idx(), state.num_futures)});
+ */
 /*     state.num_futures++; */
 /*   } */
 /* }; */
 
-/* static TaskArgumentFormat add_argument_to_task_arg(ArgumentsConstructionState &state, */
-/*                                                    slot_id slot, */ 
-/*                                                    FullyExecutableArgSpec const &arg_spec) { */
+/* static TaskArgumentFormat add_argument_to_task_arg(ArgumentsConstructionState
+ * &state, */
+/*                                                    slot_id slot, */
+/*                                                    FullyExecutableArgSpec
+ * const &arg_spec) { */
 /*   visit(AddArgumentToTaskFunctor{state, slot}, arg_spec); */
 /* } */
 
-
-//TaskArgumentsFormat create_serializable_format(TensorArgsFormat const &tensor_args_format,
-//                                               ConcreteArgsFormat const &concrete_args_format,
-//                                               FutureArgsFormat const &future_args_format,
-//                                               optional<IndexArgsFormat> const &index_args_format = nullopt);
-  /* TaskArgumentsFormat result; */
-  /* for (auto const &kv : concrete_args_format.fmts) { */
-  /*   result.insert(kv); */
-  /* } */
-  /* for (auto const &kv : future_args_format.fmts) { */
-  /*   result.insert(kv); */
-  /* } */
-  /* assert (!index_args_format.has_value()); */
-  /* for (parallel_tensor_guid_t const &guid : keys(tensor_args_format.region_idxs)) { */
-  /*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
-  /*   Legion::PrivilegeMode privs = to_legion(tensor_args_format.privs_map.at(guid)); */
-  /*   DataType datatype = tensor_args_format.datatypes.at(guid); */
-  /*   result.insert(region_idx, privs, datatype); */
-  /* } */
-  /* for (auto const &kv : tensor_args_format.nonvariadic_slot_to_tensor) { */
-  /*   slot_id slot = kv.first; */
-  /*   parallel_tensor_guid_t guid = kv.second; */
-  /*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
-  /*   result.insert(slot, region_idx); */
-  /* } */
-  /* for (auto const &kv : tensor_args_format.variadic_slot_to_tensor) { */
-  /*   slot_id slot = kv.first; */
-  /*   std::vector<parallel_tensor_guid_t> guids = kv.second; */
-  /*   std::vector<region_idx_t> region_idxs = transform(guids, lookup_in_l(tensor_args_format.region_idxs)); */
-  /*   result.insert(slot, region_idxs); */
-  /* } */
-  /* return result; */
+// TaskArgumentsFormat create_serializable_format(TensorArgsFormat const
+// &tensor_args_format,
+//                                                ConcreteArgsFormat const
+//                                                &concrete_args_format,
+//                                                FutureArgsFormat const
+//                                                &future_args_format,
+//                                                optional<IndexArgsFormat>
+//                                                const &index_args_format =
+//                                                nullopt);
+/* TaskArgumentsFormat result; */
+/* for (auto const &kv : concrete_args_format.fmts) { */
+/*   result.insert(kv); */
 /* } */
-
+/* for (auto const &kv : future_args_format.fmts) { */
+/*   result.insert(kv); */
+/* } */
+/* assert (!index_args_format.has_value()); */
+/* for (parallel_tensor_guid_t const &guid :
+ * keys(tensor_args_format.region_idxs)) { */
+/*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
+/*   Legion::PrivilegeMode privs =
+ * to_legion(tensor_args_format.privs_map.at(guid)); */
+/*   DataType datatype = tensor_args_format.datatypes.at(guid); */
+/*   result.insert(region_idx, privs, datatype); */
+/* } */
+/* for (auto const &kv : tensor_args_format.nonvariadic_slot_to_tensor) { */
+/*   slot_id slot = kv.first; */
+/*   parallel_tensor_guid_t guid = kv.second; */
+/*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
+/*   result.insert(slot, region_idx); */
+/* } */
+/* for (auto const &kv : tensor_args_format.variadic_slot_to_tensor) { */
+/*   slot_id slot = kv.first; */
+/*   std::vector<parallel_tensor_guid_t> guids = kv.second; */
+/*   std::vector<region_idx_t> region_idxs = transform(guids,
+ * lookup_in_l(tensor_args_format.region_idxs)); */
+/*   result.insert(slot, region_idxs); */
+/* } */
+/* return result; */
+/* } */
 
 // TaskReturnAccessor execute(TensorlessTaskInvocation const &invocation,
 //                            /* TensorArgsFormat const &tensor_args_format, */
@@ -193,12 +202,15 @@ FFModel::FFModel(FFConfig const &_config,
 //                            EnableProfiling enable_profiling) {
 //   TaskSignature sig = get_signature(invocation.task_id);
 //   TensorlessTaskBinding binding = invocation.binding;
-//   /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg, binding); */
-//   ConcreteArgsFormat concrete_args_format = process_concrete_args(binding);
-//   FutureArgsFormat future_args_format = process_future_args(binding);
-//   TaskInvocationArgsFormat task_invocation_args_format = process_task_invocation_args(binding, enable_profiling, backing);
-//   assert (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we don't handle these as I don't think they're used anywhere
-//   if (binding.invocation_type == InvocationType::STANDARD) {
+//   /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg,
+//   binding); */ ConcreteArgsFormat concrete_args_format =
+//   process_concrete_args(binding); FutureArgsFormat future_args_format =
+//   process_future_args(binding); TaskInvocationArgsFormat
+//   task_invocation_args_format = process_task_invocation_args(binding,
+//   enable_profiling, backing); assert
+//   (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we
+//   don't handle these as I don't think they're used anywhere if
+//   (binding.invocation_type == InvocationType::STANDARD) {
 //     assert (get_args_of_type<IndexArgSpec>(binding).empty());
 //     Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
 //                                                      future_args_format,
@@ -208,9 +220,10 @@ FFModel::FFModel(FFConfig const &_config,
 //     Future returned_future = backing.execute_task(launcher);
 //     return TaskReturnAccessor(sig.get_return_type(), returned_future);
 //   } else if (binding.invocation_type == InvocationType::INDEX) {
-//     parallel_tensor_guid_t index_space_determiner = binding.domain_spec.value();
-//     ParallelTensorBacking pt_backing = backing.at(index_space_determiner);
-//     IndexArgsFormat index_args_format = process_index_args(binding, 
+//     parallel_tensor_guid_t index_space_determiner =
+//     binding.domain_spec.value(); ParallelTensorBacking pt_backing =
+//     backing.at(index_space_determiner); IndexArgsFormat index_args_format =
+//     process_index_args(binding,
 //                                                            backing.get_domain(pt_backing.parallel_is));
 //     Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
 //                                                      future_args_format,
@@ -232,13 +245,15 @@ FFModel::FFModel(FFConfig const &_config,
 // }
 
 void init_operators(FFModel const &ff) {
-  std::unordered_map<operator_guid_t, OpTaskInvocation> init_invocations = init(ff.pcg);
+  std::unordered_map<operator_guid_t, OpTaskInvocation> init_invocations =
+      init(ff.pcg);
   ff.execute(init_invocations);
 }
 
 void forward(FFModel const &ff, int seq_length) {
   iter_config.seq_length = seq_length;
-  std::unordered_map<operator_guid_t, OpTaskInvocation> forward_invocations = forward(ff.pcg);
+  std::unordered_map<operator_guid_t, OpTaskInvocation> forward_invocations =
+      forward(ff.pcg);
   ff.execute(forward_invocations);
 }
 
@@ -255,7 +270,8 @@ void FFModel::backward(int seq_length) {
   // Compute the gradients of the final operator wrt loss
   Op const *final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
-  loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor.value());
+  loss_op->backward(
+      this, final_operator->outputs[0], parallel_label_tensor.value());
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = operators.size() - 1; l >= 0; l--) {
@@ -286,7 +302,7 @@ operator_guid_t get_final_operator(FFModel const &ff) {
   operator_guid_t final_op_id = get_only(get_sinks(ff.pcg.graph));
   // assert that the final operator has exactly one output
   Operator op = ff.pcg.at(final_op_id);
-  assert (get_num_outputs(op) == 1);
+  assert(get_num_outputs(op) == 1);
   return final_op_id;
 }
 
@@ -408,7 +424,8 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
   return false;
 }
 
-MachineView get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
+MachineView
+    get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
   gpu_id_t start = gpu_id_t(0);
   gpu_id_t stop = gpu_id_t(spec.num_nodes * spec.workersPerNode);
   return make_1d_machine_view(start, stop, 1);
@@ -427,7 +444,7 @@ static ParallelTensorShape get_parallel_tensor_shape(Tensor const &tensor) {
     dims.emplace_back(tensor->dims[j], 1, -1, false);
   }
   dims.emplace_back(1, 1, -1, true);
-  ParallelTensorShape shape = { dims, tensor->data_type };
+  ParallelTensorShape shape = {dims, tensor->data_type};
   return shape;
 }
 
@@ -435,168 +452,168 @@ Op *FFModel::create_operator_from_layer(
     Layer *layer, std::vector<ParallelTensor> const &inputs) {
   return make_operator_unsafe(*this, layer->attrs, inputs);
 
-  //switch (layer->op_type) {
-  //  case OP_INPUT: {
-  //    // Input op cannot have an input
-  //    assert(inputs.size() == 0);
-  //    Tensor tensor = layer->outputs[0];
-  //    // Current assume we add one dimension before each tensor
-  //    // create_parallel_tensor adds an NoOp into operators
-  //    ParallelTensorShape shape = get_parallel_tensor_shape(tensor);
-  //    ParallelTensor pt =
-  //        create_parallel_tensor(shape,
-  //                                               nullptr,
-  //                                               0,
-  //                                               true /*gradients*/,
-  //                                               tensor->tensor_guid);
-  //    // assert that this tensor hasn't been mapped before
-  //    assert(tensor->parallel_tensor == nullopt);
-  //    tensor->parallel_tensor = pt;
-  //    // start from data parllel tensor
-  //    if (config.only_data_parallel) {
-  //      Repartition *part = new Repartition(
-  //          *this, pt, shape.num_dims() - 1, config.numNodes * config.workersPerNode);
-  //      operators.push_back(part);
-  //    }
-  //    return operators[operators.size() - 1];
-  //  }
-  //  case OP_MULTIHEAD_ATTENTION: {
-  //    Op *op =
-  //        MultiHeadAttention::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_BATCHMATMUL: {
-  //    Op *op = BatchMatmul::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_CAST: {
-  //    Op *op = Cast::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_CONCAT: {
-  //    Op *op = Concat::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_CONV2D: {
-  //    Op *op = Conv2D::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_DROPOUT: {
-  //    Op *op = Dropout::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_EMBEDDING: {
-  //    Op *op = Embedding::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_EW_ADD:
-  //  case OP_EW_SUB:
-  //  case OP_EW_MUL:
-  //  case OP_EW_DIV:
-  //  case OP_EW_MAX:
-  //  case OP_EW_MIN: {
-  //    Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_EXP:
-  //  case OP_SIN:
-  //  case OP_COS:
-  //  case OP_SCALAR_MULTIPLY:
-  //  case OP_SCALAR_ADD:
-  //  case OP_SCALAR_SUB:
-  //  case OP_SCALAR_TRUE_DIV:
-  //  case OP_POW:
-  //  case OP_RELU:
-  //  case OP_SIGMOID:
-  //  case OP_TANH:
-  //  case OP_IDENTITY:
-  //  case OP_GELU:
-  //  case OP_ELU: {
-  //    Op *op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_FLAT: {
-  //    Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_GATHER: {
-  //    Op *op = Gather::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_LAYERNORM: {
-  //    Op *op = LayerNorm::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_LINEAR: {
-  //    Op *op = Linear::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_POOL2D: {
-  //    Op *op = Pool2D::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_REDUCE_SUM: {
-  //    Op *op = Reduce::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_RESHAPE: {
-  //    Op *op = Reshape::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_SOFTMAX: {
-  //    Op *op = Softmax::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_SPLIT: {
-  //    Op *op = Split::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_TRANSPOSE: {
-  //    Op *op = Transpose::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_TOPK: {
-  //    Op *op = TopK::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_GROUP_BY: {
-  //    Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_AGGREGATE: {
-  //    Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  case OP_AGG_SPEC: {
-  //    Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
-  //    operators.push_back(op);
-  //    return op;
-  //  }
-  //  default:
-  //    assert(false);
-  //}
+  // switch (layer->op_type) {
+  //   case OP_INPUT: {
+  //     // Input op cannot have an input
+  //     assert(inputs.size() == 0);
+  //     Tensor tensor = layer->outputs[0];
+  //     // Current assume we add one dimension before each tensor
+  //     // create_parallel_tensor adds an NoOp into operators
+  //     ParallelTensorShape shape = get_parallel_tensor_shape(tensor);
+  //     ParallelTensor pt =
+  //         create_parallel_tensor(shape,
+  //                                                nullptr,
+  //                                                0,
+  //                                                true /*gradients*/,
+  //                                                tensor->tensor_guid);
+  //     // assert that this tensor hasn't been mapped before
+  //     assert(tensor->parallel_tensor == nullopt);
+  //     tensor->parallel_tensor = pt;
+  //     // start from data parllel tensor
+  //     if (config.only_data_parallel) {
+  //       Repartition *part = new Repartition(
+  //           *this, pt, shape.num_dims() - 1, config.numNodes *
+  //           config.workersPerNode);
+  //       operators.push_back(part);
+  //     }
+  //     return operators[operators.size() - 1];
+  //   }
+  //   case OP_MULTIHEAD_ATTENTION: {
+  //     Op *op =
+  //         MultiHeadAttention::create_operator_from_layer(*this, layer,
+  //         inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_BATCHMATMUL: {
+  //     Op *op = BatchMatmul::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_CAST: {
+  //     Op *op = Cast::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_CONCAT: {
+  //     Op *op = Concat::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_CONV2D: {
+  //     Op *op = Conv2D::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_DROPOUT: {
+  //     Op *op = Dropout::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_EMBEDDING: {
+  //     Op *op = Embedding::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_EW_ADD:
+  //   case OP_EW_SUB:
+  //   case OP_EW_MUL:
+  //   case OP_EW_DIV:
+  //   case OP_EW_MAX:
+  //   case OP_EW_MIN: {
+  //     Op *op = ElementBinary::create_operator_from_layer(*this, layer,
+  //     inputs); operators.push_back(op); return op;
+  //   }
+  //   case OP_EXP:
+  //   case OP_SIN:
+  //   case OP_COS:
+  //   case OP_SCALAR_MULTIPLY:
+  //   case OP_SCALAR_ADD:
+  //   case OP_SCALAR_SUB:
+  //   case OP_SCALAR_TRUE_DIV:
+  //   case OP_POW:
+  //   case OP_RELU:
+  //   case OP_SIGMOID:
+  //   case OP_TANH:
+  //   case OP_IDENTITY:
+  //   case OP_GELU:
+  //   case OP_ELU: {
+  //     Op *op = ElementUnary::create_operator_from_layer(*this, layer,
+  //     inputs); operators.push_back(op); return op;
+  //   }
+  //   case OP_FLAT: {
+  //     Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_GATHER: {
+  //     Op *op = Gather::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_LAYERNORM: {
+  //     Op *op = LayerNorm::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_LINEAR: {
+  //     Op *op = Linear::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_POOL2D: {
+  //     Op *op = Pool2D::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_REDUCE_SUM: {
+  //     Op *op = Reduce::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_RESHAPE: {
+  //     Op *op = Reshape::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_SOFTMAX: {
+  //     Op *op = Softmax::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_SPLIT: {
+  //     Op *op = Split::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_TRANSPOSE: {
+  //     Op *op = Transpose::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_TOPK: {
+  //     Op *op = TopK::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_GROUP_BY: {
+  //     Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_AGGREGATE: {
+  //     Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   case OP_AGG_SPEC: {
+  //     Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
+  //     operators.push_back(op);
+  //     return op;
+  //   }
+  //   default:
+  //     assert(false);
+  // }
 }
 
 void FFModel::create_operators_from_layers() {
@@ -680,12 +697,10 @@ void FFModel::perform_fusion_optimizations() {
         for (int i = 0; i < fused->op_num_inputs[op]; i++) {
           int my_off = fused->op_input_idx[i + ioff];
           if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
-            assert(fused->inputs[my_off]->region ==
-                   old_op->inputs[i]->region);
+            assert(fused->inputs[my_off]->region == old_op->inputs[i]->region);
           } else if (fused->op_input_source[i + ioff] ==
                      FusedOp::SOURCE_OUTPUT) {
-            assert(fused->outputs[my_off]->region ==
-                   old_op->inputs[i]->region);
+            assert(fused->outputs[my_off]->region == old_op->inputs[i]->region);
           } else {
             assert(false);
           }
@@ -693,14 +708,12 @@ void FFModel::perform_fusion_optimizations() {
         for (int i = 0; i < fused->op_num_weights[op]; i++) {
           int my_off = fused->op_weight_idx[i + woff];
           assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
-          assert(fused->weights[my_off]->region ==
-                 old_op->weights[i]->region);
+          assert(fused->weights[my_off]->region == old_op->weights[i]->region);
         }
         for (int i = 0; i < fused->op_num_outputs[op]; i++) {
           int my_off = fused->op_output_idx[i + ooff];
           assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT);
-          assert(fused->outputs[my_off]->region ==
-                 old_op->outputs[i]->region);
+          assert(fused->outputs[my_off]->region == old_op->outputs[i]->region);
         }
         ioff += fused->op_num_inputs[op];
         woff += fused->op_num_weights[op];
@@ -751,7 +764,6 @@ void FFModel::perform_fusion_optimizations() {
   }
 }
 
-
 void FFModel::print_operator_regions() const {
   for (size_t i = 0; i < operators.size(); i++) {
     Op *op = operators[i];
@@ -778,7 +790,8 @@ void FFModel::print_operator_regions() const {
 void FFModel::create_label_tensor(LossType loss_type) {
   Op const *final_operator = get_final_operator();
 
-  std::vector<ParallelDim> p_dims = final_operator->outputs[0]->get_shape().dims;
+  std::vector<ParallelDim> p_dims =
+      final_operator->outputs[0]->get_shape().dims;
 
   std::vector<size_t> dims;
   // FIXME: Currently assume 1st input for 1st operator = batch_size
@@ -797,16 +810,17 @@ void FFModel::create_label_tensor(LossType loss_type) {
     label_type = DT_INT32;
   }
 
-  LegionParallelTensorShape label_p_shape = { p_dims, label_type };
-  LegionTensorShape label_shape = { dims, label_type };
+  LegionParallelTensorShape label_p_shape = {p_dims, label_type};
+  LegionTensorShape label_shape = {dims, label_type};
 
   // create label tensor
-  label_tensor = create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);   
-  parallel_label_tensor = create_parallel_tensor(label_p_shape);                                       
-  label_tensor.value()->parallel_tensor = parallel_label_tensor;                     
-  parallel_label_tensor.value()->machine_view =                                      
-      final_operator->outputs[0]->machine_view;                              
-  map_tensor(parallel_label_tensor.value(), 
+  label_tensor =
+      create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);
+  parallel_label_tensor = create_parallel_tensor(label_p_shape);
+  label_tensor.value()->parallel_tensor = parallel_label_tensor;
+  parallel_label_tensor.value()->machine_view =
+      final_operator->outputs[0]->machine_view;
+  map_tensor(parallel_label_tensor.value(),
              parallel_label_tensor.value()->owner_op,
              this->config.legion_config,
              this->index_space_mgr);
@@ -855,7 +869,7 @@ void FFModel::compile(LossType loss_type,
             "data-parallel PCG.\n");
   }
   this->create_operators_from_layers();
-  
+
   // Launch the graph optimize task
   this->execute_graph_optimize();
 
@@ -877,7 +891,7 @@ void FFModel::compile(LossType loss_type,
       assert(input->owner_op != NULL);
     }
 
-    for(ParallelTensor const &weight : op->weights) {
+    for (ParallelTensor const &weight : op->weights) {
       assert(weight->owner_op != NULL);
       assert(weight->region != LogicalRegion::NO_REGION);
       parameters.push_back(weight);
@@ -912,7 +926,7 @@ void FFModel::compile(LossType loss_type,
   this->print_operator_regions();
 
   this->create_label_tensor(loss_type);
-  
+
   // init optimizer
   assert(optimizer != NULL);
   optimizer->init();
@@ -941,4 +955,4 @@ void FFIterationConfig::reset() {
   seq_length = -1;
 }
 
-};
+}; // namespace FlexFlow

@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_STACK_VECTOR_H
 #define _FLEXFLOW_UTILS_STACK_VECTOR_H
 
-#include <array>
-#include <cassert>
 #include "hash-utils.h"
 #include "optional.h"
-#include <type_traits>
 #include "utils/type_traits.h"
+#include <array>
+#include <cassert>
+#include <type_traits>
 
 namespace FlexFlow {
 
@@ -17,45 +17,45 @@ public:
 
   template <typename Iterator>
   stack_vector(Iterator start, Iterator end) {
-    assert (end - start >= 0);
-    assert (end - start <= MAXSIZE);
+    assert(end - start >= 0);
+    assert(end - start <= MAXSIZE);
     for (; start < end; start++) {
       this->push_back(static_cast<T>(*start));
     }
   }
 
   operator std::vector<T>() {
-    return { this->begin(), this->end() };
+    return {this->begin(), this->end()};
   }
 
   void push_back(T const &t) {
-    assert (this->m_size < MAXSIZE);
+    assert(this->m_size < MAXSIZE);
     this->contents[this->m_size] = t;
     this->m_size++;
   }
 
-  template< class... Args >
-  void emplace_back( Args&&... args ) {
+  template <class... Args>
+  void emplace_back(Args &&...args) {
     this->contents.emplace_back(std::forward<Args>(args)...);
   }
 
   T const &back() const {
-    assert (this->m_size >= 1);
-    return this->contents[this->m_size-1].value();
+    assert(this->m_size >= 1);
+    return this->contents[this->m_size - 1].value();
   }
 
   T &back() {
-    assert (this->m_size >= 1);
-    return this->contents[this->m_size-1].value();
+    assert(this->m_size >= 1);
+    return this->contents[this->m_size - 1].value();
   }
 
   T const &at(std::size_t idx) const {
-    assert (idx < MAXSIZE);
+    assert(idx < MAXSIZE);
     return this->contents[idx].value();
   }
 
   T &at(std::size_t idx) {
-    assert (idx < MAXSIZE);
+    assert(idx < MAXSIZE);
     return this->contents[idx].value();
   }
 
@@ -69,30 +69,45 @@ public:
 
   template <bool IS_CONST>
   struct Iterator {
-    using iterator_category = std::random_access_iterator_tag;   
+    using iterator_category = std::random_access_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = T;
     using reference = typename std::conditional<IS_CONST, T const &, T &>::type;
     using pointer = typename std::conditional<IS_CONST, T const *, T *>::type;
 
-    typename std::conditional<IS_CONST, optional<T> const *, optional<T> *>::type ptr;
+    typename std::conditional<IS_CONST, optional<T> const *, optional<T> *>::
+        type ptr;
 
-    Iterator(typename std::conditional<IS_CONST, optional<T> const *, optional<T> *>::type ptr) : ptr(ptr) { }
+    Iterator(typename std::conditional<IS_CONST,
+                                       optional<T> const *,
+                                       optional<T> *>::type ptr)
+        : ptr(ptr) {}
 
-    template<bool WAS_CONST, typename = typename std::enable_if<IS_CONST || !WAS_CONST>::type>
-    Iterator(Iterator<WAS_CONST> const &rhs) : ptr(rhs.ptr) { }
+    template <bool WAS_CONST,
+              typename = typename std::enable_if<IS_CONST || !WAS_CONST>::type>
+    Iterator(Iterator<WAS_CONST> const &rhs) : ptr(rhs.ptr) {}
 
-    reference operator*() const { return ptr->value(); }
-    pointer operator->() const { return &ptr->value(); }
+    reference operator*() const {
+      return ptr->value();
+    }
+    pointer operator->() const {
+      return &ptr->value();
+    }
 
-    Iterator &operator++() { ptr++; return *this; }
-    Iterator operator++(int) { 
+    Iterator &operator++() {
+      ptr++;
+      return *this;
+    }
+    Iterator operator++(int) {
       Iterator tmp = *this;
       ++(*this);
       return tmp;
     }
 
-    Iterator &operator--() { ptr--; return *this; }
+    Iterator &operator--() {
+      ptr--;
+      return *this;
+    }
     Iterator operator--(int) {
       Iterator tmp = *this;
       --(*this);
@@ -107,15 +122,25 @@ public:
       return this->ptr != other.ptr;
     }
 
-    reference operator+=(difference_type diff) const { ptr += diff; return *this; }
-    Iterator operator+(difference_type diff) const { return { ptr + diff }; }
+    reference operator+=(difference_type diff) const {
+      ptr += diff;
+      return *this;
+    }
+    Iterator operator+(difference_type diff) const {
+      return {ptr + diff};
+    }
 
     friend Iterator operator+(difference_type diff, Iterator it) {
       return it + diff;
     }
 
-    reference operator-=(difference_type diff) const { ptr -= diff; return *this; }
-    Iterator operator-(difference_type diff) const { return { ptr - diff }; }
+    reference operator-=(difference_type diff) const {
+      ptr -= diff;
+      return *this;
+    }
+    Iterator operator-(difference_type diff) const {
+      return {ptr - diff};
+    }
 
     difference_type operator-(Iterator const &rhs) const {
       return this->ptr - rhs.ptr;
@@ -148,7 +173,7 @@ public:
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   using value_type = T;
-  using reference = T&;
+  using reference = T &;
   using const_reference = T const &;
 
   iterator begin() {
@@ -178,7 +203,7 @@ public:
   }
 
   reverse_iterator rbegin() {
-    return std::reverse_iterator<iterator>(this->end()); 
+    return std::reverse_iterator<iterator>(this->end());
   }
 
   const_reverse_iterator rbegin() const {
@@ -233,16 +258,22 @@ public:
   std::size_t size() const {
     return this->m_size;
   }
+
 private:
   std::size_t m_size = 0;
   std::array<optional<T>, MAXSIZE> contents;
 
-  static_assert(implies<is_equal_comparable<T>, is_equal_comparable<stack_vector>>::value, "");
-  static_assert(implies<is_neq_comparable<T>, is_neq_comparable<stack_vector>>::value, "");
-  static_assert(implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
+  static_assert(
+      implies<is_equal_comparable<T>, is_equal_comparable<stack_vector>>::value,
+      "");
+  static_assert(
+      implies<is_neq_comparable<T>, is_neq_comparable<stack_vector>>::value,
+      "");
+  static_assert(
+      implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
 };
 
-}
+} // namespace FlexFlow
 
 namespace std {
 
@@ -258,6 +289,6 @@ struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
   }
 };
 
-}
+} // namespace std
 
 #endif
