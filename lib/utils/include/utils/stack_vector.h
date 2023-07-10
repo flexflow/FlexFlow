@@ -36,7 +36,7 @@ public:
 
   template <class... Args>
   void emplace_back(Args &&...args) {
-    this->contents.emplace_back(std::forward<Args>(args)...);
+    this->contents.emplace_back(std::forward<Args>(args)...);//TODO(Note):std::array does not support emplace_back method, this maybe bug(by lambda)
   }
 
   T const &back() const {
