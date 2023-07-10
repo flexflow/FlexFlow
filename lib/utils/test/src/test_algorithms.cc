@@ -122,7 +122,7 @@ TEST_CASE("bfs") {
     n.push_back(g.add_node());
   }
 
-  add_edges(unsafe_create(g),
+  std::vector<DirectedEdge>  edges= 
             {
                 {n[0], n[1]},
                 {n[0], n[2]},
@@ -132,9 +132,12 @@ TEST_CASE("bfs") {
                 {n[4], n[5]},
                 {n[5], n[6]},
                 {n[6], n[0]},
-            });
+            };
 
-  std::vector<Node> ordering = bfs_ordering(g, {n[0]});
+  for(DirectedEdge edge: edges) {
+    g.add_edge(edge);
+  }
+  std::vector<Node> ordering = get_bfs_ordering(unsafe_create(g), {n[0]});
   auto CHECK_BEFORE = [&](int l, int r) {
     CHECK(index_of(ordering, n[l]).has_value());
     CHECK(index_of(ordering, n[r]).has_value());
@@ -158,16 +161,23 @@ TEST_CASE("bfs") {
 
 TEST_CASE("topological_ordering") {
   AdjacencyDiGraph g;
-  std::vector<Node> const n = add_nodes(g, 6);
-  add_edges(g,
+  std::vector<Node>  n ; 
+  for(int i = 0; i < 6; i++) {
+    n.push_back(g.add_node());
+  }
+  std::vector<DirectedEdge>  edges = 
             {{n[0], n[1]},
              {n[0], n[2]},
              {n[1], n[5]},
              {n[2], n[3]},
              {n[3], n[4]},
-             {n[4], n[5]}});
+             {n[4], n[5]}};
+  
+  for(DirectedEdge edge: edges) {
+    g.add_edge(edge);
+  }
 
-  std::vector<Node> ordering = topological_ordering(g);
+  std::vector<Node> ordering = get_topological_ordering(unsafe_create(g));
   auto CHECK_BEFORE = [&](int l, int r) {
     CHECK(index_of(ordering, n[l]).has_value());
     CHECK(index_of(ordering, n[r]).has_value());
