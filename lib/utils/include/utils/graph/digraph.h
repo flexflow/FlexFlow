@@ -71,7 +71,7 @@ public:
   }
 
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr): ptr(ptr) {}
-
+  static DiGraphView unsafe_create(IDiGraphView const &graphView);
 private:
   friend DiGraphView unsafe_create(IDiGraphView const &);
 

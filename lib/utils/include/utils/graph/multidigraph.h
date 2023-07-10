@@ -35,8 +35,6 @@ struct MultiDiEdge {
   NodePort srcIdx, dstIdx;
 };
 
-
-
 FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
 
 
@@ -136,6 +134,7 @@ public:
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){}
+  static MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
 private:
   
   friend struct MultiDiGraph;

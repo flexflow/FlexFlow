@@ -9,6 +9,7 @@
 #include "undirected.h"
 #include "utils/bidict.h"
 #include "utils/visitable.h"
+#include <bits/fs_path.h>
 #include <memory>
 #include <vector>
 
@@ -17,7 +18,7 @@ namespace FlexFlow {
 struct FlippedView : public IDiGraphView {
 public:
   FlippedView() = delete;
-  explicit FlippedView(DiGraphView const & g);
+  explicit FlippedView(DiGraphView const &);
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -102,7 +103,10 @@ namespace std {
 template <>
 struct hash<::FlexFlow::JoinNodeKey> {
   std::size_t operator()(::FlexFlow::JoinNodeKey const & key) const {
-    return std::hash<size_t>{}(static_cast<size_t>(key.node));
+    size_t h =0;
+    hash_combine(h, key.node);
+    hash_combine(h, key.direction);
+    return h;
   }
 };
 } // namespace std

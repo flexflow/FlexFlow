@@ -10,11 +10,6 @@ Node AdjacencyDiGraph::add_node() {
   return node;
 }
 
-NodePort AdjacencyDiGraph::add_node_port() {
-  NodePort nodeport{this->next_nodeport_idx};
-  this->next_nodeport_idx++;
-  return nodeport;
-}
 
 void AdjacencyDiGraph::add_node_unsafe(Node const &node) {
   adjacency[node];

@@ -92,7 +92,7 @@ DiGraphView contract_node(DiGraphView const &g , Node const &from, Node const &i
 
 DiGraphView apply_contraction(DiGraphView const & g, std::unordered_map<Node, Node> const & nodes){
   DiGraphView contractedView = g;  
-  for(auto kv : nodes){
+  for(auto const & kv : nodes){
     Node from = kv.first;
     Node into = kv.second;
     contractedView = contract_node(contractedView, from, into);
@@ -285,7 +285,7 @@ std::unordered_set<Node> get_sinks(MultiDiGraphView const & g){
 }
 
 DiGraphView flipped(DiGraphView const & g) {
-  return DiGraphView::create<FlippedView>(g);//TODO, maybe exists porblems
+  return DiGraphView::create<FlippedView>(g);
 
 }
 
@@ -501,7 +501,7 @@ optional<Node> imm_post_dominator(MultiDiGraphView const &g,
   return get_imm_post_dominators(g).at(n);
 }
 
-tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
+optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
   return get_imm_post_dominators(g).at(n);
 }
 

@@ -14,10 +14,10 @@ TEST_CASE("MultiDiGraph") {
   Node n1 = g.add_node();
   Node n2 = g.add_node();
   Node n3 = g.add_node();
-  NodePort p0 = g.add_node_port();
-  NodePort p1 = g.add_node_port();
-  NodePort p2 = g.add_node_port();
-  NodePort p3 = g.add_node_port(); 
+  NodePort p0{0};
+  NodePort p1{1};
+  NodePort p2{2};
+  NodePort p3{3}; 
   MultiDiEdge e0{n0, n3, p0, p3};
   MultiDiEdge e1{n1, n2, p0, p2};
   MultiDiEdge e2{n1, n3, p1, p3};
@@ -79,10 +79,7 @@ TEST_CASE("DiGraph") {
 
 TEST_CASE("traversal") {
   AdjacencyDiGraph g;
-  std::vector<Node> n;
-  for(int i = 0; i < 4; i++) {
-    n.push_back(g.add_node());
-  }
+  std::vector<Node> const n = add_nodes(g, 4);
   g.add_edge({n[0], n[1]});
   g.add_edge({n[1], n[2]});
   g.add_edge({n[2], n[3]});
@@ -108,7 +105,7 @@ TEST_CASE("traversal") {
     CHECK(get_dfs_ordering(unsafe_create(g), {n[0]}) == std::vector<Node>{n[0], n[1], n[2], n[3]});
     CHECK(is_acyclic(unsafe_create(g)) == false);
   }
-//   std::cout<<"********"<<std::endl;
+
 //   SUBCASE("nonlinear") {
 //     g.add_edge({n[1], n[3]});
 //     CHECK(is_acyclic(unsafe_create(g)) == true);//TODO, maybe a bug about the unchecked_dfs
@@ -117,10 +114,7 @@ TEST_CASE("traversal") {
 
 TEST_CASE("bfs") {
   AdjacencyDiGraph g;
-  std::vector<Node>  n ;
-  for(int i = 0; i < 7; i++) {
-    n.push_back(g.add_node());
-  }
+ std::vector<Node> const n = add_nodes(g, 7);
 
   std::vector<DirectedEdge>  edges= 
             {
@@ -173,7 +167,7 @@ TEST_CASE("topological_ordering") {
              {n[3], n[4]},
              {n[4], n[5]}};
   
-  for(DirectedEdge edge: edges) {
+  for(DirectedEdge const & edge: edges) {
     g.add_edge(edge);
   }
 

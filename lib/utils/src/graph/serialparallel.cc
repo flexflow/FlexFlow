@@ -133,10 +133,7 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
   return split;
 }
 
-SplitASTNode::SplitASTNode(SplitType type, SplitAST const & lhs, SplitAST const & rhs):type(type) {
-  children.push_back(lhs);
-  children.push_back(rhs);
-}
+SplitASTNode::SplitASTNode(SplitType type, SplitAST const & lhs, SplitAST const & rhs):type(type), children({lhs, rhs}){}
 
 SplitASTNode::SplitASTNode(SplitType type, std::vector<SplitAST> const & children):type(type), children(children){}
 

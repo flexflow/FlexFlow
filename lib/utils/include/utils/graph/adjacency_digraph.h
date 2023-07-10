@@ -12,7 +12,6 @@ class AdjacencyDiGraph : public IDiGraph {
 public:
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
-  NodePort add_node_port();
   void remove_node_unsafe(Node const &) override;
   void add_edge(Edge const &) override;
   void remove_edge(Edge const &) override;
@@ -34,7 +33,6 @@ public:
   AdjacencyDiGraph() = default;
 private:
   std::size_t next_node_idx = 0;
-  std::size_t next_nodeport_idx = 0;
   ContentsType adjacency;
 };
 
