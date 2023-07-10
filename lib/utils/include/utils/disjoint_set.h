@@ -54,7 +54,7 @@ public:
   std::map<T, T, Compare> get_mapping() const {
     std::map<T, T, Compare> mapping;
     for (T const &t : this->nodes) {
-      mapping[t] = this->ds.find(&t);
+      mapping[t] = *this->ds.find(&t);
     }
     return mapping;
   }
@@ -66,7 +66,7 @@ private:
     return &*it;
   }
 
-  m_disjoint_set<T> ds;
+  mutable m_disjoint_set<T> ds; //Note(lambda):add mutable, can make ds be mutable, so we can use the ds->find() in const function 
   std::set<T, Compare> nodes;
 };
 
