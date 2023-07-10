@@ -274,14 +274,8 @@ std::unordered_set<Node> get_sinks(DiGraphView const & g){
 }
 
 std::unordered_set<Node> get_sinks(MultiDiGraphView const & g){
-  std::unordered_set<Node> dsts ;
-  for(Node const &n : get_nodes(g)) {
-    auto outgoing = get_outgoing_edges(g, n);
-    if(outgoing.size() == 0){
-      dsts.insert(n);
-    }
-  }
-  return dsts;
+  DiGraphView digraph_view = as_digraph(g);
+  return get_sinks(digraph_view);
 }
 
 DiGraphView flipped(DiGraphView const & g) {
@@ -510,18 +504,11 @@ tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_
     std::unordered_set<Node> commonDoms = get_post_dominators(g).at(*nodes.begin());
 
     for (auto it = std::next(nodes.begin()); it != nodes.end(); ++it) {
-    Node currNode = *it;
-    std::unordered_set<Node> currDoms = get_post_dominators(g).at(currNode);
-
-    std::unordered_set<Node> intersection;
-    for (const auto &dom : commonDoms) {
-      if (currDoms.count(dom) > 0) {
-        intersection.insert(dom);
-      }
+        Node currNode = *it;
+        std::unordered_set<Node> currDoms = get_post_dominators(g).at(currNode);
+        std::unordered_set<Node> intersec = intersection(currDoms, commonDoms);
+        commonDoms = std::move(intersec);
     }
-
-    commonDoms = std::move(intersection);
-  }
 
   if (!commonDoms.empty()) {
     return *commonDoms.begin();
