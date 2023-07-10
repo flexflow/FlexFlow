@@ -18,24 +18,68 @@
 
 namespace FlexFlow {
 
+/**
+ * \class IsTrainable
+ * \brief Denotes trainability
+ * 
+ * An enum class denoting the two types of argument references:
+ *  (1) YES,
+ *  (2) NO,
+ * Used for InputVariadicParallelTensorDesc and bound using SimTaskBinding
+*/
 enum class IsTrainable { YES, NO };
 
+/**
+ * \class OpTensorSpec
+ * \brief 
+ * 
+ * Deleted default constructor; Must pass in a TensorRole and integer to make an object; 
+ * Has index and role (TensorRole)
+*/
 struct OpTensorSpec : public use_visitable_cmp<OpTensorSpec> {
 public:
   OpTensorSpec() = delete;
-  OpTensorSpec(TensorRole, int);
+  OpTensorSpec(TensorRole role, int idx);
 
 public:
   TensorRole role;
   int idx;
 };
 
-OpTensorSpec input_tensor(int);
-OpTensorSpec output_tensor(int);
-OpTensorSpec weight_tensor(int);
+/**
+ * \fn OpTensorSpec input_tensor(int)
+ * \param idx int denoting the index 
+*/
+OpTensorSpec input_tensor(int idx);
 
+/**
+ * \fn OpTensorSpec output_tensor(int idx)
+ * \param idx int denoting the index
+*/
+OpTensorSpec output_tensor(int idx);
+
+/**
+ * \fn OpTensorSpec weight_tensor(int idx)
+ * \param idx int denoting the index
+*/
+OpTensorSpec weight_tensor(int idx);
+
+/**
+ * \class OpArgRefType
+ * \brief Enum class for operation argument reference type
+ * 
+ * An enum class denoting the types of operation argument references:
+ *  (1) PER_DEVICE_OP_STATE,
+ * Used for OpArgRef and resolve operation (parallel_computation_graph.cc)
+*/
 enum class OpArgRefType { PER_DEVICE_OP_STATE };
 
+/**
+ * \class OpArgRef
+ * \brief Has reference type
+ * 
+ * Deleted default constructor—must pass in ref_type in order to create an object of ArgRef<T>
+*/
 template <typename T>
 struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
 public:
@@ -46,24 +90,52 @@ public:
   OpArgRefType ref_type;
 };
 
+/**
+ * \fn OpArgRef<T> per_device_op_state()
+ * \brief Returns OpArgRef with OpArgRefType
+*/
 template <typename T>
 OpArgRef<T> per_device_op_state() {
   return OpArgRef<T>(OpArgRefType::PER_DEVICE_OP_STATE);
 }
 
+/**
+ * \class OpArgRefSpec
+ * \brief Struct for Operator Argument Reference Specification
+ * 
+ * Deleted default constructor—requires both params in order to create an object of OpArgRefSpec<T>. 
+*/
 struct OpArgRefSpec {
 public:
   OpArgRefSpec() = delete;
 
+  /**
+   * \fn bool holds() const
+   * \brief Checks for expected type
+   * 
+   * Returns TRUE if typeid(T) is the expected type (this->type); 
+   * Used to check for correct/expected type and prevent possible errors;
+  */
   template <typename T>
   bool holds() const {
     return std::type_index(typeid(T)) == this->type;
   }
 
+  /**
+   * \fn OpArgRefType const &get_ref_type() const
+   * \brief Returns ref_type
+  */
   OpArgRefType const &get_ref_type() const {
     return this->ref_type;
   }
 
+  /**
+   * \fn static OpArgRefSpec create(OpArgRef<T> const &r)
+   * \brief Create OpArgRefSpec<T> from OpArgRef<T>
+   * \param r OpArgRef used to get ref_type
+   * 
+   * Asserts serializability then returns object of OpArgRefSpec
+  */
   template <typename T>
   static OpArgRefSpec create(OpArgRef<T> const &r) {
     static_assert(is_serializable<T>::value, "Type must be serializable");
@@ -86,12 +158,21 @@ using OpArgSpec = variant<ConcreteArgSpec,
                           ArgRefSpec,
                           TaskInvocationSpec>;
 
+/**
+ * \class OpTaskBinding
+ * \brief describes binding methods that insert argument specification
+ * 
+ * Has binding methods that insert argument specifications; 
+ * Has properties: arg_bindings (std::unordered_map<...>)and tensor_bindings
+ *  (std::unordered_map<...>);
+*/
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
   static_assert(is_subeq_variant<IndexTaskArgSpec, OpArgSpec>::value, "");
 
-  void bind(slot_id, OpTensorSpec const &);
+
+  void bind(slot_id name, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);
 
   template <typename T>

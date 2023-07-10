@@ -26,6 +26,14 @@ template <typename T>
 using IndexTypedTaskArg =
     variant<IndexArg<T>, TypedFutureMap<T>, TypedIndexTaskInvocation<T>>;
 
+/**
+ * \class IndexTaskBinding
+ * \brief
+ * 
+ * Deleted default constructor; 
+ * Create by passing in either: (1) parallel_tensor_guid_t, (2) slot_id, or (3) MachineView; 
+ * 
+*/
 struct IndexTaskBinding {
 public:
   IndexTaskBinding() = delete;
@@ -36,17 +44,43 @@ public:
   void bind(slot_id, parallel_tensor_guid_t const &);
   void bind(slot_id, ParallelTensorSpec const &);
 
+  /**
+   * \fn void bind_arg(slot_id name, StandardTypedTaskArg<T> const &arg)
+   * \param name slot_id to be binded as arg to standard_binding
+   * \param arg StandardTypeTypedTaskArg<T> to be binded as arg to standard_binding
+   * \brief binds a slot_id and StandardTypedTaskArg to property: standard_binding (TaskBinding)
+  */
   template <typename T>
   void bind_arg(slot_id name, StandardTypedTaskArg<T> const &arg) {
     this->standard_binding.bind_arg(name, arg);
   }
 
+  /**
+   * \fn void bind_arg(slot_id name, TypedFutureMap<T> const &)
+   * \param name slot_id to be binded as arg to standard_binding
+   * \param arg TypedFutureMap<T> to be binded as arg to standard_binding
+   * 
+   * todo: add brief (definition?)
+  */
   template <typename T>
-  void bind_arg(slot_id name, TypedFutureMap<T> const &);
+  void bind_arg(slot_id name, TypedFutureMap<T> const &arg);
 
+  /**
+   * \fn void bind_arg(slot_id name, TypedIndexTaskInvocation<T> const &arg)
+   * \param name slot_id to be binded as arg to standard_binding
+   * \param arg TypedIndexTaskInvocation<T> to be binded as arg to standard_binding
+   * 
+   * todo: add brief (definition?)
+  */
   template <typename T>
-  void bind_arg(slot_id name, TypedIndexTaskInvocation<T> const &);
+  void bind_arg(slot_id name, TypedIndexTaskInvocation<T> const &arg);
 
+  /**
+   * \fn void bind_index_arg(slot_id name, F const &f)
+   * \param name slot_id to be binded as arg to standard_binding
+   * \param f F
+   * \brief Creates an obj of IndexArgSpec (using f) and inserts name and the object as argument specifications
+  */
   template <typename F,
             typename T = decltype(std::declval<F>()(
                 std::declval<Legion::DomainPoint>()))>
@@ -55,11 +89,29 @@ public:
   }
 
 public:
-  void insert_arg_spec(slot_id, IndexTaskArgSpec const &);
+  /**
+   * \fn void insert_arg_spec(slot_id, IndexTaskArgSpec const &)
+   * \brief
+   * \param name slot_id
+   * \param arg_spec IndexTaskArgSpec passed into arg_bindings.insert()
+   * 
+   * todo add brief
+  */
+  void insert_arg_spec(slot_id name, IndexTaskArgSpec const &arg_spec);
 
   TaskBinding standard_binding;
 };
 
+/**
+ * \class IndexTaskInvocation
+ * \brief TaskInvocation with IndexTaskBinding and task_id_t
+ * 
+ * Compiled from OpTaskInvocation (different type of binding); 
+ * Compiles down to ExecutableIndexTaskInvocation; 
+ * Has task_id and binding (IndexTaskBinding); 
+ * Deleted default constructor-must pass in 
+ * task_id and binding;
+*/
 struct IndexTaskInvocation : public use_visitable_cmp<IndexTaskInvocation> {
 public:
   IndexTaskInvocation() = delete;
@@ -71,7 +123,7 @@ public:
   IndexTaskBinding binding;
 };
 
-} // namespace FlexFlow
+}
 
 VISITABLE_STRUCT(::FlexFlow::IndexTaskInvocation, task_id, binding);
 

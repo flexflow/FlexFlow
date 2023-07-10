@@ -8,14 +8,34 @@
 
 namespace FlexFlow {
 
+/**
+ * \class FutureArgsFormat
+ * \brief Structure for future arguments
+ * 
+ * Compiled from TensorlessIndexTaskBinding and TensorlessTaskBinding; Compiles to TaskArgumentsFormat and Legion::TaskArgument;
+*/
 struct FutureArgsFormat {
   std::vector<Legion::Future> futures;
   stack_map<slot_id, FutureArgumentFormat, MAX_NUM_TASK_ARGUMENTS> fmts;
 };
 
-FutureArgsFormat process_future_args(TensorlessTaskBinding const &);
-CheckedTypedFuture resolve_future_map_arg(CheckedTypedFuture const &,
-                                          Legion::Domain const &);
+/**
+ * \fn FutureArgsFormat process_future_args(TensorlessTaskBinding const &)
+ * \brief Processes future arguments
+ * \param binding A TensorlessTaskBinding to pass into get_args_of_type<T>()
+ * 
+ * \\todo add more detailed description
+*/
+FutureArgsFormat process_future_args(TensorlessTaskBinding const &binding);
+
+/**
+ * \fn CheckedTypedFuture resolve_future_map_arg(CheckedTypedFuture const &, Legion::Domain const &)
+ * \param checkedtypedfuture CheckedTypedFuture
+ * \param domain Legion::Domain
+ * \\todo doesn't have definition
+*/
+CheckedTypedFuture resolve_future_map_arg(CheckedTypedFuture const &checkedtypedfuture,
+                                          Legion::Domain const &domain);
 
 } // namespace FlexFlow
 
