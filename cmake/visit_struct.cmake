@@ -8,7 +8,7 @@ target_include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/deps/visit_struct/include/
 )
 set_target_properties(
-  ${project_target} 
+  visit_struct
   PROPERTIES 
     CXX_STANDARD 11
     CXX_STANDARD_REQUIRED YES

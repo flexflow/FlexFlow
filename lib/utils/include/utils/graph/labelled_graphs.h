@@ -96,8 +96,9 @@ public:
   NodeLabel &at(Node const &n) {
     return this->ptr->at(n);
   }
-  // NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
-  NodeLabel const &at(Node const &n) const;
+  NodeLabel const &at(Node const &n) const {
+    return this->ptr->at(n);
+  }
 
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
     return this->ptr->add_edge(e, l);
@@ -143,6 +144,9 @@ public:
     swap(*this, other);
     return *this;
   }
+
+  operator MultiDiGraphView() const;
+  operator GraphView() const;
 
   friend void swap(OutputLabelledMultiDiGraph &lhs,
                    OutputLabelledMultiDiGraph &rhs) {

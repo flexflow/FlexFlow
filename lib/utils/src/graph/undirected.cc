@@ -4,7 +4,7 @@
 
 namespace FlexFlow {
 
-UndirectedEdge::UndirectedEdge(Node src, Node dst)
+UndirectedEdge::UndirectedEdge(Node const &src, Node const &dst)
     : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger)) {}
 
 UndirectedEdgeQuery::UndirectedEdgeQuery(
@@ -23,14 +23,6 @@ UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
   }
 }
 
-UndirectedGraph::UndirectedGraph(UndirectedGraph const &other)
-    : ptr(other.ptr->clone()) {}
-
-UndirectedGraph &UndirectedGraph::operator=(UndirectedGraph other) {
-  swap(*this, other);
-  return *this;
-}
-
 void swap(UndirectedGraph &lhs, UndirectedGraph &rhs) {
   using std::swap;
 
@@ -38,23 +30,23 @@ void swap(UndirectedGraph &lhs, UndirectedGraph &rhs) {
 }
 
 Node UndirectedGraph::add_node() {
-  return this->ptr->add_node();
+  return this->ptr.get_mutable()->add_node();
 }
 
 void UndirectedGraph::add_node_unsafe(Node const &n) {
-  return this->ptr->add_node_unsafe(n);
+  return this->ptr.get_mutable()->add_node_unsafe(n);
 }
 
 void UndirectedGraph::remove_node_unsafe(Node const &n) {
-  return this->ptr->remove_node_unsafe(n);
+  return this->ptr.get_mutable()->remove_node_unsafe(n);
 }
 
 void UndirectedGraph::add_edge(UndirectedEdge const &e) {
-  return this->ptr->add_edge(e);
+  return this->ptr.get_mutable()->add_edge(e);
 }
 
 void UndirectedGraph::remove_edge(UndirectedEdge const &e) {
-  return this->ptr->remove_edge(e);
+  return this->ptr.get_mutable()->remove_edge(e);
 }
 
 std::unordered_set<UndirectedEdge>

@@ -12,7 +12,7 @@ namespace FlexFlow {
 /* template <typename ...Ts> */
 /* using variant = ::mpark::variant<Ts...>; */
 
-using namespace mpark;
+using namespace ::mpark;
 
 /* template <typename T> */
 /* using optional = ::tl::optional<T>; */
@@ -31,6 +31,9 @@ using namespace mpark;
  * mpark::variant<Args2...>> { */
 /*     using type = mpark::variant<Args1..., Args2...>; */
 /* }; */
+template <template <typename, typename = void> class Cond, typename... Ts>
+struct elements_satisfy_impl<Cond, void, variant<Ts...>>
+    : elements_satisfy<Cond, std::tuple<Ts...>> {};
 
 template <typename T, typename Variant>
 struct is_in_variant;
@@ -41,6 +44,23 @@ struct is_in_variant<T, variant<Head, Rest...>>
     : is_in_variant<T, variant<Rest...>> {};
 template <typename T>
 struct is_in_variant<T, variant<>> : std::false_type {};
+
+template <typename T, size_t Idx, typename Variant>
+struct variant_idx_helper;
+template <typename T, size_t Idx, typename... Rest>
+struct variant_idx_helper<T, Idx, variant<T, Rest...>>
+    : std::integral_constant<int, Idx> {};
+template <typename T, size_t Idx, typename Head, typename... Rest>
+struct variant_idx_helper<T, Idx, variant<Head, Rest...>>
+    : variant_idx_helper<T, (Idx + 1), variant<Rest...>> {};
+
+template <typename T, typename Variant>
+struct index_of_type : variant_idx_helper<T, 0, Variant> {
+  static_assert(is_in_variant<T, Variant>::value, "");
+};
+
+static_assert(index_of_type<int, variant<float, double, int, bool>>::value == 2,
+              "");
 
 template <typename Variant1, typename Variant2>
 struct is_subeq_variant;
@@ -78,15 +98,6 @@ template <typename... Args2>
 struct variant_join_helper<variant<>, variant<Args2...>> {
   using type = variant<Args2...>;
 };
-
-template <template <typename, typename = void> class Cond,
-          typename Head,
-          typename... Ts>
-struct elements_satisfy_impl<Cond, void, variant<Head, Ts...>>
-    : conjunction<Cond<Head>, elements_satisfy<Cond, variant<Ts...>>> {};
-
-template <template <typename, typename = void> class Cond>
-struct elements_satisfy_impl<Cond, void, variant<>> : std::true_type {};
 
 template <class Variant1, class Variant2>
 using variant_join = typename variant_join_helper<Variant1, Variant2>::type;

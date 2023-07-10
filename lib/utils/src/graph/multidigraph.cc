@@ -2,12 +2,12 @@
 
 namespace FlexFlow {
 
-MultiDiEdge::MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx)
-    : src(src), dst(dst), srcIdx(srcIdx), dstIdx(dstIdx) {}
+MultiDiInput get_input(MultiDiEdge const &e) {
+  return {e.dst, e.dstIdx};
+}
 
-std::ostream &operator<<(std::ostream &s, MultiDiEdge const &e) {
-  return (s << "MultiDiEdge<" << e.src.value() << ":" << e.srcIdx << " -> "
-            << e.dst.value() << ":" << e.dstIdx << ">");
+MultiDiOutput get_output(MultiDiEdge const &e) {
+  return {e.src, e.srcIdx};
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(
@@ -39,7 +39,7 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_node(Node const &n) const {
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idxs(
-    std::unordered_set<std::size_t> const &idxs) const {
+    std::unordered_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e{*this};
   if (e.srcIdxs != tl::nullopt) {
     throw std::runtime_error("expected srcIdxs == tl::nullopt");
@@ -48,12 +48,12 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idxs(
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(std::size_t idx) const {
+MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(NodePort const &idx) const {
   return this->with_src_idxs({idx});
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idxs(
-    std::unordered_set<std::size_t> const &idxs) const {
+    std::unordered_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e{*this};
   if (e.dstIdxs != tl::nullopt) {
     throw std::runtime_error("expected dstIdxs == tl::nullopt");
@@ -62,7 +62,7 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idxs(
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(std::size_t idx) const {
+MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const &idx) const {
   return this->with_dst_idxs({idx});
 }
 
@@ -76,38 +76,34 @@ void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-MultiDiGraph::MultiDiGraph(MultiDiGraph const &other)
-    : ptr(other.ptr->clone()) {}
-
-MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
-  swap(*this, other);
-  return *this;
-}
-
 void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
   using std::swap;
 
   swap(lhs.ptr, rhs.ptr);
 }
 
+MultiDiGraph::operator MultiDiGraphView() const {
+  return MultiDiGraphView(this->ptr.get());
+}
+
 Node MultiDiGraph::add_node() {
-  return this->ptr->add_node();
+  return this->ptr.get_mutable()->add_node();
 }
 
 void MultiDiGraph::add_node_unsafe(Node const &n) {
-  return this->ptr->add_node_unsafe(n);
+  return this->ptr.get_mutable()->add_node_unsafe(n);
 }
 
 void MultiDiGraph::remove_node_unsafe(Node const &n) {
-  return this->ptr->remove_node_unsafe(n);
+  return this->ptr.get_mutable()->remove_node_unsafe(n);
 }
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
-  return this->ptr->add_edge(e);
+  return this->ptr.get_mutable()->add_edge(e);
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
-  return this->ptr->remove_edge(e);
+  return this->ptr.get_mutable()->remove_edge(e);
 }
 
 std::unordered_set<MultiDiEdge>

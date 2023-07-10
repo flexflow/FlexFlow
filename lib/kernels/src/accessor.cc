@@ -2,11 +2,6 @@
 
 namespace FlexFlow {
 
-GenericTensorAccessorW::GenericTensorAccessorW(DataType data_type,
-                                               ArrayShape const &shape,
-                                               void *ptr)
-    : data_type(data_type), shape(shape), ptr(ptr) {}
-
 int32_t *get_int32_ptr(GenericTensorAccessorW const &a) {
   return get<DataType::INT32>(a);
 }
@@ -51,14 +46,6 @@ std::vector<half *>
     get_half_ptrs(std::vector<GenericTensorAccessorW> const &a) {
   return get<DataType::HALF>(a);
 }
-
-GenericTensorAccessorR::GenericTensorAccessorR(DataType data_type,
-                                               ArrayShape const &shape,
-                                               void const *ptr)
-    : data_type(data_type), shape(shape), ptr(ptr) {}
-
-GenericTensorAccessorR::GenericTensorAccessorR(GenericTensorAccessorW const &w)
-    : data_type(w.data_type), shape(w.shape), ptr(w.ptr) {}
 
 int32_t const *get_int32_ptr(GenericTensorAccessorR const &a) {
   return get<DataType::INT32>(a);

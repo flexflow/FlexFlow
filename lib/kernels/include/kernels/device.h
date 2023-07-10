@@ -13,14 +13,7 @@
 #error "Unknown device"
 #endif
 
-#if defined(FF_USE_CUDA)
-#include <cuda_fp16.h>
-#elif defined(FF_USE_HIP_CUDA)
-#include <cuda_fp16.h>
-#elif defined(FF_USE_HIP_ROCM)
-#include <hip/hip_fp16.h>
-#endif
-
+#include "utils/fp16.h"
 #include <cassert>
 #include <iostream>
 #include <sstream>

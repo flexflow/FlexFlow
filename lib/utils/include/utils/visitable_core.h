@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_VISITABLE_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_VISITABLE_CORE_H
 
+#include "utils/required_core.h"
+#include "utils/tuple.h"
 #include "visit_struct/visit_struct.hpp"
 
 #define VISITABLE_STRUCT_EMPTY(STRUCT_NAME)                                    \
@@ -50,13 +52,6 @@ namespace FlexFlow {
 template <typename T>
 using is_visitable = ::visit_struct::traits::is_visitable<T>;
 
-template <typename... Args>
-struct tuple_prepend;
-
-template <typename T, typename... Args>
-struct tuple_prepend<T, std::tuple<Args...>> {
-  using type = std::tuple<T, Args...>;
-};
 template <typename T, int i, typename Enable = void>
 struct visit_as_tuple_helper;
 
@@ -66,8 +61,8 @@ struct visit_as_tuple_helper<
     i,
     typename std::enable_if<(
         i < visit_struct::traits::visitable<T>::field_count)>::type> {
-  using type = typename tuple_prepend<
-      typename visit_struct::type_at<i, T>,
+  using type = typename tuple_prepend_type<
+      remove_req_t<visit_struct::type_at<i, T>>,
       typename visit_as_tuple_helper<T, i + 1>::type>::type;
 };
 
@@ -81,7 +76,15 @@ struct visit_as_tuple_helper<
 };
 
 template <typename T>
-using visit_as_tuple = typename visit_as_tuple_helper<T, 0>::type;
+using visit_as_tuple = visit_as_tuple_helper<T, 0>;
+
+template <typename T>
+using visit_as_tuple_t = typename visit_as_tuple<T>::type;
+
+template <typename T>
+struct field_count : std::integral_constant<
+                         std::size_t,
+                         ::visit_struct::traits::visitable<T>::field_count> {};
 
 } // namespace FlexFlow
 

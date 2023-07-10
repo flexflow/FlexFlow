@@ -10,26 +10,26 @@ struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
   InputMultiDiEdge() = delete;
   InputMultiDiEdge(std::pair<std::size_t, std::size_t> const &,
                    Node const &,
-                   std::size_t const &);
+                   NodePort const &);
 
   std::pair<std::size_t, std::size_t>
       uid; // necessary to differentiate multiple input edges from different
            // sources resulting from a graph cut
   Node dst;
-  std::size_t dstIdx;
+  NodePort dstIdx;
 };
 
 struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
   OutputMultiDiEdge() = delete;
   OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &,
                     Node const &,
-                    std::size_t const &);
+                    NodePort const &);
 
   std::pair<std::size_t, std::size_t>
       uid; // necessary to differentiate multiple output edges from different
            // sources resulting from a graph cut
   Node src;
-  std::size_t srcIdx;
+  NodePort srcIdx;
 };
 
 using OpenMultiDiEdge =
@@ -44,16 +44,16 @@ bool is_output_edge(OpenMultiDiEdge const &);
 bool is_standard_edge(OpenMultiDiEdge const &);
 
 struct OutputMultiDiEdgeQuery {
-  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt;
-  tl::optional<std::unordered_set<std::size_t>> srcIdxs = tl::nullopt;
+  optional<std::unordered_set<Node>> srcs = nullopt;
+  optional<std::unordered_set<NodePort>> srcIdxs = nullopt;
 
   static OutputMultiDiEdgeQuery all();
   static OutputMultiDiEdgeQuery none();
 };
 
 struct InputMultiDiEdgeQuery {
-  tl::optional<std::unordered_set<Node>> dsts = tl::nullopt;
-  tl::optional<std::unordered_set<std::size_t>> dstIdxs = tl::nullopt;
+  optional<std::unordered_set<Node>> dsts = nullopt;
+  optional<std::unordered_set<NodePort>> dstIdxs = nullopt;
 
   static InputMultiDiEdgeQuery all();
   static InputMultiDiEdgeQuery none();

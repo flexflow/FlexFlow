@@ -76,10 +76,11 @@ Op *Reshape::create_operator_from_layer(
     std::vector<ParallelTensor> const &inputs) {
   std::vector<int> shape;
   layer->get_int_vector_property("shape", shape);
-  return new Reshape(model, inputs[0], shape, layer->name);
+  return new Reshape(model, layer->layer_guid, inputs[0], shape, layer->name);
 }
 
 Reshape::Reshape(FFModel &model,
+                 LayerID const &_layer_guid,
                  const ParallelTensor input,
                  std::vector<int> const &_shape,
                  char const *name)
@@ -91,6 +92,7 @@ Reshape::Reshape(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          input) {
+  layer_guid = _layer_guid;
   shape_length = _shape.size();
   assert(shape_length <= MAX_TENSOR_DIM);
   for (int i = 0; i < shape_length; i++) {
@@ -137,7 +139,7 @@ Reshape::Reshape(FFModel &model,
                  ReshapeParams const &params,
                  const ParallelTensor input,
                  char const *name)
-    : Reshape(model, input, params.shape, name) {}
+    : Reshape(model, params.layer_guid, input, params.shape, name) {}
 
 void Reshape::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -290,6 +292,7 @@ ReshapeParams Reshape::get_params() const {
   }
   ReshapeParams params;
   params.shape = shape_vec;
+  params.layer_guid = this->layer_guid;
   return params;
 }
 
@@ -405,6 +408,7 @@ void Reshape::serialize(Legion::Serializer &sez) const {
   for (size_t i = 0; i < this->shape_length; i++) {
     sez.serialize(this->shape_array[i]);
   }
+  sez.serialize(this->layer_guid.id);
 }
 
 using PCG::Node;
@@ -422,7 +426,14 @@ Node Reshape::deserialize(FFModel &ff,
     dez.deserialize(value);
     shape.push_back(value);
   }
-  return ff.get_or_create_node<Reshape>(inputs[0], {shape});
+  size_t id;
+  dez.deserialize(id);
+  LayerID layer_guid(id);
+
+  ReshapeParams params;
+  params.shape = shape;
+  params.layer_guid = layer_guid;
+  return ff.get_or_create_node<Reshape>(inputs[0], params);
 }
 
 Op *Reshape::materialize(FFModel &ff,
@@ -433,7 +444,7 @@ Op *Reshape::materialize(FFModel &ff,
   for (size_t i = 0; i < this->shape_length; i++) {
     shape.push_back(shape_array[i]);
   }
-  return new Reshape(ff, inputs[0], shape, this->name);
+  return new Reshape(ff, this->layer_guid, inputs[0], shape, this->name);
 }
 
 }; // namespace FlexFlow
@@ -446,6 +457,7 @@ size_t hash<FlexFlow::ReshapeParams>::operator()(
   for (int n : params.shape) {
     hash_combine(key, n);
   }
+  hash_combine(key, params.layer_guid.id);
   return key;
 }
 }; // namespace std

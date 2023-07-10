@@ -21,7 +21,7 @@ target_include_directories(
 target_link_libraries(
   ${project_target}
   op-attrs
-  nlohmann_json::nlohmann_json
+  json
 )
 set_target_properties(
   ${project_target} 
@@ -31,4 +31,5 @@ set_target_properties(
     CXX_EXTENSIONS NO
 )
 
+add_subdirectory(ffi)
 # add_subdirectory(test)

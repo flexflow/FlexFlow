@@ -3,9 +3,6 @@
 
 namespace FlexFlow {
 
-AggregateAttrs::AggregateAttrs(int _n, float _lambda_bal)
-    : n(_n), lambda_bal(_lambda_bal) {}
-
 DataType get_datatype(AggregateAttrs const &) {
   return DataType::FLOAT;
 }

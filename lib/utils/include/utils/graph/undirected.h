@@ -1,27 +1,25 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 #define _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
-#include "utils/maybe_owned_ref.h"
 #include "utils/unique.h"
 #include <unordered_set>
 
 namespace FlexFlow {
 
-struct UndirectedEdge : use_visitable_cmp<UndirectedEdge> {
+struct UndirectedEdge : public use_visitable_cmp<UndirectedEdge> {
 public:
   UndirectedEdge() = delete;
-  UndirectedEdge(Node src, Node dst);
+  UndirectedEdge(Node const &src, Node const &dst);
 
 public:
   Node smaller, bigger;
 };
+FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::UndirectedEdge, smaller, bigger);
-MAKE_VISIT_HASHABLE(::FlexFlow::UndirectedEdge);
 
 namespace FlexFlow {
 
@@ -68,10 +66,6 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
-  operator maybe_owned_ref<IUndirectedGraphView const>() const {
-    return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
-  }
-
   IUndirectedGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -93,8 +87,7 @@ private:
 private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
-
-UndirectedGraphView unsafe(IUndirectedGraphView const &);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
@@ -137,13 +130,9 @@ private:
   UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
 
 private:
-  std::unique_ptr<IUndirectedGraph> ptr;
+  cow_ptr_t<IUndirectedGraph> ptr;
 };
-
-static_assert(std::is_copy_constructible<UndirectedGraph>::value, "");
-static_assert(std::is_move_constructible<UndirectedGraph>::value, "");
-static_assert(std::is_copy_assignable<UndirectedGraph>::value, "");
-static_assert(std::is_move_assignable<UndirectedGraph>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraph);
 
 } // namespace FlexFlow
 

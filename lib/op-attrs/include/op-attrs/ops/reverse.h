@@ -7,22 +7,12 @@
 
 namespace FlexFlow {
 
-struct ReverseAttrs : public use_visitable_cmp<ReverseAttrs> {
-public:
-  ReverseAttrs() = delete;
-  explicit ReverseAttrs(ff_dim_t const &axis);
-
-public:
+struct ReverseAttrs {
   ff_dim_t axis;
 };
+FF_VISITABLE_STRUCT(ReverseAttrs, axis);
+CHECK_VALID_OP_ATTR(ReverseAttrs);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ReverseAttrs, axis);
-MAKE_VISIT_HASHABLE(::FlexFlow::ReverseAttrs);
-
-namespace FlexFlow {
-static_assert(is_valid_opattr<ReverseAttrs>::value, "");
-}
 
 #endif

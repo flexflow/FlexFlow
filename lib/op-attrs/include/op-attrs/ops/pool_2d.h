@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_POOL_2D_ATTRS_H
 #define _FLEXFLOW_POOL_2D_ATTRS_H
 
+#include "core.h"
 #include "op-attrs/activation.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
@@ -12,36 +13,23 @@ enum class PoolOp {
   AVG,
 };
 
-struct Pool2DAttrs : use_visitable_cmp<Pool2DAttrs> {
-public:
-  Pool2DAttrs() = delete;
-  Pool2DAttrs(int kernel_h,
-              int kernel_w,
-              int stride_h,
-              int stride_w,
-              int padding_h,
-              int padding_w,
-              PoolOp pool_type,
-              Activation activation);
-
-public:
-  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  PoolOp pool_type;
-  Activation activation;
+struct Pool2DAttrs {
+  req<int> kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  req<PoolOp> pool_type;
+  req<Activation> activation;
 };
+FF_VISITABLE_STRUCT(Pool2DAttrs,
+                    kernel_h,
+                    kernel_w,
+                    stride_h,
+                    stride_w,
+                    padding_h,
+                    padding_w,
+                    pool_type,
+                    activation);
+CHECK_VALID_OP_ATTR(Pool2DAttrs);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::Pool2DAttrs,
-                 kernel_h,
-                 kernel_w,
-                 stride_h,
-                 stride_w,
-                 padding_h,
-                 padding_w,
-                 pool_type,
-                 activation);
-MAKE_VISIT_HASHABLE(::FlexFlow::Pool2DAttrs);
 
 namespace fmt {
 

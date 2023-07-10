@@ -1,4 +1,4 @@
-set(NCCL_NAME nccl)
+set(NCCL_NAME nccl_internal)
 # set(NCCL_CUDA_ARCH "-gencode=arch=compute_${CUDA_ARCH},code=sm_${CUDA_ARCH}")
 # message("NCCL_CUDA_ARCH: ${NCCL_CUDA_ARCH}")
 
@@ -74,21 +74,22 @@ if(NCCL_URL)
   list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
   install(DIRECTORY ${NCCL_INCLUDE_DIR}/ DESTINATION include)
   install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
-  
+    
+  set(NCCL_LIB "${INSTALL_DIR}/lib/libnccl${LIBEXT}")
 else()
   # Build NCCL from source
   message(STATUS "Building NCCL from source")
   list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
-  
+
   include(ExternalProject)
   ExternalProject_Add(${NCCL_NAME}
-   SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/${NCCL_NAME}
-   PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-   INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-   BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/libnccl${LIBEXT}
+   SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/nccl
+   PREFIX ${CMAKE_BINARY_DIR}/deps/nccl
+   INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/nccl
+   BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/deps/nccl/lib/libnccl${LIBEXT}
    INSTALL_COMMAND ""
    CONFIGURE_COMMAND ""
-   BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}" "CXX=${CMAKE_CXX_COMPILER}" CC="${CMAKE_CC_COMPILER}"
+   BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/nccl" "CXX=${CMAKE_CXX_COMPILER}" CC="${CMAKE_CC_COMPILER}"
    BUILD_IN_SOURCE 1
   )
 
@@ -98,6 +99,15 @@ else()
     ${INSTALL_DIR}/include)
   list(APPEND FLEXFLOW_EXT_LIBRARIES
     ${INSTALL_DIR}/lib/libnccl${LIBEXT})
-  set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
+  set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/nccl/lib/")
 
+  set(NCCL_INCLUDE_DIR "${INSTALL_DIR}/include")
+  set(NCCL_LIB "${INSTALL_DIR}/lib/libnccl${LIBEXT}")
 endif()
+message("NCCL_LIB = ${NCCL_LIB}")
+message("INSTALL_DIR = ${INSTALL_DIR}")
+
+add_library(nccl INTERFACE)
+target_include_directories(nccl SYSTEM INTERFACE ${NCCL_INCLUDE_DIR})
+add_dependencies(nccl ${NCCL_NAME})
+target_link_libraries(nccl INTERFACE ${NCCL_LIB})

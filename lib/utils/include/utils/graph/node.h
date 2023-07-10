@@ -2,7 +2,6 @@
 #define _FLEXFLOW_UTILS_GRAPH_NODE_H
 
 #include "utils/fmt.h"
-#include "utils/maybe_owned_ref.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
@@ -54,17 +53,13 @@ struct GraphView {
 
   friend void swap(GraphView &, GraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
-
-  operator maybe_owned_ref<IGraphView const>() const {
-    return maybe_owned_ref<IGraphView const>(this->ptr);
-  }
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
   IGraphView const *unsafe() const {
     return this->ptr.get();
   }
 
-  static GraphView unsafe(IGraphView const &);
+  static GraphView unsafe_create(IGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,

@@ -5,7 +5,6 @@
 #include "graph/adjacency_multidigraph.h"
 #include "graph/algorithms.h"
 #include "graph/construction.h"
-#include "graph/conversions.h"
 #include "graph/digraph.h"
 #include "graph/labelled_graphs.h"
 #include "graph/multidigraph.h"

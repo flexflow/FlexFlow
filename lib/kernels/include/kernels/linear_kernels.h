@@ -15,6 +15,7 @@ public:
 public:
   float const *one_ptr;
   ActiMode activation;
+  optional<Regularizer> regularizer;
   bool use_bias;
   DataType input_type, weight_type, output_type;
 };
@@ -50,4 +51,4 @@ void backward_kernel(ffStream_t stream,
 } // namespace Kernels
 } // namespace FlexFlow
 
-#endif // _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
+#endif

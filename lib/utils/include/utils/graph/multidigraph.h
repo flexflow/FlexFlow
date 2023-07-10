@@ -1,57 +1,79 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_MULTIDIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_MULTIDIGRAPH_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
-#include "utils/maybe_owned_ref.h"
+#include "utils/type_traits.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
 
 namespace FlexFlow {
 
-struct MultiDiEdge : use_visitable_cmp<MultiDiEdge> {
-public:
-  MultiDiEdge() = delete;
-  MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx);
-
-public:
-  Node src, dst;
-  std::size_t srcIdx, dstIdx;
+/**
+ * @class NodePort
+ * @brief An opaque object used to disambiguate multiple edges between the same
+ * nodes in a MultiDiGraph
+ *
+ * Name chosen to match the terminology used by <a href="linkURL">ELK</a>
+ *
+ */
+struct NodePort : public strong_typedef<NodePort, size_t> {
+  using strong_typedef::strong_typedef;
 };
-std::ostream &operator<<(std::ostream &, MultiDiEdge const &);
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::MultiDiEdge, src, dst, srcIdx, dstIdx);
-MAKE_VISIT_HASHABLE(::FlexFlow::MultiDiEdge);
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::NodePort);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::NodePort, "NodePort");
 
 namespace FlexFlow {
 
+struct MultiDiEdge {
+  Node src, dst;
+  NodePort srcIdx, dstIdx;
+};
+FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
+
 struct MultiDiEdgeQuery {
   tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
-  tl::optional<std::unordered_set<std::size_t>> srcIdxs = tl::nullopt,
-                                                dstIdxs = tl::nullopt;
+  tl::optional<std::unordered_set<NodePort>> srcIdxs = tl::nullopt,
+                                             dstIdxs = tl::nullopt;
 
   MultiDiEdgeQuery(
       tl::optional<std::unordered_set<Node>> const &srcs = tl::nullopt,
       tl::optional<std::unordered_set<Node>> const &dsts = tl::nullopt,
-      tl::optional<std::unordered_set<std::size_t>> const &srcIdxs =
-          tl::nullopt,
-      tl::optional<std::unordered_set<std::size_t>> const &dstIdxs =
-          tl::nullopt);
+      tl::optional<std::unordered_set<NodePort>> const &srcIdxs = tl::nullopt,
+      tl::optional<std::unordered_set<NodePort>> const &dstIdxs = tl::nullopt);
 
   MultiDiEdgeQuery with_src_nodes(std::unordered_set<Node> const &) const;
   MultiDiEdgeQuery with_src_node(Node const &) const;
   MultiDiEdgeQuery with_dst_nodes(std::unordered_set<Node> const &) const;
   MultiDiEdgeQuery with_dst_node(Node const &) const;
-  MultiDiEdgeQuery with_src_idxs(std::unordered_set<std::size_t> const &) const;
-  MultiDiEdgeQuery with_src_idx(std::size_t) const;
-  MultiDiEdgeQuery with_dst_idxs(std::unordered_set<std::size_t> const &) const;
-  MultiDiEdgeQuery with_dst_idx(std::size_t) const;
+  MultiDiEdgeQuery with_src_idxs(std::unordered_set<NodePort> const &) const;
+  MultiDiEdgeQuery with_src_idx(NodePort const &) const;
+  MultiDiEdgeQuery with_dst_idxs(std::unordered_set<NodePort> const &) const;
+  MultiDiEdgeQuery with_dst_idx(NodePort const &) const;
 
   static MultiDiEdgeQuery all();
 };
+
+struct MultiDiInput {
+  Node node;
+  NodePort idx;
+};
+FF_VISITABLE_STRUCT(MultiDiInput, node, idx);
+
+MultiDiInput get_input(MultiDiEdge const &);
+
+struct MultiDiOutput {
+  Node node;
+  NodePort idx;
+};
+FF_VISITABLE_STRUCT(MultiDiOutput, node, idx);
+
+MultiDiOutput get_output(MultiDiEdge const &);
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &,
                                     MultiDiEdgeQuery const &);
@@ -64,33 +86,21 @@ struct IMultiDiGraphView : public IGraphView {
   virtual ~IMultiDiGraphView();
 };
 
-template <typename T>
-struct dep_tracked_ref {
-  dep_tracked_ref() = delete;
-  dep_tracked_ref(dep_tracked_ref const &);
-
-  constexpr operator T &() const noexcept {
-    return *_ptr;
-  }
-  constexpr T &get() const noexcept {
-    return *_ptr;
-  }
-
-private:
-  explicit dep_tracked_ref(T &ref) : _ptr(&ref) {}
-
-  friend struct DependencyOwner;
-  T *_ptr;
-};
-
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value,
               RC_COPY_VIRTUAL_MSG);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
+  virtual NodePort add_node_port();
+  virtual void add_node_port_unsafe(NodePort const &);
   virtual void add_edge(Edge const &) = 0;
   virtual void remove_edge(Edge const &) = 0;
 
-  virtual IMultiDiGraph *clone() const = 0;
+  virtual std::unordered_set<Node>
+      query_nodes(NodeQuery const &query) const override {
+    return static_cast<IMultiDiGraphView const *>(this)->query_nodes(query);
+  }
+
+  virtual IMultiDiGraph *clone() const override = 0;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraph>::value,
@@ -104,10 +114,6 @@ public:
   operator GraphView() const;
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
-
-  operator maybe_owned_ref<IMultiDiGraphView const>() const {
-    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
-  }
 
   IMultiDiGraphView const *unsafe() const {
     return this->ptr.get();
@@ -142,16 +148,17 @@ public:
   using EdgeQuery = MultiDiEdgeQuery;
 
   MultiDiGraph() = delete;
-  MultiDiGraph(MultiDiGraph const &);
+  MultiDiGraph(MultiDiGraph const &) = default;
+  MultiDiGraph &operator=(MultiDiGraph const &) = default;
 
   operator MultiDiGraphView() const;
-
-  MultiDiGraph &operator=(MultiDiGraph);
 
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 
   Node add_node();
+  NodePort add_node_port();
   void add_node_unsafe(Node const &);
+  void add_node_port_unsafe(NodePort const &);
   void remove_node_unsafe(Node const &);
 
   void add_edge(Edge const &e);
@@ -171,8 +178,7 @@ private:
   MultiDiGraph(std::unique_ptr<IMultiDiGraph>);
 
 private:
-  std::unique_ptr<IMultiDiGraph> ptr;
-  std::shared_ptr<IMultiDiGraph const> ro_ptr;
+  cow_ptr_t<IMultiDiGraph> ptr;
 };
 
 static_assert(std::is_copy_constructible<MultiDiGraph>::value, "");

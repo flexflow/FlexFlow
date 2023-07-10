@@ -1,2 +1,6 @@
 /deps/
 /substitutions/
+/triton/
+/examples/
+/docs/
+/build-external/

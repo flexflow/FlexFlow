@@ -22,10 +22,6 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
 
-  operator maybe_owned_ref<IOpenMultiDiGraphView const>() const {
-    return maybe_owned_ref<IOpenMultiDiGraphView const>(this->ptr);
-  }
-
   IOpenMultiDiGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -100,10 +96,6 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
 
-  operator maybe_owned_ref<IUpwardOpenMultiDiGraphView const>() const {
-    return maybe_owned_ref<IUpwardOpenMultiDiGraphView const>(this->ptr);
-  }
-
   IUpwardOpenMultiDiGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -177,10 +169,6 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
-
-  operator maybe_owned_ref<IDownwardOpenMultiDiGraphView const>() const {
-    return maybe_owned_ref<IDownwardOpenMultiDiGraphView const>(this->ptr);
-  }
 
   IDownwardOpenMultiDiGraphView const *unsafe() const {
     return this->ptr.get();

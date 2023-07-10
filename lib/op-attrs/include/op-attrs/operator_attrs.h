@@ -1,6 +1,7 @@
 #ifndef _OPERATOR_PARAMS_H
 #define _OPERATOR_PARAMS_H
 
+#include "op-attrs/ops/core.h"
 #include "ops/aggregate.h"
 #include "ops/aggregate_spec.h"
 #include "ops/attention.h"
@@ -65,6 +66,8 @@ using SharedOperatorAttrs = variant<AggregateAttrs,
                                     SoftmaxAttrs,
                                     TopKAttrs,
                                     TransposeAttrs>;
+
+CHECK_VALID_OP_ATTR(AggregateAttrs);
 
 static_assert(is_valid_opattr<AggregateAttrs>::value, "");
 static_assert(is_valid_opattr<AggregateSpecAttrs>::value, "");

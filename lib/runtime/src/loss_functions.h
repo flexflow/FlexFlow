@@ -17,8 +17,10 @@
 #define _FF_LOSS_FUNCTIONS_H_
 
 #include "op-attrs/ops/loss_functions.h"
-#include "operator.h"
-#include "parallel_tensor.h"
+#include "pcg/operator.h"
+#include "pcg/parallel_tensor.h"
+#include "pcg/parallel_tensor_guid_t.h"
+#include "task_spec/task_invocation.h"
 #include "tasks.h"
 
 namespace FlexFlow {
@@ -26,10 +28,9 @@ namespace FlexFlow {
 template <>
 void register_task<LOSS_BWD_TASK_ID>();
 
-TaskInvocation backward_invocation(LossAttrs const &,
-                                   EnableProfiling,
-                                   parallel_tensor_guid_t logit,
-                                   parallel_tensor_guid_t label);
+TaskInvocation backward(LossAttrs const &,
+                        parallel_tensor_guid_t logit,
+                        parallel_tensor_guid_t label);
 
 } // namespace FlexFlow
 

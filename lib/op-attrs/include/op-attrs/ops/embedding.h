@@ -15,27 +15,17 @@ enum class AggregateOp {
   AVG,
 };
 
-struct EmbeddingAttrs : use_visitable_cmp<EmbeddingAttrs> {
-public:
-  EmbeddingAttrs() = delete;
-  EmbeddingAttrs(int num_entries,
-                 int out_channels,
-                 AggregateOp aggr,
-                 DataType data_type);
-
-public:
-  int num_entries, out_channels;
-  AggregateOp aggr;
-  DataType data_type;
+struct EmbeddingAttrs {
+  req<int> num_entries, out_channels;
+  req<AggregateOp> aggr;
+  req<DataType> data_type;
 };
+FF_VISITABLE_STRUCT(EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
+CHECK_VALID_OP_ATTR(EmbeddingAttrs);
 
 TensorShape get_weights_shape(EmbeddingAttrs const &, TensorShape const &);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(
-    ::FlexFlow::EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
-MAKE_VISIT_HASHABLE(::FlexFlow::EmbeddingAttrs);
 
 namespace fmt {
 
@@ -60,10 +50,5 @@ struct formatter<::FlexFlow::AggregateOp> : formatter<string_view> {
 };
 
 } // namespace fmt
-
-namespace FlexFlow {
-static_assert(is_valid_opattr<EmbeddingAttrs>::value,
-              "EmbeddingAttrs must be a valid opattr (see core.h)");
-}
 
 #endif

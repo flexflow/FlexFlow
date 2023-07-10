@@ -2,8 +2,8 @@
 #define _FLEXFLOW_UTILS_CONTAINERS_H
 
 #include "bidict.h"
-#include "stack_map.h"
-#include "tl/optional.hpp"
+#include "invoke.h"
+#include "optional.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -115,18 +115,8 @@ bool contains(Container const &c, typename Container::value_type const &e) {
   return find<Container>(c, e) != c.cend();
 }
 
-template <typename K, typename V>
-bool contains_key(std::unordered_map<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
-}
-
-template <typename K, typename V>
-bool contains_key(std::map<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
-}
-
-template <typename K, typename V, size_t MAXSIZE>
-bool contains_key(stack_map<K, V, MAXSIZE> const &m, K const &k) {
+template <typename C>
+bool contains_key(C const &m, typename C::key_type const &k) {
   return m.find(k) != m.end();
 }
 
@@ -144,11 +134,23 @@ template <typename K,
           typename V,
           typename F,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
-std::unordered_map<K2, V> map_values(std::unordered_map<K, V> const &m,
-                                     F const &f) {
+std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
+                                   F const &f) {
   std::unordered_map<K2, V> result;
   for (auto const &kv : f) {
     result.insert({f(kv.first), kv.second});
+  }
+  return result;
+}
+
+template <typename K,
+          typename V,
+          typename F,
+          typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
+bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
+  bidict<K2, V> result;
+  for (auto const &kv : f) {
+    result.equate(f(kv.first), kv.second);
   }
   return result;
 }
@@ -174,6 +176,18 @@ std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
   std::unordered_map<K, V2> result;
   for (auto const &kv : m) {
     result.insert({kv.first, f(kv.second)});
+  }
+  return result;
+}
+
+template <typename K,
+          typename V,
+          typename F,
+          typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
+bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
+  bidict<K, V2> result;
+  for (auto const &kv : m) {
+    result.equate({kv.first, f(kv.second)});
   }
   return result;
 }
@@ -206,6 +220,12 @@ std::vector<typename C::mapped_type> values(C const &c) {
     result.push_back(kv.second);
   }
   return result;
+}
+
+template <typename C>
+std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
+    items(C const &c) {
+  return {c.begin(), c.end()};
 }
 
 template <typename C, typename T = typename C::value_type>
@@ -360,10 +380,16 @@ T get_first(std::unordered_set<T> const &s) {
   return *s.cbegin();
 }
 
-template <typename T>
-void extend(std::vector<T> &lhs, std::vector<T> const &rhs) {
-  lhs.reserve(lhs.size() + distance(rhs.begin(), rhs.end()));
+template <typename T, typename C>
+void extend(std::vector<T> &lhs, C const &rhs) {
+  lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
   lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+}
+
+template <typename T, typename C>
+void extend(std::unordered_set<T> &lhs, C const &rhs) {
+  lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
+  lhs.insert(rhs.cbegin(), rhs.cend());
 }
 
 template <typename C, typename F>
@@ -422,12 +448,35 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   return result;
 }
 
+template <typename F,
+          typename In,
+          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
+  std::unordered_set<Out> result;
+  for (auto const &e : v) {
+    result.insert(f(e));
+  }
+  return result;
+}
+
 template <typename F>
 std::string transform(std::string const &s, F const &f) {
   std::string result;
   std::transform(s.cbegin(), s.cend(), std::back_inserter(result), f);
   return result;
 }
+
+template <typename T>
+bidict<size_t, T> enumerate(std::unordered_set<T> const &c) {
+  bidict<size_t, T> m;
+  size_t idx = 0;
+  for (auto const &v : c) {
+    m.equate(idx++, v);
+  }
+  return m;
+}
+
+std::vector<size_t> count(size_t n);
 
 template <typename In,
           typename F,
@@ -439,6 +488,43 @@ std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
     extend(result, f(elem));
   }
   return result;
+}
+
+template <typename In, typename F, typename Out = invoke_result_t<F, In>>
+std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f) {
+  std::unordered_set<Out> result;
+  for (auto const &elem : v) {
+    extend(result, f(elem));
+  }
+  return result;
+}
+
+template <typename Out, typename In>
+std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
+                                   std::unordered_set<Out> (*f)(In const &)) {
+  std::unordered_set<Out> result;
+  for (auto const &elem : v) {
+    extend(result, f(elem));
+  }
+  return result;
+}
+
+template <typename T, typename F>
+std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
+  std::vector<T> result(s.begin(), s.end());
+  inplace_sorted_by(s, f);
+  return result;
+}
+
+template <typename T, typename F>
+void inplace_sorted_by(std::vector<T> &v, F const &f) {
+  struct {
+    bool operator()(T const &lhs, T const &rhs) {
+      return f(lhs, rhs);
+    }
+  } custom_comparator;
+
+  std::sort(v.begin(), v.end(), custom_comparator);
 }
 
 template <typename C, typename F>
@@ -463,13 +549,8 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
   return {prefix, postfix};
 }
 
-template <typename T>
-T maximum(std::vector<T> const &v) {
-  return std::max_element(v.begin(), v.end());
-}
-
-template <typename T, size_t MAXSIZE>
-T maximum(stack_vector<T, MAXSIZE> const &v) {
+template <typename C>
+typename C::value_type maximum(C const &v) {
   return std::max_element(v.begin(), v.end());
 }
 

@@ -25,13 +25,14 @@ target_link_libraries(
   op-attrs
   utils
   optional
-  ${LEGION_LIBRARY}
+  legion
   compiler
   kernels
   pcg
 )
 
 define_ff_vars(${project_target})
+ff_set_cxx_properties(${project_target})
 
 project(${test_target})
 
@@ -53,13 +54,9 @@ target_include_directories(
 target_link_libraries(
   ${test_target}
   ${project_target}
-  doctest::doctest
-)
-set_target_properties(
-  ${test_target}
-  PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
+  doctest
 )
 doctest_discover_tests(${test_target})
+ff_set_cxx_properties(${test_target})
+
+add_subdirectory(ffi)

@@ -5,15 +5,6 @@
 
 namespace FlexFlow {
 
-SparseCategoricalCrossEntropyLossAttrs::SparseCategoricalCrossEntropyLossAttrs(
-    bool _replace_labels)
-    : replace_labels(_replace_labels) {}
-
-OtherLossAttrs::OtherLossAttrs(LossFunction _loss_type)
-    : loss_type(_loss_type) {
-  assert(this->loss_type != LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY);
-}
-
 LossFunction get_loss_type(OtherLossAttrs const &attrs) {
   return attrs.loss_type;
 }

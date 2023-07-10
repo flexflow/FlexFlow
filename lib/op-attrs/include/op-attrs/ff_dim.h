@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct ff_dim_t : numerical_typedef<ff_dim_t, int> {
+struct ff_dim_t : public numerical_typedef<ff_dim_t, int> {
   using numerical_typedef::numerical_typedef;
 };
 

@@ -15,15 +15,18 @@
 
 #include "metrics_functions.h"
 #include "kernels/metrics_kernels.h"
-#include "profiling.h"
-#include "task_argument_accessor.h"
+#include "runtime/profiling.h"
+#include "runtime/task_spec/typed_task_invocation.h"
+#include "task_spec/index_task_invocation.h"
+#include "task_spec/task_argument_accessor.h"
 #include "tasks.h"
 
 namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_metrics("metrics");
 
-Metrics::Metrics(LossFunction _loss_type, std::vector<Metric> const &metrics)
+MetricsAttrs::MetricsAttrs(LossFunction _loss_type,
+                           std::vector<Metric> const &metrics)
     : loss_type(_loss_type), measure_accuracy(false),
       measure_categorical_crossentropy(false),
       measure_sparse_categorical_crossentropy(false),
@@ -64,32 +67,43 @@ enum Slots {
   PROFILING_SETTINGS
 };
 
-TaskInvocation compute_metrics(Metrics const &metrics,
-                               parallel_tensor_guid_t const &logit,
-                               parallel_tensor_guid_t const &label) {
-  auto binding = TaskBinding::index_launch(LOGIT);
-  binding.bind(LOGIT, {logit});
-  binding.bind(LABEL, {label});
+TypedIndexTaskInvocation<PerfMetrics>
+    compute_metrics(MetricsAttrs const &metrics,
+                    parallel_tensor_guid_t const &logit,
+                    parallel_tensor_guid_t const &label) {
+  IndexTaskBinding binding(LOGIT);
+  binding.bind(LOGIT, logit);
+  binding.bind(LABEL, label);
   binding.bind_arg(METRICS_STRUCT, metrics);
   binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
 
-  return {METRICS_COMP_TASK_ID, binding};
+  return ensure_return_type<PerfMetrics>({METRICS_COMP_TASK_ID, binding});
 }
 
-TaskInvocation update_metrics(Metrics const &metrics,
-                              TypedFuture<PerfMetrics> const &all_metrics,
-                              TypedFutureMap<PerfMetrics> const &one_metrics) {
-  auto binding = TaskBinding::standard_launch();
+TypedStandardTaskInvocation<PerfMetrics>
+    update_metrics(MetricsAttrs const &metrics,
+                   StandardTypedTaskArg<PerfMetrics> const &all_metrics,
+                   TypedIndexTaskInvocation<PerfMetrics> const &one_metrics) {
+  StandardTaskBinding binding;
   binding.bind_arg(METRICS_STRUCT, metrics);
   binding.bind_arg(ALL_METRICS, all_metrics);
   binding.bind_arg(ONE_METRICS, one_metrics);
   binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
 
-  return {UPDATE_METRICS_TASK_ID, binding};
+  return ensure_return_type<PerfMetrics>({UPDATE_METRICS_TASK_ID, binding});
 }
 
-TaskInvocation reset_metrics(Metrics const &metrics) {
-  auto binding = TaskBinding::standard_launch();
+TypedStandardTaskInvocation<PerfMetrics> compute_and_update_metrics(
+    MetricsAttrs const &metrics,
+    StandardTypedTaskArg<PerfMetrics> const &all_metrics,
+    parallel_tensor_guid_t const &logit,
+    parallel_tensor_guid_t const &label) {
+  return update_metrics(
+      metrics, all_metrics, compute_metrics(metrics, logit, label));
+}
+
+TaskInvocation reset_metrics(MetricsAttrs const &metrics) {
+  StandardTaskBinding binding;
 
   binding.bind_arg(METRICS_STRUCT, metrics);
 
@@ -148,7 +162,7 @@ static PerfMetrics
                          Legion::Context ctx,
                          Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto me = acc.get_argument<Metrics>(METRICS_STRUCT);
+  auto me = acc.get_argument<MetricsAttrs>(METRICS_STRUCT);
   auto logit = acc.get_tensor<Permissions::RO>(LOGIT);
   auto label = acc.get_tensor<Permissions::RO>(LABEL);
   auto profiling_settings =
@@ -212,7 +226,7 @@ static PerfMetrics
                         Legion::Context ctx,
                         Legion::Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto m = acc.get_argument<Metrics>(METRICS_STRUCT);
+  auto m = acc.get_argument<MetricsAttrs>(METRICS_STRUCT);
   auto maybe_all_metrics = acc.get_optional_argument<PerfMetrics>(ALL_METRICS);
   auto one_metrics = acc.get_variadic_argument<PerfMetrics>(ONE_METRICS);
   auto profiling_settings =
@@ -238,7 +252,7 @@ void register_task<METRICS_COMP_TASK_ID>() {
   sig.add_slot(LOGIT, {SlotType::TENSOR, Permissions::RO});
   sig.add_slot(LABEL, {SlotType::TENSOR, Permissions::RO});
   sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);
-  sig.add_arg_slot<Metrics>(METRICS_STRUCT);
+  sig.add_arg_slot<MetricsAttrs>(METRICS_STRUCT);
   sig.add_return_value<PerfMetrics>();
 
   register_task(
@@ -248,7 +262,7 @@ void register_task<METRICS_COMP_TASK_ID>() {
 template <>
 void register_task<UPDATE_METRICS_TASK_ID>() {
   TaskSignature sig;
-  sig.add_arg_slot<Metrics>(METRICS_STRUCT);
+  sig.add_arg_slot<MetricsAttrs>(METRICS_STRUCT);
   sig.add_arg_slot<PerfMetrics>(ALL_METRICS);
   sig.add_arg_slot<ProfilingSettings>(PROFILING_SETTINGS);
   sig.add_variadic_arg_slot<PerfMetrics>(ONE_METRICS);
