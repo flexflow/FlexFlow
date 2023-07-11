@@ -12,6 +12,8 @@ public:
   AdjacencyMultiDiGraph() = default;
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
+  NodePort add_node_port() override;
+  void add_node_port_unsafe(NodePort const &) override;
   void remove_node_unsafe(Node const &) override;
   void add_edge(Edge const &) override;
   void remove_edge(Edge const &) override;
