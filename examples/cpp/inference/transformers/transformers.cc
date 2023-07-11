@@ -115,8 +115,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(ff.config, transformerConfig.batch_size);
-  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
-  im.compile_model_and_allocate_buffer(&ff, mapping);
+  im.compile_model_and_allocate_buffer(&ff);
   im.init_operators_inference(&ff);
 
   //------------ Initialize the data loader and data generator ------------

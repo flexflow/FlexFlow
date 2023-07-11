@@ -19,11 +19,15 @@ public:
   using Params = ArgTopKParams;
   using Input = ParallelTensor;
   ArgTopK(FFModel &model,
+          LayerID const &layer_guid,
           const ParallelTensor input,
           int k,
           bool sorted,
           char const *name);
-  ArgTopK(FFModel &model, ArgTopK const &other, const ParallelTensor input);
+  ArgTopK(FFModel &model,
+          LayerID const &layer_guid,
+          ArgTopK const &other,
+          const ParallelTensor input);
   ArgTopK(FFModel &model,
           Params const &params,
           Input const input,
@@ -80,7 +84,8 @@ public:
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorW const &indices);
+                                     GenericTensorAccessorW const &indices,
+                                     int batch_size);
   Params get_params() const;
 
 public:

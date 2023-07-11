@@ -174,6 +174,7 @@ enum OperatorType {
   OP_REPLICATE,
   OP_REDUCTION,
   OP_PIPELINE,
+  OP_ALLREDUCE,
   OP_FUSED_PARALLEL,
   OP_INVALID,
 };
@@ -208,6 +209,7 @@ enum PMParameter {
   PM_COMBINE_DEGREE,     // Combine
   PM_REDUCTION_DIM,      // Reduction
   PM_REDUCTION_DEGREE,   // Reduction
+  PM_ALLREDUCE_DIM,      // AllReduce
   PM_SOFTMAX_DIM,        // Softmax
   PM_NUM_HEADS,          // MultiHeadAttention
   PM_INVALID,

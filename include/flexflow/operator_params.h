@@ -33,6 +33,7 @@
 #include "flexflow/ops/sampling_params.h"
 #include "flexflow/ops/transpose_params.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention_params.h"
+#include "flexflow/parallel_ops/allreduce_params.h"
 #include "flexflow/parallel_ops/combine_params.h"
 #include "flexflow/parallel_ops/fused_parallel_op_params.h"
 #include "flexflow/parallel_ops/partition_params.h"
@@ -77,6 +78,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        ReplicateParams,
                                        ReductionParams,
                                        CombineParams,
+                                       AllReduceParams,
                                        FusedParallelOpParams>;
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op);

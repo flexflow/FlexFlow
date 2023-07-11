@@ -166,6 +166,7 @@ void Gather::serialize(Legion::Serializer &sez) const {
   GatherParams params = get_params();
   sez.serialize(params.legion_dim);
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
 }
 
 using PCG::Node;
@@ -177,9 +178,10 @@ Node Gather::deserialize(FFModel &ff,
   assert(num_inputs == 2);
   int legion_dim;
   dez.deserialize(legion_dim);
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
 
   GatherParams params;
   params.legion_dim = legion_dim;

@@ -4,6 +4,9 @@
 #include "legion.h"
 #include <cublas_v2.h>
 #include <cudnn.h>
+#ifdef FF_USE_NCCL
+#include <nccl.h>
+#endif
 
 #define FatalError(s)                                                          \
   do {                                                                         \
@@ -165,6 +168,9 @@ cudnnStatus_t
 
 cudaDataType_t ff_to_cuda_datatype(DataType type);
 cudnnDataType_t ff_to_cudnn_datatype(DataType type);
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type);
+#endif
 
 cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type);
 cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type);

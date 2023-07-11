@@ -23,7 +23,6 @@ void OPT::create_opt_model(FFModel &ff,
                            InferenceManager &im,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
-                           int num_pipeline_stages,
                            InferenceMode mode,
                            bool use_full_precision) {
   Config opt_config(model_config_file_path);
@@ -47,21 +46,6 @@ void OPT::create_opt_model(FFModel &ff,
   //           << num_devices_per_data_parallelism_line << std::endl;
   // std::cout << "num layers: " << opt_config.num_hidden_layers << std::endl;
 
-  //------------------------------compute machine views ------------------
-  // single device
-  std::vector<MachineView> machine_views;
-  for (int i = 0; i < num_devices; i++) {
-    MachineView view;
-    view.device_type = MachineView::GPU;
-    view.ndims = 1;
-    view.dim[0] = 1;
-    view.stride[0] = 0;
-    view.start_device_id = i;
-    machine_views.push_back(view);
-  }
-  assert(machine_views.size() == num_devices);
-
-  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
 
   //------------------------------ build the model --------------------------
@@ -71,12 +55,6 @@ void OPT::create_opt_model(FFModel &ff,
     int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
-  }
-  for (int i = 0; i < ff.config.data_parallelism_degree; i++) {
-    mapping[input].push_back(
-        machine_views[i * num_devices_per_data_parallelism_line]);
-    mapping[position_input].push_back(
-        machine_views[i * num_devices_per_data_parallelism_line]);
   }
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
@@ -127,9 +105,10 @@ void OPT::create_opt_model(FFModel &ff,
 
   Tensor residual = ff.add(token, positional_embedding);
 
-  int num_transformer_layers_per_stage =
-      (32 + num_pipeline_stages - 1) / num_pipeline_stages;
   for (int i = 0; i < opt_config.num_hidden_layers; i++) {
+    // set transformer layer id
+    ff.set_transformer_layer_id(i);
+
     // 125m, 1.7B, ..., 175B applies layer norm BEFORE attention,
     // 350m applies layer norm AFTER attention
     // https://github.com/huggingface/transformers/blob/main/src/transformers/models/opt/modeling_opt.py#LL324C1-L325C1
@@ -141,24 +120,6 @@ void OPT::create_opt_model(FFModel &ff,
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_layer_norm_weight",
                            self_attn_layer_norm);
-
-    for (int dp_index = 0; dp_index < ff.config.data_parallelism_degree;
-         dp_index++) {
-      int pp_block_idx = i / num_layers_per_pp_block;
-      int first_device_idx = dp_index * num_devices_per_data_parallelism_line +
-                             ff.config.tensor_parallelism_degree * pp_block_idx;
-      // std::cout << "assigning layer " << i << " to devices " <<
-      // first_device_idx
-      //           << "-"
-      //           << first_device_idx + ff.config.tensor_parallelism_degree - 1
-      //           << std::endl;
-      assert(first_device_idx < num_devices);
-      mapping[hidden_states].push_back(machine_views[first_device_idx]);
-    }
-    // if (i % num_transformer_layers_per_stage == 0) {
-    //   mapping[hidden_states].push_back(
-    //       machine_views[i / num_transformer_layers_per_stage]);
-    // }
 
     Tensor mha;
     switch (mode) {
@@ -279,7 +240,7 @@ void OPT::create_opt_model(FFModel &ff,
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff, mapping);
+  im.compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             opt_config.num_attention_heads,

@@ -1,29 +1,28 @@
-#ifndef _FLEXFLOW_COMBINE_H
-#define _FLEXFLOW_COMBINE_H
+#ifndef _FLEXFLOW_ALLREDUCE_H
+#define _FLEXFLOW_ALLREDUCE_H
 
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/parallel_ops/combine_params.h"
+#include "flexflow/parallel_ops/allreduce_params.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
 
-class Combine : public ParallelOp {
+class AllReduce : public ParallelOp {
 public:
-  using Params = CombineParams;
+  using Params = AllReduceParams;
   using Input = ParallelTensor;
 
-  Combine(FFModel &model,
-          const ParallelTensor input,
-          int combine_legion_dim,
-          int combine_degree,
-          char const *name = NULL);
-  Combine(FFModel &model,
-          Params const &params,
-          Input const input,
-          char const *name = nullptr);
+  AllReduce(FFModel &model,
+            const ParallelTensor input,
+            int allreduce_legion_dim,
+            char const *name = NULL);
+  AllReduce(FFModel &model,
+            Params const &params,
+            Input const input,
+            char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void create_input_partition_inference(
       FFModel &model,
@@ -56,29 +55,16 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  template <typename T>
-  static void
-      forward_task_with_type(Legion::Task const *task,
-                             std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx,
-                             Legion::Runtime *runtime);
-  template <typename T>
-  static void backward_task_with_type(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
-                             MachineView const &mv,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
   Params get_params() const;
-  tl::optional<RecordFormatter> as_dot() const override;
 
 public:
-  int combine_dim, combine_degree;
+  int allreduce_dim;
 };
 
 }; // namespace FlexFlow
 
-#endif // _FLEXFLOW_COMBINE_H
+#endif // _FLEXFLOW_ALLREDUCE_H
