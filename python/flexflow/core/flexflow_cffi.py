@@ -528,6 +528,7 @@ class FFConfig(object):
   def __init__(self):
     self.handle = ffc.flexflow_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_config_destroy)
+    self.enable_tracing = False
 
   def parse_args(self):
     ffc.flexflow_config_parse_args_default(self.handle)
