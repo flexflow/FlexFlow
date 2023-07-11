@@ -60,6 +60,7 @@ if [[ *"hip_rocm"* == "$image" ]]; then
   docker image inspect "${image}":latest > /dev/null
 else
   docker image inspect "${image}-${cuda_version}":latest > /dev/null
+fi
 
 # Log into container registry
 FLEXFLOW_CONTAINER_TOKEN=${FLEXFLOW_CONTAINER_TOKEN:-}
@@ -74,7 +75,7 @@ if [[ *"hip_rocm"* == "$image" ]]; then
   docker tag "$image":latest ghcr.io/flexflow/"$image":latest
 else
   docker tag "${image}-${cuda_version}":latest ghcr.io/flexflow/"$image-$cuda_version":latest
-
+fi
 
 # Upload image
 docker push ghcr.io/flexflow/"$image-$cuda_version":latest
@@ -83,3 +84,4 @@ if [[ *"hip_rocm"* == "$image" ]]; then
   docker push ghcr.io/flexflow/"$image":latest
 else
   docker push ghcr.io/flexflow/"$image-$cuda_version":latest
+fi
