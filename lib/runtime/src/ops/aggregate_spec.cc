@@ -156,7 +156,7 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
 
   binding.bind(OUTPUT, output_tensor(0));
 
-  binding.bind_arg(PROFILING, enable_profiling());
+  binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<AggregateSpecPerDeviceState>());
@@ -178,7 +178,7 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_grad(OUTPUT, output_tensor(0));
 
-  binding.bind_arg(PROFILING, enable_profiling());
+  binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<AggregateSpecPerDeviceState>());
