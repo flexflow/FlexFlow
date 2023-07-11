@@ -55,8 +55,10 @@ if [[ "${image}" != @(flexflow-environment-cuda|flexflow-environment-hip_cuda|fl
   exit 1
 fi
 
+SUB='hip_rocm'
+
 # Check that image exists
-if [[ *"hip_rocm"* == "$image" ]]; then
+if [[ *"$SUB"* == "$image" ]]; then
   docker image inspect "${image}":latest > /dev/null
 else
   docker image inspect "${image}-${cuda_version}":latest > /dev/null
@@ -71,7 +73,7 @@ echo "$FLEXFLOW_CONTAINER_TOKEN" | docker login ghcr.io -u flexflow --password-s
 git_sha=${GITHUB_SHA:-$(git rev-parse HEAD)}
 if [ -z "$git_sha" ]; then echo "Commit hash cannot be detected, cannot publish the docker image to ghrc.io"; exit; fi
 
-if [[ *"hip_rocm"* == "$image" ]]; then
+if [[ *"$SUB"* == "$image" ]]; then
   docker tag "$image":latest ghcr.io/flexflow/"$image":latest
 else
   docker tag "${image}-${cuda_version}":latest ghcr.io/flexflow/"$image-$cuda_version":latest
@@ -80,7 +82,7 @@ fi
 # Upload image
 docker push ghcr.io/flexflow/"$image-$cuda_version":latest
 
-if [[ *"hip_rocm"* == "$image" ]]; then
+if [[ *"$SUB"* == "$image" ]]; then
   docker push ghcr.io/flexflow/"$image":latest
 else
   docker push ghcr.io/flexflow/"$image-$cuda_version":latest
