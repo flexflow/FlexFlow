@@ -5,6 +5,8 @@
 #include "flexflow/model.h"
 #include "flexflow/node.h"
 #include "flexflow/ops/sampling_params.h"
+#include <curand.h>
+#include <curand_kernel.h>
 
 namespace FlexFlow {
 
@@ -17,6 +19,7 @@ public:
   int *end_offset;
   int *idx;
   void *d_temp_storage;
+  curandState *state;
   SamplingMeta(FFHandler handle, Op const *op, int batch_size, int total_ele);
 };
 

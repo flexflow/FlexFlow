@@ -123,6 +123,7 @@ __global__ void elewise_apply_weights(int64_t batch_size,
 }
 
 template <typename T>
+
 void forward_kernel(RMSNormMeta const *m,
                     T const *input_ptr,
                     T const *weight_ptr,
