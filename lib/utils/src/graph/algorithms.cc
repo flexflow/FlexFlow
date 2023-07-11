@@ -367,7 +367,6 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
     }
   }
 
-
   assert(result.size() == get_edges(g).size());
 
   return result;

@@ -53,7 +53,7 @@ TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
         std::unordered_set<MultiDiEdge>{e2});
 }
 
-TEST_CASE("AdjacencyMultiDiGraph:remove") {
+TEST_CASE("AdjacencyMultiDiGraph:remove_node") {
   AdjacencyMultiDiGraph g;
   Node n0 = g.add_node();
   Node n1 = g.add_node();
@@ -70,4 +70,53 @@ TEST_CASE("AdjacencyMultiDiGraph:remove") {
   g.add_edge(e3);
   g.add_edge(e4);
 
+  g.remove_node_unsafe(n0);
+
+  CHECK(g.query_nodes({}) == std::unordered_set<Node>{n1, n2});
+
+  CHECK(g.query_edges({}) ==
+        std::unordered_set<MultiDiEdge>{e3, e4});
+
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_node(n0)) ==
+       std::unordered_set<MultiDiEdge>{});
+ 
+ CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_node(n0)) ==
+       std::unordered_set<MultiDiEdge>{e3});
+
+ CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p2})) ==
+        std::unordered_set<MultiDiEdge>{e3, e4});
+ CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs({p0})) ==
+        std::unordered_set<MultiDiEdge>{e3});
+
+}
+
+TEST_CASE("AdjacencyMultiDiGraph:remove_edge") {
+  AdjacencyMultiDiGraph g;
+  Node n0 = g.add_node();
+  Node n1 = g.add_node();
+  Node n2 = g.add_node();
+  NodePort p0 = g.add_node_port();
+  NodePort p1 = g.add_node_port();
+  NodePort p2 = g.add_node_port();    
+  MultiDiEdge e1{n0, n1, p0, p1};
+  MultiDiEdge e2{n0, n2, p0, p2};
+  MultiDiEdge e3{n2, n0, p2, p0};
+  MultiDiEdge e4{n2, n1, p2, p1};
+  g.add_edge(e1);
+  g.add_edge(e2);
+  g.add_edge(e3);
+  g.add_edge(e4);
+
+  g.remove_edge(e1);
+  
+  
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_node(n0).with_dst_node(n1)) ==
+       std::unordered_set<MultiDiEdge>{});
+
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_node(n2)) ==
+       std::unordered_set<MultiDiEdge>{e2});
+
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idx(p2)) ==
+       std::unordered_set<MultiDiEdge>{e3, e4});
+  
 }
