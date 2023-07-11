@@ -68,8 +68,6 @@ jobs:
       - name: Check availability of Python flexflow.core module
         run: |
           export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
-          # Symbolic linking is required because the machine without GPUs does not load the CUDA driver automatically
           sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
-          sudo ln -s "$CUDA_PATH/libnccl.so" "$CUDA_PATH/libnccl.so.2"
           export CPU_ONLY_TEST=1
           python -c "import flexflow.core; exit()"
