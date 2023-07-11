@@ -501,7 +501,7 @@ optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
 
 tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const & nodes ){
     std::unordered_set<Node> commonDoms, currDoms, intersec;
-    commonDoms = get_post_dominators(g).at(*nodes.begin());
+    commonDoms = get_post_dominators(g).at(get_first(nodes));
 
     for(Node const & node : nodes){
       currDoms  = get_post_dominators(g).at(node);
@@ -585,8 +585,8 @@ std::vector<std::unordered_set<Node>>
     std::vector<std::unordered_set<Node>> components;
     std::unordered_set<Node> visited;
 
-    for (const auto& node : dfs_order) {
-        if (visited.find(node) != visited.end()) {
+    for (Node const & node : dfs_order) {
+        if (contains(visited, node)) {
             continue; // Skip nodes already in a component
         }
 
@@ -598,7 +598,7 @@ std::vector<std::unordered_set<Node>>
             Node current = stack.top();
             stack.pop();
 
-            if (visited.find(current) != visited.end()) {
+            if (contains(visited, current)) {
                 continue;
             }
 
@@ -607,7 +607,7 @@ std::vector<std::unordered_set<Node>>
 
             std::vector<Node> neighbors = get_neighbors(g, current); // Replace with your own function to get neighbors
 
-            for (const auto& neighbor : neighbors) {
+            for (Node const & neighbor : neighbors) {
                 stack.push(neighbor);
             }
         }

@@ -141,8 +141,6 @@ public:
 private:
   friend struct MultiDiGraph;
   friend MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
-
-private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 
