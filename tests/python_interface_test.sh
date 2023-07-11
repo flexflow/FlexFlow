@@ -3,18 +3,22 @@ set -x
 set -e
 
 check_python_interface() {
-	# Usage: check_python_interface {python, legion_python}
+	# Usage: check_python_interface {python, legion_python} {before-installation, after-installation}
 	GPUS=1
 	BATCHSIZE=$((GPUS * 64))
 	FSIZE=14048
 	ZSIZE=12192
 	interpreter=${1:-python}
+	installation_status=${2:-"before-installation"}
 	if [[ "$interpreter" == "python" ]]; then
 		EXE="python"
 		echo "Running a single-GPU Python test to check the Python interface (native python interpreter)"
 		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	elif [[ "$interpreter" == "legion_python" ]]; then
 		EXE="$FF_HOME"/python/legion_python
+		if [[ "$installation_status" == "after-installation" ]]; then
+			EXE="legion_python"
+		fi
 		echo "Running a single-GPU Python test to check the Python interface (legion_python interpreter)"
 		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	else
@@ -48,7 +52,7 @@ elif [[ "$installation_status" == "after-installation" ]]; then
 	# Import flexflow.core module in Python
 	python -c "import flexflow.core; exit()"
 	# Run a single-gpu test using the legion_python interpreter
-	check_python_interface legion_python
+	check_python_interface legion_python after-installation
 	# Run a single-gpu test using the native python interpreter
 	check_python_interface python
 else
