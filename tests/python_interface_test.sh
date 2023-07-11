@@ -16,9 +16,6 @@ check_python_interface() {
 		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	elif [[ "$interpreter" == "legion_python" ]]; then
 		EXE="$FF_HOME"/python/legion_python
-		if [[ "$installation_status" == "after-installation" ]]; then
-			EXE="legion_python"
-		fi
 		echo "Running a single-GPU Python test to check the Python interface (legion_python interpreter)"
 		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	else
