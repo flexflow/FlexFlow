@@ -104,3 +104,4 @@ else
   else
       echo "Docker image name not valid"
   fi
+fi
