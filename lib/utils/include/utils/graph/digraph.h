@@ -14,6 +14,9 @@ struct DirectedEdge {
   Node src;
   Node dst;
 };
+
+std::ostream &operator<<(std::ostream &s, DirectedEdge const &e);
+
 FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
 
 struct DirectedEdgeQuery {

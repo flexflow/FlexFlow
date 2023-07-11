@@ -35,6 +35,8 @@ struct MultiDiEdge {
   NodePort srcIdx, dstIdx;
 };
 
+std::ostream& operator<<(std::ostream& os, const MultiDiEdge& edge);
+
 FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
 
 
@@ -104,7 +106,7 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
 
   virtual IMultiDiGraph *clone() const override = 0;  
   private:
-    std::size_t next_node_idx = 0;
+    std::size_t next_nodeport_idx = 0;
 };
 
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraph>::value,
@@ -135,8 +137,8 @@ public:
   }
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){}
   static MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
+
 private:
-  
   friend struct MultiDiGraph;
   friend MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
 

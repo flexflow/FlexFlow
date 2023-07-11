@@ -18,7 +18,7 @@ std::string
   if (first == last) {
     return open + "(empty)" + close;
   } else {
-    return open  + close;
+    return open + join_strings(first, last, delimiter, f) + close;
   }
 }
 

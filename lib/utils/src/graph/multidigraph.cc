@@ -20,6 +20,10 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(
   return e;
 }
 
+std::ostream& operator<<(std::ostream& os, const MultiDiEdge& edge) {
+    return os<<"MultiDiEdge{"<<edge.src.value()<< ","<<edge.dst.value()<<","<<edge.srcIdx.value()<<","<<edge.dstIdx.value()<<"}";
+}
+
 MultiDiEdgeQuery::  MultiDiEdgeQuery(
       tl::optional<std::unordered_set<Node>> const &srcs,
       tl::optional<std::unordered_set<Node>> const &dsts,
@@ -94,13 +98,13 @@ std::unordered_set<MultiDiEdge> MultiDiGraphView::query_edges(MultiDiEdgeQuery c
 }
 
 NodePort IMultiDiGraph::add_node_port(){
-  NodePort np{this->next_node_idx};
-  this->next_node_idx += 1;
+  NodePort np{this->next_nodeport_idx};
+  this->next_nodeport_idx += 1;
   return np;
 }
 
 void IMultiDiGraph::add_node_port_unsafe(NodePort const &np) {
-  this->next_node_idx = std::max(this->next_node_idx, np.value() + 1);
+  this->next_nodeport_idx = std::max(this->next_nodeport_idx, np.value() + 1);
 }
 
 MultiDiGraphView::operator GraphView() const {
