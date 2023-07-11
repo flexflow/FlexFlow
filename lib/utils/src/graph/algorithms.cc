@@ -500,21 +500,20 @@ optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
 
 
 tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const & nodes ){
-    std::unordered_set<Node> commonDoms = get_post_dominators(g).at(*nodes.begin());
+    std::unordered_set<Node> commonDoms, currDoms, intersec;
+    commonDoms = get_post_dominators(g).at(*nodes.begin());
 
-    for (auto it = std::next(nodes.begin()); it != nodes.end(); ++it) {
-        Node currNode = *it;
-        std::unordered_set<Node> currDoms = get_post_dominators(g).at(currNode);
-        std::unordered_set<Node> intersec = intersection(currDoms, commonDoms);
-        commonDoms = std::move(intersec);
+    for(Node const & node : nodes){
+      currDoms  = get_post_dominators(g).at(node);
+      intersec  = intersection(currDoms, commonDoms);
+      commonDoms = std::move(intersec);
     }
 
-  if (!commonDoms.empty()) {
-    return *commonDoms.begin();
-  } else {
-    return tl::nullopt;
-  }
-
+    if (!commonDoms.empty()) {
+      return *commonDoms.begin();
+    } else {
+      return tl::nullopt;
+    }
 }
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge>
