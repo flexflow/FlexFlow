@@ -76,7 +76,7 @@ fi
 
 
 # different suffix if FF_GPU_BACKEND == hip_rocm
-if [[ "${FF_GPU_BACKEND}" != "hip_rocm"]]; then
+if [[ "${FF_GPU_BACKEND}" != "hip_rocm" ]]; then
   if [[ "$image" == "flexflow-environment" ]]; then
       eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}:latest"
   elif [[ "$image" == "flexflow" ]]; then
