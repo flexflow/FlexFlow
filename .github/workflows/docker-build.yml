@@ -47,6 +47,12 @@ jobs:
           else
             export FF_CUDA_ARCH=70
           fi
+          ./docker/build.sh --image_name flexflow --cuda_version 11.1
+          ./docker/build.sh --image_name flexflow --cuda_version 11.2
+          ./docker/build.sh --image_name flexflow --cuda_version 11.3
+          ./docker/build.sh --image_name flexflow --cuda_version 11.5
+          ./docker/build.sh --image_name flexflow --cuda_version 11.6
+          ./docker/build.sh --image_name flexflow --cuda_version 11.7
           ./docker/build.sh --image_name flexflow --cuda_version 11.8
 
       - name: Check availability of Python flexflow.core module
@@ -60,6 +66,24 @@ jobs:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         run: |
           if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
+            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.1 
+            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.1
+
+            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.2 
+            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.2
+            
+            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.3 
+            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.3
+
+            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.5 
+            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.5
+      
+            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.6 
+            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.6
+
+            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.7 
+            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.7
+            
             ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.8 
             ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.8
           else
