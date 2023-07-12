@@ -561,10 +561,12 @@ class FFConfig(object):
     return ffc.flexflow_get_current_time(self.handle)
 
   def begin_trace(self, trace_id):
-    ffc.flexflow_begin_trace(self.handle, trace_id)
+    if self.enable_tracing:
+      ffc.flexflow_begin_trace(self.handle, trace_id)
 
   def end_trace(self, trace_id):
-    ffc.flexflow_end_trace(self.handle, trace_id)
+      if self.enable_tracing:
+      ffc.flexflow_end_trace(self.handle, trace_id)
 
 # -----------------------------------------------------------------------
 # Tensor
