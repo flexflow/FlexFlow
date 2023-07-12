@@ -47,11 +47,11 @@ jobs:
           else
             export FF_CUDA_ARCH=70
           fi
-          ./docker/build.sh flexflow
+          ./docker/build.sh --image_name flexflow --cuda_version 11.8
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
-        run: docker run --entrypoint python flexflow-cuda:latest -c "import flexflow.core; exit()"
+        run: docker run --entrypoint python flexflow-cuda-11.8.0:latest -c "import flexflow.core; exit()"
 
       - name: Publish Docker environment image (on push to master)
         if: github.repository_owner == 'flexflow'
@@ -60,8 +60,8 @@ jobs:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         run: |
           if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
-            ./docker/publish.sh "flexflow-environment-${FF_GPU_BACKEND}"
-            ./docker/publish.sh "flexflow-${FF_GPU_BACKEND}"
+            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.8 
+            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.8
           else
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi
