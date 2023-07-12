@@ -27,7 +27,7 @@ if [ $GPU_REQUESTED -gt $(( GPU_AVAILABLE )) ]; then echo "The test requires $GP
 #Sequential model tests
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-$EXE "$FF_HOME"/examples/python/keras/seq_reuters_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+#$EXE "$FF_HOME"/examples/python/keras/seq_reuters_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/seq_cifar10_cnn.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp_net2net.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn_net2net.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel

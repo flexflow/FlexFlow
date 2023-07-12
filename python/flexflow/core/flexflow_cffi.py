@@ -524,10 +524,11 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
 # -----------------------------------------------------------------------
 
 class FFConfig(object):
-  __slots__ = ['handle', '_handle']
+  __slots__ = ['handle', '_handle', 'enable_tracing']
   def __init__(self):
     self.handle = ffc.flexflow_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_config_destroy)
+    self.enable_tracing = False
 
   def parse_args(self):
     ffc.flexflow_config_parse_args_default(self.handle)
@@ -560,10 +561,12 @@ class FFConfig(object):
     return ffc.flexflow_get_current_time(self.handle)
 
   def begin_trace(self, trace_id):
-    ffc.flexflow_begin_trace(self.handle, trace_id)
+    if self.enable_tracing:
+      ffc.flexflow_begin_trace(self.handle, trace_id)
 
   def end_trace(self, trace_id):
-    ffc.flexflow_end_trace(self.handle, trace_id)
+    if self.enable_tracing:
+      ffc.flexflow_end_trace(self.handle, trace_id)
 
 # -----------------------------------------------------------------------
 # Tensor

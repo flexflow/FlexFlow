@@ -187,6 +187,7 @@ void SGDOptimizer::update(const ParallelTensor p) {
     }
     // MustEpochLauncher must_epoch_launcher;
     // must_epoch_launcher.add_index_task(launcher);
+    launcher.concurrent = true;
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     // runtime->execute_must_epoch(ctx, must_epoch_launcher);
     runtime->issue_execution_fence(ctx);
@@ -482,6 +483,7 @@ void AdamOptimizer::update(const ParallelTensor p) {
     launcher.add_field(3, FID_DATA);
     // MustEpochLauncher must_epoch_launcher;
     // must_epoch_launcher.add_index_task(launcher);
+    launcher.concurrent = true;
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     // runtime->execute_must_epoch(ctx, must_epoch_launcher);
     runtime->issue_execution_fence(ctx);
