@@ -38,7 +38,7 @@ if [[ $cuda_version == "empty" ]]; then
 fi
 
 
-if [[ "$cuda_version" != @(11.1|11.3|11.5|11.6|11.7|11.8) ]]; then
+if [[ "$cuda_version" != @(11.1|11.2|11.3|11.5|11.6|11.7|11.8) ]]; then
   # validate the verison of CUDA against a list of supported ones
   # 11.1, 11.3, 11.5, 11.6, 11.7, 11.8
   # Available versions: 11.1.1 | 11.2.2 | 11.3.1 | 11.5.2 | 11.6.2 | 11.7.1 | 11.8.0

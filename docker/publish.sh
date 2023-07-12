@@ -33,7 +33,7 @@ if [[ $cuda_version == "empty" ]]; then
   cuda_version=${cuda_version:1:4}
 fi
 
-if [[ "$cuda_version" != @(11.1|11.3|11.5|11.6|11.7|11.8) ]]; then
+if [[ "$cuda_version" != @(11.1|11.2|11.3|11.5|11.6|11.7|11.8) ]]; then
   # validate the verison of CUDA against a list of supported ones
   # 11.1, 11.3, 11.5, 11.6, 11.7, 11.8
   echo "cuda_version is not supported, please choose among {11.1,11.3,11.5,11.6,11.7,11.8}"
