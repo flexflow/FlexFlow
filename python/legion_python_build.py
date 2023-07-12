@@ -36,7 +36,6 @@ if not os.path.isdir(script_dir):
 script_path = os.path.abspath(script_path)
 lines = [
     '#! /usr/bin/env bash',
-    'set -x',
     f'PYTHON_FOLDER="{script_dir}"',
     f'BUILD_FOLDER="{build_dir}"',
     'PYLIB_PATH="$("$PYTHON_FOLDER"/flexflow/findpylib.py)"',
