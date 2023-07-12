@@ -562,10 +562,12 @@ class FFConfig(object):
     return ffc.flexflow_get_current_time(self.handle)
 
   def begin_trace(self, trace_id):
-    ffc.flexflow_begin_trace(self.handle, trace_id)
+    if self.enable_tracing:
+      ffc.flexflow_begin_trace(self.handle, trace_id)
 
   def end_trace(self, trace_id):
-    ffc.flexflow_end_trace(self.handle, trace_id)
+    if self.enable_tracing:
+      ffc.flexflow_end_trace(self.handle, trace_id)
 
 # -----------------------------------------------------------------------
 # Tensor
@@ -2092,16 +2094,14 @@ class FFModel(object):
       self.reset_metrics()
       iterations = num_samples / batch_size
       for iter in range(0, int(iterations)):
-        if self._ffconfig.enable_tracing:
-          self._ffconfig.begin_trace(self._tracing_id)
+        self._ffconfig.begin_trace(self._tracing_id)
         for d in dataloaders:
           d.next_batch(self)
         self.forward()
         self.zero_gradients()
         self.backward()
         self.update()
-        if self._ffconfig.enable_tracing:
-          self._ffconfig.end_trace(self._tracing_id)
+        self._ffconfig.end_trace(self._tracing_id)
           
   def eval(self, x=None, y=None, batch_size=None):
     """Returns the loss value & metrics values for the model in test mode. 
@@ -2139,12 +2139,10 @@ class FFModel(object):
     for iter in range(0, int(iterations)):
       for d in dataloaders:
         d.next_batch(self)
-      if self._ffconfig.enable_tracing:
-        self._ffconfig.begin_trace(self._tracing_id)
+      self._ffconfig.begin_trace(self._tracing_id)
       self.forward()
       self.compute_metrics()
-      if self._ffconfig.enable_tracing:
-        self._ffconfig.end_trace(self._tracing_id)
+      self._ffconfig.end_trace(self._tracing_id)
 
   def zero_gradients(self):
     """Empty the gradients of all layers.

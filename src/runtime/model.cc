@@ -3151,6 +3151,7 @@ void FFModel::compile(LossType loss_type,
             false /*must*/,
             0 /*mapper_id*/,
             view.hash() /*MappingTagID*/);
+        index_launcher.concurrent = true;
         FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
         fm.wait_all_results();
         int idx = 0;

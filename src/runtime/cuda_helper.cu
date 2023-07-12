@@ -1,5 +1,12 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/cuda_helper.h"
+#ifdef FF_USE_CUDA
+#include "realm/cuda/cuda_module.h"
+#elif FF_USE_HIP_CUDA
+#include "realm/hip/hip_module.h"
+#else
+#error "Unknown device, please make sure if CUDA is enabled"
+#endif
 
 using Legion::coord_t;
 using Legion::Domain;
@@ -9,23 +16,16 @@ namespace FlexFlow {
 
 #ifdef FF_USE_CUDA
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifndef REALM_USE_CUDART_HIJACK
-  *stream = (cudaStream_t)0;
+  *stream = Realm::Cuda::get_task_cuda_stream();
+  Realm::Cuda::set_task_ctxsync_required(false);
+  assert(*stream != 0);
   return cudaSuccess;
-#else
-  return cudaStreamCreate(stream);
-#endif
 }
 #elif FF_USE_HIP_CUDA
-extern "C" {
-cudaStream_t hipGetTaskStream();
-}
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifndef REALM_USE_CUDART_HIJACK
-  *stream = (cudaStream_t)0;
-#else
-  *stream = hipGetTaskStream();
-#endif
+  *stream = Realm::Hip::get_task_hip_stream();
+  Realm::Hip::set_task_ctxsync_required(false);
+  assert(*stream != 0);
   return cudaSuccess;
 }
 #else

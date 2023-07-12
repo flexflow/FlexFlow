@@ -47,6 +47,9 @@ ifeq ($(strip $(USE_GASNET)),1)
   endif
 endif
 
+# disable hijack
+USE_CUDART_HIJACK = 1
+
 GEN_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/mapper/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/metrics_functions/ -name '*.cc')\
