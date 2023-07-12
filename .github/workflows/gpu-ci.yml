@@ -79,6 +79,7 @@ jobs:
           activate-environment: flexflow
           environment-file: conda/flexflow-cpu.yml
           auto-activate-base: false
+          auto-update-conda: false
 
       - name: Install conda and Pytorch dependencies for pytorch alignment test
         run: |
