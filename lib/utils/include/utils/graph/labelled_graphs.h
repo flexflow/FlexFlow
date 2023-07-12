@@ -239,16 +239,8 @@ public:
   }
 
 private:
-<<<<<<< Updated upstream
-  std::shared_ptr<ILabelledOpenMultiDiGraphView<NodeLabel,
-                                                EdgeLabel,
-                                                InputLabel,
-                                                OutputLabel> const>
-      ptr;
-=======
   LabelledOpenMultiDiGraphView(std::shared_ptr<ILabelledOpenMultiDiGraphView const>);
   std::shared_ptr<ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const> ptr;
->>>>>>> Stashed changes
 };
 
 template <typename NodeLabel,
@@ -269,12 +261,6 @@ public:
     swap(*this, other);
     return *this;
   }
-
-  operator OpenMultiDiGraph() const;
-  operator LabelledOpenMultiDiGraphView<NodeLabel,
-                                        EdgeLabel,
-                                        InputLabel,
-                                        OutputLabel>() const;
 
   friend void swap(LabelledOpenMultiDiGraph &lhs,
                    LabelledOpenMultiDiGraph &rhs) {

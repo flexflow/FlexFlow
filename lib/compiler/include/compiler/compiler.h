@@ -3,6 +3,8 @@
 
 #include "pcg/cost_values.h"
 #include "pcg/machine_view.h"
+#include "pcg/parallel_computation_graph.h"
+#include "pcg/tensor_mapping.h"
 
 namespace FlexFlow {
 
@@ -23,7 +25,7 @@ struct SearchResult {
 SearchResult optimize(ComputationGraph const &,
                       MachineSpecification const &,
                       CostEstimator const &,
-                      Algorithm,
+                      SearchAlgorithm,
                       optional<AlgorithmConfig> const &);
 
 // struct SearchSolution {

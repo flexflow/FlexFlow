@@ -3,10 +3,6 @@
 
 namespace FlexFlow {
 
-MachineMapping::MachineMapping(
-    float runtime, std::unordered_map<Node, MachineView> machine_views)
-    : runtime(runtime), machine_views(machine_views) {}
-
 MachineMapping MachineMapping::sequential_combine(MachineMapping const &s1,
                                                   MachineMapping const &s2) {
   return MachineMapping(s1.runtime + s2.runtime,
