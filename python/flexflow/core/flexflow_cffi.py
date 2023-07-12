@@ -565,7 +565,7 @@ class FFConfig(object):
       ffc.flexflow_begin_trace(self.handle, trace_id)
 
   def end_trace(self, trace_id):
-      if self.enable_tracing:
+    if self.enable_tracing:
       ffc.flexflow_end_trace(self.handle, trace_id)
 
 # -----------------------------------------------------------------------
