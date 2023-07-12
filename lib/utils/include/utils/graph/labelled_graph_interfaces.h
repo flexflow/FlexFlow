@@ -80,6 +80,10 @@ public:
   virtual EdgeLabel const &at(MultiDiEdge const &e) const = 0;
 };
 
+static_assert(
+  is_rc_copy_virtual_compliant<ILabelledOpenMultiDiGraphView<int, int>>::value,
+  RC_COPY_VIRTUAL_MSG);
+
 template <typename NodeLabel,
           typename EdgeLabel,
           typename InputLabel = EdgeLabel,

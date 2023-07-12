@@ -201,22 +201,54 @@ template <typename NodeLabel,
           typename OutputLabel = InputLabel>
 struct LabelledOpenMultiDiGraphView {
 public:
+  using Edge = OpenMultiDiEdge;
+  using EdgeQuery = OpenMultiDiEdgeQuery;
+
   LabelledOpenMultiDiGraphView() = delete;
 
-  ILabelledOpenMultiDiGraphView<NodeLabel,
-                                EdgeLabel,
-                                InputLabel,
-                                OutputLabel> const *
-      unsafe() const {
+  std::unordered_set<Node> query_nodes(NodeQuery const &node_query) {
+    return ptr->query_nodes(node_query);
+  }
+  std::unordered_set<Edge> query_edges(EdgeQuery const &edge_query) {
+    return ptr->query_edges(edge_query);
+  }
+
+  ILabelledOpenMultiDiGraphView const *unsafe() const {
     return this->ptr.get();
   }
 
+  InputLabel const &at(InputMultiDiEdge const &e) const {
+    return this->ptr->at(e);
+  }
+
+  OutputLabel const &at(OutputMultiDiEdge const &e) const {
+    return this->ptr->at(e);
+  }
+  
+  EdgeLabel const &at(MultiDiEdge const &e) const {
+    return this->ptr->at(e);
+  }
+
+  template <typename T, typename... Args>
+  static
+      typename std::enable_if<std::is_base_of<ILabelledOpenMultiDiGraphView, T>::value,
+                              LabelledOpenMultiDiGraphView>::type
+      create(Args &&...args) {
+    return LabelledOpenMultiDiGraphView(
+        std::make_shared<T>(std::forward<Args>(args)...));
+  }
+
 private:
+<<<<<<< Updated upstream
   std::shared_ptr<ILabelledOpenMultiDiGraphView<NodeLabel,
                                                 EdgeLabel,
                                                 InputLabel,
                                                 OutputLabel> const>
       ptr;
+=======
+  LabelledOpenMultiDiGraphView(std::shared_ptr<ILabelledOpenMultiDiGraphView const>);
+  std::shared_ptr<ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const> ptr;
+>>>>>>> Stashed changes
 };
 
 template <typename NodeLabel,

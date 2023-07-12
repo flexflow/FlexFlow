@@ -422,6 +422,72 @@ private:
   OpenMultiDiGraphView const &g;
 };
 
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel,
+          typename OutputLabel>
+struct LabelledOpenMultiDiSubgraphView
+    : public ILabelledOpenMultiDiGraphView<NodeLabel,
+                                           EdgeLabel,
+                                           InputLabel,
+                                           OutputLabel> {
+public:
+  LabelledOpenMultiDiSubgraphView() = delete;
+  LabelledOpenMultiDiSubgraphView(
+      LabelledOpenMultiDiGraphView const &g,
+      std::unordered_set<Node> const &subgraph_nodes,
+      bool include_inputs,
+      bool include_outputs)
+      : g(g), subgraph_nodes(subgraph_nodes), include_inputs(include_inputs),
+        include_outputs(include_outputs) {}
+
+  InputLabel const &at(InputMultiDiEdge const &e) const override {
+    if (contains(query_edges(OpenMultiDiEdgeQuery{}), e)) {
+      return this->g.at(e);
+    } else {
+      // TODO: error handling
+    }
+  }
+
+  OutputLabel const &at(OutputMultiDiEdge const &e) const override {
+    if (contains(query_edges(OpenMultiDiEdgeQuery{}), e)) {
+      return this->g.at(e);
+    } else {
+      // TODO: error handling
+    }
+  }
+
+  EdgeLabel const &at(MultiDiEdge const &e) const override {
+    if (contains(query_edges(OpenMultiDiEdgeQuery{}), e)) {
+      return this->g.at(e);
+    } else {
+      // TODO: error handling
+    }
+  }
+
+  std::unordered_set<Node>
+      query_nodes(NodeQuery const &query) const override {
+    return this->g.query_nodes(
+        query_intersection(query, {this->subgraph_nodes}));
+  }
+
+  virtual std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &query) const override {
+    OpenMultiDiEdgeQuery edge_query{
+      include_inputs ? InputMultiDiEdgeQuery{this->subgraph_nodes} : InputMultiDiEdgeQuery::none(),
+      MultiDiEdgeQuery{this->subgraph_nodes, this->subgraph_nodes},
+      include_outputs ? OutputMultiDiEdgeQuery{this->subgraph_nodes} : OutputMultiDiEdgeQuery::none()
+    };
+    return this->g.query_edges(query_intersection(query, edge_query));
+  }
+
+private:
+  LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> g;
+  std::unordered_set<Node> subgraph_nodes;
+  bool include_inputs;
+  bool include_outputs;
+};
+
 DirectedEdge flipped(DirectedEdge const &);
 
 std::unordered_map<Node, Node>
