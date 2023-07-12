@@ -14,10 +14,10 @@ TEST_CASE("MultiDiGraph") {
   Node n1 = g.add_node();
   Node n2 = g.add_node();
   Node n3 = g.add_node();
-  NodePort p0{0};
-  NodePort p1{1};
-  NodePort p2{2};
-  NodePort p3{3}; 
+  NodePort p0 = g.add_node_port();
+  NodePort p1 = g.add_node_port();
+  NodePort p2 = g.add_node_port();
+  NodePort p3 = g.add_node_port(); 
   MultiDiEdge e0{n0, n3, p0, p3};
   MultiDiEdge e1{n1, n2, p0, p2};
   MultiDiEdge e2{n1, n3, p1, p3};

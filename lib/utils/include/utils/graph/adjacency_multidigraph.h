@@ -21,7 +21,7 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   AdjacencyMultiDiGraph *clone() const override {
-    return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
+    return new AdjacencyMultiDiGraph(this->next_node_idx, this->next_node_port, this->adjacency);
   }
 
 private:
@@ -31,7 +31,7 @@ private:
           Node,
           std::unordered_map<NodePort, std::unordered_set<NodePort>>>>;
 
-  AdjacencyMultiDiGraph(std::size_t next_node_idx,  ContentsType const & adjacency, std::size_t next_node_port=0)
+  AdjacencyMultiDiGraph(std::size_t next_node_idx, std::size_t next_node_port, ContentsType const & adjacency)
       : next_node_idx(next_node_idx), next_node_port(next_node_port), adjacency(adjacency) {}
       
   std::size_t next_node_idx = 0;

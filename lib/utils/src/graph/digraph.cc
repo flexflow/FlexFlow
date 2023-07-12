@@ -1,5 +1,4 @@
 #include "utils/graph/digraph.h"
-#include <optional>
 
 namespace FlexFlow {
 
@@ -66,13 +65,13 @@ std::unordered_set<DirectedEdge> DiGraphView::query_edges(EdgeQuery const & quer
   return ptr->query_edges(query);
 }
 
-DiGraphView unsafe_create(IDiGraphView const &graphView) {
-  std::shared_ptr<IDiGraphView const> ptr((&graphView),
-  [](IDiGraphView const *){});
-  /*
+  /* unsafe_create:
   1 use the graphView to creae the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda function to delete the ptr
   2 we use this ptr to create a DiGraphView, this DiGraphView is read-only. It creates a DiGraphView object that is not responsible for ownership management
   */
+DiGraphView unsafe_create(IDiGraphView const &graphView) {
+  std::shared_ptr<IDiGraphView const> ptr((&graphView),
+  [](IDiGraphView const *){});
   return DiGraphView(ptr);
 }
 

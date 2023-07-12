@@ -500,17 +500,14 @@ optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
 
 
 tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const & nodes ){
-    std::unordered_set<Node> commonDoms, currDoms, intersec;
-    commonDoms = get_post_dominators(g).at(get_first(nodes));
+    std::unordered_set<Node> commonDoms = get_post_dominators(g).at(get_first(nodes));
 
     for(Node const & node : nodes){
-      currDoms  = get_post_dominators(g).at(node);
-      intersec  = intersection(currDoms, commonDoms);
-      commonDoms = std::move(intersec);
+      commonDoms = intersection(get_post_dominators(g).at(node), commonDoms);
     }
 
     if (!commonDoms.empty()) {
-      return *commonDoms.begin();
+      return get_first(commonDoms);
     } else {
       return tl::nullopt;
     }
