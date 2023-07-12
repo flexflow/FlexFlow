@@ -524,7 +524,7 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
 # -----------------------------------------------------------------------
 
 class FFConfig(object):
-  __slots__ = ['handle', '_handle']
+  __slots__ = ['handle', '_handle', 'enable_tracing']
   def __init__(self):
     self.handle = ffc.flexflow_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_config_destroy)
