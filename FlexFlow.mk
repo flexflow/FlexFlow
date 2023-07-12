@@ -135,7 +135,9 @@ endif
 endif
 
 # CUDA arch variables
-GPU_ARCH ?= auto
+# We cannot use the default "auto" setting here because it will try to compile FlexFlow and Legion for GPU archs < 60, 
+# which are not compatible with the half precision type.
+GPU_ARCH ?= 60,61,62,70,72,75,80,90
 
 #ifndef HDF5
 #HDF5_inc	?= /usr/include/hdf5/serial
