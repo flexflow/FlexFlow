@@ -15,6 +15,24 @@ SHM_SIZE=8192m
 gpu_arg=""
 if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
 image=${1:-flexflow}
+cuda_version=${cuda_version:-11.1}
+
+if [[ "$cuda_version" != @(11.1|11.2|11.3|11.5|11.6|11.7|11.8) ]]; then
+  # validate the verison of CUDA against a list of supported ones
+  # 11.1, 11.3, 11.5, 11.6, 11.7, 11.8
+  echo "cuda_version is not supported, please choose among {11.1,11.3,11.5,11.6,11.7,11.8}"
+  exit 1
+fi
+
+# modify cuda version to available versions
+if [[ "$cuda_version" == @(11.1|11.3|11.7) ]]; then
+  cuda_version=${cuda_version}.1
+elif [[ "$cuda_version" == @(11.2|11.5|11.6) ]]; then 
+  cuda_version=${cuda_version}.2
+elif [[ "$cuda_version" == @(11.8) ]]; then 
+  cuda_version=${cuda_version}.0
+fi
+
 
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
@@ -27,16 +45,32 @@ else
 fi
 
 
-if [[ "$image" == "flexflow-environment" ]]; then
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}:latest"
-elif [[ "$image" == "flexflow" ]]; then
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-${FF_GPU_BACKEND}:latest"
-elif [[ "$image" == "mt5" ]]; then
-    # Backward compatibility
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" \
-    -v "$(pwd)"/../examples/python/pytorch/mt5/data:/usr/FlexFlow/examples/python/pytorch/mt5/data \
-    -v "$(pwd)"/../examples/python/pytorch/mt5/eng-sin.tar:/usr/FlexFlow/examples/python/pytorch/mt5/eng-sin.tar \
-    "flexflow-${FF_GPU_BACKEND}:latest"
+if [[ "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
+  if [[ "$image" == "flexflow-environment" ]]; then
+      eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}:latest"
+  elif [[ "$image" == "flexflow" ]]; then
+      eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-${FF_GPU_BACKEND}:latest"
+  elif [[ "$image" == "mt5" ]]; then
+      # Backward compatibility
+      eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" \
+      -v "$(pwd)"/../examples/python/pytorch/mt5/data:/usr/FlexFlow/examples/python/pytorch/mt5/data \
+      -v "$(pwd)"/../examples/python/pytorch/mt5/eng-sin.tar:/usr/FlexFlow/examples/python/pytorch/mt5/eng-sin.tar \
+      "flexflow-${FF_GPU_BACKEND}:latest"
+  else
+      echo "Docker image name not valid"
+  fi
 else
-    echo "Docker image name not valid"
+  if [[ "$image" == "flexflow-environment" ]]; then
+      eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}-${cuda_version}:latest"
+  elif [[ "$image" == "flexflow" ]]; then
+      eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-${FF_GPU_BACKEND}-${cuda_version}:latest"
+  elif [[ "$image" == "mt5" ]]; then
+      # Backward compatibility
+      eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" \
+      -v "$(pwd)"/../examples/python/pytorch/mt5/data:/usr/FlexFlow/examples/python/pytorch/mt5/data \
+      -v "$(pwd)"/../examples/python/pytorch/mt5/eng-sin.tar:/usr/FlexFlow/examples/python/pytorch/mt5/eng-sin.tar \
+      "flexflow-${FF_GPU_BACKEND}-${cuda_version}:latest"
+  else
+      echo "Docker image name not valid"
+  fi
 fi
