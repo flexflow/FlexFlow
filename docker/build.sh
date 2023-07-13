@@ -8,25 +8,16 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "$SCRIPT_DIR/.."
 
-cuda_version=${cuda_version:-11.1}
+cuda_version=${cuda_version:-11.1.1}
 image=${1:-flexflow}
 
-if [[ "$cuda_version" != @(11.1|11.2|11.3|11.5|11.6|11.7|11.8) ]]; then
+if [[ "$cuda_version" != @(11.1.1|11.2.2|11.3.1|11.5.2|11.6.2|11.7.1|11.8.0) ]]; then
   # validate the verison of CUDA against a list of supported ones
   # 11.1, 11.3, 11.5, 11.6, 11.7, 11.8
-  # Available versions: 11.1.1 | 11.2.2 | 11.3.1 | 11.5.2 | 11.6.2 | 11.7.1 | 11.8.0
-  echo "cuda_version is not supported, please choose among {11.1,11.3,11.5,11.6,11.7,11.8}"
+  echo "cuda_version is not supported, please choose among {11.1.1|11.2.2|11.3.1|11.5.2|11.6.2|11.7.1|11.8.0}"
   exit 1
 fi
 
-# modify cuda version to available versions
-if [[ "$cuda_version" == @(11.1|11.3|11.7) ]]; then
-  cuda_version=${cuda_version}.1
-elif [[ "$cuda_version" == @(11.2|11.5|11.6) ]]; then 
-  cuda_version=${cuda_version}.2
-elif [[ "$cuda_version" == @(11.8) ]]; then 
-  cuda_version=${cuda_version}.0
-fi
 
 if [[ "$image" != @(flexflow-environment|flexflow) ]]; then
   echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment' and 'flexflow'."

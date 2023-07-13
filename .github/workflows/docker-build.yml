@@ -25,20 +25,20 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
-        cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6","11.7", "11.8"]
+        cuda_version: ["11.1.1", "11.2.2", "11.3.1", "11.5.2", "11.6.2","11.7.1", "11.8.0"]
         exclude:
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.2"
+            cuda_version: "11.2.2"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.3"
+            cuda_version: "11.3.1"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.5"
+            cuda_version: "11.5.2"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.6"
+            cuda_version: "11.6.2"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.7"
+            cuda_version: "11.7.1"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.8"
+            cuda_version: "11.8.0"
         
       fail-fast: false
     steps:
@@ -67,7 +67,7 @@ jobs:
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
-        run: docker run --entrypoint python flexflow-cuda-11.8.0:latest -c "import flexflow.core; exit()"
+        run: docker run --entrypoint python flexflow-cuda-"${cuda_version}":latest -c "import flexflow.core; exit()"
 
       - name: Publish Docker environment image (on push to master)
         if: github.repository_owner == 'flexflow'
