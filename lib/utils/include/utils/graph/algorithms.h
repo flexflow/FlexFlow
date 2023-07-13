@@ -16,7 +16,7 @@
 namespace FlexFlow {
 
 std::vector<Node> add_nodes(Graph &, int);
-std::vector<Node> add_nodes(IGraph &g, int num_nodes);
+std::vector<Node> add_nodes(DiGraph &, int);
 std::unordered_set<Node> get_nodes(GraphView const &);
 std::unordered_set<NodePort> get_node_ports(MultiDiGraphView const &);
 

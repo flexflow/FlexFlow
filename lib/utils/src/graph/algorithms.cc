@@ -16,6 +16,13 @@ std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
   return nodes;
 }
 
+std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
+  std::vector<Node> nodes;
+  std::generate_n(
+      std::back_inserter(nodes), num_nodes, [&g]() { return g.add_node(); });
+  return nodes;
+}
+
 std::unordered_set<Node> get_nodes(GraphView const &g) {
   return g.query_nodes({});
 }
