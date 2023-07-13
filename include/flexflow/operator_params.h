@@ -84,6 +84,6 @@ using OperatorParameters = mp::variant<AggregateParams,
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op);
 
-};     // namespace FlexFlow
+}; // namespace FlexFlow
 
 #endif // _OPERATOR_PARAMS_H
