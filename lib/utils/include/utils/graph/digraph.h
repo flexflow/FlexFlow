@@ -102,7 +102,7 @@ public:
   DiGraph &operator=(DiGraph const &) = default;
 
   operator DiGraphView() const {
-    return DiGraphView(ptr.get_mutable());
+    return DiGraphView(ptr.get());
   }
 
   friend void swap(DiGraph &, DiGraph &);

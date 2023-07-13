@@ -58,7 +58,7 @@ UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UndirectedGraph:: operator UndirectedGraphView() const {
-    return UndirectedGraphView(ptr.get_mutable());
+    return UndirectedGraphView(ptr.get());
 }
 
 std::unordered_set<UndirectedEdge> UndirectedGraphView::query_edges(UndirectedEdgeQuery const& q)  const {
