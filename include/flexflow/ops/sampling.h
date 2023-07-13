@@ -5,8 +5,10 @@
 #include "flexflow/model.h"
 #include "flexflow/node.h"
 #include "flexflow/ops/sampling_params.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <curand.h>
 #include <curand_kernel.h>
+#endif
 
 namespace FlexFlow {
 
@@ -20,7 +22,9 @@ public:
   int *idx;
   void *d_temp_storage;
   size_t temp_storage_bytes;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   curandState *state;
+#endif
   SamplingMeta(FFHandler handle,
                Op const *op,
                int batch_size,

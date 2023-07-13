@@ -80,9 +80,7 @@ __global__ void sampling_topp_kernel(int batch_size,
   if (threadIdx.x == 0) {
     // number must < topp
     random_n = curand_uniform(state + batch_idx) * topp;
-    // if (blockIdx.x == 0) {
-    //   printf("batch idx: %d, random num%f\n", batch_idx, random_n);
-    // }
+    // printf("batch idx: %d, random num%f\n", batch_idx, random_n);
   }
 
   __syncthreads();
@@ -98,7 +96,7 @@ __global__ void sampling_topp_kernel(int batch_size,
   result_idx = vocab_size - 1;
 
   for (long long j = threadIdx.x; j < vocab_size; j += blockDim.x) {
-    float logit = (float)sorted_logits[offset + j];
+    float logit = (float)(sorted_logits[offset + j]);
     BlockScan(temp_storage).InclusiveSum(logit, prefix_sum, prefix_op);
     prefix_sum /= topp;
     if (prefix_sum >= random_n) {
@@ -107,8 +105,8 @@ __global__ void sampling_topp_kernel(int batch_size,
   }
   indices_ptr[batch_idx] = sorted_idx[offset + result_idx];
 
-  // if (blockIdx.x == 0 && threadIdx.x == 0) {
-  //   printf("selected idx: %d\n", result_idx);
+  // if (threadIdx.x == 0) {
+  //   printf("selected idx: %d, %d\n", blockIdx.x, result_idx);
   // }
 }
 
@@ -125,11 +123,11 @@ void Sampling::forward_kernel(SamplingMeta const *m,
   // 2. cumsum
 
   size_t temp_storage_bytes = m->temp_storage_bytes;
-  cub::DeviceSegmentedRadixSort::SortPairsDescending(
+  checkCUDA(cub::DeviceSegmentedRadixSort::SortPairsDescending(
       m->d_temp_storage,
       temp_storage_bytes,
       input_ptr,
-      input_ptr,
+      static_cast<DT *>(m->sorted_logits),
       m->idx,
       m->sorted_idx,
       length * batch_size,
@@ -138,24 +136,23 @@ void Sampling::forward_kernel(SamplingMeta const *m,
       m->end_offset + 1,
       0,              // begin_bit
       sizeof(DT) * 8, // end_bit = sizeof(KeyT) * 8
-      stream);
+      stream));
   int parallelism = batch_size;
   init_random_kernel<<<GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
                        0,
                        stream>>>(m->state, batch_size, rand());
   sampling_topp_kernel<DT, SamplingNumThreads>
-      <<<batch_size, SamplingNumThreads, 0, stream>>>(batch_size,
-                                                      length,
-                                                      m->state,
-                                                      input_ptr,
-                                                      m->sorted_idx,
-                                                      indices_ptr,
-                                                      top_p);
+      <<<batch_size, SamplingNumThreads, 0, stream>>>(
+          batch_size,
+          length,
+          m->state,
+          static_cast<DT *>(m->sorted_logits),
+          m->sorted_idx,
+          indices_ptr,
+          top_p);
 
-  checkCUDA(cudaDeviceSynchronize());
   // topk / topp mask some value and renormalize
-
   // sampling
 }
 
@@ -238,7 +235,7 @@ SamplingMeta::SamplingMeta(FFHandler handler,
 
   // init sort function
   if (data_type == DT_FLOAT) {
-    cub::DeviceSegmentedRadixSort::SortPairsDescending(
+    checkCUDA(cub::DeviceSegmentedRadixSort::SortPairsDescending(
         d_temp_storage,
         temp_storage_bytes,
         input.get_float_ptr(),
@@ -251,9 +248,9 @@ SamplingMeta::SamplingMeta(FFHandler handler,
         end_offset + 1,
         0,                             // begin_bit
         data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
-        stream);
+        stream));
   } else if (data_type == DT_HALF) {
-    cub::DeviceSegmentedRadixSort::SortPairsDescending(
+    checkCUDA(cub::DeviceSegmentedRadixSort::SortPairsDescending(
         d_temp_storage,
         temp_storage_bytes,
         input.get_half_ptr(),
@@ -266,11 +263,10 @@ SamplingMeta::SamplingMeta(FFHandler handler,
         end_offset + 1,
         0,                             // begin_bit
         data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
-        stream);
+        stream));
   } else {
     assert(false && "input type in float and half");
   }
-
   checkCUDA(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 }
 
