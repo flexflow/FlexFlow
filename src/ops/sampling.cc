@@ -92,7 +92,6 @@ SamplingParams Sampling::get_params() const {
 }
 
 bool SamplingParams::is_valid(ParallelTensorShape const &) const {
-  // topk is always valid
   return true;
 }
 
@@ -119,6 +118,7 @@ Sampling::Sampling(FFModel &model,
     dims[i] = inputs[0]->dims[i];
   }
   dims[0].size = 1;
+  std::cout << "degree: " << inputs[0]->dims[0].degree << "\n";
   assert(inputs[0]->dims[0].degree == 1);
   assert(inputs[0]->dims[0].parallel_idx == -1);
   //   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -231,7 +231,7 @@ OpMeta *Sampling::init_task(Task const *task,
   int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
   int batch_size = acc_input.domain.get_volume() / length;  
 
-  SamplingMeta *m = new SamplingMeta(handle, s, batch_size, length * batch_size);
+  SamplingMeta *m = new SamplingMeta(handle, s, batch_size, length * batch_size, acc_input);
   m->profiling = s->profiling;
   m->top_p = s->top_p;
   return m;
@@ -292,7 +292,7 @@ InferenceResult
                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  // const Sampling* topk = (const Sampling*) task->args;
+  const Sampling* sampling = (const Sampling*) task->args;
   SamplingMeta const *m = *((SamplingMeta **)task->local_args);
 
   GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(

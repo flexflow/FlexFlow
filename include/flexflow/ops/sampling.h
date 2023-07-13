@@ -19,8 +19,9 @@ public:
   int *end_offset;
   int *idx;
   void *d_temp_storage;
+  size_t temp_storage_bytes;
   curandState *state;
-  SamplingMeta(FFHandler handle, Op const *op, int batch_size, int total_ele);
+  SamplingMeta(FFHandler handle, Op const *op, int batch_size, int total_ele, GenericTensorAccessorW input);
 };
 
 class Sampling : public Op {

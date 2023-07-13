@@ -22,6 +22,7 @@
 
 namespace FlexFlow {
 
+constexpr int SamplingNumThreads = 1024;
 struct BlockPrefixCallbackOp {
   // Running prefix
   float running_total;
@@ -37,18 +38,6 @@ struct BlockPrefixCallbackOp {
     return old_prefix;
   }
 };
-
-template <typename DT>
-__global__ void mask_value_above_top_p(DT *input_ptr,
-                                       DT *cumsum_ptr,
-                                       float top_p,
-                                       int total_eles) {
-  CUDA_KERNEL_LOOP(i, total_eles) {
-    if ((cumsum_ptr[i] - input_ptr[i]) > static_cast<DT>(top_p)) {
-      input_ptr[i] = 0.0;
-    }
-  }
-}
 
 __global__ void init_idxs(int batch_size,
                           int vocab_size,
@@ -82,133 +71,48 @@ __global__ void sampling_topp_kernel(int batch_size,
                                      int *sorted_idx,
                                      int *indices_ptr,
                                      float topp) {
-  int const vocab_id = threadIdx.x;
+  // int const vocab_id = threadIdx.x;
   int const batch_idx = blockIdx.x;
   __shared__ float random_n;
-  __shared__ float renormalized_sum;
+  // __shared__ float renormalized_sum;
   __shared__ long long result_idx;
 
   // random num
   if (threadIdx.x == 0) {
     // number must < topp
     random_n = curand_uniform(state + batch_idx) * topp;
-    printf("batch idx: %d, %f\n", batch_idx, random_n);
+    if(blockIdx.x == 0){
+       printf("batch idx: %d, %f\n", batch_idx, random_n);
+    }
+   
   }
 
   __syncthreads();
 
   // cumsum;
   typedef cub::BlockScan<float, BLOCK_SIZE> BlockScan;
-  typedef cub::BlockScan<float, BLOCK_SIZE> BlockScanMultiNominal;
-  typedef cub::BlockReduce<float, BLOCK_SIZE> BlockReduce;
   __shared__ typename BlockScan::TempStorage temp_storage;
-  __shared__ typename BlockReduce::TempStorage reduce_temp_storage;
-  __shared__ typename BlockScan::TempStorage multinominal_temp_storage;
 
   int offset = batch_idx * vocab_size;
   float prefix_sum = 0.0f;
-  int end = ((vocab_size + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
   BlockPrefixCallbackOp prefix_op(0);
-  float sum;
-  result_idx = vocab_size;
+  // float sum;
+  result_idx = vocab_size - 1;
 
   for (long long j = threadIdx.x; j < vocab_size; j += blockDim.x) {
     float logit = (float)sorted_logits[offset + j];
-    // float logit = (j < vocab_size) ? (float)sorted_logits[offset + j] : 0.f;
     BlockScan(temp_storage).InclusiveSum(logit, prefix_sum, prefix_op);
-
     prefix_sum /= topp;
-
     if (prefix_sum >= random_n) {
       atomicMin(&result_idx, j);
     }
-
-    // if (blockIdx.x == 0 && j == 276){
-    //   printf("batch idx afterward aaaaaa: %f, %.10f, %.10f, %.10f, %.10f\n",
-    //   topp, prefix_sum, logit,  (float)sorted_logits[offset + j], random_n);
-    // }
-    // if (blockIdx.x == 1 && j == 39){
-    //   printf("batch idx afterward aaaaaa11111: %f, %.10f, %.10f, %.10f,
-    //   %.10f\n", topp, prefix_sum, logit,  (float)sorted_logits[offset + j],
-    //   random_n);
-    // }
-
-    // // mask
-    // sorted_logits[offset + j] =
-    //     (prefix_sum - (float)sorted_logits[offset + j] > topp)
-    //         ? (DT)0
-    //         : sorted_logits[offset + j];
-
-    // //get sum and divide
-    // sum += (float)sorted_logits[offset + j];
-    // __syncthreads();
-    // if (blockIdx.x == 0 && j > 31990) {
-    //   printf(
-    //       "batch idx afterward after:%d,  %.20f, %.20f\n", j, prefix_sum,
-    //       logit);
-    // }
-    // if (blockIdx.x == 0 && j > 1022 && j < 1028) {
-    //   printf(
-    //       "batch idx afterward before:%d,  %,20f, %.20f\n", j, prefix_sum,
-    //       logit);
-    // }
   }
-
   indices_ptr[batch_idx] = sorted_idx[offset + result_idx];
-  // if meet latency issue, this part can also be removed because the sum is
-  // very close to topp.
-  //  float temp_sum = BlockReduce(reduce_temp_storage).Sum(sum);
-  //  __syncthreads();
-  //  if(threadIdx.x == 0){
-  //    renormalized_sum = temp_sum;
-  //  }
-  //  __syncthreads();
 
-  // renormalized and multinominal
-  //  result_idx = vocab_size;
-  //  BlockPrefixCallbackOp prefix_op_2(0);
-  //  prefix_sum = 0.0f;
-  //  for (long long j = threadIdx.x; j < vocab_size; j += blockDim.x) {
-  //    float logit = (float)sorted_logits[offset + j] / topp;
-  //    BlockScanMultiNominal(multinominal_temp_storage).InclusiveSum(logit,
-  //    prefix_sum, prefix_op_2);
-
-  //   if(prefix_sum >= random_n){
-  //       atomicMin(&result_idx, j);
-  //   }
-
-  //   if (blockIdx.x == 0 && j == 1023){
-  //     printf("batch idx afterward aaaaaa: %f, %.10f, %.10f, %.10f, %.10f\n",
-  //     topp, prefix_sum, logit,  (float)sorted_logits[offset + j], random_n);
-  //   }
-  //   if (blockIdx.x == 1 && j == 39){
-  //     printf("batch idx afterward aaaaaa11111: %f, %.10f, %.10f, %.10f,
-  //     %.10f\n", topp, prefix_sum, logit,  (float)sorted_logits[offset + j],
-  //     random_n);
-  //   }
-  // }
-  // indices_ptr[batch_idx] = (int)result_idx;
-
-  // __syncthreads();
-
-  if (blockIdx.x == 0 && threadIdx.x == 0) {
-    printf("batch idx afterward aaaaaa: %d\n", result_idx);
-  }
-  if (blockIdx.x == 0 && threadIdx.x == 0) {
-    printf("batch idx afterward aaaaaa0000: %d\n", result_idx);
-  }
-  if (blockIdx.x == 1 && threadIdx.x == 1) {
-    printf("batch idx afterward aaaaaa11111: %d\n", result_idx);
-  }
-
-  // if (threadIdx.x == 1) {
-  //   printf("batch idx afterward: %d, %f, %f, %d\n", batch_idx, prefix_sum,
-  //   (float)sorted_logits[offset], offset);
+  // if (blockIdx.x == 0 && threadIdx.x == 0) {
+  //   printf("batch idx afterward aaaaaa: %d\n", result_idx);
   // }
 
-  // mask, div
-
-  // select
 }
 
 /*static*/
@@ -222,53 +126,15 @@ void Sampling::forward_kernel(SamplingMeta const *m,
                               cudaStream_t stream) {
   // 1. sort
   // 2. cumsum
-  // how to do it in parallel?
-  // init
-  print_tensor<float>((float *)input_ptr + 32000, 32, "inputttt");
-  std::cout << "meta " << length << ", " << batch_size << "\n";
-  int parallelism = length * batch_size;
-  init_idxs<<<GET_BLOCKS(parallelism),
-              min(CUDA_NUM_THREADS, parallelism),
-              0,
-              stream>>>(batch_size,
-                        length,
-                        length * batch_size,
-                        m->idx,
-                        m->begin_offset,
-                        m->end_offset);
-
-  checkCUDA(cudaDeviceSynchronize());
-  // print_tensor<int>(m->begin_offset, 64, "ofsset");
-  // print_tensor<int>(m->end_offset, 64, "ofsset");
-
   std::cout << "-------------------------sampling kernel _--------------------"
             << "\n";
-  // sort
-  size_t temp_storage_bytes = 0;
-  void *d_temp_storage = nullptr;
+  
+  size_t temp_storage_bytes = m->temp_storage_bytes;
   cub::DeviceSegmentedRadixSort::SortPairsDescending(
       m->d_temp_storage,
       temp_storage_bytes,
       input_ptr,
-      static_cast<DT *>(m->sorted_logits),
-      m->idx,
-      m->sorted_idx,
-      length * batch_size,
-      batch_size,
-      m->begin_offset,
-      m->end_offset + 1,
-      0,              // begin_bit
-      sizeof(DT) * 8, // end_bit = sizeof(KeyT) * 8
-      stream);
-
-  checkCUDA(cudaDeviceSynchronize());
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
-  // sort
-  cub::DeviceSegmentedRadixSort::SortPairsDescending(
-      d_temp_storage,
-      temp_storage_bytes,
       input_ptr,
-      static_cast<DT *>(m->sorted_logits),
       m->idx,
       m->sorted_idx,
       length * batch_size,
@@ -278,25 +144,19 @@ void Sampling::forward_kernel(SamplingMeta const *m,
       0,              // begin_bit
       sizeof(DT) * 8, // end_bit = sizeof(KeyT) * 8
       stream);
-  print_tensor<float>((float *)m->sorted_logits, 32, "after sort 0");
-  // print_tensor<float>((float *)m->sorted_logits + 31990, 32, "after sort 1");
-  // print_tensor<int>((int *)indices_ptr, 15, "sdsdasd");
-
-  // random
-
-  parallelism = batch_size;
+  int parallelism = batch_size;
   init_random_kernel<<<GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
                        0,
                        stream>>>(m->state, batch_size, rand());
-  sampling_topp_kernel<DT, 1024>
-      <<<batch_size, 1024, 0, stream>>>(batch_size,
+  sampling_topp_kernel<DT, SamplingNumThreads>
+      <<<batch_size, SamplingNumThreads, 0, stream>>>(batch_size,
                                         length,
                                         m->state,
-                                        static_cast<DT *>(m->sorted_logits),
+                                        input_ptr,
                                         m->sorted_idx,
                                         indices_ptr,
-                                        0.95f);
+                                        top_p);
 
   checkCUDA(cudaDeviceSynchronize());
   // print_tensor<float>((float *)m->sorted_logits + 32000, 32, "after sort");
@@ -355,7 +215,8 @@ void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
 SamplingMeta::SamplingMeta(FFHandler handler,
                            Op const *op,
                            int batch_size,
-                           int total_ele)
+                           int total_ele,
+                           GenericTensorAccessorW input)
     : OpMeta(handler, op) {
   DataType data_type = op->data_type;
   checkCUDA(cudaMalloc(&begin_offset, (batch_size + 1) * sizeof(int)));
@@ -365,6 +226,61 @@ SamplingMeta::SamplingMeta(FFHandler handler,
   checkCUDA(cudaMalloc(&sorted_idx, total_ele * sizeof(int)));
   checkCUDA(cudaMalloc(&sorted_logits, total_ele * data_type_size(data_type)));
   cudaMalloc(&state, sizeof(curandState) * batch_size);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+
+  //init offset
+  int parallelism = total_ele;
+  init_idxs<<<GET_BLOCKS(parallelism),
+              min(CUDA_NUM_THREADS, parallelism),
+              0,
+              stream>>>(batch_size,
+                        total_ele / batch_size,
+                        total_ele,
+                        idx,
+                        begin_offset,
+                        end_offset);
+
+
+ 
+  //init sort function
+  if(data_type == DT_FLOAT){
+    cub::DeviceSegmentedRadixSort::SortPairsDescending(
+      d_temp_storage,
+      temp_storage_bytes,
+      input.get_float_ptr(),
+      input.get_float_ptr(),
+      idx,
+      idx,
+      total_ele,
+      batch_size,
+      begin_offset,
+      end_offset + 1,
+      0,              // begin_bit
+      data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
+      stream);
+  }else if(data_type == DT_HALF){
+    cub::DeviceSegmentedRadixSort::SortPairsDescending(
+      d_temp_storage,
+      temp_storage_bytes,
+      input.get_half_ptr(),
+      input.get_half_ptr(),
+      idx,
+      idx,
+      total_ele,
+      batch_size,
+      begin_offset,
+      end_offset + 1,
+      0,              // begin_bit
+      data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
+      stream);
+  }else{
+    assert(false && "input type in float and half");
+  }
+
+  checkCUDA(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 }
 
 }; // namespace FlexFlow

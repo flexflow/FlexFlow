@@ -107,7 +107,8 @@ public:
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
-                                 bool use_full_precision = false);
+                                 GenerationConfig generationConfig,
+                                 bool use_full_precision = false );
 };
 
 }; // namespace FlexFlow
