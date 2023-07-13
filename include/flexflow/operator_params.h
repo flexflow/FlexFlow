@@ -26,11 +26,11 @@
 #include "flexflow/ops/reduce_params.h"
 #include "flexflow/ops/reshape_params.h"
 #include "flexflow/ops/rms_norm_params.h"
+#include "flexflow/ops/sampling_params.h"
 #include "flexflow/ops/softmax_params.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "flexflow/ops/split_params.h"
 #include "flexflow/ops/topk_params.h"
-#include "flexflow/ops/sampling_params.h"
 #include "flexflow/ops/transpose_params.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention_params.h"
 #include "flexflow/parallel_ops/allreduce_params.h"
@@ -84,6 +84,6 @@ using OperatorParameters = mp::variant<AggregateParams,
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op);
 
-}; // namespace FlexFlow
+};     // namespace FlexFlow
 
 #endif // _OPERATOR_PARAMS_H
