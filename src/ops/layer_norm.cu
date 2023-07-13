@@ -135,8 +135,8 @@ template <typename T>
 void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T const *in_ptr,
                                T *out_ptr,
-                               T *gamma_ptr,
-                               T *beta_ptr,
+                               T const *gamma_ptr,
+                               T const *beta_ptr,
                                cudaStream_t stream) {
   RowwiseMomentsCUDAKernel<T>
       <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
@@ -160,8 +160,8 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
 void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorW &output,
-                                       GenericTensorAccessorW &gamma,
-                                       GenericTensorAccessorW &beta) {
+                                       GenericTensorAccessorR const &gamma,
+                                       GenericTensorAccessorR const &beta) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 

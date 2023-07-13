@@ -88,7 +88,8 @@ Op *ArgTopK::create_operator_from_layer(
   int k = value;
   layer->get_int_property("sorted", value);
   bool sorted = (bool)value;
-  return new ArgTopK(model, inputs[0], k, sorted, layer->name);
+  return new ArgTopK(
+      model, layer->layer_guid, inputs[0], k, sorted, layer->name);
 }
 
 ArgTopKParams ArgTopK::get_params() const {
@@ -108,6 +109,7 @@ bool operator==(ArgTopKParams const &lhs, ArgTopKParams const &rhs) {
 }
 
 ArgTopK::ArgTopK(FFModel &model,
+                 LayerID const &_layer_guid,
                  const ParallelTensor _input,
                  int _k,
                  bool _sorted,
@@ -121,6 +123,8 @@ ArgTopK::ArgTopK(FFModel &model,
          1 /*outputs*/,
          _input),
       k(_k), sorted(_sorted) {
+  // overwrite layer_guid
+  layer_guid = _layer_guid;
   int numdim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
@@ -136,15 +140,16 @@ ArgTopK::ArgTopK(FFModel &model,
 }
 
 ArgTopK::ArgTopK(FFModel &model,
+                 LayerID const &layer_guid,
                  ArgTopK const &other,
                  const ParallelTensor input)
-    : ArgTopK(model, input, other.k, other.sorted, other.name) {}
+    : ArgTopK(model, layer_guid, input, other.k, other.sorted, other.name) {}
 
 ArgTopK::ArgTopK(FFModel &model,
                  ArgTopKParams const &params,
                  const ParallelTensor input,
                  char const *name)
-    : ArgTopK(model, input, params.k, params.sorted, name) {}
+    : ArgTopK(model, params.layer_guid, input, params.k, params.sorted, name) {}
 
 void ArgTopK::init_inference(FFModel const &ff,
                              std::vector<ParallelTensor> const &batch_inputs,
@@ -260,7 +265,7 @@ FutureMap ArgTopK::inference(FFModel const &ff,
             << std::endl; */
   IndexLauncher launcher(ARG_TOPK_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(&bc, sizeof(BatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -295,6 +300,7 @@ InferenceResult
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
+  BatchConfig const *bc = (BatchConfig *)task->args;
   ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -302,10 +308,11 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  ArgTopK::forward_kernel_wrapper(m, input, indices);
+  int batch_size = bc->num_active_tokens();
+  ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
 
   int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-  int batch_size = input.domain.get_volume() / length;
+  batch_size = input.domain.get_volume() / length;
 
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
@@ -319,6 +326,8 @@ void ArgTopK::backward(FFModel const &ff) {
 }
 
 void ArgTopK::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->k);
   sez.serialize(this->sorted);
 }
@@ -328,11 +337,16 @@ Node ArgTopK::deserialize(FFModel &ff,
                           ParallelTensor inputs[],
                           int num_inputs) {
   assert(num_inputs == 1);
+  size_t id, transformer_layer_id;
+  dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
   int k;
   bool sorted;
   dez.deserialize(k);
   dez.deserialize(sorted);
   ArgTopKParams params;
+  params.layer_guid = layer_guid;
   params.k = k;
   params.sorted = sorted;
   return ff.get_or_create_node<ArgTopK>(inputs[0], params);
@@ -357,6 +371,7 @@ namespace std {
 size_t hash<FlexFlow::ArgTopKParams>::operator()(
     FlexFlow::ArgTopKParams const &params) const {
   size_t key = 0;
+  hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.k);
   hash_combine(key, params.sorted);
   return key;

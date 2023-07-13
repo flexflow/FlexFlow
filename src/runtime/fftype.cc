@@ -1,11 +1,15 @@
 #include "flexflow/fftype.h"
+#include "flexflow/config.h"
 #include <cassert>
 
 namespace FlexFlow {
 
-LayerID::LayerID() : id(0) {}
+const LayerID LayerID::NO_ID = LayerID();
 
-LayerID::LayerID(size_t _id) : id(_id) {
+LayerID::LayerID() : id(0), transformer_layer_id(MAX_NUM_TRANSFORMER_LAYERS) {}
+
+LayerID::LayerID(size_t _id, size_t _transformer_layer_id)
+    : id(_id), transformer_layer_id(_transformer_layer_id) {
   assert(is_valid_id());
 }
 
@@ -14,6 +18,10 @@ bool LayerID::is_valid_id() const {
 }
 
 bool operator==(LayerID const &lhs, LayerID const &rhs) {
+  // id should be sufficient to distinguish different layers
+  if (lhs.id == rhs.id) {
+    assert(lhs.transformer_layer_id == rhs.transformer_layer_id);
+  }
   return lhs.id == rhs.id;
 }
 

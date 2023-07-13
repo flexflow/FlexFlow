@@ -504,10 +504,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->add_bias_only_once = linear->add_bias_only_once;
   m->profiling = linear->profiling;
   m->trainableInputs[0] = linear->trainableInputs[0];
-  m->input_type = linear->inputs[0]->data_type;
-  m->weight_type = linear->weights[0]->data_type;
-  m->output_type = linear->outputs[0]->data_type;
-  m->weight_ptr_type = m->input_type;
+  m->weight_ptr_type = m->input_type[0];
   m->quantization_type = linear->quantization_type;
   m->offload = linear->offload;
   std::strcpy(m->op_name, linear->name);
@@ -573,9 +570,9 @@ FutureMap Linear::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "Linear op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  IndexLauncher launcher(LINEAR_FWD_TASK_ID,
+  IndexLauncher launcher(LINEAR_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(nullptr, 0),
+                         TaskArgument(&bc, sizeof(BatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -612,6 +609,52 @@ FutureMap Linear::inference(FFModel const &ff,
   return runtime->execute_index_space(ctx, launcher);
 }
 
+void Linear::inference_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  Domain input_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  BatchConfig const *bc = (BatchConfig *)task->args;
+  assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  if (m->quantization_type == DT_NONE) {
+    assert(m->input_type[0] == m->weight_type[0]);
+  }
+  assert(m->input_type[0] == m->output_type[0]);
+
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+
+  int batch_size = bc->num_active_tokens();
+  GenericTensorAccessorR bias;
+  if (m->use_bias &&
+      !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {
+    bias = helperGetGenericTensorAccessorRO(m->weight_type[1],
+                                            regions[3],
+                                            task->regions[3],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime);
+    assert(bias.domain.get_volume() == static_cast<size_t>(out_dim));
+  }
+  forward_kernel_wrapper(m,
+                         input.ptr,
+                         output.ptr,
+                         weight.ptr,
+                         bias.ptr,
+                         in_dim,
+                         out_dim,
+                         batch_size);
+}
+
 void Linear::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
@@ -620,13 +663,13 @@ void Linear::forward_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
   if (m->quantization_type == DT_NONE) {
-    assert(m->input_type == m->weight_type);
+    assert(m->input_type[0] == m->weight_type[0]);
   }
-  assert(m->input_type == m->output_type);
+  assert(m->input_type[0] == m->output_type[0]);
   switch (input_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    if (m->output_type == DT_HALF) {                                           \
+    if (m->output_type[0] == DT_HALF) {                                        \
       if (m->quantization_type != DT_NONE) {                                   \
         return forward_task_with_dim<half, char, DIM>(                         \
             task, regions, ctx, runtime);                                      \
@@ -634,7 +677,7 @@ void Linear::forward_task(Task const *task,
         return forward_task_with_dim<half, half, DIM>(                         \
             task, regions, ctx, runtime);                                      \
       }                                                                        \
-    } else if (m->output_type == DT_FLOAT) {                                   \
+    } else if (m->output_type[0] == DT_FLOAT) {                                \
       if (m->quantization_type != DT_NONE) {                                   \
         return forward_task_with_dim<float, char, DIM>(                        \
             task, regions, ctx, runtime);                                      \
@@ -787,15 +830,15 @@ void Linear::backward_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
   if (m->quantization_type == DT_NONE) {
-    assert(m->input_type == m->weight_type);
+    assert(m->input_type[0] == m->weight_type[0]);
   }
-  assert(m->input_type == m->output_type);
+  assert(m->input_type[0] == m->output_type[0]);
   switch (in_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    if (m->output_type == DT_HALF) {                                           \
+    if (m->output_type[0] == DT_HALF) {                                        \
       return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
-    } else if (m->output_type == DT_FLOAT) {                                   \
+    } else if (m->output_type[0] == DT_FLOAT) {                                \
       return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
     } else {                                                                   \
       assert(false && "Unsupported data type");                                \
@@ -1068,9 +1111,9 @@ bool Linear::measure_operator_cost(Simulator *sim,
   m->activation = activation;
   m->kernel_reg_type = kernel_reg_type;
   m->kernel_reg_lambda = kernel_reg_lambda;
-  m->input_type = inputs[0]->data_type;
-  m->weight_type = this->data_type;
-  m->output_type = outputs[0]->data_type;
+  m->input_type[0] = inputs[0]->data_type;
+  m->weight_type[0] = this->data_type;
+  m->output_type[0] = outputs[0]->data_type;
   assert(m->profiling == false);
 
   init_kernel(m, output_n, output_c);
@@ -1186,6 +1229,7 @@ bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
 
 void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->out_channels);
   sez.serialize(this->activation);
   sez.serialize(this->kernel_reg_type);
@@ -1211,9 +1255,10 @@ Node Linear::deserialize(FFModel &ff,
   DataType data_type;
   DataType quantization_type;
   bool offload;
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
   dez.deserialize(out_channels);
   dez.deserialize(activation);
   dez.deserialize(kernel_reg_type);

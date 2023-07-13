@@ -106,7 +106,6 @@ public:
                                  InferenceManager &im,
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
-                                 int num_pipeline_stages,
                                  InferenceMode mode,
                                  bool use_full_precision = false);
 };

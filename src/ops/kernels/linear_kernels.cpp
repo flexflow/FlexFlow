@@ -75,12 +75,13 @@ void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
         assert(false);
     }
     checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
-    checkCUDNN(miopenSet4dTensorDescriptor(m->outputTensor,
-                                           ff_to_cudnn_datatype(m->output_type),
-                                           batch_size,
-                                           channel,
-                                           1,
-                                           1));
+    checkCUDNN(
+        miopenSet4dTensorDescriptor(m->outputTensor,
+                                    ff_to_cudnn_datatype(m->output_type[0]),
+                                    batch_size,
+                                    channel,
+                                    1,
+                                    1));
   }
 }
 
@@ -102,7 +103,7 @@ void forward_kernel_wrapper(LinearMeta const *m,
     hipEventRecord(t_start, stream);
   }
 
-  if (m->input_type == DT_FLOAT) {
+  if (m->input_type[0] == DT_FLOAT) {
     Internal::forward_kernel<float>(m,
                                     input_ptr,
                                     output_ptr,
@@ -112,7 +113,7 @@ void forward_kernel_wrapper(LinearMeta const *m,
                                     out_dim,
                                     batch_size,
                                     stream);
-  } else if (m->input_type == DT_HALF) {
+  } else if (m->input_type[0] == DT_HALF) {
     Internal::forward_kernel<half>(m,
                                    input_ptr,
                                    output_ptr,
@@ -161,7 +162,7 @@ void backward_kernel_wrapper(LinearMeta const *m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  if (m->input_type == DT_FLOAT) {
+  if (m->input_type[0] == DT_FLOAT) {
     Internal::backward_kernel<float>(m,
                                      input_ptr,
                                      input_grad_ptr,
@@ -174,7 +175,7 @@ void backward_kernel_wrapper(LinearMeta const *m,
                                      out_dim,
                                      batch_size,
                                      stream);
-  } else if (m->input_type == DT_HALF) {
+  } else if (m->input_type[0] == DT_HALF) {
     Internal::backward_kernel<half>(m,
                                     input_ptr,
                                     input_grad_ptr,
@@ -236,9 +237,9 @@ void forward_kernel(LinearMeta const *m,
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
-  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type);
-  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type);
-  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type);
+  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
@@ -332,9 +333,9 @@ void backward_kernel(LinearMeta const *m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   DT alpha = 1.0f;
-  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type);
-  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type);
-  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type);
+  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
@@ -344,10 +345,10 @@ void backward_kernel(LinearMeta const *m,
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
     relu_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+        m->output_type[0], output_grad_ptr, output_ptr, output_size, stream);
   } else if (m->activation == AC_MODE_SIGMOID) {
     sigmoid_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+        m->output_type[0], output_grad_ptr, output_ptr, output_size, stream);
   } else {
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);

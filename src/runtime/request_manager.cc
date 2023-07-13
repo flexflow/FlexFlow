@@ -243,6 +243,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           outputFile << "end-to-end latency: " << std::fixed
                      << std::setprecision(3) << total_request_run_time
                      << std::endl;
+          outputFile << "num decoding steps: " << profile_info.decoding_steps
+                     << std::endl;
           outputFile << "token IDs: ";
           for (int i = 0; i < request.tokens.size(); i++) {
             outputFile << request.tokens[i];
@@ -357,6 +359,7 @@ BeamSearchBatchConfig
 
   // Step 2: preparing the next batch for existing requests
   BeamSearchBatchConfig new_bc;
+  new_bc.max_init_length = 0;
   new_bc.model_id = old_bc.model_id;
   std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
 
@@ -561,6 +564,8 @@ BeamSearchBatchConfig
           outputFile << "end-to-end latency: " << std::fixed
                      << std::setprecision(3) << total_request_run_time
                      << std::endl;
+          outputFile << "num decoding steps: " << profile_info.decoding_steps
+                     << std::endl;
           outputFile << "token IDs: ";
           for (int i = 0; i < request.tokens.size(); i++) {
             outputFile << request.tokens[i];
@@ -634,12 +639,15 @@ BeamSearchBatchConfig
   }
 
   // Step 2: Initialize new request
+  new_bc.max_init_length = 0;
   for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_request_queue.empty() &&
           new_bc.num_tokens < BeamSearchBatchConfig::MAX_NUM_TOKENS) {
         Request new_request = pending_request_queue.front();
         pending_request_queue.pop();
+        new_bc.max_init_length =
+            std::max(new_bc.max_init_length, new_request.initial_len);
         running_request_queue[new_request.guid] = new_request;
         new_bc.requestsInfo[i].token_start_offset = 0;
         new_bc.requestsInfo[i].request_guid = new_request.guid;

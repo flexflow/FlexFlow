@@ -7,7 +7,9 @@
 namespace FlexFlow {
 
 struct ElementBinaryParams {
+  LayerID layer_guid;
   OperatorType type;
+  bool inplace_a;
 
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;

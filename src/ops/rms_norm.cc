@@ -165,7 +165,11 @@ RMSNorm::RMSNorm(FFModel &model,
   for (int i = 1; i <= num_dims - 2; i++) {
     effective_batch_size *= _input->dims[i].size;
   }
-
+  // Currently assert that all non-replica dims are not parallelized
+  // We only support parallelism along the replica dim now
+  for (int i = 0; i < _input->num_dims - 1; i++) {
+    assert(_input->dims[i].degree == 1);
+  }
   // output has the same parallel dims as input
   ParallelDim output_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < _input->num_dims; i++) {
@@ -173,15 +177,14 @@ RMSNorm::RMSNorm(FFModel &model,
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, output_dims, _input->data_type, this);
-
   if (allocate_weights) {
     // weights should have the shape of (data_dim, data_dim)
     ParallelDim new_weight_dims[MAX_TENSOR_DIM];
 
-    new_weight_dims[0] = _input->dims[_input->num_dims - 1];
-    new_weight_dims[1].size = dim;
-    new_weight_dims[1].degree = 1;
-    new_weight_dims[1].parallel_idx = -1;
+    new_weight_dims[0].size = dim;
+    new_weight_dims[0].degree = 1;
+    new_weight_dims[0].parallel_idx = -1;
+    new_weight_dims[1] = _input->dims[_input->num_dims - 1]; // replica dim
 
     // weights
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
@@ -189,7 +192,7 @@ RMSNorm::RMSNorm(FFModel &model,
         model.create_parallel_weight_legion_ordering(2,
                                                      new_weight_dims,
                                                      _input->data_type,
-                                                     NULL /*owner_op*/,
+                                                     nullptr /*owner_op*/,
                                                      false /*create_grad*/,
                                                      kernel_initializer,
                                                      CHOSEN_SYNC_TYPE);
@@ -389,6 +392,7 @@ void RMSNorm::forward_task(Task const *task,
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->eps);
   sez.serialize(this->dim);
 }
@@ -401,11 +405,12 @@ Node RMSNorm::deserialize(FFModel &ff,
                           int num_inputs) {
   assert(num_inputs == 1);
   float eps;
-  size_t id;
+  size_t id, transformer_layer_id;
   int dim;
   dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
 
-  LayerID layer_guid(id);
+  LayerID layer_guid(id, transformer_layer_id);
   dez.deserialize(eps);
   dez.deserialize(dim);
   RMSNormParams params;

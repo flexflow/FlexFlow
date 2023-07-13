@@ -15,6 +15,7 @@ public:
   using Input = std::pair<ParallelTensor, ParallelTensor>;
 
   ElementBinary(FFModel &model,
+                LayerID const &layer_guid,
                 OperatorType type,
                 const ParallelTensor x,
                 const ParallelTensor y,
@@ -23,8 +24,7 @@ public:
   ElementBinary(FFModel &model,
                 Params const &params,
                 Input const &inputs,
-                char const *name = nullptr,
-                bool inplace_a = false);
+                char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
@@ -63,6 +63,12 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+
+  void serialize(Legion::Serializer &) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
   Params get_params() const;
 
 public:

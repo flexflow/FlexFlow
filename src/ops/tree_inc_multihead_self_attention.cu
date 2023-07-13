@@ -498,7 +498,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // keys/values to the key-value cache
   cudaMemcpyAsync(m->committed_token_infos,
                   &(bc->committed_tokens),
-                  bc->MAX_NUM_TOKENS *
+                  bc->num_tokens_to_commit *
                       sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
                   cudaMemcpyHostToDevice,
                   stream);

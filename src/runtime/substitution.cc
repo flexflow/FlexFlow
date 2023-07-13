@@ -37,6 +37,7 @@
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -898,8 +899,11 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_EW_MUL:
     case OP_EW_MAX:
     case OP_EW_MIN: {
+      ElementBinaryParams params;
+      params.type = opx->type;
+      params.inplace_a = false;
       op = model->get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
-                                                    {opx->type});
+                                                    params);
       break;
     }
     case OP_RELU: {
@@ -3683,8 +3687,13 @@ bool FFModel::convert_graph_to_operators(
       case OP_EW_MIN: {
         assert(inList.size() == 2);
         ElementBinary *eb = (ElementBinary *)node.ptr;
-        new_op = new ElementBinary(
-            *this, eb->op_type, inputs[0], inputs[1], eb->inplace_a, NULL);
+        new_op = new ElementBinary(*this,
+                                   eb->layer_guid,
+                                   eb->op_type,
+                                   inputs[0],
+                                   inputs[1],
+                                   eb->inplace_a,
+                                   NULL);
         break;
       }
       case OP_POOL2D: {
@@ -3775,6 +3784,12 @@ bool FFModel::convert_graph_to_operators(
                                inputs[0],
                                reduction->reduction_dim,
                                reduction->reduction_degree);
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(inList.size() == 1);
+        AllReduce *allreduce = (AllReduce *)node.ptr;
+        new_op = new AllReduce(*this, inputs[0], allreduce->allreduce_dim);
         break;
       }
       case OP_FUSED_PARALLEL: {
