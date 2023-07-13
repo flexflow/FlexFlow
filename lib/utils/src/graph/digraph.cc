@@ -41,7 +41,8 @@ void DiGraph::remove_edge(DirectedEdge const &e) {
 
 std::unordered_set<DirectedEdge>
     DiGraph::query_edges(DirectedEdgeQuery const &q) const {
-  return this->ptr->query_edges(q);
+  DiGraphView view = *this;
+  return view.query_edges(q);
 }
 
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
@@ -56,6 +57,11 @@ bool DiGraphView::operator==(DiGraphView const &other) const {
 
 bool DiGraphView::operator!=(DiGraphView const &other) const {
   return ptr != other.ptr;
+}
+
+std::unordered_set<Node> DiGraph::query_nodes(NodeQuery const& q) const {
+  DiGraphView view = *this;
+  return view.query_nodes(q);
 }
 
 std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const& q) const {
