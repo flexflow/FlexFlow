@@ -506,7 +506,7 @@ optional<Node> get_imm_post_dominator(DiGraphView const & g, Node const & n) {
 }
 
 
-tl::optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const & nodes ){
+optional<Node> get_imm_post_dominator(DiGraphView const & g, std::unordered_set<Node> const & nodes ){
     std::unordered_set<Node> commonDoms = get_post_dominators(g).at(get_first(nodes));
 
     for(Node const & node : nodes){

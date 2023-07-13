@@ -171,7 +171,6 @@ std::unordered_set<MultiDiEdge>
 std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const & q) const {
   MultiDiGraphView view = *this;
   return view.query_nodes(q);
-
 }
 
 } // namespace FlexFlow
