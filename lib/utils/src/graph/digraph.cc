@@ -4,8 +4,8 @@
 namespace FlexFlow {
 
 std::ostream &operator<<(std::ostream &s, DirectedEdge const &e) {
-  return (s << "DirectedEdge{" << e.src.value() << " -> " << e.dst.value()
-            << "}");
+  std::string str = fmt::format("DirectedEdge(src={}, dst={})", e.src, e.dst);
+  return s << str;
 }
 
 DirectedEdgeQuery::DirectedEdgeQuery(
