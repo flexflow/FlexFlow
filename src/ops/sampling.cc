@@ -225,13 +225,19 @@ OpMeta *Sampling::init_task(Task const *task,
                             Runtime *runtime) {
   Sampling *s = (Sampling *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  GenericTensorAccessorW acc_input = helperGetGenericTensorAccessorRW(
-      s->inputs[0]->data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW acc_input =
+      helperGetGenericTensorAccessorRW(s->inputs[0]->data_type,
+                                       regions[0],
+                                       task->regions[0],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
 
   int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
-  int batch_size = acc_input.domain.get_volume() / length;  
+  int batch_size = acc_input.domain.get_volume() / length;
 
-  SamplingMeta *m = new SamplingMeta(handle, s, batch_size, length * batch_size, acc_input);
+  SamplingMeta *m =
+      new SamplingMeta(handle, s, batch_size, length * batch_size, acc_input);
   m->profiling = s->profiling;
   m->top_p = s->top_p;
   return m;
@@ -292,7 +298,7 @@ InferenceResult
                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Sampling* sampling = (const Sampling*) task->args;
+  Sampling const *sampling = (Sampling const *)task->args;
   SamplingMeta const *m = *((SamplingMeta **)task->local_args);
 
   GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(

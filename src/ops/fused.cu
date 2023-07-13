@@ -749,7 +749,7 @@ __host__ void
       case OP_SIGMOID:
       case OP_TANH:
       case OP_ELU:
-      case OP_SCALAR_TRUE_DIV:  {
+      case OP_SCALAR_TRUE_DIV: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -1269,7 +1269,7 @@ __host__ void FusedOp::backward_task(Task const *task,
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:
-      case OP_ELU:{
+      case OP_ELU: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);

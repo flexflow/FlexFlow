@@ -48,7 +48,6 @@ __global__ void init_idxs(int batch_size,
   CUDA_KERNEL_LOOP(i, total_eles) {
     idx[i] = i % vocab_size;
     if (i % vocab_size == 0) {
-      // printf("adfadf :%d\n", i);
       begin_offset[i / vocab_size] = i;
       end_offset[i / vocab_size] = i;
     }
@@ -81,10 +80,9 @@ __global__ void sampling_topp_kernel(int batch_size,
   if (threadIdx.x == 0) {
     // number must < topp
     random_n = curand_uniform(state + batch_idx) * topp;
-    if(blockIdx.x == 0){
-       printf("batch idx: %d, %f\n", batch_idx, random_n);
-    }
-   
+    // if (blockIdx.x == 0) {
+    //   printf("batch idx: %d, random num%f\n", batch_idx, random_n);
+    // }
   }
 
   __syncthreads();
@@ -110,9 +108,8 @@ __global__ void sampling_topp_kernel(int batch_size,
   indices_ptr[batch_idx] = sorted_idx[offset + result_idx];
 
   // if (blockIdx.x == 0 && threadIdx.x == 0) {
-  //   printf("batch idx afterward aaaaaa: %d\n", result_idx);
+  //   printf("selected idx: %d\n", result_idx);
   // }
-
 }
 
 /*static*/
@@ -126,9 +123,7 @@ void Sampling::forward_kernel(SamplingMeta const *m,
                               cudaStream_t stream) {
   // 1. sort
   // 2. cumsum
-  std::cout << "-------------------------sampling kernel _--------------------"
-            << "\n";
-  
+
   size_t temp_storage_bytes = m->temp_storage_bytes;
   cub::DeviceSegmentedRadixSort::SortPairsDescending(
       m->d_temp_storage,
@@ -151,15 +146,14 @@ void Sampling::forward_kernel(SamplingMeta const *m,
                        stream>>>(m->state, batch_size, rand());
   sampling_topp_kernel<DT, SamplingNumThreads>
       <<<batch_size, SamplingNumThreads, 0, stream>>>(batch_size,
-                                        length,
-                                        m->state,
-                                        input_ptr,
-                                        m->sorted_idx,
-                                        indices_ptr,
-                                        top_p);
+                                                      length,
+                                                      m->state,
+                                                      input_ptr,
+                                                      m->sorted_idx,
+                                                      indices_ptr,
+                                                      top_p);
 
   checkCUDA(cudaDeviceSynchronize());
-  // print_tensor<float>((float *)m->sorted_logits + 32000, 32, "after sort");
   // topk / topp mask some value and renormalize
 
   // sampling
@@ -230,8 +224,7 @@ SamplingMeta::SamplingMeta(FFHandler handler,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-
-  //init offset
+  // init offset
   int parallelism = total_ele;
   init_idxs<<<GET_BLOCKS(parallelism),
               min(CUDA_NUM_THREADS, parallelism),
@@ -243,40 +236,38 @@ SamplingMeta::SamplingMeta(FFHandler handler,
                         begin_offset,
                         end_offset);
 
-
- 
-  //init sort function
-  if(data_type == DT_FLOAT){
+  // init sort function
+  if (data_type == DT_FLOAT) {
     cub::DeviceSegmentedRadixSort::SortPairsDescending(
-      d_temp_storage,
-      temp_storage_bytes,
-      input.get_float_ptr(),
-      input.get_float_ptr(),
-      idx,
-      idx,
-      total_ele,
-      batch_size,
-      begin_offset,
-      end_offset + 1,
-      0,              // begin_bit
-      data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
-      stream);
-  }else if(data_type == DT_HALF){
+        d_temp_storage,
+        temp_storage_bytes,
+        input.get_float_ptr(),
+        input.get_float_ptr(),
+        idx,
+        idx,
+        total_ele,
+        batch_size,
+        begin_offset,
+        end_offset + 1,
+        0,                             // begin_bit
+        data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
+        stream);
+  } else if (data_type == DT_HALF) {
     cub::DeviceSegmentedRadixSort::SortPairsDescending(
-      d_temp_storage,
-      temp_storage_bytes,
-      input.get_half_ptr(),
-      input.get_half_ptr(),
-      idx,
-      idx,
-      total_ele,
-      batch_size,
-      begin_offset,
-      end_offset + 1,
-      0,              // begin_bit
-      data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
-      stream);
-  }else{
+        d_temp_storage,
+        temp_storage_bytes,
+        input.get_half_ptr(),
+        input.get_half_ptr(),
+        idx,
+        idx,
+        total_ele,
+        batch_size,
+        begin_offset,
+        end_offset + 1,
+        0,                             // begin_bit
+        data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
+        stream);
+  } else {
     assert(false && "input type in float and half");
   }
 

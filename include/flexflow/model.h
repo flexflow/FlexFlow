@@ -615,9 +615,7 @@ public:
                    int k,
                    bool sorted,
                    char const *name = NULL);
- Tensor sampling(const Tensor input,
-                    float top_p,
-                   char const *name = NULL);                  
+  Tensor sampling(const Tensor input, float top_p, char const *name = NULL);
   Tensor multihead_attention(const Tensor query,
                              const Tensor key,
                              const Tensor value,
@@ -1067,8 +1065,8 @@ public:
           IncMultiQuerySelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, BeamTopKParams>,
                          BeamTopK *>,
-     std::unordered_map<std::pair<ParallelTensorShape, SamplingParams>,
-                         Sampling *>,                     
+      std::unordered_map<std::pair<ParallelTensorShape, SamplingParams>,
+                         Sampling *>,
       std::unordered_map<
           std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
           SpecIncMultiHeadSelfAttention *>,
