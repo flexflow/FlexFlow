@@ -1,4 +1,5 @@
 #include "utils/graph/digraph.h"
+#include <regex>
 
 namespace FlexFlow {
 
