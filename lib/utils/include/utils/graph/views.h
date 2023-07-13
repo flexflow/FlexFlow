@@ -101,18 +101,6 @@ FF_VISITABLE_STRUCT(JoinNodeKey, node, direction);
 
 } // namespace FlexFlow
 
-namespace std {
-template <>
-struct hash<::FlexFlow::JoinNodeKey> {
-  std::size_t operator()(::FlexFlow::JoinNodeKey const & key) const {
-    size_t h =0;
-    hash_combine(h, key.node);
-    hash_combine(h, key.direction);
-    return h;
-  }
-};
-} // namespace std
-
 namespace FlexFlow {
 
 struct JoinedNodeView {
@@ -361,7 +349,5 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 }
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::JoinNodeKey, node, direction);
 
 #endif
