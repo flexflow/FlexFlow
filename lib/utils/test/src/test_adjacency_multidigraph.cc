@@ -4,7 +4,7 @@
 using namespace FlexFlow;
 
 TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
-  AdjacencyMultiDiGraph g;
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
   Node n0 = g.add_node();
   Node n1 = g.add_node();
   Node n2 = g.add_node();
@@ -54,7 +54,7 @@ TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
 }
 
 TEST_CASE("AdjacencyMultiDiGraph:remove_node") {
-  AdjacencyMultiDiGraph g;
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
   Node n0 = g.add_node();
   Node n1 = g.add_node();
   Node n2 = g.add_node();

@@ -180,7 +180,7 @@ public:
   }
 
 private:
-  MultiDiGraph(std::unique_ptr<IMultiDiGraph>);
+  MultiDiGraph(std::unique_ptr<IMultiDiGraph> ptr):ptr(std::move(ptr)){}
 
 private:
   cow_ptr_t<IMultiDiGraph> ptr;

@@ -138,6 +138,14 @@ Node MultiDiGraph::add_node() {
   return this->ptr.get_mutable()->add_node();
 }
 
+NodePort MultiDiGraph::add_node_port() {
+  return this->ptr.get_mutable()->add_node_port();
+}
+
+void MultiDiGraph::add_node_port_unsafe(NodePort const & np) {
+  return this->ptr.get_mutable()->add_node_port_unsafe(np);
+}
+
 void MultiDiGraph::add_node_unsafe(Node const &n) {
   return this->ptr.get_mutable()->add_node_unsafe(n);
 }
@@ -156,7 +164,14 @@ void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
 
 std::unordered_set<MultiDiEdge>
     MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
-  return this->ptr->query_edges(q);
+      MultiDiGraphView view = *this;
+      return view.query_edges(q);
+}
+
+std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const & q) const {
+  MultiDiGraphView view = *this;
+  return view.query_nodes(q);
+
 }
 
 } // namespace FlexFlow

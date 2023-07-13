@@ -97,6 +97,8 @@ struct JoinNodeKey {
   LRDirection direction;
 };
 
+FF_VISITABLE_STRUCT(JoinNodeKey, node, direction);
+
 } // namespace FlexFlow
 
 namespace std {
