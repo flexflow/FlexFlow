@@ -15,7 +15,7 @@ check_python_interface() {
 		echo "Running a single-GPU Python test to check the Python interface (native python interpreter)"
 		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	elif [[ "$interpreter" == "flexflow_python" ]]; then
-		if [[ "$installation_status" == "before-installation" ]];
+		if [[ "$installation_status" == "before-installation" ]]; then
 			EXE="$BUILD_FOLDER"/flexflow_python
 		else
 			EXE="flexflow_python"
