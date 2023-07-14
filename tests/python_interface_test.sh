@@ -15,7 +15,7 @@ check_python_interface() {
 		echo "Running a single-GPU Python test to check the Python interface (native python interpreter)"
 		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	elif [[ "$interpreter" == "legion_python" ]]; then
-		EXE="$FF_HOME"/python/legion_python
+		EXE="$FF_HOME"/build/legion_python
 		echo "Running a single-GPU Python test to check the Python interface (legion_python interpreter)"
 		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	else

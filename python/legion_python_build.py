@@ -29,7 +29,10 @@ if not os.path.isdir(build_dir):
     sys.exit(1)
 build_dir = os.path.abspath(build_dir)
 script_dir = os.path.abspath(os.path.dirname(__file__))
-script_path = os.path.join(script_dir, "legion_python")
+script_path = os.path.join(build_dir, "legion_python")
+if not os.path.isdir(build_dir):
+    print(f"Folder {build_dir} does not exist")
+    sys.exit(1)
 if not os.path.isdir(script_dir):
     print(f"Folder {script_dir} does not exist")
     sys.exit(1)

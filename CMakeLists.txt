@@ -425,26 +425,28 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 # python related
-# create flexflow_cffi_header.py
-add_custom_command(TARGET flexflow
-  PRE_BUILD	
-  COMMAND ${FLEXFLOW_ROOT}/python/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${FLEXFLOW_ROOT}/python/flexflow/core
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "Creating flexflow_cffi_header.py..."
-)
-# generate the Legion Python bindings library
-add_custom_command(TARGET flexflow
-  POST_BUILD	
-  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
-)
-# create python/legion_python wrapper to be able to run legion_python without installing
-add_custom_command(TARGET flexflow
-  PRE_BUILD	
-  COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/legion_python_build.py --build-dir ${CMAKE_BINARY_DIR}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "Creating python/legion_python wrapper..."
-)
+if (FF_USE_PYTHON)
+  # create flexflow_cffi_header.py
+  add_custom_command(TARGET flexflow
+    PRE_BUILD	
+    COMMAND ${FLEXFLOW_ROOT}/python/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${FLEXFLOW_ROOT}/python/flexflow/core
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Creating flexflow_cffi_header.py..."
+  )
+  # generate the Legion Python bindings library
+  add_custom_command(TARGET flexflow
+    POST_BUILD	
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
+  )
+  # create python/legion_python wrapper to be able to run legion_python without installing
+  add_custom_command(TARGET flexflow
+    PRE_BUILD	
+    COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/legion_python_build.py --build-dir ${CMAKE_BINARY_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Creating python/legion_python wrapper..."
+  )
+endif()
 
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)
@@ -540,9 +542,11 @@ set(LIB_DEST "lib")
 install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
 install(TARGETS flexflow DESTINATION ${LIB_DEST})
 # install python
-execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
-install(
-  DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
-  DESTINATION ${PY_DEST}/flexflow
-  FILES_MATCHING 
-  PATTERN "*.py")
+if (FF_USE_PYTHON)
+  execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+  install(
+    DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
+    DESTINATION ${PY_DEST}/flexflow
+    FILES_MATCHING 
+    PATTERN "*.py")
+endif()
