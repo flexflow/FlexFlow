@@ -12,7 +12,7 @@ if [ -z "$GPUS" ]; then echo "GPUS variable is not defined, aborting tests"; exi
 CUDA_VISIBLE_DEVICES=$(seq -s, $((OMPI_COMM_WORLD_RANK * GPUS ))  $(( OMPI_COMM_WORLD_RANK * GPUS +1 )) )
 export CUDA_VISIBLE_DEVICES
 
-EXE="$FF_HOME"/python/legion_python
+EXE="$FF_HOME"/build/flexflow_python
 
 $EXE "$@"
 

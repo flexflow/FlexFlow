@@ -29,7 +29,7 @@ if not os.path.isdir(build_dir):
     sys.exit(1)
 build_dir = os.path.abspath(build_dir)
 script_dir = os.path.abspath(os.path.dirname(__file__))
-script_path = os.path.join(build_dir, "legion_python")
+script_path = os.path.join(build_dir, "flexflow_python")
 if not os.path.isdir(build_dir):
     print(f"Folder {build_dir} does not exist")
     sys.exit(1)
@@ -39,13 +39,17 @@ if not os.path.isdir(script_dir):
 script_path = os.path.abspath(script_path)
 lines = [
     '#! /usr/bin/env bash',
-    f'PYTHON_FOLDER="{script_dir}"',
     f'BUILD_FOLDER="{build_dir}"',
-    'PYLIB_PATH="$("$PYTHON_FOLDER"/flexflow/findpylib.py)"',
-    'PYLIB_DIR="$(dirname "$PYLIB_PATH")"',
-    'export LD_LIBRARY_PATH="$BUILD_FOLDER:$BUILD_FOLDER/deps/legion/lib:$PYLIB_DIR:$LD_LIBRARY_PATH"',
-    'export PYTHONPATH="$PYTHON_FOLDER:$BUILD_FOLDER/deps/legion/bindings/python:$PYTHONPATH"',
-    '$BUILD_FOLDER/deps/legion/bin/legion_python "$@"',
+    'if [[ "$PWD" == "$BUILD_FOLDER" ]]; then',
+    f'\tPYTHON_FOLDER="{script_dir}"',
+    '\tPYLIB_PATH="$("$PYTHON_FOLDER"/flexflow/findpylib.py)"',
+    '\tPYLIB_DIR="$(dirname "$PYLIB_PATH")"',
+    '\texport LD_LIBRARY_PATH="$BUILD_FOLDER:$BUILD_FOLDER/deps/legion/lib:$PYLIB_DIR:$LD_LIBRARY_PATH"',
+    '\texport PYTHONPATH="$PYTHON_FOLDER:$BUILD_FOLDER/deps/legion/bindings/python:$PYTHONPATH"',
+    '\t$BUILD_FOLDER/deps/legion/bin/legion_python "$@"',
+    'else',
+    '\tlegion_python "$@"'
+    'fi'
 ]
 
 with open(script_path, "w+") as script_file:

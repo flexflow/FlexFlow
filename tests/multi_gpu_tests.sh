@@ -17,7 +17,7 @@ if [[ $NUM_NODES -gt 1 ]]; then
     export NUM_NODES
     EXE="$FF_HOME"/tests/multinode_helpers/mpi_wrapper1.sh
 else
-    EXE="$FF_HOME"/python/legion_python
+    EXE="$FF_HOME"/build/flexflow_python
 fi
 
 echo "Running GPU tests with $NUM_NODES node(s) and $GPUS gpu(s)/node"
