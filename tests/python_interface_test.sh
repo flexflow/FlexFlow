@@ -3,13 +3,12 @@ set -x
 set -e
 
 check_python_interface() {
-	# Usage: check_python_interface {python, flexflow_python} {before-installation, after-installation}
+	# Usage: check_python_interface {python, flexflow_python}
 	GPUS=1
 	BATCHSIZE=$((GPUS * 64))
 	FSIZE=14048
 	ZSIZE=12192
 	interpreter=${1:-python}
-	installation_status=${2:-"before-installation"}
 	if [[ "$interpreter" == "python" ]]; then
 		EXE="python"
 		echo "Running a single-GPU Python test to check the Python interface (native python interpreter)"
@@ -49,7 +48,7 @@ elif [[ "$installation_status" == "after-installation" ]]; then
 	# Import flexflow.core module in Python
 	python -c "import flexflow.core; exit()"
 	# Run a single-gpu test using the flexflow_python interpreter
-	check_python_interface flexflow_python after-installation
+	check_python_interface flexflow_python
 	# Run a single-gpu test using the native python interpreter
 	check_python_interface python
 else
