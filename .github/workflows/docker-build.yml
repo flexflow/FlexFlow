@@ -67,13 +67,16 @@ jobs:
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
-        run: docker run --entrypoint python flexflow-cuda-"${cuda_version}":latest -c "import flexflow.core; exit()"
+        env: 
+          cuda_version: ${{ matrix.cuda_version }}
+        run: docker run --entrypoint python flexflow-cuda-${cuda_version}:latest -c "import flexflow.core; exit()"
 
       - name: Publish Docker environment image (on push to master)
         if: github.repository_owner == 'flexflow'
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+          cuda_version: ${{ matrix.cuda_version }}
         run: |
           if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
             ./docker/publish.sh "flexflow-environment-${FF_GPU_BACKEND}"
