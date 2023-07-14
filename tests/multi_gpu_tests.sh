@@ -11,13 +11,20 @@ ZSIZE=12192
 
 FF_HOME="$(realpath "${BASH_SOURCE[0]%/*}/..")"
 export FF_HOME
+# Edit the folder below if you did not build FlexFlow in $FF_HOME/build
+BUILD_FOLDER="${FF_HOME}/build"
+export BUILD_FOLDER
 
 if [[ $NUM_NODES -gt 1 ]]; then
     export GPUS
     export NUM_NODES
     EXE="$FF_HOME"/tests/multinode_helpers/mpi_wrapper1.sh
 else
-    EXE="$FF_HOME"/build/flexflow_python
+    if [[ -f "$BUILD_FOLDER/flexflow_python" ]]; then
+        EXE="$BUILD_FOLDER"/flexflow_python
+    else
+        EXE="flexflow_python"
+    fi
 fi
 
 echo "Running GPU tests with $NUM_NODES node(s) and $GPUS gpu(s)/node"
