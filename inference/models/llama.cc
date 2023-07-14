@@ -212,7 +212,6 @@ void LLAMA::create_llama_model(FFModel &ff,
     output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
-
     if (generationConfig.do_sample) {
       dense = ff.scalar_truediv(dense, generationConfig.temperature, false);
       Tensor softmax = ff.softmax(dense, -1);

@@ -73,7 +73,6 @@ __global__ void sampling_topp_kernel(int batch_size,
   // int const vocab_id = threadIdx.x;
   int const batch_idx = blockIdx.x;
   __shared__ float random_n;
-  // __shared__ float renormalized_sum;
   __shared__ long long result_idx;
 
   // random num
@@ -92,7 +91,6 @@ __global__ void sampling_topp_kernel(int batch_size,
   int offset = batch_idx * vocab_size;
   float prefix_sum = 0.0f;
   BlockPrefixCallbackOp prefix_op(0);
-  // float sum;
   result_idx = vocab_size - 1;
 
   for (long long j = threadIdx.x; j < vocab_size; j += blockDim.x) {
@@ -120,8 +118,6 @@ void Sampling::forward_kernel(SamplingMeta const *m,
                               int const batch_size,
                               cudaStream_t stream) {
   // 1. sort
-  // 2. cumsum
-
   size_t temp_storage_bytes = m->temp_storage_bytes;
   checkCUDA(cub::DeviceSegmentedRadixSort::SortPairsDescending(
       m->d_temp_storage,
@@ -142,6 +138,7 @@ void Sampling::forward_kernel(SamplingMeta const *m,
                        min(CUDA_NUM_THREADS, parallelism),
                        0,
                        stream>>>(m->state, batch_size, rand());
+  // sampling
   sampling_topp_kernel<DT, SamplingNumThreads>
       <<<batch_size, SamplingNumThreads, 0, stream>>>(
           batch_size,
@@ -151,9 +148,6 @@ void Sampling::forward_kernel(SamplingMeta const *m,
           m->sorted_idx,
           indices_ptr,
           top_p);
-
-  // topk / topp mask some value and renormalize
-  // sampling
 }
 
 /*static*/

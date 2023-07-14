@@ -165,7 +165,6 @@ void FlexFlow::top_level_task(Task const *task,
   ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
   ffconfig.pipeline_parallelism_degree = pipeline_parallelism_degree;
 
-  std::cout << "workers: " << num_devices << "\n";
   assert(data_parallelism_degree * tensor_parallelism_degree *
              pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
@@ -236,6 +235,7 @@ void FlexFlow::top_level_task(Task const *task,
     assert(fm.get_future_map_domain().get_volume() == 1);
     Future future = fm.get_future(0);
     ir = future.get_result<InferenceResult>();
+    // assert(false);
   }
 
   // Execution fence

@@ -170,12 +170,6 @@ void Sampling::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  //   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     WRITE_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     batch_outputs[1]->region));
-  //   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -208,12 +202,6 @@ void Sampling::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  //   launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     WRITE_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     outputs[1]->region));
-  //   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -282,12 +270,6 @@ FutureMap Sampling::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  //   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     WRITE_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     batch_outputs[1]->region));
-  //   launcher.add_field(2, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }
 
