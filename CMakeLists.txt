@@ -432,6 +432,12 @@ add_custom_command(TARGET flexflow
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "Creating flexflow_cffi_header.py..."
 )
+# generate the Legion Python bindings library
+add_custom_command(TARGET flexflow
+  POST_BUILD	
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
+)
 # create python/legion_python wrapper to be able to run legion_python without installing
 add_custom_command(TARGET flexflow
   PRE_BUILD	
