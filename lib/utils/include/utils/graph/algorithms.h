@@ -2,17 +2,17 @@
 #define _FLEXFLOW_UTILS_GRAPH_ALGORITHMS_H
 
 #include "digraph.h"
+#include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "node.h"
 #include "open_graphs.h"
-#include "utils/optional.h"
 #include "undirected.h"
 #include "utils/containers.h"
 #include "utils/dot_file.h"
+#include "utils/optional.h"
 #include "views.h"
 #include <unordered_map>
 #include <vector>
-#include "labelled_graphs.h"
 
 namespace FlexFlow {
 
@@ -229,8 +229,6 @@ MultiDiGraphView get_subgraph(MultiDiGraphView const &,
                               std::unordered_set<Node> const &);
 OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &,
                                   std::unordered_set<Node> const &);
-
-
 
 MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);

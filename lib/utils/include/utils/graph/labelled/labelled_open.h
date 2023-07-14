@@ -2,8 +2,8 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_H
 
 #include "labelled_open_interfaces.h"
-#include "utils/graph/open_graphs.h"
 #include "node_labelled.h"
+#include "utils/graph/open_graphs.h"
 
 namespace FlexFlow {
 
@@ -13,7 +13,10 @@ template <typename NodeLabel,
           typename OutputLabel = InputLabel>
 struct LabelledOpenMultiDiGraphView {
 private:
-  using Interface = ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>;
+  using Interface = ILabelledOpenMultiDiGraphView<NodeLabel,
+                                                  EdgeLabel,
+                                                  InputLabel,
+                                                  OutputLabel>;
 
 public:
   LabelledOpenMultiDiGraphView() = delete;
@@ -31,7 +34,8 @@ public:
 private:
   std::shared_ptr<Interface const> ptr;
 };
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledOpenMultiDiGraphView<int, int, int, int>);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
+    LabelledOpenMultiDiGraphView<int, int, int, int>);
 
 template <typename NodeLabel,
           typename EdgeLabel,
@@ -45,7 +49,8 @@ private:
 public:
   LabelledOpenMultiDiGraph() = delete;
   LabelledOpenMultiDiGraph(LabelledOpenMultiDiGraph const &other) = default;
-  LabelledOpenMultiDiGraph &operator=(LabelledOpenMultiDiGraph const &other) = default;
+  LabelledOpenMultiDiGraph &
+      operator=(LabelledOpenMultiDiGraph const &other) = default;
 
   operator LabelledOpenMultiDiGraphView<NodeLabel,
                                         EdgeLabel,
@@ -71,7 +76,7 @@ public:
     return this->ptr->at(n);
   }
 
-  void add_node_unsafe(Node const &n, NodeLabel const &l) { 
+  void add_node_unsafe(Node const &n, NodeLabel const &l) {
     this->ptr->add_node_unsafe(n, l);
   }
 
@@ -121,8 +126,9 @@ private:
 private:
   cow_ptr_t<Interface> ptr;
 };
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledOpenMultiDiGraph<int, int, int, int>);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
+    LabelledOpenMultiDiGraph<int, int, int, int>);
 
-}
+} // namespace FlexFlow
 
 #endif

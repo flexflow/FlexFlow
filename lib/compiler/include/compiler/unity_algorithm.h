@@ -3,8 +3,8 @@
 
 #include "cost_estimate.h"
 #include "machine_mapping.h"
-#include "sub_parallel_computation_graph.h"
 #include "pcg/computation_graph.h"
+#include "sub_parallel_computation_graph.h"
 
 namespace FlexFlow {
 
@@ -29,14 +29,14 @@ struct OptimizerConfig {
   int max_num_ops;
 };
 
-Strategy graph_optimize(
-    ComputationGraph &cg,
-    ICostEstimator const &cost_estimator,
-    MachineSpecification const &resources,
-    std::function<std::unordered_set<MachineView>(
-        Operator const &, MachineSpecification const &)> const
-        &allowed_machine_views,
-    OptimizerConfig const &opt_config);
+Strategy
+    graph_optimize(ComputationGraph &cg,
+                   ICostEstimator const &cost_estimator,
+                   MachineSpecification const &resources,
+                   std::function<std::unordered_set<MachineView>(
+                       Operator const &, MachineSpecification const &)> const
+                       &allowed_machine_views,
+                   OptimizerConfig const &opt_config);
 
 } // namespace FlexFlow
 

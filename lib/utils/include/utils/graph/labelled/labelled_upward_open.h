@@ -8,10 +8,10 @@ namespace FlexFlow {
 template <typename NodeLabel, typename EdgeLabel, typename InputLabel>
 struct LabelledUpwardOpenMultiDiGraphView {
 private:
-  using Interface = ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>;
+  using Interface =
+      ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>;
 
 public:
-
 private:
   std::shared_ptr<Interface const> ptr;
 };
@@ -19,12 +19,10 @@ private:
 template <typename NodeLabel, typename EdgeLabel, typename InputLabel>
 struct LabelledDownwardOpenMultiDiGraphView {
 private:
-
 public:
-
 private:
 };
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -3,8 +3,8 @@
 
 #include "optional.h"
 #include "utils/tuple.h"
-#include <utility>
 #include "utils/visitable_core.h"
+#include <utility>
 
 namespace FlexFlow {
 

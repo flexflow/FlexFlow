@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_INTERFACES_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_INTERFACES_H
 
-#include "utils/graph/open_graph_interfaces.h"
 #include "standard_labelled_interfaces.h"
+#include "utils/graph/open_graph_interfaces.h"
 
 namespace FlexFlow {
 
@@ -10,14 +10,16 @@ template <typename NodeLabel,
           typename EdgeLabel,
           typename InputLabel = EdgeLabel,
           typename OutputLabel = InputLabel>
-struct ILabelledOpenMultiDiGraphView : public IOpenMultiDiGraphView, 
-                                       public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
+struct ILabelledOpenMultiDiGraphView
+    : public IOpenMultiDiGraphView,
+      public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 public:
   virtual InputLabel const &at(InputMultiDiEdge const &e) const = 0;
   virtual OutputLabel const &at(OutputMultiDiEdge const &e) const = 0;
   virtual EdgeLabel const &at(MultiDiEdge const &e) const = 0;
 };
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledOpenMultiDiGraphView<int, int, int, int>);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(
+    ILabelledOpenMultiDiGraphView<int, int, int, int>);
 
 template <typename NodeLabel,
           typename EdgeLabel,
@@ -44,6 +46,6 @@ public:
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledOpenMultiDiGraph<int, int, int, int>);
 
-}
+} // namespace FlexFlow
 
 #endif

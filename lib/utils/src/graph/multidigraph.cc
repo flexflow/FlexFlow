@@ -10,7 +10,8 @@ MultiDiOutput get_output(MultiDiEdge const &e) {
   return {e.src, e.srcIdx};
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
   if (is_matchall(e.srcs)) {
     throw mk_runtime_error("Expected matchall previous value");
@@ -19,7 +20,8 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) 
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
   if (is_matchall(e.dsts)) {
     throw mk_runtime_error("Expected matchall previous value");
@@ -28,7 +30,8 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) 
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e = *this;
   if (is_matchall(e.srcIdxs)) {
     throw mk_runtime_error("Expected matchall previous value");
@@ -37,8 +40,8 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idxs(
-    query_set<NodePort> const &idxs) const {
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_dst_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e = *this;
   if (is_matchall(e.dstIdxs)) {
     throw mk_runtime_error("Expected matchall previous value");
@@ -48,7 +51,10 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idxs(
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::all() {
-  return {matchall<Node>(), matchall<Node>(), matchall<NodePort>(), matchall<NodePort>()};
+  return {matchall<Node>(),
+          matchall<Node>(),
+          matchall<NodePort>(),
+          matchall<NodePort>()};
 }
 
 void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {

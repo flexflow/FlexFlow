@@ -20,7 +20,9 @@ struct DirectedEdgeQuery {
   query_set<Node> srcs;
   query_set<Node> dsts;
 
-  static DirectedEdgeQuery all() { NOT_IMPLEMENTED(); }
+  static DirectedEdgeQuery all() {
+    NOT_IMPLEMENTED();
+  }
 };
 FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
 

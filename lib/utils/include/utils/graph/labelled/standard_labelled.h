@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_H
 
-#include "standard_labelled_interfaces.h"
 #include "node_labelled.h"
+#include "standard_labelled_interfaces.h"
 
 namespace FlexFlow {
 
@@ -10,10 +10,12 @@ template <typename NodeLabel, typename EdgeLabel>
 struct LabelledMultiDiGraphView {
 private:
   using Interface = ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>;
+
 public:
   LabelledMultiDiGraphView() = delete;
   LabelledMultiDiGraphView(LabelledMultiDiGraphView const &) = default;
-  LabelledMultiDiGraphView &operator=(LabelledMultiDiGraphView const &) = default;
+  LabelledMultiDiGraphView &
+      operator=(LabelledMultiDiGraphView const &) = default;
 
   operator NodeLabelledMultiDiGraphView<NodeLabel>() const;
 
@@ -37,8 +39,10 @@ public:
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
                                  LabelledMultiDiGraphView>::type
       create(Args &&...args) {
-    return LabelledMultiDiGraphView(std::make_shared<BaseImpl>(std::forward<Args>(args)...));
+    return LabelledMultiDiGraphView(
+        std::make_shared<BaseImpl>(std::forward<Args>(args)...));
   }
+
 private:
   std::shared_ptr<Interface const> ptr;
 };
@@ -112,6 +116,6 @@ private:
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledMultiDiGraph<int, int>);
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -251,7 +251,6 @@ private:
   OpenMultiDiGraphView g;
 };
 
-
 UndirectedEdge to_undirected_edge(DirectedEdge const &);
 std::unordered_set<UndirectedEdge>
     to_undirected_edges(std::unordered_set<DirectedEdge> const &);

@@ -10,7 +10,7 @@ UndirectedEdge::UndirectedEdge(Node const &src, Node const &dst)
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
                                        UndirectedEdgeQuery const &rhs) {
   return {
-    query_intersection(lhs.nodes, rhs.nodes),
+      query_intersection(lhs.nodes, rhs.nodes),
   };
 }
 

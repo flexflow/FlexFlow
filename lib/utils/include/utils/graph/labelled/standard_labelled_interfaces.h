@@ -1,16 +1,18 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_INTERFACES_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_INTERFACES_H
 
-#include "utils/graph/multidigraph.h"
 #include "node_labelled_interfaces.h"
+#include "utils/graph/multidigraph.h"
 
 namespace FlexFlow {
 
 template <typename NodeLabel, typename EdgeLabel>
-struct ILabelledMultiDiGraphView : public INodeLabelledMultiDiGraphView<NodeLabel> {
+struct ILabelledMultiDiGraphView
+    : public INodeLabelledMultiDiGraphView<NodeLabel> {
   ILabelledMultiDiGraphView() = delete;
   ILabelledMultiDiGraphView(ILabelledMultiDiGraphView const &) = delete;
-  ILabelledMultiDiGraphView &operator=(ILabelledMultiDiGraphView const &) = delete;
+  ILabelledMultiDiGraphView &
+      operator=(ILabelledMultiDiGraphView const &) = delete;
 
   virtual ~ILabelledMultiDiGraphView() = default;
 
@@ -20,7 +22,8 @@ struct ILabelledMultiDiGraphView : public INodeLabelledMultiDiGraphView<NodeLabe
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraphView<int, int>);
 
 template <typename NodeLabel, typename EdgeLabel>
-struct ILabelledMultiDiGraph : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
+struct ILabelledMultiDiGraph
+    : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
   ILabelledMultiDiGraph() = delete;
   ILabelledMultiDiGraph(ILabelledMultiDiGraph const &) = delete;
   ILabelledMultiDiGraph &operator=(ILabelledMultiDiGraph const &) = delete;
@@ -39,6 +42,6 @@ struct ILabelledMultiDiGraph : public ILabelledMultiDiGraphView<NodeLabel, EdgeL
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraph<int, int>);
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -6,29 +6,39 @@
 
 namespace FlexFlow {
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel = EdgeLabel>
-struct ILabelledUpwardOpenMultiDiGraphView : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>,
-                                             public IDownwardOpenMultiDiGraphView {
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel>
+struct ILabelledUpwardOpenMultiDiGraphView
+    : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>,
+      public IDownwardOpenMultiDiGraphView {
   virtual ~ILabelledUpwardOpenMultiDiGraphView() = default;
 
   using ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>::at;
   virtual InputLabel const &at(InputMultiDiEdge const &) const = 0;
 };
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledUpwardOpenMultiDiGraphView<int, int, int>);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(
+    ILabelledUpwardOpenMultiDiGraphView<int, int, int>);
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel = EdgeLabel>
-struct ILabelledUpwardOpenMultiDiGraph : public ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>,
-                                         public ILabelledMultiDiGraph<NodeLabel, EdgeLabel> {
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel = EdgeLabel>
+struct ILabelledUpwardOpenMultiDiGraph
+    : public ILabelledUpwardOpenMultiDiGraphView<NodeLabel,
+                                                 EdgeLabel,
+                                                 InputLabel>,
+      public ILabelledMultiDiGraph<NodeLabel, EdgeLabel> {
 
-  using ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>::at;
+  using ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>::
+      at;
   using ILabelledMultiDiGraph<NodeLabel, EdgeLabel>::at;
   virtual InputLabel &at(InputLabel const &) = 0;
 
   using ILabelledMultiDiGraph<NodeLabel, EdgeLabel>::add_edge;
-  virtual void add_edge(InputMultiDiEdge const &, InputLabel  const &) = 0;
+  virtual void add_edge(InputMultiDiEdge const &, InputLabel const &) = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledUpwardOpenMultiDiGraph<int, int, int>);
 
-}
+} // namespace FlexFlow
 
 #endif

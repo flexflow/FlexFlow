@@ -9,10 +9,12 @@ template <typename NodeLabel>
 struct NodeLabelledMultiDiGraphView {
 private:
   using Interface = INodeLabelledMultiDiGraphView<int>;
+
 public:
   NodeLabelledMultiDiGraphView() = delete;
   NodeLabelledMultiDiGraphView(NodeLabelledMultiDiGraphView const &) = default;
-  NodeLabelledMultiDiGraphView &operator=(NodeLabelledMultiDiGraphView const &) = default;
+  NodeLabelledMultiDiGraphView &
+      operator=(NodeLabelledMultiDiGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
     return this->ptr->at(n);
@@ -30,8 +32,10 @@ public:
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
                                  NodeLabelledMultiDiGraphView>::type
       create(Args &&...args) {
-    return NodeLabelledMultiDiGraphView(std::make_shared<BaseImpl>(std::forward<Args>(args)...));
+    return NodeLabelledMultiDiGraphView(
+        std::make_shared<BaseImpl>(std::forward<Args>(args)...));
   }
+
 private:
   std::shared_ptr<Interface const> ptr;
 };
@@ -45,7 +49,8 @@ private:
 public:
   NodeLabelledMultiDiGraph() = delete;
   NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &) = default;
-  NodeLabelledMultiDiGraph &operator=(NodeLabelledMultiDiGraph const &) = default;
+  NodeLabelledMultiDiGraph &
+      operator=(NodeLabelledMultiDiGraph const &) = default;
 
   friend void swap(NodeLabelledMultiDiGraph &lhs,
                    NodeLabelledMultiDiGraph &rhs) {
@@ -91,6 +96,6 @@ private:
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(NodeLabelledMultiDiGraph<int>);
 
-}
+} // namespace FlexFlow
 
 #endif

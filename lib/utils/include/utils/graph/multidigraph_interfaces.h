@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES_H
 
-#include "utils/visitable.h"
-#include "utils/strong_typedef.h"
-#include "node.h"
-#include "utils/optional.h"
-#include "query_set.h"
 #include "multidiedge.h"
+#include "node.h"
+#include "query_set.h"
+#include "utils/optional.h"
+#include "utils/strong_typedef.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -27,7 +27,7 @@ FF_VISITABLE_STRUCT(MultiDiEdgeQuery, srcs, dsts, srcIdxs, dstIdxs);
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &,
                                     MultiDiEdgeQuery const &);
-MultiDiEdgeQuery query_union(MultiDiEdgeQuery const &, 
+MultiDiEdgeQuery query_union(MultiDiEdgeQuery const &,
                              MultiDiEdgeQuery const &);
 
 struct IMultiDiGraphView : public IGraphView {
@@ -54,6 +54,6 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraph);
 
-}
+} // namespace FlexFlow
 
 #endif

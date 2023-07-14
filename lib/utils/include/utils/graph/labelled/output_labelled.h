@@ -31,6 +31,7 @@ public:
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return this->ptr->query_edges(q);
   }
+
 private:
   std::shared_ptr<Interface> ptr;
 };
@@ -43,7 +44,8 @@ private:
 public:
   OutputLabelledMultiDiGraph() = delete;
   OutputLabelledMultiDiGraph(OutputLabelledMultiDiGraph const &other) = default;
-  OutputLabelledMultiDiGraph &operator=(OutputLabelledMultiDiGraph const &other) = default;
+  OutputLabelledMultiDiGraph &
+      operator=(OutputLabelledMultiDiGraph const &other) = default;
 
   operator MultiDiGraphView() const;
   operator GraphView() const;
@@ -97,7 +99,6 @@ private:
   cow_ptr_t<Interface> ptr;
 };
 
-
-}
+} // namespace FlexFlow
 
 #endif

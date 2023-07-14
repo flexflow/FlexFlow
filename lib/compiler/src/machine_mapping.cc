@@ -58,10 +58,8 @@ GraphSplit
 
 std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
     apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
-  OpenMultiDiGraphView g1 =
-      get_subgraph(g, split.first);
-  OpenMultiDiGraphView g2 =
-      get_subgraph(g, split.second);
+  OpenMultiDiGraphView g1 = get_subgraph(g, split.first);
+  OpenMultiDiGraphView g2 = get_subgraph(g, split.second);
 
   if (get_cut(g, split).size() > 0) {
     // Sequential split

@@ -233,15 +233,16 @@ std::unordered_set<MultiDiEdge>
 
   auto traced_srcs = this->joined_nodes.trace_nodes(srcs);
   auto traced_dsts = this->joined_nodes.trace_nodes(dsts);
-  MultiDiEdgeQuery left_query = {traced_srcs.first, traced_dsts.first, query.srcIdxs, query.dstIdxs};
-  MultiDiEdgeQuery right_query = {traced_srcs.second, traced_dsts.second, query.srcIdxs, query.dstIdxs};
+  MultiDiEdgeQuery left_query = {
+      traced_srcs.first, traced_dsts.first, query.srcIdxs, query.dstIdxs};
+  MultiDiEdgeQuery right_query = {
+      traced_srcs.second, traced_dsts.second, query.srcIdxs, query.dstIdxs};
 
   return set_union(
-    transform(this->lhs.query_edges(left_query), 
-              [&](MultiDiEdge const &e) { return this->fix_lhs_edge(e); }),
-    transform(this->rhs.query_edges(right_query),
-              [&](MultiDiEdge const &e) { return this->fix_rhs_edge(e); })
-  );
+      transform(this->lhs.query_edges(left_query),
+                [&](MultiDiEdge const &e) { return this->fix_lhs_edge(e); }),
+      transform(this->rhs.query_edges(right_query),
+                [&](MultiDiEdge const &e) { return this->fix_rhs_edge(e); }));
 }
 
 MultiDiEdge JoinedMultiDigraphView::fix_lhs_edge(MultiDiEdge const &e) const {
@@ -341,7 +342,9 @@ ViewMultiDiGraphAsDiGraph::ViewMultiDiGraphAsDiGraph(MultiDiGraphView const &g)
 
 std::unordered_set<DirectedEdge> ViewMultiDiGraphAsDiGraph::query_edges(
     DirectedEdgeQuery const &digraph_query) const {
-  return transform(this->g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(digraph_query.srcs).with_dst_nodes(digraph_query.dsts)),
+  return transform(this->g.query_edges(MultiDiEdgeQuery::all()
+                                           .with_src_nodes(digraph_query.srcs)
+                                           .with_dst_nodes(digraph_query.dsts)),
                    [](MultiDiEdge const &e) { return to_directed_edge(e); });
 }
 

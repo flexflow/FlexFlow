@@ -7,11 +7,12 @@
 namespace FlexFlow {
 
 template <typename NodeLabel>
-struct NodeLabelledMultiDiSubgraphView : public INodeLabelledMultiDiGraphView<NodeLabel> {
-};
+struct NodeLabelledMultiDiSubgraphView
+    : public INodeLabelledMultiDiGraphView<NodeLabel> {};
 
 template <typename NodeLabel, typename EdgeLabel>
-struct LabelledMultiDiSubgraphView : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
+struct LabelledMultiDiSubgraphView
+    : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 public:
   LabelledMultiDiSubgraphView() = delete;
   template <typename InputLabel, typename OutputLabel>
@@ -77,6 +78,6 @@ public:
   virtual EdgeLabel const &at(MultiDiEdge const &e) const override;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -8,7 +8,8 @@ namespace FlexFlow {
 template <typename NodeLabel>
 struct INodeLabelledMultiDiGraphView : public IMultiDiGraphView {
   INodeLabelledMultiDiGraphView(INodeLabelledMultiDiGraphView const &) = delete;
-  INodeLabelledMultiDiGraphView &operator=(INodeLabelledMultiDiGraphView const &) = delete;
+  INodeLabelledMultiDiGraphView &
+      operator=(INodeLabelledMultiDiGraphView const &) = delete;
 
   virtual ~INodeLabelledMultiDiGraphView() {}
 
@@ -17,7 +18,8 @@ struct INodeLabelledMultiDiGraphView : public IMultiDiGraphView {
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(INodeLabelledMultiDiGraphView<int>);
 
 template <typename NodeLabel>
-struct INodeLabelledMultiDiGraph : public INodeLabelledMultiDiGraphView<NodeLabel> {
+struct INodeLabelledMultiDiGraph
+    : public INodeLabelledMultiDiGraphView<NodeLabel> {
 public:
   INodeLabelledMultiDiGraph() = default;
   INodeLabelledMultiDiGraph(INodeLabelledMultiDiGraph const &) = delete;
@@ -35,6 +37,6 @@ public:
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(INodeLabelledMultiDiGraph<int>);
 
-}
+} // namespace FlexFlow
 
 #endif

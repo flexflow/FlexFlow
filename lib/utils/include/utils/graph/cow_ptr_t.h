@@ -10,7 +10,8 @@ namespace FlexFlow {
 
 template <typename T>
 struct cow_ptr_t {
-  static_assert(is_clonable<T>::value, "cow_ptr_t requires the type to have a clone() method");
+  static_assert(is_clonable<T>::value,
+                "cow_ptr_t requires the type to have a clone() method");
 
   cow_ptr_t(std::shared_ptr<T> ptr) : ptr(std::move(ptr)) {}
   cow_ptr_t(std::unique_ptr<T> ptr) : ptr(std::move(ptr)) {}

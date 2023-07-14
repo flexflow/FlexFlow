@@ -1,7 +1,7 @@
 #include "compiler/unity_algorithm.h"
-#include "utils/deduplicated_priority_queue.h"
 #include "graph_utils.h"
 #include "substitutions_implementation.h"
+#include "utils/deduplicated_priority_queue.h"
 
 namespace FlexFlow {
 
@@ -9,19 +9,21 @@ bool StrategyRuntimeCmp::operator()(Strategy const &lhs, Strategy const &rhs) {
   return lhs.machine_mapping.runtime < rhs.machine_mapping.runtime;
 }
 
-std::unordered_set<Substitution> get_all_substitutions(ParallelComputationGraph const &pcg);
+std::unordered_set<Substitution>
+    get_all_substitutions(ParallelComputationGraph const &pcg);
 
-std::unordered_set<ParallelComputationGraph> apply_substitution(ParallelComputationGraph const &pcg,
-                                                    Substitution const &);
+std::unordered_set<ParallelComputationGraph>
+    apply_substitution(ParallelComputationGraph const &pcg,
+                       Substitution const &);
 
-Strategy graph_optimize(
-    ComputationGraph &cg,
-    ICostEstimator const &cost_estimator,
-    MachineSpecification const &resources,
-    std::function<std::unordered_set<MachineView>(
-        Operator const &, MachineSpecification const &)> const
-        &allowed_machine_views,
-    OptimizerConfig const &opt_config) {
+Strategy
+    graph_optimize(ComputationGraph &cg,
+                   ICostEstimator const &cost_estimator,
+                   MachineSpecification const &resources,
+                   std::function<std::unordered_set<MachineView>(
+                       Operator const &, MachineSpecification const &)> const
+                       &allowed_machine_views,
+                   OptimizerConfig const &opt_config) {
 
   ParallelComputationGraph pcg = cg_to_pcg(cg);
 

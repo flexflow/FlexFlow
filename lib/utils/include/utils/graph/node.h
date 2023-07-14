@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_NODE_H
 #define _FLEXFLOW_UTILS_GRAPH_NODE_H
 
+#include "cow_ptr_t.h"
+#include "query_set.h"
 #include "utils/fmt.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
@@ -12,8 +14,6 @@
 #include <memory>
 #include <ostream>
 #include <unordered_set>
-#include "cow_ptr_t.h"
-#include "query_set.h"
 
 namespace FlexFlow {
 
@@ -24,14 +24,15 @@ FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
 
 struct NodeQuery {
-  NodeQuery(query_set<Node> const &nodes) : nodes(nodes) { }
+  NodeQuery(query_set<Node> const &nodes) : nodes(nodes) {}
 
   query_set<Node> nodes;
 
-  static NodeQuery all() { NOT_IMPLEMENTED(); }
+  static NodeQuery all() {
+    NOT_IMPLEMENTED();
+  }
 };
 FF_VISITABLE_STRUCT(NodeQuery, nodes);
-
 
 NodeQuery query_intersection(NodeQuery const &, NodeQuery const &);
 NodeQuery query_union(NodeQuery const &, NodeQuery const &);

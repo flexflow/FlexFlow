@@ -26,7 +26,9 @@ namespace FlexFlow {
 struct UndirectedEdgeQuery {
   query_set<Node> nodes;
 
-  static UndirectedEdgeQuery all() { NOT_IMPLEMENTED(); }
+  static UndirectedEdgeQuery all() {
+    NOT_IMPLEMENTED();
+  }
 };
 FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
 

@@ -2,8 +2,8 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_OPEN_GRAPH_INTERFACES_H
 
 #include "multidigraph.h"
-#include "utils/visitable.h"
 #include "utils/strong_typedef.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -59,19 +59,26 @@ struct OpenMultiDiEdgeQuery {
   MultiDiEdgeQuery standard_edge_query;
   OutputMultiDiEdgeQuery output_edge_query;
 };
-FF_VISITABLE_STRUCT(OpenMultiDiEdgeQuery, input_edge_query, standard_edge_query, output_edge_query);
+FF_VISITABLE_STRUCT(OpenMultiDiEdgeQuery,
+                    input_edge_query,
+                    standard_edge_query,
+                    output_edge_query);
 
 struct DownwardOpenMultiDiEdgeQuery {
   OutputMultiDiEdgeQuery output_edge_query;
   MultiDiEdgeQuery standard_edge_query;
 };
-FF_VISITABLE_STRUCT(DownwardOpenMultiDiEdgeQuery, output_edge_query, standard_edge_query);
+FF_VISITABLE_STRUCT(DownwardOpenMultiDiEdgeQuery,
+                    output_edge_query,
+                    standard_edge_query);
 
 struct UpwardOpenMultiDiEdgeQuery {
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
 };
-FF_VISITABLE_STRUCT(UpwardOpenMultiDiEdgeQuery, input_edge_query, standard_edge_query);
+FF_VISITABLE_STRUCT(UpwardOpenMultiDiEdgeQuery,
+                    input_edge_query,
+                    standard_edge_query);
 
 struct IOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<OpenMultiDiEdge>

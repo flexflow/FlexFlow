@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIEDGE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIEDGE_H
 
-#include "utils/visitable.h"
-#include "utils/strong_typedef.h"
 #include "node.h"
+#include "utils/strong_typedef.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,6 @@ struct NodePort : public strong_typedef<NodePort, size_t> {
 };
 FF_TYPEDEF_HASHABLE(NodePort);
 FF_TYPEDEF_PRINTABLE(NodePort, "NodePort");
-
 
 struct MultiDiEdge {
   Node src, dst;
@@ -43,7 +42,7 @@ FF_VISITABLE_STRUCT(MultiDiOutput, node, idx);
 MultiDiInput get_input(MultiDiEdge const &);
 MultiDiOutput get_output(MultiDiEdge const &);
 
-}
+} // namespace FlexFlow
 
 namespace fmt {
 
@@ -68,6 +67,5 @@ struct formatter<::FlexFlow::MultiDiInput> : formatter<std::string> {
 };
 
 } // namespace fmt
-
 
 #endif

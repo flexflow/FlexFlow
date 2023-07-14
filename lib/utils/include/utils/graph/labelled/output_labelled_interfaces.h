@@ -6,8 +6,8 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename OutputLabel>
-struct IOutputLabelledMultiDiGraphView 
-  : public INodeLabelledMultiDiGraphView<NodeLabel> {
+struct IOutputLabelledMultiDiGraphView
+    : public INodeLabelledMultiDiGraphView<NodeLabel> {
 
   virtual OutputLabel &at(MultiDiOutput const &) = 0;
 };
@@ -30,7 +30,6 @@ public:
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOutputLabelledMultiDiGraph<int, int>);
 
-
-}
+} // namespace FlexFlow
 
 #endif

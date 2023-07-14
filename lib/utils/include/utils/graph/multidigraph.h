@@ -2,8 +2,8 @@
 #define _FLEXFLOW_UTILS_GRAPH_MULTIDIGRAPH_H
 
 #include "cow_ptr_t.h"
-#include "node.h"
 #include "multidigraph_interfaces.h"
+#include "node.h"
 
 namespace FlexFlow {
 struct MultiDiGraphView {
