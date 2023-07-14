@@ -39,9 +39,6 @@ setup(
         "pybind11",
         "ninja",
     ],
-    entry_points={
-        "console_scripts": ["flexflow_python=flexflow.driver:flexflow_driver"],
-    },
     ext_modules=[
         CMakeExtension(
             name="flexflow",
