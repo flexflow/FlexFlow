@@ -3,6 +3,7 @@
 
 #include "adjacency_digraph.h"
 #include "digraph.h"
+#include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "open_graphs.h"
 #include "tl/optional.hpp"
@@ -249,6 +250,7 @@ public:
 private:
   OpenMultiDiGraphView g;
 };
+
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &);
 std::unordered_set<UndirectedEdge>

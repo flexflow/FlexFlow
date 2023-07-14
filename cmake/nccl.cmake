@@ -63,7 +63,7 @@ if(NCCL_URL)
     FetchContent_Populate(${NCCL_NAME})
   endif()
   
-  set(NCCL_FOLDER_PATH ${${NCCL_NAME}_SOURCE_DIR}/deps/${NCCL_NAME})
+  set(NCCL_FOLDER_PATH ${${NCCL_NAME}_SOURCE_DIR}/deps/nccl)
   set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
   set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
   message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
@@ -95,10 +95,6 @@ else()
 
   ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
   message(STATUS "NCCL install dir: ${INSTALL_DIR}")
-  list(APPEND FLEXFLOW_INCLUDE_DIRS
-    ${INSTALL_DIR}/include)
-  list(APPEND FLEXFLOW_EXT_LIBRARIES
-    ${INSTALL_DIR}/lib/libnccl${LIBEXT})
   set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/nccl/lib/")
 
   set(NCCL_INCLUDE_DIR "${INSTALL_DIR}/include")

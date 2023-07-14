@@ -5,7 +5,6 @@
 #include "multidigraph.h"
 #include "utils/optional.h"
 #include "utils/variant.h"
-#include <vector>
 
 namespace FlexFlow {
 
@@ -21,14 +20,22 @@ struct Serial {
   std::vector<variant<Parallel, Node>> children;
 };
 
+FF_VISITABLE_STRUCT(Serial, children);
+MAKE_VISIT_HASHABLE(Serial);
+
 struct Parallel {
   std::vector<variant<Serial, Node>> children;
 };
+
+FF_VISITABLE_STRUCT(Parallel, children);
+MAKE_VISIT_HASHABLE(Parallel);
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 
 SerialParallelDecomposition
     get_serial_parallel_decomposition(DiGraphView const &);
+
+std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp);
 
 } // namespace FlexFlow
 

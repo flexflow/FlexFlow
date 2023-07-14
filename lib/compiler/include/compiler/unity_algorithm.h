@@ -1,27 +1,52 @@
-#ifndef _FLEXFLOW_FFC_UNITY_ALGORITHM_H
-#define _FLEXFLOW_FFC_UNITY_ALGORITHM_H
+#ifndef _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
+#define _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 
-#include "op-meta/operator_attrs.h"
-#include "pcg/machine_view.h"
-#include "utils/graph.h"
+#include "cost_estimate.h"
+#include "machine_mapping.h"
+#include "sub_parallel_computation_graph.h"
+#include "pcg/computation_graph.h"
 
 namespace FlexFlow {
 
-/* std::unordered_map<MultiDiEdge, ParallelTensorShape>
- * infer_tensor_shapes(ParallelComputationGraph const &); */
+struct Substitution {};
 
-/* std::unordered_set<Node> get_nodes(Serial const &serial); */
-/* std::unordered_set<Node> get_nodes(Parallel const &parallel); */
-/* std::unordered_set<Node> get_nodes(Node const &node); */
-/* std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp); */
+struct Strategy {
+  ParallelComputationGraph pcg;
+  MachineMapping machine_mapping;
+};
 
-/* float optimal_cost(ParallelComputationGraph const &g,
- * std::unordered_set<MachineView> const &allowed_machine_views); */
-/* float optimal_cost(ParallelComputationGraph const &g, */
-/*                    SerialParallelDecomposition const &, */
-/*                    std::unordered_set<MachineView> const
- * &allowed_machine_views); */
+FF_VISITABLE_STRUCT(Strategy, pcg, machine_mapping);
+MAKE_VISIT_HASHABLE(Strategy);
+
+struct StrategyRuntimeCmp {
+  bool operator()(Strategy const &, Strategy const &);
+};
+
+struct OptimizerConfig {
+  float alpha;
+  int budget;
+  float threshold;
+  int max_num_ops;
+};
+
+Strategy graph_optimize(
+    ComputationGraph &cg,
+    ICostEstimator const &cost_estimator,
+    MachineSpecification const &resources,
+    std::function<std::unordered_set<MachineView>(
+        Operator const &, MachineSpecification const &)> const
+        &allowed_machine_views,
+    OptimizerConfig const &opt_config);
 
 } // namespace FlexFlow
 
-#endif
+namespace std {
+
+template <>
+struct hash<::FlexFlow::Strategy> {
+  size_t operator()(::FlexFlow::Strategy const &) const;
+};
+
+} // namespace std
+
+#endif /* _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H */

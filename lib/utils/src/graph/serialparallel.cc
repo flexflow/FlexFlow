@@ -201,5 +201,35 @@ struct ToFinalAST {
 variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {
   return visit(ToFinalAST{}, ast);
 }
+struct GetNodes {
+  template <typename T>
+  std::unordered_set<Node> operator()(T const &t) {
+    return get_nodes(t);
+  }
+};
+
+std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
+  return visit(GetNodes{}, sp);
+}
+
+std::unordered_set<Node> get_nodes(Serial const &serial) {
+  return set_union(vector_transform(
+      [](variant<Parallel, Node> const child) {
+        return visit(GetNodes{}, child);
+      },
+      serial.children));
+}
+
+std::unordered_set<Node> get_nodes(Parallel const &parallel) {
+  return set_union(vector_transform(
+      [](variant<Serial, Node> const child) {
+        return visit(GetNodes{}, child);
+      },
+      parallel.children));
+}
+
+std::unordered_set<Node> get_nodes(Node const &node) {
+  return {node};
+}
 
 } // namespace FlexFlow

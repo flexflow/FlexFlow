@@ -32,5 +32,5 @@ NonsequenceSplit NonsequenceSplit::horizontal(int param, bool flip_graphs) {
   return s;
 }
 
-}
-}
+} // namespace PCG
+} // namespace FlexFlow

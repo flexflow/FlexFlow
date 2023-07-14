@@ -24,11 +24,11 @@ FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
 namespace FlexFlow {
 
 struct UndirectedEdgeQuery {
-  UndirectedEdgeQuery() = delete;
-  UndirectedEdgeQuery(optional<std::unordered_set<Node>> const &);
+  query_set<Node> nodes;
 
-  optional<std::unordered_set<Node>> nodes = nullopt;
+  static UndirectedEdgeQuery all() { NOT_IMPLEMENTED(); }
 };
+FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
 
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
                                        UndirectedEdgeQuery const &);

@@ -14,28 +14,26 @@
  */
 #include "graph.h"
 #include "dominators.h"
-#include "op-meta/op-meta.h"
+#include "op-attrs/op-attrs.h"
 #include "utils/disjoint_set.h"
-#include <iostream>
 #include "utils/unique.h"
+#include <iostream>
 
-using FlexFlow::utils::Node;
-using FlexFlow::opmeta::OperatorParameters;
+// using FlexFlow::utils::Node;
+// using FlexFlow::opmeta::OperatorParameters;
 
 namespace FlexFlow {
-namespace ffc {
 
 ParallelComputationGraph::Graph(std::string const &logger_name)
-  : Graph(spdlog::get(logger_name))
-{ }
+    : Graph(spdlog::get(logger_name)) {}
 
-ParallelComputationGraph::Graph(std::shared_ptr<spdlog::logger> const &logger) 
-  : logger(logger)
-{ }
+ParallelComputationGraph::Graph(std::shared_ptr<spdlog::logger> const &logger)
+    : logger(logger) {}
 
-Graph::Graph(utils::AdjacencyMultiDiGraph const &g, utils::bidict<Node, OperatorParameters> const &nodeMap, std::shared_ptr<spdlog::logger> const &logger) 
-  : g(g), nodeMap(nodeMap), logger(logger)
-{ }
+Graph::Graph(utils::AdjacencyMultiDiGraph const &g,
+             utils::bidict<Node, PCGOperatorAttrs> const &nodeMap,
+             std::shared_ptr<spdlog::logger> const &logger)
+    : g(g), nodeMap(nodeMap), logger(logger) {}
 
 /* using namespace Legion; */
 /* using FlexFlow::MachineView; */
@@ -50,7 +48,7 @@ void Graph::add_edge(Node const &srcOp,
   this->g.add_edge({srcOp, dstOp, (std::size_t)srcIdx, (std::size_t)dstIdx});
 }
 
-Node Graph::add_node(OperatorParameters const &params) {
+Node Graph::add_node(PCGOperatorAttrs const &params) {
   Node n = this->g.add_node();
   this->nodeMap.equate(n, params);
   return n;
@@ -60,7 +58,8 @@ void Graph::add_edge(utils::MultiDiEdge const &e) {
   this->g.add_edge(e);
 }
 
-void Graph::remove_edge(utils::MultiDiEdge const &e, bool remove_node_if_unused) {
+void Graph::remove_edge(utils::MultiDiEdge const &e,
+                        bool remove_node_if_unused) {
   this->g.remove_edge(e);
   utils::remove_node_if_unused(this->g, e.src);
   utils::remove_node_if_unused(this->g, e.dst);
@@ -112,7 +111,8 @@ bool Graph::has_loop() {
 /*     ipd = imm_post_dominators(*this); */
 /*     source = *graph_roots.begin(); */
 /*   } else { */
-/*     ipd = imm_post_dominators<Graph, MultisourceGraphStructure<Graph>>(*this); */
+/*     ipd = imm_post_dominators<Graph,
+ * MultisourceGraphStructure<Graph>>(*this); */
 /*   } */
 
 /*   Node bn_node = ipd.at(source); */
@@ -124,9 +124,9 @@ bool Graph::has_loop() {
 /* } */
 
 Graph Graph::subgraph(std::unordered_set<Node> const &nodes) const {
-  utils::AdjacencyMultiDiGraph sub_g = utils::subgraph<utils::AdjacencyMultiDiGraph>(this->g, nodes);
+  AdjacencyMultiDiGraph sub_g = subgraph<AdjacencyMultiDiGraph>(this->g, nodes);
 
-  utils::bidict<utils::Node, opmeta::OperatorParameters> sub_nodeMap;
+  bidict<Node, opmeta::PCGOperatorAttrs> sub_nodeMap;
   for (auto const &kv : this->nodeMap) {
     if (contains(nodes, kv.first)) {
       sub_nodeMap.equate(kv.first, kv.second);
@@ -137,13 +137,13 @@ Graph Graph::subgraph(std::unordered_set<Node> const &nodes) const {
 }
 
 void Graph::remove_node(Node const &node, bool purge_edges) {
-  assert (purge_edges == true);
+  assert(purge_edges == true);
   utils::remove_node(this->g, node);
   this->nodeMap.erase_l(node);
 }
 
 /*static*/
-Graph Graph::singleton(OperatorParameters const &params) {
+Graph Graph::singleton(PCGOperatorAttrs const &params) {
   Graph g;
   g.add_node(params);
   return g;
@@ -220,7 +220,6 @@ void Graph::contract_out_node(Node const &node) {
   contract_node(this->g, node);
   this->nodeMap.erase_l(node);
 }
-
 
 /* std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> */
 /*     Graph::split_at_node(Node const &bottleneck) const { */
@@ -475,7 +474,6 @@ float parallel_cost<float>(float const &first, float const &second) {
   return std::max(first, second);
 }
 
-
 float Graph::optimal_cost() const {
   return this->generic_optimal_cost<float>();
 }
@@ -625,7 +623,8 @@ GraphOptimalViewSerialized
            "machine-model-version = 0 or 1. When machine-model-version = 1, "
            "machine-model-file should not be empty.");
   }
-  model->simulator = make_unique<Simulator>(model, model->handlers[0], gpu_mem, machine);
+  model->simulator =
+      make_unique<Simulator>(model, model->handlers[0], gpu_mem, machine);
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
   if (model->config.only_data_parallel) {
@@ -816,7 +815,7 @@ GraphOptimalViewSerialized
   /* return ret; */
 }
 
-}; // namespace FlexFlow::PCG
+}; // namespace FlexFlow
 
 namespace FlexFlow {
 
@@ -953,7 +952,7 @@ void FFModel::construct_optimal_view(
 /*                                                    data_type, */
 /*                                                    nullptr, */
 /*                                                    0, */
-/*                                                    true /*create_grad*/, */
+/*                                                    true create_grad, */
 /*                                                    input_tensor_guid); */
 /*         node.ptr = t->owner_op; */
 /*         node.guid = node_global_guid++; */
@@ -991,7 +990,8 @@ void FFModel::construct_optimal_view(
 /*           dez.deserialize(dim_size); */
 /*           splits.push_back(dim_size); */
 /*         } */
-/*         node = get_or_create_node<Split>(inputs[0], {splits, legion_axis}); */
+/*         node = get_or_create_node<Split>(inputs[0], {splits, legion_axis});
+ */
 /*         break; */
 /*       } */
 /*       case OP_EMBEDDING: { */
@@ -1120,7 +1120,8 @@ void FFModel::construct_optimal_view(
 /*         params.n = n; */
 /*         params.lambda_bal = lambda_bal; */
 /*         node = get_or_create_node<Aggregate>( */
-/*             {std::begin(inputs), std::begin(inputs) + num_inputs}, params); */
+/*             {std::begin(inputs), std::begin(inputs) + num_inputs}, params);
+ */
 /*         break; */
 /*       } */
 /*       case OP_POOL2D: { */
@@ -1170,7 +1171,8 @@ void FFModel::construct_optimal_view(
 /*         dez.deserialize(replicate_dim); */
 /*         dez.deserialize(replicate_degree); */
 /*         node = get_or_create_node<Replicate>(inputs[0], */
-/*                                              {replicate_dim, replicate_degree}); */
+/*                                              {replicate_dim,
+ * replicate_degree}); */
 /*         break; */
 /*       } */
 /*       case OP_REDUCTION: { */
@@ -1179,7 +1181,8 @@ void FFModel::construct_optimal_view(
 /*         dez.deserialize(reduction_dim); */
 /*         dez.deserialize(reduction_degree); */
 /*         node = get_or_create_node<Reduction>(inputs[0], */
-/*                                              {reduction_dim, reduction_degree}); */
+/*                                              {reduction_dim,
+ * reduction_degree}); */
 /*         break; */
 /*       } */
 /*       case OP_FUSED_PARALLEL: { */
@@ -1192,7 +1195,8 @@ void FFModel::construct_optimal_view(
 /*           dez.deserialize(info); */
 /*           parallel_ops.push_back(info); */
 /*         } */
-/*         node = get_or_create_node<FusedParallelOp>(inputs[0], {parallel_ops}); */
+/*         node = get_or_create_node<FusedParallelOp>(inputs[0],
+ * {parallel_ops}); */
 /*         break; */
 /*       } */
 /*       default: { */
@@ -1248,4 +1252,4 @@ void FFModel::construct_optimal_view(
 /*   } */
 /* } */
 
-}
+} // namespace FlexFlow

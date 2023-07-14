@@ -531,6 +531,17 @@ C filter(C const &v, F const &f) {
   return result;
 }
 
+template <typename T, typename F>
+std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
+  std::unordered_set<T> result;
+  for (T const &t : v) {
+    if (f(t)) {
+      result.insert(t);
+    }
+  }
+  return result;
+}
+
 template <typename C, typename F, typename Elem = typename C::value_type>
 void inplace_filter(C &v, F const &f) {
   std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });

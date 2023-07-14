@@ -214,7 +214,8 @@ tl::optional<DiGraphPatternMatch>
       if (!contains_key(outgoing, output_edge.srcIdx)) {
         return tl::nullopt;
       }
-      match.edgeAssignment.equate(output_edge, outgoing.at(output_edge.srcIdx));
+      match.edgeAssignment.equate(output_edge,
+                                  get_only(outgoing.at(output_edge.srcIdx)));
     }
   }
 

@@ -5,13 +5,14 @@
 #include "multidigraph.h"
 #include "node.h"
 #include "open_graphs.h"
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 #include "undirected.h"
 #include "utils/containers.h"
 #include "utils/dot_file.h"
 #include "views.h"
 #include <unordered_map>
 #include <vector>
+#include "labelled_graphs.h"
 
 namespace FlexFlow {
 
@@ -149,6 +150,11 @@ std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 std::unordered_set<Node> get_sinks(DiGraphView const &);
 std::unordered_set<Node> get_sinks(MultiDiGraphView const &);
 
+std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
+
 bool is_acyclic(MultiDiGraphView const &, std::unordered_set<Node> const &);
 tl::optional<bool> is_acyclic(DiGraphView const &);
 tl::optional<bool> is_acyclic(MultiDiGraphView const &);
@@ -213,6 +219,9 @@ using GraphSplit =
 std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
 MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 
+bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
+    get_edge_splits(OpenMultiDiGraphView const &, GraphSplit const &);
+
 UndirectedGraphView get_subgraph(UndirectedGraphView const &,
                                  std::unordered_set<Node> const &);
 DiGraphView get_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
@@ -220,6 +229,8 @@ MultiDiGraphView get_subgraph(MultiDiGraphView const &,
                               std::unordered_set<Node> const &);
 OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &,
                                   std::unordered_set<Node> const &);
+
+
 
 MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);

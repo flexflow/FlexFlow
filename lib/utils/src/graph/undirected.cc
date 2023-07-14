@@ -7,20 +7,11 @@ namespace FlexFlow {
 UndirectedEdge::UndirectedEdge(Node const &src, Node const &dst)
     : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger)) {}
 
-UndirectedEdgeQuery::UndirectedEdgeQuery(
-    optional<std::unordered_set<Node>> const &nodes)
-    : nodes(nodes) {}
-
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
                                        UndirectedEdgeQuery const &rhs) {
-  if (!lhs.nodes.has_value()) {
-    return rhs;
-  } else if (!rhs.nodes.has_value()) {
-    return lhs;
-  } else {
-    assert(lhs.nodes.has_value() && rhs.nodes.has_value());
-    return {intersection(*lhs.nodes, *rhs.nodes)};
-  }
+  return {
+    query_intersection(lhs.nodes, rhs.nodes),
+  };
 }
 
 void swap(UndirectedGraph &lhs, UndirectedGraph &rhs) {
