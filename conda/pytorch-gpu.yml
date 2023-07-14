@@ -7,4 +7,4 @@ dependencies:
   - numpy>=1.16.0
   - pip
   - pip:
-    - torch==1.13.1
+    - torch>=1.13.1
