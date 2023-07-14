@@ -1,0 +1,8 @@
+#! /usr/bin/env bash
+
+# This file runs the flexflow_python interpreter when installing FlexFlow via pip. This file can be ignored when installing FlexFlow using cmake/make
+
+python_packages=$(python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))")
+export PATH="${python_packages}/flexflow/bin:${PATH}"
+
+legion_python "$@"

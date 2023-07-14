@@ -39,6 +39,7 @@ setup(
         "pybind11",
         "ninja",
     ],
+    scripts=['python/flexflow_python'],
     ext_modules=[
         CMakeExtension(
             name="flexflow",
