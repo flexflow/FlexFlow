@@ -48,7 +48,7 @@ lines = [
     '\texport PYTHONPATH="$PYTHON_FOLDER:$BUILD_FOLDER/deps/legion/bindings/python:$PYTHONPATH"',
     '\t$BUILD_FOLDER/deps/legion/bin/legion_python "$@"',
     'else',
-    '\tlegion_python "$@"'
+    '\tlegion_python "$@"',
     'fi'
 ]
 
