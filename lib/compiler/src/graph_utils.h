@@ -26,18 +26,18 @@ enum class InputSettings { INCLUDE_INPUTS, EXCLUDE_INPUTS };
 
 enum class OutputSettings { INCLUDE_OUTPUTS, EXCLUDE_OUTPUTS };
 
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = EdgeLabel>
-LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    get_subgraph(LabelledOpenMultiDiGraph<NodeLabel,
-                                          EdgeLabel,
-                                          InputLabel,
-                                          OutputLabel> const &g,
-                 std::unordered_set<Node> const &nodes,
-                 InputSettings input_settings,
-                 OutputSettings output_settings);
+/* template <typename NodeLabel, */
+/*           typename EdgeLabel, */
+/*           typename InputLabel = EdgeLabel, */
+/*           typename OutputLabel = EdgeLabel> */
+/* LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel> */
+/*     get_subgraph(LabelledOpenMultiDiGraph<NodeLabel, */
+/*                                           EdgeLabel, */
+/*                                           InputLabel, */
+/*                                           OutputLabel> const &g, */
+/*                  std::unordered_set<Node> const &nodes, */
+/*                  InputSettings input_settings, */
+/*                  OutputSettings output_settings); */
 
 template <typename NodeLabel,
           typename EdgeLabel,

@@ -4,8 +4,7 @@ namespace FlexFlow {
 
 SerialParallelDecomposition
     get_serial_parallel_decomposition(OptimizerPCG const &pcg) {
-  return get_serial_parallel_decomposition(
-      unsafe_view_as_digraph(MultiDiGraphView(pcg)));
+  return get_serial_parallel_decomposition(as_digraph(pcg));
 }
 
 std::vector<MultiDiEdge> get_sorted_node_input_edges(OptimizerPCG const &pcg,
@@ -52,8 +51,8 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
 
 template <typename NodeLabel,
           typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = EdgeLabel>
+          typename InputLabel,
+          typename OutputLabel>
 LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
     get_subgraph(LabelledOpenMultiDiGraph<NodeLabel,
                                           EdgeLabel,

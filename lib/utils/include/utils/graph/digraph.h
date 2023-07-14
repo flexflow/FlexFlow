@@ -17,11 +17,12 @@ struct DirectedEdge {
 FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
 
 struct DirectedEdgeQuery {
-  DirectedEdgeQuery() = default;
-  DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs,
-                    tl::optional<std::unordered_set<Node>> const &dsts);
-  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
+  query_set<Node> srcs;
+  query_set<Node> dsts;
+
+  static DirectedEdgeQuery all() { NOT_IMPLEMENTED(); }
 };
+FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
 
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
                                      DirectedEdgeQuery const &);

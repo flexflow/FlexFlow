@@ -13,7 +13,6 @@
 #include "graph/serialparallel.h"
 #include "graph/traversal.h"
 #include "graph/undirected.h"
-#include "graph/unordered_labelled_graphs.h"
 #include "graph/views.h"
 
 #endif

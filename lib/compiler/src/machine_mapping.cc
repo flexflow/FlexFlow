@@ -63,11 +63,11 @@ GraphSplit
 std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
     apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
   OpenMultiDiGraphView g1 =
-      unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.first);
+      get_subgraph(g, split.first);
   OpenMultiDiGraphView g2 =
-      unsafe_view_as_subgraph(OpenMultiDiGraph(g), split.second);
+      get_subgraph(g, split.second);
 
-  if (get_cut(OpenMultiDiGraph(g), split).size() > 0) {
+  if (get_cut(g, split).size() > 0) {
     // Sequential split
     if (get_open_sinks(g1).size() <= get_open_sources(g2).size()) {
       // get_open_sinks(*g1).size() should be 1 in perfect sp graphs

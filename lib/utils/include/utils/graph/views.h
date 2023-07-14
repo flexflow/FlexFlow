@@ -251,8 +251,13 @@ private:
   OpenMultiDiGraphView g;
 };
 
+template <typename NodeLabel>
+struct NodeLabelledMultiDiSubgraphView : public INodeLabelledMultiDiGraphView<NodeLabel> {
+public:
+};
+
 template <typename NodeLabel, typename EdgeLabel>
-struct LabelledMultiDiSubgraphView {
+struct LabelledMultiDiSubgraphView : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 public:
   LabelledMultiDiSubgraphView() = delete;
   template <typename InputLabel, typename OutputLabel>
@@ -320,43 +325,6 @@ public:
   virtual OutputLabel const &at(OutputMultiDiEdge const &e) const override;
   virtual EdgeLabel const &at(MultiDiEdge const &e) const override;
 };
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    view_as_labelled_open_multidisubgraph(
-        LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> const &);
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    view_as_labelled_open_multidisubgraph(
-        LabelledUpwardMultiDiSubgraphView<NodeLabel,
-                                          EdgeLabel,
-                                          InputLabel> const &);
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    view_as_labelled_open_multidisubgraph(
-        LabelledDownwardMultiDiSubgraphView<NodeLabel,
-                                            EdgeLabel,
-                                            InputLabel> const &);
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-LabelledOpenMultiDiSubgraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    view_as_labelled_open_multidisubgraph(
-        LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> const &);
-
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &);
 std::unordered_set<UndirectedEdge>
