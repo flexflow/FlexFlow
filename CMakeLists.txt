@@ -446,7 +446,7 @@ if (FF_USE_PYTHON)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Creating flexflow_python interpreter..."
   )
-  install(FILES ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
+  install(PROGRAMS ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
 endif()
 
 # build binary
