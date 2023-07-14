@@ -3,18 +3,20 @@
 
 #include "cost_estimate.h"
 #include "machine_mapping.h"
-#include "optimizer_graph.h"
+#include "sub_parallel_computation_graph.h"
+#include "pcg/computation_graph.h"
 
 namespace FlexFlow {
 
 struct Substitution {};
 
 struct Strategy {
-  OptimizerPCG pcg;
+  ParallelComputationGraph pcg;
   MachineMapping machine_mapping;
-
-  Strategy(OptimizerPCG const &pcg, MachineMapping const &strategy);
 };
+
+FF_VISITABLE_STRUCT(Strategy, pcg, machine_mapping);
+MAKE_VISIT_HASHABLE(Strategy);
 
 struct StrategyRuntimeCmp {
   bool operator()(Strategy const &, Strategy const &);
@@ -28,11 +30,11 @@ struct OptimizerConfig {
 };
 
 Strategy graph_optimize(
-    OptimizerComputationGraph &cg,
+    ComputationGraph &cg,
     ICostEstimator const &cost_estimator,
     MachineSpecification const &resources,
     std::function<std::unordered_set<MachineView>(
-        PCGOperatorAttrs const &, MachineSpecification const &)> const
+        Operator const &, MachineSpecification const &)> const
         &allowed_machine_views,
     OptimizerConfig const &opt_config);
 

@@ -150,6 +150,11 @@ std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 std::unordered_set<Node> get_sinks(DiGraphView const &);
 std::unordered_set<Node> get_sinks(MultiDiGraphView const &);
 
+std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
+
 bool is_acyclic(MultiDiGraphView const &, std::unordered_set<Node> const &);
 tl::optional<bool> is_acyclic(DiGraphView const &);
 tl::optional<bool> is_acyclic(MultiDiGraphView const &);
@@ -213,6 +218,9 @@ using GraphSplit =
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
 MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
+
+bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
+    get_edge_splits(OpenMultiDiGraphView const &, GraphSplit const &);
 
 UndirectedGraphView get_subgraph(UndirectedGraphView const &,
                                  std::unordered_set<Node> const &);

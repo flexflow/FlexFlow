@@ -5,31 +5,31 @@
 #include "optimizer_graph.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
+#include "pcg/parallel_computation_graph.h"
 
 namespace FlexFlow {
 
-struct MachineMapping : use_visitable_cmp<MachineMapping> {
-  MachineMapping(float runtime,
-                 std::unordered_map<Node, MachineView> machine_views);
-
+struct MachineMapping {
   static MachineMapping sequential_combine(MachineMapping const &s1,
                                            MachineMapping const &s2);
   static MachineMapping parallel_combine(MachineMapping const &s1,
                                          MachineMapping const &s2);
   static MachineMapping infinity();
 
-  float runtime;
-  std::unordered_map<Node, MachineView> machine_views;
+  req<float> runtime;
+  req<std::unordered_map<Node, MachineView>> machine_views;
 };
+
+FF_VISITABLE_STRUCT(MachineMapping, runtime, machine_views);
 
 struct MachineMappingRuntimeCmp {
   bool operator()(MachineMapping const &, MachineMapping const &);
 };
 
 MachineMapping optimal_cost(
-    OptimizerPCG const &g,
+    ParallelComputationGraph const &g,
     std::function<std::unordered_set<MachineView>(
-        PCGOperatorAttrs const &, MachineSpecification const &)> const
+        Operator const &, MachineSpecification const &)> const
         &allowed_machine_views,
     ICostEstimator const &cost_estimator,
     MachineSpecification const &resources,
