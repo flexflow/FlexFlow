@@ -40,7 +40,8 @@ script_path = os.path.abspath(script_path)
 lines = [
     '#! /usr/bin/env bash',
     f'BUILD_FOLDER="{build_dir}"',
-    'if [[ "$PWD" == "$BUILD_FOLDER" ]]; then',
+    'SCRIPT_DIR="$(realpath "${BASH_SOURCE[0]%/*}")"',
+    'if [[ "$SCRIPT_DIR" == "$BUILD_FOLDER" ]]; then',
     f'\tPYTHON_FOLDER="{script_dir}"',
     '\tPYLIB_PATH="$("$PYTHON_FOLDER"/flexflow/findpylib.py)"',
     '\tPYLIB_DIR="$(dirname "$PYLIB_PATH")"',
