@@ -24,7 +24,7 @@ std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
 }
 
 std::unordered_set<Node> get_nodes(GraphView const &g) {
-  return g.query_nodes({});
+  return g.query_nodes(NodeQuery::all());
 }
 
 std::unordered_set<Node> query_nodes(IGraphView const &g,
@@ -149,29 +149,30 @@ void remove_edges(UndirectedGraph &g,
 }
 
 std::unordered_set<MultiDiEdge> get_edges(MultiDiGraphView const &g) {
-  return g.query_edges({});
+  return g.query_edges(MultiDiEdgeQuery::all());
 }
 
 std::unordered_set<DirectedEdge> get_edges(DiGraphView const &g) {
-  return g.query_edges({});
+  return g.query_edges(DirectedEdgeQuery::all());
 }
 
 std::unordered_set<UndirectedEdge> get_edges(UndirectedGraphView const &g) {
-  return g.query_edges({nullopt});
+  return g.query_edges(UndirectedEdgeQuery::all());
 }
 
 std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
                                                   Node const &n) {
-  UndirectedEdgeQuery query(std::unordered_set<Node>{n});
-  return g.query_edges(query);
+  return g.query_edges({n});
 }
 
 std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &g) {
-  return transform(get_edges(g), [&](MultiDiEdge const &e) { return get_output(e); });
+  return transform(get_edges(g),
+                   [&](MultiDiEdge const &e) { return get_output(e); });
 }
 
 std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &g) {
-  return transform(get_edges(g), [&](MultiDiEdge const &e) { return get_input(e); });
+  return transform(get_edges(g),
+                   [&](MultiDiEdge const &e) { return get_input(e); });
 }
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &g,
@@ -495,8 +496,7 @@ optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
 }
 
-optional<Node> imm_post_dominator(MultiDiGraphView const &g,
-                                      Node const &n) {
+optional<Node> imm_post_dominator(MultiDiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
 }
 

@@ -4,10 +4,12 @@
 #include "accessor.h"
 #include "index_task_invocation.h"
 #include "legion.h"
+#include "op_arg_ref.h"
 #include "op_task_signature.h"
-#include "profiling.h"
 #include "runtime/config.h"
+#include "runtime/profiling.h"
 #include "serialization.h"
+#include "standard_task_invocation.h"
 #include "tasks.h"
 #include "utils/bidict.h"
 #include "utils/optional.h"
@@ -20,70 +22,22 @@ namespace FlexFlow {
 
 enum class IsTrainable { YES, NO };
 
-struct OpTensorSpec : public use_visitable_cmp<OpTensorSpec> {
-public:
-  OpTensorSpec() = delete;
-  OpTensorSpec(TensorRole, int);
-
-public:
+struct OpTensorSpec {
   TensorRole role;
-  int idx;
+  req<int> idx;
 };
+FF_VISITABLE_STRUCT(OpTensorSpec, role, idx);
 
 OpTensorSpec input_tensor(int);
 OpTensorSpec output_tensor(int);
 OpTensorSpec weight_tensor(int);
-
-enum class OpArgRefType { PER_DEVICE_OP_STATE };
-
-template <typename T>
-struct OpArgRef : public use_visitable_cmp<OpArgRef<T>> {
-public:
-  OpArgRef() = delete;
-  OpArgRef(OpArgRefType ref_type) : ref_type(ref_type) {}
-
-public:
-  OpArgRefType ref_type;
-};
-
-template <typename T>
-OpArgRef<T> per_device_op_state() {
-  return OpArgRef<T>(OpArgRefType::PER_DEVICE_OP_STATE);
-}
-
-struct OpArgRefSpec {
-public:
-  OpArgRefSpec() = delete;
-
-  template <typename T>
-  bool holds() const {
-    return std::type_index(typeid(T)) == this->type;
-  }
-
-  OpArgRefType const &get_ref_type() const {
-    return this->ref_type;
-  }
-
-  template <typename T>
-  static OpArgRefSpec create(OpArgRef<T> const &r) {
-    static_assert(is_serializable<T>, "Type must be serializable");
-
-    return OpArgRefSpec(std::type_index(typeid(T)), r.ref_type);
-  }
-
-private:
-  OpArgRefSpec(std::type_index, OpArgRefType);
-
-  std::type_index type;
-  OpArgRefType ref_type;
-};
 
 using OpArgSpec = variant<ConcreteArgSpec,
                           IndexArgSpec,
                           OpArgRefSpec,
                           CheckedTypedFuture,
                           CheckedTypedFutureMap,
-                          ArgRefSpec,
+                          RuntimeArgRefSpec,
                           TaskInvocationSpec>;
 
 struct OpTaskBinding {
@@ -95,8 +49,23 @@ struct OpTaskBinding {
   void bind_grad(slot_id, OpTensorSpec const &);
 
   template <typename T>
+  void bind_device_specific_arg(slot_id name, T const &t) {
+    NOT_IMPLEMENTED();
+  }
+
+  template <typename T>
+  void bind_device_specific_arg(slot_id name, OpArgRef<T> const &t) {
+    NOT_IMPLEMENTED();
+  }
+
+  template <typename T>
   void bind_arg(slot_id name, T const &t) {
     this->insert_arg_spec(name, ConcreteArgSpec::create(t));
+  }
+
+  template <typename T>
+  void bind_arg(slot_id name, RuntimeArgRef<T> const &ref) {
+    this->insert_arg_spec(name, RuntimeArgRefSpec::create(ref));
   }
 
   template <typename T>
@@ -156,6 +125,7 @@ public:
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
+OpTaskSignature get_op_signature(task_id_t const &);
 
 /* std::unordered_map<int, OpTensorSpec> get_regions_idxs(TaskArgumentFormat
  * const &); */
@@ -164,8 +134,5 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
  * OpTaskBinding const &); */
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::OpTensorSpec, role, idx);
-VISITABLE_STRUCT(::FlexFlow::OpTensorSlotSpec, name, slot_type, tensor_role);
 
 #endif

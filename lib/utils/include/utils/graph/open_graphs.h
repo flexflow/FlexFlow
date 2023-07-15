@@ -52,6 +52,8 @@ public:
 
   friend void swap(OpenMultiDiGraph &, OpenMultiDiGraph &);
 
+  operator OpenMultiDiGraphView() const;
+
   Node add_node();
   void add_node_unsafe(Node const &);
   void remove_node_unsafe(Node const &);
@@ -72,13 +74,9 @@ private:
   OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph>);
 
 private:
-  std::unique_ptr<IOpenMultiDiGraph> ptr;
+  cow_ptr_t<IOpenMultiDiGraph> ptr;
 };
-
-static_assert(std::is_copy_constructible<OpenMultiDiGraph>::value, "");
-static_assert(std::is_move_constructible<OpenMultiDiGraph>::value, "");
-static_assert(std::is_copy_assignable<OpenMultiDiGraph>::value, "");
-static_assert(std::is_copy_constructible<OpenMultiDiGraph>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OpenMultiDiGraph);
 
 struct UpwardOpenMultiDiGraphView {
 public:
@@ -112,6 +110,7 @@ private:
 private:
   std::shared_ptr<IUpwardOpenMultiDiGraphView const> ptr;
 };
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraphView);
 
 struct UpwardOpenMultiDiGraph {
 public:
@@ -146,13 +145,9 @@ private:
   UpwardOpenMultiDiGraph(std::unique_ptr<IUpwardOpenMultiDiGraph>);
 
 private:
-  std::unique_ptr<IUpwardOpenMultiDiGraph> ptr;
+  cow_ptr_t<IUpwardOpenMultiDiGraph> ptr;
 };
-
-static_assert(std::is_copy_constructible<UpwardOpenMultiDiGraph>::value, "");
-static_assert(std::is_move_constructible<UpwardOpenMultiDiGraph>::value, "");
-static_assert(std::is_copy_assignable<UpwardOpenMultiDiGraph>::value, "");
-static_assert(std::is_copy_constructible<UpwardOpenMultiDiGraph>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraph);
 
 struct DownwardOpenMultiDiGraphView {
 public:
@@ -186,6 +181,7 @@ private:
 private:
   std::shared_ptr<IDownwardOpenMultiDiGraphView const> ptr;
 };
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraphView);
 
 struct DownwardOpenMultiDiGraph {
 public:
@@ -220,13 +216,9 @@ private:
   DownwardOpenMultiDiGraph(std::unique_ptr<IDownwardOpenMultiDiGraph>);
 
 private:
-  std::unique_ptr<IDownwardOpenMultiDiGraph> ptr;
+  cow_ptr_t<IDownwardOpenMultiDiGraph> ptr;
 };
-
-static_assert(std::is_copy_constructible<DownwardOpenMultiDiGraph>::value, "");
-static_assert(std::is_move_constructible<DownwardOpenMultiDiGraph>::value, "");
-static_assert(std::is_copy_assignable<DownwardOpenMultiDiGraph>::value, "");
-static_assert(std::is_copy_constructible<DownwardOpenMultiDiGraph>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraph);
 
 } // namespace FlexFlow
 

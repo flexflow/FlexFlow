@@ -81,12 +81,11 @@ std::unordered_set<Node>
   return result;
 }
 
-DiGraphView
-    source_to_sink_subgraph(DiGraphView const &g,
-                                   std::unordered_set<Node> const &srcs,
-                                   std::unordered_set<Node> const &sinks,
-                                   SourceSettings include_src,
-                                   SinkSettings include_sink) {
+DiGraphView source_to_sink_subgraph(DiGraphView const &g,
+                                    std::unordered_set<Node> const &srcs,
+                                    std::unordered_set<Node> const &sinks,
+                                    SourceSettings include_src,
+                                    SinkSettings include_sink) {
   return get_subgraph(
       g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
 }
@@ -126,8 +125,7 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
 
   SplitASTNode split(SplitType::PARALLEL);
   for (auto const &component : weakly_connected_components) {
-    split.children.push_back(
-        sp_decomposition(get_subgraph(g, component)));
+    split.children.push_back(sp_decomposition(get_subgraph(g, component)));
   }
 
   return split;
@@ -206,6 +204,36 @@ struct ToFinalAST {
 
 variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {
   return visit(ToFinalAST{}, ast);
+}
+struct GetNodes {
+  template <typename T>
+  std::unordered_set<Node> operator()(T const &t) {
+    return get_nodes(t);
+  }
+};
+
+std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
+  return visit(GetNodes{}, sp);
+}
+
+std::unordered_set<Node> get_nodes(Serial const &serial) {
+  return set_union(vector_transform(
+      [](variant<Parallel, Node> const child) {
+        return visit(GetNodes{}, child);
+      },
+      serial.children));
+}
+
+std::unordered_set<Node> get_nodes(Parallel const &parallel) {
+  return set_union(vector_transform(
+      [](variant<Serial, Node> const child) {
+        return visit(GetNodes{}, child);
+      },
+      parallel.children));
+}
+
+std::unordered_set<Node> get_nodes(Node const &node) {
+  return {node};
 }
 
 } // namespace FlexFlow

@@ -19,7 +19,7 @@
 #include "kernels/perf_metrics.h"
 #include "legion.h"
 #include "op-attrs/ops/loss_functions.h"
-#include "task_invocation.h"
+#include "task_spec/task_invocation.h"
 #include "utils/fmt.h"
 
 namespace FlexFlow {
@@ -52,11 +52,11 @@ TypedIndexTaskInvocation<PerfMetrics>
     compute_metrics(MetricsAttrs const &,
                     parallel_tensor_guid_t const &logit,
                     parallel_tensor_guid_t const &label);
-TypedTaskInvocation<PerfMetrics>
+TypedStandardTaskInvocation<PerfMetrics>
     update_metrics(MetricsAttrs const &,
                    StandardTypedTaskArg<PerfMetrics> const &all_metrics,
                    IndexTypedTaskArg<PerfMetrics> const &one_metrics);
-TypedTaskInvocation<PerfMetrics> compute_and_update_metrics(
+TypedStandardTaskInvocation<PerfMetrics> compute_and_update_metrics(
     MetricsAttrs const &metrics,
     StandardTypedTaskArg<PerfMetrics> const &all_metrics,
     parallel_tensor_guid_t const &logit,

@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
-#include "cow_ptr_t.h"
 
 namespace FlexFlow {
 
@@ -20,11 +20,14 @@ std::ostream &operator<<(std::ostream &s, DirectedEdge const &e);
 FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
 
 struct DirectedEdgeQuery {
-  DirectedEdgeQuery() = default;
-  DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs,
-                    tl::optional<std::unordered_set<Node>> const &dsts);
-  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
+  query_set<Node> srcs;
+  query_set<Node> dsts;
+
+  static DirectedEdgeQuery all() {
+    NOT_IMPLEMENTED();
+  }
 };
+FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
 
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
                                      DirectedEdgeQuery const &);

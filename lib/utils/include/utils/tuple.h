@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_UTILS_TUPLE_H
 #define _FLEXFLOW_UTILS_TUPLE_H
 
+#include "utils/any.h"
+#include "utils/exception.h"
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
-#include "utils/any.h"
-#include "utils/exception.h"
 
 // Adapted from
 // https://github.com/bitwizeshift/BackportCpp/blob/4f33a7f9b219f169e60d8ed2fd5731a3a23288e4/include/bpstd/tuple.hpp
@@ -28,7 +28,7 @@ struct index_of_impl<T, Index, T, Types...>
 template <typename T, typename... Types>
 struct index_of : index_of_impl<T, 0, Types...> {};
 
-}
+} // namespace TupleUtils
 
 template <typename T, typename... Types>
 T &get(std::tuple<Types...> &t) noexcept {
@@ -50,17 +50,17 @@ T const &&get(std::tuple<Types...> const &&t) noexcept {
   return move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
 }
 
-template <int Idx, typename Visitor, typename ...Types>
+template <int Idx, typename Visitor, typename... Types>
 void visit_tuple_impl(Visitor &v, std::tuple<Types...> const &tup) {
   v(Idx, std::get<Idx>(tup));
   if (Idx >= std::tuple_size<decltype(tup)>::value) {
     return;
   } else {
-    visit_tuple_impl<(Idx+1)>(v, tup);
+    visit_tuple_impl<(Idx + 1)>(v, tup);
   }
 }
 
-template <typename Visitor, typename ...Types>
+template <typename Visitor, typename... Types>
 void visit_tuple(Visitor &v, std::tuple<Types...> const &tup) {
   visit_tuple_impl<0>(v, tup);
 }
@@ -68,7 +68,7 @@ void visit_tuple(Visitor &v, std::tuple<Types...> const &tup) {
 struct tuple_get_visitor {
   tuple_get_visitor() = delete;
   tuple_get_visitor(int requested_idx, any &result)
-    : requested_idx(requested_idx), result(result) { }
+      : requested_idx(requested_idx), result(result) {}
 
   int requested_idx;
   any &result;
@@ -81,11 +81,12 @@ struct tuple_get_visitor {
   }
 };
 
-template <typename ...Types>
+template <typename... Types>
 any get(std::tuple<Types...> const &t, int idx) {
   size_t tuple_size = std::tuple_size<decltype(t)>::value;
   if (idx < 0 || idx >= tuple_size) {
-    throw mk_runtime_error("Error: idx {} out of bounds for tuple of size {}", idx, tuple_size);
+    throw mk_runtime_error(
+        "Error: idx {} out of bounds for tuple of size {}", idx, tuple_size);
   }
   any result;
   visit_tuple(t, tuple_get_visitor{idx, result});
@@ -103,35 +104,40 @@ struct tuple_prepend_type<T, std::tuple<Args...>> {
 template <typename T, typename Tup>
 using tuple_prepend_type_t = typename tuple_prepend_type<T, Tup>::type;
 
-template <typename T, typename ...Args>
-auto tuple_prepend(T const &t, std::tuple<Args...> const &tup) -> std::tuple<T, Args...> {
+template <typename T, typename... Args>
+auto tuple_prepend(T const &t, std::tuple<Args...> const &tup)
+    -> std::tuple<T, Args...> {
   return std::tuple_cat(std::make_tuple(t), tup);
 }
 
 template <typename T, typename Tup>
 struct lazy_tuple_prepend {
-  using type = typename tuple_prepend_type<typename T::type, typename Tup::type>::type;
+  using type =
+      typename tuple_prepend_type<typename T::type, typename Tup::type>::type;
 };
 
 template <int IDX, typename T>
-struct normalize_idx : std::integral_constant<int, ((IDX < 0) ? (std::tuple_size<T>::value + IDX) : IDX)> { };
+struct normalize_idx
+    : std::integral_constant<int,
+                             ((IDX < 0) ? (std::tuple_size<T>::value + IDX)
+                                        : IDX)> {};
 
 template <int start, int end, int cur, typename T>
 struct tuple_slice_impl
-  : conditional_t<
-      (cur < start), 
-      tuple_slice_impl<start, end, (cur+1), T>, 
-      conditional_t<
-        (cur < end),
-        lazy_tuple_prepend<
-          std::tuple_element<cur, T>, 
-          tuple_slice_impl<start, end, (cur+1), T>
-        >, 
-        type_identity<std::tuple<>>
-      >> { };
+    : conditional_t<
+          (cur < start),
+          tuple_slice_impl<start, end, (cur + 1), T>,
+          conditional_t<
+              (cur < end),
+              lazy_tuple_prepend<std::tuple_element<cur, T>,
+                                 tuple_slice_impl<start, end, (cur + 1), T>>,
+              type_identity<std::tuple<>>>> {};
 
 template <int start, int end, typename T>
-using tuple_slice_t = typename tuple_slice_impl<normalize_idx<start, T>::value, normalize_idx<end, T>::value, 0, T>::type;
+using tuple_slice_t = typename tuple_slice_impl<normalize_idx<start, T>::value,
+                                                normalize_idx<end, T>::value,
+                                                0,
+                                                T>::type;
 
 template <int start, typename T>
 using tuple_tail_t = tuple_slice_t<start, std::tuple_size<T>::value, T>;
@@ -141,7 +147,8 @@ using tuple_head_t = tuple_slice_t<0, end, T>;
 
 /* DEBUG_PRINT_TYPE(tuple_tail_t<0, std::tuple<int>>); */
 
-static_assert(std::is_same<tuple_tail_t<1, std::tuple<int>>, std::tuple<>>::value, "");
+static_assert(
+    std::is_same<tuple_tail_t<1, std::tuple<int>>, std::tuple<>>::value, "");
 
 } // namespace FlexFlow
 

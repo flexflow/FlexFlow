@@ -4,8 +4,6 @@
 #include "graphs.h"
 #include "pcg/computation_graph.h"
 
-namespace FlexFlow {
-
-}
+namespace FlexFlow {}
 
 #endif

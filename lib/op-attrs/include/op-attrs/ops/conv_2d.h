@@ -32,6 +32,6 @@ CHECK_VALID_OP_ATTR(Conv2DAttrs);
 TensorShape get_kernel_shape(Conv2DAttrs const &, TensorShape const &);
 TensorShape get_bias_shape(Conv2DAttrs const &, TensorShape const &);
 
-}
+} // namespace FlexFlow
 
 #endif

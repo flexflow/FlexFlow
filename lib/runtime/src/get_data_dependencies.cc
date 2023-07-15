@@ -22,6 +22,7 @@ DataDependencies
       add_pointwise_data_dependency(deps, weight_slot, output_slot);
     }
   }
+  return deps;
 }
 
 } // namespace FlexFlow

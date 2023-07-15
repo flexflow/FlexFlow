@@ -4,6 +4,8 @@
 #include "accessor.h"
 #include "runtime/config.h"
 #include "task_invocation.h"
+#include "utils/exception.h"
+#include "utils/stack_map.h"
 #include "utils/strong_typedef.h"
 #include <vector>
 
@@ -13,12 +15,8 @@ struct region_idx_t : strong_typedef<region_idx_t, int> {
   using strong_typedef::strong_typedef;
 };
 
-} // namespace FlexFlow
-
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::region_idx_t);
-MAKE_TYPEDEF_PRINTABLE(::FlexFlow::region_idx_t, "region_idx");
-
-namespace FlexFlow {
+FF_TYPEDEF_HASHABLE(region_idx_t);
+FF_TYPEDEF_PRINTABLE(region_idx_t, "region_idx");
 
 using NonvariadicFormat = region_idx_t;
 using VariadicFormat = std::vector<NonvariadicFormat>;
@@ -29,28 +27,22 @@ bool is_variadic(TensorArgumentFormat const &);
 VariadicFormat get_variadic_format(TensorArgumentFormat const &);
 NonvariadicFormat get_nonvariadic_format(TensorArgumentFormat const &);
 
-struct TaskArgumentFormat : public use_visitable_cmp<TaskArgumentFormat> {
-  TaskArgumentFormat() = delete;
-  TaskArgumentFormat(std::type_index type, size_t start, size_t end)
-      : type(type), start(start), end(end) {}
-
+struct TaskArgumentFormat {
   std::type_index type;
   size_t start;
-  size_t end;
-
-  size_t size() const;
+  req<size_t> end;
 };
+FF_VISITABLE_STRUCT(TaskArgumentFormat, type, start, end);
 
-struct FutureArgumentFormat : public use_visitable_cmp<FutureArgumentFormat> {
-  FutureArgumentFormat() = delete;
-  FutureArgumentFormat(std::type_index type, size_t future_idx)
-      : type(type), future_idx(future_idx) {}
-
+struct FutureArgumentFormat {
   std::type_index type;
-  size_t future_idx;
+  req<size_t> future_idx;
 };
+FF_VISITABLE_STRUCT(FutureArgumentFormat, type, future_idx);
 
-struct TaskArgumentsFormat : public use_visitable_eq<TaskArgumentsFormat> {
+struct TaskArgumentsFormat {
+  TaskArgumentsFormat() = default;
+
   stack_map<slot_id, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
   stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS> args;
   stack_map<slot_id, FutureArgumentFormat, MAX_NUM_TASK_ARGUMENTS> futures;
@@ -64,6 +56,8 @@ struct TaskArgumentsFormat : public use_visitable_eq<TaskArgumentsFormat> {
   void insert(slot_id, region_idx_t);
   void insert(slot_id, std::vector<region_idx_t> const &);
 };
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
+    TaskArgumentsFormat, region_idxs, args, futures, regions, data_types);
 
 Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &,
                                      region_idx_t const &);
@@ -102,10 +96,14 @@ struct TaskArgumentAccessor {
   }
 
   template <typename T>
-  optional<T> get_optional_argument(slot_id) const;
+  optional<T> get_optional_argument(slot_id) const {
+    NOT_IMPLEMENTED();
+  }
 
   template <typename T>
-  std::vector<T> get_variadic_argument(slot_id) const;
+  std::vector<T> get_variadic_argument(slot_id) const {
+    NOT_IMPLEMENTED();
+  }
 
   template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV>
@@ -137,7 +135,7 @@ struct TaskArgumentAccessor {
 
   template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const {
-    return this->get_tensor<PRIV>(slot, IsGrad::YES);
+    NOT_IMPLEMENTED();
   }
 
   template <Permissions PRIV>
@@ -157,10 +155,12 @@ struct TaskArgumentAccessor {
   template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>>
       get_variadic_tensor_grad(slot_id slot) const {
-    return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES);
+    NOT_IMPLEMENTED();
   }
 
-  size_t get_device_idx() const;
+  size_t get_device_idx() const {
+    NOT_IMPLEMENTED();
+  }
 
 private:
   Legion::Task const *task;

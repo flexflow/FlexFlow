@@ -21,10 +21,10 @@ FF_NEW_OPAQUE_TYPE(flexflow_search_result_t);
 FF_NEW_OPAQUE_TYPE(fleflow_cost_estimator_t);
 
 flexflow_error_t
-    flexflow_computation_graph_compile(flexflow_computation_graph_t,
-                                       flexflow_machine_specification_t,
-                                       flexflow_search_algorithm_config_t,
-                                       flexflow_search_result_t *out);
+    flexflow_computation_graph_optimize(flexflow_computation_graph_t,
+                                        flexflow_machine_specification_t,
+                                        flexflow_search_algorithm_config_t,
+                                        flexflow_search_result_t *out);
 
 flexflow_error_t flexflow_search_result_get_parallel_computation_graph(
     flexflow_search_result_t, flexflow_parallel_computation_graph_t *out);

@@ -2,11 +2,12 @@
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_COMPUTATION_GRAPH_H
 
 #include "legion_parallel_tensor_shape.h"
-#include "op_task_invocation.h"
-#include "operator.h"
-#include "operator_guid_t.h"
-#include "optimizer.h"
-#include "parallel_tensor.h"
+#include "op-attrs/operator_attrs.h"
+#include "pcg/operator_guid_t.h"
+#include "pcg/optimizer.h"
+#include "pcg/parallel_computation_graph.h"
+#include "pcg/parallel_tensor.h"
+#include "task_spec/op_task_invocation.h"
 #include "utils/graph.h"
 #include "utils/strong_typedef.h"
 #include <type_traits>

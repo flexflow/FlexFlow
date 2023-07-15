@@ -3,26 +3,13 @@
 
 #include "legion.h"
 #include "permissions.h"
+#include "runtime/task_spec/slot_id.h"
 #include "serialization.h"
+#include "slot_type.h"
 #include "tasks.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_index.h"
 #include <unordered_map>
-
-namespace FlexFlow {
-
-enum class SlotType { TENSOR, VARIADIC };
-
-struct slot_id : strong_typedef<slot_id, int> {
-  using strong_typedef::strong_typedef;
-
-  slot_id(int);
-};
-
-} // namespace FlexFlow
-
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::slot_id);
-MAKE_TYPEDEF_PRINTABLE(::FlexFlow::slot_id, "slot_id");
 
 namespace FlexFlow {
 
@@ -43,7 +30,8 @@ struct TaskSignature {
 
   template <typename T>
   void add_arg_slot(slot_id name) {
-    static_assert(is_serializable<T>, "Argument type must be serializable");
+    static_assert(is_serializable<T>::value,
+                  "Argument type must be serializable");
 
     this->task_arg_types.insert({name, type_index<T>()});
   }

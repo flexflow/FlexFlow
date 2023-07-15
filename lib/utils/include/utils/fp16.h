@@ -9,7 +9,7 @@
 #include <cuda_fp16.h>
 #elif defined(FF_USE_HIP_ROCM)
 #include <hip/hip_fp16.h>
-#else 
+#else
 static_assert(false, "Could not find half definition");
 #endif
 
@@ -20,6 +20,6 @@ struct hash<::half> {
   size_t operator()(::half h) const;
 };
 
-}
+} // namespace std
 
 #endif

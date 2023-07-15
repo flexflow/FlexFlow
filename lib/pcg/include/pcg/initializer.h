@@ -2,8 +2,8 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_INITIALIZER_H
 
 #include "op-attrs/datatype.h"
-#include "utils/visitable.h"
 #include "utils/required.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -45,6 +45,6 @@ using Initializer = variant<GlorotUniform,
                             ConstantInitializer>;
 CHECK_WELL_BEHAVED_VALUE_TYPE(Initializer);
 
-}
+} // namespace FlexFlow
 
 #endif

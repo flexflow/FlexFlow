@@ -5,4 +5,4 @@
 #add_subdirectory(kernels)
 add_subdirectory(utils)
 # add_subdirectory(ffi)
-# add_subdirectory(substitutions)
+add_subdirectory(substitutions)

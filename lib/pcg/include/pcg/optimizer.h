@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_OPTIMIZER_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_OPTIMIZER_H
 
-#include "utils/visitable.h"
 #include "utils/variant.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -24,10 +24,18 @@ struct AdamOptimizer {
   req<double> beta_t;
   req<double> beta2_t;
 };
-FF_VISITABLE_STRUCT(AdamOptimizer, alpha, beta1, beta2, weight_decay, epsilon, alpha_t, beta_t, beta2_t);
+FF_VISITABLE_STRUCT(AdamOptimizer,
+                    alpha,
+                    beta1,
+                    beta2,
+                    weight_decay,
+                    epsilon,
+                    alpha_t,
+                    beta_t,
+                    beta2_t);
 
 using Optimizer = variant<SGDOptimizer, AdamOptimizer>;
 
-}
+} // namespace FlexFlow
 
 #endif

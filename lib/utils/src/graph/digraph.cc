@@ -8,11 +8,6 @@ std::ostream &operator<<(std::ostream &s, DirectedEdge const &e) {
   return s << str;
 }
 
-DirectedEdgeQuery::DirectedEdgeQuery(
-    optional<std::unordered_set<Node>> const &srcs,
-    optional<std::unordered_set<Node>> const &dsts)
-    : srcs(srcs), dsts(dsts) {}
-
 void swap(DiGraph &lhs, DiGraph &rhs) {
   using std::swap;
 

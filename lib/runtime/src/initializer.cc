@@ -16,9 +16,7 @@
 #include "initializer.h"
 #include "accessor.h"
 #include "kernels/initializer_kernels.h"
-#include "parallel_tensor.h"
-#include "task_argument_accessor.h"
-#include "task_invocation.h"
+#include "task_spec/task_argument_accessor.h"
 #include "tasks.h"
 #include <cmath>
 
@@ -26,28 +24,17 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-GlorotUniform::GlorotUniform(int _seed) : seed(_seed) {}
-
-UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
-    : seed(_seed), min_val(_min), max_val(_max) {}
-
-NormInitializer::NormInitializer(int _seed, float _mean, float _stddev)
-    : seed(_seed), mean(_mean), stddev(_stddev) {}
-
-ConstantInitializer::ConstantInitializer(DataTypeValue const &_value)
-    : value(_value) {}
-
 enum GlorotSlots { TENSOR, TENSOR_DIMS, INITIALIZER };
 
-InvocationType get_invocation_type(ParamSync sync_type) {
-  if (sync_type == ParamSync::PS) {
-    return InvocationType::STANDARD;
-  } else if (sync_type == ParamSync::NCCL) {
-    return InvocationType::INDEX;
-  } else {
-    throw mk_runtime_error("Unhandled sync_type {}", sync_type);
-  }
-}
+/* InvocationType get_invocation_type(ParamSync sync_type) { */
+/*   if (sync_type == ParamSync::PS) { */
+/*     return InvocationType::STANDARD; */
+/*   } else if (sync_type == ParamSync::NCCL) { */
+/*     return InvocationType::INDEX; */
+/*   } else { */
+/*     throw mk_runtime_error("Unhandled sync_type {}", sync_type); */
+/*   } */
+/* } */
 
 TaskInvocation apply_initializer(GlorotUniform const &initializer,
                                  parallel_tensor_guid_t const &guid,

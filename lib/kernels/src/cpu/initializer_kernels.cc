@@ -8,7 +8,7 @@ template <DataType DT>
 struct ZeroInitKernel {
   void operator()(GenericTensorAccessorW const &tensor) const {
     auto arr = get<DT>(tensor);
-    for (size_t i = 0; i < tensor.shape.get_volume(); i++) {
+    for (size_t i = 0; i < get_volume(tensor.shape); i++) {
       arr[i] = 0.0f;
     }
   }
@@ -24,7 +24,7 @@ struct ConstantInitKernel {
                   DataTypeValue value) const {
     auto arr = get<DT>(tensor);
     auto unwrapped_value = get<real_type<DT>>(value);
-    for (size_t i = 0; i < tensor.shape.get_volume(); i++) {
+    for (size_t i = 0; i < get_volume(tensor.shape); i++) {
       arr[i] = unwrapped_value;
     }
   }

@@ -5,8 +5,8 @@
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op_task_invocation.h"
-#include "task_argument_accessor.h"
+#include "task_spec/op_task_invocation.h"
+#include "task_spec/task_argument_accessor.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -37,6 +37,8 @@ struct SimTaskBinding {
   template <typename T>
   void bind_arg(slot_id, T const &);
 };
+
+SimTaskBinding infer_bwd_binding(SimTaskBinding const &);
 
 struct SimEnvironment {
   TaskArgumentAccessor get_fwd_accessor(task_id_t, SimTaskBinding const &);

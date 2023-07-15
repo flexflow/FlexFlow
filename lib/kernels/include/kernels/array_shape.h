@@ -10,8 +10,9 @@
 
 namespace FlexFlow {
 
-struct ArrayShape : public LegionTensorDims {
+struct ArrayShape {
 public:
+  ArrayShape() = delete;
   ArrayShape(size_t *dims, size_t num_dims);
   ArrayShape(std::vector<std::size_t> const &);
 
@@ -40,7 +41,13 @@ public:
   ArrayShape reversed_dim_order() const;
   ArrayShape sub_shape(optional<legion_dim_t> start,
                        optional<legion_dim_t> end);
+
+public:
+  LegionTensorDims dims;
 };
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ArrayShape, dims);
+
+size_t get_volume(ArrayShape const &);
 
 } // namespace FlexFlow
 
