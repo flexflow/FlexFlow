@@ -6,30 +6,23 @@
 
 namespace FlexFlow {
 
-struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
-  InputMultiDiEdge() = default;
-  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid,
-                   Node const & dst,
-                   NodePort const & dstIdx):uid(uid), dst(dst), dstIdx(dstIdx) {};
-
-  std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple input edges from different
+struct InputMultiDiEdge {
+    std::pair<std::size_t, std::size_t>
+      uid; // necessary to differentiate multiple input edges from different
            // sources resulting from a graph cut
   Node dst;
   NodePort dstIdx;
 };
+FF_VISITABLE_STRUCT(InputMultiDiEdge, uid, dst, dstIdx);
 
-struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
-  OutputMultiDiEdge() = delete;
-  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid,
-                    Node const & src,
-                    NodePort const &srcIdx):uid(uid), src(src), srcIdx(srcIdx) {}
-
+struct OutputMultiDiEdge {
   std::pair<std::size_t, std::size_t>
       uid; // necessary to differentiate multiple output edges from different
            // sources resulting from a graph cut
   Node src;
   NodePort srcIdx;
 };
+FF_VISITABLE_STRUCT(OutputMultiDiEdge, uid, src, srcIdx);
 
 using OpenMultiDiEdge =variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
 
@@ -74,11 +67,6 @@ struct UpwardOpenMultiDiEdgeQuery {
 };
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::InputMultiDiEdge, uid, dst, dstIdx);
-VISITABLE_STRUCT(::FlexFlow::OutputMultiDiEdge, uid, src, srcIdx);
-MAKE_VISIT_HASHABLE(::FlexFlow::InputMultiDiEdge);
-MAKE_VISIT_HASHABLE(::FlexFlow::OutputMultiDiEdge);
 
 namespace FlexFlow {
 

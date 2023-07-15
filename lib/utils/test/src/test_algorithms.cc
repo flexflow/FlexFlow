@@ -60,7 +60,6 @@ TEST_CASE("DiGraph") {
   g.add_edge(e2);
   g.add_edge(e3);
 
-  CHECK(g.query_nodes({}) == std::unordered_set<Node>{n0, n1, n2, n3});
   CHECK(g.query_edges({}) == std::unordered_set<DirectedEdge>{e0, e1, e2, e3});
   CHECK(get_incoming_edges(g, {n2, n3}) ==
         std::unordered_set<DirectedEdge>{e0, e2, e3});

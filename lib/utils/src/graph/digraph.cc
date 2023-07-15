@@ -41,8 +41,7 @@ void DiGraph::remove_edge(DirectedEdge const &e) {
 
 std::unordered_set<DirectedEdge>
     DiGraph::query_edges(DirectedEdgeQuery const &q) const {
-  DiGraphView view = *this;
-  return view.query_edges(q);
+  return this->ptr->query_edges(q);
 }
 
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
@@ -59,11 +58,6 @@ bool DiGraphView::operator!=(DiGraphView const &other) const {
   return ptr != other.ptr;
 }
 
-std::unordered_set<Node> DiGraph::query_nodes(NodeQuery const& q) const {
-  DiGraphView view = *this;
-  return view.query_nodes(q);
-}
-
 std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const& q) const {
   return this->ptr->query_nodes(q);
 }
@@ -72,10 +66,10 @@ std::unordered_set<DirectedEdge> DiGraphView::query_edges(EdgeQuery const & quer
   return ptr->query_edges(query);
 }
 
-  /* unsafe_create:
-  1 use the graphView to creae the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda function to delete the ptr
-  2 we use this ptr to create a DiGraphView, this DiGraphView is read-only. It creates a DiGraphView object that is not responsible for ownership management
-  */
+/* unsafe_create:
+1 use the graphView to creae the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda function to delete the ptr
+2 we use this ptr to create a DiGraphView, this DiGraphView is read-only. It creates a DiGraphView object that is not responsible for ownership management
+*/
 DiGraphView unsafe_create(IDiGraphView const &graphView) {
   std::shared_ptr<IDiGraphView const> ptr((&graphView),
   [](IDiGraphView const *){});

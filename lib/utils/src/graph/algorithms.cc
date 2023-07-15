@@ -379,15 +379,14 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   return result;
 }
 
+/*
+transform(get_outgoing_edges(g, n), [](DirectedEdge const &n) { return n.dst; }) return std::unorder_set<Node>
+set_union return st::unorder_set<Node>
+as_vector convert the std::unorder_set<Node> to std::vector<Node>
+*/
 std::vector<Node> get_neighbors(DiGraphView const & g, Node const & n) {
-  std::vector<Node> neighbors;
-  for (DirectedEdge const & e : get_outgoing_edges(g, n)){
-    neighbors.push_back(e.dst);
-  }
-  for (DirectedEdge const & e : get_incoming_edges(g, n)){
-    neighbors.push_back(e.src);
-  }
-  return neighbors;
+  return  as_vector(set_union( transform(get_outgoing_edges(g, n), [](DirectedEdge const &n) { return n.dst; }), transform(get_incoming_edges(g, n), [](DirectedEdge const &n) { return n.src; }) ));
+
 }
 
 std::vector<MultiDiEdge>

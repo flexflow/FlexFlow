@@ -164,13 +164,11 @@ void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
 
 std::unordered_set<MultiDiEdge>
     MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
-      MultiDiGraphView view = *this;
-      return view.query_edges(q);
+      return this->ptr->query_edges(q);
 }
 
 std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const & q) const {
-  MultiDiGraphView view = *this;
-  return view.query_nodes(q);
+  return this->ptr->query_nodes(q);
 }
 
 } // namespace FlexFlow
