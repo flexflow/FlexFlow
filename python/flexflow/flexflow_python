@@ -3,7 +3,7 @@
 # This file runs the flexflow_python interpreter when installing FlexFlow via pip. This file can be ignored when installing FlexFlow using cmake/make
 
 python_packages=$(python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))")
-pylib_path="$("$python_packages"/flexflow/findpylib.py)"
+pylib_path="$(python "$python_packages"/flexflow/findpylib.py)"
 pylib_dir="$(dirname "$pylib_path")"
 export PATH="${python_packages}/flexflow/bin:${PATH}"
 export LD_LIBRARY_PATH="${python_packages}/flexflow/lib:${pylib_dir}:${PATH}"
