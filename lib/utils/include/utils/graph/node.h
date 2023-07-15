@@ -22,15 +22,14 @@ struct Node : public strong_typedef<Node, size_t> {
 };
 FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
+std::ostream &operator<<(std::ostream &, Node const &);
 
 struct NodeQuery {
   NodeQuery(query_set<Node> const &nodes) : nodes(nodes) {}
 
   query_set<Node> nodes;
 
-  static NodeQuery all() {
-    NOT_IMPLEMENTED();
-  }
+  static NodeQuery all();
 };
 FF_VISITABLE_STRUCT(NodeQuery, nodes);
 

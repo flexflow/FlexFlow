@@ -71,9 +71,8 @@ public:
     return OpenMultiDiGraph(make_unique<T>());
   }
 
-private:
-  OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph>);
-
+  OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> ptr);
+  
 private:
   cow_ptr_t<IOpenMultiDiGraph> ptr;
 };

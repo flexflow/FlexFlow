@@ -42,18 +42,20 @@ std::unordered_set<Node> ViewOpenMultiDiGraphAsMultiDiGraph::query_nodes(
 
 std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
     MultiDiEdgeQuery const &query) const {
-  OpenMultiDiEdgeQuery q;
-  q.standard_edge_query = query;
-  std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);
-  std::unordered_set<MultiDiEdge> result;
+      
+  // OpenMultiDiEdgeQuery q{query};
+  // // q.standard_edge_query = query;
+  // std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);
+  // std::unordered_set<MultiDiEdge> result;
 
-  for (auto const &edge : edges) {
-    if (holds_alternative<MultiDiEdge>(edge)) {
-      result.insert(get<MultiDiEdge>(edge));
-    }
-  }
+  // for (auto const &edge : edges) {
+  //   if (holds_alternative<MultiDiEdge>(edge)) {
+  //     result.insert(get<MultiDiEdge>(edge));
+  //   }
+  // }
 
-  return result;
+  // return result;
+  NOT_IMPLEMENTED();
 }
 
 DirectedEdge flipped(DirectedEdge const &e) {
@@ -229,15 +231,9 @@ std::unordered_set<Node>
 
 std::unordered_set<DirectedEdge>
     JoinedDigraphView::query_edges(DirectedEdgeQuery const &query) const {
-<<<<<<< HEAD
-  std::unordered_set<Node> srcs =
-      query.srcs.value_or(get_nodes(unsafe_create(*this)));
-  std::unordered_set<Node> dsts =
-      query.dsts.value_or(get_nodes(unsafe_create(*this)));
-=======
+
   std::unordered_set<Node> srcs = this->query_nodes(query.srcs);
   std::unordered_set<Node> dsts = this->query_nodes(query.dsts);
->>>>>>> 804707dc140044e43c2436f6a40fe0e9889f5a0a
   auto traced_srcs = this->joined_nodes.trace_nodes(srcs);
   auto traced_dsts = this->joined_nodes.trace_nodes(dsts);
   DirectedEdgeQuery left_query = {traced_srcs.first, traced_dsts.first};
@@ -275,15 +271,8 @@ std::unordered_set<Node>
 
 std::unordered_set<MultiDiEdge>
     JoinedMultiDigraphView::query_edges(MultiDiEdgeQuery const &query) const {
-<<<<<<< HEAD
-  std::unordered_set<Node> srcs =
-      query.srcs.value_or(get_nodes(unsafe_create(*this)));
-  std::unordered_set<Node> dsts =
-      query.dsts.value_or(get_nodes(unsafe_create(*this)));
-=======
   std::unordered_set<Node> srcs = this->query_nodes(query.srcs);
   std::unordered_set<Node> dsts = this->query_nodes(query.dsts);
->>>>>>> 804707dc140044e43c2436f6a40fe0e9889f5a0a
 
   auto traced_srcs = this->joined_nodes.trace_nodes(srcs);
   auto traced_dsts = this->joined_nodes.trace_nodes(dsts);

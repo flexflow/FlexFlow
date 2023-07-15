@@ -21,6 +21,11 @@ struct MultiDiEdgeQuery {
   MultiDiEdgeQuery with_src_idxs(query_set<NodePort> const &) const;
   MultiDiEdgeQuery with_dst_idxs(query_set<NodePort> const &) const;
 
+  MultiDiEdgeQuery with_dst_node(Node const &) const;  
+  MultiDiEdgeQuery with_src_node(Node const &) const;
+  MultiDiEdgeQuery with_src_idx(NodePort const &) const;
+  MultiDiEdgeQuery with_dst_idx(NodePort const &) const;
+
   static MultiDiEdgeQuery all();
 };
 FF_VISITABLE_STRUCT(MultiDiEdgeQuery, srcs, dsts, srcIdxs, dstIdxs);
@@ -35,7 +40,7 @@ struct IMultiDiGraphView : public IGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IMultiDiGraphView();
+  virtual ~IMultiDiGraphView()=default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);
 
@@ -51,6 +56,7 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   }
 
   virtual IMultiDiGraph *clone() const override = 0;
+  std::size_t next_nodeport_idx = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraph);
 

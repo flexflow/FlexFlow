@@ -7,6 +7,10 @@ namespace FlexFlow {
 UndirectedEdge::UndirectedEdge(Node const &src, Node const &dst)
     : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger)) {}
 
+UndirectedEdgeQuery UndirectedEdgeQuery::all() {
+  return {matchall<Node>()};
+}
+
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
                                        UndirectedEdgeQuery const &rhs) {
   return {

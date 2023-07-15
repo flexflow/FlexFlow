@@ -12,7 +12,7 @@ std::unordered_set<OpenMultiDiEdge>
 }
 
 OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)
-    : ptr(other.ptr->clone()) {}
+    : ptr(other.ptr) {}
 
 OpenMultiDiGraph &OpenMultiDiGraph::operator=(OpenMultiDiGraph other) {
   swap(*this, other);
