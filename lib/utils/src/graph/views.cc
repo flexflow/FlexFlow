@@ -42,7 +42,7 @@ std::unordered_set<Node> ViewOpenMultiDiGraphAsMultiDiGraph::query_nodes(
 
 std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
     MultiDiEdgeQuery const &query) const {
-      
+
   // OpenMultiDiEdgeQuery q{query};
   // // q.standard_edge_query = query;
   // std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);

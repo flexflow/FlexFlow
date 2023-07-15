@@ -21,7 +21,7 @@ struct MultiDiEdgeQuery {
   MultiDiEdgeQuery with_src_idxs(query_set<NodePort> const &) const;
   MultiDiEdgeQuery with_dst_idxs(query_set<NodePort> const &) const;
 
-  MultiDiEdgeQuery with_dst_node(Node const &) const;  
+  MultiDiEdgeQuery with_dst_node(Node const &) const;
   MultiDiEdgeQuery with_src_node(Node const &) const;
   MultiDiEdgeQuery with_src_idx(NodePort const &) const;
   MultiDiEdgeQuery with_dst_idx(NodePort const &) const;
@@ -40,7 +40,7 @@ struct IMultiDiGraphView : public IGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IMultiDiGraphView()=default;
+  virtual ~IMultiDiGraphView() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);
 

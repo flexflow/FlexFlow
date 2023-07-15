@@ -6,7 +6,7 @@ namespace FlexFlow {
 Node AdjacencyMultiDiGraph::add_node() {
   Node node{this->next_node_idx};
   adjacency[node];
-  std::cout<<"add node "<<node.value()<<std::endl;
+  std::cout << "add node " << node.value() << std::endl;
   this->next_node_idx++;
   return node;
 }

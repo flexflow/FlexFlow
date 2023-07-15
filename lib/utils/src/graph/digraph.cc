@@ -75,17 +75,20 @@ DiGraphView unsafe_create(IDiGraphView const &graphView) {
 }
 
 DirectedEdgeQuery DirectedEdgeQuery::all() {
-  return {matchall<Node>(),
-          matchall<Node>()};
+  return {matchall<Node>(), matchall<Node>()};
 }
 
-DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs, DirectedEdgeQuery const &rhs){
+DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
+                                     DirectedEdgeQuery const &rhs) {
   assert(lhs != tl::nullopt);
   assert(rhs != tl::nullopt);
-  assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
+  assert(lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() &&
+         rhs.dsts.has_value());
 
-  std::unordered_set<Node> srcs_t1 = intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
-  std::unordered_set<Node> dsts_t1 = intersection(allowed_values(lhs.dsts), allowed_values(rhs.dsts));
+  std::unordered_set<Node> srcs_t1 =
+      intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
+  std::unordered_set<Node> dsts_t1 =
+      intersection(allowed_values(lhs.dsts), allowed_values(rhs.dsts));
 
   DirectedEdgeQuery result = DirectedEdgeQuery::all();
   result.srcs = srcs_t1;

@@ -7,13 +7,14 @@ std::ostream &operator<<(std::ostream &os, Node const &node) {
   return os << fmt::format("Node({})", node.value());
 }
 
-NodeQuery NodeQuery::all() { 
-  return {matchall<Node>()} ;
-  }
+NodeQuery NodeQuery::all() {
+  return {matchall<Node>()};
+}
 
-NodeQuery query_intersection(NodeQuery const & lhs, NodeQuery const & rhs) {
+NodeQuery query_intersection(NodeQuery const &lhs, NodeQuery const &rhs) {
   assert(lhs != tl::nullopt && rhs != tl::nullopt);
-  std::unordered_set<Node> nodes = intersection(allowed_values(lhs.nodes), allowed_values(rhs.nodes));
+  std::unordered_set<Node> nodes =
+      intersection(allowed_values(lhs.nodes), allowed_values(rhs.nodes));
   NodeQuery intersection_result = NodeQuery::all();
   intersection_result.nodes = nodes;
   return intersection_result;

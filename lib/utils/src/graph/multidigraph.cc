@@ -40,15 +40,19 @@ MultiDiEdgeQuery
 }
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
-                                MultiDiEdgeQuery const &rhs) {
+                                    MultiDiEdgeQuery const &rhs) {
   assert(lhs != tl::nullopt);
   assert(rhs != tl::nullopt);
 
-  std::unordered_set<Node> srcs_t1 = intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
-  std::unordered_set<Node> dsts_t1 = intersection(allowed_values(lhs.dsts), allowed_values(rhs.dsts));
+  std::unordered_set<Node> srcs_t1 =
+      intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
+  std::unordered_set<Node> dsts_t1 =
+      intersection(allowed_values(lhs.dsts), allowed_values(rhs.dsts));
 
-  std::unordered_set<NodePort> srcIdxs_t1 = intersection(allowed_values(lhs.srcIdxs), allowed_values(rhs.srcIdxs));
-  std::unordered_set<NodePort> dstIdxs_t1 = intersection(allowed_values(lhs.dstIdxs), allowed_values(rhs.dstIdxs));
+  std::unordered_set<NodePort> srcIdxs_t1 =
+      intersection(allowed_values(lhs.srcIdxs), allowed_values(rhs.srcIdxs));
+  std::unordered_set<NodePort> dstIdxs_t1 =
+      intersection(allowed_values(lhs.dstIdxs), allowed_values(rhs.dstIdxs));
 
   MultiDiEdgeQuery e = MultiDiEdgeQuery::all();
   e.srcs = srcs_t1;
@@ -61,19 +65,19 @@ MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
 MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_node(Node const &n) const {
   return this->with_dst_nodes({n});
 }
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(NodePort const & p) const {
+MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(NodePort const &p) const {
   return this->with_src_idxs({p});
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const & p) const {
+MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const &p) const {
   return this->with_dst_idxs({p});
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idxs(
-    query_set<NodePort> const &idxs) const {
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e{*this};
   if (is_matchall(e.srcIdxs)) {
-     throw mk_runtime_error("Expected matchall previous value");
+    throw mk_runtime_error("Expected matchall previous value");
   }
   e.srcIdxs = idxs;
   return e;

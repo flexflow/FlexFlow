@@ -72,7 +72,7 @@ public:
   }
 
   OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> ptr);
-  
+
 private:
   cow_ptr_t<IOpenMultiDiGraph> ptr;
 };

@@ -28,13 +28,14 @@
 //   g.add_edge(e3);
 
 //   CHECK(g.query_nodes({}) == std::unordered_set<Node>{n0, n1, n2, n3});
-//   CHECK(g.query_edges({}) == std::unordered_set<MultiDiEdge>{e0, e1, e2, e3});
-//   CHECK(get_incoming_edges(g, {n1, n3}) ==
+//   CHECK(g.query_edges({}) == std::unordered_set<MultiDiEdge>{e0, e1, e2,
+//   e3}); CHECK(get_incoming_edges(g, {n1, n3}) ==
 //         std::unordered_set<MultiDiEdge>{e0, e2, e3});
 //   CHECK(get_incoming_edges(g, {n1}) == std::unordered_set<MultiDiEdge>{});
-//   CHECK(get_outgoing_edges(g, {n2, n3}) == std::unordered_set<MultiDiEdge>{e3});
-//   auto res = get_predecessors(g, {n1, n2, n3});
-//   auto expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
+//   CHECK(get_outgoing_edges(g, {n2, n3}) ==
+//   std::unordered_set<MultiDiEdge>{e3}); auto res = get_predecessors(g, {n1,
+//   n2, n3}); auto expected_result = std::unordered_map<Node,
+//   std::unordered_set<Node>>{
 //       {n1, {}},
 //       {n2, {n1}},
 //       {n3, {n0, n1, n2}},
@@ -60,11 +61,12 @@
 //   g.add_edge(e2);
 //   g.add_edge(e3);
 
-//   CHECK(g.query_edges({}) == std::unordered_set<DirectedEdge>{e0, e1, e2, e3});
-//   CHECK(get_incoming_edges(g, {n2, n3}) ==
+//   CHECK(g.query_edges({}) == std::unordered_set<DirectedEdge>{e0, e1, e2,
+//   e3}); CHECK(get_incoming_edges(g, {n2, n3}) ==
 //         std::unordered_set<DirectedEdge>{e0, e2, e3});
-//   CHECK(get_outgoing_edges(g, {n2, n3}) == std::unordered_set<DirectedEdge>{});
-//   auto expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
+//   CHECK(get_outgoing_edges(g, {n2, n3}) ==
+//   std::unordered_set<DirectedEdge>{}); auto expected_result =
+//   std::unordered_map<Node, std::unordered_set<Node>>{
 //       {n1, {n0}},
 //       {n2, {n0, n1}},
 //       {n3, {n0}},
@@ -82,7 +84,8 @@
 //   g.add_edge({n[1], n[2]});
 //   g.add_edge({n[2], n[3]});
 
-//   /* CHECK(get_incoming_edges(g, n[0]) == std::unordered_set<DirectedEdge>{});
+//   /* CHECK(get_incoming_edges(g, n[0]) ==
+//   std::unordered_set<DirectedEdge>{});
 //    */
 //   CHECK(get_sources(g) == std::unordered_set<Node>{n[0]});
 //   CHECK(get_unchecked_dfs_ordering(g, {n[0]}) ==
@@ -136,7 +139,8 @@
 //   auto CHECK_BEFORE = [&](int l, int r) {
 //     CHECK(index_of(ordering, n[l]).has_value());
 //     CHECK(index_of(ordering, n[r]).has_value());
-//     CHECK(index_of(ordering, n[l]).value() < index_of(ordering, n[r]).value());
+//     CHECK(index_of(ordering, n[l]).value() < index_of(ordering,
+//     n[r]).value());
 //   };
 
 //   CHECK(ordering.size() == n.size());
