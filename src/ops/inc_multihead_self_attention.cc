@@ -35,6 +35,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::Machine;
@@ -47,7 +48,6 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
-using Legion::Future;
 using PCG::Node;
 
 LegionRuntime::Logger::Category log_inc_mha("IncrementalMHA");
@@ -661,9 +661,9 @@ FutureMap IncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  //log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
-  //                  bc.num_tokens,
-  //                  bc.num_active_requests());
+  // log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
+  //                   bc.num_tokens,
+  //                   bc.num_active_requests());
   IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -720,7 +720,7 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(task->regions.size() == regions.size());
 
-  //BatchConfig const *bc = (BatchConfig *)task->args;
+  // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
                     bc.num_tokens,
@@ -1501,12 +1501,12 @@ void IncMultiHeadSelfAttention::inference_task(
   (int64_t)bc->num_active_tokens())}) << std::endl;
   } */
 
-  assert(torch::allclose(
-      torch_out_cuda.index(
-          {Slice(), Slice(0, (int64_t)bc.num_active_tokens())}),
-      cpp_output,
-      1e-05,
-      1e-05));
+  assert(
+      torch::allclose(torch_out_cuda.index(
+                          {Slice(), Slice(0, (int64_t)bc.num_active_tokens())}),
+                      cpp_output,
+                      1e-05,
+                      1e-05));
 
   // =============================================================================
   //  Cleanup

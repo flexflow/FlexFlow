@@ -29,6 +29,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::InlineLauncher;
@@ -42,7 +43,6 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
-using Legion::Future;
 using PCG::Node;
 
 // For an input tensor, computes the top k entries in each row
@@ -296,15 +296,14 @@ FutureMap BeamTopK::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(
-      BEAM_TOPK_INF_TASK_ID,
-      parallel_is,
-      TaskArgument(nullptr, 0),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      machine_view_hash);
+  IndexLauncher launcher(BEAM_TOPK_INF_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
   launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
@@ -342,9 +341,10 @@ BeamInferenceResult
 
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  //BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
+  // BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
-  BeamSearchBatchConfig const &bc = Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  BeamSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
   // std::cout << "beam search topk inference: "
   //           << "\n";
   if (bc.num_tokens == 0) {

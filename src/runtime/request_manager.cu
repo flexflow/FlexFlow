@@ -28,8 +28,9 @@ void RequestManager::load_tokens_task(
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
 
-  //BatchConfig const batch_config = *((BatchConfig *)task->args);
-  BatchConfig const &batch_config = Future(task->futures[0]).get_result<BatchConfig>();
+  // BatchConfig const batch_config = *((BatchConfig *)task->args);
+  BatchConfig const &batch_config =
+      Future(task->futures[0]).get_result<BatchConfig>();
   BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
   assert(batch_config.num_tokens <= BatchConfig::MAX_NUM_TOKENS);
   for (int i = 0; i < batch_config.num_tokens; i++) {
@@ -57,8 +58,9 @@ void RequestManager::load_positions_task(
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
 
-  //BatchConfig const batch_config = *((BatchConfig *)task->args);
-  BatchConfig const &batch_config = Future(task->futures[0]).get_result<BatchConfig>();
+  // BatchConfig const batch_config = *((BatchConfig *)task->args);
+  BatchConfig const &batch_config =
+      Future(task->futures[0]).get_result<BatchConfig>();
   int offset = 2;
   int *pos_ptr = helperGetTensorPointerWO<int>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);

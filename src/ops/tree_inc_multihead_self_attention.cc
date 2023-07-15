@@ -35,6 +35,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::Machine;
@@ -715,8 +716,9 @@ void TreeIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  //TreeVerifyBatchConfig const *bc = (TreeVerifyBatchConfig *)task->args;
-  TreeVerifyBatchConfig const &bc = Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
+  // TreeVerifyBatchConfig const *bc = (TreeVerifyBatchConfig *)task->args;
+  TreeVerifyBatchConfig const &bc =
+      Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
   log_tree_verify.debug(
       "TreeVerifyBatchConfig, num_tokens: %d, num_requests: %d",
       bc.num_tokens,
@@ -1523,12 +1525,12 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   (int64_t)bc.num_active_tokens())}) << std::endl;
   } */
 
-  assert(torch::allclose(
-      torch_out_cuda.index(
-          {Slice(), Slice(0, (int64_t)bc.num_active_tokens())}),
-      cpp_output,
-      1e-05,
-      1e-05));
+  assert(
+      torch::allclose(torch_out_cuda.index(
+                          {Slice(), Slice(0, (int64_t)bc.num_active_tokens())}),
+                      cpp_output,
+                      1e-05,
+                      1e-05));
 
   // =============================================================================
   //  Cleanup

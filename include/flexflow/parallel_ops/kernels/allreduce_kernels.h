@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ALLREDUCE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ALLREDUCE_KERNELS_H
 
-#include "flexflow/device.h"
 #include "flexflow/batch_config.h"
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/parallel_ops/allreduce.h"

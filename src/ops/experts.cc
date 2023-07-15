@@ -26,6 +26,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::PhysicalRegion;
@@ -36,7 +37,6 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
-using Legion::Future;
 using PCG::Node;
 
 static constexpr int KERNEL_IDX = 0;
@@ -670,7 +670,7 @@ FutureMap Experts::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "Experts op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  //int num_active_tokens = bc.num_active_tokens();
+  // int num_active_tokens = bc.num_active_tokens();
   IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),

@@ -44,12 +44,12 @@ namespace FlexFlow {
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::LogicalPartition;
 using Legion::LogicalRegion;
 using Legion::PhysicalRegion;
 using Legion::Runtime;
 using Legion::Task;
-using Legion::Future;
 
 OpMeta *FusedOp::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
@@ -471,7 +471,7 @@ __host__ void
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
-  //BatchConfig const *bc = (BatchConfig *)task->args;
+  // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
@@ -810,8 +810,8 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         TreeIncMultiHeadSelfAttentionMeta *m =
             (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        //TreeVerifyBatchConfig const *tree_bc =
-        //    (TreeVerifyBatchConfig *)task->args;
+        // TreeVerifyBatchConfig const *tree_bc =
+        //     (TreeVerifyBatchConfig *)task->args;
         TreeVerifyBatchConfig const &tree_bc =
             Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
         assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
@@ -835,8 +835,8 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         SpecIncMultiHeadSelfAttentionMeta const *m =
             (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        //BeamSearchBatchConfig const *beam_bc =
-        //    (BeamSearchBatchConfig *)task->args;
+        // BeamSearchBatchConfig const *beam_bc =
+        //     (BeamSearchBatchConfig *)task->args;
         BeamSearchBatchConfig const &beam_bc =
             Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
         assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));

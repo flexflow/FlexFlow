@@ -13,6 +13,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::InlineLauncher;
@@ -26,7 +27,6 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
-using Legion::Future;
 
 using namespace FlexFlow::Kernels::Linear;
 
@@ -618,7 +618,7 @@ void Linear::inference_task(Task const *task,
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
-  //BatchConfig const *bc = (BatchConfig *)task->args;
+  // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));

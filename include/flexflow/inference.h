@@ -32,10 +32,13 @@ public:
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
   MachineView *get_machine_view(int mv_id);
-  Legion::FutureMap inference(FFModel *model, int index, BatchConfigFuture const &bc);
+  Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
+  Legion::FutureMap
+      inference(FFModel *model, int index, BatchConfigFuture const &bc);
   void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
                                            ParallelTensor const input);
-  void load_positions(BatchConfigFuture const &bc, ParallelTensor position_input);
+  void load_positions(BatchConfigFuture const &bc,
+                      ParallelTensor position_input);
 
 public:
   FFConfig ff_config;
@@ -148,20 +151,24 @@ public:
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 
-  static void prepare_next_batch_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
+  static BatchConfig prepare_next_batch_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
 
-  static void prepare_next_batch_beam_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
+  static BeamSearchBatchConfig prepare_next_batch_beam_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
 
-  static void prepare_next_batch_init_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
+  static BeamSearchBatchConfig prepare_next_batch_init_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
 private:
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;

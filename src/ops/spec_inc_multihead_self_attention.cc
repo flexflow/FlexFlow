@@ -35,6 +35,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::Machine;
@@ -611,15 +612,14 @@ FutureMap SpecIncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  IndexLauncher launcher(
-      SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-      parallel_is,
-      TaskArgument(nullptr, 0),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      machine_view_hash);
+  IndexLauncher launcher(SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
   launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
@@ -663,8 +663,9 @@ void SpecIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  //BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
-  BeamSearchBatchConfig const &bc = Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  // BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
+  BeamSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
   if (bc.num_tokens == 0) {
     return;
   }

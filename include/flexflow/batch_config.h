@@ -33,6 +33,7 @@ class BeamInferenceResult;
 using BatchConfigFuture = Legion::Future;
 using InferenceResultFuture = Legion::Future;
 using BeamSearchBatchConfigFuture = Legion::Future;
+using TreeVerifyBatchConfigFuture = Legion::Future;
 using BeamInferenceResultFuture = Legion::Future;
 
 class BatchConfig {

@@ -29,6 +29,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::InlineLauncher;
@@ -42,7 +43,6 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
-using Legion::Future;
 using PCG::Node;
 
 // For an input tensor, computes the top k entries in each row

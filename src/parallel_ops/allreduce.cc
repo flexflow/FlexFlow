@@ -25,6 +25,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::LogicalPartition;
@@ -350,7 +351,7 @@ void AllReduce::forward_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input.data_type == output.data_type);
-  forward_kernel_wrapper(m, input.domain.get_volume(), input, output);
+  forward_kernel_wrapper(m, input, output);
 }
 
 void AllReduce::backward_task(Task const *task,

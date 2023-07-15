@@ -4073,18 +4073,21 @@ void register_flexflow_internal_tasks() {
                                    "RequestManager Prepare Next Batch (Beam)");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BeamSearchBatchConfig,
-                                      RequestManager::prepare_next_batch_beam_task>(
+    Runtime::preregister_task_variant<
+        BeamSearchBatchConfig,
+        RequestManager::prepare_next_batch_beam_task>(
         registrar, "RequestManager Prepare Next Batch (Beam) Task");
   }
   // RequestManager prepare_next_batch_beam
   {
-    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
-                                   "RequestManager Prepare Next Batch (Init Beam)");
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+        "RequestManager Prepare Next Batch (Init Beam)");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BeamSearchBatchConfig,
-                                      RequestManager::prepare_next_batch_init_task>(
+    Runtime::preregister_task_variant<
+        BeamSearchBatchConfig,
+        RequestManager::prepare_next_batch_init_task>(
         registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
   }
   // ElementUnary task
@@ -5040,7 +5043,8 @@ void register_flexflow_internal_tasks() {
         registrar, "AllReduce init Task");
   }
   {
-    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID, "AllReduce Inference");
+    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
+                                   "AllReduce Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<AllReduce::inference_task>(
