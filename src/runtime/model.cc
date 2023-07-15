@@ -4078,7 +4078,7 @@ void register_flexflow_internal_tasks() {
         RequestManager::prepare_next_batch_beam_task>(
         registrar, "RequestManager Prepare Next Batch (Beam) Task");
   }
-  // RequestManager prepare_next_batch_beam
+  // RequestManager prepare_next_batch_init
   {
     TaskVariantRegistrar registrar(
         RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
@@ -4089,6 +4089,18 @@ void register_flexflow_internal_tasks() {
         BeamSearchBatchConfig,
         RequestManager::prepare_next_batch_init_task>(
         registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
+  }
+  // RequestManager prepare_next_batch_verify
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
+        "RequestManager Prepare Next Batch (Verify)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<
+        TreeVerifyBatchConfig,
+        RequestManager::prepare_next_batch_verify_task>(
+        registrar, "RequestManager Prepare Next Batch (Verify) Task");
   }
   // ElementUnary task
   {

@@ -111,9 +111,10 @@ public:
       prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
                               InferenceResultFuture const &result,
                               int model_id);
-
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfig> const &old_batches);
+  TreeVerifyBatchConfigFuture prepare_next_batch_verify(
+      std::vector<BeamSearchBatchConfigFuture> const &old_batches);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
@@ -164,6 +165,12 @@ public:
       Legion::Runtime *runtime);
 
   static BeamSearchBatchConfig prepare_next_batch_init_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
+  static TreeVerifyBatchConfig prepare_next_batch_verify_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,

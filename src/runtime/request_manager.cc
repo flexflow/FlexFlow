@@ -413,13 +413,15 @@ BeamSearchBatchConfig
   BeamSearchBatchConfig new_bc;
   new_bc.max_init_length = 0;
   new_bc.model_id = old_bc.model_id;
-  std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
+  // std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
 
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (old_bc.request_completed[i]) {
       continue;
     }
-    assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
+    // Comment out this assertion since num_tokens_in_batch can be
+    // zero when beam search has reached required sequence length
+    // assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
     Request &request =
         running_request_queue[old_bc.requestsInfo[i].request_guid];
     int processed_tokens = old_bc.requestsInfo[i].token_start_offset +
@@ -784,6 +786,33 @@ BeamSearchBatchConfig
   return new_bc;
 }
 
+TreeVerifyBatchConfigFuture RequestManager::prepare_next_batch_verify(
+    std::vector<BeamSearchBatchConfigFuture> const &old_batches) {
+  Runtime *runtime = Runtime::get_runtime();
+  Context ctx = Runtime::get_context();
+
+  RequestManager *rm = this;
+  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
+                        TaskArgument(&rm, sizeof(RequestManager *)));
+  for (auto const &bcf : old_batches) {
+    launcher.add_future(bcf);
+  }
+  return runtime->execute_task(ctx, launcher);
+}
+
+TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  RequestManager *rm = *((RequestManager **)task->args);
+  std::vector<BeamSearchBatchConfig> old_batches;
+  for (auto const &bcf : task->futures) {
+    old_batches.push_back(Future(bcf).get_result<BeamSearchBatchConfig>());
+  }
+  return rm->prepare_next_batch_verify(old_batches);
+}
+
 TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     std::vector<BeamSearchBatchConfig> const &old_batches) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
@@ -1091,7 +1120,8 @@ void RequestManager::update_beam_metadata(BeamSearchBatchConfig &new_bc,
     //   new_bc.beamRequestsInfo[request_index].tokens[j] =
     //       tree.treeLayers[depth].tokens[j]; // ?
     // }
-    assert(false);
+    // Do nothing
+    // assert(false);
   } else {
     std::set<int> parents;
     std::set<int> childs;

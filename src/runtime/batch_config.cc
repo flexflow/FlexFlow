@@ -21,6 +21,8 @@
 namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_bc("BatchConfig");
+using Legion::Future;
+using Legion::Memory;
 
 BatchConfig::BatchConfig() : num_tokens(0) {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
@@ -33,6 +35,23 @@ BatchConfig::BatchConfig() : num_tokens(0) {
     tokensInfo[i].request_index = 0;
     tokensInfo[i].token_id = 0;
   }
+}
+
+/*static*/
+BatchConfig const *BatchConfig::from_future(BatchConfigFuture const &future) {
+  BatchConfig const *bc = static_cast<BatchConfig const *>(
+      Future(future).get_buffer(Memory::SYSTEM_MEM));
+  // Check future size
+  if (bc->get_mode() == INC_DECODING_MODE) {
+    assert(Future(future).get_untyped_size() == sizeof(BatchConfig));
+  } else if (bc->get_mode() == BEAM_SEARCH_MODE) {
+    assert(Future(future).get_untyped_size() == sizeof(BeamSearchBatchConfig));
+  } else if (bc->get_mode() == TREE_VERIFY_MODE) {
+    assert(Future(future).get_untyped_size() == sizeof(TreeVerifyBatchConfig));
+  } else {
+    assert(false && "Unsupported inference mode");
+  }
+  return bc;
 }
 
 InferenceMode BatchConfig::get_mode() const {

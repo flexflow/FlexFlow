@@ -47,6 +47,7 @@ using Legion::Domain;
 using Legion::Future;
 using Legion::LogicalPartition;
 using Legion::LogicalRegion;
+using Legion::Memory;
 using Legion::PhysicalRegion;
 using Legion::Runtime;
 using Legion::Task;
@@ -472,7 +473,12 @@ __host__ void
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
   // BatchConfig const *bc = (BatchConfig *)task->args;
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  // Return if no active tokens
+  if (bc->num_tokens == 0) {
+    return;
+  }
+
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
   assert((int)regions.size() ==
@@ -615,7 +621,7 @@ __host__ void
         LinearMeta *m = (LinearMeta *)metas->meta[op];
         assert(m->input_type[0] == my_input_accessor[0].data_type);
         assert(m->input_type[0] == my_output_accessor[0].data_type);
-        batch_size = bc.num_active_tokens();
+        batch_size = bc->num_active_tokens();
         Kernels::Linear::forward_kernel_wrapper(m,
                                                 my_input_accessor[0].ptr,
                                                 my_output_accessor[0].ptr,
@@ -797,7 +803,7 @@ __host__ void
         }
         IncMultiHeadSelfAttention::inference_kernel_wrapper(
             m,
-            &bc,
+            bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
             my_weight_accessor[0],
@@ -874,7 +880,7 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         AllReduceMeta const *m = (AllReduceMeta *)metas->meta[op];
         Kernels::AllReduce::inference_kernel_wrapper(
-            m, &bc, my_input_accessor[0], my_output_accessor[0]);
+            m, bc, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       default: {

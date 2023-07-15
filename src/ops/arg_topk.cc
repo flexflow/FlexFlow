@@ -303,7 +303,12 @@ InferenceResult
   assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
   // BatchConfig const *bc = (BatchConfig *)task->args;
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    // Directly return for empty batch config
+    InferenceResult ir;
+    return ir;
+  }
   ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -311,7 +316,7 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  int batch_size = bc.num_active_tokens();
+  int batch_size = bc->num_active_tokens();
   ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
 
   int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;

@@ -279,22 +279,28 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
-  TreeVerifyBatchConfig tree_bc;
-  BeamSearchBatchConfig beam_bc;
-  std::vector<BeamSearchBatchConfig> beam_bc_vec;
-  for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
-    beam_bc_vec.push_back(BeamSearchBatchConfig(ssm_model_ids[ssm_id]));
+  TreeVerifyBatchConfigFuture tree_bcf;
+  BeamSearchBatchConfigFuture beam_bcf;
+  InferenceResultFuture tree_irf;
+  std::vector<BeamSearchBatchConfigFuture> beam_bcf_vec;
+  {
+    TreeVerifyBatchConfig tree_bc;
+    BeamSearchBatchConfig beam_bc;
+    InferenceResult tree_ir;
+    tree_bcf = Future::from_value<TreeVerifyBatchConfig>(tree_bc);
+    beam_bcf = Future::from_value<BeamSearchBatchConfig>(beam_bc);
+    tree_irf = Future::from_value<InferenceResult>(tree_ir);
+    for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
+      beam_bcf_vec.push_back(Future::from_value<BeamSearchBatchConfig>(
+          BeamSearchBatchConfig(ssm_model_ids[ssm_id])));
+    }
   }
 
-  InferenceResult tree_ir;
-
   while (rm.get_num_processed_requests() < total_num_requests) {
-    int depth = 0;
     // Beam Search
-    beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir, 0);
+    beam_bcf = rm.prepare_next_batch_init(tree_bcf, tree_irf, 0);
     for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
-      beam_bc_vec[ssm_id] = beam_bc;
-      beam_bc_vec[ssm_id].model_id = ssm_id;
+      beam_bcf_vec[ssm_id] = beam_bcf;
     }
 
     if (rm.get_num_processed_requests() >= total_num_requests) {
@@ -302,40 +308,24 @@ void FlexFlow::top_level_task(Task const *task,
     }
 
     for (int i = 0; i < num_ssms; i++) {
-      while (true) {
-        beam_bc = beam_bc_vec[i];
-        depth = beam_bc.beamRequestsInfo[0].current_depth;
+      for (int depth = 0; depth < BeamSearchBatchConfig::MAX_BEAM_DEPTH;
+           depth++) {
+        beam_bcf = beam_bcf_vec[i];
 
-        FutureMap fm = im.inference(rm.get_model(0), 0, beam_bc_vec[i]);
+        FutureMap fm = im.inference(rm.get_model(0), 0, beam_bcf_vec[i]);
         assert(fm.get_future_map_domain().get_volume() == 1);
-        Future future = fm.get_future(0);
-        BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
-
-        int iteration =
-            std::min(BeamSearchBatchConfig::MAX_BEAM_DEPTH,
-                     BatchConfig::MAX_SEQ_LENGTH - beam_bc.max_init_length);
-
-        if (depth - 1 >= iteration) {
-          break;
-        } else {
-          beam_bc_vec[i] = rm.prepare_next_batch_beam(beam_bc_vec[i], beam_ir);
-          if (beam_bc_vec[i].num_active_tokens() == 0 &&
-              beam_bc_vec[i].num_active_requests() != 0) {
-            break;
-          }
-        }
+        BeamInferenceResultFuture beam_irf = fm.get_future(0);
+        beam_bcf_vec[i] = rm.prepare_next_batch_beam(beam_bcf_vec[i], beam_irf);
       }
-      std::cout << "----------beam search finished for model "
-                << beam_bc_vec[i].model_id << "------------" << std::endl;
+      // std::cout << "----------beam search finished for model "
+      //           << beam_bc_vec[i].model_id << "------------" << std::endl;
     }
     // Token Tree Verification
     {
-      tree_bc = rm.prepare_next_batch_verify(beam_bc_vec);
-      FutureMap fm = im.inference(&tree_model, 0, tree_bc);
-
+      tree_bcf = rm.prepare_next_batch_verify(beam_bcf_vec);
+      FutureMap fm = im.inference(&tree_model, 0, tree_bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
-      Future future = fm.get_future(0);
-      tree_ir = future.get_result<InferenceResult>();
+      tree_irf = fm.get_future(0);
     }
   }
 
