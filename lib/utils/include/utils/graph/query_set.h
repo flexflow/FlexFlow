@@ -11,14 +11,12 @@ namespace FlexFlow {
 template <typename T>
 struct query_set {
   query_set() = delete;
-  query_set(T const &) {
-    NOT_IMPLEMENTED();
+  query_set(T const & query) : query({query}) {
+    std::cout<<"1"<<std::endl;
   }
   query_set(std::unordered_set<T> const &query) : query(query) {}
 
-  query_set(optional<std::unordered_set<T>> const &) {
-    NOT_IMPLEMENTED();
-  }
+  query_set(optional<std::unordered_set<T>> const & query): query(query) {}
 
   friend bool operator==(query_set const &lhs, query_set const &rhs) {
     return lhs.value == rhs.value;
@@ -72,13 +70,15 @@ template <typename C,
           typename K = typename C::key_type,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_keys(query_set<K> const &q, C const &m) {
+  std::cout<<"3"<<std::endl;
   NOT_IMPLEMENTED();
-}
+}//TODO
 
 template <typename C,
           typename K = typename C::key_type,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_values(query_set<V> const &q, C const &m) {
+  std::cout<<"4"<<std::endl;
   NOT_IMPLEMENTED();
 }
 

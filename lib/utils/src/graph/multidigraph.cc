@@ -13,9 +13,9 @@ MultiDiOutput get_output(MultiDiEdge const &e) {
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
-  if (is_matchall(e.srcs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
+  // if (is_matchall(e.srcs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.srcs = nodes;
   return e;
 }
@@ -32,9 +32,9 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_src_node(Node const &n) const {
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
-  if (is_matchall(e.dsts)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
+  // if (is_matchall(e.dsts)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.dsts = nodes;
   return e;
 }
@@ -76,9 +76,9 @@ MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const &p) const {
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e{*this};
-  if (is_matchall(e.srcIdxs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
+  // if (is_matchall(e.srcIdxs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.srcIdxs = idxs;
   return e;
 }
@@ -86,9 +86,9 @@ MultiDiEdgeQuery
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e = *this;
-  if (is_matchall(e.dstIdxs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
+  // if (is_matchall(e.dstIdxs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.dstIdxs = idxs;
   return e;
 }
