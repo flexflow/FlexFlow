@@ -28,7 +28,7 @@ fi
 
 
 if [[ "$image" == "flexflow-environment" ]]; then
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}-11.6.2:latest"
+    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}:latest"
 elif [[ "$image" == "flexflow" ]]; then
     eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-${FF_GPU_BACKEND}:latest"
 elif [[ "$image" == "mt5" ]]; then
