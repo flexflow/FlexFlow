@@ -53,35 +53,40 @@ bool DiGraphView::operator!=(DiGraphView const &other) const {
   return ptr != other.ptr;
 }
 
-std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const& q) const {
+std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const &q) const {
   return this->ptr->query_nodes(q);
 }
 
-std::unordered_set<DirectedEdge> DiGraphView::query_edges(EdgeQuery const & query) const {
+std::unordered_set<DirectedEdge>
+    DiGraphView::query_edges(EdgeQuery const &query) const {
   return ptr->query_edges(query);
 }
 
 /* unsafe_create:
-1 use the graphView to creae the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda function to delete the ptr
-2 we use this ptr to create a DiGraphView, this DiGraphView is read-only. It creates a DiGraphView object that is not responsible for ownership management
+1 use the graphView to creae the std::shared_ptr<IDiGraphView const> ptr, and
+define a empty lambda function to delete the ptr 2 we use this ptr to create a
+DiGraphView, this DiGraphView is read-only. It creates a DiGraphView object that
+is not responsible for ownership management
 */
 DiGraphView unsafe_create(IDiGraphView const &graphView) {
   std::shared_ptr<IDiGraphView const> ptr((&graphView),
-  [](IDiGraphView const *){});
+                                          [](IDiGraphView const *) {});
   return DiGraphView(ptr);
 }
 
-DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs, DirectedEdgeQuery const &rhs){
+DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
+                                     DirectedEdgeQuery const &rhs) {
   assert(lhs != tl::nullopt);
   assert(rhs != tl::nullopt);
-  assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
+  assert(lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() &&
+         rhs.dsts.has_value());
 
-  tl::optional<std::unordered_set<Node>> srcs_t1 = intersection(*lhs.srcs, *rhs.srcs);
-  tl::optional<std::unordered_set<Node>> dsts_t1 = intersection(*lhs.dsts, *rhs.dsts);
+  tl::optional<std::unordered_set<Node>> srcs_t1 =
+      intersection(*lhs.srcs, *rhs.srcs);
+  tl::optional<std::unordered_set<Node>> dsts_t1 =
+      intersection(*lhs.dsts, *rhs.dsts);
 
   return DirectedEdgeQuery(srcs_t1, dsts_t1);
 }
-
-
 
 } // namespace FlexFlow

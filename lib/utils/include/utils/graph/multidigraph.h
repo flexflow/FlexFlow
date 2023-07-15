@@ -29,7 +29,7 @@ public:
     return MultiDiGraphView(
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr):ptr(ptr){}
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
   static MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
 
 private:
@@ -74,7 +74,7 @@ public:
   }
 
 private:
-  MultiDiGraph(std::unique_ptr<IMultiDiGraph> ptr):ptr(std::move(ptr)){}
+  MultiDiGraph(std::unique_ptr<IMultiDiGraph> ptr) : ptr(std::move(ptr)) {}
 
 private:
   cow_ptr_t<IMultiDiGraph> ptr;

@@ -41,7 +41,7 @@ public:
   IDiGraphView &operator=(IDiGraphView const &) = delete;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IDiGraphView()=default;
+  virtual ~IDiGraphView() = default;
 
 protected:
   IDiGraphView() = default;
@@ -76,8 +76,9 @@ public:
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  DiGraphView(std::shared_ptr<IDiGraphView const> ptr): ptr(ptr) {}
+  DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
   static DiGraphView unsafe_create(IDiGraphView const &graphView);
+
 private:
   friend DiGraphView unsafe_create(IDiGraphView const &);
 

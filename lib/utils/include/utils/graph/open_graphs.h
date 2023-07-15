@@ -36,7 +36,8 @@ public:
   }
 
 private:
-  OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr):ptr(ptr){}
+  OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr)
+      : ptr(ptr) {}
   std::shared_ptr<IOpenMultiDiGraphView const> ptr;
 };
 

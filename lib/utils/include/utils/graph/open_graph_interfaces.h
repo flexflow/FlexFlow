@@ -25,7 +25,8 @@ struct OutputMultiDiEdge {
 };
 FF_VISITABLE_STRUCT(OutputMultiDiEdge, uid, src, srcIdx);
 
-using OpenMultiDiEdge =variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
+using OpenMultiDiEdge =
+    variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
 
 using DownwardOpenMultiDiEdge = variant<OutputMultiDiEdge, MultiDiEdge>;
 

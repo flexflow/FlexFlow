@@ -66,7 +66,7 @@ struct GraphView {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  GraphView(std::shared_ptr<IGraphView const> ptr):ptr(ptr){}
+  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
 
 private:
   std::shared_ptr<IGraphView const> ptr;
@@ -75,7 +75,7 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
 
 struct IGraph : IGraphView {
   IGraph(IGraph const &) = delete;
-  IGraph()=default;
+  IGraph() = default;
   IGraph &operator=(IGraph const &) = delete;
 
   virtual Node add_node() = 0;

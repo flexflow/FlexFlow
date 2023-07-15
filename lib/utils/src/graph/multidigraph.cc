@@ -21,22 +21,21 @@ MultiDiEdgeQuery
 }
 
 <<<<<<< HEAD
-std::ostream& operator<<(std::ostream& os, const MultiDiEdge& edge) {
-    return os<<"MultiDiEdge{"<<edge.src.value()<< ","<<edge.dst.value()<<","<<edge.srcIdx.value()<<","<<edge.dstIdx.value()<<"}";
+std::ostream &operator<<(std::ostream &os, MultiDiEdge const &edge) {
+  return os << "MultiDiEdge{" << edge.src.value() << "," << edge.dst.value()
+            << "," << edge.srcIdx.value() << "," << edge.dstIdx.value() << "}";
 }
 
-MultiDiEdgeQuery::  MultiDiEdgeQuery(
-      tl::optional<std::unordered_set<Node>> const &srcs,
-      tl::optional<std::unordered_set<Node>> const &dsts,
-      tl::optional<std::unordered_set<NodePort>> const &srcIdxs ,
-      tl::optional<std::unordered_set<NodePort>> const &dstIdxs )
-      :srcs(srcs), dsts(dsts),srcIdxs(srcIdxs), dstIdxs(dstIdxs)
-{}
+MultiDiEdgeQuery::MultiDiEdgeQuery(
+    tl::optional<std::unordered_set<Node>> const &srcs,
+    tl::optional<std::unordered_set<Node>> const &dsts,
+    tl::optional<std::unordered_set<NodePort>> const &srcIdxs,
+    tl::optional<std::unordered_set<NodePort>> const &dstIdxs)
+    : srcs(srcs), dsts(dsts), srcIdxs(srcIdxs), dstIdxs(dstIdxs) {}
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_node(Node const &n) const {
   return this->with_src_nodes({n});
 }
-
 
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
@@ -48,10 +47,14 @@ MultiDiEdgeQuery
   return e;
 }
 
-MultiDiEuery query_intersection(MultiDiEdgeQuery const &lhs, MultiDiEdgeQuery const &rhs){
-  assert (lhs.srcs.has_value() &&dgeQ lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
-  tl::optional<std::unordered_set<Node>> srcs = intersection(*lhs.srcs, *rhs.srcs);
-  tl::optional<std::unordered_set<Node>> dsts = intersection(*lhs.dsts, *rhs.dsts);
+MultiDiEuery query_intersection(MultiDiEdgeQuery const &lhs,
+                                MultiDiEdgeQuery const &rhs) {
+  assert(lhs.srcs.has_value() && dgeQ lhs.dsts.has_value() &&
+         rhs.srcs.has_value() && rhs.dsts.has_value());
+  tl::optional<std::unordered_set<Node>> srcs =
+      intersection(*lhs.srcs, *rhs.srcs);
+  tl::optional<std::unordered_set<Node>> dsts =
+      intersection(*lhs.dsts, *rhs.dsts);
   return MultiDiEdgeQuery(srcs, dsts);
 }
 
@@ -86,15 +89,17 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
           matchall<NodePort>()};
 }
 
-std::unordered_set<Node> MultiDiGraphView::query_nodes(NodeQuery const & q) const {
+std::unordered_set<Node>
+    MultiDiGraphView::query_nodes(NodeQuery const &q) const {
   return this->ptr->query_nodes(q);
 }
 
-std::unordered_set<MultiDiEdge> MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
+std::unordered_set<MultiDiEdge>
+    MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
-NodePort IMultiDiGraph::add_node_port(){
+NodePort IMultiDiGraph::add_node_port() {
   NodePort np{this->next_nodeport_idx};
   this->next_nodeport_idx += 1;
   return np;
@@ -109,11 +114,10 @@ MultiDiGraphView::operator GraphView() const {
 }
 
 MultiDiGraphView unsafe_create(IMultiDiGraphView const &graphView) {
-  std::shared_ptr<IMultiDiGraphView const> ptr((&graphView),
-      [](IMultiDiGraphView const *ptr) {});
+  std::shared_ptr<IMultiDiGraphView const> ptr(
+      (&graphView), [](IMultiDiGraphView const *ptr) {});
   return MultiDiGraphView(ptr);
 }
-
 
 void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   using std::swap;
@@ -139,7 +143,7 @@ NodePort MultiDiGraph::add_node_port() {
   return this->ptr.get_mutable()->add_node_port();
 }
 
-void MultiDiGraph::add_node_port_unsafe(NodePort const & np) {
+void MultiDiGraph::add_node_port_unsafe(NodePort const &np) {
   return this->ptr.get_mutable()->add_node_port_unsafe(np);
 }
 
@@ -161,10 +165,10 @@ void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
 
 std::unordered_set<MultiDiEdge>
     MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
-      return this->ptr->query_edges(q);
+  return this->ptr->query_edges(q);
 }
 
-std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const & q) const {
+std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
   return this->ptr->query_nodes(q);
 }
 

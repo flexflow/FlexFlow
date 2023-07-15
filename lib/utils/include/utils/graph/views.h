@@ -61,8 +61,8 @@ private:
 struct MultiDiSubgraphView : public IMultiDiGraphView {
 public:
   MultiDiSubgraphView() = delete;
-  explicit MultiDiSubgraphView(MultiDiGraphView const & g,
-                               std::unordered_set<Node> const & subgraph_nodes);
+  explicit MultiDiSubgraphView(MultiDiGraphView const &g,
+                               std::unordered_set<Node> const &subgraph_nodes);
 
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &) const override;
@@ -87,8 +87,8 @@ enum class LRDirection { LEFT, RIGHT };
 
 struct JoinNodeKey {
   JoinNodeKey() = delete;
-  JoinNodeKey(Node const & node, LRDirection direction):
-    node(node), direction(direction) {}
+  JoinNodeKey(Node const &node, LRDirection direction)
+      : node(node), direction(direction) {}
 
   bool operator==(JoinNodeKey const &) const;
   bool operator<(JoinNodeKey const &) const;
@@ -218,9 +218,10 @@ private:
 
 struct ContractNodeView : public IDiGraphView {
   ContractNodeView() = delete;
-  explicit ContractNodeView(DiGraphView const & g,
+  explicit ContractNodeView(DiGraphView const &g,
                             Node const &removed,
-                            Node const &into): g(g), from(removed), to(into) {}
+                            Node const &into)
+      : g(g), from(removed), to(into) {}
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -302,7 +303,7 @@ private:
 struct ViewOpenMultiDiGraphAsMultiDiGraph : public IMultiDiGraphView {
 public:
   ViewOpenMultiDiGraphAsMultiDiGraph() = delete;
-  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const & g)
+  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const &g)
       : g(g) {}
 
   std::unordered_set<MultiDiEdge>

@@ -29,7 +29,7 @@ public:
 
 private:
   using ContentsType = std::unordered_map<Node, std::unordered_set<Node>>;
-  
+
   AdjacencyDiGraph(std::size_t next_node_idx, ContentsType adjacency)
       : next_node_idx(next_node_idx), adjacency(adjacency) {}
   std::size_t next_node_idx = 0;
