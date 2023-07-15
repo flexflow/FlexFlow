@@ -32,10 +32,10 @@ public:
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
   MachineView *get_machine_view(int mv_id);
-  Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
-  void load_input_tokens_from_batch_config(BatchConfig const &bc,
+  Legion::FutureMap inference(FFModel *model, int index, BatchConfigFuture const &bc);
+  void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
                                            ParallelTensor const input);
-  void load_positions(BatchConfig const &bc, ParallelTensor position_input);
+  void load_positions(BatchConfigFuture const &bc, ParallelTensor position_input);
 
 public:
   FFConfig ff_config;
@@ -92,13 +92,21 @@ public:
                                    int max_sequence_length);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
+  BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
+                                       InferenceResultFuture const &result);
   BeamSearchBatchConfig
       prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
-
+  BeamSearchBatchConfigFuture
+      prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
+                              BeamInferenceResultFuture const &result);
   BeamSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
+                              int model_id);
+  BeamSearchBatchConfigFuture
+      prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
+                              InferenceResultFuture const &result,
                               int model_id);
 
   TreeVerifyBatchConfig prepare_next_batch_verify(
@@ -140,6 +148,20 @@ public:
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 
+  static void prepare_next_batch_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
+
+  static void prepare_next_batch_beam_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
+
+  static void prepare_next_batch_init_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 private:
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;

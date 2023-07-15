@@ -16,6 +16,7 @@
 #pragma once
 
 #include "flexflow/ffconst.h"
+#include "legion.h"
 #include <cstddef>
 #include <cstdlib>
 
@@ -28,6 +29,11 @@ namespace FlexFlow {
 
 class InferenceResult;
 class BeamInferenceResult;
+
+using BatchConfigFuture = Legion::Future;
+using InferenceResultFuture = Legion::Future;
+using BeamSearchBatchConfigFuture = Legion::Future;
+using BeamInferenceResultFuture = Legion::Future;
 
 class BatchConfig {
 public:

@@ -177,6 +177,28 @@ size_t RequestManager::get_num_processed_requests() {
   return num_processed_requests;
 }
 
+BatchConfigFUture RequestManager::prepare_next_batch(BatchConfigFuture const &old_bc,
+                                               InferenceResultFuture const &result) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
+  RequestManager *rm = this;
+  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_TASK_ID, TaskArgument(&rm, sizeof(RequestManager *)));
+  launcher.add_future(old_bc);
+  launcher.add_future(result);
+  return runtime->execute_task(ctx, launcher);
+}
+
+BatchConfig RequestManager::prepare_next_batch_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  RequestManager *rm = *((RequestManager **)task->args);
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  InferenceResult const &result = Future(task->futures[1]).get_result<InferenceResult>();
+  return rm->prepare_next_batch(bc, result);
+}
+
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
@@ -335,6 +357,27 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 }
 
 /* ----- Speculative Inference Specific functions ----- */
+BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
+                                               BeamInferenceResultFuture const &result) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
+  RequestManager *rm = this;
+  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID, TaskArgument(&rm, sizeof(RequestManager *)));
+  launcher.add_future(old_bc);
+  launcher.add_future(result);
+  return runtime->execute_task(ctx, launcher);
+}
+
+BeamSearchBatchConfig RequestManager::prepare_next_batch_beam_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  RequestManager *rm = *((RequestManager **)task->args);
+  BeamSearchBatchConfig const &bc = Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  BeamInferenceResult const &result = Future(task->futures[1]).get_result<BeamInferenceResult>();
+  return rm->prepare_next_batch_beam(bc, result);
+}
 
 // update beam search metadata
 BeamSearchBatchConfig
@@ -449,6 +492,31 @@ BeamSearchBatchConfig
     new_bc.print();
   }
   return new_bc;
+}
+
+BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
+                                                                    InferenceResultFuture const &result,
+                                                                    int model_id) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
+  RequestManager *rm = this;
+  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_INIT_TASK_ID, TaskArgument(&rm, sizeof(RequestManager *)));
+  launcher.add_future(old_bc);
+  launcher.add_future(result);
+  launcher.add_future(Future::from_value<int>(model_id));
+  return runtime->execute_task(ctx, launcher);
+}
+
+BeamSearchBatchConfig RequestManager::prepare_next_batch_init_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  RequestManager *rm = *((RequestManager **)task->args);
+  TreeVerifyBatchConfig const &bc = Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
+  InferenceResult const &result = Future(task->futures[1]).get_result<InferenceResult>();
+  int model_id = Future(task->futures[2]).get_result<int>();
+  return rm->prepare_next_batch_init(bc, result, model_id);
 }
 
 BeamSearchBatchConfig

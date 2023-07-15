@@ -599,7 +599,7 @@ void SpecIncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 FutureMap SpecIncMultiHeadSelfAttention::inference(
     FFModel const &ff,
-    BatchConfig const &bc,
+    BatchConfigFuture const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -614,13 +614,13 @@ FutureMap SpecIncMultiHeadSelfAttention::inference(
   IndexLauncher launcher(
       SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
       parallel_is,
-      TaskArgument(
-          &bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
+      TaskArgument(nullptr, 0),
       argmap,
       Predicate::TRUE_PRED,
       false /*must*/,
       0 /*mapper_id*/,
       machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -663,7 +663,12 @@ void SpecIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
+  //BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
+  BeamSearchBatchConfig const &bc = Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  if (bc.num_tokens == 0) {
+    return;
+  }
+
   SpecIncMultiHeadSelfAttentionMeta const *m =
       *((SpecIncMultiHeadSelfAttentionMeta **)task->local_args);
   assert((*m->bias ? regions.size() == 4 : regions.size() == 3));
@@ -699,11 +704,11 @@ void SpecIncMultiHeadSelfAttention::inference_task(
 
   assert(task->index_point.get_dim() == 1);
   SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, bc, task->index_point.point_data[0], input, weight, output, biases);
+      m, &bc, task->index_point.point_data[0], input, weight, output, biases);
 
   // print_tensor<float>(input.get_float_ptr(), 20, "attention input");
   // print_tensor<float>(output.get_float_ptr(), 20, "attention output");
-  // if(bc->beam_slots.at(0).current_depth == 1){
+  // if(bc.beam_slots.at(0).current_depth == 1){
   //     print_beam_tensor<float>(input.get_float_ptr(), 50, 4096, 40, "mha topk
   //     input"); print_beam_tensor<float>(output.get_float_ptr(), 50, 4096, 40,
   //     "mha topk output");

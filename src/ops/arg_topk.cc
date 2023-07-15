@@ -42,6 +42,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using Legion::Future;
 using PCG::Node;
 
 // For an input tensor, computes the top k entries in each row
@@ -250,7 +251,7 @@ void ArgTopK::forward(FFModel const &ff) {
 }
 
 FutureMap ArgTopK::inference(FFModel const &ff,
-                             BatchConfig const &bc,
+                             BatchConfigFuture const &bc,
                              std::vector<ParallelTensor> const &batch_inputs,
                              std::vector<ParallelTensor> const &batch_outputs,
                              MachineView const *mv) {
@@ -265,12 +266,13 @@ FutureMap ArgTopK::inference(FFModel const &ff,
             << std::endl; */
   IndexLauncher launcher(ARG_TOPK_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -300,7 +302,8 @@ InferenceResult
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  // BatchConfig const *bc = (BatchConfig *)task->args;
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -308,7 +311,7 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc.num_active_tokens();
   ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
 
   int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;

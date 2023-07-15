@@ -36,6 +36,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using Legion::Future;
 using PCG::Node;
 
 static constexpr int KERNEL_IDX = 0;
@@ -656,7 +657,7 @@ void Experts::forward(FFModel const &ff) {
 }
 
 FutureMap Experts::inference(FFModel const &ff,
-                             BatchConfig const &bc,
+                             BatchConfigFuture const &bc,
                              std::vector<ParallelTensor> const &batch_inputs,
                              std::vector<ParallelTensor> const &batch_outputs,
                              MachineView const *mv) {
@@ -669,15 +670,16 @@ FutureMap Experts::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "Experts op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  int num_active_tokens = bc.num_active_tokens();
+  //int num_active_tokens = bc.num_active_tokens();
   IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&num_active_tokens, sizeof(int)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   // expert predictions
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
@@ -731,8 +733,8 @@ void Experts::inference_task(Task const *task,
   assert(regions.size() == task->regions.size());
 
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
-  int num_active_tokens = *(int *)task->args;
-  if (num_active_tokens == 0) {
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  if (bc.num_tokens == 0) {
     return;
   }
 
@@ -1056,7 +1058,7 @@ void Experts::inference_task(Task const *task,
                                   output_ptr,
                                   weights_ptr,
                                   bias_ptr,
-                                  num_active_tokens,
+                                  bc.num_active_tokens(),
                                   chosen_experts,
                                   batch_size,
                                   out_dim);

@@ -69,7 +69,7 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &,
+                              BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;

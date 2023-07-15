@@ -289,10 +289,17 @@ MachineView *InferenceManager::get_machine_view(int mv_id) {
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfig const &bc) {
-  log_inf_mgr.print("mode(%d) num_active_tokens(%d) num_active_requests(%d)",
-                    bc.get_mode(),
-                    bc.num_active_tokens(),
-                    bc.num_active_requests());
+  BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
+  return inference(model, index, bcf);
+}
+
+FutureMap InferenceManager::inference(FFModel *model,
+                                      int index,
+                                      BatchConfigFuture const &bc) {
+  //log_inf_mgr.print("mode(%d) num_active_tokens(%d) num_active_requests(%d)",
+  //                  bc.get_mode(),
+  //                  bc.num_active_tokens(),
+  //                  bc.num_active_requests());
 
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
@@ -348,7 +355,7 @@ FutureMap InferenceManager::inference(FFModel *model,
 };
 
 void InferenceManager::load_input_tokens_from_batch_config(
-    BatchConfig const &bc, ParallelTensor const input) {
+    BatchConfigFuture const &bc, ParallelTensor const input) {
   Context ctx = ff_config.lg_ctx;
   Runtime *runtime = ff_config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
@@ -356,20 +363,20 @@ void InferenceManager::load_input_tokens_from_batch_config(
   IndexLauncher launcher(
       RM_LOAD_TOKENS_TASK_ID,
       input->parallel_is,
-      TaskArgument(
-          &bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
+      TaskArgument(nullptr, 0),
       argmap,
       Predicate::TRUE_PRED,
       false /*must*/,
       0 /*mapper_id*/,
       machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(
       input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, input->region));
   launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
-void InferenceManager::load_positions(BatchConfig const &bc,
+void InferenceManager::load_positions(BatchConfigFuture const &bc,
                                       ParallelTensor position_input) {
   Context ctx = ff_config.lg_ctx;
   Runtime *runtime = ff_config.lg_hlr;
@@ -378,13 +385,13 @@ void InferenceManager::load_positions(BatchConfig const &bc,
   IndexLauncher launcher(
       RM_LOAD_POSITION_TASK_ID,
       position_input->parallel_is,
-      TaskArgument(
-          &bc, std::max(sizeof(BeamSearchBatchConfig), sizeof(BatchConfig))),
+      TaskArgument(nullptr, 0),
       argmap,
       Predicate::TRUE_PRED,
       false /*must*/,
       0 /*mapper_id*/,
       machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(position_input->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,

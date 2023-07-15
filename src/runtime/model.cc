@@ -4057,6 +4057,36 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<RequestManager::load_positions_task>(
         registrar, "RequestManager Load Position Tokens Task");
   }
+  // RequestManager prepare_next_batch
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_TASK_ID,
+                                   "RequestManager Prepare Next Batch");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchConfig,
+                                      RequestManager::prepare_next_batch_task>(
+        registrar, "RequestManager Prepare Next Batch Task");
+  }
+  // RequestManager prepare_next_batch_beam
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+                                   "RequestManager Prepare Next Batch (Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BeamSearchBatchConfig,
+                                      RequestManager::prepare_next_batch_beam_task>(
+        registrar, "RequestManager Prepare Next Batch (Beam) Task");
+  }
+  // RequestManager prepare_next_batch_beam
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+                                   "RequestManager Prepare Next Batch (Init Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BeamSearchBatchConfig,
+                                      RequestManager::prepare_next_batch_init_task>(
+        registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
+  }
   // ElementUnary task
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID,
@@ -5008,6 +5038,13 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
         registrar, "AllReduce init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID, "AllReduce Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AllReduce::inference_task>(
+        registrar, "AllReduce Inference Task");
   }
   {
     TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");

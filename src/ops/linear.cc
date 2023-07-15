@@ -26,6 +26,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using Legion::Future;
 
 using namespace FlexFlow::Kernels::Linear;
 
@@ -557,7 +558,7 @@ void Linear::forward(FFModel const &ff) {
 }
 
 FutureMap Linear::inference(FFModel const &ff,
-                            BatchConfig const &bc,
+                            BatchConfigFuture const &bc,
                             std::vector<ParallelTensor> const &batch_inputs,
                             std::vector<ParallelTensor> const &batch_outputs,
                             MachineView const *mv) {
@@ -572,12 +573,13 @@ FutureMap Linear::inference(FFModel const &ff,
             << std::endl; */
   IndexLauncher launcher(LINEAR_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -616,7 +618,8 @@ void Linear::inference_task(Task const *task,
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  //BatchConfig const *bc = (BatchConfig *)task->args;
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   if (m->quantization_type == DT_NONE) {
@@ -633,7 +636,7 @@ void Linear::inference_task(Task const *task,
   int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
 
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc.num_active_tokens();
   GenericTensorAccessorR bias;
   if (m->use_bias &&
       !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {
