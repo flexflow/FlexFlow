@@ -311,9 +311,6 @@ InferenceResult
   int batch_size = bc->num_active_tokens();
   ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
 
-  int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-  batch_size = input.domain.get_volume() / length;
-
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
