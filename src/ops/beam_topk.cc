@@ -379,12 +379,9 @@ BeamInferenceResult
 
   // total token nums
   size_t tokens_per_request = in1_domain.hi()[1] - in1_domain.lo()[1] + 1;
-  size_t batch_size = in1_domain.get_volume() / length;
-
+  int batch_size = bc->num_active_tokens();
   // std::cout << "beam search topk params: " << length << ", " << k << ", "
   //           << batch_size << "\n";
-  assert(out2_domain.get_volume() / k == batch_size);
-
   // std::vector<int> beam_width;
   // std::unordered_map<size_t, int> sub_requests = bc->sub_requests;
   // for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
