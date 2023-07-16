@@ -252,7 +252,7 @@ FutureMap Sampling::inference(FFModel const &ff,
             << std::endl; */
   IndexLauncher launcher(SAMPLING_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(&bc, sizeof(BatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -280,7 +280,7 @@ InferenceResult
                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  Sampling const *sampling = (Sampling const *)task->args;
+  BatchConfig const *bc = (BatchConfig *)task->args;
   SamplingMeta const *m = *((SamplingMeta **)task->local_args);
 
   GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(
@@ -288,10 +288,8 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  Sampling::forward_kernel_wrapper(m, input, indices);
-
-  int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-  int batch_size = input.domain.get_volume() / length;
+  int batch_size = bc->num_active_tokens();
+  Sampling::forward_kernel_wrapper(m, input, indices, batch_size);
 
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(

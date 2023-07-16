@@ -33,7 +33,8 @@ void Sampling::forward_kernel(SamplingMeta const *m,
 /*static*/
 void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
                                       GenericTensorAccessorW const &input,
-                                      GenericTensorAccessorW const &indices) {
+                                      GenericTensorAccessorW const &indices,
+                                      int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 

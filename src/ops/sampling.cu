@@ -151,9 +151,10 @@ void Sampling::forward_kernel(SamplingMeta const *m,
 }
 
 /*static*/
-void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
-                                      GenericTensorAccessorW const &input,
-                                      GenericTensorAccessorW const &indices) {
+void Sampling::forward_kernel_wrapper(
+    SamplingMeta const *m,
+    GenericTensorAccessorW const &input,
+    GenericTensorAccessorW const &indices int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -163,8 +164,6 @@ void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-  int batch_size = input.domain.get_volume() / length;
 
   if (input.data_type == DT_HALF) {
     Sampling::forward_kernel<half>(m,
