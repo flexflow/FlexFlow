@@ -15,11 +15,11 @@ echo "Building $image docker image for CUDA $cuda_version"
 
 # modify cuda version to available versions
 if [[ "$cuda_version" == @(11.1|11.3|11.7) ]]; then
-  cuda_version=${cuda_version}.1
+  cuda_version_input=${cuda_version}.1
 elif [[ "$cuda_version" == @(11.2|11.5|11.6) ]]; then 
-  cuda_version=${cuda_version}.2
+  cuda_version_input=${cuda_version}.2
 elif [[ "$cuda_version" == @(11.8) ]]; then 
-  cuda_version=${cuda_version}.0
+  cuda_version_input=${cuda_version}.0
 else
   echo "cuda_version is not supported, please choose among {11.1|11.2|11.3|11.5|11.6|11.7|11.8}"
   exit 1
@@ -45,9 +45,9 @@ fi
 # Build the FlexFlow Enviroment docker image with input cuda version
 # if FF_GPU_BACKEND, we don't tag the docker image with cuda version 
 if [[ "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
-  docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version}" -t "flexflow-environment-${FF_GPU_BACKEND}" -f docker/flexflow-environment/Dockerfile .
+  docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" -t "flexflow-environment-${FF_GPU_BACKEND}" -f docker/flexflow-environment/Dockerfile .
 else
-  docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version}" -t "flexflow-environment-${FF_GPU_BACKEND}-${cuda_version}" -f docker/flexflow-environment/Dockerfile .
+  docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" -t "flexflow-environment-${FF_GPU_BACKEND}-${cuda_version}" -f docker/flexflow-environment/Dockerfile .
 fi 
 
 # If the user only wants to build the environment image, we are done
