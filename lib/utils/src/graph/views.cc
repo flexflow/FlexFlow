@@ -43,18 +43,20 @@ std::unordered_set<Node> ViewOpenMultiDiGraphAsMultiDiGraph::query_nodes(
 std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
     MultiDiEdgeQuery const &query) const {
 
-  // OpenMultiDiEdgeQuery q{query};
-  // // q.standard_edge_query = query;
-  // std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);
-  // std::unordered_set<MultiDiEdge> result;
+  InputMultiDiEdgeQuery input_edge_query = InputMultiDiEdgeQuery::all();
+  OutputMultiDiEdgeQuery output_edge_query = OutputMultiDiEdgeQuery::all();
 
-  // for (auto const &edge : edges) {
-  //   if (holds_alternative<MultiDiEdge>(edge)) {
-  //     result.insert(get<MultiDiEdge>(edge));
-  //   }
-  // }
+  OpenMultiDiEdgeQuery q{input_edge_query, query, output_edge_query};
 
-  NOT_IMPLEMENTED();
+  std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);
+  std::unordered_set<MultiDiEdge> result;
+
+  for (auto const &edge : edges) {
+    if (holds_alternative<MultiDiEdge>(edge)) {
+      result.insert(get<MultiDiEdge>(edge));
+    }
+  }
+  return result;
 }
 
 DirectedEdge flipped(DirectedEdge const &e) {
