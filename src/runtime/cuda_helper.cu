@@ -243,8 +243,11 @@ __host__ void print_beam_tensor(T const *ptr,
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * channel * skip,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpyAsync(
-      host_ptr, ptr, sizeof(T) * channel * skip, cudaMemcpyDeviceToHost, stream));
+  checkCUDA(cudaMemcpyAsync(host_ptr,
+                            ptr,
+                            sizeof(T) * channel * skip,
+                            cudaMemcpyDeviceToHost,
+                            stream));
   // checkCUDA(cudaDeviceSynchronize());
   int idx = 0;
   printf("%s", prefix);
@@ -303,8 +306,8 @@ __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   assert(dst != nullptr);
-  checkCUDA(
-      cudaMemcpyAsync(dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
+  checkCUDA(cudaMemcpyAsync(
+      dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   return true;
 }
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(
