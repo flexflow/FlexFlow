@@ -97,8 +97,13 @@ Op *ElementBinary::create_operator_from_layer(
   long long value;
   layer->get_int_property("inplace_a", value);
   bool inplace_a = (bool)value;
-  return new ElementBinary(
-      model, layer->op_type, inputs[0], inputs[1], inplace_a, layer->name);
+  return new ElementBinary(model,
+                           layer->layer_guid,
+                           layer->op_type,
+                           inputs[0],
+                           inputs[1],
+                           inplace_a,
+                           layer->name);
 }
 
 Tensor FFModel::add(const Tensor in1,
@@ -166,10 +171,12 @@ bool ElementBinaryParams::is_valid(
 
 bool operator==(ElementBinaryParams const &lhs,
                 ElementBinaryParams const &rhs) {
-  return lhs.type == rhs.type;
+  return lhs.type == rhs.type && lhs.layer_guid == rhs.layer_guid &&
+         lhs.inplace_a == rhs.inplace_a;
 }
 
 ElementBinary::ElementBinary(FFModel &model,
+                             LayerID const &_layer_guid,
                              OperatorType _op_type,
                              const ParallelTensor in1,
                              const ParallelTensor in2,
@@ -185,6 +192,8 @@ ElementBinary::ElementBinary(FFModel &model,
          in1,
          in2),
       inplace_a(_inplace_a) {
+  // overwrite layer_guid
+  layer_guid = _layer_guid;
   numOutputs = 1;
   numWeights = 0;
   assert(in1->data_type == in2->data_type);
@@ -217,10 +226,14 @@ ElementBinary::ElementBinary(
     FFModel &model,
     ElementBinaryParams const &params,
     std::pair<ParallelTensor, ParallelTensor> const &inputs,
-    char const *name,
-    bool inplace_a)
-    : ElementBinary(
-          model, params.type, inputs.first, inputs.second, inplace_a, name) {}
+    char const *name)
+    : ElementBinary(model,
+                    params.layer_guid,
+                    params.type,
+                    inputs.first,
+                    inputs.second,
+                    params.inplace_a,
+                    name) {}
 
 void ElementBinary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
@@ -975,9 +988,41 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
   return true;
 }
 
+void ElementBinary::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->op_type);
+  sez.serialize(this->inplace_a);
+}
+
+using PCG::Node;
+/*static*/
+Node ElementBinary::deserialize(FFModel &ff,
+                                Legion::Deserializer &dez,
+                                ParallelTensor inputs[],
+                                int num_inputs) {
+  assert(num_inputs == 2);
+  OperatorType op_type;
+  size_t id, transformer_layer_id;
+  bool inplace_a;
+  dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(op_type);
+  dez.deserialize(inplace_a);
+
+  ElementBinaryParams params;
+  params.layer_guid = layer_guid;
+  params.type = op_type;
+  params.inplace_a = inplace_a;
+  return ff.get_or_create_node<ElementBinary>({inputs[0], inputs[1]}, params);
+}
+
 ElementBinaryParams ElementBinary::get_params() const {
   ElementBinaryParams params;
+  params.layer_guid = this->layer_guid;
   params.type = this->op_type;
+  params.inplace_a = this->inplace_a;
   return params;
 }
 
@@ -987,7 +1032,9 @@ namespace std {
 size_t hash<FlexFlow::ElementBinaryParams>::operator()(
     FlexFlow::ElementBinaryParams const &params) const {
   size_t key = 0;
+  hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.type);
+  hash_combine(key, params.inplace_a);
   return key;
 }
 }; // namespace std

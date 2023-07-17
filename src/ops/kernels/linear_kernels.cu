@@ -96,13 +96,14 @@ void init_kernel(LinearMeta *m, int batch_size, int channel) {
     }
     checkCUDNN(cudnnSetActivationDescriptor(
         m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-    checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
-                                          CUDNN_TENSOR_NCHW,
-                                          ff_to_cudnn_datatype(m->output_type),
-                                          batch_size,
-                                          channel,
-                                          1,
-                                          1));
+    checkCUDNN(
+        cudnnSetTensor4dDescriptor(m->outputTensor,
+                                   CUDNN_TENSOR_NCHW,
+                                   ff_to_cudnn_datatype(m->output_type[0]),
+                                   batch_size,
+                                   channel,
+                                   1,
+                                   1));
   }
 }
 
@@ -122,7 +123,7 @@ void forward_kernel_wrapper(LinearMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  if (m->input_type == DT_FLOAT) {
+  if (m->input_type[0] == DT_FLOAT) {
     Internal::forward_kernel<float>(m,
                                     input_ptr,
                                     output_ptr,
@@ -132,7 +133,7 @@ void forward_kernel_wrapper(LinearMeta const *m,
                                     out_dim,
                                     batch_size,
                                     stream);
-  } else if (m->input_type == DT_HALF) {
+  } else if (m->input_type[0] == DT_HALF) {
     Internal::forward_kernel<half>(m,
                                    input_ptr,
                                    output_ptr,
@@ -180,7 +181,7 @@ void backward_kernel_wrapper(LinearMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  if (m->input_type == DT_FLOAT) {
+  if (m->input_type[0] == DT_FLOAT) {
     Internal::backward_kernel<float>(m,
                                      input_ptr,
                                      input_grad_ptr,
@@ -193,7 +194,7 @@ void backward_kernel_wrapper(LinearMeta const *m,
                                      out_dim,
                                      batch_size,
                                      stream);
-  } else if (m->input_type == DT_HALF) {
+  } else if (m->input_type[0] == DT_HALF) {
     Internal::backward_kernel<half>(m,
                                     input_ptr,
                                     input_grad_ptr,
@@ -295,11 +296,11 @@ void forward_kernel(LinearMeta const *m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
-  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
+  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t weight_type = m->offload
                                    ? ff_to_cuda_datatype(m->weight_ptr_type)
-                                   : ff_to_cuda_datatype(m->weight_type);
-  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+                                   : ff_to_cuda_datatype(m->weight_type[0]);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   assert(input_type == weight_type && weight_type == output_type);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
@@ -388,9 +389,9 @@ void backward_kernel(LinearMeta const *m,
 
   DT alpha = 1.0f;
   float sgeam_alpha = 1.0f;
-  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
-  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
-  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
@@ -400,10 +401,10 @@ void backward_kernel(LinearMeta const *m,
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
     relu_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+        m->output_type[0], output_grad_ptr, output_ptr, output_size, stream);
   } else if (m->activation == AC_MODE_SIGMOID) {
     sigmoid_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+        m->output_type[0], output_grad_ptr, output_ptr, output_size, stream);
   } else {
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);

@@ -29,12 +29,33 @@ LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
 LegionRuntime::Logger::Category log_offload("Offloading");
 
 InferenceManager::InferenceManager(FFConfig const &_config,
-                                   int _max_num_tokens_per_batch,
-                                   int _max_num_inflight_batches)
-    : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch),
-      max_num_inflight_batches(_max_num_inflight_batches) {
-  // populate array of valid single-device machine views
+                                   int _max_num_tokens_per_batch)
+    : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch) {
   num_devices = ff_config.workersPerNode * ff_config.numNodes;
+  // Check parallelization degrees
+  assert(ff_config.data_parallelism_degree <= num_devices &&
+         "Data parallelism degree exceeds number of available devices");
+  assert(num_devices % ff_config.data_parallelism_degree == 0 &&
+         "Number of available devices is not divisible by data parallelism "
+         "degree");
+  assert(ff_config.tensor_parallelism_degree <= num_devices &&
+         "Tensor parallelism degree exceeds number of available devices");
+  assert(num_devices % ff_config.tensor_parallelism_degree == 0 &&
+         "Number of available devices is not divisible by tensor parallelism "
+         "degree");
+  assert(ff_config.pipeline_parallelism_degree <= num_devices &&
+         "Pipeline parallelism degree exceeds number of available devices");
+  assert(num_devices % ff_config.pipeline_parallelism_degree == 0 &&
+         "Number of available devices is not divisible by pipeline parallelism "
+         "degree");
+  assert(ff_config.data_parallelism_degree *
+                 ff_config.tensor_parallelism_degree *
+                 ff_config.pipeline_parallelism_degree ==
+             num_devices &&
+         "Product of data, tensor, and pipeline parallelism degrees does not "
+         "match the number of available devices");
+  // Deprecated logic below
+  // populate array of valid single-device machine views
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
     view.device_type = MachineView::GPU;
@@ -74,22 +95,23 @@ bool parallel_tensor_list_overlaps(std::vector<ParallelTensor> const &list1,
   return false;
 }
 
-void InferenceManager::compile_model_and_allocate_buffer(
-    FFModel *model,
-    std::unordered_map<Tensor, std::vector<MachineView>> const
-        &tensor_mapping) {
+void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
+  // TODO: currently assume there is a single data-parallel pipeline
+  // (i.e., data-parallel-degree == 1)
+  assert(model->config.data_parallelism_degree == 1);
   model->config.batchSize = max_num_tokens_per_batch;
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
 
-  std::unordered_map<Op const *, std::vector<MachineView>> mapping;
-  for (auto const &it : tensor_mapping) {
-    ParallelTensor pt;
-    model->get_parallel_tensor_from_tensor(it.first, pt);
-    assert(pt->owner_op != nullptr);
-    mapping[pt->owner_op] = it.second;
-  }
+  // std::cout << std::endl << std::endl << "Operators MVs:" << std::endl;
+  int num_transformer_layers_per_stage =
+      model->current_transformer_layer_id /
+          model->config.pipeline_parallelism_degree +
+      1;
+  int degree = model->config.data_parallelism_degree *
+               model->config.tensor_parallelism_degree;
+
   for (int op_idx = 0; op_idx < model->operators.size(); op_idx++) {
     Op const *op = model->operators[op_idx];
     // Skip weight operators
@@ -98,59 +120,42 @@ void InferenceManager::compile_model_and_allocate_buffer(
     }
     // Get machine views
     std::vector<MachineView> machine_views;
-    if (mapping.find(op) != mapping.end()) {
-      machine_views = mapping[op];
-      assert(machine_views.size() == max_num_inflight_batches);
-    } else {
-      // Mapping the current operator using the same machine
-      // view as the inputs
-      assert(op->numInputs > 0);
-      for (int j = 0; j < max_num_inflight_batches; j++) {
-        MachineView mv = tensor_buffer[op->inputs[0]][j]->machine_view;
-        for (int k = 1; k < op->numInputs; k++) {
-          if (mv != tensor_buffer[op->inputs[k]][j]->machine_view) {
-            fprintf(stderr,
-                    "[Warning] a potentially unnecessary "
-                    " inter-GPU copy of size %zu\n",
-                    op->inputs[k]->get_volume());
-            // Heuristics: we use the mv with a larger start_device_id
-            // to promote load balancing
-            if (mv.start_device_id <
-                tensor_buffer[op->inputs[k]][j]->machine_view.start_device_id) {
-              mv = tensor_buffer[op->inputs[k]][j]->machine_view;
-            }
-          }
-        }
-        if (op->op_type == OP_REPLICATE) {
-          // std::cout << "Replicate operator got machine view: " << mv
-          //           << std::endl;
-          assert(model->config.tensor_parallelism_degree > 1);
-          mv.dim[0] = ff_config.tensor_parallelism_degree;
-          mv.stride[0] = 1;
-          if (mv.start_device_id + mv.dim[0] > num_devices) {
-            mv.start_device_id -=
-                (mv.start_device_id + mv.dim[0]) - num_devices;
-          }
-          // std::cout << "Corrected machine view: " << mv << std::endl;
-        } else if (op->op_type == OP_REDUCTION) {
-          // std::cout << "Reduction operator got machine view: " << mv
-          //           << std::endl;
-          assert(model->config.tensor_parallelism_degree > 1);
-          mv.dim[0] = 1;
-          mv.stride[0] = 0;
-          // std::cout << "Corrected machine view: " << mv << std::endl;
-        }
-        assert(mv.start_device_id + mv.dim[0] <= num_devices);
-        machine_views.push_back(mv);
+    for (int j = 0; j < model->config.data_parallelism_degree; j++) {
+      MachineView mv;
+      mv.device_type == MachineView::GPU;
+      mv.ndims = 1;
+      // mv.start_device_id = 0;
+      mv.stride[0] = 1;
+      int parallel_degree = 1;
+      for (int k = 0; k < op->outputs[0]->num_dims; k++) {
+        parallel_degree *= op->outputs[0]->dims[k].degree;
       }
-      assert(machine_views.size() == max_num_inflight_batches);
+      mv.dim[0] = parallel_degree;
+      LayerID layer_guid = op->layer_guid;
+      if (op->op_type == OP_INPUT) {
+        // All inputs are assigned to the first stage
+        layer_guid.transformer_layer_id = 0;
+      } else if (layer_guid == LayerID::NO_ID) {
+        Op const *op_with_guid = op;
+        // Assert that we only have a single input
+        while (op_with_guid->layer_guid == LayerID::NO_ID) {
+          assert(op_with_guid->numInputs == 1);
+          op_with_guid = op_with_guid->inputs[0]->owner_op;
+          assert(op_with_guid != nullptr);
+        }
+        layer_guid = op_with_guid->layer_guid;
+      }
+      mv.start_device_id = degree * (layer_guid.transformer_layer_id /
+                                     num_transformer_layers_per_stage);
+      assert(mv == op->outputs[0]->machine_view);
+      machine_views.push_back(mv);
     }
     // std::cout << "operator: " << op->name << std::endl;
     // for (int i = 0; i < op->numInputs; i++) {
     //   op->inputs[i]->print("input pt");
     //   std::cout << "input mv: " << op->inputs[i]->machine_view << std::endl;
     // }
-
+    // std::cout << "Op " << op->name << ": ";
     for (int i = 0; i < op->numOutputs; i++) {
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
@@ -211,7 +216,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
         }
       }
       if (!found_parallel_tensor) {
-        for (int j = 0; j < max_num_inflight_batches; j++) {
+        for (int j = 0; j < model->config.data_parallelism_degree; j++) {
           // Copy the metadata from pt_base to pt
           ParallelTensor pt = new ParallelTensorBase(*pt_base);
           pt->region =
@@ -221,6 +226,7 @@ void InferenceManager::compile_model_and_allocate_buffer(
           pt->part = runtime->get_logical_partition(
               ctx, pt->region, pt_base->part.get_index_partition());
           pt->machine_view = machine_views[j];
+          // std::cout << "output mv: " << pt->machine_view << std::endl;
           Domain part_domain =
               runtime->get_index_space_domain(ctx, pt_base->parallel_is);
           assert(pt->machine_view.get_domain() == part_domain);
@@ -230,11 +236,12 @@ void InferenceManager::compile_model_and_allocate_buffer(
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       tensor_buffer[pt_base] = list;
     }
+    // std::cout << std::endl;
   }
 }
 
 void InferenceManager::init_operators_inference(FFModel *model) {
-  for (int batch_index = 0; batch_index < max_num_inflight_batches;
+  for (int batch_index = 0; batch_index < model->config.data_parallelism_degree;
        batch_index++) {
     int expert_device_index = 0;
     int device_index = batch_index % num_devices;
@@ -290,7 +297,7 @@ FutureMap InferenceManager::inference(FFModel *model,
   assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
   // We currently assume that the index-th batch will be placed
   // on the device_index-th device (except for the experts layers)
-  int batch_index = index % max_num_inflight_batches;
+  int batch_index = index % model->config.data_parallelism_degree;
   FutureMap fm;
   bool found_input_operator = false;
   for (size_t o = 0; o < model->operators.size(); o++) {
@@ -387,15 +394,19 @@ void InferenceManager::load_positions(BatchConfig const &bc,
   runtime->execute_index_space(ctx, launcher);
 }
 
+void FFModel::set_transformer_layer_id(int id) {
+  // We assume that users call this function with
+  // monotonically increasing ids
+  assert(id == current_transformer_layer_id + 1 ||
+         (id == 0 && current_transformer_layer_id == 0));
+  current_transformer_layer_id = id;
+  assert(id < MAX_NUM_TRANSFORMER_LAYERS);
+}
+
 void FFModel::compile_inference() {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   config.computationMode = COMP_MODE_INFERENCE;
-  {
-    fprintf(
-        stderr,
-        "Note: inference currently only supports data/pipeline parallel.\n");
-  }
   create_operators_from_layers();
   // Launch the graph optimize task
   {
@@ -628,5 +639,42 @@ void FFModel::compile_inference() {
              handle.get_tree_id());
     }
   }
+#ifdef FF_USE_NCCL
+  for (size_t l = 0; l < operators.size(); l++) {
+    // Only create nccl for allreduce and fusedop for inference
+    // (fusedop may include allreduces)
+    if (operators[l]->op_type == OP_ALLREDUCE ||
+        operators[l]->op_type == OP_FUSED) {
+      MachineView view = operators[l]->outputs[0]->machine_view;
+      if (view_hash_to_nccl_comms.find(view.hash()) ==
+          view_hash_to_nccl_comms.end()) {
+        TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
+        Future future = runtime->execute_task(ctx, launcher);
+        ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
+        IndexSpace task_is = get_or_create_task_is(view);
+        ArgumentMap argmap;
+        IndexLauncher index_launcher(
+            NCCL_INIT_COMMS_TASK_ID,
+            task_is,
+            TaskArgument(&ncclId, sizeof(ncclUniqueId)),
+            argmap,
+            Predicate::TRUE_PRED,
+            false /*must*/,
+            0 /*mapper_id*/,
+            view.hash() /*MappingTagID*/);
+        FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
+        fm.wait_all_results();
+        int idx = 0;
+        Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
+        ncclComm_t *nccl_comms =
+            (ncclComm_t *)malloc(sizeof(ncclComm_t) * task_domain.get_volume());
+        for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
+          nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
+        }
+        view_hash_to_nccl_comms[view.hash()] = nccl_comms;
+      }
+    }
+  }
+#endif
 }
 }; // namespace FlexFlow
