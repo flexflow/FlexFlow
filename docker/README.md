@@ -35,16 +35,16 @@ FF_GPU_BACKEND=<YOUR_GPU_BACKEND> ./docker/build.sh flexflow-environment
 ``` 
 
 ## Running a Docker container
-After having either built or downloaded a Docker container by following the instructions above, you can run it with the following command (the `flexflow` argument of the run script can be omitted):
+After having either built or downloaded a Docker container by following the instructions above, you can run it with the following command (the `--image_name flexflow` argument of the run script can be omitted). Moreover, you can choose the CUDA version to build using optional flag `--cuda_version`; otherwise, it will autodetect the cuda_version installed on the current machine and run the Docker container with it if available.
 
 ```
-FF_GPU_BACKEND=<YOUR_GPU_BACKEND> ./docker/run.sh flexflow 
+FF_GPU_BACKEND=<YOUR_GPU_BACKEND> ./docker/run.sh --image_name flexflow --cuda_version 11.1
 ```
 
 If you wish to run the `flexflow-environment` container, run:
 
 ```
-FF_GPU_BACKEND=<YOUR_GPU_BACKEND> ./docker/run.sh flexflow-environment
+FF_GPU_BACKEND=<YOUR_GPU_BACKEND> ./docker/run.sh --image_name flexflow-environment --cuda_version 11.1
 ```
 
 Once again, if your backend is CUDA, you can omit the `FF_GPU_BACKEND` environment variable, since `cuda` is used as the default value.
