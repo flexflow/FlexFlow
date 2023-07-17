@@ -50,7 +50,7 @@ FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES:-OFF}
 FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS:-OFF}
 
 # use precompiled NCCL and Legion libraries, where available
-FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL:-ON}
+FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL:-OFF}
 FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION:-OFF}
 # use the flag below to use both the NCCL and Legion pre-built libraries.
 # when the flag below is set to ON, the two flags above are ignored.

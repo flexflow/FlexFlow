@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/utils/cuda_helper.h"
-#include "flexflow_dataloader.h"
+#include "flexflow/dataloader.h"
+#include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -55,17 +56,20 @@ void SingleDataLoader::load_input(Task const *task,
   // const int point = task->index_point.point_data[0];
   // printf("Load batch point %d, start_idx %ld, ptr %p\n", point, start_idx,
   // input_zc);
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // printf("ptr(%p, %p), idx0 %d nb_elements_per_batch %d, batch_size %d,
   // %d\n", acc_full_input.ptr, input_zc, start_idx, num_elements_per_batch,
   // batch_size, start_idx * num_elements_per_batch);
-  copy_kernel<DT>
-      <<<GET_BLOCKS(batch_input_domain.get_volume()),
-         CUDA_NUM_THREADS,
-         0,
-         stream>>>(batch_input_ptr, input_zc, batch_input_domain.get_volume());
-  checkCUDA(cudaDeviceSynchronize());
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(copy_kernel<DT>),
+                     GET_BLOCKS(batch_input_domain.get_volume()),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     batch_input_ptr,
+                     input_zc,
+                     batch_input_domain.get_volume());
+  checkCUDA(hipDeviceSynchronize());
 }
 
 template void SingleDataLoader::load_input<float>(

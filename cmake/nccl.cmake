@@ -132,6 +132,9 @@ else()
     list(APPEND FLEXFLOW_EXT_LIBRARIES
       ${INSTALL_DIR}/lib/libnccl${LIBEXT})
     set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
+    
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/include/ DESTINATION include)
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
   endif()
 
 endif()
