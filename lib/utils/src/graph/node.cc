@@ -15,15 +15,12 @@ NodeQuery query_intersection(NodeQuery const &lhs, NodeQuery const &rhs) {
   assert(lhs != tl::nullopt && rhs != tl::nullopt);
   std::unordered_set<Node> nodes =
       intersection(allowed_values(lhs.nodes), allowed_values(rhs.nodes));
+
   NodeQuery intersection_result = NodeQuery::all();
   intersection_result.nodes = nodes;
+
   return intersection_result;
 }
-
-// NodeQuery query_intersection(NodeQuery const &lhs, NodeQuery const &rhs) {
-//   assert(lhs != tl::nullopt && rhs != tl::nullopt);
-//   return intersection(*lhs.nodes, *rhs.nodes);
-// }
 
 std::unordered_set<Node> GraphView::query_nodes(NodeQuery const &g) const {
   return this->ptr->query_nodes(g);
