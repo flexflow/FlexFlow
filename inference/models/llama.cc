@@ -24,7 +24,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                                std::string const &model_config_file_path,
                                std::string const &weight_file_path,
                                InferenceMode mode,
-                               GenerationConfig generationConfig,
+                               SamplingConfig samplingConfig,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
   Config llama_config(model_config_file_path);
@@ -212,10 +212,10 @@ void LLAMA::create_llama_model(FFModel &ff,
     output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
-    if (generationConfig.do_sample) {
-      dense = ff.scalar_truediv(dense, generationConfig.temperature, false);
+    if (samplingConfig.do_sample) {
+      dense = ff.scalar_truediv(dense, samplingConfig.temperature, false);
       Tensor softmax = ff.softmax(dense, -1);
-      output = ff.sampling(softmax, generationConfig.topp);
+      output = ff.sampling(softmax, samplingConfig.topp);
     } else {
       output = ff.arg_top_k(dense, /*k=*/1, false);
     }
