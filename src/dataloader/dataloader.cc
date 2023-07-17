@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow_dataloader.h"
+#include "flexflow/dataloader.h"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -441,16 +441,29 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(
   std::cout << std::endl;
 }
 
-void SingleDataLoader::register_cpu_tasks(void) {
+void SingleDataLoader::register_cpu_tasks(Runtime *runtime,
+                                          bool pre_register,
+                                          bool enable_control_replication) {
+  if (!pre_register) {
+    assert(runtime != NULL);
+  }
   // float Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID,
                                    "Float Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        SingleDataLoader::load_entire_dataset_from_numpy<float>>(
-        registrar, "Float Load Entire Dataset Task Numpy");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SingleDataLoader::load_entire_dataset_from_numpy<float>>(
+          registrar, "Float Load Entire Dataset Task Numpy");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SingleDataLoader::load_entire_dataset_from_numpy<float>>(registrar);
+    }
   }
   // int32 Load entire dataset from numpy
   {
@@ -458,9 +471,17 @@ void SingleDataLoader::register_cpu_tasks(void) {
                                    "Int32 Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        SingleDataLoader::load_entire_dataset_from_numpy<int32_t>>(
-        registrar, "Int32 Load Entire Dataset Task Numpy");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SingleDataLoader::load_entire_dataset_from_numpy<int32_t>>(
+          registrar, "Int32 Load Entire Dataset Task Numpy");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SingleDataLoader::load_entire_dataset_from_numpy<int32_t>>(registrar);
+    }
   }
   // int64 Load entire dataset from numpy
   {
@@ -468,9 +489,17 @@ void SingleDataLoader::register_cpu_tasks(void) {
                                    "Int64 Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        SingleDataLoader::load_entire_dataset_from_numpy<int64_t>>(
-        registrar, "Int64 Load Entire Dataset Task Numpy");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SingleDataLoader::load_entire_dataset_from_numpy<int64_t>>(
+          registrar, "Int64 Load Entire Dataset Task Numpy");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SingleDataLoader::load_entire_dataset_from_numpy<int64_t>>(registrar);
+    }
   }
   // float Index load entire dataset from numpy
   {
@@ -478,9 +507,21 @@ void SingleDataLoader::register_cpu_tasks(void) {
                                    "Float Index Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        SingleDataLoader::index_load_entire_dataset_from_numpy<float>>(
-        registrar, "Float Index Load Entire Dataset Task Numpy");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SingleDataLoader::index_load_entire_dataset_from_numpy<float>>(
+          registrar, "Float Index Load Entire Dataset Task Numpy");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SingleDataLoader::index_load_entire_dataset_from_numpy<float>>(
+          registrar);
+    }
   }
   // int32 Index load entire dataset from numpy
   {
@@ -488,9 +529,21 @@ void SingleDataLoader::register_cpu_tasks(void) {
                                    "Int32 Index Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        SingleDataLoader::index_load_entire_dataset_from_numpy<int32_t>>(
-        registrar, "Int32 Index Load Entire Dataset Task Numpy");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SingleDataLoader::index_load_entire_dataset_from_numpy<int32_t>>(
+          registrar, "Int32 Index Load Entire Dataset Task Numpy");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SingleDataLoader::index_load_entire_dataset_from_numpy<int32_t>>(
+          registrar);
+    }
   }
   // int64 Index load entire dataset from numpy
   {
@@ -498,21 +551,46 @@ void SingleDataLoader::register_cpu_tasks(void) {
                                    "Int64 Index Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        SingleDataLoader::index_load_entire_dataset_from_numpy<int64_t>>(
-        registrar, "Int64 Index Load Entire Dataset Task Numpy");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SingleDataLoader::index_load_entire_dataset_from_numpy<int64_t>>(
+          registrar, "Int64 Index Load Entire Dataset Task Numpy");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SingleDataLoader::index_load_entire_dataset_from_numpy<int64_t>>(
+          registrar);
+    }
   }
 }
 
-void SingleDataLoader::register_gpu_tasks(void) {
+void SingleDataLoader::register_gpu_tasks(Runtime *runtime,
+                                          bool pre_register,
+                                          bool enable_control_replication) {
+  if (!pre_register) {
+    assert(runtime != NULL);
+  }
   // float load input
   {
     TaskVariantRegistrar registrar(PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID,
                                    "Float Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SingleDataLoader::load_input<float>>(
-        registrar, "Float Load Input Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<SingleDataLoader::load_input<float>>(
+          registrar, "Float Load Input Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SingleDataLoader::load_input<float>>(
+          registrar);
+    }
   }
   // int32 load input
   {
@@ -520,8 +598,16 @@ void SingleDataLoader::register_gpu_tasks(void) {
                                    "Int32 Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SingleDataLoader::load_input<int32_t>>(
-        registrar, "Int32 Load Input Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<SingleDataLoader::load_input<int32_t>>(
+          registrar, "Int32 Load Input Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SingleDataLoader::load_input<int32_t>>(
+          registrar);
+    }
   }
   // int64 load input
   {
@@ -529,8 +615,16 @@ void SingleDataLoader::register_gpu_tasks(void) {
                                    "Int64 Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SingleDataLoader::load_input<int64_t>>(
-        registrar, "Int64 Load Input Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<SingleDataLoader::load_input<int64_t>>(
+          registrar, "Int64 Load Input Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SingleDataLoader::load_input<int64_t>>(
+          registrar);
+    }
   }
 }
 

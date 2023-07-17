@@ -256,7 +256,7 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--json",
-        default="flexflow_python.json",
+        default="flexflow_jupyter.json",
         dest="json",
         help="Configuration file of flexflow_python",
     )

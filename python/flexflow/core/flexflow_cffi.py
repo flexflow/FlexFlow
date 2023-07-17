@@ -25,7 +25,8 @@ from .flexflow_logger import fflogger
 from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
 _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
 if not _FF_BUILD_DOCS:
-  from .flexflow_cffi_header import ffc, ffi
+  from .flexflowlib import ffi, flexflow_library
+  ffc = flexflow_library.lib
 
 ff_tracing_id = 200
 

@@ -5,7 +5,6 @@ channels:
 dependencies:
   - python>=3.6
   - cffi>=1.11.0
-  - numpy>=1.16.0
   - Pillow
   - pybind11
   - cmake-build-extension
@@ -13,3 +12,4 @@ dependencies:
   - pip:
     - qualname>=0.1.0
     - keras_preprocessing>=1.1.2
+    - numpy>=1.16.0
