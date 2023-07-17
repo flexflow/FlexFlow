@@ -55,7 +55,7 @@ std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
   // }
 
   // return result;
-  std::cout<<"5"<<std::endl;
+  std::cout << "5" << std::endl;
   NOT_IMPLEMENTED();
 }
 
@@ -147,7 +147,7 @@ JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {
 
 std::unordered_set<Node>
     JoinedNodeView::query_nodes(NodeQuery const &query) const {
-  return unique(values(query_keys(query.nodes, this->mapping)));//query_keys(query.nodes, this->mapping)->std::unordered_map<x, Node>
+  return unique(values(query_keys(query.nodes, this->mapping)));
 }
 
 std::pair<std::unordered_set<Node>, std::unordered_set<Node>>

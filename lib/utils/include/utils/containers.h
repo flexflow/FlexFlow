@@ -172,7 +172,8 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
   return result;
 }
 
-template <typename K, typename V, typename F> std::unordered_map<K, V> filter_keys(bidict<K, V> const & m, F const & f) {
+template <typename K, typename V, typename F>
+std::unordered_map<K, V> filter_keys(bidict<K, V> const &m, F const &f) {
   std::unordered_map<K, V> result;
   for (auto const &kv : m) {
     if (f(kv.first)) {
@@ -182,8 +183,8 @@ template <typename K, typename V, typename F> std::unordered_map<K, V> filter_ke
   return result;
 }
 
-
-template <typename K, typename V, typename F> std::unordered_map<K, V> filter_values(bidict<K, V> const & m, F const & f) {
+template <typename K, typename V, typename F>
+std::unordered_map<K, V> filter_values(bidict<K, V> const &m, F const &f) {
   std::unordered_map<K, V> result;
   for (auto const &kv : m) {
     if (f(kv.second)) {
@@ -192,7 +193,6 @@ template <typename K, typename V, typename F> std::unordered_map<K, V> filter_va
   }
   return result;
 }
-
 
 template <typename K,
           typename V,
@@ -230,9 +230,6 @@ std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
   }
   return result;
 }
-
-
-
 
 template <typename C>
 std::vector<typename C::key_type> keys(C const &c) {

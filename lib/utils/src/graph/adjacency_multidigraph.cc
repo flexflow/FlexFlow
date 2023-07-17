@@ -42,11 +42,13 @@ void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
 std::unordered_set<MultiDiEdge>
     AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   std::unordered_set<MultiDiEdge> result;
-  for (auto const &src_kv : query_keys(q.srcs, this->adjacency)) { //query_keys(q.srcs, this->adjacency) return map<node, map<node, map<nodeport, set<nodeport>>>>
+  for (auto const &src_kv : query_keys(q.srcs, this->adjacency)) {
     for (auto const &dst_kv : query_keys(q.dsts, src_kv.second)) {
       for (auto const &srcIdx_kv : query_keys(q.srcIdxs, dst_kv.second)) {
         for (auto const &dstIdx : apply_query(q.dstIdxs, srcIdx_kv.second)) {
-          std::cout<<"add edge "<<src_kv.first.value()<<" "<<dst_kv.first.value()<<" "<<srcIdx_kv.first.value()<<" "<<dstIdx.value()<<std::endl;
+          std::cout << "add edge " << src_kv.first.value() << " "
+                    << dst_kv.first.value() << " " << srcIdx_kv.first.value()
+                    << " " << dstIdx.value() << std::endl;
           result.insert({src_kv.first, dst_kv.first, srcIdx_kv.first, dstIdx});
         }
       }
