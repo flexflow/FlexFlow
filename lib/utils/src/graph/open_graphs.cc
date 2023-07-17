@@ -3,13 +3,13 @@
 
 namespace FlexFlow {
 
-InputMultiDiEdgeQuery InputMultiDiEdgeQuery::all(){
+InputMultiDiEdgeQuery InputMultiDiEdgeQuery::all() {
   return {matchall<Node>(), matchall<NodePort>()};
 }
 
- OutputMultiDiEdgeQuery  OutputMultiDiEdgeQuery::all() {
+OutputMultiDiEdgeQuery OutputMultiDiEdgeQuery::all() {
   return {matchall<Node>(), matchall<NodePort>()};
- }
+}
 
 std::unordered_set<Node>
     OpenMultiDiGraphView::query_nodes(NodeQuery const &q) const {
