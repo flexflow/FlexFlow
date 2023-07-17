@@ -45,13 +45,7 @@ fi
 echo "Building $image docker image for CUDA $cuda_version"
 
 # modify cuda version to available versions
-if [[ "$cuda_version" == @(11.1|11.3|11.7) ]]; then
-  cuda_version_input=${cuda_version}.1
-elif [[ "$cuda_version" == @(11.2|11.5|11.6) ]]; then 
-  cuda_version_input=${cuda_version}.2
-elif [[ "$cuda_version" == @(11.8) ]]; then 
-  cuda_version_input=${cuda_version}.0
-else
+if [[ "$cuda_version" != @(11.1|11.3|11.7|11.2|11.5|11.6|11.8) ]]; then
   echo "cuda_version is not supported, please choose among {11.1|11.2|11.3|11.5|11.6|11.7|11.8}"
   exit 1
 fi
