@@ -487,7 +487,6 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
 
   // TODO: remove this
   cudaStreamSynchronize(stream);
-
 }
 
 ArgTopKMeta::ArgTopKMeta(FFHandler handler, Op const *op)
