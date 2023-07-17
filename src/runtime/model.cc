@@ -4069,8 +4069,16 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "RequestManager Load Tokens");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
-        registrar, "RequestManager Load Tokens Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
+          registrar, "RequestManager Load Tokens Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_tokens_task>(
+          registrar);
+    }
   }
   // RequestManager load position tokens
   {
@@ -4078,8 +4086,16 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "RequestManager Load Position tokens");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<RequestManager::load_positions_task>(
-        registrar, "RequestManager Load Position Tokens Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_positions_task>(
+          registrar, "RequestManager Load Position Tokens Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_positions_task>(
+          registrar);
+    }
   }
   // ElementUnary task
   {
@@ -4180,29 +4196,57 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(EXPERTS_INIT_TASK_ID, "Experts Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Experts::init_task>(
-        registrar, "Experts Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Experts::init_task>(
+          registrar, "Experts Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Experts::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(EXPERTS_FWD_TASK_ID, "Experts Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Experts::forward_task>(
-        registrar, "Experts Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::forward_task>(
+          registrar, "Experts Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(EXPERTS_BWD_TASK_ID, "Experts Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Experts::backward_task>(
-        registrar, "Experts Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::backward_task>(
+          registrar, "Experts Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::backward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(EXPERTS_INF_TASK_ID, "Experts Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Experts::inference_task>(
-        registrar, "Experts Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::inference_task>(
+          registrar, "Experts Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::inference_task>(registrar);
+    }
   }
   // Cast
   {
@@ -4789,15 +4833,29 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID, "rmsnorm_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, RMSNorm::init_task>(
-        registrar, "rmsnorm_init_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, RMSNorm::init_task>(
+          registrar, "rmsnorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, RMSNorm::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(RMSNROM_FWD_TASK_ID, "rmsnorm_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<RMSNorm::forward_task>(
-        registrar, "rmsnorm_fwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::forward_task>(
+          registrar, "rmsnorm_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");
@@ -4832,8 +4890,15 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(LINEAR_INF_TASK_ID, "Linear Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::inference_task>(
-        registrar, "Linear Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Linear::inference_task>(
+          registrar, "Linear Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Linear::inference_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "Linear Forward");
@@ -4953,8 +5018,17 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<InferenceResult, Softmax::inference_task>(
-        registrar, "softmax_inf_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        Softmax::inference_task>(
+          registrar, "softmax_inf_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, Softmax::inference_task>(
+          registrar);
+    }
   }
   // compute Loss
   {
@@ -5275,31 +5349,62 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ARG_TOPK_INIT_TASK_ID, "ArgTopK Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, ArgTopK::init_task>(
-        registrar, "ArgTopK Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ArgTopK::init_task>(
+          registrar, "ArgTopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ArgTopK::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ARG_TOPK_INF_TASK_ID, "ArgTopK Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<InferenceResult, ArgTopK::inference_task>(
-        registrar, "ArgTopK Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgTopK::inference_task>(
+          registrar, "ArgTopK Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, ArgTopK::inference_task>(
+          registrar);
+    }
   }
   // BeamTopk task
   {
     TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
-        registrar, "BeamTopK Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
+          registrar, "BeamTopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, BeamTopK::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeamTopK Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BeamInferenceResult,
-                                      BeamTopK::inference_task>(
-        registrar, "BeamTopK Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        BeamTopK::inference_task>(
+          registrar, "BeamTopK Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     BeamTopK::inference_task>(registrar);
+    }
   }
   // Transpose task
   {
@@ -5400,18 +5505,35 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "IncMultiHeadSelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *,
-                                      IncMultiHeadSelfAttention::init_task>(
-        registrar, "IncMultiHeadSelfAttention Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *,
+                                        IncMultiHeadSelfAttention::init_task>(
+          registrar, "IncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     IncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                                    "IncMultiHeadSelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        IncMultiHeadSelfAttention::inference_task>(
-        registrar, "IncMultiHeadSelfAttention Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          IncMultiHeadSelfAttention::inference_task>(
+          registrar, "IncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<IncMultiHeadSelfAttention::inference_task>(
+          registrar);
+    }
   }
   // MultiQueryAttention task
   {
@@ -5419,18 +5541,36 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "IncMultiQuerySelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *,
-                                      IncMultiQuerySelfAttention::init_task>(
-        registrar, "IncMultiQuerySelfAttention Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *,
+                                        IncMultiQuerySelfAttention::init_task>(
+          registrar, "IncMultiQuerySelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     IncMultiQuerySelfAttention::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(INC_MULTIQUERY_SELF_ATTENTION_INF_TASK_ID,
                                    "IncMultiQuerySelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        IncMultiQuerySelfAttention::inference_task>(
-        registrar, "IncMultiQuerySelfAttention Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          IncMultiQuerySelfAttention::inference_task>(
+          registrar, "IncMultiQuerySelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<IncMultiQuerySelfAttention::inference_task>(
+              registrar);
+    }
   }
   // speculative MultiHeadAttention task
   {
@@ -5439,9 +5579,19 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         "Speculative IncMultiHeadSelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *,
-                                      SpecIncMultiHeadSelfAttention::init_task>(
-        registrar, "Speculative IncMultiHeadSelfAttention Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          OpMeta *,
+          SpecIncMultiHeadSelfAttention::init_task>(
+          registrar, "Speculative IncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     SpecIncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(
@@ -5449,9 +5599,17 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         "Speculative IncMultiHeadSelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        SpecIncMultiHeadSelfAttention::inference_task>(
-        registrar, "Speculative IncMultiHeadSelfAttention Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SpecIncMultiHeadSelfAttention::inference_task>(
+          registrar, "Speculative IncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SpecIncMultiHeadSelfAttention::inference_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(
@@ -5459,9 +5617,19 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         "TreeIncMultiHeadSelfAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *,
-                                      TreeIncMultiHeadSelfAttention::init_task>(
-        registrar, "TreeIncMultiHeadSelfAttention Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          OpMeta *,
+          TreeIncMultiHeadSelfAttention::init_task>(
+          registrar, "TreeIncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     TreeIncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(
@@ -5469,9 +5637,17 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         "TreeIncMultiHeadSelfAttention Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        TreeIncMultiHeadSelfAttention::inference_task>(
-        registrar, "TreeIncMultiHeadSelfAttention Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeIncMultiHeadSelfAttention::inference_task>(
+          registrar, "TreeIncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeIncMultiHeadSelfAttention::inference_task>(registrar);
+    }
   }
   // NoOp
   {
@@ -5521,8 +5697,15 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<FusedOp::inference_task>(
-        registrar, "FusedOp Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::inference_task>(
+          registrar, "FusedOp Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::inference_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(FUSEDOP_BWD_TASK_ID, "FusedOp Backward");
@@ -5634,8 +5817,15 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Replicate::init_task>(
-        registrar, "Replicate init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Replicate::init_task>(
+          registrar, "Replicate init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Replicate::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REPLICATE_FWD_TASK_ID, "Replicate Forward");
@@ -5670,8 +5860,15 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(REDUCTION_INIT_TASK_ID, "Reduction Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Reduction::init_task>(
-        registrar, "Reduction init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Reduction::init_task>(
+          registrar, "Reduction init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Reduction::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REDUCTION_FWD_TASK_ID, "Reduction Forward");
@@ -5706,22 +5903,43 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ALLREDUCE_INIT_TASK_ID, "AllReduce Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
-        registrar, "AllReduce init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
+          registrar, "AllReduce init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, AllReduce::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<AllReduce::forward_task>(
-        registrar, "AllReduce Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::forward_task>(
+          registrar, "AllReduce Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<AllReduce::backward_task>(
-        registrar, "AllReduce Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::backward_task>(
+          registrar, "AllReduce Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::backward_task>(registrar);
+    }
   }
   // FusedParallelOp
   {
@@ -6006,9 +6224,18 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(TENSOR_EQUAL_TASK_ID, "Tensor Equal");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<bool,
-                                      ParallelTensorBase::tensor_equal_task>(
-        registrar, "Tensor Equal Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<bool,
+                                        ParallelTensorBase::tensor_equal_task>(
+          registrar, "Tensor Equal Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<bool, ParallelTensorBase::tensor_equal_task>(
+              registrar);
+    }
   }
 }
 
