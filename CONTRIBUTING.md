@@ -180,10 +180,10 @@ jobs:
           submodules: recursive
 
       - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.8
+        uses: Jimver/cuda-toolkit@v0.2.11
         id: cuda-toolkit
         with:
-          cuda: "11.1.1"
+          cuda: "11.8.0"
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
           use-github-cache: "false"
 
@@ -206,7 +206,7 @@ Next, the `concurrency` section allows you to control how many copies of the sam
 
 Finally, we define the jobs that will run when the workflow is triggered. Each job is specified by adding an indented entry to the `jobs:` section, and will run in parallel in a isolated container. Multiple jobs in the same workflow do not directly share files. The `runs-on` option allows you to control what type of runner to use for the job. In the example, we use `runs-on: ubuntu-20.04` to run the job on a VM with Ubuntu 20.04. You can also set up the workflow to run on a self-hosted machine by using the option `runs-on: self-hosted` and following the instructions at [this link](https://docs.github.com/en/actions/hosting-your-own-runners/adding-self-hosted-runners) to connect the self hosted machine to the repository. 
 
-Each step in a job will be executed sequentially, and if it fails, the remaining steps will be cancelled and the job will be marked as `failed`. Each step is specified by either reusing a Github action or running a shell command (or a script file). For instance, in the example above, the first step uses the Github Action `actions/checkout@v3` to check out the repository, the second step uses the `Jimver/cuda-toolkit@v0.2.8` action to install CUDA, whereas the third step runs a bash script stored in the repo at the path `.github/workflows/helpers/install_dependencies.sh`.
+Each step in a job will be executed sequentially, and if it fails, the remaining steps will be cancelled and the job will be marked as `failed`. Each step is specified by either reusing a Github action or running a shell command (or a script file). For instance, in the example above, the first step uses the Github Action `actions/checkout@v3` to check out the repository, the second step uses the `Jimver/cuda-toolkit@v0.2.11` action to install CUDA, whereas the third step runs a bash script stored in the repo at the path `.github/workflows/helpers/install_dependencies.sh`.
 
 ## Contributing to FlexFlow
 We want to make contributing to this project as easy and transparent as possible.
