@@ -110,11 +110,6 @@ typename It::value_type product(It begin, It end) {
       });
 }
 
-// template <typename Container>
-// bool contains(Container const &c, typename Container::C::key_type const &e) {
-//   return find<Container>(c, e) != c.cend();
-// }
-
 template <typename Container>
 bool contains(Container const &c, typename Container::value_type const &e) {
   return find<Container>(c, e) != c.cend();
@@ -169,6 +164,7 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
       result.insert(kv);
     }
   }
+  std::cout<<"filter_keys,result.size():"<<result.size()<<std::endl;
   return result;
 }
 
