@@ -164,7 +164,6 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
       result.insert(kv);
     }
   }
-  std::cout<<"filter_keys,result.size():"<<result.size()<<std::endl;
   return result;
 }
 

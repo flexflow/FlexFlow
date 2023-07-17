@@ -6,7 +6,6 @@ namespace FlexFlow {
 Node AdjacencyMultiDiGraph::add_node() {
   Node node{this->next_node_idx};
   adjacency[node];
-  std::cout << "add node " << node.value() << std::endl;
   this->next_node_idx++;
   return node;
 }
@@ -42,27 +41,6 @@ void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
 std::unordered_set<MultiDiEdge>
     AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   std::unordered_set<MultiDiEdge> result;
-  // //std::cout<<"q.srcs:"<<q.srcs.value()<<" and q.dsts:"<<q.dsts.value()<< " and q.srcIdxs:"<<q.srcIdxs.value()<<" and q.dstIdxs:"<<q.dstIdxs.value()<<std::endl;
-  // std::cout<<"AdjacencyMultiDiGraph::query_edges"<<std::endl;
-  // for(auto kv : this->adjacency) {
-  //   std::cout<<"this->adjacency node1:"<<kv.first.value()<<std::endl;
-  //   for(auto node_nodeport: kv.second) {
-  //     std::cout<<"this->adjacency node2:"<<node_nodeport.first.value()<<std::endl;
-  //     for(auto nodeport_nodeport: node_nodeport.second) {
-  //       std::cout<<"this->adjacency NodePort1:"<<nodeport_nodeport.first.value()<<std::endl;
-  //       for(auto nodeport: nodeport_nodeport.second) {
-  //         std::cout<<"this->adjacency NodePort2:"<<nodeport.value()<<std::endl;
-  //       }
-  //     }
-  //   }
-  //   std::cout<<"*********"<<std::endl;
-  // }
-
-  // auto src_kvs = query_keys(q.srcs, this->adjacency);
-  // std::cout<<"x.size:"<<src_kvs.size()<<std::endl;
-  // for(auto const &x:src_kvs) {
-  //   std::cout<<"x.first:"<<x.first.value() <<" and x.second.size()"<<x.second.size()<<std::endl;
-  // }
   for (auto const &src_kv : query_keys(q.srcs, this->adjacency)) {
     for (auto const &dst_kv : query_keys(q.dsts, src_kv.second)) {
       for (auto const &srcIdx_kv : query_keys(q.srcIdxs, dst_kv.second)) {
@@ -73,7 +51,6 @@ std::unordered_set<MultiDiEdge>
     }
   
   }
-  std::cout<<"query_edges, result.size():"<<result.size()<<std::endl;
   return result;
 }
 
