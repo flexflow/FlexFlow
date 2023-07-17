@@ -3,25 +3,17 @@
 
 #include "cow_ptr_t.h"
 #include "node.h"
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 #include "utils/unique.h"
 #include <unordered_set>
 
 namespace FlexFlow {
 
-struct UndirectedEdge : public use_visitable_cmp<UndirectedEdge> {
-public:
-  UndirectedEdge() = delete;
-  UndirectedEdge(Node const &src, Node const &dst);
-
-public:
-  Node smaller, bigger;
+struct UndirectedEdge {
+  Node smaller;
+  Node bigger;
 };
 FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
-
-} // namespace FlexFlow
-
-namespace FlexFlow {
 
 struct UndirectedEdgeQuery {
   query_set<Node> nodes;

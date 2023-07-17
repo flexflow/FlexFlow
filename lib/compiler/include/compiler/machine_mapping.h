@@ -2,7 +2,6 @@
 #define _FLEXFLOW_COMPILER_MACHINE_MAPPING_H
 
 #include "cost_estimate.h"
-#include "optimizer_graph.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph.h"
@@ -16,10 +15,9 @@ struct MachineMapping {
                                          MachineMapping const &s2);
   static MachineMapping infinity();
 
-  req<float> runtime;
+  float runtime;
   req<std::unordered_map<Node, MachineView>> machine_views;
 };
-
 FF_VISITABLE_STRUCT(MachineMapping, runtime, machine_views);
 
 struct MachineMappingRuntimeCmp {
@@ -36,7 +34,5 @@ MachineMapping optimal_cost(
     std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs);
 
 } // namespace FlexFlow
-
-MAKE_VISIT_HASHABLE(::FlexFlow::MachineMapping);
 
 #endif

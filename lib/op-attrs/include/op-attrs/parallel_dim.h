@@ -1,15 +1,17 @@
 #ifndef _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_DIM_H
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_DIM_H
 
+#include "utils/type_traits.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
 struct ParallelDim {
-  req<size_t> size;
-  req<int> degree;
+  size_t size;
+  int degree;
   req<bool> is_replica_dim;
 };
+static_assert(is_list_initializable<req<bool>, bool>::value, "");
 FF_VISITABLE_STRUCT(ParallelDim, size, degree, is_replica_dim);
 
 bool is_valid(ParallelDim const &);

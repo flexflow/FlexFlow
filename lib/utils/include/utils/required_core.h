@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 
 #include "type_traits_core.h"
+#include <type_traits>
 #include <vector>
 
 namespace FlexFlow {
@@ -65,8 +66,42 @@ private:
   T m_value;
 };
 
+
+template <typename T, typename Enable = void> struct required_v2 : public required<T> { using required<T>::required; };
+
 template <typename T>
-using req = required<T>;
+struct required_v2<
+  T, 
+  typename std::enable_if<std::is_class<T>::value>::type
+> : public T {
+
+  using T::T;
+  required_v2() = delete;
+  required_v2(T const &);
+  required_v2(T &&t);
+
+  template <typename TT>
+  required_v2(
+      TT const &tt,
+      typename std::enable_if<std::is_convertible<TT, T>::value>::type * = 0)
+      : required_v2(static_cast<T>(tt)) { }
+
+  operator T() const;
+
+  template <typename TTT,
+            typename std::enable_if<(is_static_castable<T, TTT>::value &&
+                                     !std::is_same<T, TTT>::value),
+                                    bool>::type = true>
+  explicit operator TTT() const {
+    return static_cast<TTT>(static_cast<T>(*this));
+  }
+};
+
+template <typename T>
+using req = required_v2<T>;
+
+template <typename T>
+using req2 = required_v2<T>;
 
 template <typename T>
 struct remove_req {
@@ -88,6 +123,7 @@ static_assert(
         void_t<decltype(std::declval<req<int>>() == std::declval<int>())>,
         void>::value,
     "");
+static_assert(is_list_initializable<req<bool>, bool>::value, "");
 
 } // namespace FlexFlow
 

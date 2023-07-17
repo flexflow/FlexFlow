@@ -17,18 +17,14 @@ optional<Node> find_bottleneck_node(DiGraphView const &);
 struct Parallel;
 
 struct Serial {
-  std::vector<variant<Parallel, Node>> children;
+  req<std::vector<variant<Parallel, Node>>> children;
 };
-
-FF_VISITABLE_STRUCT(Serial, children);
-MAKE_VISIT_HASHABLE(Serial);
-
 struct Parallel {
-  std::vector<variant<Serial, Node>> children;
+  req<std::vector<variant<Serial, Node>>> children;
 };
-
+static_assert(sizeof(Serial) == sizeof(req<std::vector<variant<Parallel, Node>>>), "");
+FF_VISITABLE_STRUCT(Serial, children);
 FF_VISITABLE_STRUCT(Parallel, children);
-MAKE_VISIT_HASHABLE(Parallel);
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 

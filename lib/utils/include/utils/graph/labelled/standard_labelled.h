@@ -3,6 +3,9 @@
 
 #include "node_labelled.h"
 #include "standard_labelled_interfaces.h"
+#include "labelled_open.h"
+#include "labelled_upward_open.h"
+#include "labelled_downward_open.h"
 
 namespace FlexFlow {
 
@@ -18,6 +21,15 @@ public:
       operator=(LabelledMultiDiGraphView const &) = default;
 
   operator NodeLabelledMultiDiGraphView<NodeLabel>() const;
+
+  template <typename InputLabel, typename OutputLabel>
+  operator LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>() const;
+
+  template <typename InputLabel>
+  operator LabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>() const;
+
+  template <typename OutputLabel>
+  operator LabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, OutputLabel>() const;
 
   NodeLabel const &at(Node const &n) const {
     return this->ptr->at(n);

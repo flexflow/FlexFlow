@@ -14,9 +14,7 @@ struct Strategy {
   ParallelComputationGraph pcg;
   MachineMapping machine_mapping;
 };
-
 FF_VISITABLE_STRUCT(Strategy, pcg, machine_mapping);
-MAKE_VISIT_HASHABLE(Strategy);
 
 struct StrategyRuntimeCmp {
   bool operator()(Strategy const &, Strategy const &);
@@ -40,13 +38,4 @@ Strategy
 
 } // namespace FlexFlow
 
-namespace std {
-
-template <>
-struct hash<::FlexFlow::Strategy> {
-  size_t operator()(::FlexFlow::Strategy const &) const;
-};
-
-} // namespace std
-
-#endif /* _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H */
+#endif 
