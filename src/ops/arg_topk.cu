@@ -481,12 +481,6 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
     cudaEventDestroy(t_end);
     printf("[ArgTopK] forward time = %.2lfms\n", elapsed);
   }
-<<<<<<< HEAD
-
-  // TODO: remove this
-  cudaStreamSynchronize(stream);
-=======
->>>>>>> parent of b359ce92 (temp fix to bug)
 }
 
 ArgTopKMeta::ArgTopKMeta(FFHandler handler, Op const *op)
