@@ -3,6 +3,7 @@
 
 #include "optional.h"
 #include "stack_vector.h"
+#include "containers.h"
 
 namespace FlexFlow {
 
@@ -26,6 +27,28 @@ struct stack_map {
     } else {
       this->contents.at(idx.value()).second = v;
     }
+  }
+
+  size_t size() const {
+    return this->contents.size();
+  }
+
+  bool empty() const {
+    return this->contents.empty();
+  }
+
+  friend bool operator==(stack_map const &lhs, stack_map const &rhs) {
+    if (lhs.size() != rhs.size()) {
+      return false;
+    }
+    return lhs.sorted() == rhs.sorted();
+  }
+
+  friend bool operator!=(stack_map const &lhs, stack_map const &rhs) {
+    if (lhs.size() != rhs.size()) {
+      return true;
+    }
+    return lhs.sorted() != rhs.sorted();
   }
 
   V &at(K const &k) {
@@ -70,6 +93,15 @@ struct stack_map {
   }
 
 private:
+
+  std::vector<std::pair<K,V>> sorted() const {
+    auto comparator = [](std::pair<K, V> const& lhs, std::pair<K,V> const& rhs) {
+      return lhs.first < rhs.first;
+    };
+
+    return sorted_by(this->contents, comparator);
+  }
+
   optional<size_t> get_idx(K const &k) const {
     for (std::size_t idx = 0; idx < contents.size(); idx++) {
       if (contents.at(idx).first == k) {
@@ -82,6 +114,7 @@ private:
 
   stack_vector<std::pair<K, V>, MAXSIZE> contents;
 };
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(stack_map<int, int, 10>);
 
 } // namespace FlexFlow
 

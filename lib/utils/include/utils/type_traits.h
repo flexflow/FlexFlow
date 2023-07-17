@@ -17,23 +17,23 @@ namespace FlexFlow {
   "https://isocpp.github.io/CppCoreGuidelines/"                                \
   "CppCoreGuidelines#Rc-copy-virtual"
 
-#define CHECK_RC_COPY_VIRTUAL_COMPLIANT(...)                                   \
+#define CHECK_RC_COPY_VIRTUAL_COMPLIANT(...)                              \
   static_assert(                                                               \
-      !std::is_copy_constructible<__VA_ARGS__>::value,                         \
-      #__VA_ARGS__                                                             \
+      !std::is_copy_constructible<__VA_ARGS__>::value,                            \
+      #__VA_ARGS__                                                                \
       " should not be copy-constructible. See " RC_COPY_VIRTUAL_MSG);          \
-  static_assert(!std::is_copy_assignable<__VA_ARGS__>::value,                  \
-                #__VA_ARGS__                                                   \
+  static_assert(!std::is_copy_assignable<__VA_ARGS__>::value,                     \
+                #__VA_ARGS__                                                      \
                 " should not be copy-assignable. See " RC_COPY_VIRTUAL_MSG);   \
   static_assert(                                                               \
-      !std::is_move_constructible<__VA_ARGS__>::value,                         \
-      #__VA_ARGS__                                                             \
+      !std::is_move_constructible<__VA_ARGS__>::value,                            \
+      #__VA_ARGS__                                                                \
       " should not be move-constructible. See " RC_COPY_VIRTUAL_MSG);          \
-  static_assert(!std::is_move_assignable<__VA_ARGS__>::value,                  \
-                #__VA_ARGS__                                                   \
+  static_assert(!std::is_move_assignable<__VA_ARGS__>::value,                     \
+                #__VA_ARGS__                                                      \
                 " should not be move-assignable. See " RC_COPY_VIRTUAL_MSG);   \
-  static_assert(std::has_virtual_destructor<__VA_ARGS__>::value,               \
-                #__VA_ARGS__                                                   \
+  static_assert(std::has_virtual_destructor<__VA_ARGS__>::value,                  \
+                #__VA_ARGS__                                                      \
                 " should have a virtual destructor. See " RC_COPY_VIRTUAL_MSG)
 
 template <typename T>
@@ -43,13 +43,6 @@ struct is_rc_copy_virtual_compliant
                                        std::is_move_constructible<T>,
                                        std::is_move_assignable<T>>>,
                   std::has_virtual_destructor<T>> {};
-
-template <typename T, typename Enable = void>
-struct is_clonable : std::false_type {};
-
-template <typename T>
-struct is_clonable<T, void_t<decltype(std::declval<T>().clone())>>
-    : std::true_type {};
 
 template <typename T, typename Enable = void>
 struct is_streamable : std::false_type {};
@@ -120,6 +113,12 @@ struct elements_satisfy<Cond, std::tuple<>> : std::true_type {};
 static_assert(
     elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");
 
+template<typename C, typename Tag>
+struct supports_iterator_tag : std::is_base_of<Tag, typename std::iterator_traits<typename C::iterator>::iterator_category> {};
+
+#define CHECK_SUPPORTS_ITERATOR_TAG(TAG, ...)           \
+    static_assert(supports_iterator_tag<__VA_ARGS__, TAG>::value, #__VA_ARGS__ " does not support required iterator tag " #TAG);
+
 template <typename T>
 using is_default_constructible = std::is_default_constructible<T>;
 
@@ -144,30 +143,30 @@ struct is_well_behaved_value_type_no_hash
                   is_copy_assignable<T>,
                   is_move_assignable<T>> {};
 
-#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(...)                               \
-  static_assert(is_copy_constructible<__VA_ARGS__>::value,                     \
-                #__VA_ARGS__ " should be copy-constructible");                 \
-  static_assert(is_move_constructible<__VA_ARGS__>::value,                     \
-                #__VA_ARGS__ " should be move-constructible");                 \
-  static_assert(is_copy_assignable<__VA_ARGS__>::value,                        \
-                #__VA_ARGS__ " should be copy-assignable");                    \
-  static_assert(is_move_assignable<__VA_ARGS__>::value,                        \
+#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(...)                          \
+  static_assert(is_copy_constructible<__VA_ARGS__>::value,                        \
+                #__VA_ARGS__ " should be copy-constructible");                    \
+  static_assert(is_move_constructible<__VA_ARGS__>::value,                        \
+                #__VA_ARGS__ " should be move-constructible");                    \
+  static_assert(is_copy_assignable<__VA_ARGS__>::value,                           \
+                #__VA_ARGS__ " should be copy-assignable");                       \
+  static_assert(is_move_assignable<__VA_ARGS__>::value,                           \
                 #__VA_ARGS__ " should be move-assignable")
 
-#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(...)                             \
-  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(__VA_ARGS__);                            \
-  static_assert(is_equal_comparable<__VA_ARGS__>::value,                       \
-                #__VA_ARGS__ " should support operator==");                    \
-  static_assert(is_neq_comparable<__VA_ARGS__>::value,                         \
+#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(...)                        \
+  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(__VA_ARGS__);                               \
+  static_assert(is_equal_comparable<__VA_ARGS__>::value,                          \
+                #__VA_ARGS__ " should support operator==");                       \
+  static_assert(is_neq_comparable<__VA_ARGS__>::value,                            \
                 #__VA_ARGS__ " should support operator!=");
 
 template <typename T>
 struct is_well_behaved_value_type
     : conjunction<is_well_behaved_value_type_no_hash<T>, is_hashable<T>> {};
 
-#define CHECK_WELL_BEHAVED_VALUE_TYPE(...)                                     \
-  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(__VA_ARGS__);                          \
-  static_assert(is_hashable<__VA_ARGS__>::value,                               \
+#define CHECK_WELL_BEHAVED_VALUE_TYPE(...)                                \
+  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(__VA_ARGS__);                             \
+  static_assert(is_hashable<__VA_ARGS__>::value,                                  \
                 #__VA_ARGS__ " should support std::hash")
 
 } // namespace FlexFlow
