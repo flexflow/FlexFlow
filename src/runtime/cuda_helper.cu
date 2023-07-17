@@ -211,15 +211,14 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 __host__ void
     print_tensor(T const *ptr, size_t num_elements, char const *prefix) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   int idx = 0;
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
@@ -238,14 +237,14 @@ __host__ void print_beam_tensor(T const *ptr,
                                 int skip,
                                 int channel,
                                 char const *prefix) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * channel * skip,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * channel * skip, cudaMemcpyDeviceToHost));
+  checkCUDA(cudaMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * channel * skip, cudaMemcpyDeviceToHost, stream));
   // checkCUDA(cudaDeviceSynchronize());
   int idx = 0;
   printf("%s", prefix);
@@ -266,14 +265,14 @@ __host__ void print_beam_tensor(T const *ptr,
 template <typename T>
 __host__ void
     save_tensor(T const *ptr, size_t num_elements, char const *file_name) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
+  checkCUDA(cudaMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   // checkCUDA(cudaDeviceSynchronize());
 
   FILE *tensor_file;
@@ -288,26 +287,24 @@ __host__ void
 
 template <typename T>
 __host__ T *download_tensor(T const *ptr, size_t num_elements) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   return host_ptr;
 }
 
 template <typename T>
 __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   assert(dst != nullptr);
   checkCUDA(
-      cudaMemcpy(dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+      cudaMemcpyAsync(dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   return true;
 }
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(

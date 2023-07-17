@@ -411,9 +411,6 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  // TODO: remove this
-  cudaStreamSynchronize(stream);
-
   // Domain in1_domain = runtime->get_index_space_domain(
   //     ctx, task->regions[0].region.get_index_space());
   //   Domain out1_domain = runtime->get_index_space_domain(
@@ -484,9 +481,12 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
     cudaEventDestroy(t_end);
     printf("[ArgTopK] forward time = %.2lfms\n", elapsed);
   }
+<<<<<<< HEAD
 
   // TODO: remove this
   cudaStreamSynchronize(stream);
+=======
+>>>>>>> parent of b359ce92 (temp fix to bug)
 }
 
 ArgTopKMeta::ArgTopKMeta(FFHandler handler, Op const *op)
