@@ -17,14 +17,29 @@
 #include "kernels/attention_kernels.h"
 #include "kernels/profiling.h"
 #include "realm_allocator.h"
+#include "model.h"
 
 namespace FlexFlow {
+
+// declare Legion names
+using Legion::Runtime;
+using Legion::Context;
+using Legion::Task;
+using Legion::PhysicalRegion;
 
 using namespace FlexFlow::Kernels::MultiHeadAttention;
 
 enum Slots {
   ATTRS,
   PROFILING,
+  KVSEQLENGTH,
+  QSIZE,
+  KSIZE,
+  VSIZE,
+  QPROJSIZE,
+  KPROJSIZE,
+  VPROJSIZE,
+  OPROJSIZE,
   QUERY,
   KEY,
   VALUE,
@@ -39,11 +54,11 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   b.bind(QUERY, input_tensor(0));
   b.bind(KEY, input_tensor(1));
   b.bind(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, param_tensor(0));
+  b.bind(WEIGHTS, weight_tensor(0));
   b.bind(OUTPUT, output_tensor(0));
 
   b.bind_arg(ATTRS, attrs);
-  b.bind_arg(PROFILING, enable_profiling());
+  b.bind_arg(PROFILING, profiling_settings());
 
   return {ATTENTION_INIT_TASK_ID, b};
 }
@@ -54,8 +69,8 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
   b.bind(QUERY, input_tensor(0));
   b.bind(KEY, input_tensor(1));
   b.bind(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, param_tensor(0));
-  b.bind(OUTPUT, param_tensor(0));
+  b.bind(WEIGHTS, weight_tensor(0));
+  b.bind(OUTPUT, output_tensor(0));
   b.bind_arg(PER_DEVICE_STATE, per_device_op_state<MHAPerDeviceState>());
 
   return {ATTENTION_FWD_TASK_ID, b};
@@ -70,8 +85,8 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   b.bind_grad(QUERY, input_tensor(0));
   b.bind_grad(KEY, input_tensor(1));
   b.bind_grad(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, param_tensor(0));
-  b.bind_grad(WEIGHTS, param_tensor(0));
+  b.bind(WEIGHTS, weight_tensor(0));
+  b.bind_grad(WEIGHTS, weight_tensor(0));
   b.bind_grad(OUTPUT, output_tensor(0));
 
   return {ATTENTION_BWD_TASK_ID, b};
@@ -147,294 +162,299 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-Tensor FFModel::multihead_attention(const Tensor query,
-                                    const Tensor key,
-                                    const Tensor value,
-                                    int embed_dim,
-                                    int num_heads,
-                                    int kdim,
-                                    int vdim,
-                                    float dropout,
-                                    bool bias,
-                                    bool add_bias_kv,
-                                    bool add_zero_attn,
-                                    Initializer *kernel_initializer,
-                                    char const *name) {
-  Layer *li = new Layer(this,
-                        OP_MULTIHEAD_ATTENTION,
-                        DT_FLOAT,
-                        name,
-                        3 /*inputs*/,
-                        1 /*weights*/,
-                        1 /*outputs*/,
-                        query,
-                        key,
-                        value);
-  {
-    int numdims = query->num_dims;
-    int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdims; i++) {
-      dims[i] = query->dims[i];
-    }
-    dims[0] = embed_dim;
-    li->outputs[0] = create_tensor_legion_ordering(
-        numdims, dims, DT_FLOAT, li, 0, true /*create_grad*/);
-  }
-  {
-    // Compute weight size
-    int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
-        oProjSize = embed_dim;
-    int qSize = query->dims[0], kSize = key->dims[0], vSize = value->dims[0];
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
-    li->weights[0] = create_weight_legion_ordering(2,
-                                                   dims,
-                                                   DT_FLOAT,
-                                                   li,
-                                                   true /*create_grad*/,
-                                                   kernel_initializer,
-                                                   CHOSEN_SYNC_TYPE);
-  }
-  li->data_type = DT_FLOAT;
-  li->add_int_property("embed_dim", embed_dim);
-  li->add_int_property("num_heads", num_heads);
-  li->add_int_property("kdim", kdim);
-  li->add_int_property("vdim", vdim);
-  li->add_int_property("bias", bias);
-  li->add_int_property("add_bias_kv", add_bias_kv);
-  li->add_int_property("add_zero_attn", add_zero_attn);
-  li->add_float_property("dropout", dropout);
-  layers.push_back(li);
-  return li->outputs[0];
-}
+// Tensor FFModel::multihead_attention(const Tensor query,
+//                                     const Tensor key,
+//                                     const Tensor value,
+//                                     int embed_dim,
+//                                     int num_heads,
+//                                     int kdim,
+//                                     int vdim,
+//                                     float dropout,
+//                                     bool bias,
+//                                     bool add_bias_kv,
+//                                     bool add_zero_attn,
+//                                     Initializer *kernel_initializer,
+//                                     char const *name) {
+//   Layer *li = new Layer(this,
+//                         OP_MULTIHEAD_ATTENTION,
+//                         DT_FLOAT,
+//                         name,
+//                         3 /*inputs*/,
+//                         1 /*weights*/,
+//                         1 /*outputs*/,
+//                         query,
+//                         key,
+//                         value);
+//   {
+//     int numdims = query->num_dims;
+//     int dims[MAX_TENSOR_DIM];
+//     for (int i = 0; i < numdims; i++) {
+//       dims[i] = query->dims[i];
+//     }
+//     dims[0] = embed_dim;
+//     li->outputs[0] = create_tensor_legion_ordering(
+//         numdims, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+//   }
+//   {
+//     // Compute weight size
+//     int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
+//         oProjSize = embed_dim;
+//     int qSize = query->dims[0], kSize = key->dims[0], vSize = value->dims[0];
+//     int qParas = qProjSize * qSize;
+//     int kParas = kProjSize * kSize;
+//     int vParas = vProjSize * vSize;
+//     int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
+//     int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
+//     li->weights[0] = create_weight_legion_ordering(2,
+//                                                    dims,
+//                                                    DT_FLOAT,
+//                                                    li,
+//                                                    true /*create_grad*/,
+//                                                    kernel_initializer,
+//                                                    CHOSEN_SYNC_TYPE);
+//   }
+//   li->data_type = DT_FLOAT;
+//   li->add_int_property("embed_dim", embed_dim);
+//   li->add_int_property("num_heads", num_heads);
+//   li->add_int_property("kdim", kdim);
+//   li->add_int_property("vdim", vdim);
+//   li->add_int_property("bias", bias);
+//   li->add_int_property("add_bias_kv", add_bias_kv);
+//   li->add_int_property("add_zero_attn", add_zero_attn);
+//   li->add_float_property("dropout", dropout);
+//   layers.push_back(li);
+//   return li->outputs[0];
+// }
 
-MultiHeadAttention::MultiHeadAttention(FFModel &model,
-                                       LayerID const &_layer_guid,
-                                       const ParallelTensor _query,
-                                       const ParallelTensor _key,
-                                       const ParallelTensor _value,
-                                       int _embed_dim,
-                                       int _num_heads,
-                                       int _kdim,
-                                       int _vdim,
-                                       float _dropout,
-                                       bool _bias,
-                                       bool _add_bias_kv,
-                                       bool _add_zero_attn,
-                                       bool allocate_weights,
-                                       char const *name)
-    // Initializer* _bias_initializer)
-    : Op(model,
-         OP_MULTIHEAD_ATTENTION,
-         DT_FLOAT,
-         name,
-         3 /*inputs*/,
-         1 /*weights*/,
-         1 /*outputs*/,
-         _query,
-         _key,
-         _value),
-      attrs(_embed_dim,
-            _num_heads,
-            _kdim,
-            _vdim,
-            _dropout,
-            _bias,
-            _add_bias_kv,
-            _add_zero_attn),
-      qSize(_query->dims[0].size), kSize(_key->dims[0].size),
-      vSize(_value->dims[0].size), qProjSize(_kdim),
-      qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size) {
-  // overwrite layer_guid
-  layer_guid = _layer_guid;
+// MultiHeadAttention::MultiHeadAttention(FFModel &model,
+//                                        LayerID const &_layer_guid,
+//                                        const ParallelTensor _query,
+//                                        const ParallelTensor _key,
+//                                        const ParallelTensor _value,
+//                                        int _embed_dim,
+//                                        int _num_heads,
+//                                        int _kdim,
+//                                        int _vdim,
+//                                        float _dropout,
+//                                        bool _bias,
+//                                        bool _add_bias_kv,
+//                                        bool _add_zero_attn,
+//                                        bool allocate_weights,
+//                                        char const *name)
+//     // Initializer* _bias_initializer)
+//     : Op(model,
+//          OP_MULTIHEAD_ATTENTION,
+//          DT_FLOAT,
+//          name,
+//          3 /*inputs*/,
+//          1 /*weights*/,
+//          1 /*outputs*/,
+//          _query,
+//          _key,
+//          _value),
+//       attrs(_embed_dim,
+//             _num_heads,
+//             _kdim,
+//             _vdim,
+//             _dropout,
+//             _bias,
+//             _add_bias_kv,
+//             _add_zero_attn),
+//       qSize(_query->dims[0].size), kSize(_key->dims[0].size),
+//       vSize(_value->dims[0].size), qProjSize(_kdim),
+//       qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size) {
+//   // overwrite layer_guid
+//   layer_guid = _layer_guid;
 
-  // assert key and value have the same sequence length
-  assert(_key->dims[1] == _value->dims[1]);
-  numOutputs = 1;
-  int numdim = _query->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _query->dims[i];
-  }
-  dims[0].size = _embed_dim;
-  // Currently require no parallelism along this dim
-  assert(dims[0].degree == 1);
-  if (allocate_weights) {
-    // Create weight tensor
-    int num_dims = inputs[0]->num_dims;
-    // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = kProjSize(attrs) * this->kSize;
-    int vParas = vProjSize(attrs) * this->vSize;
-    int oParas = oProjSize(attrs) *
-                 (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
-    ParallelDim dims[3];
-    dims[0] = inputs[0]->dims[num_dims - 2];
-    dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->attrs.num_heads;
-    dims[2].size = qParas + kParas + vParas + oParas;
-    dims[2].degree = 1;
-    dims[2].parallel_idx = -1;
-    int seed = std::rand();
-    Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 DT_FLOAT,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
-  }
+//   // assert key and value have the same sequence length
+//   assert(_key->dims[1] == _value->dims[1]);
+//   numOutputs = 1;
+//   int numdim = _query->num_dims;
+//   ParallelDim dims[MAX_TENSOR_DIM];
+//   for (int i = 0; i < numdim; i++) {
+//     dims[i] = _query->dims[i];
+//   }
+//   dims[0].size = _embed_dim;
+//   // Currently require no parallelism along this dim
+//   assert(dims[0].degree == 1);
+//   if (allocate_weights) {
+//     // Create weight tensor
+//     int num_dims = inputs[0]->num_dims;
+//     // Compute weight size
+//     int qParas = this->qProjSize * this->qSize;
+//     int kParas = kProjSize(attrs) * this->kSize;
+//     int vParas = vProjSize(attrs) * this->vSize;
+//     int oParas = oProjSize(attrs) *
+//                  (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
+//     ParallelDim dims[3];
+//     dims[0] = inputs[0]->dims[num_dims - 2];
+//     dims[0].size = dims[0].degree;
+//     dims[1] = inputs[0]->dims[num_dims - 1];
+//     dims[1].size = this->attrs.num_heads;
+//     dims[2].size = qParas + kParas + vParas + oParas;
+//     dims[2].degree = 1;
+//     dims[2].parallel_idx = -1;
+//     int seed = std::rand();
+//     Initializer *initializer = new GlorotUniform(seed);
+// #ifdef USE_NCCL
+//     ParameterSyncType comm_type = ParameterSyncType::NCCL;
+// #else
+//     ParameterSyncType comm_type = ParameterSyncType::PS;
+// #endif
+//     weights[0] = model.create_parallel_weight<3>(dims,
+//                                                  DT_FLOAT,
+//                                                  NULL /*owner_op*/,
+//                                                  true /*create_grad*/,
+//                                                  initializer,
+//                                                  comm_type);
+//   }
 
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _query->num_dims, dims, DT_FLOAT, this);
-  /* for (int i = 0; i < numdim; i++) { */
-  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
-  /* } */
-  /* // Check correctness */
-  /* assert(check_output_input_weight_parallel_dims()); */
-}
+//   outputs[0] = model.create_parallel_tensor_legion_ordering(
+//       _query->num_dims, dims, DT_FLOAT, this);
+//   /* for (int i = 0; i < numdim; i++) { */
+//   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
+//   /* } */
+//   /* // Check correctness */
+//   /* assert(check_output_input_weight_parallel_dims()); */
+// }
 
-MultiHeadAttention::MultiHeadAttention(FFModel &model,
-                                       const ParallelTensor _query,
-                                       const ParallelTensor _key,
-                                       const ParallelTensor _value,
-                                       const ParallelTensor _weight,
-                                       int _embed_dim,
-                                       int _num_heads,
-                                       int _kdim,
-                                       int _vdim,
-                                       float _dropout,
-                                       bool _bias,
-                                       bool _add_bias_kv,
-                                       bool _add_zero_attn,
-                                       bool allocate_weights,
-                                       char const *name)
-    // Initializer* _bias_initializer)
-    : Op(model,
-         OP_MULTIHEAD_ATTENTION,
-         DT_FLOAT,
-         name,
-         3 /*inputs*/,
-         1 /*weights*/,
-         1 /*outputs*/,
-         _query,
-         _key,
-         _value,
-         _weight),
-      attrs(_embed_dim,
-            _num_heads,
-            _kdim,
-            _vdim,
-            _dropout,
-            _bias,
-            _add_bias_kv,
-            _add_zero_attn),
-      qSize(_query->dims[0].size), kSize(_key->dims[0].size),
-      vSize(_value->dims[0].size), qProjSize(_kdim),
-      qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
-// bias_initializer(_bias_initializer)
-{
-  // assert key and value have the same sequence length
-  assert(_key->dims[1] == _value->dims[1]);
-  numOutputs = 1;
-  int numdim = _query->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _query->dims[i];
-  }
-  // assert key and value have the same sequence length
-  assert(_key->dims[1] == _value->dims[1]);
-  dims[0].size = _embed_dim;
-  // Currently require no parallelism along this dim
-  assert(dims[0].degree == 1);
-  if (allocate_weights) {
-    // Create weight tensor
-    int num_dims = inputs[0]->num_dims;
-    // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = kProjSize(attrs) * this->kSize;
-    int vParas = vProjSize(attrs) * this->vSize;
-    int oParas = oProjSize(attrs) *
-                 (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
-    ParallelDim dims[3];
-    dims[0] = inputs[0]->dims[num_dims - 2];
-    dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->attrs.num_heads;
-    dims[2].size = qParas + kParas + vParas + oParas;
-    int seed = std::rand();
-    Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 DT_FLOAT,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
-  }
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _query->num_dims, dims, DT_FLOAT, this);
+// MultiHeadAttention::MultiHeadAttention(FFModel &model,
+//                                        const ParallelTensor _query,
+//                                        const ParallelTensor _key,
+//                                        const ParallelTensor _value,
+//                                        const ParallelTensor _weight,
+//                                        int _embed_dim,
+//                                        int _num_heads,
+//                                        int _kdim,
+//                                        int _vdim,
+//                                        float _dropout,
+//                                        bool _bias,
+//                                        bool _add_bias_kv,
+//                                        bool _add_zero_attn,
+//                                        bool allocate_weights,
+//                                        char const *name)
+//     // Initializer* _bias_initializer)
+//     : Op(model,
+//          OP_MULTIHEAD_ATTENTION,
+//          DT_FLOAT,
+//          name,
+//          3 /*inputs*/,
+//          1 /*weights*/,
+//          1 /*outputs*/,
+//          _query,
+//          _key,
+//          _value,
+//          _weight),
+//       attrs(_embed_dim,
+//             _num_heads,
+//             _kdim,
+//             _vdim,
+//             _dropout,
+//             _bias,
+//             _add_bias_kv,
+//             _add_zero_attn),
+//       qSize(_query->dims[0].size), kSize(_key->dims[0].size),
+//       vSize(_value->dims[0].size), qProjSize(_kdim),
+//       qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
+// // bias_initializer(_bias_initializer)
+// {
+//   // assert key and value have the same sequence length
+//   assert(_key->dims[1] == _value->dims[1]);
+//   numOutputs = 1;
+//   int numdim = _query->num_dims;
+//   ParallelDim dims[MAX_TENSOR_DIM];
+//   for (int i = 0; i < numdim; i++) {
+//     dims[i] = _query->dims[i];
+//   }
+//   // assert key and value have the same sequence length
+//   assert(_key->dims[1] == _value->dims[1]);
+//   dims[0].size = _embed_dim;
+//   // Currently require no parallelism along this dim
+//   assert(dims[0].degree == 1);
+//   if (allocate_weights) {
+//     // Create weight tensor
+//     int num_dims = inputs[0]->num_dims;
+//     // Compute weight size
+//     int qParas = this->qProjSize * this->qSize;
+//     int kParas = kProjSize(attrs) * this->kSize;
+//     int vParas = vProjSize(attrs) * this->vSize;
+//     int oParas = oProjSize(attrs) *
+//                  (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
+//     ParallelDim dims[3];
+//     dims[0] = inputs[0]->dims[num_dims - 2];
+//     dims[0].size = dims[0].degree;
+//     dims[1] = inputs[0]->dims[num_dims - 1];
+//     dims[1].size = this->attrs.num_heads;
+//     dims[2].size = qParas + kParas + vParas + oParas;
+//     int seed = std::rand();
+//     Initializer *initializer = new GlorotUniform(seed);
+// #ifdef USE_NCCL
+//     ParameterSyncType comm_type = ParameterSyncType::NCCL;
+// #else
+//     ParameterSyncType comm_type = ParameterSyncType::PS;
+// #endif
+//     weights[0] = model.create_parallel_weight<3>(dims,
+//                                                  DT_FLOAT,
+//                                                  NULL /*owner_op*/,
+//                                                  true /*create_grad*/,
+//                                                  initializer,
+//                                                  comm_type);
+//   }
+//   outputs[0] = model.create_parallel_tensor_legion_ordering(
+//       _query->num_dims, dims, DT_FLOAT, this);
 
-  /* for (int i = 0; i < numdim; i++) { */
-  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
-  /* } */
-  /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1); */
-  /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2); */
-  // Check correctness
-  /* assert(check_output_input_weight_parallel_dims()); */
-}
+//   /* for (int i = 0; i < numdim; i++) { */
+//   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
+//   /* } */
+//   /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1); */
+//   /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2); */
+//   // Check correctness
+//   /* assert(check_output_input_weight_parallel_dims()); */
+// }
 
-static PerDeviceOpState *init_task(Task const *task,
+static MHAPerDeviceState *init_task(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
   int kvSeqLength = acc.get_argument<int>(KVSEQLENGTH);
+  int qSize = acc.get_argument<int>(QSIZE);
   int kSize = acc.get_argument<int>(KSIZE);
   int vSize = acc.get_argument<int>(VSIZE);
   int qProjSize = acc.get_argument<int>(QPROJSIZE);
+  int kProjSize = acc.get_argument<int>(KPROJSIZE);
+  int vProjSize = acc.get_argument<int>(VPROJSIZE);
+  int oProjSize = acc.get_argument<int>(OPROJSIZE);
 
-  FFHandler handle = *((FFHandler const *)task->local_args);
 
-  auto query = acc.get_tensor<READ_ONLY>(QUERY);
-  auto key = acc.get_tensor<READ_ONLY>(KEY);
-  auto value = acc.get_tensor<READ_ONLY>(VALUE);
-  auto weight = acc.get_tensor<READ_ONLY>(WEIGHTS);
-  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
+  PerDeviceFFHandle handle = *((PerDeviceFFHandle const *)task->local_args);
 
-  int qoSeqLength = query.dims[legion_dim_t(1)];
+  auto query = acc.get_tensor<Permissions::RO>(QUERY);
+  auto key = acc.get_tensor<Permissions::RO>(KEY);
+  auto value = acc.get_tensor<Permissions::RO>(VALUE);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
-  int num_samples = query.shape[2];
-  assert(qoSeqLength == query.shape[1]);
-  assert(qSize == query.shape[0]);
-  assert(num_samples == key.shape[2]);
-  assert(kvSeqLength == key.shape[1]);
-  assert(kSize == key.shape[0]);
-  assert(num_samples == value.shape[2]);
-  assert(kvSeqLength == value.shape[1]);
-  assert(vSize == value.shape[0]);
-  int num_heads = weight.shape[1];
-  assert(num_samples == output.shape[2]);
-  assert(qoSeqLength == output.shape[1]);
-  assert(oProjSize(attrs) == output.shape[0]);
+  int qoSeqLength = query.shape[legion_dim_t(1)];
 
-  MHAPerDeviceState *m = new MHAPerDeviceState(handle,
+  int num_samples = query.shape[legion_dim_t(2)];
+  assert(qoSeqLength == query.shape[legion_dim_t(1)]);
+  assert(qSize == query.shape[legion_dim_t(0)]);
+  assert(num_samples == key.shape[legion_dim_t(2)]);
+  assert(kvSeqLength == key.shape[legion_dim_t(1)]);
+  assert(kSize == key.shape[legion_dim_t(0)]);
+  assert(num_samples == value.shape[legion_dim_t(2)]);
+  assert(kvSeqLength == value.shape[legion_dim_t(1)]);
+  assert(vSize == value.shape[legion_dim_t(0)]);
+  int num_heads = weight.shape[legion_dim_t(1)];
+  assert(num_samples == output.shape[legion_dim_t(2)]);
+  assert(qoSeqLength == output.shape[legion_dim_t(1)]);
+  assert(oProjSize(attrs) == output.shape[legion_dim_t(0)]);
+
+  MHAPerDeviceState *m = init_kernel(handle,
                                                get_gpu_memory_allocator(task),
                                                num_samples,
                                                num_heads,
@@ -442,9 +462,9 @@ static PerDeviceOpState *init_task(Task const *task,
                                                kSize,
                                                vSize,
                                                qProjSize,
-                                               kProjSize(attrs),
-                                               vProjSize(attrs),
-                                               oProjSize(attrs),
+                                               kProjSize,
+                                               vProjSize,
+                                               oProjSize,
                                                qoSeqLength,
                                                kvSeqLength,
                                                attrs.add_bias_kv);
@@ -505,13 +525,13 @@ static void forward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
-  auto query = acc.get_tensor<READ_ONLY>(QUERY);
-  auto key = acc.get_tensor<READ_ONLY>(KEY);
-  auto value = acc.get_tensor<READ_ONLY>(VALUE);
-  auto weight = acc.get_tensor<READ_ONLY>(WEIGHTS);
-  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
+  auto query = acc.get_tensor<FlexFlow::Permissions::RO>(QUERY);
+  auto key = acc.get_tensor<FlexFlow::Permissions::RO>(KEY);
+  auto value = acc.get_tensor<FlexFlow::Permissions::RO>(VALUE);
+  auto weight = acc.get_tensor<FlexFlow::Permissions::RO>(WEIGHTS);
+  auto output = acc.get_tensor<FlexFlow::Permissions::WO>(OUTPUT);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
 
   profile(forward_kernel,
@@ -607,19 +627,19 @@ static void backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
-  auto query = acc.get_tensor<READ_ONLY>(QUERY);
-  auto key = acc.get_tensor<READ_ONLY>(KEY);
-  auto value = acc.get_tensor<READ_ONLY>(VALUE);
-  auto weight = acc.get_tensor<READ_ONLY>(WEIGHTS);
+  auto query = acc.get_tensor<FlexFlow::Permissions::RO>(QUERY);
+  auto key = acc.get_tensor<FlexFlow::Permissions::RO>(KEY);
+  auto value = acc.get_tensor<FlexFlow::Permissions::RO>(VALUE);
+  auto weight = acc.get_tensor<FlexFlow::Permissions::RO>(WEIGHTS);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
 
-  auto output_grad = acc.get_tensor_grad<READ_ONLY>(OUTPUT);
-  auto weight_grad = acc.get_tensor_grad<READ_WRITE>(WEIGHTS);
-  auto query_grad = acc.get_tensor_grad<READ_WRITE>(QUERY);
-  auto key_grad = acc.get_tensor_grad<READ_WRITE>(KEY);
-  auto value_grad = acc.get_tensor_grad<READ_WRITE>(VALUE);
+  auto output_grad = acc.get_tensor_grad<FlexFlow::Permissions::RO>(OUTPUT);
+  auto weight_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(WEIGHTS);
+  auto query_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(QUERY);
+  auto key_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(KEY);
+  auto value_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(VALUE);
 
   float *key_grad_ptr =
       (key_grad == query_grad) ? nullptr : key_grad.get_float_ptr();
@@ -798,7 +818,7 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
   init.add_input_slot(QUERY);
   init.add_input_slot(KEY);
   init.add_input_slot(VALUE);
-  init.add_param_slot(WEIGHTS);
+  init.add_weight_slot(WEIGHTS);
   init.add_output_slot(OUTPUT);
 
   register_task(
@@ -812,7 +832,7 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   fwd.add_input_slot(QUERY);
   fwd.add_input_slot(KEY);
   fwd.add_input_slot(VALUE);
-  fwd.add_param_slot(WEIGHTS);
+  fwd.add_weight_slot(WEIGHTS);
   fwd.add_output_slot(OUTPUT);
 
   register_task(ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, fwd_task);
@@ -829,7 +849,7 @@ void register_task<ATTENTION_BWD_TASK_ID>() {
   bwd.add_input_slot(VALUE);
   bwd.add_input_slot(VALUE);
 
-  bwd.add_param_slot(WEIGHTS);
+  bwd.add_weight_slot(WEIGHTS);
   bwd.add_param_grad_slot(WEIGHTS);
 
   bwd.add_output_grad_slot(OUTPUT);

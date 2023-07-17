@@ -49,7 +49,7 @@ namespace Kernels {
 namespace MultiHeadAttention {
 
 MHAPerDeviceState init_kernel(PerDeviceFFHandle const &,
-                              Allocator const &,
+                              std::unique_ptr<IAllocator> const &,
                               int num_samples,
                               int num_heads,
                               int qSize,

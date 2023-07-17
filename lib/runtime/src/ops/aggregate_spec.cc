@@ -15,6 +15,7 @@
 
 #include "aggregate_spec.h"
 #include "kernels/aggregate_spec_kernels.h"
+#include "task_spec/device_specific_arg.h"
 
 namespace FlexFlow {
 
@@ -158,7 +159,7 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PER_DEVICE_STATE,
+  binding.bind_device_specific_arg(PER_DEVICE_STATE,
                    per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_FWD_TASK_ID, binding};
@@ -180,7 +181,7 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PER_DEVICE_STATE,
+  binding.bind_device_specific_arg(PER_DEVICE_STATE,
                    per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_BWD_TASK_ID, binding};
@@ -263,7 +264,7 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state =
-      acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_device_specific_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   int n = attrs.n;
@@ -385,7 +386,7 @@ static void forward_task(Legion::Task const *task,
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state =
-      acc.get_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_device_specific_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   int n = attrs.n;
@@ -506,7 +507,7 @@ void register_task<AGG_SPEC_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<AggregateSpecAttrs>(ATTRS);
-  fwd.add_arg_slot<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_unchecked_arg_slot<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
   fwd.add_input_slot(GATE_PREDS);
