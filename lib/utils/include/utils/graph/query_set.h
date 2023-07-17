@@ -13,7 +13,7 @@ template <typename T>
 struct query_set {
   query_set() = delete;
   query_set(T const &query) : query({query}) {}
-  
+
   query_set(std::unordered_set<T> const &query) : query(query) {}
 
   query_set(optional<std::unordered_set<T>> const &query) : query(query) {}
@@ -70,7 +70,7 @@ template <typename C,
           typename K = typename C::key_type,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_keys(query_set<K> const &q, C const &m) {
-  if(is_matchall(q)) {
+  if (is_matchall(q)) {
     return m;
   }
 
@@ -80,12 +80,12 @@ std::unordered_map<K, V> query_keys(query_set<K> const &q, C const &m) {
   };
 
   return filter_keys(m, filter_lambda);
-} 
+}
 
 template <typename K, typename V>
 std::unordered_map<K, V> query_keys(query_set<V> const &q,
                                     bidict<K, V> const &m) {
-  if(is_matchall(q)) {
+  if (is_matchall(q)) {
     auto filter_lambda = [](V const &value) { return true; };
     return filter_values(m, filter_lambda);
   }
@@ -103,10 +103,10 @@ template <typename C,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_values(query_set<V> const &q, C const &m) {
   std::cout << "4" << std::endl;
-  if(is_matchall(q)) {
+  if (is_matchall(q)) {
     return m;
   }
-  
+
   std::unordered_set<V> q_set = allowed_values(q);
 
   auto filter_lambda = [&q_set](V const &value) {

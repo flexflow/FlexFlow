@@ -49,7 +49,6 @@ std::unordered_set<MultiDiEdge>
         }
       }
     }
-  
   }
   return result;
 }
