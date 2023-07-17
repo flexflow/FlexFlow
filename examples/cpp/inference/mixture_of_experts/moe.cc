@@ -139,10 +139,8 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor output = ff.arg_top_k(t, /*k=*/1, /*sorted=*/false);
 
   //------------------- Initialize the inference manager ------------------
-  InferenceManager im(
-      ff.config, moeConfig.batch_size, moeConfig.num_inflight_batches);
-  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
-  im.compile_model_and_allocate_buffer(&ff, mapping);
+  InferenceManager im(ff.config, moeConfig.batch_size);
+  im.compile_model_and_allocate_buffer(&ff);
   im.init_operators_inference(&ff);
 
   //------------ Initialize the data loader and data generator ------------
@@ -162,7 +160,7 @@ void FlexFlow::top_level_task(Task const *task,
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
-  assert(im.tensor_buffer[input_pt].size() == im.max_num_inflight_batches);
+  assert(im.tensor_buffer[input_pt].size() == ffConfig.data_parallelism_degree);
   DataLoader data_loader(
       ff, moeConfig, data_generator, im.tensor_buffer[input_pt]);
 
@@ -184,13 +182,13 @@ void FlexFlow::top_level_task(Task const *task,
   std::map<int, BatchConfig *> batch_configs;
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
-  std::map<size_t, int> batch_predictions[im.max_num_inflight_batches];
+  std::map<size_t, int> batch_predictions[ffConfig.data_parallelism_degree];
 
   assert(im.max_num_tokens_per_batch == moeConfig.batch_size);
 
   // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < moeConfig.total_requests) {
-    for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
+    for (int bid = 0; bid < ffConfig.data_parallelism_degree; bid++) {
       size_t max_reqs, max_tkns;
       if (future_handlers.find(bid) == future_handlers.end()) {
         max_reqs = moeConfig.incremental_mode ? bc->MAX_NUM_REQUESTS

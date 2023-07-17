@@ -51,6 +51,9 @@ void backward_kernel(T const *output_grad_ptr,
                      num_elements);
 }
 
+template void forward_kernel<half>(half const *input_ptr,
+                                   half *output_ptr,
+                                   size_t num_elements);
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements);
@@ -63,6 +66,9 @@ template void forward_kernel<int32_t>(int32_t const *input_ptr,
 template void forward_kernel<int64_t>(int64_t const *input_ptr,
                                       int64_t *output_ptr,
                                       size_t num_elements);
+template void backward_kernel<half>(half const *output_grad_ptr,
+                                    half *input_grad_ptr,
+                                    size_t num_elements);
 template void backward_kernel<float>(float const *output_grad_ptr,
                                      float *input_grad_ptr,
                                      size_t num_elements);

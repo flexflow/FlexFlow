@@ -23,14 +23,32 @@ void LLAMA::create_llama_model(FFModel &ff,
                                InferenceManager &im,
                                std::string const &model_config_file_path,
                                std::string const &weight_file_path,
-                               int num_pipeline_stages,
                                InferenceMode mode,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
   Config llama_config(model_config_file_path);
   llama_config.printConfig();
-  //------------------------------compute machine views ------------------
+  //---------------------- parallelization setup work ----------------------
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
+  int num_transformer_layers = llama_config.n_layers;
+  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
+  int num_layers_per_pp_block =
+      num_transformer_layers / ff.config.pipeline_parallelism_degree;
+  int num_devices_per_data_parallelism_line =
+      num_devices / ff.config.data_parallelism_degree;
+
+  // std::cout << "dp: " << ff.config.data_parallelism_degree
+  //           << " tp: " << ff.config.tensor_parallelism_degree
+  //           << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
+  // std::cout << "num_devices: " << num_devices << std::endl;
+  // std::cout << "num_transformer_layers: " << num_transformer_layers
+  //           << std::endl;
+  // std::cout << "num_devices_per_data_parallelism_line: "
+  //           << num_devices_per_data_parallelism_line << std::endl;
+  // std::cout << "num layers: " << llama_config.n_layers << std::endl;
+
+  //------------------------------compute machine views ------------------
+  // single device
   std::vector<MachineView> machine_views;
   for (int i = 0; i < num_devices; i++) {
     MachineView view;
@@ -41,8 +59,8 @@ void LLAMA::create_llama_model(FFModel &ff,
     view.start_device_id = i;
     machine_views.push_back(view);
   }
+  assert(machine_views.size() == num_devices);
 
-  std::unordered_map<Tensor, std::vector<MachineView>> mapping;
   std::unordered_map<std::string, Layer *> weights_layers;
 
   Tensor input;
@@ -51,7 +69,6 @@ void LLAMA::create_llama_model(FFModel &ff,
     int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
-  mapping[input].push_back(machine_views[0]);
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
 
@@ -78,25 +95,14 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  int num_transformer_layers = llama_config.n_layers;
-  int num_transformer_layers_per_stage =
-      (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
-
   for (int i = 0; i < num_transformer_layers; i++) {
+    // set transformer layer id
+    ff.set_transformer_layer_id(i);
     // step 1: attention
     std::vector<int> axes = {2};
     Tensor att_norm =
         ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
     Layer *attention_norm = ff.layers.back();
-
-    if (i % num_transformer_layers_per_stage == 0) {
-      // Map att_norm to the next GPU
-      // since the size of att_norm is minimum across
-      // all tensors
-      mapping[att_norm].push_back(
-          machine_views[i / num_transformer_layers_per_stage]);
-    }
-
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
                            attention_norm);
@@ -209,7 +215,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff, mapping);
+  im.compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             llama_config.n_heads,

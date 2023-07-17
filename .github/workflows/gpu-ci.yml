@@ -180,7 +180,17 @@ jobs:
           ./tests/gpt_tokenizer_test.sh
 
           # Inference tests
+          export TENSOR_PARALLELISM_TESTS=ON
           ./tests/inference_tests.sh
+          cd inference
+          tar -zcvf output.tar.gz ./output
+          cd ..
+
+      - name: Save inference output as an artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: output
+          path: inference/output.tar.gz
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests

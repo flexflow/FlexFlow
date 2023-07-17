@@ -411,7 +411,8 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
 void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
                                      // float *output_ptr,
-                                     GenericTensorAccessorW const &indices) {
+                                     GenericTensorAccessorW const &indices,
+                                     int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Domain in1_domain = runtime->get_index_space_domain(
@@ -442,8 +443,8 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
   int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   int k = indices.domain.hi()[0] - indices.domain.lo()[0] +
           1; /*TODO: This prints to 5*/
-  size_t batch_size = input.domain.get_volume() / length;
-  assert(indices.domain.get_volume() / k == batch_size);
+  // size_t batch_size = input.domain.get_volume() / length;
+  // assert(indices.domain.get_volume() / k == batch_size);
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {

@@ -4,6 +4,7 @@
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
+#include "flexflow/parallel_ops/combine.h"
 
 namespace FlexFlow {
 

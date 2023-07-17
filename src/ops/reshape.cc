@@ -410,6 +410,7 @@ void Reshape::serialize(Legion::Serializer &sez) const {
     sez.serialize(this->shape_array[i]);
   }
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
 }
 
 using PCG::Node;
@@ -427,9 +428,10 @@ Node Reshape::deserialize(FFModel &ff,
     dez.deserialize(value);
     shape.push_back(value);
   }
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
 
   ReshapeParams params;
   params.shape = shape;

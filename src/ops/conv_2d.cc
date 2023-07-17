@@ -1012,6 +1012,7 @@ bool Conv2D::estimate_sync_cost(Simulator *sim,
 
 void Conv2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->out_channels);
   sez.serialize(this->kernel_h);
   sez.serialize(this->kernel_w);
@@ -1036,9 +1037,10 @@ Node Conv2D::deserialize(FFModel &ff,
       padding_w, groups;
   bool use_bias;
   ActiMode activation;
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
   dez.deserialize(out_channels);
   dez.deserialize(kernel_h);
   dez.deserialize(kernel_w);

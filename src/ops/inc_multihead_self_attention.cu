@@ -452,7 +452,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
-                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
+                  bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
