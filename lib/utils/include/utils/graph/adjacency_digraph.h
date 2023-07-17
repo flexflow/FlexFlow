@@ -2,7 +2,6 @@
 #define _FLEXFLOW_UTILS_GRAPH_ADJACENCY_DIGRAPH_H
 
 #include "digraph.h"
-#include "multidigraph.h"
 #include <unordered_map>
 #include <unordered_set>
 

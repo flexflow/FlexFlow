@@ -54,8 +54,6 @@ std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
   //   }
   // }
 
-  // return result;
-  std::cout << "5" << std::endl;
   NOT_IMPLEMENTED();
 }
 
