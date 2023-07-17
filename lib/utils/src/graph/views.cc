@@ -147,7 +147,7 @@ JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {
 
 std::unordered_set<Node>
     JoinedNodeView::query_nodes(NodeQuery const &query) const {
-  return unique(values(query_keys(query.nodes, this->mapping)));
+  return unique(values(query_keys(query.nodes, this->mapping)));//query_keys(query.nodes, this->mapping)->std::unordered_map<x, Node>
 }
 
 std::pair<std::unordered_set<Node>, std::unordered_set<Node>>

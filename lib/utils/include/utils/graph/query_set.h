@@ -4,6 +4,7 @@
 #include "utils/containers.h"
 #include "utils/exception.h"
 #include "utils/optional.h"
+#include "utils/bidict.h"
 #include <unordered_set>
 
 namespace FlexFlow {
@@ -71,15 +72,40 @@ template <typename C,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_keys(query_set<K> const &q, C const &m) {
   std::cout<<"3"<<std::endl;
-  NOT_IMPLEMENTED();
+  std::unordered_set<K> q_set = allowed_values(q);
+
+  auto filter_lambda = [&q_set](const K& key) {
+    return q_set.find(key) != q_set.end();
+  };
+
+  return filter_keys(m, filter_lambda);
 }//TODO
+
+template <typename K,
+          typename V>
+std::unordered_map<K,V> query_keys(query_set<V> const &q, bidict<K, V> const &m) {
+  std::unordered_set<V> q_set = allowed_values(q);
+
+  auto filter_lambda = [&q_set](const V& value) {
+    return q_set.find(value) != q_set.end();
+  };
+
+  return  filter_values(m, filter_lambda);
+}
+
 
 template <typename C,
           typename K = typename C::key_type,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_values(query_set<V> const &q, C const &m) {
   std::cout<<"4"<<std::endl;
-  NOT_IMPLEMENTED();
+  std::unordered_set<V> q_set = allowed_values(q);
+
+  auto filter_lambda = [&q_set](const V& value) {
+    return q_set.find(value) != q_set.end();
+  };
+
+  return filter_values(m, filter_lambda);
 }
 
 template <typename T>

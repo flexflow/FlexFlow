@@ -110,6 +110,11 @@ typename It::value_type product(It begin, It end) {
       });
 }
 
+// template <typename Container>
+// bool contains(Container const &c, typename Container::C::key_type const &e) {
+//   return find<Container>(c, e) != c.cend();
+// }
+
 template <typename Container>
 bool contains(Container const &c, typename Container::value_type const &e) {
   return find<Container>(c, e) != c.cend();
@@ -149,7 +154,7 @@ template <typename K,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
 bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
   bidict<K2, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     result.equate(f(kv.first), kv.second);
   }
   return result;
@@ -159,13 +164,35 @@ template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
                                      F const &f) {
   std::unordered_map<K, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     if (f(kv.first)) {
       result.insert(kv);
     }
   }
   return result;
 }
+
+template <typename K, typename V, typename F> std::unordered_map<K, V> filter_keys(bidict<K, V> const & m, F const & f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : m) {
+    if (f(kv.first)) {
+      result.insert(kv);
+    }
+  }
+  return result;
+}
+
+
+template <typename K, typename V, typename F> std::unordered_map<K, V> filter_values(bidict<K, V> const & m, F const & f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : m) {
+    if (f(kv.second)) {
+      result.insert(kv);
+    }
+  }
+  return result;
+}
+
 
 template <typename K,
           typename V,
@@ -203,6 +230,9 @@ std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
   }
   return result;
 }
+
+
+
 
 template <typename C>
 std::vector<typename C::key_type> keys(C const &c) {
