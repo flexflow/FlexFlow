@@ -76,27 +76,65 @@ if(NCCL_URL)
   install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
   
 else()
-  # Build NCCL from source
-  message(STATUS "Building NCCL from source")
-  list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
+  if(NCCL_PATH)
+    set(NCCL_ROOT ${NCCL_PATH})
+  else()
+    # if NCCL_PATH is not set, let's try to find it in the CUDA root
+    set(NCCL_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
+  endif()
   
-  ExternalProject_Add(${NCCL_NAME}
-   SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/${NCCL_NAME}
-   PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-   INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-   BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/libnccl${LIBEXT}
-   INSTALL_COMMAND ""
-   CONFIGURE_COMMAND ""
-   BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}"
-   BUILD_IN_SOURCE 1
-  )
+  find_library(NCCL_LIBRARY
+    NAMES libnccl${LIBEXT}
+    PATHS ${NCCL_ROOT} ${CUDA_ROOT}
+    PATH_SUFFIXES lib lib64
+    DOC "NCCL library." )
 
-  ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
-  message(STATUS "NCCL install dir: ${INSTALL_DIR}")
-  list(APPEND FLEXFLOW_INCLUDE_DIRS
-    ${INSTALL_DIR}/include)
-  list(APPEND FLEXFLOW_EXT_LIBRARIES
-    ${INSTALL_DIR}/lib/libnccl${LIBEXT})
-  set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
+  find_path(NCCL_INCLUDE_DIR
+    NAMES nccl.h
+    HINTS ${NCCL_ROOT}
+    PATH_SUFFIXES include 
+    DOC "NCCL include directory.")
+  
+  # find NCCL, set NCCL lib and include    
+  if(NCCL_LIBRARY AND NCCL_INCLUDE_DIR)
+    set(NCCL_FOUND ON)
+    set(NCCL_LIBRARIES ${NCCL_LIBRARY})
+    set(NCCL_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
+  endif()
+  
+  # find NCCL
+  if(NCCL_FOUND)
+    list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIBRARIES})
+    list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIRS})
+    message( STATUS "NCCL include : ${NCCL_INCLUDE_DIRS}" )
+    message( STATUS "NCCL libraries : ${NCCL_LIBRARIES}" )
+    add_library(nccl SHARED IMPORTED)
+  else()
+    # Build NCCL from source
+    message(STATUS "Building NCCL from source")
+    list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
+  
+    ExternalProject_Add(${NCCL_NAME}
+      SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/${NCCL_NAME}
+      PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
+      INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
+      BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/libnccl${LIBEXT}
+      INSTALL_COMMAND ""
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}"
+      BUILD_IN_SOURCE 1
+    )
+
+    ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
+    message(STATUS "NCCL install dir: ${INSTALL_DIR}")
+    list(APPEND FLEXFLOW_INCLUDE_DIRS
+      ${INSTALL_DIR}/include)
+    list(APPEND FLEXFLOW_EXT_LIBRARIES
+      ${INSTALL_DIR}/lib/libnccl${LIBEXT})
+    set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
+    
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/include/ DESTINATION include)
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
+  endif()
 
 endif()

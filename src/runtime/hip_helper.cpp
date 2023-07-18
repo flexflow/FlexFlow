@@ -1,6 +1,7 @@
 #include "flexflow/utils/hip_helper.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
+#include "realm/hip/hip_module.h"
 #include <hip/hip_runtime.h>
 #include <stdexcept>
 
@@ -19,11 +20,9 @@ hipStream_t hipGetTaskStream();
 }
 
 hipError_t get_legion_stream(hipStream_t *stream) {
-#ifdef DISABLE_LEGION_HIP_HIJACK
-  *stream = (hipStream_t)0;
-#else
-  *stream = hipGetTaskStream();
-#endif
+  *stream = Realm::Hip::get_task_hip_stream();
+  Realm::Hip::set_task_ctxsync_required(false);
+  assert(*stream != 0);
   return hipSuccess;
 }
 }; // namespace FlexFlow
