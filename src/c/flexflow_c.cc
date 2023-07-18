@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow_c.h"
+#include "flexflow/flexflow_c.h"
+#include "flexflow/dataloader.h"
 #include "flexflow/mapper.h"
-#include "flexflow_dataloader.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -1925,50 +1925,39 @@ DLRMConfig::DLRMConfig(void)
   }
 }
 
-void register_c_custom_tasks() {
+// -----------------------------------------------------------------------
+// Registration
+// -----------------------------------------------------------------------
 
-  SingleDataLoader::register_cpu_tasks();
-
-  SingleDataLoader::register_gpu_tasks();
+void flexflow_registration_callback(Machine machine,
+                                    Runtime *runtime,
+                                    std::set<Processor> const &local_procs) {
+  InputArgs const &command_args = Runtime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
+  bool enable_control_replication = true;
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--disable-control-replication")) {
+      enable_control_replication = false;
+      continue;
+    }
+  }
+  register_flexflow_internal_tasks(runtime, false, enable_control_replication);
+  SingleDataLoader::register_cpu_tasks(
+      runtime, false, enable_control_replication);
+  SingleDataLoader::register_gpu_tasks(
+      runtime, false, enable_control_replication);
 }
 
-static Context ctx;
-
-void begin_flexflow_task(int argc, char **argv) {
+void flexflow_perform_registration(void) {
+#ifdef FF_USE_NCCL
+  // Set NCCL environment
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
-
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "-ll:py")) {
-      std::cerr << "-ll:py is not supported when using native python"
-                << std::endl;
-      abort();
-    }
-  }
-
-  register_flexflow_internal_tasks();
-
-  register_c_custom_tasks();
-
-  Runtime::add_registration_callback(FFMapper::update_mappers);
-
-  // Start the runtime in background mode
-  Runtime::start(argc, argv, true /*background*/);
-  // Get the runtime now that we've started it
-  Runtime *runtime = Runtime::get_runtime();
-  // Then we can bind make this thread into an implicit top-level task
-  ctx = runtime->begin_implicit_task(PYTHON_TOP_LEVEL_TASK_ID,
-                                     0 /*mapper id*/,
-                                     Processor::LOC_PROC,
-                                     "flexflow_top_level_task",
-                                     true /*control replicable*/);
-}
-
-void finish_flexflow_task() {
-  Runtime *runtime = Runtime::get_runtime();
-  runtime->finish_implicit_task(ctx);
-  // The previous call is asynchronous so we still need to
-  // wait for the shutdown of the runtime to complete
-  Runtime::wait_for_shutdown();
+#endif
+  Runtime::perform_registration_callback(flexflow_registration_callback,
+                                         true /*global*/);
+  Runtime::perform_registration_callback(FFMapper::update_mappers,
+                                         true /*global*/);
 }

@@ -479,7 +479,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                               float *output_ptr,
                               int *indices_ptr,
                               int *parent_ptr,
-                              size_t batch_size,
+                              int batch_size,
                               int length,
                               bool sorted,
                               hipStream_t stream) {
@@ -630,7 +630,7 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
                                       float *output_ptr,
                                       int *indices_ptr,
                                       int *parent_ptr,
-                                      size_t batch_size,
+                                      int batch_size,
                                       int length,
                                       bool sorted) {
   hipStream_t stream;

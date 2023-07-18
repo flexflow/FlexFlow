@@ -82,7 +82,7 @@ public:
                              float *output_ptr,
                              int *indices_ptr,
                              int *parent_ptr,
-                             size_t batch_size,
+                             int batch_size,
                              int length,
                              bool sorted,
                              ffStream_t stream);
@@ -92,7 +92,7 @@ public:
                                      float *output_ptr,
                                      int *indices_ptr,
                                      int *parent_ptr,
-                                     size_t batch_size,
+                                     int batch_size,
                                      int length,
                                      bool sorted);
   Params get_params() const;
