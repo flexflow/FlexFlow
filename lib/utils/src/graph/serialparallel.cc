@@ -169,15 +169,13 @@ SplitAST flatten_ast(SplitAST const &ast) {
 struct ToFinalAST {
   variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
     if (node.type == SplitType::SERIAL) {
-      return Serial{
-        transform(node.children, 
-                  [](SplitAST const &s) { return narrow<Parallel, Node>(to_final_ast(s)).value(); })
-      };
+      return Serial{transform(node.children, [](SplitAST const &s) {
+        return narrow<Parallel, Node>(to_final_ast(s)).value();
+      })};
     } else {
-      return Parallel{
-        transform(node.children,
-                  [](SplitAST const &s) { return narrow<Serial, Node>(to_final_ast(s)).value(); })
-      };
+      return Parallel{transform(node.children, [](SplitAST const &s) {
+        return narrow<Serial, Node>(to_final_ast(s)).value();
+      })};
     }
   }
 
@@ -201,17 +199,18 @@ std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
 }
 
 std::unordered_set<Node> get_nodes(Serial const &serial) {
-  return set_union(transform(serial.children, 
+  return set_union(transform(
+      serial.children,
       [](variant<Parallel, Node> const child) -> std::unordered_set<Node> {
         return visit(GetNodes{}, child);
       }));
 }
 
 std::unordered_set<Node> get_nodes(Parallel const &parallel) {
-  return set_union(transform(parallel.children,
-                   [](variant<Serial, Node> const &child) {
-                     return visit(GetNodes{}, child);
-                   }));
+  return set_union(
+      transform(parallel.children, [](variant<Serial, Node> const &child) {
+        return visit(GetNodes{}, child);
+      }));
 }
 
 std::unordered_set<Node> get_nodes(Node const &node) {

@@ -7,16 +7,19 @@ namespace FlexFlow {
 
 MachineMapping MachineMapping::sequential_combine(MachineMapping const &s1,
                                                   MachineMapping const &s2) {
-  return {s1.runtime + s2.runtime, merge_maps(s1.machine_views, s2.machine_views)};
+  return {s1.runtime + s2.runtime,
+          merge_maps(s1.machine_views, s2.machine_views)};
 }
 
 MachineMapping MachineMapping::parallel_combine(MachineMapping const &s1,
                                                 MachineMapping const &s2) {
-  return {std::max(s1.runtime, s2.runtime), merge_maps(s1.machine_views, s2.machine_views)};
+  return {std::max(s1.runtime, s2.runtime),
+          merge_maps(s1.machine_views, s2.machine_views)};
 }
 
 MachineMapping MachineMapping::infinity() {
-  return {std::numeric_limits<float>::infinity(), std::unordered_map<Node, MachineView>{}};
+  return {std::numeric_limits<float>::infinity(),
+          std::unordered_map<Node, MachineView>{}};
 }
 
 bool MachineMappingRuntimeCmp::operator()(MachineMapping const &lhs,
@@ -64,15 +67,11 @@ std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
     // Sequential split
     if (get_open_sinks(g1).size() <= get_open_sources(g2).size()) {
       // get_open_sinks(*g1).size() should be 1 in perfect sp graphs
-      return {
-        get_subgraph<OpenType::UPWARD>(g, split.first),
-        get_subgraph<OpenType::CLOSED>(g, split.second)
-      };
+      return {get_subgraph<OpenType::UPWARD>(g, split.first),
+              get_subgraph<OpenType::CLOSED>(g, split.second)};
     } else {
-      return {
-        get_subgraph<OpenType::OPEN>(g, split.first),
-        get_subgraph<OpenType::DOWNWARD>(g, split.first)
-      };
+      return {get_subgraph<OpenType::OPEN>(g, split.first),
+              get_subgraph<OpenType::DOWNWARD>(g, split.first)};
     }
   } else {
     // Parallel split
@@ -152,8 +151,7 @@ struct OptimalCost {
     SubParallelComputationGraph pre_graph = subgraphs.first,
                                 post_graph = subgraphs.second;
 
-    std::unordered_set<Node> pre_graph_sinks =
-        get_closed_sinks(pre_graph);
+    std::unordered_set<Node> pre_graph_sinks = get_closed_sinks(pre_graph);
     std::unordered_set<Node> post_graph_sources =
         get_closed_sources(post_graph);
 

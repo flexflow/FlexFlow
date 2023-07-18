@@ -7,8 +7,9 @@ SerialParallelDecomposition
   return get_serial_parallel_decomposition(as_digraph(pcg));
 }
 
-std::vector<MultiDiEdge> get_sorted_node_input_edges(ParallelComputationGraph const &pcg,
-                                                     Node const &n) {
+std::vector<MultiDiEdge>
+    get_sorted_node_input_edges(ParallelComputationGraph const &pcg,
+                                Node const &n) {
   std::unordered_map<size_t, std::unordered_set<MultiDiEdge>> incoming_edges =
       get_incoming_edges_by_idx(pcg, n);
 
@@ -89,13 +90,16 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
 /*     return materialize_labelled_openmultidigraph_view( */
 /*         view_as_labelled_open_multidisubgraph(subgraph_view)); */
 /*   } else { */
-/*     LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> subgraph_view(*iview, */
-/*                                                                     nodes); */
+/*     LabelledMultiDiSubgraphView<NodeLabel, EdgeLabel> subgraph_view(*iview,
+ */
+/*                                                                     nodes);
+ */
 /*     return materialize_labelled_openmultidigraph_view( */
 /*         view_as_labelled_open_multidisubgraph<NodeLabel, */
 /*                                               EdgeLabel, */
 /*                                               InputLabel, */
-/*                                               OutputLabel>(subgraph_view)); */
+/*                                               OutputLabel>(subgraph_view));
+ */
 /*   } */
 /* } */
 
@@ -111,15 +115,15 @@ std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
 }
 
 std::unordered_set<Node> get_nodes(Serial const &serial) {
-  return set_union(transform(serial.children,
-      [](variant<Parallel, Node> const child) {
+  return set_union(
+      transform(serial.children, [](variant<Parallel, Node> const child) {
         return visit(GetNodes{}, child);
       }));
 }
 
 std::unordered_set<Node> get_nodes(Parallel const &parallel) {
-  return set_union(transform(parallel.children,
-      [](variant<Serial, Node> const child) {
+  return set_union(
+      transform(parallel.children, [](variant<Serial, Node> const child) {
         return visit(GetNodes{}, child);
       }));
 }

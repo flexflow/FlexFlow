@@ -23,22 +23,20 @@ using namespace ::mpark;
 /* template <typename T> */
 /* using holds_alternative = ::mpark::holds_alternative<T>; */
 
-template <typename Pack, typename... Args> struct pack_contains_all_of;
+template <typename Pack, typename... Args>
+struct pack_contains_all_of;
 
 template <typename HeadNeedle, typename... NeedleRest, typename... Haystack>
-struct pack_contains_all_of<pack<Haystack...>, HeadNeedle, NeedleRest...> 
-  : conjunction<
-      pack_contains_type<pack<Haystack...>, HeadNeedle>,
-      pack_contains_all_of<pack<Haystack...>, NeedleRest...>
-    > { };
+struct pack_contains_all_of<pack<Haystack...>, HeadNeedle, NeedleRest...>
+    : conjunction<pack_contains_type<pack<Haystack...>, HeadNeedle>,
+                  pack_contains_all_of<pack<Haystack...>, NeedleRest...>> {};
 
 template <typename... Haystack>
-struct pack_contains_all_of<pack<Haystack...>> 
-  : std::false_type { };
+struct pack_contains_all_of<pack<Haystack...>> : std::false_type {};
 
 template <typename... Needles, typename... Haystack>
 struct pack_contains_all_of<variant<Haystack...>, Needles...>
-  : pack_contains_all_of<pack<Haystack...>, Needles...> { };
+    : pack_contains_all_of<pack<Haystack...>, Needles...> {};
 
 template <typename T, typename... TRest, typename... Args>
 bool is(variant<Args...> const &v) {
@@ -179,10 +177,10 @@ optional<VariantOut> narrow(VariantIn const &v) {
   return visit(VariantNarrowFunctor<VariantOut>{}, v);
 }
 
-template <
-    typename... VariantOut,
-    typename VariantIn,
-    typename = std::enable_if<is_subeq_variant<variant<VariantOut...>, VariantIn>::value>>
+template <typename... VariantOut,
+          typename VariantIn,
+          typename = std::enable_if<
+              is_subeq_variant<variant<VariantOut...>, VariantIn>::value>>
 optional<variant<VariantOut...>> narrow(VariantIn const &v) {
   return visit(VariantNarrowFunctor<variant<VariantOut...>>{}, v);
 }

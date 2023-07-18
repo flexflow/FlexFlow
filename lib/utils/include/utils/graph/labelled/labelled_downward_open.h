@@ -9,10 +9,15 @@ namespace FlexFlow {
 template <typename NodeLabel, typename EdgeLabel, typename OutputLabel>
 struct LabelledDownwardOpenMultiDiGraphView {
 private:
-  using Interface = ILabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, OutputLabel>;
+  using Interface =
+      ILabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, OutputLabel>;
+
 public:
   template <typename InputLabel>
-  operator LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>() const;
+  operator LabelledOpenMultiDiGraphView<NodeLabel,
+                                        EdgeLabel,
+                                        InputLabel,
+                                        OutputLabel>() const;
 
   OutputLabel const &at(OutputMultiDiEdge const &e) const {
     return this->ptr->at(e);
@@ -30,16 +35,19 @@ public:
     return this->ptr->query_nodes(q);
   }
 
-  std::unordered_set<DownwardOpenMultiDiEdge> query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
+  std::unordered_set<DownwardOpenMultiDiEdge>
+      query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
     return this->ptr->query_edges(q);
   }
 
   template <typename BaseImpl, typename... Args>
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
                                  LabelledDownwardOpenMultiDiGraphView>::type
-      create(Args &&... args) {
-    return LabelledDownwardOpenMultiDiGraphView(std::make_shared<BaseImpl const>(std::forward<Args>(args)...));
+      create(Args &&...args) {
+    return LabelledDownwardOpenMultiDiGraphView(
+        std::make_shared<BaseImpl const>(std::forward<Args>(args)...));
   }
+
 private:
   std::shared_ptr<Interface const> ptr;
 };
@@ -47,7 +55,9 @@ private:
 template <typename NodeLabel, typename EdgeLabel, typename OutputLabel>
 struct LabelledDownardOpenMultiDiGraph {
 private:
-  using Interface = ILabelledDownwardOpenMultiDiGraph<NodeLabel, EdgeLabel, OutputLabel>;
+  using Interface =
+      ILabelledDownwardOpenMultiDiGraph<NodeLabel, EdgeLabel, OutputLabel>;
+
 public:
   OutputLabel const &at(OutputMultiDiEdge const &e) const {
     return this->ptr->at(e);
@@ -77,7 +87,8 @@ public:
     return this->ptr->query_nodes(q);
   }
 
-  std::unordered_set<DownwardOpenMultiDiEdge> query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
+  std::unordered_set<DownwardOpenMultiDiEdge>
+      query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
     return this->ptr->query_edges(q);
   }
 
@@ -92,7 +103,7 @@ public:
   void remove_node_unsafe(Node const &n) {
     return this->ptr.get_mutable()->remove_node_unsafe(n);
   }
-  
+
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
     return this->ptr.get_mutable()->add_edge(e, l);
   }
@@ -115,12 +126,11 @@ public:
       create() {
     return LabelledDownardOpenMultiDiGraph(make_unique<BaseImpl>());
   }
+
 private:
   cow_ptr_t<Interface> ptr;
 };
 
-
-
-}
+} // namespace FlexFlow
 
 #endif

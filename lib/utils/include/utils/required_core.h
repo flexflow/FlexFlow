@@ -62,7 +62,6 @@ private:
   T m_value;
 };
 
-
 template <typename T>
 struct required_inheritance_impl : public T {
   static_assert(std::is_class<T>::value, "");
@@ -76,7 +75,7 @@ struct required_inheritance_impl : public T {
   required_inheritance_impl(
       TT const &tt,
       typename std::enable_if<std::is_convertible<TT, T>::value>::type * = 0)
-      : required_inheritance_impl(static_cast<T>(tt)) { }
+      : required_inheritance_impl(static_cast<T>(tt)) {}
 
   operator T() const;
 
@@ -89,13 +88,14 @@ struct required_inheritance_impl : public T {
   }
 };
 
-template <typename T, typename Enable = void> 
+template <typename T, typename Enable = void>
 struct required : public required_wrapper_impl<T> {
   using required_wrapper_impl<T>::required_wrapper_impl;
 };
 
 template <typename T>
-struct required<T, typename std::enable_if<std::is_class<T>::value>::type> : public required_inheritance_impl<T> {
+struct required<T, typename std::enable_if<std::is_class<T>::value>::type>
+    : public required_inheritance_impl<T> {
   using required_inheritance_impl<T>::required_inheritance_impl;
 };
 

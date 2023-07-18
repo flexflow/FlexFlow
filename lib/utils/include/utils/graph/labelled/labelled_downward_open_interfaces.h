@@ -25,20 +25,22 @@ template <typename NodeLabel,
           typename OutputLabel = EdgeLabel>
 struct ILabelledDownwardOpenMultiDiGraph
     : public ILabelledDownwardOpenMultiDiGraphView<NodeLabel,
-                                                 EdgeLabel,
-                                                 OutputLabel>,
+                                                   EdgeLabel,
+                                                   OutputLabel>,
       public ILabelledMultiDiGraph<NodeLabel, EdgeLabel> {
 
-  using ILabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, OutputLabel>::
-      at;
+  using ILabelledDownwardOpenMultiDiGraphView<NodeLabel,
+                                              EdgeLabel,
+                                              OutputLabel>::at;
   using ILabelledMultiDiGraph<NodeLabel, EdgeLabel>::at;
   virtual OutputLabel &at(OutputLabel const &) = 0;
 
   using ILabelledMultiDiGraph<NodeLabel, EdgeLabel>::add_edge;
   virtual void add_edge(OutputMultiDiEdge const &, OutputLabel const &) = 0;
 };
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledDownwardOpenMultiDiGraph<int, int, int>);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(
+    ILabelledDownwardOpenMultiDiGraph<int, int, int>);
 
-}
+} // namespace FlexFlow
 
 #endif

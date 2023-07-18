@@ -35,9 +35,8 @@ public:
     return this->ptr->at(n);
   }
 
-  EdgeLabel const &at(MultiDiEdge const &e) const {
+  EdgeLabel const &at(MultiDiEdge const &e) const {}
 
-  }
 private:
   std::shared_ptr<Interface const> ptr;
 };
@@ -141,8 +140,14 @@ template <typename NodeLabel,
           typename InputLabel,
           typename OutputLabel>
 LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-as_view(LabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &g) {
-  return static_cast<LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>>(g);
+    as_view(LabelledOpenMultiDiGraph<NodeLabel,
+                                     EdgeLabel,
+                                     InputLabel,
+                                     OutputLabel> const &g) {
+  return static_cast<LabelledOpenMultiDiGraphView<NodeLabel,
+                                                  EdgeLabel,
+                                                  InputLabel,
+                                                  OutputLabel>>(g);
 }
 
 } // namespace FlexFlow

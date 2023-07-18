@@ -9,10 +9,11 @@
 
 namespace FlexFlow {
 
-using SubParallelComputationGraph = LabelledOpenMultiDiGraphView<Operator, ParallelTensor, MachineView>;
+using SubParallelComputationGraph =
+    LabelledOpenMultiDiGraphView<Operator, ParallelTensor, MachineView>;
 
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(SubParallelComputationGraph);
 
 } // namespace FlexFlow
 
-#endif 
+#endif

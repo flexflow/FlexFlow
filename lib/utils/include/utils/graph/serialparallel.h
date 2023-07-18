@@ -22,7 +22,9 @@ struct Serial {
 struct Parallel {
   req<std::vector<variant<Serial, Node>>> children;
 };
-static_assert(sizeof(Serial) == sizeof(req<std::vector<variant<Parallel, Node>>>), "");
+static_assert(sizeof(Serial) ==
+                  sizeof(req<std::vector<variant<Parallel, Node>>>),
+              "");
 FF_VISITABLE_STRUCT(Serial, children);
 FF_VISITABLE_STRUCT(Parallel, children);
 

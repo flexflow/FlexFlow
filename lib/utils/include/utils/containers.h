@@ -4,6 +4,7 @@
 #include "bidict.h"
 #include "invoke.h"
 #include "optional.h"
+#include "required_core.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -16,7 +17,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "required_core.h"
 
 namespace FlexFlow {
 
@@ -450,7 +450,8 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
 }
 
 template <typename F, typename C>
-auto transform(req<C> const &c, F const &f) -> decltype(transform(std::declval<C>(), std::declval<F>())) {
+auto transform(req<C> const &c, F const &f)
+    -> decltype(transform(std::declval<C>(), std::declval<F>())) {
   return transform(static_cast<C>(c), f);
 }
 
@@ -464,7 +465,6 @@ std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
   }
   return result;
 }
-
 
 template <typename F>
 std::string transform(std::string const &s, F const &f) {

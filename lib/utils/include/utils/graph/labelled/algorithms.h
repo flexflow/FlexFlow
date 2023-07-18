@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_ALGORITHMS_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_ALGORITHMS_H
 
+#include "labelled_downward_open.h"
 #include "labelled_open.h"
+#include "labelled_upward_open.h"
 #include "node_labelled.h"
 #include "output_labelled.h"
 #include "standard_labelled.h"
 #include "views.h"
-#include "labelled_upward_open.h"
-#include "labelled_downward_open.h"
 
 namespace FlexFlow {
 
@@ -36,7 +36,6 @@ OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> get_subgraph(
           g, nodes);
 }
 
-
-}
+} // namespace FlexFlow
 
 #endif
