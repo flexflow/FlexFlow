@@ -259,6 +259,10 @@ public:
     return this->m_size;
   }
 
+  bool empty() const {
+    return (this->m_size == 0);
+  }
+
 private:
   std::size_t m_size = 0;
   std::array<optional<T>, MAXSIZE> contents;

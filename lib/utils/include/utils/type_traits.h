@@ -45,13 +45,6 @@ struct is_rc_copy_virtual_compliant
                   std::has_virtual_destructor<T>> {};
 
 template <typename T, typename Enable = void>
-struct is_clonable : std::false_type {};
-
-template <typename T>
-struct is_clonable<T, void_t<decltype(std::declval<T>().clone())>>
-    : std::true_type {};
-
-template <typename T, typename Enable = void>
 struct is_streamable : std::false_type {};
 
 template <typename T>
@@ -119,6 +112,16 @@ struct elements_satisfy<Cond, std::tuple<>> : std::true_type {};
 
 static_assert(
     elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");
+
+template <typename C, typename Tag>
+struct supports_iterator_tag
+    : std::is_base_of<Tag,
+                      typename std::iterator_traits<
+                          typename C::iterator>::iterator_category> {};
+
+#define CHECK_SUPPORTS_ITERATOR_TAG(TAG, ...)                                  \
+  static_assert(supports_iterator_tag<__VA_ARGS__, TAG>::value,                \
+                #__VA_ARGS__ " does not support required iterator tag " #TAG);
 
 template <typename T>
 using is_default_constructible = std::is_default_constructible<T>;
