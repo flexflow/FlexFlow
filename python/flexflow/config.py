@@ -30,22 +30,6 @@ else:
   
 def flexflow_python_binding():
   return _FF_PYTHON_BINDING
-  
-# python interpreter
-_FF_PYTHON_INTERPRETER = 'legion'
-
-if 'FF_USE_NATIVE_PYTHON' not in os.environ:
-  use_native_python = 0
-else:
-  use_native_python = int(os.environ['FF_USE_NATIVE_PYTHON'])
-  
-if use_native_python:
-  _FF_PYTHON_INTERPRETER = 'native'
-else:
-  _FF_PYTHON_INTERPRETER = 'legion'
-  
-def flexflow_python_interpreter():
-  return _FF_PYTHON_INTERPRETER
 
 # build docs
 _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))

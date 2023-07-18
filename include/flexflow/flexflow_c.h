@@ -707,11 +707,11 @@ void flexflow_op_init(flexflow_op_t handle, flexflow_model_t model);
 
 void flexflow_op_forward(flexflow_op_t handle, flexflow_model_t model);
 
-void register_c_custom_tasks();
+// -----------------------------------------------------------------------
+// Registration
+// -----------------------------------------------------------------------
 
-void begin_flexflow_task(int argc, char **argv);
-
-void finish_flexflow_task();
+void flexflow_perform_registration(void);
 
 #ifdef __cplusplus
 }
