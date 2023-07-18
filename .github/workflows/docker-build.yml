@@ -55,10 +55,10 @@ jobs:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
           cuda_version: ${{ matrix.cuda_version }}
         run: |
-          # On push to master, build for all compatible architectures, so that we can publish 
+          # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
-          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
+          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ]]; then
             export FF_CUDA_ARCH=all
           else
             export FF_CUDA_ARCH=70
@@ -71,16 +71,16 @@ jobs:
           cuda_version: ${{ matrix.cuda_version }}
         run: docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
 
-      - name: Publish Docker environment image (on push to master)
+      - name: Publish Docker environment image (on push to inference)
         if: github.repository_owner == 'flexflow'
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
           cuda_version: ${{ matrix.cuda_version }}
         run: |
-          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
-            ./docker/publish.sh "flexflow-environment-${FF_GPU_BACKEND}"
-            ./docker/publish.sh "flexflow-${FF_GPU_BACKEND}"
+          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ]]; then
+            ./docker/publish.sh flexflow-environment
+            ./docker/publish.sh flexflow
           else
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi

@@ -49,7 +49,7 @@ else
 fi
 
 # Check that image exists
-docker image inspect "${image}${cuda_version}":latest > /dev/null
+docker image inspect "${image}-${FF_GPU_BACKEND}${cuda_version}":latest > /dev/null
 
 # Log into container registry
 FLEXFLOW_CONTAINER_TOKEN=${FLEXFLOW_CONTAINER_TOKEN:-}
@@ -59,8 +59,8 @@ echo "$FLEXFLOW_CONTAINER_TOKEN" | docker login ghcr.io -u flexflow --password-s
 # Tag image to be uploaded
 git_sha=${GITHUB_SHA:-$(git rev-parse HEAD)}
 if [ -z "$git_sha" ]; then echo "Commit hash cannot be detected, cannot publish the docker image to ghrc.io"; exit; fi
-docker tag "${image}${cuda_version}":latest ghcr.io/flexflow/"${image}${cuda_version}":latest
+docker tag "${image}-${FF_GPU_BACKEND}${cuda_version}":latest ghcr.io/flexflow/"${image}-${FF_GPU_BACKEND}${cuda_version}":latest
 
 # Upload image
-docker push ghcr.io/flexflow/"${image}${cuda_version}":latest
+docker push ghcr.io/flexflow/"${image}-${FF_GPU_BACKEND}${cuda_version}":latest
 
