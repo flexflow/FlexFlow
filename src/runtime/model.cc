@@ -5418,16 +5418,31 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(SAMPLING_INIT_TASK_ID, "Sampling Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Sampling::init_task>(
-        registrar, "Sampling Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Sampling::init_task>(
+          registrar, "Sampling Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Sampling::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(SAMPLING_INF_TASK_ID, "Sampling Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<InferenceResult,
-                                      Sampling::inference_task>(
-        registrar, "Sampling Inference Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        Sampling::inference_task>(
+          registrar, "Sampling Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, Sampling::inference_task>(
+          registrar);
+    }
   }
   // Transpose task
   {
