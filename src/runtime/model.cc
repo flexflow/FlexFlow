@@ -4103,9 +4103,19 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "RequestManager Prepare Next Batch");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchConfig,
-                                      RequestManager::prepare_next_batch_task>(
-        registrar, "RequestManager Prepare Next Batch Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BatchConfig,
+          RequestManager::prepare_next_batch_task>(
+          registrar, "RequestManager Prepare Next Batch Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchConfig,
+                                     RequestManager::prepare_next_batch_task>(
+          registrar);
+    }
   }
   // RequestManager prepare_next_batch_beam
   {
@@ -4113,10 +4123,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "RequestManager Prepare Next Batch (Beam)");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        BeamSearchBatchConfig,
-        RequestManager::prepare_next_batch_beam_task>(
-        registrar, "RequestManager Prepare Next Batch (Beam) Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_beam_task>(
+          registrar, "RequestManager Prepare Next Batch (Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_beam_task>(
+              registrar);
+    }
   }
   // RequestManager prepare_next_batch_init
   {
@@ -4125,10 +4145,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         "RequestManager Prepare Next Batch (Init Beam)");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        BeamSearchBatchConfig,
-        RequestManager::prepare_next_batch_init_task>(
-        registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_init_task>(
+          registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_init_task>(
+              registrar);
+    }
   }
   // RequestManager prepare_next_batch_verify
   {
@@ -4137,10 +4167,19 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         "RequestManager Prepare Next Batch (Verify)");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        TreeVerifyBatchConfig,
-        RequestManager::prepare_next_batch_verify_task>(
-        registrar, "RequestManager Prepare Next Batch (Verify) Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(
+          registrar, "RequestManager Prepare Next Batch (Verify) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(registrar);
+    }
   }
   // ElementUnary task
   {
