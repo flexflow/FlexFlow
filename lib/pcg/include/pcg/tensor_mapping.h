@@ -6,17 +6,16 @@
 
 namespace FlexFlow {
 
-struct TensorMapping 
-  : public strong_typedef<
-    TensorMapping,
-    std::unordered_map<tensor_guid_t, parallel_tensor_guid_t>
-  >
-{
+struct TensorMapping
+    : public strong_typedef<
+          TensorMapping,
+          std::unordered_map<tensor_guid_t, parallel_tensor_guid_t>> {
 public:
   TensorMapping();
 
   parallel_tensor_guid_t at(tensor_guid_t) const;
   void add_dependence(tensor_guid_t, parallel_tensor_guid_t);
+
 private:
   std::unordered_map<tensor_guid_t, parallel_tensor_guid_t> contents;
 };

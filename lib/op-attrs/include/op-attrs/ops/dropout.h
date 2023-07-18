@@ -14,6 +14,6 @@ struct DropoutAttrs {
 FF_VISITABLE_STRUCT(DropoutAttrs, rate, seed);
 CHECK_VALID_OP_ATTR(DropoutAttrs);
 
-}
+} // namespace FlexFlow
 
 #endif

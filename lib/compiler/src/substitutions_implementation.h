@@ -4,7 +4,6 @@
 #include "substitutions/substitutions_v2.h"
 
 namespace FlexFlow {
-namespace ffc {
 
 substitutions::SubstitutionPattern
     create_combine_inception(int num_convs, int num_dims, int num_parts);
@@ -35,7 +34,6 @@ substitutions::SubstitutionPattern leading_relu_branch_partition(
 substitutions::SubstitutionPattern create_linear_relu_merge(int num_dims,
                                                             bool use_bias);
 
-} // namespace ffc
 } // namespace FlexFlow
 
 #endif

@@ -120,22 +120,22 @@ bool contains_key(C const &m, typename C::key_type const &k) {
   return m.find(k) != m.end();
 }
 
-// template <typename K, typename V>
-// bool contains_l(bidict<K, V> const &m, K const &k) {
-//   return m.find(k) != m.end();//TODO(lambda): bidict does not support find
-// }
+template <typename K, typename V>
+bool contains_l(bidict<K, V> const &m, K const &k) {
+  return m.find(k) != m.end();
+}
 
-// template <typename K, typename V>
-// bool contains_r(bidict<K, V> const &m, V const &v) {
-//   return m.find(v) != m.end();
-// }
+template <typename K, typename V>
+bool contains_r(bidict<K, V> const &m, V const &v) {
+  return m.find(v) != m.end();
+}
 
 template <typename K,
           typename V,
           typename F,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
 std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
-                                     F const &f) {
+                                   F const &f) {
   std::unordered_map<K2, V> result;
   for (auto const &kv : m) {
     result.insert({f(kv.first), kv.second});
@@ -147,8 +147,7 @@ template <typename K,
           typename V,
           typename F,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
-bidict<K2, V> map_keys(bidict<K, V> const &m,
-                                     F const &f) {
+bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
   bidict<K2, V> result;
   for (auto const &kv : m) {
     result.equate(f(kv.first), kv.second);
@@ -162,6 +161,28 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
   std::unordered_map<K, V> result;
   for (auto const &kv : m) {
     if (f(kv.first)) {
+      result.insert(kv);
+    }
+  }
+  return result;
+}
+
+template <typename K, typename V, typename F>
+std::unordered_map<K, V> filter_keys(bidict<K, V> const &m, F const &f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : m) {
+    if (f(kv.first)) {
+      result.insert(kv);
+    }
+  }
+  return result;
+}
+
+template <typename K, typename V, typename F>
+std::unordered_map<K, V> filter_values(bidict<K, V> const &m, F const &f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : m) {
+    if (f(kv.second)) {
       result.insert(kv);
     }
   }
@@ -185,15 +206,13 @@ template <typename K,
           typename V,
           typename F,
           typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
-bidict<K, V2> map_values(bidict<K, V> const &m,
-                                     F const &f) {
+bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
   bidict<K, V2> result;
   for (auto const &kv : m) {
     result.equate({kv.first, f(kv.second)});
   }
   return result;
 }
-
 
 template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
@@ -225,22 +244,11 @@ std::vector<typename C::mapped_type> values(C const &c) {
   return result;
 }
 
-struct pair_hash {
-  template <class T1, class T2>
-  std::size_t operator()(const std::pair<T1, T2>& p) const {
-  
-    auto h2 = std::hash<T2>{}(p.second);
-    return  h2;
-  }
-};
-
 template <typename C>
-std::unordered_set<std::pair<const typename C::key_type, typename C::mapped_type>, pair_hash>
-items(C const &c) {
-  return {c.begin(), c.end()};
+std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
+    items(C const &c) {
+ return {c.begin(), c.end()};
 }
-
-
 
 template <typename C, typename T = typename C::value_type>
 std::unordered_set<T> unique(C const &c) {
@@ -332,6 +340,7 @@ template <typename L, typename R>
 std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
   return [&m](R const &r) -> L { return m.at_r(r); };
 }
+
 
 template <typename T>
 std::unordered_set<T> set_union(std::unordered_set<T> const &l,
@@ -538,16 +547,27 @@ std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
   return result;
 }
 
-template <typename C, typename F, typename Elem = typename C::value_type>
-void inplace_filter(C &v, F const &f) {
-  std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });//TODO(lambda) has bug
-}
-
 template <typename C, typename F>
 C filter(C const &v, F const &f) {
   C result(v);
   inplace_filter(result, f);
   return result;
+}
+
+template <typename T, typename F>
+std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
+  std::unordered_set<T> result;
+  for (T const &t : v) {
+    if (f(t)) {
+      result.insert(t);
+    }
+  }
+  return result;
+}
+
+template <typename C, typename F, typename Elem = typename C::value_type>
+void inplace_filter(C &v, F const &f) {
+  std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
 }
 
 template <typename T>

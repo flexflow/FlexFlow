@@ -22,7 +22,7 @@ enum class OpSlotOptions {
   NECESSARY
 };
 
-struct OpTensorSlotSpec : public use_visitable_cmp<OpTensorSlotSpec> {
+struct OpTensorSlotSpec {
 public:
   OpTensorSlotSpec() = delete;
   OpTensorSlotSpec(slot_id, SlotType, TensorRole);
@@ -34,6 +34,8 @@ public:
   IsGrad is_grad;
   OpSlotOptions slot_option;
 };
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
+    OpTensorSlotSpec, name, slot_type, tensor_role, is_grad, slot_option);
 
 struct OpTaskSignature {
   OpTaskSignature() = delete;
@@ -65,7 +67,7 @@ struct OpTaskSignature {
 
   template <typename T>
   void add_arg_slot(slot_id name) {
-    static_assert(is_serializable<T>, "Type must be serializable");
+    static_assert(is_serializable<T>::value, "Type must be serializable");
   }
 
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots();

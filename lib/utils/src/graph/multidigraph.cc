@@ -10,97 +10,114 @@ MultiDiOutput get_output(MultiDiEdge const &e) {
   return {e.src, e.srcIdx};
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(
-    std::unordered_set<Node> const &nodes) const {
-  MultiDiEdgeQuery e{*this};
-  if (e.srcs != tl::nullopt) {
-    throw std::runtime_error("expected srcs == tl::nullopt");
-  }
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
+  MultiDiEdgeQuery e = *this;
+  // if (is_matchall(e.srcs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.srcs = nodes;
   return e;
 }
 
-MultiDiEdgeQuery::  MultiDiEdgeQuery(
-      tl::optional<std::unordered_set<Node>> const &srcs,
-      tl::optional<std::unordered_set<Node>> const &dsts,
-      tl::optional<std::unordered_set<NodePort>> const &srcIdxs ,
-      tl::optional<std::unordered_set<NodePort>> const &dstIdxs )
-      :srcs(srcs), dsts(dsts),srcIdxs(srcIdxs), dstIdxs(dstIdxs)
-{}
+std::ostream &operator<<(std::ostream &os, MultiDiEdge const &edge) {
+  return os << "MultiDiEdge{" << edge.src.value() << "," << edge.dst.value()
+            << "," << edge.srcIdx.value() << "," << edge.dstIdx.value() << "}";
+}
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_node(Node const &n) const {
   return this->with_src_nodes({n});
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_nodes(
-    std::unordered_set<Node> const &nodes) const {
-  MultiDiEdgeQuery e{*this};
-  if (e.dsts != tl::nullopt) {
-    throw std::runtime_error("expected dsts == tl::nullopt");
-  }
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
+  MultiDiEdgeQuery e = *this;
+  // if (is_matchall(e.dsts)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.dsts = nodes;
   return e;
 }
 
-MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs, MultiDiEdgeQuery const &rhs){
-  assert (lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() && rhs.dsts.has_value());
-  tl::optional<std::unordered_set<Node>> srcs = intersection(*lhs.srcs, *rhs.srcs);
-  tl::optional<std::unordered_set<Node>> dsts = intersection(*lhs.dsts, *rhs.dsts);
-  return MultiDiEdgeQuery(srcs, dsts);
+MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
+                                    MultiDiEdgeQuery const &rhs) {
+  assert(lhs != tl::nullopt);
+  assert(rhs != tl::nullopt);
+
+  std::unordered_set<Node> srcs_t1 =
+      intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
+  std::unordered_set<Node> dsts_t1 =
+      intersection(allowed_values(lhs.dsts), allowed_values(rhs.dsts));
+
+  std::unordered_set<NodePort> srcIdxs_t1 =
+      intersection(allowed_values(lhs.srcIdxs), allowed_values(rhs.srcIdxs));
+  std::unordered_set<NodePort> dstIdxs_t1 =
+      intersection(allowed_values(lhs.dstIdxs), allowed_values(rhs.dstIdxs));
+
+  MultiDiEdgeQuery e = MultiDiEdgeQuery::all();
+  e.srcs = srcs_t1;
+  e.dsts = dsts_t1;
+  e.srcIdxs = srcIdxs_t1;
+  e.dstIdxs = dstIdxs_t1;
+  return e;
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_node(Node const &n) const {
   return this->with_dst_nodes({n});
 }
+MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(NodePort const &p) const {
+  return this->with_src_idxs({p});
+}
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idxs(
-    std::unordered_set<NodePort> const &idxs) const {
+MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const &p) const {
+  return this->with_dst_idxs({p});
+}
+
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e{*this};
-  if (e.srcIdxs != tl::nullopt) {
-    throw std::runtime_error("expected srcIdxs == tl::nullopt");
-  }
+  // if (is_matchall(e.srcIdxs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.srcIdxs = idxs;
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(NodePort const &idx) const {
-  return this->with_src_idxs({idx});
-}
-
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idxs(
-    std::unordered_set<NodePort> const &idxs) const {
-  MultiDiEdgeQuery e{*this};
-  if (e.dstIdxs != tl::nullopt) {
-    throw std::runtime_error("expected dstIdxs == tl::nullopt");
-  }
+MultiDiEdgeQuery
+    MultiDiEdgeQuery::with_dst_idxs(query_set<NodePort> const &idxs) const {
+  MultiDiEdgeQuery e = *this;
+  // if (is_matchall(e.dstIdxs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
   e.dstIdxs = idxs;
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const &idx) const {
-  return this->with_dst_idxs({idx});
-}
-
 MultiDiEdgeQuery MultiDiEdgeQuery::all() {
-  return MultiDiEdgeQuery{};
+  return {matchall<Node>(),
+          matchall<Node>(),
+          matchall<NodePort>(),
+          matchall<NodePort>()};
 }
 
-std::unordered_set<Node> MultiDiGraphView::query_nodes(NodeQuery const & q) const {
+std::unordered_set<Node>
+    MultiDiGraphView::query_nodes(NodeQuery const &q) const {
   return this->ptr->query_nodes(q);
 }
 
-std::unordered_set<MultiDiEdge> MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
+std::unordered_set<MultiDiEdge>
+    MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
-NodePort IMultiDiGraph::add_node_port(){
-  NodePort np{this->next_node_idx};
-  this->next_node_idx += 1;
+NodePort IMultiDiGraph::add_node_port() {
+  NodePort np{this->next_nodeport_idx};
+  this->next_nodeport_idx += 1;
   return np;
 }
 
 void IMultiDiGraph::add_node_port_unsafe(NodePort const &np) {
-  this->next_node_idx = std::max(this->next_node_idx, np.value() + 1);
+  this->next_nodeport_idx = std::max(this->next_nodeport_idx, np.value() + 1);
 }
 
 MultiDiGraphView::operator GraphView() const {
@@ -108,11 +125,10 @@ MultiDiGraphView::operator GraphView() const {
 }
 
 MultiDiGraphView unsafe_create(IMultiDiGraphView const &graphView) {
-  std::shared_ptr<IMultiDiGraphView const> ptr((&graphView),
-      [](IMultiDiGraphView const *ptr) {});
+  std::shared_ptr<IMultiDiGraphView const> ptr(
+      (&graphView), [](IMultiDiGraphView const *ptr) {});
   return MultiDiGraphView(ptr);
 }
-
 
 void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   using std::swap;
@@ -134,6 +150,14 @@ Node MultiDiGraph::add_node() {
   return this->ptr.get_mutable()->add_node();
 }
 
+NodePort MultiDiGraph::add_node_port() {
+  return this->ptr.get_mutable()->add_node_port();
+}
+
+void MultiDiGraph::add_node_port_unsafe(NodePort const &np) {
+  return this->ptr.get_mutable()->add_node_port_unsafe(np);
+}
+
 void MultiDiGraph::add_node_unsafe(Node const &n) {
   return this->ptr.get_mutable()->add_node_unsafe(n);
 }
@@ -153,6 +177,10 @@ void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
 std::unordered_set<MultiDiEdge>
     MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
+}
+
+std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
+  return this->ptr->query_nodes(q);
 }
 
 } // namespace FlexFlow

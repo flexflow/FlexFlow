@@ -25,7 +25,7 @@
 #include "op-attrs/ops/noop.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "parallel_tensor_mapping.h"
-#include "task_argument_accessor.h"
+#include "task_spec/task_argument_accessor.h"
 #include "test_utils.h"
 #include "utils/containers.h"
 #include "utils/random_utils.h"
@@ -61,48 +61,48 @@ namespace FlexFlow {
 /*   return dim_mapping; */
 /* } */
 
-FFModel::FFModel(FFConfig const &_config,
-                 ComputationGraph const &cg,
-                 TrainingPCG const &training_pcg,
-                 Optimizer const &_optimizer,
-                 RuntimeBacking const &_runtime_backing,
-                 EnableProfiling const &_enable_profiling,
-                 SimEnvFactory const &_sim_factory,
-                 TensorMapping const &_tensor_map)
-    : config(_config), computation_graph(cg), training_pcg(training_pcg),
-      optimizer(_optimizer), runtime_backing(_runtime_backing),
-      enable_profiling(_enable_profiling), sim_factory(_sim_factory),
-      tensor_map(_tensor_map) {
-  /* ArgumentMap argmap; */
-  /* Rect<1> task_rect(Point<1>(0), */
-  /*                   Point<1>(config.workersPerNode * config.numNodes - 1));
-   */
-  /* IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect); */
+/* FFModel::FFModel(FFConfig const &_config, */
+/*                  ComputationGraph const &cg, */
+/*                  TrainingPCG const &training_pcg, */
+/*                  Optimizer const &_optimizer, */
+/*                  LegionBacking const &_runtime_backing, */
+/*                  EnableProfiling const &_enable_profiling, */
+/*                  SimEnvFactory const &_sim_factory, */
+/*                  TensorMapping const &_tensor_map) */
+/*     : config(_config), computation_graph(cg), training_pcg(training_pcg), */
+/*       optimizer(_optimizer), runtime_backing(_runtime_backing), */
+/*       enable_profiling(_enable_profiling), sim_factory(_sim_factory), */
+/*       tensor_map(_tensor_map) { */
+/* ArgumentMap argmap; */
+/* Rect<1> task_rect(Point<1>(0), */
+/*                   Point<1>(config.workersPerNode * config.numNodes - 1));
+ */
+/* IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect); */
 
-  /* for (PointInRectIterator<1> it(task_rect); it(); it++) { */
-  /*   FFInitInfo info; */
-  /*   info.workSpaceSize = config.workSpaceSize; */
-  /*   info.allowTensorOpMathConversion =
-   * config.allow_tensor_op_math_conversion; */
-  /*   argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo))); */
-  /* } */
+/* for (PointInRectIterator<1> it(task_rect); it(); it++) { */
+/*   FFInitInfo info; */
+/*   info.workSpaceSize = config.workSpaceSize; */
+/*   info.allowTensorOpMathConversion =
+ * config.allow_tensor_op_math_conversion; */
+/*   argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo))); */
+/* } */
 
-  // Init CUDA library on each worker
-  // IndexLauncher initLauncher(FF_INIT_TASK_ID,
-  //                            task_is,
-  //                            TaskArgument(NULL, 0),
-  //                            argmap,
-  //                            Predicate::TRUE_PRED,
-  //                            false /*must*/,
-  //                            0 /*mapper_id*/,
-  //                            FFConfig::DataParallelism_GPU);
-  // FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
-  // fm.wait_all_results();
-  // int idx = 0;
-  // for (PointInRectIterator<1> it(task_rect); it(); it++) {
-  //   handlers[idx++] = fm.get_result<FFHandler>(*it);
-  // }
-}
+// Init CUDA library on each worker
+// IndexLauncher initLauncher(FF_INIT_TASK_ID,
+//                            task_is,
+//                            TaskArgument(NULL, 0),
+//                            argmap,
+//                            Predicate::TRUE_PRED,
+//                            false /*must*/,
+//                            0 /*mapper_id*/,
+//                            FFConfig::DataParallelism_GPU);
+// FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
+// fm.wait_all_results();
+// int idx = 0;
+// for (PointInRectIterator<1> it(task_rect); it(); it++) {
+//   handlers[idx++] = fm.get_result<FFHandler>(*it);
+// }
+/* } */
 
 /* using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>;
  */
@@ -242,277 +242,284 @@ FFModel::FFModel(FFConfig const &_config,
 //   }
 // }
 
-void init_operators(FFModel const &ff) {
-  ff.execute(init_operators(ff.training_pcg));
-}
+/* void init_operators(FFModel const &ff) { */
+/*   ff.execute(init_operators(ff.training_pcg)); */
+/* } */
 
-void forward(FFModel const &ff, int seq_length) {
-  iter_config.seq_length = seq_length;
-  ff.execute(forwad(ff.training_pcg));
-}
+/* void forward(FFModel const &ff, int seq_length) { */
+/*   iter_config.seq_length = seq_length; */
+/*   ff.execute(forwad(ff.training_pcg)); */
+/* } */
 
-TypedFuture<PerfMetrics> compute_metrics(FFModel const &ff,
-                                         PerfMetrics const &metrics) {
-  TaskReturnAccessor acc =
-      ff.execute(compute_metrics(ff.training_pcg, metrics));
-  return acc.get_returned_future<PerfMetrics>().get();
-}
+/* TypedFuture<PerfMetrics> compute_metrics(FFModel const &ff, */
+/*                                          PerfMetrics const &metrics) { */
+/*   TaskReturnAccessor acc = */
+/*       ff.execute(compute_metrics(ff.training_pcg, metrics)); */
+/*   return acc.get_returned_future<PerfMetrics>().get(); */
+/* } */
 
-void backward(FFModel const &ff, int seq_length, PerfMetrics const &metrics) {
-  iter_config.seq_length = seq_length;
-  assert(ff.config.computationMode == ComputationMode::TRAINING);
-  // Compute metrics
-  compute_metrics(ff, metrics).get(); // TODO FIXME @lockshaw actually do
-                                      // something with the computed metrics
-  // Compute the gradients of the final operator wrt loss
-  ff.execute(backward(ff.training_pcg));
-  /* Op const *final_operator = get_final_operator(); */
-  /* assert(final_operator->numOutputs == 1); */
-  /* loss_op->backward(this, final_operator->outputs[0],
-   * parallel_label_tensor.value()); */
-  /* // Perform backpropagation */
-  /* // std::set<LogicalRegion> resetedInputGrads; */
-  /* for (int l = operators.size() - 1; l >= 0; l--) { */
-  /*   // TODO: If operator serves for metrics and for further prop */
-  /*   // if(l == metrics_input && metrics_input < (int)operators.size()-1) */
-  /*   //  continue; */
-  /*   operators[l]->backward(*this); */
-  /* } */
-}
+/* void backward(FFModel const &ff, int seq_length, PerfMetrics const &metrics)
+ * { */
+/*   iter_config.seq_length = seq_length; */
+/*   assert(ff.config.computationMode == ComputationMode::TRAINING); */
+/*   // Compute metrics */
+/*   compute_metrics(ff, metrics).get(); // TODO FIXME @lockshaw actually do */
+/*                                       // something with the computed metrics
+ */
+/*   // Compute the gradients of the final operator wrt loss */
+/*   ff.execute(backward(ff.training_pcg)); */
+/*   /1* Op const *final_operator = get_final_operator(); *1/ */
+/*   /1* assert(final_operator->numOutputs == 1); *1/ */
+/*   /1* loss_op->backward(this, final_operator->outputs[0], */
+/*    * parallel_label_tensor.value()); *1/ */
+/*   /1* // Perform backpropagation *1/ */
+/*   /1* // std::set<LogicalRegion> resetedInputGrads; *1/ */
+/*   /1* for (int l = operators.size() - 1; l >= 0; l--) { *1/ */
+/*   /1*   // TODO: If operator serves for metrics and for further prop *1/ */
+/*   /1*   // if(l == metrics_input && metrics_input < (int)operators.size()-1)
+ * *1/ */
+/*   /1*   //  continue; *1/ */
+/*   /1*   operators[l]->backward(*this); *1/ */
+/*   /1* } *1/ */
+/* } */
 
-void update(FFModel const &ff) {
-  ff.execute(update(ff.pcg, ff.optimizer));
-}
+/* void update(FFModel const &ff) { */
+/*   ff.execute(update(ff.pcg, ff.optimizer)); */
+/* } */
 
-operator_guid_t get_final_operator(FFModel const &ff) {
-  operator_guid_t final_op_id = get_only(get_sinks(ff.pcg.graph));
-  // assert that the final operator has exactly one output
-  Operator op = ff.pcg.at(final_op_id);
-  assert(get_num_outputs(op) == 1);
-  return final_op_id;
-}
+/* operator_guid_t get_final_operator(FFModel const &ff) { */
+/*   operator_guid_t final_op_id = get_only(get_sinks(ff.pcg.graph)); */
+/*   // assert that the final operator has exactly one output */
+/*   Operator op = ff.pcg.at(final_op_id); */
+/*   assert(get_num_outputs(op) == 1); */
+/*   return final_op_id; */
+/* } */
 
-void FFModel::compile(Optimizer *_optimizer,
-                      LossType loss_type,
-                      std::vector<MetricsType> const &metrics,
-                      CompMode comp_mode) {
-  optimizer = _optimizer;
-  compile(loss_type, metrics, comp_mode);
-}
+/* void FFModel::compile(Optimizer *_optimizer, */
+/*                       LossType loss_type, */
+/*                       std::vector<MetricsType> const &metrics, */
+/*                       CompMode comp_mode) { */
+/*   optimizer = _optimizer; */
+/*   compile(loss_type, metrics, comp_mode); */
+/* } */
 
-MachineView
-    get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
-  gpu_id_t start = gpu_id_t(0);
-  gpu_id_t stop = gpu_id_t(spec.num_nodes * spec.workersPerNode);
-  return make_1d_machine_view(start, stop, 1);
-}
+/* MachineView */
+/*     get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
+ */
+/*   gpu_id_t start = gpu_id_t(0); */
+/*   gpu_id_t stop = gpu_id_t(spec.num_nodes * spec.workersPerNode); */
+/*   return make_1d_machine_view(start, stop, 1); */
+/* } */
 
-MachineView get_basic_data_parallel_machine_view(FFConfig const &config) {
-  gpu_id_t start = gpu_id_t(0);
-  gpu_id_t stop = gpu_id_t(config.numNodes * config.workersPerNode);
-  return make_1d_machine_view(start, stop, 1);
-}
+/* MachineView get_basic_data_parallel_machine_view(FFConfig const &config) { */
+/*   gpu_id_t start = gpu_id_t(0); */
+/*   gpu_id_t stop = gpu_id_t(config.numNodes * config.workersPerNode); */
+/*   return make_1d_machine_view(start, stop, 1); */
+/* } */
 
-static ParallelTensorShape get_parallel_tensor_shape(Tensor const &tensor) {
-  int num_dims = tensor->num_dims();
-  std::vector<ParallelDim> dims;
-  for (int j = 0; j < num_dims; j++) {
-    dims.emplace_back(tensor->dims[j], 1, -1, false);
-  }
-  dims.emplace_back(1, 1, -1, true);
-  ParallelTensorShape shape = {dims, tensor->data_type};
-  return shape;
-}
+/* static ParallelTensorShape get_parallel_tensor_shape(Tensor const &tensor) {
+ */
+/*   int num_dims = tensor->num_dims(); */
+/*   std::vector<ParallelDim> dims; */
+/*   for (int j = 0; j < num_dims; j++) { */
+/*     dims.emplace_back(tensor->dims[j], 1, -1, false); */
+/*   } */
+/*   dims.emplace_back(1, 1, -1, true); */
+/*   ParallelTensorShape shape = {dims, tensor->data_type}; */
+/*   return shape; */
+/* } */
 
-void FFModel::print_operator_regions() const {
-  for (size_t i = 0; i < operators.size(); i++) {
-    Op *op = operators[i];
-    printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
-    for (int j = 0; j < op->numInputs; j++) {
-      LogicalRegion handle = op->inputs[j]->region;
-      printf("inputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
-    }
-    for (int j = 0; j < op->numOutputs; j++) {
-      LogicalRegion handle = op->outputs[j]->region;
-      printf("outputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
-    }
-  }
-}
+/* void FFModel::print_operator_regions() const { */
+/*   for (size_t i = 0; i < operators.size(); i++) { */
+/*     Op *op = operators[i]; */
+/*     printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type); */
+/*     for (int j = 0; j < op->numInputs; j++) { */
+/*       LogicalRegion handle = op->inputs[j]->region; */
+/*       printf("inputs[%d] region(%d,%d,%d)\n", */
+/*              j, */
+/*              handle.get_index_space().get_id(), */
+/*              handle.get_field_space().get_id(), */
+/*              handle.get_tree_id()); */
+/*     } */
+/*     for (int j = 0; j < op->numOutputs; j++) { */
+/*       LogicalRegion handle = op->outputs[j]->region; */
+/*       printf("outputs[%d] region(%d,%d,%d)\n", */
+/*              j, */
+/*              handle.get_index_space().get_id(), */
+/*              handle.get_field_space().get_id(), */
+/*              handle.get_tree_id()); */
+/*     } */
+/*   } */
+/* } */
 
-void FFModel::create_label_tensor(LossType loss_type) {
-  Op const *final_operator = get_final_operator();
+/* void FFModel::create_label_tensor(LossType loss_type) { */
+/*   Op const *final_operator = get_final_operator(); */
 
-  std::vector<ParallelDim> p_dims =
-      final_operator->outputs[0]->get_shape().dims;
+/*   std::vector<ParallelDim> p_dims = */
+/*       final_operator->outputs[0]->get_shape().dims; */
 
-  std::vector<size_t> dims;
-  // FIXME: Currently assume 1st input for 1st operator = batch_size
-  for (ParallelDim const &dim : p_dims) {
-    if (!dim.is_replica_dim) {
-      dims.push_back(dim.size);
-    }
-  }
+/*   std::vector<size_t> dims; */
+/*   // FIXME: Currently assume 1st input for 1st operator = batch_size */
+/*   for (ParallelDim const &dim : p_dims) { */
+/*     if (!dim.is_replica_dim) { */
+/*       dims.push_back(dim.size); */
+/*     } */
+/*   } */
 
-  DataType label_type = DT_FLOAT;
-  if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
-    // assign dims[num_dims-1] = 1 for sparse categorical labels
-    assert(p_dims[0].degree == 1);
-    p_dims[0].size = 1;
-    dims[0] = 1;
-    label_type = DT_INT32;
-  }
+/*   DataType label_type = DT_FLOAT; */
+/*   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) { */
+/*     // assign dims[num_dims-1] = 1 for sparse categorical labels */
+/*     assert(p_dims[0].degree == 1); */
+/*     p_dims[0].size = 1; */
+/*     dims[0] = 1; */
+/*     label_type = DT_INT32; */
+/*   } */
 
-  LegionParallelTensorShape label_p_shape = {p_dims, label_type};
-  LegionTensorShape label_shape = {dims, label_type};
+/*   LegionParallelTensorShape label_p_shape = {p_dims, label_type}; */
+/*   LegionTensorShape label_shape = {dims, label_type}; */
 
-  // create label tensor
-  label_tensor =
-      create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);
-  parallel_label_tensor = create_parallel_tensor(label_p_shape);
-  label_tensor.value()->parallel_tensor = parallel_label_tensor;
-  parallel_label_tensor.value()->machine_view =
-      final_operator->outputs[0]->machine_view;
-  map_tensor(parallel_label_tensor.value(),
-             parallel_label_tensor.value()->owner_op,
-             this->config.legion_config,
-             this->index_space_mgr);
-}
+/*   // create label tensor */
+/*   label_tensor = */
+// create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);
+/*   parallel_label_tensor = create_parallel_tensor(label_p_shape); */
+/*   label_tensor.value()->parallel_tensor = parallel_label_tensor; */
+/*   parallel_label_tensor.value()->machine_view = */
+/*       final_operator->outputs[0]->machine_view; */
+/*   map_tensor(parallel_label_tensor.value(), */
+/*              parallel_label_tensor.value()->owner_op, */
+/*              this->config.legion_config, */
+/*              this->index_space_mgr); */
+/* } */
 
-void FFModel::execute_graph_optimize() {
-  FFModel *model = this;
-  Context ctx = config.legion_config.lg_ctx;
-  Runtime *runtime = config.legion_config.lg_hlr;
-  TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID,
-                        TaskArgument(&model, sizeof(FFModel *)));
-  Future future = runtime->execute_task(ctx, launcher);
+/* void FFModel::execute_graph_optimize() { */
+/*   FFModel *model = this; */
+/*   Context ctx = config.legion_config.lg_ctx; */
+/*   Runtime *runtime = config.legion_config.lg_hlr; */
+/*   TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID, */
+/*                         TaskArgument(&model, sizeof(FFModel *))); */
+/*   Future future = runtime->execute_task(ctx, launcher); */
 
-  PCG::GraphOptimalViewSerialized ret =
-      future.get_result<PCG::GraphOptimalViewSerialized>();
-  Deserializer dez(ret.data, ret.total_bytes);
-  // Reconstruct operators
-  PCG::Graph *best_graph = new PCG::Graph(this);
-  std::unordered_map<PCG::Node, MachineView> optimal_views;
-  deserialize_graph_optimal_view(dez, best_graph, optimal_views);
-  operators.clear();
-  convert_graph_to_operators(best_graph, optimal_views);
-  best_graph->print_dot();
-  delete best_graph;
+/*   PCG::GraphOptimalViewSerialized ret = */
+/*       future.get_result<PCG::GraphOptimalViewSerialized>(); */
+/*   Deserializer dez(ret.data, ret.total_bytes); */
+/*   // Reconstruct operators */
+/*   PCG::Graph *best_graph = new PCG::Graph(this); */
+/*   std::unordered_map<PCG::Node, MachineView> optimal_views; */
+/*   deserialize_graph_optimal_view(dez, best_graph, optimal_views); */
+/*   operators.clear(); */
+/*   convert_graph_to_operators(best_graph, optimal_views); */
+/*   best_graph->print_dot(); */
+/*   delete best_graph; */
 
-  this->populate_tensor_to_parallel_tensor_mapping();
-}
+/*   this->populate_tensor_to_parallel_tensor_mapping(); */
+/* } */
 
-void FFModel::compile(LossType loss_type,
-                      std::vector<MetricsType> const &metrics,
-                      CompMode comp_mode) {
-  if (metrics_input == -1) {
-    metrics_input = operators.size() - 1;
-  }
-  Context ctx = config.legion_config.lg_ctx;
-  Runtime *runtime = config.legion_config.lg_hlr;
-  config.computationMode = comp_mode;
-  // if (config.import_strategy_file.length() > 0) {
-  //   load_strategies_from_file(config.import_strategy_file,
-  //   config.strategies);
-  // }
-  //  Construct operators from layers
-  if (config.only_data_parallel) {
-    fprintf(stderr,
-            "Note: only_data_parallel is specified, FlexFlow compiles a "
-            "data-parallel PCG.\n");
-  }
-  this->create_operators_from_layers();
+/* void FFModel::compile(LossType loss_type, */
+/*                       std::vector<MetricsType> const &metrics, */
+/*                       CompMode comp_mode) { */
+/*   if (metrics_input == -1) { */
+/*     metrics_input = operators.size() - 1; */
+/*   } */
+/*   Context ctx = config.legion_config.lg_ctx; */
+/*   Runtime *runtime = config.legion_config.lg_hlr; */
+/*   config.computationMode = comp_mode; */
+/*   // if (config.import_strategy_file.length() > 0) { */
+/*   //   load_strategies_from_file(config.import_strategy_file, */
+/*   //   config.strategies); */
+/*   // } */
+/*   //  Construct operators from layers */
+/*   if (config.only_data_parallel) { */
+/*     fprintf(stderr, */
+/*             "Note: only_data_parallel is specified, FlexFlow compiles a " */
+/*             "data-parallel PCG.\n"); */
+/*   } */
+/*   this->create_operators_from_layers(); */
 
-  // Launch the graph optimize task
-  this->execute_graph_optimize();
+/*   // Launch the graph optimize task */
+/*   this->execute_graph_optimize(); */
 
-  bool repl_labels = (operators[operators.size() - 1]->op_type == OP_AGG_SPEC);
-  loss_op = {loss_type, repl_labels};
-  metrics_op = {loss_type, metrics};
+/*   bool repl_labels = (operators[operators.size() - 1]->op_type ==
+ * OP_AGG_SPEC); */
+/*   loss_op = {loss_type, repl_labels}; */
+/*   metrics_op = {loss_type, metrics}; */
 
-  // Init performance metrics
-  TaskLauncher launcher(UPDATE_METRICS_TASK_ID,
-                        TaskArgument(&metrics_op.value(), sizeof(Metrics)));
-  current_metrics = runtime->execute_task(ctx, launcher);
+/*   // Init performance metrics */
+/*   TaskLauncher launcher(UPDATE_METRICS_TASK_ID, */
+/*                         TaskArgument(&metrics_op.value(), sizeof(Metrics)));
+ */
+/*   current_metrics = runtime->execute_task(ctx, launcher); */
 
-  if (config.enable_inplace_optimizations) {
-    this->perform_inplace_optimizations();
-  }
+/*   if (config.enable_inplace_optimizations) { */
+/*     this->perform_inplace_optimizations(); */
+/*   } */
 
-  for (Op *op : this->operators) {
-    for (ParallelTensor const &input : op->inputs) {
-      assert(input->owner_op != NULL);
-    }
+/*   for (Op *op : this->operators) { */
+/*     for (ParallelTensor const &input : op->inputs) { */
+/*       assert(input->owner_op != NULL); */
+/*     } */
 
-    for (ParallelTensor const &weight : op->weights) {
-      assert(weight->owner_op != NULL);
-      assert(weight->region != LogicalRegion::NO_REGION);
-      parameters.push_back(weight);
-    }
+/*     for (ParallelTensor const &weight : op->weights) { */
+/*       assert(weight->owner_op != NULL); */
+/*       assert(weight->region != LogicalRegion::NO_REGION); */
+/*       parameters.push_back(weight); */
+/*     } */
 
-    op->map_output_tensors(*this);
+/*     op->map_output_tensors(*this); */
 
-    if (op->is_parallel_op()) {
-      ((ParallelOp *)op)->create_input_partition(*this);
-    }
-  }
+/*     if (op->is_parallel_op()) { */
+/*       ((ParallelOp *)op)->create_input_partition(*this); */
+/*     } */
+/*   } */
 
-  // Check correctness
-  for (size_t l = 0; l < operators.size(); l++) {
-    Op *op = operators[l];
-    for (int i = 0; i < op->numOutputs; i++) {
-      assert(op->outputs[i]->owner_op == op);
-      assert(op->outputs[i]->owner_idx == i);
-      assert(op->outputs[i]->parallel_tensor_guid != 0);
-    }
-  }
+/*   // Check correctness */
+/*   for (size_t l = 0; l < operators.size(); l++) { */
+/*     Op *op = operators[l]; */
+/*     for (int i = 0; i < op->numOutputs; i++) { */
+/*       assert(op->outputs[i]->owner_op == op); */
+/*       assert(op->outputs[i]->owner_idx == i); */
+/*       assert(op->outputs[i]->parallel_tensor_guid != 0); */
+/*     } */
+/*   } */
 
-  this->optimize_unnecessary_gradient_calculations();
+/*   this->optimize_unnecessary_gradient_calculations(); */
 
-  if (config.perform_fusion) {
-    this->perform_fusion_optimizations();
-  }
+/*   if (config.perform_fusion) { */
+/*     this->perform_fusion_optimizations(); */
+/*   } */
 
-  Op *final_operator = get_final_operator();
-  // FIXME: currently assume the final operator has exactly one output
-  assert(final_operator->numOutputs == 1);
-  this->print_operator_regions();
+/*   Op *final_operator = get_final_operator(); */
+/*   // FIXME: currently assume the final operator has exactly one output */
+/*   assert(final_operator->numOutputs == 1); */
+/*   this->print_operator_regions(); */
 
-  this->create_label_tensor(loss_type);
+/*   this->create_label_tensor(loss_type); */
 
-  // init optimizer
-  assert(optimizer != NULL);
-  optimizer->init();
+/*   // init optimizer */
+/*   assert(optimizer != NULL); */
+/*   optimizer->init(); */
 
-#ifdef FF_USE_NCCL
-  if (config.computationMode == COMP_MODE_TRAINING) {
-    this->initialize_nccl_communicators();
-  }
-#endif
-}
+/* #ifdef FF_USE_NCCL */
+/*   if (config.computationMode == COMP_MODE_TRAINING) { */
+/*     this->initialize_nccl_communicators(); */
+/*   } */
+/* #endif */
+/* } */
 
-void FFModel::zero_gradients(void) {
-  for (int l = operators.size() - 1; l >= 0; l--) {
-    operators[l]->zero_grad(*this);
-  }
-}
+/* void FFModel::zero_gradients(void) { */
+/*   for (int l = operators.size() - 1; l >= 0; l--) { */
+/*     operators[l]->zero_grad(*this); */
+/*   } */
+/* } */
 
-// ========================================================
-// class FFIterationConfig
-// ========================================================
-FFIterationConfig::FFIterationConfig() {
-  seq_length = -1;
-}
+/* // ======================================================== */
+/* // class FFIterationConfig */
+/* // ======================================================== */
+/* FFIterationConfig::FFIterationConfig() { */
+/*   seq_length = -1; */
+/* } */
 
-void FFIterationConfig::reset() {
-  seq_length = -1;
-}
+/* void FFIterationConfig::reset() { */
+/*   seq_length = -1; */
+/* } */
 
 }; // namespace FlexFlow

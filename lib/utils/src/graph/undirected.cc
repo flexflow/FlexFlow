@@ -7,20 +7,15 @@ namespace FlexFlow {
 UndirectedEdge::UndirectedEdge(Node const &src, Node const &dst)
     : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger)) {}
 
-UndirectedEdgeQuery::UndirectedEdgeQuery(
-    optional<std::unordered_set<Node>> const &nodes)
-    : nodes(nodes) {}
+UndirectedEdgeQuery UndirectedEdgeQuery::all() {
+  return {matchall<Node>()};
+}
 
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
                                        UndirectedEdgeQuery const &rhs) {
-  if (!lhs.nodes.has_value()) {
-    return rhs;
-  } else if (!rhs.nodes.has_value()) {
-    return lhs;
-  } else {
-    assert(lhs.nodes.has_value() && rhs.nodes.has_value());
-    return {intersection(*lhs.nodes, *rhs.nodes)};
-  }
+  return {
+      query_intersection(lhs.nodes, rhs.nodes),
+  };
 }
 
 void swap(UndirectedGraph &lhs, UndirectedGraph &rhs) {
@@ -57,19 +52,21 @@ std::unordered_set<UndirectedEdge>
 UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
-UndirectedGraph:: operator UndirectedGraphView() const {
-    return UndirectedGraphView(ptr.get_mutable());
+UndirectedGraph::operator UndirectedGraphView() const {
+  return UndirectedGraphView(ptr.get());
 }
 
-std::unordered_set<UndirectedEdge> UndirectedGraphView::query_edges(UndirectedEdgeQuery const& q)  const {
+std::unordered_set<UndirectedEdge>
+    UndirectedGraphView::query_edges(UndirectedEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
-std::unordered_set<Node>  UndirectedGraphView::query_nodes(NodeQuery const & q) const {
+std::unordered_set<Node>
+    UndirectedGraphView::query_nodes(NodeQuery const &q) const {
   return this->ptr->query_nodes(q);
 }
 
-UndirectedGraphView::operator GraphView const&() const {
+UndirectedGraphView::operator GraphView const &() const {
   return GraphView(this->ptr);
 }
 

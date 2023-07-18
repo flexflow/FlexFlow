@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
-#include "cow_ptr_t.h"
 
 namespace FlexFlow {
 
@@ -14,14 +14,18 @@ struct DirectedEdge {
   Node src;
   Node dst;
 };
+
+std::ostream &operator<<(std::ostream &s, DirectedEdge const &e);
+
 FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
 
 struct DirectedEdgeQuery {
-  DirectedEdgeQuery() = default;
-  DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs,
-                    tl::optional<std::unordered_set<Node>> const &dsts);
-  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
+  query_set<Node> srcs;
+  query_set<Node> dsts;
+
+  static DirectedEdgeQuery all();
 };
+FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
 
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
                                      DirectedEdgeQuery const &);
@@ -35,7 +39,7 @@ public:
   IDiGraphView &operator=(IDiGraphView const &) = delete;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IDiGraphView()=default;
+  virtual ~IDiGraphView() = default;
 
 protected:
   IDiGraphView() = default;
@@ -70,7 +74,8 @@ public:
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  DiGraphView(std::shared_ptr<IDiGraphView const> ptr): ptr(ptr) {}
+  DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
+  static DiGraphView unsafe_create(IDiGraphView const &graphView);
 
 private:
   friend DiGraphView unsafe_create(IDiGraphView const &);
@@ -99,7 +104,7 @@ public:
   DiGraph &operator=(DiGraph const &) = default;
 
   operator DiGraphView() const {
-    return DiGraphView(ptr.get_mutable());
+    return DiGraphView(ptr.get());
   }
 
   friend void swap(DiGraph &, DiGraph &);

@@ -40,3 +40,7 @@ message( STATUS "CUDNN include : ${CUDNN_INCLUDE_DIR}" )
 else()
   message( FATAL_ERROR "CUDNN package not found -> specify search path via CUDNN_DIR variable")
 endif()
+
+add_library(cudnn INTERFACE)
+target_include_directories(cudnn SYSTEM INTERFACE ${CUDNN_INCLUDE_DIR})
+target_link_libraries(cudnn INTERFACE ${CUDNN_LIBRARY})

@@ -2,37 +2,31 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_OPEN_GRAPH_INTERFACES_H
 
 #include "multidigraph.h"
+#include "utils/strong_typedef.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct InputMultiDiEdge : public use_visitable_cmp<InputMultiDiEdge> {
-  InputMultiDiEdge() = delete;
-  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid,
-                   Node const & dst,
-                   NodePort const & dstIdx):uid(uid), dst(dst), dstIdx(dstIdx) {};
-
+struct InputMultiDiEdge {
   std::pair<std::size_t, std::size_t>
       uid; // necessary to differentiate multiple input edges from different
            // sources resulting from a graph cut
   Node dst;
   NodePort dstIdx;
 };
+FF_VISITABLE_STRUCT(InputMultiDiEdge, uid, dst, dstIdx);
 
-struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
-  OutputMultiDiEdge() = delete;
-  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const & uid,
-                    Node const & src,
-                    NodePort const &srcIdx):uid(uid), src(src), srcIdx(srcIdx) {}
-
+struct OutputMultiDiEdge {
   std::pair<std::size_t, std::size_t>
       uid; // necessary to differentiate multiple output edges from different
            // sources resulting from a graph cut
   Node src;
   NodePort srcIdx;
 };
+FF_VISITABLE_STRUCT(OutputMultiDiEdge, uid, src, srcIdx);
 
-using OpenMultiDiEdge =variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
+using OpenMultiDiEdge =
+    variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
 
 using DownwardOpenMultiDiEdge = variant<OutputMultiDiEdge, MultiDiEdge>;
 
@@ -43,84 +37,73 @@ bool is_output_edge(OpenMultiDiEdge const &);
 bool is_standard_edge(OpenMultiDiEdge const &);
 
 struct OutputMultiDiEdgeQuery {
-  optional<std::unordered_set<Node>> srcs = nullopt;
-  optional<std::unordered_set<NodePort>> srcIdxs = nullopt;
+  query_set<Node> srcs;
+  query_set<NodePort> srcIdxs;
 
   static OutputMultiDiEdgeQuery all();
   static OutputMultiDiEdgeQuery none();
 };
+FF_VISITABLE_STRUCT(OutputMultiDiEdgeQuery, srcs, srcIdxs);
 
 struct InputMultiDiEdgeQuery {
-  optional<std::unordered_set<Node>> dsts = nullopt;
-  optional<std::unordered_set<NodePort>> dstIdxs = nullopt;
+  query_set<Node> dsts;
+  query_set<NodePort> dstIdxs;
 
   static InputMultiDiEdgeQuery all();
   static InputMultiDiEdgeQuery none();
 };
+FF_VISITABLE_STRUCT(InputMultiDiEdgeQuery, dsts, dstIdxs);
 
 struct OpenMultiDiEdgeQuery {
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
   OutputMultiDiEdgeQuery output_edge_query;
 };
+FF_VISITABLE_STRUCT(OpenMultiDiEdgeQuery,
+                    input_edge_query,
+                    standard_edge_query,
+                    output_edge_query);
 
 struct DownwardOpenMultiDiEdgeQuery {
   OutputMultiDiEdgeQuery output_edge_query;
   MultiDiEdgeQuery standard_edge_query;
 };
+FF_VISITABLE_STRUCT(DownwardOpenMultiDiEdgeQuery,
+                    output_edge_query,
+                    standard_edge_query);
 
 struct UpwardOpenMultiDiEdgeQuery {
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
 };
-
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::InputMultiDiEdge, uid, dst, dstIdx);
-VISITABLE_STRUCT(::FlexFlow::OutputMultiDiEdge, uid, src, srcIdx);
-MAKE_VISIT_HASHABLE(::FlexFlow::InputMultiDiEdge);
-MAKE_VISIT_HASHABLE(::FlexFlow::OutputMultiDiEdge);
-
-namespace FlexFlow {
-
-static_assert(is_hashable<OutputMultiDiEdge>::value,
-              "OpenMultiDiEdge must be hashable");
-static_assert(is_hashable<OpenMultiDiEdge>::value,
-              "OpenMultiDiEdge must be hashable");
+FF_VISITABLE_STRUCT(UpwardOpenMultiDiEdgeQuery,
+                    input_edge_query,
+                    standard_edge_query);
 
 struct IOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &) const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IOpenMultiDiGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOpenMultiDiGraphView);
 
 struct IDownwardOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<DownwardOpenMultiDiEdge>
       query_edges(DownwardOpenMultiDiEdgeQuery const &) const = 0;
 };
-
-static_assert(
-    is_rc_copy_virtual_compliant<IDownwardOpenMultiDiGraphView>::value,
-    RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDownwardOpenMultiDiGraphView);
 
 struct IUpwardOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<UpwardOpenMultiDiEdge>
       query_edges(UpwardOpenMultiDiEdgeQuery const &) const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IUpwardOpenMultiDiGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUpwardOpenMultiDiGraphView);
 
 struct IOpenMultiDiGraph : public IOpenMultiDiGraphView, public IGraph {
   virtual void add_edge(OpenMultiDiEdge const &) = 0;
   virtual void remove_edge(OpenMultiDiEdge const &) = 0;
   virtual IOpenMultiDiGraph *clone() const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IOpenMultiDiGraph>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOpenMultiDiGraph);
 
 struct IUpwardOpenMultiDiGraph : public IUpwardOpenMultiDiGraphView,
                                  public IGraph {
@@ -128,9 +111,7 @@ struct IUpwardOpenMultiDiGraph : public IUpwardOpenMultiDiGraphView,
   virtual void remove_edge(UpwardOpenMultiDiEdge const &) = 0;
   virtual IUpwardOpenMultiDiGraph *clone() const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IUpwardOpenMultiDiGraph>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUpwardOpenMultiDiGraph);
 
 struct IDownwardOpenMultiDiGraph : public IDownwardOpenMultiDiGraphView,
                                    public IGraph {
@@ -138,9 +119,7 @@ struct IDownwardOpenMultiDiGraph : public IDownwardOpenMultiDiGraphView,
   virtual void remove_edge(DownwardOpenMultiDiEdge const &) = 0;
   virtual IDownwardOpenMultiDiGraph *clone() const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IDownwardOpenMultiDiGraph>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDownwardOpenMultiDiGraph);
 
 } // namespace FlexFlow
 

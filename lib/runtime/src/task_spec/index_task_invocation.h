@@ -1,8 +1,18 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_INDEX_TASK_INVOCATION_H
-#define _FLEXFLOW_RUNTIME_SRC_INDEX_TASK_INVOCATION_H
+#ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_TASK_INVOCATION_H
+#define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_TASK_INVOCATION_H
 
-#include "task_invocation.h"
-#include "typed_task_invocation.h"
+#include "arg_ref.h"
+#include "parallel_tensor_spec.h"
+#include "pcg/machine_view.h"
+#include "pcg/parallel_tensor_guid_t.h"
+#include "runtime/task_spec/concrete_arg.h"
+#include "runtime/task_spec/index_arg.h"
+#include "runtime/task_spec/slot_id.h"
+#include "runtime/task_spec/typed_future.h"
+#include "runtime/task_spec/typed_future_map.h"
+#include "runtime/task_spec/typed_task_invocation.h"
+#include "standard_task_invocation.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 
@@ -10,7 +20,7 @@ using IndexTaskArgSpec = variant<ConcreteArgSpec,
                                  IndexArgSpec,
                                  CheckedTypedFuture,
                                  CheckedTypedFutureMap,
-                                 ArgRefSpec,
+                                 RuntimeArgRefSpec,
                                  TaskInvocationSpec>;
 
 template <typename T>
@@ -28,7 +38,7 @@ public:
   void bind(slot_id, ParallelTensorSpec const &);
 
   template <typename T>
-  void bind_arg(slot_id name, StandardTypedTaskArg<T> const &arg) {
+  void bind_arg(slot_id name, T const &arg) {
     this->standard_binding.bind_arg(name, arg);
   }
 
@@ -48,22 +58,17 @@ public:
 public:
   void insert_arg_spec(slot_id, IndexTaskArgSpec const &);
 
-  TaskBinding standard_binding;
+  StandardTaskBinding standard_binding;
 };
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(IndexTaskBinding,
+                                             standard_binding);
 
-struct IndexTaskInvocation : public use_visitable_cmp<IndexTaskInvocation> {
-public:
-  IndexTaskInvocation() = delete;
-  IndexTaskInvocation(task_id_t const &task_id, IndexTaskBinding const &binding)
-      : task_id(task_id), binding(binding) {}
-
-public:
-  task_id_t task_id;
-  IndexTaskBinding binding;
+struct IndexTaskInvocation {
+  req<task_id_t> task_id;
+  req<IndexTaskBinding> binding;
 };
+FF_VISITABLE_STRUCT(IndexTaskInvocation, task_id, binding);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::IndexTaskInvocation, task_id, binding);
 
 #endif

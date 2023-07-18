@@ -14,6 +14,6 @@ struct CastAttrs {
 FF_VISITABLE_STRUCT(CastAttrs, dtype);
 
 CHECK_VALID_OP_ATTR(CastAttrs);
-}
+} // namespace FlexFlow
 
 #endif

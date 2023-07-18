@@ -2,8 +2,8 @@
 #define _FLEXFLOW_RUNTIME_SRC_FUTURE_ARGS_FORMAT_H
 
 #include "legion.h"
+#include "runtime/task_spec/tensorless_task_invocation.h"
 #include "task_argument_accessor.h"
-#include "tensorless_task_invocation.h"
 #include "utils/stack_map.h"
 
 namespace FlexFlow {

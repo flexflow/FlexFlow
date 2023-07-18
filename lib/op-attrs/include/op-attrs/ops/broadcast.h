@@ -14,6 +14,6 @@ FF_VISITABLE_STRUCT(BroadcastAttrs, target_dims);
 
 CHECK_VALID_OP_ATTR(BroadcastAttrs);
 
-}
+} // namespace FlexFlow
 
 #endif

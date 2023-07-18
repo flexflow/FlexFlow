@@ -1,36 +1,30 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 #define _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 
-#include "arg_type_runtime_tag.h"
 #include "kernels/ff_handle.h"
-#include "profiling.h"
+#include "runtime/profiling.h"
+#include "runtime/task_spec/arg_type_runtime_tag.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-enum class ArgRefType { ENABLE_PROFILING, FF_HANDLE, PROFILING_SETTINGS };
-
-template <typename T>
-struct ArgRef : public use_visitable_cmp<ArgRef<T>> {
-public:
-  ArgRef() = delete;
-  ArgRef(ArgRefType ref_type) : ref_type(ref_type) {}
-
-public:
-  ArgRefType ref_type;
+template <typename LABEL_TYPE, typename T>
+struct ArgRef {
+  LABEL_TYPE ref_type;
 };
 
+template <typename LABEL_TYPE>
 struct ArgRefSpec {
 public:
   ArgRefSpec() = delete;
 
   template <typename T>
   bool holds() const {
-    return this->type_tag.matches<T>();
+    return this->type_tag.template matches<T>();
   }
 
-  ArgRefType const &get_ref_type() const {
+  LABEL_TYPE const &get_ref_type() const {
     return this->ref_type;
   }
 
@@ -39,23 +33,25 @@ public:
   }
 
   template <typename T>
-  static ArgRefSpec create(ArgRef<T> const &r) {
-    static_assert(is_serializable<T>, "Type must be serializeable");
+  static ArgRefSpec create(ArgRef<LABEL_TYPE, T> const &r) {
+    static_assert(is_serializable<T>::value, "Type must be serializeable");
 
     return ArgRefSpec(ArgTypeRuntimeTag::create<T>(), r.ref_type);
   }
 
+  template <typename T>
+  static ArgRefSpec create_device_specific(ArgRef<LABEL_TYPE, T> const &r) {
+    return ArgRefSpec(ArgTypeRuntimeTag::create<T>(), r.ref_type, device_index);
+  }
+
 private:
-  ArgRefSpec(ArgTypeRuntimeTag const &type_tag, ArgRefType ref_type)
+  ArgRefSpec(ArgTypeRuntimeTag const &type_tag, LABEL_TYPE ref_type)
       : type_tag(type_tag), ref_type(ref_type) {}
 
   ArgTypeRuntimeTag type_tag;
-  ArgRefType ref_type;
+  LABEL_TYPE ref_type;
+  optional<size_t> device_idx = nullopt;
 };
-
-ArgRef<EnableProfiling> enable_profiling();
-ArgRef<ProfilingSettings> profiling_settings();
-ArgRef<PerDeviceFFHandle> ff_handle();
 
 } // namespace FlexFlow
 

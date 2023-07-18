@@ -15,6 +15,6 @@ struct CombineAttrs {
 FF_VISITABLE_STRUCT(CombineAttrs, combine_dim, combine_degree);
 CHECK_VALID_OP_ATTR(CombineAttrs);
 
-}
+} // namespace FlexFlow
 
 #endif

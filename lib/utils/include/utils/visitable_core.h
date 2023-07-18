@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_VISITABLE_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_VISITABLE_CORE_H
 
-#include "visit_struct/visit_struct.hpp"
-#include "utils/tuple.h"
 #include "utils/required_core.h"
+#include "utils/tuple.h"
+#include "visit_struct/visit_struct.hpp"
 
 #define VISITABLE_STRUCT_EMPTY(STRUCT_NAME)                                    \
   namespace visit_struct {                                                     \
@@ -82,7 +82,9 @@ template <typename T>
 using visit_as_tuple_t = typename visit_as_tuple<T>::type;
 
 template <typename T>
-struct field_count : std::integral_constant<std::size_t, ::visit_struct::traits::visitable<T>::field_count> { };
+struct field_count : std::integral_constant<
+                         std::size_t,
+                         ::visit_struct::traits::visitable<T>::field_count> {};
 
 } // namespace FlexFlow
 

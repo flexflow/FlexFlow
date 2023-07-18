@@ -28,7 +28,8 @@ public:
   req<bool> create_gradients;
   req<optional<ParamSync>> sync_type;
 };
-FF_VISITABLE_STRUCT(Tensor, dims, data_type, initializer, create_gradients, sync_type);
+FF_VISITABLE_STRUCT(
+    Tensor, dims, data_type, initializer, create_gradients, sync_type);
 
 using Parameter = Tensor;
 

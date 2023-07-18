@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <vector>
 
+using namespace FlexFlow;
+
 namespace doctest {
 
 template <typename InputIt, typename Stringifiable = std::string>
@@ -18,7 +20,7 @@ std::string
   if (first == last) {
     return open + "(empty)" + close;
   } else {
-    return open  + close;
+    return open + join_strings(first, last, delimiter, f) + close;
   }
 }
 

@@ -10,12 +10,6 @@ Node AdjacencyDiGraph::add_node() {
   return node;
 }
 
-NodePort AdjacencyDiGraph::add_node_port() {
-  NodePort nodeport{this->next_nodeport_idx};
-  this->next_nodeport_idx++;
-  return nodeport;
-}
-
 void AdjacencyDiGraph::add_node_unsafe(Node const &node) {
   adjacency[node];
   this->next_node_idx = std::max(this->next_node_idx, node.value() + 1);
@@ -44,15 +38,9 @@ void AdjacencyDiGraph::remove_edge(DirectedEdge const &e) {
 std::unordered_set<DirectedEdge>
     AdjacencyDiGraph::query_edges(DirectedEdgeQuery const &query) const {
   std::unordered_set<DirectedEdge> result;
-  for (auto const &kv : this->adjacency) {
-    Node src = kv.first;
-    if (!query.srcs.has_value() || query.srcs->find(src) != query.srcs->end()) {
-      for (Node const &dst : kv.second) {
-        if (!query.dsts.has_value() ||
-            query.dsts->find(dst) != query.dsts->end()) {
-          result.insert({src, dst});
-        }
-      }
+  for (auto const &src_kv : query_keys(query.srcs, this->adjacency)) {
+    for (auto const &dst : apply_query(query.dsts, src_kv.second)) {
+      result.insert({src_kv.first, dst});
     }
   }
   return result;
@@ -60,14 +48,7 @@ std::unordered_set<DirectedEdge>
 
 std::unordered_set<Node>
     AdjacencyDiGraph::query_nodes(NodeQuery const &query) const {
-  std::unordered_set<Node> result;
-  for (auto const &kv : this->adjacency) {
-    if (!query.nodes.has_value() ||
-        query.nodes->find(kv.first) != query.nodes->end()) {
-      result.insert(kv.first);
-    }
-  }
-  return result;
+  return apply_query(query.nodes, keys(this->adjacency));
 }
 
 bool AdjacencyDiGraph::operator==(AdjacencyDiGraph const &other) const {

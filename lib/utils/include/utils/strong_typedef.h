@@ -201,4 +201,16 @@ struct numerical_typedef : strong_typedef<StrongTypedef, T> {
   }                                                                            \
   static_assert(true, "")
 
+#define FF_TYPEDEF_HASHABLE(TYPEDEF_NAME)                                      \
+  }                                                                            \
+  MAKE_TYPEDEF_HASHABLE(::FlexFlow::TYPEDEF_NAME);                             \
+  namespace FlexFlow {                                                         \
+  static_assert(true, "");
+
+#define FF_TYPEDEF_PRINTABLE(TYPEDEF_NAME, TYPEDEF_SHORTNAME)                  \
+  }                                                                            \
+  MAKE_TYPEDEF_PRINTABLE(::FlexFlow::TYPEDEF_NAME, TYPEDEF_SHORTNAME);         \
+  namespace FlexFlow {                                                         \
+  static_assert(true, "");
+
 #endif

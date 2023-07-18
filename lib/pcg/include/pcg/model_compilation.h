@@ -21,6 +21,6 @@ struct ModelCompilationResult {
 };
 FF_VISITABLE_STRUCT(ModelCompilationResult, input, pcg, tensor_mapping);
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_HASH_UTILS_H
 #define _FLEXFLOW_HASH_UTILS_H
 
+#include "containers.h"
 #include <functional>
 #include <tuple>
 #include <type_traits>
-#include <vector>
 #include <unordered_set>
-#include "containers.h"
+#include <vector>
 
 template <class T>
 std::size_t get_std_hash(T const &v) {

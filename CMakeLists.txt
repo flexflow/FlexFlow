@@ -87,6 +87,10 @@ if (FF_CUDA_ARCH STREQUAL "")
   message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(LIBEXT ".so")
+endif()
+
 include(cuda)
 include(cudnn)
 include(nccl)
@@ -107,10 +111,6 @@ include(invoke)
 include(any)
 #include(gtest)
 #include(fmt)
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(LIBEXT ".so")
-endif()
 
 # TODO @lockshaw remove me
 # https://discourse.nixos.org/t/get-clangd-to-find-standard-headers-in-nix-shell/11268/6

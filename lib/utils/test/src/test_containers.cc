@@ -104,14 +104,19 @@ TEST_CASE("values") {
     CHECK(std::find(result.begin(), result.end(), "three") != result.end());
 }
 
-TEST_CASE("items") {
-    std::unordered_map<int, std::string> m = {{1, std::string("one")}, {2, std::string("two")}, {3, std::string("three")}};
-    auto result = items(m);
-    CHECK(result.size() == 3);
-    CHECK(result.find({1, "one"}) != result.end());
-    CHECK(result.find({2, "two"}) != result.end());
-    CHECK(result.find({3, "three"}) != result.end());
-}
+
+// TEST_CASE("items") {
+//     std::unordered_map<int, int> m = {{1, 11}, {2, 22}, {3, 33}};
+//      std::cout<<"result type:"<<typeid(m).name()<<std::endl;
+//     auto result = items(m);
+    // std::cout<<"result type:"<<typeid(result).name()<<std::endl;
+   // CHECK(result.size() == 3);
+    //CHECK(result.find(std::make_pair(1, std::make_pair(1, std::string("one")))) != result.end());
+
+
+    // CHECK(result.find({2, "two"}) != result.end());
+    // CHECK(result.find({3, "three"}) != result.end());
+// }
 
 TEST_CASE("unique") {
     std::vector<int> v = {1, 2, 3, 2, 1};

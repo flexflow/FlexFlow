@@ -10,6 +10,16 @@ Node AdjacencyMultiDiGraph::add_node() {
   return node;
 }
 
+NodePort AdjacencyMultiDiGraph::add_node_port() {
+  NodePort nodePort{this->next_node_port};
+  this->next_node_port++;
+  return nodePort;
+}
+
+void AdjacencyMultiDiGraph::add_node_port_unsafe(NodePort const &nodePort) {
+  this->next_node_port = std::max(this->next_node_port, nodePort.value() + 1);
+}
+
 void AdjacencyMultiDiGraph::add_node_unsafe(Node const &node) {
   adjacency[node];
   this->next_node_idx = std::max(this->next_node_idx, node.value() + 1);
@@ -31,22 +41,11 @@ void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
 std::unordered_set<MultiDiEdge>
     AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   std::unordered_set<MultiDiEdge> result;
-  for (auto const &kv : this->adjacency) {
-    Node src = kv.first;
-    if (!q.srcs.has_value() || contains(*q.srcs, src)) {
-      for (auto const &kv2 : kv.second) {
-        Node dst = kv2.first;
-        if (!q.dsts.has_value() || contains(*q.dsts, dst)) {
-          for (auto const &kv3 : kv2.second) {
-            NodePort srcIdx = kv3.first;
-            if (!q.srcIdxs.has_value() || contains(*q.srcIdxs, srcIdx)) {
-              for (NodePort dstIdx : kv3.second) {
-                if (!q.dstIdxs.has_value() || contains(*q.dstIdxs, dstIdx)) {
-                  result.insert({src, dst, srcIdx, dstIdx});
-                }
-              }
-            }
-          }
+  for (auto const &src_kv : query_keys(q.srcs, this->adjacency)) {
+    for (auto const &dst_kv : query_keys(q.dsts, src_kv.second)) {
+      for (auto const &srcIdx_kv : query_keys(q.srcIdxs, dst_kv.second)) {
+        for (auto const &dstIdx : apply_query(q.dstIdxs, srcIdx_kv.second)) {
+          result.insert({src_kv.first, dst_kv.first, srcIdx_kv.first, dstIdx});
         }
       }
     }
@@ -56,14 +55,7 @@ std::unordered_set<MultiDiEdge>
 
 std::unordered_set<Node>
     AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
-  std::unordered_set<Node> result;
-  for (auto const &kv : this->adjacency) {
-    if (!query.nodes.has_value() ||
-        query.nodes->find(kv.first) != query.nodes->end()) {
-      result.insert(kv.first);
-    }
-  }
-  return result;
+  return apply_query(query.nodes, keys(this->adjacency));
 }
 
 } // namespace FlexFlow
