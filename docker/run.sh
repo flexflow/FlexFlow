@@ -23,8 +23,8 @@ if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
 SHM_SIZE=${SHM_SIZE:-8192m}
 
 # Check docker image name
-if [[ "$image" != @(flexflow-environment|flexflow|mt5) ]]; then
-  echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment', 'flexflow' or 'mt5'."
+if [[ "$image" != @(flexflow-environment|flexflow) ]]; then
+  echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment', 'flexflow'."
   exit 1
 fi
 
@@ -52,22 +52,21 @@ if [[ "${FF_GPU_BACKEND}" == "cuda" || "${FF_GPU_BACKEND}" == "hip_cuda" ]]; the
   fi
   # Set cuda version suffix to docker image name
   echo "Running $image docker image with CUDA $cuda_version"
-  cuda_version="-${cuda_version}"
+  cuda_version_hyphen="-${cuda_version}"
 else
   # Empty cuda version suffix for non-CUDA images
-  cuda_version=""
+  cuda_version_hyphen=""
 fi
-  
-if [[ "$image" == "flexflow-environment" ]]; then
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}${cuda_version}:latest"
-elif [[ "$image" == "flexflow" ]]; then
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-${FF_GPU_BACKEND}${cuda_version}:latest"
-elif [[ "$image" == "mt5" ]]; then
-    # Backward compatibility
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" \
-    -v "$(pwd)"/../examples/python/pytorch/mt5/data:/usr/FlexFlow/examples/python/pytorch/mt5/data \
-    -v "$(pwd)"/../examples/python/pytorch/mt5/eng-sin.tar:/usr/FlexFlow/examples/python/pytorch/mt5/eng-sin.tar \
-    "flexflow-${FF_GPU_BACKEND}${cuda_version}:latest"
-else
-    echo "Docker image name not valid"
+
+# Check that image exists
+if docker image inspect "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}":latest > /dev/null || true ; then
+  echo ""
+  echo "To download the docker image, run:"
+  echo "    FF_GPU_BACKEND=${FF_GPU_BACKEND} cuda_version=${cuda_version} $(pwd)/pull.sh $image"
+  echo "To build the docker image from source, run:"
+  echo "    FF_GPU_BACKEND=${FF_GPU_BACKEND} cuda_version=${cuda_version} $(pwd)/build.sh $image"
+  echo ""
+  exit 1
 fi
+
+eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
