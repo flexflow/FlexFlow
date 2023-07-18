@@ -137,7 +137,7 @@ template <typename K,
 std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
                                    F const &f) {
   std::unordered_map<K2, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     result.insert({f(kv.first), kv.second});
   }
   return result;
@@ -333,12 +333,12 @@ std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
 
 template <typename L, typename R>
 std::function<R(L const &)> lookup_in_l(bidict<L, R> const &m) {
-  return [&m](L const &l) -> L { return m.at_l(l); };
+  return [&m](L const &l) -> R { return m.at_l(l); };
 }
 
 template <typename L, typename R>
 std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
-  return [&m](R const &r) -> R { return m.at_r(r); };
+  return [&m](R const &r) -> L { return m.at_r(r); };
 }
 
 template <typename T>
@@ -532,18 +532,18 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
 }
 
 template <typename T, typename F>
-std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
-  std::vector<T> result(s.begin(), s.end());
-  inplace_sorted_by(s, f);
-  return result;
-}
-
-template <typename T, typename F>
 void inplace_sorted_by(std::vector<T> &v, F const &f) {
   auto custom_comparator = [&](T const &lhs, T const &rhs) -> bool {
     return f(lhs, rhs);
   };
   std::sort(v.begin(), v.end(), custom_comparator);
+}
+
+template <typename T, typename F>
+std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
+  std::vector<T> result(s.begin(), s.end());
+  inplace_sorted_by(result, f);
+  return result;
 }
 
 template <typename C, typename F>
@@ -581,13 +581,13 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
 
 template <typename C>
 typename C::value_type maximum(C const &v) {
-  return std::max_element(v.begin(), v.end());
+  return *std::max_element(v.begin(), v.end());
 }
 
 template <typename T>
 T reversed(T const &t) {
   T r;
-  for (auto i = t.cend() - 1; i >= t.begin(); i++) {
+  for (auto i = t.cend() - 1; i >= t.begin(); i--) {
     r.push_back(*i);
   }
   return r;
@@ -598,7 +598,9 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
   std::vector<T> result;
 
   for (auto const &element : v) {
-    result.push_back(element.value());
+    if (element != nullopt) {
+      result.push_back(element.value());
+    }
   }
 
   return result;
@@ -624,7 +626,7 @@ std::vector<T> subvec(std::vector<T> const &v,
     begin_iter += resolve_loc(maybe_start.value());
   }
   if (maybe_end.has_value()) {
-    end_iter = v.cbegin() + resolve_loc(maybe_start.value());
+    end_iter = v.cbegin() + resolve_loc(maybe_end.value());
   }
 
   std::vector<T> output(begin_iter, end_iter);
