@@ -3,10 +3,8 @@ set -euo pipefail
 
 # Usage: ./build.sh <docker_image_name>
 
-# https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
-cd "$SCRIPT_DIR/.."
+cd "${BASH_SOURCE[0]%/*}/.."
 
 cuda_version=${cuda_version:-"empty"}
 image=${1:-flexflow}
@@ -17,7 +15,7 @@ if [[ $cuda_version == "empty" ]]; then
   cuda_version=${cuda_version:1:4}
 fi
 
-echo "Building $image docker image for CUDA $cuda_version"
+echo "Building $image docker image with CUDA $cuda_version"
 
 # modify cuda version to available versions
 if [[ "$cuda_version" == @(11.1|11.3|11.7) ]]; then

@@ -6,35 +6,16 @@ cd "${BASH_SOURCE[0]%/*}"
 
 # Parameter controlling whether to attach GPUs to the Docker container
 ATTACH_GPUS=true
+gpu_arg=""
+if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
 
 # Amount of shared memory to give the Docker container access to
 # If you get a Bus Error, increase this value. If you don't have enough memory
 # on your machine, decrease this value.
 SHM_SIZE=8192m
 
-gpu_arg=""
-if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
-cuda_version="empty"
-image="flexflow"
-
-while [[ $# -gt 0 ]]; do
-  key="$1"
-
-  case $key in
-    --cuda_version)
-      cuda_version="$2"
-      shift 2
-      ;;
-    --image_name)
-      image="$2"
-      shift 2
-      ;;
-    *)
-      echo "Invalid option: $key"
-      exit 1
-      ;;
-  esac
-done
+cuda_version=${cuda_version:-"empty"}
+image=${1:-flexflow}
 
 if [[ $cuda_version == "empty" ]]; then
   cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}')
@@ -42,7 +23,7 @@ if [[ $cuda_version == "empty" ]]; then
   cuda_version=${cuda_version:1:4}
 fi
 
-echo "Building $image docker image for CUDA $cuda_version"
+echo "Running $image docker image with CUDA $cuda_version"
 
 # modify cuda version to available versions
 if [[ "$cuda_version" != @(11.1|11.3|11.7|11.2|11.5|11.6|11.8) ]]; then

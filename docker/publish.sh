@@ -19,7 +19,7 @@ if [[ "$cuda_version" != @(11.1|11.3|11.7|11.2|11.5|11.6|11.8) ]]; then
   exit 1
 fi
 
-echo "Publishing $image docker image for CUDA $cuda_version"
+echo "Publishing $image docker image with CUDA $cuda_version"
 
 if [[ "${image}" != @(flexflow-environment-cuda|flexflow-environment-hip_cuda|flexflow-environment-hip_rocm|flexflow-environment-intel|flexflow-cuda|flexflow-hip_cuda|flexflow-hip_rocm|flexflow-intel) ]]; then
   echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment-{cuda,hip_cuda,hip_rocm,intel}' and 'flexflow-{cuda,hip_cuda,hip_rocm,intel}'."
@@ -48,8 +48,8 @@ if [[ "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
 else
   cuda_version="-${cuda_version}"
 fi
-docker tag "${image}-${cuda_version}":latest ghcr.io/flexflow/"$image$cuda_version":latest
+docker tag "${image}${cuda_version}":latest ghcr.io/flexflow/"${image}${cuda_version}":latest
 
 # Upload image
-docker push ghcr.io/flexflow/"$image-$cuda_version":latest
+docker push ghcr.io/flexflow/"${image}${cuda_version}":latest
 
