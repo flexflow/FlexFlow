@@ -113,4 +113,4 @@ fi
 # Set value of BUILD_CONFIGS
 get_build_configs
 
-docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" --build-arg "cuda_version=-${cuda_version}" -t "flexflow-${FF_GPU_BACKEND}${cuda_version}" -f docker/flexflow/Dockerfile .
+docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" --build-arg "cuda_version=${cuda_version}" -t "flexflow-${FF_GPU_BACKEND}${cuda_version}" -f docker/flexflow/Dockerfile .

@@ -44,14 +44,12 @@ if [ -z "$git_sha" ]; then echo "Commit hash cannot be detected, cannot publish 
 
 
 if [[ "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
-  docker tag "$image":latest ghcr.io/flexflow/"$image":latest
+  cuda_version=""
 else
-  docker tag "${image}-${cuda_version}":latest ghcr.io/flexflow/"$image-$cuda_version":latest
+  cuda_version="-${cuda_version}"
 fi
+docker tag "${image}-${cuda_version}":latest ghcr.io/flexflow/"$image$cuda_version":latest
 
 # Upload image
-if [[ "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
-  docker push ghcr.io/flexflow/"$image":latest
-else
-  docker push ghcr.io/flexflow/"$image-$cuda_version":latest
-fi
+docker push ghcr.io/flexflow/"$image-$cuda_version":latest
+
