@@ -19,6 +19,20 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
+        cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6","11.7", "11.8"]
+        exclude:
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.2"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.3"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.5"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.6"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.7"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.8"
       fail-fast: false
     steps:
       - run: 'echo "No docker-build required"'
