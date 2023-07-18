@@ -8,8 +8,14 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "$SCRIPT_DIR/.."
 
-cuda_version=${cuda_version:-11.1}
+cuda_version=${cuda_version:-"empty"}
 image=${1:-flexflow}
+
+if [[ $cuda_version == "empty" ]]; then
+  cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}')
+  # Change cuda_version eg. V11.7.99 to 11.7
+  cuda_version=${cuda_version:1:4}
+fi
 
 echo "Building $image docker image for CUDA $cuda_version"
 
@@ -45,10 +51,11 @@ fi
 # Build the FlexFlow Enviroment docker image with input cuda version
 # if FF_GPU_BACKEND, we don't tag the docker image with cuda version 
 if [[ "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
-  docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" -t "flexflow-environment-${FF_GPU_BACKEND}" -f docker/flexflow-environment/Dockerfile .
+  cuda_version=""
 else
-  docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" -t "flexflow-environment-${FF_GPU_BACKEND}-${cuda_version}" -f docker/flexflow-environment/Dockerfile .
+  cuda_version="-${cuda_version}"
 fi 
+docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" -t "flexflow-environment-${FF_GPU_BACKEND}${cuda_version}" -f docker/flexflow-environment/Dockerfile .
 
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "flexflow-environment" ]]; then
@@ -106,8 +113,4 @@ fi
 # Set value of BUILD_CONFIGS
 get_build_configs
 
-if [[ "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
-  docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" -t "flexflow-${FF_GPU_BACKEND}" -f docker/flexflow/Dockerfile .
-else
-  docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" --build-arg "cuda_version=-${cuda_version}" -t "flexflow-${FF_GPU_BACKEND}-${cuda_version}" -f docker/flexflow/Dockerfile .
-fi
+docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" --build-arg "cuda_version=-${cuda_version}" -t "flexflow-${FF_GPU_BACKEND}${cuda_version}" -f docker/flexflow/Dockerfile .
