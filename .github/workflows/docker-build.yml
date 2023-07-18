@@ -25,6 +25,21 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
+        cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6","11.7", "11.8"]
+        exclude:
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.2"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.3"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.5"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.6"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.7"
+          - gpu_backend: "hip_rocm"
+            cuda_version: "11.8"
+        
       fail-fast: false
     steps:
       - name: Checkout Git Repository
@@ -38,30 +53,34 @@ jobs:
       - name: Build Docker container
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+          cuda_version: ${{ matrix.cuda_version }}
         run: |
-          # On push to master, build for all compatible architectures, so that we can publish 
+          # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
-          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
+          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ]]; then
             export FF_CUDA_ARCH=all
           else
             export FF_CUDA_ARCH=70
           fi
-          ./docker/build.sh --image_name flexflow --cuda_version 11.8
+          ./docker/build.sh flexflow
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
-        run: docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-11.8.0:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
+        env: 
+          cuda_version: ${{ matrix.cuda_version }}
+        run: docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
 
-      - name: Publish Docker environment image (on push to master)
+      - name: Publish Docker environment image (on push to inference)
         if: github.repository_owner == 'flexflow'
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+          cuda_version: ${{ matrix.cuda_version }}
         run: |
-          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "master" ]]; then
-            ./docker/publish.sh --image_name "flexflow-environment-${FF_GPU_BACKEND}" --cuda_version 11.8 
-            ./docker/publish.sh --image_name "flexflow-${FF_GPU_BACKEND}" --cuda_version 11.8
+          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ]]; then
+            ./docker/publish.sh flexflow-environment
+            ./docker/publish.sh flexflow
           else
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi
