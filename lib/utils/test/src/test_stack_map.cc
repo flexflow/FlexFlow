@@ -35,7 +35,7 @@ TEST_CASE_FIXTURE(StackMapTestFixture, "At") {
   CHECK_EQ(map.at(2), 20);
 
   // Test const version of at() function
-  const stack_map<int, int, 5>& const_map = map;
+  stack_map<int, int, 5> const &const_map = map;
   CHECK_EQ(const_map.at(1), 10);
   CHECK_EQ(const_map.at(2), 20);
 }
@@ -54,11 +54,9 @@ TEST_CASE_FIXTURE(StackMapTestFixture, "Iterator") {
   }
 
   // Test const version of iterators
-  const stack_map<int, int, 5>& const_map = map;
+  stack_map<int, int, 5> const &const_map = map;
   index = 0;
   for (auto it = const_map.begin(); it != const_map.end(); ++it) {
     CHECK_EQ(*it, expected[index++]);
   }
 }
-
-

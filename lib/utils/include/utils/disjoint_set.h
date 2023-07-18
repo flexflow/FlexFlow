@@ -66,7 +66,9 @@ private:
     return &*it;
   }
 
-  mutable m_disjoint_set<T> ds; //Note(lambda):add mutable, can make ds be mutable, so we can use the ds->find() in const function 
+  mutable m_disjoint_set<T>
+      ds; // Note(lambda):add mutable, can make ds be mutable, so we can use the
+          // ds->find() in const function
   std::set<T, Compare> nodes;
 };
 

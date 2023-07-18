@@ -15,7 +15,7 @@ TEST_CASE_TEMPLATE("StackStringConstruction", T, char) {
   }
 
   SUBCASE("CStringConstruction") {
-    const char* cstr = "Hello";
+    char const *cstr = "Hello";
     StackString str(cstr);
     CHECK_EQ(str.size(), 5);
     CHECK_EQ(str.length(), 5);

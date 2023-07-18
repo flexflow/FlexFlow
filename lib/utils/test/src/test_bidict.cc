@@ -61,4 +61,3 @@ TEST_CASE_FIXTURE(BidictTestFixture, "Size") {
 
   CHECK_EQ(dict.size(), 2);
 }
-

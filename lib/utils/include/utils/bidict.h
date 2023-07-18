@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_BIDICT_H
 #define _FLEXFLOW_UTILS_BIDICT_H
 
-#include <unordered_map>
 #include <cassert>
+#include <unordered_map>
 
 namespace FlexFlow {
 

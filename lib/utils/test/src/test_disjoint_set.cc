@@ -3,19 +3,18 @@
 
 using namespace FlexFlow;
 
-template<typename T>
+template <typename T>
 T generate_element(int seed);
 
-template<>
+template <>
 int generate_element<int>(int seed) {
   return seed;
 }
 
-template<>
+template <>
 std::string generate_element<std::string>(int seed) {
   return "Element" + std::to_string(seed);
 }
-
 
 TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
   FlexFlow::disjoint_set<T> ds;
@@ -60,12 +59,10 @@ TEST_CASE_TEMPLATE("DisjointSetMapping", T, int, std::string) {
   ds.m_union(element3, element4);
   ds.m_union(element1, element3);
 
-  std::map<T, T> expectedMapping = {
-      {element1, ds.find(element1)},
-      {element2, ds.find(element2)},
-      {element3, ds.find(element3)},
-      {element4, ds.find(element4)}
-  };
+  std::map<T, T> expectedMapping = {{element1, ds.find(element1)},
+                                    {element2, ds.find(element2)},
+                                    {element3, ds.find(element3)},
+                                    {element4, ds.find(element4)}};
   std::map<T, T> mapping = ds.get_mapping();
   CHECK_EQ(mapping, expectedMapping);
 }
