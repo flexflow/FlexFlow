@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_STACK_MAP_H
 #define _FLEXFLOW_UTILS_STACK_MAP_H
 
+#include "containers.h"
 #include "optional.h"
 #include "stack_vector.h"
-#include "containers.h"
 
 namespace FlexFlow {
 
@@ -93,9 +93,9 @@ struct stack_map {
   }
 
 private:
-
-  std::vector<std::pair<K,V>> sorted() const {
-    auto comparator = [](std::pair<K, V> const& lhs, std::pair<K,V> const& rhs) {
+  std::vector<std::pair<K, V>> sorted() const {
+    auto comparator = [](std::pair<K, V> const &lhs,
+                         std::pair<K, V> const &rhs) {
       return lhs.first < rhs.first;
     };
 
