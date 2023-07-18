@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-static_assert(is_list_initializable<required<int>, int>::value, "");
+static_assert(is_list_initializable<req<int>, int>::value, "");
 
 }
 

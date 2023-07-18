@@ -8,14 +8,14 @@
 namespace FlexFlow {
 
 template <typename T>
-struct required {
+struct required_wrapper_impl {
 public:
-  required() = delete;
-  required(T const &t) : m_value(t) {}
-  required(T &&t) : m_value(t) {}
+  required_wrapper_impl() = delete;
+  required_wrapper_impl(T const &t) : m_value(t) {}
+  required_wrapper_impl(T &&t) : m_value(t) {}
 
   template <typename TT>
-  required(
+  required_wrapper_impl(
       TT const &tt,
       typename std::enable_if<std::is_convertible<TT, T>::value>::type * = 0)
       : m_value(static_cast<T>(tt)) {}
@@ -55,36 +55,28 @@ public:
   /* } */
 
   /* bool operator>(T const &other) const { */
-  /*   return this-> */
+  /*   return this->m_value > other; */
   /* } */
-
-  T const &value() const {
-    return this->m_value;
-  }
 
 private:
   T m_value;
 };
 
 
-template <typename T, typename Enable = void> struct required_v2 : public required<T> { using required<T>::required; };
-
 template <typename T>
-struct required_v2<
-  T, 
-  typename std::enable_if<std::is_class<T>::value>::type
-> : public T {
+struct required_inheritance_impl : public T {
+  static_assert(std::is_class<T>::value, "");
 
   using T::T;
-  required_v2() = delete;
-  required_v2(T const &);
-  required_v2(T &&t);
+  required_inheritance_impl() = delete;
+  required_inheritance_impl(T const &);
+  required_inheritance_impl(T &&t);
 
   template <typename TT>
-  required_v2(
+  required_inheritance_impl(
       TT const &tt,
       typename std::enable_if<std::is_convertible<TT, T>::value>::type * = 0)
-      : required_v2(static_cast<T>(tt)) { }
+      : required_inheritance_impl(static_cast<T>(tt)) { }
 
   operator T() const;
 
@@ -97,11 +89,18 @@ struct required_v2<
   }
 };
 
-template <typename T>
-using req = required_v2<T>;
+template <typename T, typename Enable = void> 
+struct required : public required_wrapper_impl<T> {
+  using required_wrapper_impl<T>::required_wrapper_impl;
+};
 
 template <typename T>
-using req2 = required_v2<T>;
+struct required<T, typename std::enable_if<std::is_class<T>::value>::type> : public required_inheritance_impl<T> {
+  using required_inheritance_impl<T>::required_inheritance_impl;
+};
+
+template <typename T>
+using req = required<T>;
 
 template <typename T>
 struct remove_req {
@@ -124,6 +123,11 @@ static_assert(
         void>::value,
     "");
 static_assert(is_list_initializable<req<bool>, bool>::value, "");
+static_assert(
+    std::is_same<
+        void_t<decltype(std::declval<req<int>>() + std::declval<int>())>,
+        void>::value,
+    "");
 
 } // namespace FlexFlow
 
