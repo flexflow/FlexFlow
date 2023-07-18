@@ -23,8 +23,8 @@ if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
 SHM_SIZE=${SHM_SIZE:-8192m}
 
 # Check docker image name
-if [[ "$image" != @(flexflow-environment|flexflow) ]]; then
-  echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment' and 'flexflow'."
+if [[ "$image" != @(flexflow-environment|flexflow|mt5) ]]; then
+  echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment', 'flexflow' or 'mt5'."
   exit 1
 fi
 
