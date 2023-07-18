@@ -4,6 +4,7 @@ on:
     paths-ignore:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - "include/**"
