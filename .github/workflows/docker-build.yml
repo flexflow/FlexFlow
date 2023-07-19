@@ -55,7 +55,7 @@ jobs:
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
           cuda_version: ${{ matrix.cuda_version }}
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && branch_name == "inference" }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && $branch_name == "inference" }}
           build_needed: ${{ matrix.gpu_backend == "hip_rocm" || ( matrix.gpu_backend == "cuda" && matrix.cuda_version == "11.8" ) }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
