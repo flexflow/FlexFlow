@@ -38,6 +38,9 @@ void parse_input_args(char **argv,
                       ModelType &llm_model_type,
                       bool &use_full_precision,
                       bool &verbose,
+                      bool &do_sample,
+                      float &temperature,
+                      float &topp,
                       int &data_parallelism_degree,
                       int &tensor_parallelism_degree,
                       int &pipeline_parallelism_degree) {
@@ -109,6 +112,18 @@ void parse_input_args(char **argv,
       verbose = true;
       continue;
     }
+    if (!strcmp(argv[i], "--do-sample")) {
+      do_sample = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--temperature")) {
+      temperature = std::stof(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--topp")) {
+      topp = std::stof(argv[++i]);
+      continue;
+    }
   }
 }
 
@@ -124,6 +139,9 @@ void FlexFlow::top_level_task(Task const *task,
   ModelType model_type;
   bool use_full_precision = false;
   bool verbose = false;
+  bool do_sample = false;
+  float temperature = 0.0f;
+  float topp = 0.0f;
   size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
   int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
       pipeline_parallelism_degree = 1;
@@ -137,12 +155,16 @@ void FlexFlow::top_level_task(Task const *task,
                    model_type,
                    use_full_precision,
                    verbose,
+                   do_sample,
+                   temperature,
+                   topp,
                    data_parallelism_degree,
                    tensor_parallelism_degree,
                    pipeline_parallelism_degree);
   ffconfig.data_parallelism_degree = data_parallelism_degree;
   ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
   ffconfig.pipeline_parallelism_degree = pipeline_parallelism_degree;
+
   assert(data_parallelism_degree * tensor_parallelism_degree *
              pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
@@ -150,6 +172,7 @@ void FlexFlow::top_level_task(Task const *task,
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
+  SamplingConfig samplingConfig(do_sample, temperature, topp);
   InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
   RequestManager rm(model_type,
                     file_paths.tokenizer_file_path,
@@ -163,6 +186,7 @@ void FlexFlow::top_level_task(Task const *task,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
                               INC_DECODING_MODE,
+                              samplingConfig,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,
@@ -211,6 +235,7 @@ void FlexFlow::top_level_task(Task const *task,
     assert(fm.get_future_map_domain().get_volume() == 1);
     Future future = fm.get_future(0);
     ir = future.get_result<InferenceResult>();
+    // assert(false);
   }
 
   // Execution fence
