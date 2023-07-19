@@ -52,7 +52,15 @@ jobs:
           submodules: recursive
 
       - name: Free additional space on runner
-        run: .github/workflows/helpers/free_space_on_runner.sh
+        env:
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
+          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
+        run: |
+          if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
+            .github/workflows/helpers/free_space_on_runner.sh
+          else
+            echo "Skipping this step to save time"
+          fi
 
       - name: Build Docker container
         env:
