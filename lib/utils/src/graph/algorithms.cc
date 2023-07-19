@@ -237,7 +237,7 @@ std::unordered_map<Node, std::unordered_set<Node>>
 }
 
 std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
-  return get_predecessors(g, {n});
+  return get_predecessors(g, std::unordered_set<Node>{n}).at(n);
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -380,11 +380,6 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   return result;
 }
 
-/*
-transform(get_outgoing_edges(g, n), [](DirectedEdge const &n) { return n.dst; })
-return std::unorder_set<Node> set_union return st::unorder_set<Node> as_vector
-convert the std::unorder_set<Node> to std::vector<Node>
-*/
 std::vector<Node> get_neighbors(DiGraphView const &g, Node const &n) {
   return as_vector(
       set_union(transform(get_outgoing_edges(g, n),
@@ -422,12 +417,12 @@ std::unordered_map<Node, std::unordered_set<Node>>
       if (contains_key(result, n)) {
         result[n] = result.at(pred);
       } else {
+        result[n] = std::unordered_set<Node>();
         result.at(n) = intersection(result.at(n), result.at(pred));
       }
     }
     result[n].insert(n);
   }
-
   return result;
 }
 
@@ -465,7 +460,6 @@ std::unordered_map<Node, optional<Node>>
   for (auto const &kv : get_dominators(g)) {
     Node node = kv.first;
     std::unordered_set<Node> node_dominators = kv.second;
-
     assert(node_dominators.size() >= 1);
 
     // a node cannot immediately dominate itself
