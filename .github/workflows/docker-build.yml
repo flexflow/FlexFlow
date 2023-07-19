@@ -45,12 +45,14 @@ jobs:
     env:
       FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
       cuda_version: ${{ matrix.cuda_version }}
-      branch_name: ${{ GITHUB_REF#refs/heads/ }}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
           submodules: recursive
+
+      - name: Get branch name
+        run: echo "branch_name=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
 
       - name: Free additional space on runner
         env:
