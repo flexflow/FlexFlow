@@ -44,8 +44,6 @@ jobs:
       FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
       cuda_version: ${{ matrix.cuda_version }}
       branch_name: ${GITHUB_REF#refs/heads/}
-      deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
-      build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -56,6 +54,9 @@ jobs:
         run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Build Docker container
+        env:
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
+          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
@@ -72,6 +73,9 @@ jobs:
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
+        env:
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
+          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
             docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
@@ -83,6 +87,7 @@ jobs:
         if: github.repository_owner == 'flexflow'
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
         run: |
           if [[ $deploy_needed == "true" ]]; then
             ./docker/publish.sh flexflow-environment
