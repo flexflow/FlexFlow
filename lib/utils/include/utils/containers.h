@@ -599,7 +599,11 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
   std::vector<T> result;
 
   for (auto const &element : v) {
+<<<<<<< HEAD
     if(element !=nullopt){
+=======
+    if (element != nullopt) {
+>>>>>>> 9444396f59b4042e13cf36af5b0b75bcf7c88991
       result.push_back(element.value());
     }
   }

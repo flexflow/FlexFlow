@@ -4,7 +4,10 @@
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/construction.h"
+#include <cinttypes>
 #include <iterator>
+#include <type_traits>
+#include <unordered_set>
 
 using namespace FlexFlow;
 
@@ -70,6 +73,61 @@ TEST_CASE("DiGraph") {
   for (auto kv : res) {
     CHECK(expected_result[kv.first] == kv.second);
   }
+
+  SUBCASE("get_imm_dominators") {
+    auto result = get_imm_dominators(g);
+
+    CHECK(result.size() == 4);
+    CHECK(result[n0] == nullopt);
+
+    CHECK(*result[n1] == n0);
+    CHECK(*result[n2] == n0);
+    CHECK(*result[n3] == n0);
+  }
+
+  SUBCASE("get_dominators") {
+    auto result = get_dominators(g);
+
+    CHECK(result.size() == 4);
+    CHECK(result[n0] == std::unordered_set<Node>{n0});
+    CHECK(result[n1] == std::unordered_set<Node>{n1});
+    CHECK(result[n2] == std::unordered_set<Node>{n0, n2});
+    CHECK(result[n3] == std::unordered_set<Node>{n3});
+  }
+
+  SUBCASE("get_neighbors") {
+    auto result = get_neighbors(g, n0);
+    auto expected = std::vector<Node>{n3, n1, n2};
+    CHECK(result == expected);
+    ;
+  }
+
+  SUBCASE("get_sinks") {
+    auto result = get_sinks(g);
+    auto expected = std::unordered_set<Node>{n2, n3};
+    CHECK(result == expected);
+  }
+
+  SUBCASE("get_bfs") {
+    std::unordered_set<Node> start_points = std::unordered_set<Node>{n0};
+    auto result = get_bfs_ordering(g, start_points);
+    auto expected = std::vector<Node>{n0, n2, n1, n3};
+    CHECK(result == expected);
+  }
+
+  SUBCASE("get_predecessors") {
+    std::unordered_set<Node> nodes{n1, n2};
+    auto result = get_predecessors(g, nodes);
+    CHECK(result.size() == 2);
+
+    auto n1_predecessors = result[n1];
+    auto n1_expected = std::unordered_set<Node>{n0};
+    CHECK(n1_predecessors == n1_expected);
+
+    auto n2_predecessors = result[n2];
+    auto n2_expected = std::unordered_set<Node>{n0, n1};
+    CHECK(n2_predecessors == n2_expected);
+  }
 }
 
 TEST_CASE("traversal") {
@@ -79,9 +137,6 @@ TEST_CASE("traversal") {
   g.add_edge({n[1], n[2]});
   g.add_edge({n[2], n[3]});
 
-  /* CHECK(get_incoming_edges(g, n[0]) ==
-  std::unordered_set<DirectedEdge>{});
-   */
   CHECK(get_sources(g) == std::unordered_set<Node>{n[0]});
   CHECK(get_unchecked_dfs_ordering(g, {n[0]}) ==
         std::vector<Node>{n[0], n[1], n[2], n[3]});
