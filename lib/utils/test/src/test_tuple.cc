@@ -4,14 +4,13 @@
 #include <iostream>
 #include <utility>
 
-
 using namespace FlexFlow;
 
 TEST_CASE("get function") {
   std::tuple<int, float, double> t(42, 3.14f, 2.71828);
 
   SUBCASE("get mutable reference") {
-    int& result = get<int>(t);
+    int &result = get<int>(t);
     CHECK(result == 42);
 
     result = 100;
@@ -19,7 +18,7 @@ TEST_CASE("get function") {
   }
 
   SUBCASE("get rvalue reference") {
-    float&& result = get<float>(std::move(t));
+    float &&result = get<float>(std::move(t));
     CHECK(result == doctest::Approx(3.14f));
 
     // t is in a valid but unspecified state after move
@@ -27,22 +26,22 @@ TEST_CASE("get function") {
   }
 
   SUBCASE("get const reference") {
-    const double& result = get<double>(t);
+    double const &result = get<double>(t);
     CHECK(result == doctest::Approx(2.71828));
   }
 
   SUBCASE("get const rvalue reference") {
-    const double&& result = get<double>(std::move(t));
+    double const &&result = get<double>(std::move(t));
     CHECK(result == doctest::Approx(2.71828));
   }
 }
 
-  struct Visitor {
-    template <typename T>
-    void operator()(int idx, const T& value) {
-      std::cout << "Value at index " << idx << ": " << value << std::endl;
-    }
-  };
+struct Visitor {
+  template <typename T>
+  void operator()(int idx, T const &value) {
+    std::cout << "Value at index " << idx << ": " << value << std::endl;
+  }
+};
 
 TEST_CASE("tuple_prepend function") {
   std::tuple<float, double> t1(3.14f, 2.71828);
@@ -56,13 +55,13 @@ TEST_CASE("tuple_prepend function") {
 // TEST_CASE("tuple_slice_t function") {
 //   std::tuple<int, float, double, char> t(42, 3.14f, 2.71828, 'A');
 
-
 //   SUBCASE("tuple_head_t") {
 //     using ResultType = tuple_head_t<2, decltype(t)>;
 //     std::tuple<int, float> expected(42, 3.14f);
 //     CHECK(std::is_same<ResultType, decltype(expected)>::value);
 //     auto result =  tuple_head_t<2, decltype(t)>();
-//     std::cout << "res:"<<std::get<0>(result) << ", " << std::get<1>(result) << std::endl;
+//     std::cout << "res:"<<std::get<0>(result) << ", " << std::get<1>(result)
+//     << std::endl;
 
 //     CHECK(tuple_head_t<2, decltype(t)>() == expected);
 
@@ -75,7 +74,6 @@ TEST_CASE("tuple_prepend function") {
 //     CHECK(std::is_same<ResultType, decltype(expected)>::value);
 //     CHECK(tuple_compare(tuple_tail_t<2, decltype(t)>(), expected));
 //   }
-
 
 //   SUBCASE("tuple_slice_t") {
 //     using ResultType = tuple_slice_t<1, 3, decltype(t)>;

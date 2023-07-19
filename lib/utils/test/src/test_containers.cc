@@ -109,7 +109,8 @@ TEST_CASE("values") {
 }
 
 // TEST_CASE("items") {
-//     std::unordered_map<int, std::string> m = {{1, std::string("one")}, {2, std::string("two")}, {3,std::string("three")}};
+//     std::unordered_map<int, std::string> m = {{1, std::string("one")}, {2,
+//     std::string("two")}, {3,std::string("three")}};
 //      std::cout<<"result type:"<<typeid(m).name()<<std::endl;
 //     auto result = items(m);
 //     CHECK(result.size() == 3);
@@ -410,7 +411,7 @@ TEST_CASE("Test for flatmap function on vectors") {
   CHECK(result == std::vector<int>({1, 2, 1, 3, 1, 2, 4, 1, 5}));
 }
 
- // Example for unordered set
+// Example for unordered set
 TEST_CASE("Test for flatmap function on unordered_set") {
   std::vector<int> v = {2, 3, 4, 5};
 
@@ -427,5 +428,5 @@ TEST_CASE("Test for flatmap function on unordered_set") {
 
   auto result = flatmap(v, f);
 
-  CHECK(result == std::vector<int>({ 1, 2, 1, 3, 1, 2, 4, 1, 5}));
+  CHECK(result == std::vector<int>({1, 2, 1, 3, 1, 2, 4, 1, 5}));
 }

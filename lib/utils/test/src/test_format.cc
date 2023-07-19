@@ -1,6 +1,5 @@
-#include "utils/record_formatter.h"
 #include "doctest.h"
-
+#include "utils/record_formatter.h"
 
 TEST_CASE("RecordFormatter") {
   SUBCASE("Appending string") {

@@ -247,7 +247,7 @@ std::vector<typename C::mapped_type> values(C const &c) {
 template <typename C>
 std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
     items(C const &c) {
- return {c.begin(), c.end()};
+  return {c.begin(), c.end()};
 }
 
 template <typename C, typename T = typename C::value_type>
@@ -340,7 +340,6 @@ template <typename L, typename R>
 std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
   return [&m](R const &r) -> L { return m.at_r(r); };
 }
-
 
 template <typename T>
 std::unordered_set<T> set_union(std::unordered_set<T> const &l,
@@ -599,11 +598,7 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
   std::vector<T> result;
 
   for (auto const &element : v) {
-<<<<<<< HEAD
-    if(element !=nullopt){
-=======
     if (element != nullopt) {
->>>>>>> 9444396f59b4042e13cf36af5b0b75bcf7c88991
       result.push_back(element.value());
     }
   }
