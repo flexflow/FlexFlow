@@ -54,20 +54,19 @@ jobs:
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
           cuda_version: ${{ matrix.cuda_version }}
+          deploy_needed: ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference"
+          build_needed: ${{ matrix.gpu_backend }} == "hip_rocm" || ( ${{ matrix.gpu_backend }} == "cuda" && ${{ matrix.cuda_version }} == "11.8" )
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
-          if [[ ( ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ) ]]; then
+          if [[ $deploy_needed ]]; then
             export FF_CUDA_ARCH=all
             ./docker/build.sh flexflow
-          else
+          elif [[ $build_needed ]]; then
             export FF_CUDA_ARCH=70
-            if [[ ( ${{ matrix.gpu_backend }} == "hip_rocm" ) || ( (${{ matrix.gpu_backend }} == "cuda") && (${{ matrix.cuda_version }} == "11.8" )) ]]; then
-              ./docker/build.sh flexflow
-            fi
+            ./docker/build.sh flexflow
           fi
-          
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
@@ -76,8 +75,7 @@ jobs:
         run: |
           if [[ ( ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ) ]]; then
             docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
-          else
-            if [[ ( ${{ matrix.gpu_backend }} == "hip_rocm" ) || ( (${{ matrix.gpu_backend }} == "cuda") && (${{ matrix.cuda_version }} == "11.8" )) ]]; then
+          elif [[ ( ${{ matrix.gpu_backend }} == "hip_rocm" ) || ( (${{ matrix.gpu_backend }} == "cuda") && (${{ matrix.cuda_version }} == "11.8" )) ]]; then
               docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
             fi
           fi
