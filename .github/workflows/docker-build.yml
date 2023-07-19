@@ -45,7 +45,7 @@ jobs:
     env:
       FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
       cuda_version: ${{ matrix.cuda_version }}
-      branch_name: ${GITHUB_REF#refs/heads/}
+      branch_name: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
