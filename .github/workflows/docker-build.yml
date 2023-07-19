@@ -58,12 +58,14 @@ jobs:
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
-          if [[ ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ]]; then
-            export FF_CUDA_ARCH=all
-          else
+          if [[ !( ( ${{ github.event_name }} == 'push' || ${{ github.event_name }} == 'schedule' ) && ${GITHUB_REF#refs/heads/} == "inference" ) && (( ${{ matrix.gpu_backend }} == "hip_rocm" || ${{ matrix.gpu_backend }} == "cuda") && (cuda_version == "11.8" )) ]]; then
             export FF_CUDA_ARCH=70
+            ./docker/build.sh flexflow
+          else
+            export FF_CUDA_ARCH=all
+            ./docker/build.sh flexflow
           fi
-          ./docker/build.sh flexflow
+          
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
