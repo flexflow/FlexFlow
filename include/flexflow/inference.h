@@ -65,6 +65,18 @@ struct BeamTree {
   treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
 
+struct SamplingConfig {
+  bool do_sample = false;
+  float temperature = 0.8;
+  float topp = 0.6;
+  SamplingConfig(bool _do_sample, float _temperature, float _topp) {
+    temperature = _temperature > 0 ? _temperature : temperature;
+    topp = _topp > 0 ? _topp : topp;
+    do_sample = _do_sample;
+  }
+  SamplingConfig() {}
+};
+
 // struct BeamTree_v2 {
 //   std::vector<BatchConfig::TokenId> tokens;
 //   std::vector<int> parent_ids;

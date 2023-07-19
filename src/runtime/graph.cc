@@ -40,6 +40,7 @@
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sampling.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
@@ -2917,6 +2918,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_BEAM_TOPK: {
         node = BeamTopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_SAMPLING: {
+        node = Sampling::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_GROUP_BY: {
