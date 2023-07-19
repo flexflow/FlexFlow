@@ -84,7 +84,7 @@ TEST_CASE("DiGraph") {
     CHECK(*result[n2] == n0);
     CHECK(*result[n3] == n0);
   }
-  
+
   SUBCASE("get_dominators") {
     auto result = get_dominators(g);
 
@@ -95,10 +95,11 @@ TEST_CASE("DiGraph") {
     CHECK(result[n3] == std::unordered_set<Node>{n3});
   }
 
-  SUBCASE("get_neighbors"){
+  SUBCASE("get_neighbors") {
     auto result = get_neighbors(g, n0);
     auto expected = std::vector<Node>{n3, n1, n2};
-    CHECK(result == expected);;
+    CHECK(result == expected);
+    ;
   }
 
   SUBCASE("get_sinks") {
@@ -127,7 +128,6 @@ TEST_CASE("DiGraph") {
     auto n2_expected = std::unordered_set<Node>{n0, n1};
     CHECK(n2_predecessors == n2_expected);
   }
-
 }
 
 TEST_CASE("traversal") {
