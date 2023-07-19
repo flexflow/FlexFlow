@@ -39,8 +39,9 @@ jobs:
             cuda_version: "11.7"
           - gpu_backend: "hip_rocm"
             cuda_version: "11.8"
-        
       fail-fast: false
+    env:
+      branch_name: ${GITHUB_REF#refs/heads/}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -54,8 +55,7 @@ jobs:
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
           cuda_version: ${{ matrix.cuda_version }}
-          branch_name: ${GITHUB_REF#refs/heads/}
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && $branch_name == "inference" }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && branch_name == "inference" }}
           build_needed: ${{ matrix.gpu_backend == "hip_rocm" || ( matrix.gpu_backend == "cuda" && matrix.cuda_version == "11.8" ) }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
