@@ -1,5 +1,6 @@
 ARG FF_GPU_BACKEND "cuda"
-FROM flexflow-environment-$FF_GPU_BACKEND:latest
+ARG cuda_version
+FROM flexflow-environment-$FF_GPU_BACKEND-$cuda_version:latest
 
 LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow container"

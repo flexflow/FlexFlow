@@ -6,6 +6,7 @@ on:
       - "inference/**"
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "src/**"
       - ".github/workflows/helpers/install_dependencies.sh"
