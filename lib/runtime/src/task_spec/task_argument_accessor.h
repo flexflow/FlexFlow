@@ -7,6 +7,7 @@
 #include "utils/exception.h"
 #include "utils/stack_map.h"
 #include "utils/strong_typedef.h"
+#include "realm_allocator.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -83,23 +84,32 @@ struct TaskArgumentAccessor {
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
 
+  PerDeviceFFHandle get_per_device_ffhandle() const {
+    return *((PerDeviceFFHandle const *)this->task->local_args);
+  }
+
+  Allocator get_allocator() const {
+    return get_gpu_memory_allocator(this->task);
+  }
+
   template <typename T>
   T const &get_argument(slot_id slot) const {
-    TaskArgumentFormat arg_fmt = this->args_fmt.args.at(slot);
-    std::type_index actual_type = arg_fmt.type;
-    std::type_index requested_type = {typeid(T)};
+    NOT_IMPLEMENTED();
+    // TaskArgumentFormat arg_fmt = this->args_fmt.args.at(slot);
+    // std::type_index actual_type = arg_fmt.type;
+    // std::type_index requested_type = {typeid(T)};
 
-    if (actual_type != requested_type) {
-      throw mk_runtime_error(
-          "Type mismatch in argument access (\"{}\" != \"{}\")",
-          actual_type.name(),
-          requested_type.name());
-    }
+    // if (actual_type != requested_type) {
+    //   throw mk_runtime_error(
+    //       "Type mismatch in argument access (\"{}\" != \"{}\")",
+    //       actual_type.name(),
+    //       requested_type.name());
+    // }
 
-    void *start_ptr = &((std::uint8_t *)this->task->args)[arg_fmt.start];
-    Legion::Deserializer dez(start_ptr, arg_fmt.start);
+    // void *start_ptr = &((std::uint8_t *)this->task->args)[arg_fmt.start];
+    // Legion::Deserializer dez(start_ptr, arg_fmt.start);
 
-    return ff_task_deserialize<T>(dez);
+    // return ff_task_deserialize<T>(dez);
   }
 
   template <typename T>

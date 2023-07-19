@@ -2,6 +2,7 @@
 #define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_OP_ARG_REF_H
 
 #include "arg_ref.h"
+#include "device_specific_arg.h"
 
 namespace FlexFlow {
 
@@ -13,7 +14,7 @@ using OpArgRef = ArgRef<OpArgRefType, T>;
 using OpArgRefSpec = ArgRefSpec<OpArgRefType>;
 
 template <typename T>
-OpArgRef<T> per_device_op_state() {
+OpArgRef<DeviceSpecificArg<T>> per_device_op_state() {
   return {OpArgRefType::PER_DEVICE_OP_STATE};
 }
 

@@ -137,6 +137,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   float forward_time = profiling_wrapper(forward_kernel,
                                          settings,
+                                         per_device_state,
                                          get_float_ptr(query),
                                          get_float_ptr(key),
                                          get_float_ptr(value),
@@ -146,6 +147,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   float backward_time = profiling_wrapper(backward_kernel,
                                           settings,
+                                          per_device_state,
                                           get_float_ptr(query),
                                           get_float_ptr(query_grad),
                                           get_float_ptr(key),
@@ -417,7 +419,10 @@ static MHAPerDeviceState *init_task(Task const *task,
                                    Context ctx,
                                    Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
 
+static MHAPerDeviceState *init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
   int kvSeqLength = acc.get_argument<int>(KVSEQLENGTH);
@@ -428,9 +433,10 @@ static MHAPerDeviceState *init_task(Task const *task,
   int kProjSize = acc.get_argument<int>(KPROJSIZE);
   int vProjSize = acc.get_argument<int>(VPROJSIZE);
   int oProjSize = acc.get_argument<int>(OPROJSIZE);
+  Allocator allocator = acc.get_allocator();
 
 
-  PerDeviceFFHandle handle = *((PerDeviceFFHandle const *)task->local_args);
+  PerDeviceFFHandle handle = acc.get_per_device_ffhandle();
 
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
@@ -454,8 +460,8 @@ static MHAPerDeviceState *init_task(Task const *task,
   assert(qoSeqLength == output.shape[legion_dim_t(1)]);
   assert(oProjSize(attrs) == output.shape[legion_dim_t(0)]);
 
-  MHAPerDeviceState *m = init_kernel(handle,
-                                               get_gpu_memory_allocator(task),
+  MHAPerDeviceState *m = new MHAPerDeviceState(init_kernel(handle,
+                                               allocator,
                                                num_samples,
                                                num_heads,
                                                qSize,
@@ -467,9 +473,8 @@ static MHAPerDeviceState *init_task(Task const *task,
                                                oProjSize,
                                                qoSeqLength,
                                                kvSeqLength,
-                                               attrs.add_bias_kv);
+                                               attrs.add_bias_kv));
 
-  m->profiling = profiling;
   assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
   return m;
 }
@@ -533,11 +538,13 @@ static void forward_task(Task const *task,
   auto weight = acc.get_tensor<FlexFlow::Permissions::RO>(WEIGHTS);
   auto output = acc.get_tensor<FlexFlow::Permissions::WO>(OUTPUT);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
+  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
+
 
   profile(forward_kernel,
-          m->profiling,
+          profiling_settings,
           "[MultiHeadAttention] forward_time = %.2lfms\n",
-          m,
+          per_device_state,
           query.get_float_ptr(),
           key.get_float_ptr(),
           value.get_float_ptr(),
@@ -640,6 +647,7 @@ static void backward_task(Task const *task,
   auto query_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(QUERY);
   auto key_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(KEY);
   auto value_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(VALUE);
+  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   float *key_grad_ptr =
       (key_grad == query_grad) ? nullptr : key_grad.get_float_ptr();
@@ -654,9 +662,9 @@ static void backward_task(Task const *task,
   assert(weight_grad.shape.get_volume() == weight.shape.get_volume());
 
   profile(backward_kernel,
-          m->profiling,
+          profiling_settings,
           "[MultiHeadAttention] backward_time = %.2lfms\n",
-          m,
+          per_device_state,
           query.get_float_ptr(),
           query_grad.get_float_ptr(),
           key.get_float_ptr(),
@@ -666,142 +674,6 @@ static void backward_task(Task const *task,
           weight.get_float_ptr(),
           weight_grad.get_float_ptr(),
           output_grad.get_float_ptr());
-}
-
-bool MultiHeadAttention::measure_operator_cost(
-    Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
-  ParallelTensorBase sub_output, sub_query, sub_key, sub_value;
-  if (!inputs[0]->get_sub_tensor(mv, sub_query)) {
-    return false;
-  }
-  if (!inputs[1]->get_sub_tensor(mv, sub_key)) {
-    return false;
-  }
-  if (!inputs[2]->get_sub_tensor(mv, sub_value)) {
-    return false;
-  }
-  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-    return false;
-  }
-  // Currently assume only data parallel
-  size_t num_weights = 0;
-  {
-    // Compute weight size
-    int qSize = sub_query.dims[0].size;
-    int kSize = sub_key.dims[0].size;
-    int vSize = sub_value.dims[0].size;
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize(attrs) * kSize;
-    int vParas = vProjSize(attrs) * vSize;
-    int oParas =
-        oProjSize(attrs) * (vProjSize(attrs) > 0 ? vProjSize(attrs) : vSize);
-    num_weights = attrs.num_heads * (qParas + kParas + vParas + oParas);
-  }
-  assert(sub_query.num_dims == 4);
-  int num_samples = sub_query.dims[2].size;
-
-  auto allocator = std::unique_ptr<IAllocator>(new RealmAllocator(sim->memory));
-  MHAPerDeviceState *m = new MHAPerDeviceState(
-      sim->handler, this, allocator, attrs.num_samples, attrs.num_heads);
-
-  // allocate tensors in simulator
-  sim->free_all();
-  float const *query_ptr =
-      (float const *)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-  float const *key_ptr =
-      (float const *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-  float const *value_ptr =
-      (float const *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  float const *weight_ptr = (float const *)sim->allocate(num_weights, DT_FLOAT);
-  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  assert(m->profiling == false);
-
-  std::function<void()> forward, backward;
-  forward = [&](ffStream_t stream) {
-    forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    float *query_grad_ptr =
-        (float *)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-    float *key_grad_ptr =
-        (float *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-    float *value_grad_ptr =
-        (float *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-    float *weight_grad_ptr = (float *)sim->allocate(num_weights, DT_FLOAT);
-    cost_metrics.weights_memory +=
-        cost_metrics.total_mem_diff_from(sim->offset);
-
-    float *output_grad_ptr =
-        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert(output_grad_ptr != NULL);
-    cost_metrics.outputs_memory +=
-        cost_metrics.total_mem_diff_from(sim->offset);
-
-    backward = [&](ffStream_t stream) {
-      backward_kernel(stream,
-                      m,
-                      query_ptr,
-                      query_grad_ptr,
-                      key_ptr,
-                      key_grad_ptr,
-                      value_ptr,
-                      value_grad_ptr,
-                      weight_ptr,
-                      weight_grad_ptr,
-                      output_grad_ptr);
-    };
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) "
-           "value(%d %d %d) output(%d %d %d)"
-           "forward_time(%.4lf) backward_time(%.4lf)\n",
-           sub_query.dims[2].size,
-           sub_query.dims[1].size,
-           sub_query.dims[0].size,
-           sub_key.dims[2].size,
-           sub_key.dims[1].size,
-           sub_key.dims[0].size,
-           sub_value.dims[2].size,
-           sub_value.dims[1].size,
-           sub_value.dims[0].size,
-           sub_output.dims[2].size,
-           sub_output.dims[1].size,
-           sub_output.dims[0].size,
-           cost_metrics.forward_time,
-           cost_metrics.backward_time);
-  } else {
-    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) "
-           "value(%d %d %d) output(%d %d %d)"
-           "forward_time(%.4lf)\n",
-           sub_query.dims[2].size,
-           sub_query.dims[1].size,
-           sub_query.dims[0].size,
-           sub_key.dims[2].size,
-           sub_key.dims[1].size,
-           sub_key.dims[0].size,
-           sub_value.dims[2].size,
-           sub_value.dims[1].size,
-           sub_value.dims[0].size,
-           sub_output.dims[2].size,
-           sub_output.dims[1].size,
-           sub_output.dims[0].size,
-           cost_metrics.forward_time);
-  }
-  // Free multiheadattentionmeta
-  delete m;
-  return true;
 }
 
 template <>
@@ -835,26 +707,36 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   fwd.add_weight_slot(WEIGHTS);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, fwd_task);
+  register_task(ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, forward_task);
 }
 
 template <>
 void register_task<ATTENTION_BWD_TASK_ID>() {
   OpTaskSignature bwd(OpTaskType::BWD);
 
-  bwd.add_input_slot(QUERY);
-  bwd.add_input_grad_slot(QUERY);
   bwd.add_input_slot(KEY);
-  bwd.add_input_grad_slot(KEY);
+  bwd.add_input_slot(QUERY);
   bwd.add_input_slot(VALUE);
   bwd.add_input_slot(VALUE);
-
   bwd.add_weight_slot(WEIGHTS);
-  bwd.add_param_grad_slot(WEIGHTS);
 
-  bwd.add_output_grad_slot(OUTPUT);
+  OpTensorSlotSpec key_gradient = OpTensorSlotSpec(KEY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
+  key_gradient.is_grad = FlexFlow::IsGrad::YES;
+  bwd.add_from_slot_spec(key_gradient);
 
-  register_task(ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, bwd_task);
+  OpTensorSlotSpec query_gradient = OpTensorSlotSpec(QUERY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
+  query_gradient.is_grad = FlexFlow::IsGrad::YES;
+  bwd.add_from_slot_spec(query_gradient);
+
+  OpTensorSlotSpec weights_gradient = OpTensorSlotSpec(WEIGHTS, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::WEIGHT);
+  weights_gradient.is_grad = FlexFlow::IsGrad::YES;
+  bwd.add_from_slot_spec(weights_gradient);
+
+  OpTensorSlotSpec output_gradient = OpTensorSlotSpec(OUTPUT, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::OUTPUT);
+  output_gradient.is_grad = FlexFlow::IsGrad::YES;
+  bwd.add_from_slot_spec(output_gradient);
+
+  register_task(ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, backward_task);
 }
 
 } // namespace FlexFlow
