@@ -3,6 +3,7 @@
 
 #include <unordered_set>
 #include <vector>
+#include <queue>
 
 namespace FlexFlow {
 
