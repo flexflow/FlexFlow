@@ -858,6 +858,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     num_samples,
                                     attn->num_heads,
                                     _num_heads,
+                                    attn->num_kv_heads,
                                     attn->quantization_type,
                                     attn->offload) {}
 
@@ -883,6 +884,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int num_samples,
     int _global_num_heads,
     int _num_heads,
+    int _num_kv_heads,
     DataType _quantization_type,
     bool _offload)
     : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
@@ -906,6 +908,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   global_num_heads = _global_num_heads;
   num_heads = _num_heads;
+  num_kv_heads = _num_kv_heads;
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
                     oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   weightSize = weights_params * num_heads * size_of_dt;
@@ -945,26 +948,31 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
+    // size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
+    // size_t qkv_max_proj_size =
+    //     BatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
+
     size_t qkv_max_proj_size =
-        BatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
+        BatchConfig::MAX_NUM_TOKENS *
+        (qProjSize * num_heads + kProjSize * num_kv_heads,
+         vProjSize * num_kv_heads);
     size_t key_cache_size = 0, value_cache_size = 0;
     switch (infer_mode) {
       case INC_DECODING_MODE:
       case TREE_VERIFY_MODE: {
-        key_cache_size = num_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS *
+        key_cache_size = num_kv_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS *
                          BatchConfig::MAX_SEQ_LENGTH;
-        value_cache_size = num_heads * vProjSize *
+        value_cache_size = num_kv_heads * vProjSize *
                            BatchConfig::MAX_NUM_REQUESTS *
                            BatchConfig::MAX_SEQ_LENGTH;
         break;
       }
       case BEAM_SEARCH_MODE: {
         key_cache_size =
-            num_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+            num_kv_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
             BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
         value_cache_size =
-            num_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
+            num_kv_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
             BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
         break;
       }

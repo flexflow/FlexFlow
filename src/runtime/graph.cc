@@ -2325,6 +2325,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qk_prod_scaling);
         sez.serialize(attn->quantization_type);
         sez.serialize(attn->offload);
+        sez.serialize(attn->num_kv_heads);
         break;
       }
       case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2745,7 +2746,7 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim;
+        int embed_dim, num_heads, k_dim, v_dim, num_kv_heads;
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, offload;
@@ -2768,6 +2769,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(qk_prod_scaling);
         dez.deserialize(quantization_type);
         dez.deserialize(offload);
+        dez.deserialize(num_kv_heads);
 
         IncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2785,6 +2787,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.qk_prod_scaling = qk_prod_scaling;
         params.quantization_type = quantization_type;
         params.offload = offload;
+        params.num_kv_heads = num_kv_heads;
         node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }

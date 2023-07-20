@@ -633,6 +633,7 @@ public:
   Tensor inc_multihead_self_attention(const Tensor input,
                                       int embed_dim,
                                       int num_heads,
+                                      int num_kv_heads,
                                       int kdim = 0,
                                       int vdim = 0,
                                       float dropout = 0.0f,

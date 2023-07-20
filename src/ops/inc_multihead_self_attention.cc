@@ -60,6 +60,7 @@ bool IncMultiHeadSelfAttentionParams::is_valid(
 Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              int embed_dim,
                                              int num_heads,
+                                             int num_kv_heads,
                                              int kdim,
                                              int vdim,
                                              float dropout,
@@ -149,6 +150,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   li->data_type = data_type;
   li->add_int_property("embed_dim", embed_dim);
   li->add_int_property("num_heads", num_heads);
+  li->add_int_property("num_kv_heads", num_kv_heads);
   li->add_int_property("kdim", kdim);
   li->add_int_property("vdim", vdim);
   li->add_int_property("bias", bias);
@@ -175,6 +177,8 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   int embed_dim = value;
   layer->get_int_property("num_heads", value);
   int num_heads = value;
+  layer->get_int_property("num_kv_heads", value);
+  int num_kv_heads = value;
   layer->get_int_property("kdim", value);
   int kdim = value;
   layer->get_int_property("vdim", value);
@@ -205,6 +209,7 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        inputs[0],
                                        embed_dim,
                                        num_heads,
+                                       num_kv_heads,
                                        kdim,
                                        vdim,
                                        dropout,
@@ -227,6 +232,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     const ParallelTensor _input,
     int _embed_dim,
     int _num_heads,
+    int _num_kv_heads,
     int _kdim,
     int _vdim,
     float _dropout,
@@ -250,7 +256,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          (_bias ? 2 : 1), /*weights*/
          1 /*outputs*/,
          _input),
-      num_heads(_num_heads), dropout(_dropout), bias(_bias),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
       add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
@@ -334,6 +340,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     const ParallelTensor _weight,
     int _embed_dim,
     int _num_heads,
+    int _num_kv_heads,
     int _kdim,
     int _vdim,
     float _dropout,
@@ -358,7 +365,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          1 /*outputs*/,
          _input,
          _weight),
-      num_heads(_num_heads), dropout(_dropout), bias(_bias),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
       add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
@@ -446,6 +453,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 input,
                                 other.oProjSize,
                                 other.num_heads,
+                                other.num_kv_heads,
                                 other.qProjSize,
                                 other.vProjSize,
                                 other.dropout,
@@ -472,6 +480,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 input,
                                 params.embed_dim,
                                 params.num_heads,
+                                params.num_kv_heads,
                                 params.kdim,
                                 params.vdim,
                                 params.dropout,
@@ -1568,6 +1577,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.qk_prod_scaling = this->qk_prod_scaling;
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
+  params.num_kv_heads = this->num_kv_heads;
 
   return params;
 }
@@ -1581,6 +1591,7 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.embed_dim);
   hash_combine(key, params.num_heads);
+  hash_combine(key, params.num_kv_heads);
   hash_combine(key, params.kdim);
   hash_combine(key, params.vdim);
   hash_combine(key, params.dropout);

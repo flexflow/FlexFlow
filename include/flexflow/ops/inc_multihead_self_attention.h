@@ -28,6 +28,7 @@ public:
                             const ParallelTensor _input,
                             int _embed_dim,
                             int _num_heads,
+                            int _num_kv_heads,
                             int _kdim,
                             int _vdim,
                             float _dropout,
@@ -47,6 +48,7 @@ public:
                             const ParallelTensor _weight,
                             int _embed_dim,
                             int _num_heads,
+                            int _num_kv_heads,
                             int _kdim,
                             int _vdim,
                             float _dropout,
@@ -113,7 +115,7 @@ public:
   Params get_params() const;
 
 public:
-  int num_heads;
+  int num_heads, num_kv_heads;
   float dropout, scaling_factor;
   bool bias;
   bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
@@ -153,6 +155,7 @@ public:
                                 int num_samples,
                                 int _global_num_heads,
                                 int _num_heads,
+                                int _num_kv_heads,
                                 DataType _quantization_type,
                                 bool _offload);
   ~IncMultiHeadSelfAttentionMeta(void);
@@ -162,7 +165,7 @@ public:
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int global_num_heads, num_heads;
+  int global_num_heads, num_heads, num_kv_heads;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *bias;
