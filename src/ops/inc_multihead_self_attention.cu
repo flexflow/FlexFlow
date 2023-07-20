@@ -178,92 +178,74 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // Weights: qSize x qProjSize x 3 x num_heads
   // Input: qSize x num_tokens
   // Output >>> qProjSize x num_tokens x 3 x num_heads
-  int m_q = m->qProjSize;
+  int m_q = m->qProjSize * m->embed_dim;
   int m_k = m->kProjSize;
   int m_v = m->vProjSize;
   assert(m_q == m_k && m_k == m_v); // keep things simple for now
   int n = bc->num_active_tokens();
-  int k = m->qSize;
+  int k_q = m->qSize, k_k = m->kProjSize, k_v = m->vProjSize;
   int lda = k, ldb = k, ldc_q = m_q, ldc_k = m_k, ldc_v = m_v;
-  size_t strideA =
-      m->weights_params; // need to also skip over all the parameters for each
-                         // head, plus the unused W_o weights
-  size_t strideB = 0;    // input stays the same for all heads.
-  size_t strideC =
-      (m_q + m_k + m_v) * n; // size of the output block for each head.
   // Q
-  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_OP_N,
-                                       m_q,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       weight_ptr,
-                                       cublas_data_type,
-                                       lda,
-                                       strideA,
-                                       input_ptr,
-                                       cublas_data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       output_ptr,
-                                       cublas_data_type,
-                                       ldc_q,
-                                       strideC,
-                                       m->num_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
+                         m_q,
+                         n,
+                         k_q,
+                         &alpha,
+                         weight_ptr,
+                         cublas_data_type,
+                         lda,
+                         input_ptr,
+                         cublas_data_type,
+                         ldb,
+                         &beta,
+                         output_ptr,
+                         cublas_data_type,
+                         ldc_q,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  //key
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
+                         m_k,
+                         n,
+                         k_k,
+                         &alpha,
+                         weight_ptr + m->embed_dim * m->embed_dim,
+                         cublas_data_type,
+                         lda,
+                         input_ptr,
+                         cublas_data_type,
+                         ldb,
+                         &beta,
+                         output_ptr + num_tokens * m->embed_dim,
+                         cublas_data_type,
+                         ldc_k,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_OP_N,
-                                       m_k,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       weight_ptr + m_q * k,
-                                       cublas_data_type,
-                                       lda,
-                                       strideA,
-                                       input_ptr,
-                                       cublas_data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       output_ptr + m_q * n,
-                                       cublas_data_type,
-                                       ldc_k,
-                                       strideC,
-                                       m->num_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // V
-  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_OP_N,
-                                       m_v,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       weight_ptr + (m_q + m_k) * k,
-                                       cublas_data_type,
-                                       lda,
-                                       strideA,
-                                       input_ptr,
-                                       cublas_data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       output_ptr + (m_q + m_k) * n,
-                                       cublas_data_type,
-                                       ldc_v,
-                                       strideC,
-                                       m->num_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
+  //value
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
+                         m_v,
+                         n,
+                         k_v,
+                         &alpha,
+                         weight_ptr + m->embed_dim * (m->embed_dim + m->kProjSize * m->num_kv_heads),
+                         cublas_data_type,
+                         lda,
+                         input_ptr,
+                         cublas_data_type,
+                         ldb,
+                         &beta,
+                         output_ptr + num_tokens * (m->embed_dim + m->kProjSize * m->num_kv_heads),
+                         cublas_data_type,
+                         ldc_v,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // apply rotary emmmbedding for k and v
   // step1 change the k, v to complex tensor
   int num_tokens = bc->num_active_tokens();
