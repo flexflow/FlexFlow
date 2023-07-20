@@ -30,26 +30,27 @@ using Legion::Memory;
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
-template <typename DT>
-__global__ void build_w_out_tensor(DT const *weight_ptr,
-                                   DT *contiguous_weight_ptr,
-                                   int vProjSize,
-                                   int oProjSize,
-                                   int num_heads,
-                                   int qkv_weight_block_size) {
-  CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
-    // Each slice (one per head) in the weight_ptr has shape (oProjSize,
-    // vProjSize)
-    int row_idx = i % oProjSize;
-    int col_idx = (i / oProjSize) % vProjSize;
-    int head_idx = i / (oProjSize * vProjSize);
-    // The contiguous_weight_ptr has shape (vProjSize * num_heads, oProjSize)
-    int idx = row_idx * vProjSize * num_heads + vProjSize * head_idx + col_idx;
-    contiguous_weight_ptr[idx] =
-        weight_ptr[(qkv_weight_block_size + vProjSize * oProjSize) * head_idx +
-                   qkv_weight_block_size + col_idx * oProjSize + row_idx];
-  }
-}
+// template <typename DT>
+// __global__ void build_w_out_tensor(DT const *weight_ptr,
+//                                    DT *contiguous_weight_ptr,
+//                                    int vProjSize,
+//                                    int oProjSize,
+//                                    int num_heads,
+//                                    int qkv_weight_block_size) {
+//   CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
+//     // Each slice (one per head) in the weight_ptr has shape (oProjSize,
+//     // vProjSize)
+//     int row_idx = i % oProjSize;
+//     int col_idx = (i / oProjSize) % vProjSize;
+//     int head_idx = i / (oProjSize * vProjSize);
+//     // The contiguous_weight_ptr has shape (vProjSize * num_heads, oProjSize)
+//     int idx = row_idx * vProjSize * num_heads + vProjSize * head_idx +
+//     col_idx; contiguous_weight_ptr[idx] =
+//         weight_ptr[(qkv_weight_block_size + vProjSize * oProjSize) * head_idx
+//         +
+//                    qkv_weight_block_size + col_idx * oProjSize + row_idx];
+//   }
+// }
 
 template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
@@ -62,6 +63,44 @@ __global__ void apply_proj_bias_w(DT *input_ptr,
   }
 }
 
+// template <typename DT>
+// __global__ void apply_proj_bias_qkv(DT *input_ptr,
+//                                     DT const *bias_ptr,
+//                                     int shard_id,
+//                                     int num_tokens,
+//                                     int qProjSize,
+//                                     int kProjSize,
+//                                     int vProjSize,
+//                                     int global_num_heads,
+//                                     int num_heads,
+//                                     bool scaling_query,
+//                                     float scaling_factor) {
+//   CUDA_KERNEL_LOOP(
+//       i, num_tokens * (qProjSize + kProjSize + vProjSize) * num_heads) {
+//     // for simplicity, assume q, k, v is in same shape
+//     // 0->q, 1->k, 2->v
+//     int qkv_index = i / (num_tokens * qProjSize) % 3;
+
+//     int head_idx = i / (num_tokens * (qProjSize + kProjSize + vProjSize));
+//     int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
+//     int q_block_size = qProjSize * num_tokens;
+
+//     int idx = i % (num_tokens * (qProjSize));
+
+//     int real_part_index =
+//         head_idx * qkv_block_size + qkv_index * q_block_size + idx;
+
+//     int global_head_idx = head_idx + shard_id * num_heads;
+//     int bias_idx = qkv_index * qProjSize * global_num_heads +
+//                    global_head_idx * qProjSize + (idx % qProjSize);
+//     input_ptr[real_part_index] += bias_ptr[bias_idx];
+
+//     if (scaling_query && qkv_index == 0) {
+//       input_ptr[real_part_index] *= scaling_factor;
+//     }
+//   }
+// }
+
 template <typename DT>
 __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     DT const *bias_ptr,
@@ -72,10 +111,13 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     int vProjSize,
                                     int global_num_heads,
                                     int num_heads,
+                                    int num_kv_heads,
                                     bool scaling_query,
                                     float scaling_factor) {
-  CUDA_KERNEL_LOOP(
-      i, num_tokens * (qProjSize + kProjSize + vProjSize) * num_heads) {
+  CUDA_KERNEL_LOOP(i,
+                   num_tokens *
+                       (qProjSize * num_heads + kProjSize * num_kv_heads +
+                        vProjSize * num_kv_heads)) {
     // for simplicity, assume q, k, v is in same shape
     // 0->q, 1->k, 2->v
     int qkv_index = i / (num_tokens * qProjSize) % 3;
@@ -205,7 +247,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                          ldc_q,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  //key
+  // key
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
                          CUBLAS_OP_N,
@@ -226,26 +268,28 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-  //value
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         m_v,
-                         n,
-                         k_v,
-                         &alpha,
-                         weight_ptr + m->embed_dim * (m->embed_dim + m->kProjSize * m->num_kv_heads),
-                         cublas_data_type,
-                         lda,
-                         input_ptr,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         output_ptr + num_tokens * (m->embed_dim + m->kProjSize * m->num_kv_heads),
-                         cublas_data_type,
-                         ldc_v,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  // value
+  checkCUDA(cublasGemmEx(
+      m->handle.blas,
+      CUBLAS_OP_T,
+      CUBLAS_OP_N,
+      m_v,
+      n,
+      k_v,
+      &alpha,
+      weight_ptr +
+          m->embed_dim * (m->embed_dim + m->kProjSize * m->num_kv_heads),
+      cublas_data_type,
+      lda,
+      input_ptr,
+      cublas_data_type,
+      ldb,
+      &beta,
+      output_ptr + num_tokens * (m->embed_dim + m->kProjSize * m->num_kv_heads),
+      cublas_data_type,
+      ldc_v,
+      compute_type,
+      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // apply rotary emmmbedding for k and v
   // step1 change the k, v to complex tensor
   int num_tokens = bc->num_active_tokens();
@@ -401,19 +445,19 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
       assert(false);
     }
   }
-  // reload weight_o for offloading case
-  int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
-  build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                       min(CUDA_NUM_THREADS, parallelism),
-                       0,
-                       stream>>>(static_cast<DT *>(m->weight_ptr),
-                                 static_cast<DT *>(m->W_out_contiguous),
-                                 m->vProjSize,
-                                 m->oProjSize,
-                                 m->num_heads,
-                                 (m->qSize * m->qProjSize +
-                                  m->kSize * m->kProjSize +
-                                  m->vSize * m->vProjSize));
+  // // reload weight_o for offloading case
+  // int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
+  // build_w_out_tensor<<<GET_BLOCKS(parallelism),
+  //                      min(CUDA_NUM_THREADS, parallelism),
+  //                      0,
+  //                      stream>>>(static_cast<DT *>(m->weight_ptr),
+  //                                static_cast<DT *>(m->W_out_contiguous),
+  //                                m->vProjSize,
+  //                                m->oProjSize,
+  //                                m->num_heads,
+  //                                (m->qSize * m->qProjSize +
+  //                                 m->kSize * m->kProjSize +
+  //                                 m->vSize * m->vProjSize));
 }
 
 template <typename DT>
@@ -942,7 +986,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     switch (infer_mode) {
       case INC_DECODING_MODE:
       case TREE_VERIFY_MODE: {
-        key_cache_size = num_kv_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS *
+        key_cache_size = num_kv_heads * kProjSize *
+                         BatchConfig::MAX_NUM_REQUESTS *
                          BatchConfig::MAX_SEQ_LENGTH;
         value_cache_size = num_kv_heads * vProjSize *
                            BatchConfig::MAX_NUM_REQUESTS *
@@ -1062,33 +1107,33 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           gpu_mem_allocator.allocate_reserved<char>(quantized_weightSize);
     }
 
-    if (weight.data_type == DT_FLOAT) {
-      int parallelism = vProjSize * oProjSize * num_heads;
-      build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                           min(CUDA_NUM_THREADS, parallelism),
-                           0,
-                           stream>>>(
-          weight.get_float_ptr(),
-          (float *)W_out_contiguous,
-          vProjSize,
-          oProjSize,
-          num_heads,
-          (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
-    } else if (weight.data_type == DT_HALF) {
-      int parallelism = vProjSize * oProjSize * num_heads;
-      build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                           min(CUDA_NUM_THREADS, parallelism),
-                           0,
-                           stream>>>(
-          weight.get_half_ptr(),
-          (half *)W_out_contiguous,
-          vProjSize,
-          oProjSize,
-          num_heads,
-          (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
-    } else {
-      assert(weight.data_type == DT_INT4 || weight.data_type == DT_INT8);
-    }
+    // if (weight.data_type == DT_FLOAT) {
+    //   int parallelism = vProjSize * oProjSize * num_heads;
+    //   build_w_out_tensor<<<GET_BLOCKS(parallelism),
+    //                        min(CUDA_NUM_THREADS, parallelism),
+    //                        0,
+    //                        stream>>>(
+    //       weight.get_float_ptr(),
+    //       (float *)W_out_contiguous,
+    //       vProjSize,
+    //       oProjSize,
+    //       num_heads,
+    //       (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
+    // } else if (weight.data_type == DT_HALF) {
+    //   int parallelism = vProjSize * oProjSize * num_heads;
+    //   build_w_out_tensor<<<GET_BLOCKS(parallelism),
+    //                        min(CUDA_NUM_THREADS, parallelism),
+    //                        0,
+    //                        stream>>>(
+    //       weight.get_half_ptr(),
+    //       (half *)W_out_contiguous,
+    //       vProjSize,
+    //       oProjSize,
+    //       num_heads,
+    //       (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
+    // } else {
+    //   assert(weight.data_type == DT_INT4 || weight.data_type == DT_INT8);
+    // }
     if (!offload) {
       assert(gpu_mem_allocator.reserved_total_size ==
              gpu_mem_allocator.reserved_allocated_size);

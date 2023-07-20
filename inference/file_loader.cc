@@ -61,64 +61,64 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
   return prompts;
 };
 
-template <typename DT>
-void load_attention_bias(DT *ptr,
-                         int num_heads,
-                         size_t hidden_dim,
-                         size_t qkv_inner_dim,
-                         std::string layer_name,
-                         std::string weight_path) {
-  std::string q_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wq_bias";
-  std::string k_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wk_bias";
-  std::string v_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wv_bias";
-  std::string o_file = weight_path +
-                       layer_name.substr(0, layer_name.find("attention")) +
-                       "attention_wo_bias";
-  std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
+// template <typename DT>
+// void load_attention_bias(DT *ptr,
+//                          int num_heads,
+//                          size_t hidden_dim,
+//                          size_t qkv_inner_dim,
+//                          std::string layer_name,
+//                          std::string weight_path) {
+//   std::string q_file = weight_path +
+//                        layer_name.substr(0, layer_name.find("attention")) +
+//                        "attention_wq_bias";
+//   std::string k_file = weight_path +
+//                        layer_name.substr(0, layer_name.find("attention")) +
+//                        "attention_wk_bias";
+//   std::string v_file = weight_path +
+//                        layer_name.substr(0, layer_name.find("attention")) +
+//                        "attention_wv_bias";
+//   std::string o_file = weight_path +
+//                        layer_name.substr(0, layer_name.find("attention")) +
+//                        "attention_wo_bias";
+//   std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
 
-  int file_index = 0;
-  for (auto file : bias_files) {
-    size_t qkv_partial_size = qkv_inner_dim * num_heads;
-    size_t out_partial_size = hidden_dim;
-    size_t partial_size =
-        (file_index < 3) ? qkv_partial_size : out_partial_size;
-    // std::cout << "Loading filename: " << file << std::endl;
-    std::ifstream in(file, std::ios::in | std::ios::binary);
-    assert(in.good() && "incorrect bias file path");
-    std::vector<DT> host_array(partial_size);
-    size_t loaded_data_size = sizeof(DT) * partial_size;
-    in.seekg(0, in.end);
-    in.seekg(0, in.beg);
-    in.read((char *)host_array.data(), loaded_data_size);
-    size_t in_get_size = in.gcount();
+//   int file_index = 0;
+//   for (auto file : bias_files) {
+//     size_t qkv_partial_size = qkv_inner_dim * num_heads;
+//     size_t out_partial_size = hidden_dim;
+//     size_t partial_size =
+//         (file_index < 3) ? qkv_partial_size : out_partial_size;
+//     // std::cout << "Loading filename: " << file << std::endl;
+//     std::ifstream in(file, std::ios::in | std::ios::binary);
+//     assert(in.good() && "incorrect bias file path");
+//     std::vector<DT> host_array(partial_size);
+//     size_t loaded_data_size = sizeof(DT) * partial_size;
+//     in.seekg(0, in.end);
+//     in.seekg(0, in.beg);
+//     in.read((char *)host_array.data(), loaded_data_size);
+//     size_t in_get_size = in.gcount();
 
-    if (in_get_size != loaded_data_size) {
-      printf(
-          "load bias data error: in_get_size (%lu) != loaded_data_size (%lu)\n",
-          in_get_size,
-          loaded_data_size);
-      assert(false);
-    }
-    assert(partial_size == host_array.size());
+//     if (in_get_size != loaded_data_size) {
+//       printf(
+//           "load bias data error: in_get_size (%lu) != loaded_data_size (%lu)\n",
+//           in_get_size,
+//           loaded_data_size);
+//       assert(false);
+//     }
+//     assert(partial_size == host_array.size());
 
-    size_t data_index = 0;
+//     size_t data_index = 0;
 
-    for (int i = 0; i < partial_size; i++) {
-      ptr[file_index * qkv_partial_size + i] = host_array.at(data_index);
-      data_index++;
-    }
+//     for (int i = 0; i < partial_size; i++) {
+//       ptr[file_index * qkv_partial_size + i] = host_array.at(data_index);
+//       data_index++;
+//     }
 
-    file_index++;
+//     file_index++;
 
-    in.close();
-  }
-}
+//     in.close();
+//   }
+// }
 
 template <typename DT>
 void load_attention_weights_multi_query(DT *ptr,
@@ -275,6 +275,66 @@ void load_attention_weights_multi_query(DT *ptr,
 //   }
 // }
 
+
+template <typename DT>
+void load_attention_bias_v2(DT *ptr,
+                         int num_heads,
+                         size_t hidden_dim,
+                         size_t qkv_inner_dim,
+                         std::string layer_name,
+                         std::string weight_path) {
+  std::string q_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wq_bias";
+  std::string k_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wk_bias";
+  std::string v_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wv_bias";
+  std::string o_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wo_bias";
+  std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
+
+  int file_index = 0;
+  for (auto file : bias_files) {
+    size_t qkv_partial_size = qkv_inner_dim * num_heads;
+    size_t out_partial_size = hidden_dim;
+    size_t partial_size =
+        (file_index < 3) ? qkv_partial_size : out_partial_size;
+    // std::cout << "Loading filename: " << file << std::endl;
+    std::ifstream in(file, std::ios::in | std::ios::binary);
+    assert(in.good() && "incorrect bias file path");
+    std::vector<DT> host_array(partial_size);
+    size_t loaded_data_size = sizeof(DT) * partial_size;
+    in.seekg(0, in.end);
+    in.seekg(0, in.beg);
+    in.read((char *)host_array.data(), loaded_data_size);
+    size_t in_get_size = in.gcount();
+
+    if (in_get_size != loaded_data_size) {
+      printf(
+          "load bias data error: in_get_size (%lu) != loaded_data_size (%lu)\n",
+          in_get_size,
+          loaded_data_size);
+      assert(false);
+    }
+    assert(partial_size == host_array.size());
+
+    size_t data_index = 0;
+
+    for (int i = 0; i < partial_size; i++) {
+      ptr[file_index * qkv_partial_size + i] = host_array.at(data_index);
+      data_index++;
+    }
+
+    file_index++;
+
+    in.close();
+  }
+}
+
 template <typename DT>
 void load_attention_weights_v2(DT *ptr,
                             int num_heads,
@@ -298,7 +358,7 @@ void load_attention_weights_v2(DT *ptr,
   std::string o_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
                        "attention_wo_weight";
-  std::vector<std::string> weight_files = {q_file, k_file, v_file};
+  std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
   int file_index = 0;
   int data_index = 0;
@@ -310,7 +370,7 @@ void load_attention_weights_v2(DT *ptr,
 
   for (auto file : weight_files) {
     size_t partial_size =
-        file_index == 0 ? one_weight_file_size
+        (file_index == 0 || file_index == 3) ? one_weight_file_size
                         : single_proj_size * num_kv_heads;
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
@@ -334,42 +394,6 @@ void load_attention_weights_v2(DT *ptr,
       ptr[data_index++] = host_array.at(i);
     }
     file_index++;
-  }
-  // output weight file gets special treatment
-  {
-    std::ifstream in(o_file, std::ios::in | std::ios::binary);
-    std::cout << "Loading attention filename: " << o_file << std::endl;
-    if (!in.good()) {
-      std::cout << "Could not open file: " << o_file << std::endl;
-    }
-    assert(in.good() && "incorrect weight file path");
-    size_t full_output_weight_size = num_heads * single_proj_size;
-    std::vector<DT> host_array(full_output_weight_size);
-    size_t loaded_data_size = sizeof(DT) * full_output_weight_size;
-    in.seekg(0, in.end);
-    in.seekg(0, in.beg);
-    in.read((char *)host_array.data(), loaded_data_size);
-    size_t in_get_size = in.gcount();
-
-    if (in_get_size != loaded_data_size) {
-      std::cout << "load data error" << std::endl;
-      assert(false);
-    }
-    assert(full_output_weight_size == host_array.size());
-
-    for (int i = 0; i < num_heads; i++) {
-      size_t start_index = i * single_proj_size * 4 + 3 * single_proj_size;
-      for (size_t j = 0; j < single_proj_size; j++) {
-        int ff_row_idx = j % hidden_dim;
-        int ff_col_idx = j / hidden_dim;
-        assert(ff_row_idx < hidden_dim && ff_col_idx < qkv_inner_dim);
-        size_t data_index = ff_row_idx * (qkv_inner_dim * num_heads) +
-                            qkv_inner_dim * i + ff_col_idx;
-        ptr[j + start_index] = host_array.at(data_index);
-      }
-    }
-
-    in.close();
   }
 }
 
