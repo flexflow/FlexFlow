@@ -4,7 +4,7 @@
 #include "bidict.h"
 #include "invoke.h"
 #include "optional.h"
-#include "type_traits.h"
+#include "type_traits_core.h"
 #include "required_core.h"
 #include <algorithm>
 #include <cassert>
@@ -537,6 +537,17 @@ template <typename C, typename F>
 C filter(C const &v, F const &f) {
   C result(v);
   inplace_filter(result, f);
+  return result;
+}
+
+template <typename T, typename F>
+std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
+  std::unordered_set<T> result;
+  for (T const &t : v) {
+    if (f(t)) {
+      result.insert(t);
+    }
+  }
   return result;
 }
 
