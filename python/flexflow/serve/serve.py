@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from flexflow.core import *
+from transformers import AutoConfig
+import sys
 
 class SamplingConfig:
     def __init__(self, temperature=0.9, topp=0.8, topk=1):
@@ -19,12 +22,30 @@ class SamplingConfig:
         self.topp = 0.8
         self.topk = 1
 
-
 class LLM:
     def __init__(self, model_name, data_type="half"):
         self.model_name = model_name
+        self.supported_models = {
+            "LlamaForCausalLM": 'placeholder',
+            "LLaMAForCausalLM": 'placeholder',
+            "OPTForCausalLM": 'placeholder',
+            "RWForCausalLM": 'placeholder' # falcon
+        }
+        self.model_type = self.__get_ff_model_type(model_name)
         self.data_type = data_type
         self.default_config = SamplingConfig()
+        
+        self.ffconfig = FFConfig()
+
+    def __get_ff_model_type(self, model_name):
+        hf_config = AutoConfig.from_pretrained(model_name)
+        architectures = getattr(hf_config, "architectures", [])
+        ff_arch = None
+        if next(iter(architectures), None) is not None:
+            ff_arch = self.supported_models.get(architectures[0])
+        if ff_arch is None:
+            print("Huggingface model of type {architectures} is not yet supported by FlexFlow")
+            sys.exit(1)
 
     def compile(
         self,
