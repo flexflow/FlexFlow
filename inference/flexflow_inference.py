@@ -24,8 +24,8 @@ def top_level_task():
 
     # Speculative inference
     llama = LLM("decapoda-research/llama-30b-hf", data_type = "half")
-    ssm1 = LLM("Jackframe/llama-160m", data_type = "half")
-    ssm2 = LLM("Jackframe/opt-160m", data_type = "half")
+    ssm1 = LLM("Jackfram/llama-160m", data_type = "half")
+    ssm2 = LLM("facebook/opt-125m", data_type = "half")
     sampling_config = SamplingConfig(temperature = 0.9, topp = 0.8, topk = 1)
     llama.serve(max_batch_size = 1, max_seq_length = 256, max_tokens_per_batch=64, tensor_parallel_degree = 4, pipeline_parallel_degree = 2, ssms = {ssm1, ssm2})
     result = llama.generate("What's the best xxx in yyy?", sampling = sampling_config)

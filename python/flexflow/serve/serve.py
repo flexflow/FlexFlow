@@ -34,6 +34,7 @@ class LLM:
         self.model_type = self.__get_ff_model_type(model_name)
         self.data_type = data_type
         self.default_config = SamplingConfig()
+        self.model = self.model_type()
 
     def __get_ff_model_type(self, model_name):
         hf_config = AutoConfig.from_pretrained(model_name)
