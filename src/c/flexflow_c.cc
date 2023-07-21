@@ -462,9 +462,10 @@ flexflow_tensor_t
 flexflow_tensor_t
     flexflow_model_add_embedding(flexflow_model_t handle_,
                                  const flexflow_tensor_t input_,
-                                 int num_entires,
+                                 int num_entries,
                                  int out_dim,
                                  enum AggrMode aggr,
+                                 DataType dtype,
                                  flexflow_op_t shared_op_,
                                  flexflow_initializer_t kernel_initializer_,
                                  char const *name) {
@@ -476,20 +477,21 @@ flexflow_tensor_t
   // TODO: update the flexflow_c and Python API to support other data types
   // Currently we assume it's float
   Tensor tensor = handle->embedding(input,
-                                    num_entires,
+                                    num_entries,
                                     out_dim,
                                     aggr,
-                                    DT_FLOAT,
+                                    dtype,
                                     shared_op,
                                     kernel_initializer,
                                     name);
-  DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entires %d, out_dim "
-              "%d, aggr %d, shared_op %p, kernel_init %p, name %s",
+  DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entries %d, out_dim "
+              "%d, aggr %d, dtype %d, shared_op %p, kernel_init %p, name %s",
               tensor,
               input,
-              num_entires,
+              num_entries,
               out_dim,
               aggr,
+              dtype,
               shared_op,
               kernel_initializer,
               name);

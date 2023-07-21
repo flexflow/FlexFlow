@@ -467,7 +467,7 @@ public:
                  char const *name = NULL);
   // Add an embedding layer
   Tensor embedding(const Tensor input,
-                   int num_entires,
+                   int num_entries,
                    int outDim,
                    AggrMode aggr,
                    DataType dtype = DT_FLOAT,

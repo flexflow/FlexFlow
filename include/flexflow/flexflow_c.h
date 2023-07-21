@@ -202,9 +202,10 @@ flexflow_tensor_t
 flexflow_tensor_t
     flexflow_model_add_embedding(flexflow_model_t handle,
                                  const flexflow_tensor_t input,
-                                 int num_entires,
+                                 int num_entries,
                                  int out_dim,
                                  enum AggrMode aggr,
+                                 DataType dtype,
                                  flexflow_op_t shared_op,
                                  flexflow_initializer_t kernel_initializer,
                                  char const *name);

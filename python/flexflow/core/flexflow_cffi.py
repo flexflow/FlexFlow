@@ -1299,7 +1299,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
   def embedding(self, input, num_embeddings, embedding_dim, 
-                aggr, shared_op=None, kernel_initializer=None, name=None):
+                aggr, dtype=DataType.DT_FLOAT shared_op=None, kernel_initializer=None, name=None):
     """Layer that turns positive integers into dense vectors of fixed size
              
     :param input: the input Tensor.
@@ -1313,6 +1313,9 @@ class FFModel(object):
                 
     :param aggr: aggregation mode. Options are AGGR_MODE_NONE, AGGR_MODE_SUM and AGGR_MODE_AVG.
     :type aggr: AggrMode
+
+    :param dtype: the tensor data type. Options are DT_BOOLEAN, DT_INT32, DT_INT64, DT_HALF, DT_FLOAT, DT_DOUBLE, DT_INT4, DT_INT8, DT_NONE
+    :type dtype: DataType
                 
     :param shared_op: the layer whose parameters are shared with. Default is None.
     :type shared_op: Op  
@@ -1336,7 +1339,7 @@ class FFModel(object):
       (type(kernel_initializer) is NormInitializer), \
       f"Unknown initializer type: {kernel_initializer}"
     handle = ffc.flexflow_model_add_embedding(
-      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr,
+      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr, dtype,
       shared_op_handle, kernel_initializer.handle, c_name,
     )
     # NOTE: We must keep a reference to the initializer or else it will be
