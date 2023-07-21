@@ -12,4 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .serve import LLM, SamplingConfig
+from flexflow.core import *
+
+class FlexFlowOPT:
+    def __init__(self):
+        pass
