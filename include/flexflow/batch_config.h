@@ -44,7 +44,7 @@ public:
   int num_active_tokens() const;
   void print() const;
   virtual InferenceMode get_mode() const;
-  static int const MAX_NUM_REQUESTS = 1;
+  static int const MAX_NUM_REQUESTS = 16;
   static int const MAX_NUM_TOKENS = 64;
   static int const MAX_SEQ_LENGTH = 256;
 
