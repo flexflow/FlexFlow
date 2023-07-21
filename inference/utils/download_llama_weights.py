@@ -6,11 +6,12 @@ import argparse
 from transformers import AutoModelForCausalLM
 
 # You can pass the --use-full-precision flag to use the full-precision weight. By default, we use half precision.
+# and pass "--use_13B", "--use_30B", and "--use_65B" to use the corresponding "llama-13B/30B/65B" model weights
 parser = argparse.ArgumentParser()
 parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
-parser.add_argument("--use_13B", action="store_true", help="Use full precision")
-parser.add_argument("--use_30B", action="store_true", help="Use full precision")
-parser.add_argument("--use_65B", action="store_true", help="Use full precision")
+parser.add_argument("--use_13B", action="store_true", help="choose to use llama-13B")
+parser.add_argument("--use_30B", action="store_true", help="choose to use llama-30B")
+parser.add_argument("--use_65B", action="store_true", help="choose to use llama-65B")
 args = parser.parse_args()
 if not args.use_full_precision:
     import torch
