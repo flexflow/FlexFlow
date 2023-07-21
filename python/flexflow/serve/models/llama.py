@@ -38,7 +38,8 @@ class LLAMAConfig(dict):
             raise AttributeError(f"'LLAMAConfig' object has no attribute '{name}'")
 
 class FlexFlowLLAMA:
-    def __init__(self, max_batch_size=1, max_seq_length=256, max_tokens_per_batch=64, use_full_precision=False):
+    def __init__(self, mode, max_batch_size=1, max_seq_length=256, max_tokens_per_batch=64, use_full_precision=False):
+        self.mode = mode
         self.max_batch_size = max_batch_size
         self.use_full_precision = use_full_precision
         self.llama_config = LLAMAConfig()
@@ -56,4 +57,55 @@ class FlexFlowLLAMA:
 
         embed_init = UniformInitializer(random.randint(0, sys.maxsize), 0, 0)
         token = ffmodel.embedding(input_tensor, self.llama_config.vocab_size, self.llama_config.dim, AggrMode.AGGR_MODE_NONE, DataType.DT_FLOAT if self.use_full_precision else DataType.DT_HALF, None, embed_init)
+
+        for i in range(self.llama_config.n_layers):
+            ffmodel.set_transformer_layer_id(i)
+
+            attn_norm = ffmodel.rms_norm(token, self.llama_config.norm_eps, self.llama_config.dim)
+
+            if mode == InferenceMode.BEAM_SEARCH_MODE:
+                mha = ffmodel.spec_inc_multihead_attention(
+                    attn_norm, 
+                    self.llama_config.dim,
+                    self.llama_config.n_heads,
+                    self.llama_config.dim // self.llama_config.n_heads,
+                    self.llama_config.dim // self.llama_config.n_heads,
+                    0.0,    # dropout
+                    False,  # bias 
+                    False,  # add_bias_kv 
+                    False,  # add_zero_attn 
+                    None,   # kernel initializer
+                    True    # apply_rotary_embedding 
+                )
+            elif mode == InferenceMode.TREE_VERIFY_MODE:
+                mha = ffmodel.inc_multihead_self_attention_verify(
+                    attn_norm, 
+                    self.llama_config.dim,
+                    self.llama_config.n_heads,
+                    self.llama_config.dim // self.llama_config.n_heads,
+                    self.llama_config.dim // self.llama_config.n_heads,
+                    0.0,    # dropout
+                    False,  # bias 
+                    False,  # add_bias_kv 
+                    False,  # add_zero_attn 
+                    None,   # kernel initializer
+                    True    # apply_rotary_embedding 
+                )
+            elif mode == InferenceMode.INC_DECODING_MODE:
+                mha = ffmodel.inc_multihead_attention(
+                    attn_norm, 
+                    self.llama_config.dim,
+                    self.llama_config.n_heads,
+                    self.llama_config.dim // self.llama_config.n_heads,
+                    self.llama_config.dim // self.llama_config.n_heads,
+                    0.0,    # dropout
+                    False,  # bias 
+                    False,  # add_bias_kv 
+                    False,  # add_zero_attn 
+                    None,   # kernel initializer
+                    True    # apply_rotary_embedding 
+                )
+            else:
+                assert(False)
+            
 

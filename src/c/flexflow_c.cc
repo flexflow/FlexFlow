@@ -1022,6 +1022,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     bool add_bias_kv,
     bool add_zero_attn,
     flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1038,7 +1039,89 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
                                                        add_zero_attn,
                                                        input->data_type,
                                                        kernel_initializer,
+                                                       apply_rotary_embedding,
                                                        name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
+    char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Initializer *kernel_initializer =
+      FFCObjectWrapper::unwrap(kernel_initializer_);
+  Tensor tensor =
+      handle->spec_inc_multihead_self_attention(input,
+                                                embed_dim,
+                                                num_heads,
+                                                kdim,
+                                                vdim,
+                                                dropout,
+                                                bias,
+                                                add_bias_kv,
+                                                add_zero_attn,
+                                                input->data_type,
+                                                kernel_initializer,
+                                                apply_rotary_embedding,
+                                                name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
+    char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Initializer *kernel_initializer =
+      FFCObjectWrapper::unwrap(kernel_initializer_);
+  Tensor tensor =
+      handle->inc_multihead_self_attention_verify(input,
+                                                  embed_dim,
+                                                  num_heads,
+                                                  kdim,
+                                                  vdim,
+                                                  dropout,
+                                                  bias,
+                                                  add_bias_kv,
+                                                  add_zero_attn,
+                                                  input->data_type,
+                                                  kernel_initializer,
+                                                  apply_rotary_embedding,
+                                                  name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
+                                              const flexflow_tensor_t input_,
+                                              float eps,
+                                              int dim,
+                                              char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->rms_norm(input, eps, dim, input->data_type, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -1088,6 +1171,11 @@ flexflow_perf_metrics_t
               perf_metrics,
               perf_metrics->train_correct);
   return FFCObjectWrapper::wrap(perf_metrics);
+}
+
+void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_transformer_layer_id(id);
 }
 
 // -----------------------------------------------------------------------

@@ -22,7 +22,7 @@ import logging
 import warnings
 import numpy as np
 from .flexflow_logger import fflogger
-from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
+from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, InferenceMode, OpType, ParameterSyncType, enum_to_int, int_to_enum
 _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
 if not _FF_BUILD_DOCS:
   from .flexflowlib import ffi, flexflow_library
@@ -429,11 +429,18 @@ class MultiHeadAttention(Op):
     super(MultiHeadAttention, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
-# Increamental MultiHeadAttention
+# Incremental MultiHeadAttention
 # -----------------------------------------------------------------------
 class IncMultiHeadAttention(Op):
   def __init__(self, handle, idx=None, name=None):
     super(IncMultiHeadAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# RMS Norm
+# -----------------------------------------------------------------------
+class RMSNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(RMSNorm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
@@ -516,7 +523,9 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   elif op_type == OpType.MULTIHEAD_ATTENTION:
     return MultiHeadAttention(handle, idx, name)
   elif op_type == OpType.INC_MULTIHEAD_ATTENTION:
-        return MultiHeadAttention(handle, idx, name)
+    return IncMultiHeadAttention(handle, idx, name)
+  elif op_type == OpType.RMS_NORM:
+    return RMSNorm(handle, idx, name)
   elif op_type == OpType.RSQRT:
     return Rsqrt(handle, idx, name)
   elif op_type == OpType.POW:
@@ -1299,7 +1308,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
   def embedding(self, input, num_embeddings, embedding_dim, 
-                aggr, dtype=DataType.DT_FLOAT shared_op=None, kernel_initializer=None, name=None):
+                aggr, dtype=DataType.DT_FLOAT, shared_op=None, kernel_initializer=None, name=None):
     """Layer that turns positive integers into dense vectors of fixed size
              
     :param input: the input Tensor.
@@ -1980,17 +1989,18 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
     self.add_layer(OpType.MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.MULTIHEAD_ATTENTION)
+  
   def inc_multihead_attention(self, input, 
                           embed_dim, num_heads, 
                           kdim=0, vdim=0, dropout=0.0, 
                           bias=True, add_bias_kv=False, add_zero_attn=False, 
-                          kernel_initializer=None, name=None):
+                          kernel_initializer=None, apply_rotary_embedding=False, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
     and returns the dot-product attention between them:.
              
     :param input: the input Tensor.
-    :type query: Tensor
+    :type input: Tensor
 
     :param embed_dim: total dimension of the model
     :type embed_dim: int
@@ -2018,6 +2028,9 @@ class FFModel(object):
     
     :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
     :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2026,9 +2039,138 @@ class FFModel(object):
     """     
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    handle = ffc.flexflow_model_add_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
+    handle = ffc.flexflow_model_add_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, apply_rotary_embedding, c_name)
     self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
+  
+  def spec_inc_multihead_attention(self, input, 
+                          embed_dim, num_heads, 
+                          kdim=0, vdim=0, dropout=0.0, 
+                          bias=True, add_bias_kv=False, add_zero_attn=False, 
+                          kernel_initializer=None, apply_rotary_embedding=False, name=None):
+    """Defines the MultiHead Attention operation as described in Attention Is All You Need 
+    which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
+    and returns the dot-product attention between them:.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    handle = ffc.flexflow_model_add_spec_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, apply_rotary_embedding, c_name)
+    self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
+  
+  def inc_multihead_self_attention_verify(self, input, 
+                          embed_dim, num_heads, 
+                          kdim=0, vdim=0, dropout=0.0, 
+                          bias=True, add_bias_kv=False, add_zero_attn=False, 
+                          kernel_initializer=None, apply_rotary_embedding=False, name=None):
+    """Defines the MultiHead Attention operation as described in Attention Is All You Need 
+    which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
+    and returns the dot-product attention between them:.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    handle = ffc.flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, apply_rotary_embedding, c_name)
+    self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
+  
+  def rms_norm(self, input, eps, dim, name=None):
+    """Defines the RMS Norm layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param eps: a value added to the denominator for numerical stability
+    :type eps: float
+                          
+    :param dim: The dimension with respect to which to take the norm
+    :type dim: int
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_rms_norm(self.handle, input.handle, eps, dim, c_name)
+    self.add_layer(OpType.RMS_NORM, name)
+    return Tensor(handle, owner_op_type=OpType.RMS_NORM)
+
   def reset_metrics(self):
     """Reset performance metrics.
              
@@ -2252,6 +2394,9 @@ class FFModel(object):
   def get_perf_metrics(self):
     handle = ffc.flexflow_model_get_perf_metrics(self.handle)
     return PerfMetrics(handle)
+  
+  def set_transformer_layer_id(self, id):
+    ffc.flexflow_model_set_transformer_layer_id(self.handle, id)
     
   def create_data_loader(self, batch_tensor, full_array):
     """Create a SingleDataloader instance. 

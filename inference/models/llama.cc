@@ -100,7 +100,6 @@ void LLAMA::create_llama_model(FFModel &ff,
     // set transformer layer id
     ff.set_transformer_layer_id(i);
     // step 1: attention
-    std::vector<int> axes = {2};
     Tensor att_norm =
         ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
     Layer *attention_norm = ff.layers.back();

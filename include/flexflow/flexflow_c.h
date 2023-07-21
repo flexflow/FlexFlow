@@ -205,7 +205,7 @@ flexflow_tensor_t
                                  int num_entries,
                                  int out_dim,
                                  enum AggrMode aggr,
-                                 DataType dtype,
+                                 enum DataType dtype,
                                  flexflow_op_t shared_op,
                                  flexflow_initializer_t kernel_initializer,
                                  char const *name);
@@ -389,7 +389,44 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     bool add_bias_kv,
     bool add_zero_attn,
     flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
     char const *name);
+
+flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
+    char const *name);
+
+flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
+    char const *name);
+
+flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
+                                              const flexflow_tensor_t input_,
+                                              float eps,
+                                              int dim,
+                                              char const *name);
 
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle,
                                       flexflow_sgd_optimizer_t optimizer);
@@ -409,6 +446,8 @@ flexflow_tensor_t flexflow_model_get_parameter_by_id(flexflow_model_t handle,
 
 flexflow_perf_metrics_t
     flexflow_model_get_perf_metrics(flexflow_model_t handle);
+
+void flexflow_model_set_transformer_layer_id(flexflow_model_t handle, int id);
 
 // -----------------------------------------------------------------------
 // Tensor
