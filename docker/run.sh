@@ -59,7 +59,7 @@ else
 fi
 
 # Check that image exists, if fails, print the default error message.
-if [[ "$(docker images -q ${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest 2> /dev/null)" == "" ]]; then
+if (docker images -q "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest" 2> /dev/null) == "" ; then
   echo ""
   echo "To download the docker image, run:"
   echo "    FF_GPU_BACKEND=${FF_GPU_BACKEND} cuda_version=${cuda_version} $(pwd)/pull.sh $image"
