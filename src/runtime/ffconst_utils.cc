@@ -178,6 +178,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "GELU";
     case OP_IDENTITY:
       return "Identity";
+    case OP_SAMPLING:
+      return "Sampling";
     // Parallel Ops
     case OP_REPARTITION:
       return "Repartition";
