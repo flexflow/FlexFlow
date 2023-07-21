@@ -5,6 +5,7 @@
 #include "invoke.h"
 #include "optional.h"
 #include "type_traits.h"
+#include "required_core.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -446,6 +447,12 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
   return result;
+}
+
+template <typename F, typename C>
+auto transform(req<C> const &c, F const &f)
+    -> decltype(transform(std::declval<C>(), std::declval<F>())) {
+  return transform(static_cast<C>(c), f);
 }
 
 template <typename F,

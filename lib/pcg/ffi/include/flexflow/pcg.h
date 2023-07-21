@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-FLEXFLOW_FFI_BEGIN()
+FLEXFLOW_FFI_BEGIN();
 
 typedef enum {
   FLEXFLOW_PCG_STATUS_OK,
@@ -402,6 +402,6 @@ flexflow_error_t flexflow_computation_graph_add_multihead_attention(
     flexflow_initializer_t initializer = NO_INITIALIZER,
     char *name = NULL);
 
-FLEXFLOW_FFI_END()
+FLEXFLOW_FFI_END();
 
 #endif

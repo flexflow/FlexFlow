@@ -169,27 +169,13 @@ SplitAST flatten_ast(SplitAST const &ast) {
 struct ToFinalAST {
   variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
     if (node.type == SplitType::SERIAL) {
-      Serial result;
-      for (variant<Serial, Parallel, Node> const &child :
-           vector_transform(to_final_ast, node.children)) {
-        if (holds_alternative<Parallel>(child)) {
-          result.children.push_back(get<Parallel>(child));
-        } else {
-          result.children.push_back(get<Node>(child));
-        }
-      }
-      return result;
+      return Serial{transform(node.children, [](SplitAST const &s) {
+        return narrow<Parallel, Node>(to_final_ast(s)).value();
+      })};
     } else {
-      Parallel result;
-      for (variant<Serial, Parallel, Node> const &child :
-           vector_transform(to_final_ast, node.children)) {
-        if (holds_alternative<Serial>(child)) {
-          result.children.push_back(get<Serial>(child));
-        } else {
-          result.children.push_back(get<Node>(child));
-        }
-      }
-      return result;
+      return Parallel{transform(node.children, [](SplitAST const &s) {
+        return narrow<Serial, Node>(to_final_ast(s)).value();
+      })};
     }
   }
 
@@ -213,19 +199,18 @@ std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
 }
 
 std::unordered_set<Node> get_nodes(Serial const &serial) {
-  return set_union(vector_transform(
-      [](variant<Parallel, Node> const child) {
+  return set_union(transform(
+      serial.children,
+      [](variant<Parallel, Node> const child) -> std::unordered_set<Node> {
         return visit(GetNodes{}, child);
-      },
-      serial.children));
+      }));
 }
 
 std::unordered_set<Node> get_nodes(Parallel const &parallel) {
-  return set_union(vector_transform(
-      [](variant<Serial, Node> const child) {
+  return set_union(
+      transform(parallel.children, [](variant<Serial, Node> const &child) {
         return visit(GetNodes{}, child);
-      },
-      parallel.children));
+      }));
 }
 
 std::unordered_set<Node> get_nodes(Node const &node) {

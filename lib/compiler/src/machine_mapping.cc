@@ -1,23 +1,25 @@
 #include "compiler/machine_mapping.h"
 #include "graph_utils.h"
+#include "pcg/parallel_computation_graph.h"
+#include "utils/graph/serialparallel.h"
 
 namespace FlexFlow {
 
 MachineMapping MachineMapping::sequential_combine(MachineMapping const &s1,
                                                   MachineMapping const &s2) {
-  return MachineMapping(s1.runtime + s2.runtime,
-                        merge_maps(s1.machine_views, s2.machine_views));
+  return {s1.runtime + s2.runtime,
+          merge_maps(s1.machine_views, s2.machine_views)};
 }
 
 MachineMapping MachineMapping::parallel_combine(MachineMapping const &s1,
                                                 MachineMapping const &s2) {
-  return MachineMapping(std::max(s1.runtime, s2.runtime),
-                        merge_maps(s1.machine_views, s2.machine_views));
+  return {std::max(s1.runtime, s2.runtime),
+          merge_maps(s1.machine_views, s2.machine_views)};
 }
 
 MachineMapping MachineMapping::infinity() {
-  return MachineMapping(std::numeric_limits<float>::infinity(),
-                        std::unordered_map<Node, MachineView>{});
+  return {std::numeric_limits<float>::infinity(),
+          std::unordered_map<Node, MachineView>{}};
 }
 
 bool MachineMappingRuntimeCmp::operator()(MachineMapping const &lhs,
@@ -65,34 +67,16 @@ std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
     // Sequential split
     if (get_open_sinks(g1).size() <= get_open_sources(g2).size()) {
       // get_open_sinks(*g1).size() should be 1 in perfect sp graphs
-      return {get_subgraph(g,
-                           split.first,
-                           InputSettings::INCLUDE_INPUTS,
-                           OutputSettings::EXCLUDE_OUTPUTS),
-              get_subgraph(g,
-                           split.second,
-                           InputSettings::INCLUDE_INPUTS,
-                           OutputSettings::INCLUDE_OUTPUTS)};
+      return {get_subgraph<OpenType::UPWARD>(g, split.first),
+              get_subgraph<OpenType::CLOSED>(g, split.second)};
     } else {
-      return {get_subgraph(g,
-                           split.first,
-                           InputSettings::INCLUDE_INPUTS,
-                           OutputSettings::INCLUDE_OUTPUTS),
-              get_subgraph(g,
-                           split.second,
-                           InputSettings::EXCLUDE_INPUTS,
-                           OutputSettings::INCLUDE_OUTPUTS)};
+      return {get_subgraph<OpenType::OPEN>(g, split.first),
+              get_subgraph<OpenType::DOWNWARD>(g, split.first)};
     }
   } else {
     // Parallel split
-    return {get_subgraph(g,
-                         split.first,
-                         InputSettings::INCLUDE_INPUTS,
-                         OutputSettings::INCLUDE_OUTPUTS),
-            get_subgraph(g,
-                         split.second,
-                         InputSettings::INCLUDE_INPUTS,
-                         OutputSettings::INCLUDE_OUTPUTS)};
+    return {get_subgraph<OpenType::OPEN>(g, split.first),
+            get_subgraph<OpenType::OPEN>(g, split.second)};
   }
 }
 
@@ -159,17 +143,17 @@ struct OptimalCost {
   MachineMapping optimal_cost(Serial const &serial) const {
     // return sum(vector_transform([&](variant<Parallel, Node> const &t) {
     // return visit(*this, t); }, serial.children));
-    SerialParallelDecomposition pre_decompn, post_decompn;
-    std::tie(pre_decompn, post_decompn) = decompose(serial);
+    auto decomposed = decompose(serial);
+    SerialParallelDecomposition pre_decompn = decomposed.first;
+    SerialParallelDecomposition post_decompn = decomposed.second;
 
     auto subgraphs = apply_split(g, get_graph_split(pre_decompn, post_decompn));
     SubParallelComputationGraph pre_graph = subgraphs.first,
                                 post_graph = subgraphs.second;
 
-    std::unordered_set<Node> pre_graph_sinks =
-        get_closed_sinks(OpenMultiDiGraph(pre_graph));
+    std::unordered_set<Node> pre_graph_sinks = get_closed_sinks(pre_graph);
     std::unordered_set<Node> post_graph_sources =
-        get_closed_sources(OpenMultiDiGraph(post_graph));
+        get_closed_sources(post_graph);
 
     assert(pre_graph_sinks.size() + post_graph_sources.size() ==
            1); // assume perfect SP
@@ -210,9 +194,9 @@ struct OptimalCost {
   }
 
   MachineMapping optimal_cost(Parallel const &parallel) const {
-    SerialParallelDecomposition decompn1, decompn2;
-
-    std::tie(decompn1, decompn2) = decompose(parallel);
+    auto decomposed = decompose(parallel);
+    SerialParallelDecomposition decompn1 = decomposed.first;
+    SerialParallelDecomposition decompn2 = decomposed.second;
 
     auto subgraphs = apply_split(g, get_graph_split(decompn1, decompn2));
     SubParallelComputationGraph g1 = subgraphs.first, g2 = subgraphs.second;
@@ -261,26 +245,26 @@ struct OptimalCost {
 
   MachineMapping optimal_cost(Node const &node) const {
     if (source_machine_view) {
-      assert(get_closed_sources(OpenMultiDiGraph(g)).empty());
+      assert(get_closed_sources(g).empty());
       assert(contains(allowed_machine_views(g.at(node), resource),
                       source_machine_view.value()));
       std::unordered_map<Node, MachineView> mv_map{
           {node, source_machine_view.value()}};
-      return MachineMapping(estimate_cost(g, cost_estimator, mv_map), mv_map);
+      return {estimate_cost(g, cost_estimator, mv_map), mv_map};
     } else if (sink_machine_view) {
-      assert(get_closed_sinks(OpenMultiDiGraph(g)).empty());
+      assert(get_closed_sinks(g).empty());
       assert(contains(allowed_machine_views(g.at(node), resource),
                       sink_machine_view.value()));
       std::unordered_map<Node, MachineView> mv_map{
           {node, sink_machine_view.value()}};
-      return MachineMapping(estimate_cost(g, cost_estimator, mv_map), mv_map);
+      return {estimate_cost(g, cost_estimator, mv_map), mv_map};
     } else {
       MachineMapping optimal_result = MachineMapping::infinity();
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
         std::unordered_map<Node, MachineView> mv_map{{node, mv}};
         minimize(
             optimal_result,
-            MachineMapping(estimate_cost(g, cost_estimator, mv_map), mv_map));
+            {estimate_cost(g, cost_estimator, mv_map), mv_map)};
       }
       return optimal_result;
     }
@@ -298,7 +282,7 @@ struct OptimalCost {
 };
 
 MachineMapping optimal_cost(
-    OptimizerPCG const &g,
+    ParallelComputationGraph const &g,
     std::function<std::unordered_set<MachineView>(
         PCGOperatorAttrs const &, MachineSpecification const &)> const
         &allowed_machine_views,

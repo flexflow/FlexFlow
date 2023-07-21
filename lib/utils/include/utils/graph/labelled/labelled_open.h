@@ -31,6 +31,12 @@ public:
     return this->ptr.get();
   }
 
+  NodeLabel const &at(Node const &n) const {
+    return this->ptr->at(n);
+  }
+
+  EdgeLabel const &at(MultiDiEdge const &e) const {}
+
 private:
   std::shared_ptr<Interface const> ptr;
 };
@@ -71,7 +77,7 @@ public:
   NodeLabel &at(Node const &n) {
     return this->ptr->at(n);
   }
-  // NodeLabel const &at(Node const &n) const { return this->ptr->at(n); }
+
   NodeLabel const &at(Node const &n) const {
     return this->ptr->at(n);
   }
@@ -128,6 +134,21 @@ private:
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
     LabelledOpenMultiDiGraph<int, int, int, int>);
+
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel,
+          typename OutputLabel>
+LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
+    as_view(LabelledOpenMultiDiGraph<NodeLabel,
+                                     EdgeLabel,
+                                     InputLabel,
+                                     OutputLabel> const &g) {
+  return static_cast<LabelledOpenMultiDiGraphView<NodeLabel,
+                                                  EdgeLabel,
+                                                  InputLabel,
+                                                  OutputLabel>>(g);
+}
 
 } // namespace FlexFlow
 

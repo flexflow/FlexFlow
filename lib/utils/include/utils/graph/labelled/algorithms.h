@@ -1,7 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_ALGORITHMS_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_ALGORITHMS_H
 
+#include "labelled_downward_open.h"
 #include "labelled_open.h"
+#include "labelled_upward_open.h"
 #include "node_labelled.h"
 #include "output_labelled.h"
 #include "standard_labelled.h"
@@ -34,32 +36,6 @@ OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> get_subgraph(
           g, nodes);
 }
 
-enum class InputSettings { INCLUDE_INPUTS, EXCLUDE_INPUTS };
-enum class OutputSettings { INCLUDE_OUTPUTS, EXCLUDE_OUTPUTS };
-
-template <InputSettings INPUT_SETTINGS,
-          OutputSettings OUTPUT_SETTINGS,
-          typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel,
-          typename OutputLabel>
-LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    get_subgraph(LabelledOpenMultiDiGraphView<NodeLabel,
-                                              EdgeLabel,
-                                              InputLabel,
-                                              OutputLabel> const &g,
-                 std::unordered_set<Node> const &nodes);
-
-return LabelledOpenMultiDiGraphView<
-    NodeLabel,
-    EdgeLabel,
-    InputLabel,
-    OutputLabel>::template create<LabelledOpenMultiDiSubgraphView<NodeLabel,
-                                                                  EdgeLabel,
-                                                                  InputLabel,
-                                                                  OutputLabel>>(
-    g, nodes);
-}
-}
+} // namespace FlexFlow
 
 #endif

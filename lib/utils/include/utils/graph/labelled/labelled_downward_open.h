@@ -1,25 +1,25 @@
-#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_UPWARD_OPEN_H
-#define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_UPWARD_OPEN_H
+#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_DONWARD_OPEN_H
+#define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_DONWARD_OPEN_H
 
+#include "labelled_downward_open_interfaces.h"
 #include "labelled_open.h"
-#include "labelled_upward_open_interfaces.h"
 
 namespace FlexFlow {
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel>
-struct LabelledUpwardOpenMultiDiGraphView {
+template <typename NodeLabel, typename EdgeLabel, typename OutputLabel>
+struct LabelledDownwardOpenMultiDiGraphView {
 private:
   using Interface =
-      ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>;
+      ILabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, OutputLabel>;
 
 public:
-  template <typename OutputLabel>
+  template <typename InputLabel>
   operator LabelledOpenMultiDiGraphView<NodeLabel,
                                         EdgeLabel,
                                         InputLabel,
                                         OutputLabel>() const;
 
-  InputLabel const &at(InputMultiDiEdge const &e) const {
+  OutputLabel const &at(OutputMultiDiEdge const &e) const {
     return this->ptr->at(e);
   }
 
@@ -35,43 +35,35 @@ public:
     return this->ptr->query_nodes(q);
   }
 
-  std::unordered_set<UpwardOpenMultiDiEdge>
-      query_edges(UpwardOpenMultiDiEdgeQuery const &q) const {
+  std::unordered_set<DownwardOpenMultiDiEdge>
+      query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
     return this->ptr->query_edges(q);
   }
 
   template <typename BaseImpl, typename... Args>
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
-                                 LabelledUpwardOpenMultiDiGraphView>::type
+                                 LabelledDownwardOpenMultiDiGraphView>::type
       create(Args &&...args) {
-    return LabelledUpwardOpenMultiDiGraphView(
+    return LabelledDownwardOpenMultiDiGraphView(
         std::make_shared<BaseImpl const>(std::forward<Args>(args)...));
   }
 
 private:
   std::shared_ptr<Interface const> ptr;
 };
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
-    LabelledUpwardOpenMultiDiGraphView<int, int, int>);
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel>
-struct LabelledUpwardOpenMultiDiGraph {
+template <typename NodeLabel, typename EdgeLabel, typename OutputLabel>
+struct LabelledDownardOpenMultiDiGraph {
 private:
   using Interface =
-      ILabelledUpwardOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel>;
+      ILabelledDownwardOpenMultiDiGraph<NodeLabel, EdgeLabel, OutputLabel>;
 
 public:
-  template <typename OutputLabel>
-  operator LabelledOpenMultiDiGraphView<NodeLabel,
-                                        EdgeLabel,
-                                        InputLabel,
-                                        OutputLabel>() const;
-
-  InputLabel const &at(InputMultiDiEdge const &e) const {
+  OutputLabel const &at(OutputMultiDiEdge const &e) const {
     return this->ptr->at(e);
   }
 
-  InputLabel &at(InputMultiDiEdge const &e) {
+  OutputLabel &at(OutputMultiDiEdge const &e) {
     return this->ptr.get_mutable()->at(e);
   }
 
@@ -95,8 +87,8 @@ public:
     return this->ptr->query_nodes(q);
   }
 
-  std::unordered_set<UpwardOpenMultiDiEdge>
-      query_edges(UpwardOpenMultiDiEdgeQuery const &q) const {
+  std::unordered_set<DownwardOpenMultiDiEdge>
+      query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
     return this->ptr->query_edges(q);
   }
 
@@ -104,30 +96,40 @@ public:
     return this->ptr.get_mutable()->add_node(l);
   }
 
-  void add_node_unsafe(Node const &n, NodeLabel const &l) {
-    return this->ptr.get_mutable()->add_node_unsafe();
+  void add_node_unsafe(Node const &n) {
+    return this->ptr.get_mutable()->add_node_unsafe(n);
+  }
+
+  void remove_node_unsafe(Node const &n) {
+    return this->ptr.get_mutable()->remove_node_unsafe(n);
   }
 
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
     return this->ptr.get_mutable()->add_edge(e, l);
   }
 
-  void add_edge(InputMultiDiEdge const &e, InputLabel const &l) {
+  void add_edge(OutputMultiDiEdge const &e, OutputLabel const &l) {
     return this->ptr.get_mutable()->add_edge(e, l);
+  }
+
+  void remove_edge(OutputMultiDiEdge const &e) {
+    return this->ptr.get_mutable()->remove_edge(e);
+  }
+
+  void remove_edge(MultiDiEdge const &e) {
+    return this->ptr.get_mutable()->remove_edge(e);
   }
 
   template <typename BaseImpl>
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
-                                 LabelledUpwardOpenMultiDiGraph>::type
+                                 LabelledDownardOpenMultiDiGraph>::type
       create() {
-    return LabelledUpwardOpenMultiDiGraph(make_unique<BaseImpl>());
+    return LabelledDownardOpenMultiDiGraph(make_unique<BaseImpl>());
   }
 
 private:
   cow_ptr_t<Interface> ptr;
 };
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
-    LabelledUpwardOpenMultiDiGraph<int, int, int>);
 
 } // namespace FlexFlow
 

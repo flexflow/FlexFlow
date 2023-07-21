@@ -9,15 +9,11 @@
 
 namespace FlexFlow {
 
-struct SubParallelComputationGraph
-    : strong_typedef<
-          SubParallelComputationGraph,
-          LabelledOpenMultiDiGraph<Operator, ParallelTensor, MachineView>> {
-  using strong_typedef::strong_typedef;
-};
+using SubParallelComputationGraph =
+    LabelledOpenMultiDiGraphView<Operator, ParallelTensor, MachineView>;
 
-CHECK_WELL_BEHAVED_VALUE_TYPE(SubParallelComputationGraph);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(SubParallelComputationGraph);
 
 } // namespace FlexFlow
 
-#endif /* _FLEXFLOW_COMPILER_SUB_PARALLEL_COMPUTATION_GRAPH_H */
+#endif
