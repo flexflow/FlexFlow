@@ -2566,3 +2566,33 @@ class RegionNdarray(object):
       'data': (base_ptr, read_only),
       'strides': strides,
     }
+
+# -----------------------------------------------------------------------
+# BatchConfig
+# -----------------------------------------------------------------------
+
+class BatchConfig(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_batch_config_destroy)
+
+# -----------------------------------------------------------------------
+# TreeVerifyBatchConfig
+# -----------------------------------------------------------------------
+
+class TreeVerifyBatchConfig(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_tree_verify_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_tree_verify_batch_config_destroy)
+
+# -----------------------------------------------------------------------
+# BeamSearchBatchConfig
+# -----------------------------------------------------------------------
+
+class BatchConfig(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_beam_search_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_beam_search_batch_config_destroy)

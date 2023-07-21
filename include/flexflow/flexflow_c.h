@@ -47,6 +47,10 @@ FF_NEW_OPAQUE_TYPE(flexflow_dlrm_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_4d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_t);
+// Inference
+FF_NEW_OPAQUE_TYPE(flexflow_batch_config_t);
+FF_NEW_OPAQUE_TYPE(flexflow_tree_verify_batch_config_t);
+FF_NEW_OPAQUE_TYPE(flexflow_beam_search_batch_config_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -73,6 +77,7 @@ int flexflow_config_get_epochs(flexflow_config_t handle);
 bool flexflow_config_get_enable_control_replication(flexflow_config_t handle);
 
 int flexflow_config_get_python_data_loader_type(flexflow_config_t handle);
+
 // -----------------------------------------------------------------------
 // FFModel
 // -----------------------------------------------------------------------
@@ -712,6 +717,34 @@ void flexflow_op_forward(flexflow_op_t handle, flexflow_model_t model);
 // -----------------------------------------------------------------------
 
 void flexflow_perform_registration(void);
+
+// -----------------------------------------------------------------------
+// BatchConfig
+// -----------------------------------------------------------------------
+
+flexflow_batch_config_t flexflow_batch_config_create(void);
+
+void flexflow_batch_config_destroy(flexflow_batch_config_t handle);
+
+// -----------------------------------------------------------------------
+// TreeVerifyBatchConfig
+// -----------------------------------------------------------------------
+
+flexflow_tree_verify_batch_config_t
+    flexflow_tree_verify_batch_config_create(void);
+
+void flexflow_tree_verify_batch_config_destroy(
+    flexflow_tree_verify_batch_config_t handle);
+
+// -----------------------------------------------------------------------
+// BeamSearchBatchConfig
+// -----------------------------------------------------------------------
+
+flexflow_beam_search_batch_config_t
+    flexflow_beam_search_batch_config_create(void);
+
+void flexflow_beam_search_batch_config_destroy(
+    flexflow_beam_search_batch_config_t handle);
 
 #ifdef __cplusplus
 }
