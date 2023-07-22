@@ -32,9 +32,10 @@ class LLAMAConfig:
         self.max_beam_depth = 8
 
 class FlexFlowLLAMA:
-    def __init__(self, mode, sampling_config, max_batch_size=1, max_seq_length=256, max_tokens_per_batch=64, use_full_precision=False):
+    def __init__(self, mode, sampling_config, ffconfig, max_batch_size=1, max_seq_length=256, max_tokens_per_batch=64, use_full_precision=False):
         self.mode = mode
         self.sampling_config = sampling_config
+        self.ffconfig = ffconfig
         self.max_batch_size = max_batch_size
         self.use_full_precision = use_full_precision
         self.llama_config = LLAMAConfig()
@@ -44,8 +45,7 @@ class FlexFlowLLAMA:
         self.build_model()
     
     def build_model(self):
-        ffconfig = FFConfig()
-        ffmodel = FFModel(ffconfig)
+        ffmodel = FFModel(self.ffconfig)
         
         tokens_dims = [self.llama_config.max_num_tokens, 1]
         input_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)

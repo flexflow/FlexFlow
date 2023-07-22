@@ -2835,3 +2835,40 @@ class BatchConfig(object):
   def __init__(self):
     self.handle = ffc.flexflow_beam_search_batch_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_beam_search_batch_config_destroy)
+
+# -----------------------------------------------------------------------
+# RequestManager
+# -----------------------------------------------------------------------
+
+class RequestManager(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_request_manager_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_request_manager_destroy)
+
+  def flexflow_request_manager_register_new_request(self, prompt, max_sequence_length):
+    return ffc.flexflow_request_manager_register_new_request(self.handle, prompt, max_sequence_length)
+  
+# -----------------------------------------------------------------------
+# InferenceManager
+# -----------------------------------------------------------------------
+
+class InferenceManager(object):
+  __slots__ = ['handle', '_handle', 'max_num_tokens_per_batch']
+  def __init__(self, ffconfig, max_num_tokens_per_batch):
+    self.max_num_tokens_per_batch = max_num_tokens_per_batch
+    self.handle = ffc.flexflow_inference_manager_create(ffconfig.handle, max_num_tokens_per_batch)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_inference_manager_destroy)
+
+  def compile_model_and_allocate_buffer(self, model):
+    ffc.flexflow_inference_manager_compile_model_and_allocate_buffer(self.handle, model.handle)
+
+  def init_operators_inference(self, model):
+    ffc.flexflow_inference_manager_init_operators_inference(self.handle, model.handle)
+
+  def incr_decoding_loop(self, model, request_manager, total_num_requests):
+    ffc.flexflow_inference_manager_incr_decoding_loop(self.handle, model.handle, request_manager.handle, total_num_requests)
+
+  def spec_inference_loop(self, model, request_manager, total_num_requests, ssm_model_ids):
+    c_ssm_model_ids = ffi.new("int[]", ssm_model_ids)
+    ffc.flexflow_inference_manager_spec_inference_loop(self.handle, model.handle, request_manager.handle, total_num_requests, len(ssm_model_ids), c_ssm_model_ids)

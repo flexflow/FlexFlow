@@ -828,6 +828,9 @@ flexflow_inference_manager_t
 
 void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle);
 
+void flexflow_inference_manager_compile_model_and_allocate_buffer(
+    flexflow_inference_manager_t handle, flexflow_model_t model_handle);
+
 void flexflow_inference_manager_init_operators_inference(
     flexflow_inference_manager_t handle, flexflow_model_t model_handle);
 
@@ -842,6 +845,7 @@ void flexflow_inference_manager_spec_inference_loop(
     flexflow_model_t model_handle,
     flexflow_request_manager_t rm_handle,
     int total_num_requests,
+    int num_ssms,
     int *ssm_model_ids);
 
 #ifdef __cplusplus

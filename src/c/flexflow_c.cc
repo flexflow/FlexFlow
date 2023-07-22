@@ -2162,10 +2162,14 @@ void flexflow_request_manager_destroy(flexflow_request_manager_t handle_) {
 }
 
 long unsigned int flexflow_request_manager_register_new_request(
-    flexflow_request_manager_t handle,
+    flexflow_request_manager_t handle_,
     char const *prompt,
     int max_sequence_length) {
-  assert(false && "TODO");
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  assert(prompt != nullptr && "Cannot convert nullptr char * to std::string");
+  std::string const prompt_str(prompt);
+  DEBUG_PRINT("[RequestManager] register_new_request %p %s", handle, prompt);
+  return handle->register_new_request(prompt_str, max_sequence_length);
 }
 
 // -----------------------------------------------------------------------
@@ -2188,24 +2192,48 @@ void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle_) {
   delete handle;
 }
 
+void flexflow_inference_manager_compile_model_and_allocate_buffer(
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle_) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT("[InferenceManager] compile_model_and_allocate_buffer %p", handle);
+  handle->compile_model_and_allocate_buffer(model_handle);
+}
+
 void flexflow_inference_manager_init_operators_inference(
-    flexflow_inference_manager_t handle, flexflow_model_t model_handle) {
-  assert(false && "TODO");
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle_) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT("[InferenceManager] init_operators_inference %p", handle);
+  handle->init_operators_inference(model_handle);
 }
 
 void flexflow_inference_manager_incr_decoding_loop(
-    flexflow_inference_manager_t handle,
-    flexflow_model_t model_handle,
-    flexflow_request_manager_t rm_handle,
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle_,
+    flexflow_request_manager_t rm_handle_,
     int total_num_requests) {
-  assert(false && "TODO");
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  RequestManager *rm_handle = FFCObjectWrapper::unwrap(rm_handle_);
+  DEBUG_PRINT("[InferenceManager] incr_decoding_loop %p", handle);
+  handle->incr_decoding_loop(model_handle, *rm_handle, total_num_requests);
 }
 
 void flexflow_inference_manager_spec_inference_loop(
-    flexflow_inference_manager_t handle,
-    flexflow_model_t model_handle,
-    flexflow_request_manager_t rm_handle,
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle_,
+    flexflow_request_manager_t rm_handle_,
     int total_num_requests,
+    int num_ssms,
     int *ssm_model_ids) {
-  assert(false && "TODO");
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  RequestManager *rm_handle = FFCObjectWrapper::unwrap(rm_handle_);
+  std::vector<int> ssm_model_ids_vec;
+  for (int i = 0; i < num_ssms; i++) {
+    ssm_model_ids_vec.push_back(ssm_model_ids[i]);
+  }
+  DEBUG_PRINT("[InferenceManager] spec_inference_loop %p", handle);
+  handle->spec_inference_loop(model_handle, *rm_handle, total_num_requests, ssm_model_ids_vec);
 }

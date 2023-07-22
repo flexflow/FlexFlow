@@ -35,7 +35,7 @@ class LLM:
         }
         self.model_type = self.__get_ff_model_type(model_name)
         self.data_type = data_type
-        self.sampling_config = SamplingConfig()
+        self.ffconfig = FFConfig()
 
     def __get_ff_model_type(self, model_name):
         hf_config = AutoConfig.from_pretrained(model_name)
@@ -66,7 +66,18 @@ class LLM:
         self.tensor_parallel_degree = tensor_parallel_degree
         self.pipeline_parallel_degree = pipeline_parallel_degree
         self.ssms = ssms
-        self.model = self.model_type(mode, sampling_config, max_batch_size, max_seq_length, max_tokens_per_batch, use_full_precision)
+        self.sampling_config = SamplingConfig()
+        assert((mode == InferenceMode.INC_DECODING_MODE or mode == InferenceMode.BEAM_SEARCH_MODE) == (len(ssms) == 0))
+        
+        # Create model
+        self.model = self.model_type(mode, sampling_config, self.ffconfig, max_batch_size, max_seq_length, max_tokens_per_batch, use_full_precision)
+
+        # Create inference manager
+        self.im = InferenceManager(self.ffconfig, max_tokens_per_batch)
+
+        # Create request manager
+        self.rm = RequestManager()
+        
         assert False and "Not implemented yet"
 
     def generate(self, prompt, sampling=None):
