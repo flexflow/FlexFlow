@@ -806,12 +806,43 @@ void flexflow_beam_search_batch_config_destroy(
     flexflow_beam_search_batch_config_t handle);
 
 // -----------------------------------------------------------------------
+// RequestManager
+// -----------------------------------------------------------------------
+
+flexflow_request_manager_t flexflow_request_manager_create(void);
+
+void flexflow_request_manager_destroy(flexflow_request_manager_t handle);
+
+long unsigned int flexflow_request_manager_register_new_request(
+    flexflow_request_manager_t handle,
+    char const *prompt,
+    int max_sequence_length);
+
+// -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
 
-flexflow_inference_manager_t flexflow_inference_manager_create(void);
+flexflow_inference_manager_t
+    flexflow_inference_manager_create(flexflow_config_t config_handle,
+                                      int max_num_tokens_per_batch);
 
 void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle);
+
+void flexflow_inference_manager_init_operators_inference(
+    flexflow_inference_manager_t handle, flexflow_model_t model_handle);
+
+void flexflow_inference_manager_incr_decoding_loop(
+    flexflow_inference_manager_t handle,
+    flexflow_model_t model_handle,
+    flexflow_request_manager_t rm_handle,
+    int total_num_requests);
+
+void flexflow_inference_manager_spec_inference_loop(
+    flexflow_inference_manager_t handle,
+    flexflow_model_t model_handle,
+    flexflow_request_manager_t rm_handle,
+    int total_num_requests,
+    int *ssm_model_ids);
 
 #ifdef __cplusplus
 }

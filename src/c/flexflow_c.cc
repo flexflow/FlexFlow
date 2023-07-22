@@ -15,6 +15,7 @@
 
 #include "flexflow/flexflow_c.h"
 #include "flexflow/dataloader.h"
+#include "flexflow/inference.h"
 #include "flexflow/mapper.h"
 
 using namespace Legion;
@@ -61,6 +62,8 @@ public:
                         TreeVerifyBatchConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_beam_search_batch_config_t,
                         BeamSearchBatchConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_inference_manager_t, InferenceManager *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
 };
 
 Logger ffc_log("flexflow_c");
@@ -2140,4 +2143,69 @@ void flexflow_beam_search_batch_config_destroy(
   BeamSearchBatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
   DEBUG_PRINT("[BeamSearchBatchConfig] delete %p", handle);
   delete handle;
+}
+
+// -----------------------------------------------------------------------
+// RequestManager
+// -----------------------------------------------------------------------
+
+flexflow_request_manager_t flexflow_request_manager_create(void) {
+  RequestManager *rm = new RequestManager();
+  DEBUG_PRINT("[RequestManager] new %p", rm);
+  return FFCObjectWrapper::wrap(rm);
+}
+
+void flexflow_request_manager_destroy(flexflow_request_manager_t handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[RequestManager] delete %p", handle);
+  delete handle;
+}
+
+long unsigned int flexflow_request_manager_register_new_request(
+    flexflow_request_manager_t handle,
+    char const *prompt,
+    int max_sequence_length) {
+  assert(false && "TODO");
+}
+
+// -----------------------------------------------------------------------
+// InferenceManager
+// -----------------------------------------------------------------------
+
+flexflow_inference_manager_t
+    flexflow_inference_manager_create(flexflow_config_t config_handle,
+                                      int max_num_tokens_per_batch) {
+  FFConfig *config = FFCObjectWrapper::unwrap(config_handle);
+  InferenceManager *im =
+      new InferenceManager(*config, max_num_tokens_per_batch);
+  DEBUG_PRINT("[InferenceManager] new %p", im);
+  return FFCObjectWrapper::wrap(im);
+}
+
+void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle_) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[InferenceManager] delete %p", handle);
+  delete handle;
+}
+
+void flexflow_inference_manager_init_operators_inference(
+    flexflow_inference_manager_t handle, flexflow_model_t model_handle) {
+  assert(false && "TODO");
+}
+
+void flexflow_inference_manager_incr_decoding_loop(
+    flexflow_inference_manager_t handle,
+    flexflow_model_t model_handle,
+    flexflow_request_manager_t rm_handle,
+    int total_num_requests) {
+  assert(false && "TODO");
+}
+
+void flexflow_inference_manager_spec_inference_loop(
+    flexflow_inference_manager_t handle,
+    flexflow_model_t model_handle,
+    flexflow_request_manager_t rm_handle,
+    int total_num_requests,
+    int *ssm_model_ids) {
+  assert(false && "TODO");
 }
