@@ -45,8 +45,11 @@ Tensor FFModel::binary(OperatorType op,
   assert(broadcastable(in1, in2));
   if (in1->data_type < in2->data_type) {
     dtype = in2->data_type;
-    std::string str(name);
-    Tensor new_in1 = cast(in1, dtype, (str + "input1_pre_cast").c_str());
+    std::string str;
+    if (name != nullptr) {
+      str = std::string(name) + "input1_pre_cast";
+    }
+    Tensor new_in1 = cast(in1, dtype, str.c_str());
     ele = new Layer(this,
                     op,
                     dtype,
@@ -58,8 +61,11 @@ Tensor FFModel::binary(OperatorType op,
                     in2);
   } else if (in1->data_type > in2->data_type) {
     dtype = in1->data_type;
-    std::string str(name);
-    Tensor new_in2 = cast(in2, dtype, (str + "input2_pre_cast").c_str());
+    std::string str;
+    if (name != nullptr) {
+      str = std::string(name) + "input2_pre_cast";
+    }
+    Tensor new_in2 = cast(in2, dtype, str.c_str());
     ele = new Layer(this,
                     op,
                     dtype,

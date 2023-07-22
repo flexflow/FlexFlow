@@ -240,6 +240,7 @@ void FlexFlow::top_level_task(Task const *task,
     // ir = future.get_result<InferenceResult>();
     irf = fm.get_future(0);
   }
+  // im.incr_decoding_loop(&model, rm, total_num_requests);
 
   // Execution fence
   {

@@ -24,6 +24,7 @@ namespace FlexFlow {
 
 class FFModel;
 class BeamTree;
+class RequestManager;
 using tokenizers::Tokenizer;
 
 class InferenceManager {
@@ -39,7 +40,13 @@ public:
                                            ParallelTensor const input);
   void load_positions(BatchConfigFuture const &bc,
                       ParallelTensor position_input);
-
+  void incr_decoding_loop(FFModel *model,
+                          RequestManager &rm,
+                          int total_num_requests);
+  void spec_inference_loop(FFModel *model,
+                           RequestManager &rm,
+                           int total_num_requests,
+                           std::vector<int> ssm_model_ids);
 public:
   FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;

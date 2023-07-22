@@ -331,6 +331,7 @@ void FlexFlow::top_level_task(Task const *task,
       tree_irf = fm.get_future(0);
     }
   }
+  // im.spec_inference_loop(&tree_model, rm, total_num_requests, ssm_model_ids);
 
   // Execution fence
   {
