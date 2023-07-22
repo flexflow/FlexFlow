@@ -15,11 +15,17 @@
 from flexflow.serve import LLM, SamplingConfig
 from flexflow.core import *
 
+def get_prompts(json_filepath):
+   json_obj = None
+   return json_obj
+
 def top_level_task():
     # Incremental decoding
     llama = LLM("decapoda-research/llama-30b-hf", data_type = "half")
     sampling_config = SamplingConfig(do_sample=False, temperature = 0.9, topp = 0.8, topk = 1)
     llama.compile(InferenceMode.INC_DECODING_MODE, sampling_config, use_full_precision=False, max_batch_size = 1, max_seq_length = 256, max_tokens_per_batch=64, tensor_parallel_degree = 4, pipeline_parallel_degree = 2)
+    
+    prompts = llama.generate(prompts, sampling=sampling_config)
     # result = llama.generate("What's the best xxx in yyy?", sampling = sampling_config)
     # print(result)
 

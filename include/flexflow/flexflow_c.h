@@ -51,6 +51,8 @@ FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_t);
 FF_NEW_OPAQUE_TYPE(flexflow_batch_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tree_verify_batch_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_beam_search_batch_config_t);
+FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
+FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -802,6 +804,14 @@ flexflow_beam_search_batch_config_t
 
 void flexflow_beam_search_batch_config_destroy(
     flexflow_beam_search_batch_config_t handle);
+
+// -----------------------------------------------------------------------
+// InferenceManager
+// -----------------------------------------------------------------------
+
+flexflow_inference_manager_t flexflow_inference_manager_create(void);
+
+void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle);
 
 #ifdef __cplusplus
 }
