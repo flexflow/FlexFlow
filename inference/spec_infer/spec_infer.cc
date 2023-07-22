@@ -282,65 +282,7 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
-  TreeVerifyBatchConfig tree_bc;
-  BeamSearchBatchConfig beam_bc;
-  std::vector<BeamSearchBatchConfig> beam_bc_vec;
-  for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
-    beam_bc_vec.push_back(BeamSearchBatchConfig(ssm_model_ids[ssm_id]));
-  }
-
-  InferenceResult tree_ir;
-
-  while (rm.get_num_processed_requests() < total_num_requests) {
-    int depth = 0;
-    // Beam Search
-    beam_bc = rm.prepare_next_batch_init(tree_bc, tree_ir, 0);
-    for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
-      beam_bc_vec[ssm_id] = beam_bc;
-      beam_bc_vec[ssm_id].model_id = ssm_id;
-    }
-
-    if (rm.get_num_processed_requests() >= total_num_requests) {
-      break;
-    }
-
-    for (int i = 0; i < num_ssms; i++) {
-      while (true) {
-        beam_bc = beam_bc_vec[i];
-        depth = beam_bc.beamRequestsInfo[0].current_depth;
-
-        FutureMap fm = im.inference(rm.get_model(0), 0, beam_bc_vec[i]);
-        assert(fm.get_future_map_domain().get_volume() == 1);
-        Future future = fm.get_future(0);
-        BeamInferenceResult beam_ir = future.get_result<BeamInferenceResult>();
-
-        int iteration =
-            std::min(BeamSearchBatchConfig::MAX_BEAM_DEPTH,
-                     BatchConfig::MAX_SEQ_LENGTH - beam_bc.max_init_length);
-
-        if (depth - 1 >= iteration) {
-          break;
-        } else {
-          beam_bc_vec[i] = rm.prepare_next_batch_beam(beam_bc_vec[i], beam_ir);
-          if (beam_bc_vec[i].num_active_tokens() == 0 &&
-              beam_bc_vec[i].num_active_requests() != 0) {
-            break;
-          }
-        }
-      }
-      std::cout << "----------beam search finished for model "
-                << beam_bc_vec[i].model_id << "------------" << std::endl;
-    }
-    // Token Tree Verification
-    {
-      tree_bc = rm.prepare_next_batch_verify(beam_bc_vec);
-      FutureMap fm = im.inference(&tree_model, 0, tree_bc);
-
-      assert(fm.get_future_map_domain().get_volume() == 1);
-      Future future = fm.get_future(0);
-      tree_ir = future.get_result<InferenceResult>();
-    }
-  }
+  im.spec_inference_loop(&tree_model, rm, total_num_requests, ssm_model_ids);
 
   // Execution fence
   {

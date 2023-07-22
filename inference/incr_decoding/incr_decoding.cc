@@ -224,19 +224,7 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
-  BatchConfig bc;
-  InferenceResult ir;
-  while (rm.get_num_processed_requests() < total_num_requests) {
-    bc = rm.prepare_next_batch(bc, ir);
-    if (rm.get_num_processed_requests() >= total_num_requests) {
-      break;
-    }
-    FutureMap fm = im.inference(&model, 0, bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    Future future = fm.get_future(0);
-    ir = future.get_result<InferenceResult>();
-    // assert(false);
-  }
+  im.incr_decoding_loop(&model, rm, total_num_requests);
 
   // Execution fence
   {
