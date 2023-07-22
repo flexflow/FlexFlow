@@ -2196,7 +2196,8 @@ void flexflow_inference_manager_compile_model_and_allocate_buffer(
     flexflow_inference_manager_t handle_, flexflow_model_t model_handle_) {
   InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
-  DEBUG_PRINT("[InferenceManager] compile_model_and_allocate_buffer %p", handle);
+  DEBUG_PRINT("[InferenceManager] compile_model_and_allocate_buffer %p",
+              handle);
   handle->compile_model_and_allocate_buffer(model_handle);
 }
 
@@ -2235,5 +2236,6 @@ void flexflow_inference_manager_spec_inference_loop(
     ssm_model_ids_vec.push_back(ssm_model_ids[i]);
   }
   DEBUG_PRINT("[InferenceManager] spec_inference_loop %p", handle);
-  handle->spec_inference_loop(model_handle, *rm_handle, total_num_requests, ssm_model_ids_vec);
+  handle->spec_inference_loop(
+      model_handle, *rm_handle, total_num_requests, ssm_model_ids_vec);
 }
