@@ -29,38 +29,6 @@ void LLAMA::create_llama_model(FFModel &ff,
   // do not apply cpu offload in beam search model.
   Config llama_config(model_config_file_path);
   llama_config.printConfig();
-  //---------------------- parallelization setup work ----------------------
-  int num_devices = ff.config.workersPerNode * ff.config.numNodes;
-  int num_transformer_layers = llama_config.n_layers;
-  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
-  int num_layers_per_pp_block =
-      num_transformer_layers / ff.config.pipeline_parallelism_degree;
-  int num_devices_per_data_parallelism_line =
-      num_devices / ff.config.data_parallelism_degree;
-
-  // std::cout << "dp: " << ff.config.data_parallelism_degree
-  //           << " tp: " << ff.config.tensor_parallelism_degree
-  //           << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
-  // std::cout << "num_devices: " << num_devices << std::endl;
-  // std::cout << "num_transformer_layers: " << num_transformer_layers
-  //           << std::endl;
-  // std::cout << "num_devices_per_data_parallelism_line: "
-  //           << num_devices_per_data_parallelism_line << std::endl;
-  // std::cout << "num layers: " << llama_config.n_layers << std::endl;
-
-  //------------------------------compute machine views ------------------
-  // single device
-  std::vector<MachineView> machine_views;
-  for (int i = 0; i < num_devices; i++) {
-    MachineView view;
-    view.device_type = MachineView::GPU;
-    view.ndims = 1;
-    view.dim[0] = 1;
-    view.stride[0] = 0;
-    view.start_device_id = i;
-    machine_views.push_back(view);
-  }
-  assert(machine_views.size() == num_devices);
 
   std::unordered_map<std::string, Layer *> weights_layers;
 
@@ -96,7 +64,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  for (int i = 0; i < num_transformer_layers; i++) {
+  for (int i = 0; i < llama_config.n_layers; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
     // step 1: attention

@@ -27,24 +27,6 @@ void OPT::create_opt_model(FFModel &ff,
                            bool use_full_precision) {
   Config opt_config(model_config_file_path);
   opt_config.printConfig();
-  //---------------------- parallelization setup work ----------------------
-  int num_devices = ff.config.workersPerNode * ff.config.numNodes;
-  int num_transformer_layers = opt_config.num_hidden_layers;
-  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
-  int num_layers_per_pp_block =
-      num_transformer_layers / ff.config.pipeline_parallelism_degree;
-  int num_devices_per_data_parallelism_line =
-      num_devices / ff.config.data_parallelism_degree;
-
-  // std::cout << "dp: " << ff.config.data_parallelism_degree
-  //           << " tp: " << ff.config.tensor_parallelism_degree
-  //           << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
-  // std::cout << "num_devices: " << num_devices << std::endl;
-  // std::cout << "num_transformer_layers: " << num_transformer_layers
-  //           << std::endl;
-  // std::cout << "num_devices_per_data_parallelism_line: "
-  //           << num_devices_per_data_parallelism_line << std::endl;
-  // std::cout << "num layers: " << opt_config.num_hidden_layers << std::endl;
 
   std::unordered_map<std::string, Layer *> weights_layers;
 
