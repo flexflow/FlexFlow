@@ -125,7 +125,9 @@ class OpType(Enum):
   GATHER = 2106
   ATTRIBUTE = 2200
   RMS_NORM = 2300
-  BEAM_TOPK = 2301
+  ARG_TOPK = 2301
+  BEAM_TOPK = 2302
+
 def enum_to_int(enum, enum_item):
   for item in enum:
     if (enum_item == item):

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 from flexflow.serve.models import FlexFlowLLAMA, FlexFlowOPT, FlexFlowFalcon
+from flexflow.core import *
 from transformers import AutoConfig
 import sys
 
 class SamplingConfig:
-    def __init__(self, temperature=0.9, topp=0.8, topk=1):
-        self.temperature = 0.9
-        self.topp = 0.8
+    def __init__(self, do_sample = False, temperature=0.9, topp=0.8, topk=1):
+        self.do_sample = False
+        self.temperature = 0.8
+        self.topp = 0.6
         self.topk = 1
 
 class LLM:
@@ -33,7 +35,7 @@ class LLM:
         }
         self.model_type = self.__get_ff_model_type(model_name)
         self.data_type = data_type
-        self.default_config = SamplingConfig()
+        self.sampling_config = SamplingConfig()
 
     def __get_ff_model_type(self, model_name):
         hf_config = AutoConfig.from_pretrained(model_name)
@@ -48,6 +50,9 @@ class LLM:
 
     def compile(
         self,
+        mode = InferenceMode.INC_DECODING_MODE,
+        sampling_config = SamplingConfig(),
+        use_full_precision = False,
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
@@ -61,7 +66,7 @@ class LLM:
         self.tensor_parallel_degree = tensor_parallel_degree
         self.pipeline_parallel_degree = pipeline_parallel_degree
         self.ssms = ssms
-        self.model = self.model_type(max_batch_size, max_seq_length, max_tokens_per_batch)
+        self.model = self.model_type(mode, sampling_config, max_batch_size, max_seq_length, max_tokens_per_batch, use_full_precision)
         assert False and "Not implemented yet"
 
     def generate(self, prompt, sampling=None):

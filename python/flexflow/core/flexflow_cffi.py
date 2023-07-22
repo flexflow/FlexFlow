@@ -443,6 +443,27 @@ class RMSNorm(Op):
     super(RMSNorm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# ArgTopK
+# -----------------------------------------------------------------------
+class ArgTopK(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ArgTopK, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# BeamTopK
+# -----------------------------------------------------------------------
+class BeamTopK(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(BeamTopK, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Sampling
+# -----------------------------------------------------------------------
+class Sampling(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Sampling, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
 # -----------------------------------------------------------------------
 def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
@@ -526,6 +547,12 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return IncMultiHeadAttention(handle, idx, name)
   elif op_type == OpType.RMS_NORM:
     return RMSNorm(handle, idx, name)
+  elif op_type == OpType.ARG_TOPK:
+    return ArgTopK(handle, idx, name)
+  elif op_type == OpType.BEAM_TOPK:
+    return BeamTopK(handle, idx, name)
+  elif op_type == OpType.SAMPLING:
+    return Sampling(handle, idx, name)
   elif op_type == OpType.RSQRT:
     return Rsqrt(handle, idx, name)
   elif op_type == OpType.POW:
@@ -1340,6 +1367,7 @@ class FFModel(object):
     c_name = get_c_name(name)
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
+    c_dtype = enum_to_int(DataType, dtype)
     if kernel_initializer is None:
       kernel_initializer = GlorotUniformInitializer(42)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or \
@@ -1348,7 +1376,7 @@ class FFModel(object):
       (type(kernel_initializer) is NormInitializer), \
       f"Unknown initializer type: {kernel_initializer}"
     handle = ffc.flexflow_model_add_embedding(
-      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr, dtype,
+      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr, c_dtype,
       shared_op_handle, kernel_initializer.handle, c_name,
     )
     # NOTE: We must keep a reference to the initializer or else it will be
@@ -2170,6 +2198,69 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_rms_norm(self.handle, input.handle, eps, dim, c_name)
     self.add_layer(OpType.RMS_NORM, name)
     return Tensor(handle, owner_op_type=OpType.RMS_NORM)
+  
+  def arg_top_k(self, input, k, sorted, name=None):
+    """Defines the Arg TopK layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param k: the top k indices to select
+    :type k: int
+                          
+    :param sorted: Whether the entries should be sorted
+    :type sorted: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_arg_top_k(self.handle, input.handle, k, sorted, c_name)
+    self.add_layer(OpType.ARG_TOPK, name)
+    return Tensor(handle, owner_op_type=OpType.ARG_TOPK)
+
+  def beam_top_k(self, input, max_beam_size, sorted, name=None):
+    """Defines the Beam TopK layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param max_beam_size: the top max_beam_size indices to select
+    :type max_beam_size: int
+                          
+    :param sorted: Whether the entries should be sorted
+    :type sorted: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_beam_top_k(self.handle, input.handle, max_beam_size, sorted, c_name)
+    self.add_layer(OpType.BEAM_TOPK, name)
+    return Tensor(handle, owner_op_type=OpType.BEAM_TOPK)
+  
+  def sampling(self, input, top_p, name=None):
+    """Defines the Sampling layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param top_p: The top_p parameter of the sampling
+    :type top_p: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_sampling(self.handle, input.handle, top_p, c_name)
+    self.add_layer(OpType.SAMPLING, name)
+    return Tensor(handle, owner_op_type=OpType.SAMPLING)
 
   def reset_metrics(self):
     """Reset performance metrics.

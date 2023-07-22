@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from flexflow.core import *
-import sys, random
+import random
 
-class LLAMAConfig(dict):
+class LLAMAConfig:
     def __init__(self):
         self.n_layers = 32
         self.vocab_size = 3200
@@ -31,15 +31,10 @@ class LLAMAConfig(dict):
         self.max_beam_width = 1
         self.max_beam_depth = 8
 
-    def __getattr__(self, name):
-        if name in self:
-            return self[name]
-        else:
-            raise AttributeError(f"'LLAMAConfig' object has no attribute '{name}'")
-
 class FlexFlowLLAMA:
-    def __init__(self, mode, max_batch_size=1, max_seq_length=256, max_tokens_per_batch=64, use_full_precision=False):
+    def __init__(self, mode, sampling_config, max_batch_size=1, max_seq_length=256, max_tokens_per_batch=64, use_full_precision=False):
         self.mode = mode
+        self.sampling_config = sampling_config
         self.max_batch_size = max_batch_size
         self.use_full_precision = use_full_precision
         self.llama_config = LLAMAConfig()
@@ -52,10 +47,10 @@ class FlexFlowLLAMA:
         ffconfig = FFConfig()
         ffmodel = FFModel(ffconfig)
         
-        tokens_dims = [self.max_tokens_per_batch, 1]
+        tokens_dims = [self.llama_config.max_num_tokens, 1]
         input_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
-        embed_init = UniformInitializer(random.randint(0, sys.maxsize), 0, 0)
+        embed_init = UniformInitializer(random.randint(0, 2**31-1), 0, 0)
         token = ffmodel.embedding(input_tensor, self.llama_config.vocab_size, self.llama_config.dim, AggrMode.AGGR_MODE_NONE, DataType.DT_FLOAT if self.use_full_precision else DataType.DT_HALF, None, embed_init)
 
         for i in range(self.llama_config.n_layers):
@@ -63,7 +58,7 @@ class FlexFlowLLAMA:
 
             attn_norm = ffmodel.rms_norm(token, self.llama_config.norm_eps, self.llama_config.dim)
 
-            if mode == InferenceMode.BEAM_SEARCH_MODE:
+            if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.spec_inc_multihead_attention(
                     attn_norm, 
                     self.llama_config.dim,
@@ -77,7 +72,7 @@ class FlexFlowLLAMA:
                     None,   # kernel initializer
                     True    # apply_rotary_embedding 
                 )
-            elif mode == InferenceMode.TREE_VERIFY_MODE:
+            elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multihead_self_attention_verify(
                     attn_norm, 
                     self.llama_config.dim,
@@ -91,7 +86,7 @@ class FlexFlowLLAMA:
                     None,   # kernel initializer
                     True    # apply_rotary_embedding 
                 )
-            elif mode == InferenceMode.INC_DECODING_MODE:
+            elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multihead_attention(
                     attn_norm, 
                     self.llama_config.dim,
@@ -108,4 +103,28 @@ class FlexFlowLLAMA:
             else:
                 assert(False)
             
+            token = ffmodel.add(token, mha)
+            ff_norm = ffmodel.rms_norm(token, self.llama_config.norm_eps, self.llama_config.dim)
+            w1 = ffmodel.dense(ff_norm, self.llama_config.hidden_dim, ActiMode.AC_MODE_NONE, False)
+            w3 = ffmodel.dense(ff_norm, self.llama_config.hidden_dim, ActiMode.AC_MODE_NONE, False)
+            sigmoid = ffmodel.sigmoid(w1)
+            silu = ffmodel.multiply(w1, sigmoid)
+            multi = ffmodel.multiply(silu, w3)
+            w2 = ffmodel.dense(multi, self.llama_config.dim, ActiMode.AC_MODE_NONE, False)
+            token = ffmodel.add(token, w2)
+
+            token = ffmodel.rms_norm(token, self.llama_config.norm_eps, self.llama_config.dim)
+            dense = ffmodel.dense(token, self.llama_config.vocab_size, ActiMode.AC_MODE_NONE, False)
+            
+            if self.mode == InferenceMode.BEAM_SEARCH_MODE:
+                softmax = ffmodel.softmax(dense, -1)
+                output = ffmodel.beam_top_k(softmax, self.llama_config.max_beam_width, False)
+            else:
+                if self.sampling_config.do_sample:
+                    dense = ffmodel.scalar_true_divide(dense, self.sampling_config.temperature, False)
+                    softmax = ffmodel.softmax(dense, -1)
+                    output = ffmodel.sampling(softmax, self.sampling_config.topp)
+                else:
+                    output = ffmodel.arg_top_k(dense, 1, False)
+
 
