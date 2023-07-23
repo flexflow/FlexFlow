@@ -93,6 +93,16 @@ struct is_static_castable<
     void_t<decltype(static_cast<To>(std::declval<From>()))>> : std::true_type {
 };
 
+template <typename C, typename Tag>
+struct supports_iterator_tag
+    : std::is_base_of<Tag,
+                      typename std::iterator_traits<
+                          typename C::iterator>::iterator_category> {};
+
+#define CHECK_SUPPORTS_ITERATOR_TAG(TAG, ...)                                  \
+  static_assert(supports_iterator_tag<__VA_ARGS__, TAG>::value,                \
+                #__VA_ARGS__ " does not support required iterator tag " #TAG);
+
 } // namespace FlexFlow
 
 #endif
