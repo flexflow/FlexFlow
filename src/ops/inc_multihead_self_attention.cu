@@ -275,6 +275,11 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                          ldc_q,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+  print_tensor<float>((float *)output_ptr, 32, "Query tensor");
+  print_tensor<float>((float *)input_ptr, 32, "Input tensor");
+  print_tensor<float>((float *)weight_ptr, 32, "Weight tensor");
+  assert(false);                      
   // key
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
