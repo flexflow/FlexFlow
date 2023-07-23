@@ -27,6 +27,7 @@ public:
   FileDataLoader(std::string _input_path,
                  std::string _weight_file_path,
                  int _num_heads,
+                 int _num_kv_heads,
                  size_t _hidden_dim,
                  size_t _qkv_inner_dim);
 
@@ -54,7 +55,7 @@ public:
                       int offset);
 
 private:
-  int num_heads;
+  int num_heads, num_kv_heads;
   size_t hidden_dim, qkv_inner_dim;
   std::string input_path;
   std::string weight_file_path;

@@ -25,10 +25,11 @@ using namespace Legion;
 FileDataLoader::FileDataLoader(std::string _input_path,
                                std::string _weight_file_path,
                                int _num_heads,
+                               int _num_kv_heads,
                                size_t _hidden_dim,
                                size_t _qkv_inner_dim)
     : input_path(_input_path), weight_file_path(_weight_file_path),
-      num_heads(_num_heads), hidden_dim(_hidden_dim),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), hidden_dim(_hidden_dim),
       qkv_inner_dim(_qkv_inner_dim){};
 
 BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
@@ -279,6 +280,7 @@ void load_attention_weights_multi_query(DT *ptr,
 template <typename DT>
 void load_attention_bias_v2(DT *ptr,
                          int num_heads,
+                         int num_kv_heads,
                          size_t hidden_dim,
                          size_t qkv_inner_dim,
                          std::string layer_name,
@@ -298,8 +300,10 @@ void load_attention_bias_v2(DT *ptr,
   std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
 
   int file_index = 0;
+  
   for (auto file : bias_files) {
-    size_t qkv_partial_size = qkv_inner_dim * num_heads;
+    int n_heads = file_index == 0 ? num_heads : num_kv_heads;
+    size_t qkv_partial_size = qkv_inner_dim * n_heads;
     size_t out_partial_size = hidden_dim;
     size_t partial_size =
         (file_index < 3) ? qkv_partial_size : out_partial_size;
@@ -785,16 +789,18 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 
   if (file_path.find("attention_w") != std::string::npos) {
     if (weight_idx == 0) {
-      load_attention_weights(data,
+      load_attention_weights_v2(data,
                              num_heads,
+                             num_kv_heads,
                              hidden_dim,
                              qkv_inner_dim,
                              file_path,
                              weight_file_path,
                              volume);
     } else {
-      load_attention_bias(data,
+      load_attention_bias_v2(data,
                           num_heads,
+                          num_kv_heads,
                           hidden_dim,
                           qkv_inner_dim,
                           file_path,

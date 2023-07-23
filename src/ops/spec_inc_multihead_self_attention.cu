@@ -459,7 +459,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
                           stream>>>(
-          output_ptr, bias_ptr, num_tokens, m->oProjSize);
+          output_ptr, bias_ptr, num_tokens, 0, m->oProjSize);
     }
   }
 
@@ -613,6 +613,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     num_samples,
                                     attn->num_heads,
                                     _num_heads,
+                                    attn->num_heads,
                                     DT_NONE,
                                     false) {
   cudaStream_t stream;

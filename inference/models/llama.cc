@@ -148,6 +148,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             att_norm,
             llama_config.dim,
             llama_config.n_heads,
+            llama_config.n_heads,
             llama_config.dim / llama_config.n_heads,
             llama_config.dim / llama_config.n_heads,
             0.0f,    /*dropout*/
@@ -226,6 +227,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   im.compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
+                            llama_config.n_heads,
                             llama_config.n_heads,
                             llama_config.dim,
                             llama_config.dim / llama_config.n_heads);

@@ -145,6 +145,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   FileDataLoader fileloader("",
                             weight_file_path,
                             falcon_config.n_heads,
+                            1,
                             falcon_config.dim,
                             falcon_config.dim / falcon_config.n_heads);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);

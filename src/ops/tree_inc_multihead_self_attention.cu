@@ -447,7 +447,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                         min(CUDA_NUM_THREADS, parallelism),
                         0,
                         stream>>>(
-        output_ptr, bias_ptr, processed_tokens_in_batch, m->oProjSize);
+        output_ptr, bias_ptr, processed_tokens_in_batch, 0, m->oProjSize);
   }
 
   assert(processed_tokens_in_batch == bc->num_active_tokens());
@@ -646,6 +646,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     num_samples,
                                     attn->num_heads,
                                     _num_heads,
+                                    attn->num_heads,
                                     attn->quantization_type,
                                     attn->offload),
       num_active_tokens(0) {

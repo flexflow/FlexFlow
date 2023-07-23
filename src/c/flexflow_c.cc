@@ -1022,6 +1022,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
   Tensor tensor = handle->inc_multihead_self_attention(input,
                                                        embed_dim,
                                                        num_heads,
+                                                       num_heads,
                                                        kdim,
                                                        vdim,
                                                        dropout,
