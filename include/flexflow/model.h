@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/inference.h"
 #include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
@@ -698,6 +699,10 @@ public:
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
       char const *name = NULL);
+  // ========================================
+  // Inference APIs
+  // ========================================
+  GenerationResult generate(std::string const &text, int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],

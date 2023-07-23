@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_INC_MULTIQUERY_ATTENTION_H
 #define _FLEXFLOW_INC_MULTIQUERY_ATTENTION_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/inference.h"

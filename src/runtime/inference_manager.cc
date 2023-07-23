@@ -15,11 +15,11 @@
 
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
-#include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/parallel_ops/parallel_op.h"
+#include "flexflow/request_manager.h"
 
 namespace FlexFlow {
 

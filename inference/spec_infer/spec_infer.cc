@@ -43,10 +43,7 @@ void parse_input_args(char **argv,
                       FilePaths &paths,
                       ModelTypes &model_types,
                       bool &use_full_precision,
-                      bool &verbose,
-                      int &data_parallelism_degree,
-                      int &tensor_parallelism_degree,
-                      int &pipeline_parallelism_degree) {
+                      bool &verbose) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -117,21 +114,6 @@ void parse_input_args(char **argv,
       paths.output_file_path = std::string(argv[++i]);
       continue;
     }
-    // data parallelism degree
-    if (!strcmp(argv[i], "-data-parallelism-degree")) {
-      data_parallelism_degree = std::stoi(argv[++i]);
-      continue;
-    }
-    // tensor parallelism degree
-    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
-      tensor_parallelism_degree = std::stoi(argv[++i]);
-      continue;
-    }
-    // pipeline parallelism degree
-    if (!strcmp(argv[i], "-pipeline-parallelism-degree")) {
-      pipeline_parallelism_degree = std::stoi(argv[++i]);
-      continue;
-    }
     if (!strcmp(argv[i], "--use-full-precision")) {
       use_full_precision = true;
       continue;
@@ -160,20 +142,10 @@ void FlexFlow::top_level_task(Task const *task,
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(argv,
-                   argc,
-                   file_paths,
-                   model_types,
-                   use_full_precision,
-                   verbose,
-                   data_parallelism_degree,
-                   tensor_parallelism_degree,
-                   pipeline_parallelism_degree);
-  ffconfig.data_parallelism_degree = data_parallelism_degree;
-  ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
-  ffconfig.pipeline_parallelism_degree = pipeline_parallelism_degree;
-  assert(data_parallelism_degree * tensor_parallelism_degree *
-             pipeline_parallelism_degree ==
+  parse_input_args(
+      argv, argc, file_paths, model_types, use_full_precision, verbose);
+  assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
+             ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
 
   if (file_paths.ssm_weight_file_paths.size() == 0) {
@@ -261,8 +233,7 @@ void FlexFlow::top_level_task(Task const *task,
       assert(false && "Invalid SSM model type passed.");
     }
 
-    int beam_model_id = rm->register_new_model(&beam_model);
-    ssm_model_ids.push_back(beam_model_id);
+    rm->register_ssm_model(&beam_model);
   }
 
   // Register requests from prompt file
@@ -279,61 +250,9 @@ void FlexFlow::top_level_task(Task const *task,
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm->register_new_request(text, 128 /*max_sequence_length*/);
+      tree_model.generate(text, 128 /*max_sequence_length*/);
     }
   }
-
-  TreeVerifyBatchConfigFuture tree_bcf;
-  BeamSearchBatchConfigFuture beam_bcf;
-  InferenceResultFuture tree_irf;
-  std::vector<BeamSearchBatchConfigFuture> beam_bcf_vec;
-  {
-    TreeVerifyBatchConfig tree_bc;
-    BeamSearchBatchConfig beam_bc;
-    InferenceResult tree_ir;
-    tree_bcf = Future::from_value<TreeVerifyBatchConfig>(tree_bc);
-    beam_bcf = Future::from_value<BeamSearchBatchConfig>(beam_bc);
-    tree_irf = Future::from_value<InferenceResult>(tree_ir);
-    for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
-      beam_bcf_vec.push_back(Future::from_value<BeamSearchBatchConfig>(
-          BeamSearchBatchConfig(ssm_model_ids[ssm_id])));
-    }
-  }
-
-  while (rm->get_num_processed_requests() < total_num_requests) {
-    // Beam Search
-    beam_bcf = rm->prepare_next_batch_init(tree_bcf, tree_irf, 0);
-    for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
-      beam_bcf_vec[ssm_id] = beam_bcf;
-    }
-
-    if (rm->get_num_processed_requests() >= total_num_requests) {
-      break;
-    }
-
-    for (int i = 0; i < num_ssms; i++) {
-      for (int depth = 0; depth < BeamSearchBatchConfig::MAX_BEAM_DEPTH;
-           depth++) {
-        beam_bcf = beam_bcf_vec[i];
-
-        FutureMap fm = im->inference(rm->get_model(0), 0, beam_bcf_vec[i]);
-        assert(fm.get_future_map_domain().get_volume() == 1);
-        BeamInferenceResultFuture beam_irf = fm.get_future(0);
-        beam_bcf_vec[i] =
-            rm->prepare_next_batch_beam(beam_bcf_vec[i], beam_irf);
-      }
-      // std::cout << "----------beam search finished for model "
-      //           << beam_bc_vec[i].model_id << "------------" << std::endl;
-    }
-    // Token Tree Verification
-    {
-      tree_bcf = rm->prepare_next_batch_verify(beam_bcf_vec);
-      FutureMap fm = im->inference(&tree_model, 0, tree_bcf);
-      assert(fm.get_future_map_domain().get_volume() == 1);
-      tree_irf = fm.get_future(0);
-    }
-  }
-  // im.spec_inference_loop(&tree_model, rm, total_num_requests, ssm_model_ids);
 
   // Execution fence
   {

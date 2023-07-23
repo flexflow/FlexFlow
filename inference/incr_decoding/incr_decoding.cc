@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include "models/falcon.h"
 #include "models/llama.h"
 #include "models/opt.h"
@@ -195,7 +196,7 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       GenerationResult result =
-          RequestManager::generate(text, 128 /*max_sequence_length*/);
+          model.generate(text, 128 /*max_sequence_length*/);
     }
   }
 

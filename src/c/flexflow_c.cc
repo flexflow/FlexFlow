@@ -15,8 +15,8 @@
 
 #include "flexflow/flexflow_c.h"
 #include "flexflow/dataloader.h"
-#include "flexflow/inference.h"
 #include "flexflow/mapper.h"
+#include "flexflow/request_manager.h"
 
 using namespace Legion;
 using namespace FlexFlow;

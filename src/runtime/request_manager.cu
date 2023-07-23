@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
