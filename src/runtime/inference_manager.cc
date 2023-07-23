@@ -83,6 +83,18 @@ InferenceManager::InferenceManager(FFConfig const &_config,
   }
 }
 
+InferenceManager *inference_manager_singleton = nullptr;
+
+/*static*/
+InferenceManager *InferenceManager::get_inference_manager() {
+  if (inference_manager_singleton == nullptr) {
+    FFConfig ffconfig;
+    inference_manager_singleton =
+        new InferenceManager(ffconfig, BatchConfig::MAX_NUM_TOKENS);
+  }
+  return inference_manager_singleton;
+}
+
 bool parallel_tensor_list_overlaps(std::vector<ParallelTensor> const &list1,
                                    std::vector<ParallelTensor> const &list2) {
   for (auto const &pt1 : list1) {

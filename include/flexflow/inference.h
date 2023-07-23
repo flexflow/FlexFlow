@@ -17,6 +17,7 @@
 
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
+#include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
 
@@ -27,9 +28,32 @@ class BeamTree;
 class RequestManager;
 using tokenizers::Tokenizer;
 
+struct SamplingConfig {
+  bool do_sample = false;
+  float temperature = 0.8;
+  float topp = 0.6;
+  SamplingConfig(bool _do_sample, float _temperature, float _topp) {
+    temperature = _temperature > 0 ? _temperature : temperature;
+    topp = _topp > 0 ? _topp : topp;
+    do_sample = _do_sample;
+  }
+  SamplingConfig() {}
+};
+
+struct GenerationResult {
+  using RequestGuid = BatchConfig::RequestGuid;
+  using TokenId = BatchConfig::TokenId;
+  RequestGuid guid;
+  std::string input_text;
+  std::string output_text;
+  std::vector<TokenId> input_tokens;
+  std::vector<TokenId> output_tokens;
+};
+
 class InferenceManager {
 public:
   InferenceManager(FFConfig const &config, int max_num_tokens_per_batch);
+  static InferenceManager *get_inference_manager();
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
   MachineView *get_machine_view(int mv_id);
@@ -47,6 +71,7 @@ public:
                            RequestManager &rm,
                            int total_num_requests,
                            std::vector<int> ssm_model_ids);
+
 public:
   FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
@@ -62,6 +87,7 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   std::vector<struct BeamTree> beam_trees;
+  std::promise<GenerationResult> *promise;
 };
 
 // store the result of beam search
@@ -73,18 +99,6 @@ struct BeamTree {
     float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
   };
   treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
-};
-
-struct SamplingConfig {
-  bool do_sample = false;
-  float temperature = 0.8;
-  float topp = 0.6;
-  SamplingConfig(bool _do_sample, float _temperature, float _topp) {
-    temperature = _temperature > 0 ? _temperature : temperature;
-    topp = _topp > 0 ? _topp : topp;
-    do_sample = _do_sample;
-  }
-  SamplingConfig() {}
 };
 
 // struct BeamTree_v2 {
@@ -102,12 +116,17 @@ public:
                  bool verbose = false,
                  std::string output_filepath = "");
   RequestManager();
+  static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
 
   int register_new_model(FFModel *model);
+  void register_tokenizer(ModelType model_type, std::string const &path);
+  void register_output_filepath(std::string const &);
 
   FFModel *get_model(int model_id);
+  void serve(FFModel *model);
 
+  static GenerationResult generate(std::string const &text, int max_seq_length);
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
@@ -195,13 +214,20 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
+  static void llm_serving_background_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
 private:
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
   ModelType model_type;
   std::string output_filepath;
   std::queue<Request> pending_request_queue;
-  std::unordered_map<RequestGuid, Request> running_request_queue;
+  std::unordered_map<RequestGuid, Request> all_requests;
+  std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
   const std::map<ModelType, int> model_bos_map = {{ModelType::LLAMA, 0},

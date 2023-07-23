@@ -200,17 +200,21 @@ void FlexFlow::top_level_task(Task const *task,
 
   // Create SentencePiece tokenizer or OPT tokenizer
   SamplingConfig samplingConfig;
-  InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
-  RequestManager rm(model_types.llm_model_type,
-                    file_paths.tokenizer_file_path,
-                    /*verbose*/ verbose,
-                    file_paths.output_file_path);
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  RequestManager *rm = RequestManager::get_request_manager();
+  rm->register_tokenizer(model_types.llm_model_type,
+                         file_paths.tokenizer_file_path);
+  rm->register_output_filepath(file_paths.output_file_path);
+  // InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
+  // RequestManager rm(model_types.llm_model_type,
+  //                   file_paths.tokenizer_file_path,
+  //                   /*verbose*/ verbose,
+  //                   file_paths.output_file_path);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
   if (model_types.llm_model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(tree_model,
-                              im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
                               TREE_VERIFY_MODE,
@@ -218,7 +222,6 @@ void FlexFlow::top_level_task(Task const *task,
                               use_full_precision);
   } else if (model_types.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
-                          im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
                           TREE_VERIFY_MODE,
@@ -243,7 +246,6 @@ void FlexFlow::top_level_task(Task const *task,
     FFModel &beam_model = ssm_models[ssm_id];
     if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA) {
       LLAMA::create_llama_model(beam_model,
-                                im,
                                 file_paths.ssm_config_file_paths[ssm_id],
                                 file_paths.ssm_weight_file_paths[ssm_id],
                                 BEAM_SEARCH_MODE,
@@ -251,7 +253,6 @@ void FlexFlow::top_level_task(Task const *task,
                                 use_full_precision);
     } else if (model_types.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,
-                            im,
                             file_paths.ssm_config_file_paths[ssm_id],
                             file_paths.ssm_weight_file_paths[ssm_id],
                             BEAM_SEARCH_MODE,
@@ -260,7 +261,7 @@ void FlexFlow::top_level_task(Task const *task,
       assert(false && "Invalid SSM model type passed.");
     }
 
-    int beam_model_id = rm.register_new_model(&beam_model);
+    int beam_model_id = rm->register_new_model(&beam_model);
     ssm_model_ids.push_back(beam_model_id);
   }
 
@@ -278,7 +279,7 @@ void FlexFlow::top_level_task(Task const *task,
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm.register_new_request(text, 128 /*max_sequence_length*/);
+      rm->register_new_request(text, 128 /*max_sequence_length*/);
     }
   }
 
@@ -299,14 +300,14 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
-  while (rm.get_num_processed_requests() < total_num_requests) {
+  while (rm->get_num_processed_requests() < total_num_requests) {
     // Beam Search
-    beam_bcf = rm.prepare_next_batch_init(tree_bcf, tree_irf, 0);
+    beam_bcf = rm->prepare_next_batch_init(tree_bcf, tree_irf, 0);
     for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
     }
 
-    if (rm.get_num_processed_requests() >= total_num_requests) {
+    if (rm->get_num_processed_requests() >= total_num_requests) {
       break;
     }
 
@@ -315,18 +316,19 @@ void FlexFlow::top_level_task(Task const *task,
            depth++) {
         beam_bcf = beam_bcf_vec[i];
 
-        FutureMap fm = im.inference(rm.get_model(0), 0, beam_bcf_vec[i]);
+        FutureMap fm = im->inference(rm->get_model(0), 0, beam_bcf_vec[i]);
         assert(fm.get_future_map_domain().get_volume() == 1);
         BeamInferenceResultFuture beam_irf = fm.get_future(0);
-        beam_bcf_vec[i] = rm.prepare_next_batch_beam(beam_bcf_vec[i], beam_irf);
+        beam_bcf_vec[i] =
+            rm->prepare_next_batch_beam(beam_bcf_vec[i], beam_irf);
       }
       // std::cout << "----------beam search finished for model "
       //           << beam_bc_vec[i].model_id << "------------" << std::endl;
     }
     // Token Tree Verification
     {
-      tree_bcf = rm.prepare_next_batch_verify(beam_bcf_vec);
-      FutureMap fm = im.inference(&tree_model, 0, tree_bcf);
+      tree_bcf = rm->prepare_next_batch_verify(beam_bcf_vec);
+      FutureMap fm = im->inference(&tree_model, 0, tree_bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
       tree_irf = fm.get_future(0);
     }

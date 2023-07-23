@@ -103,7 +103,6 @@ public:
   };
 
   static void create_llama_model(FFModel &ff,
-                                 InferenceManager &im,
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,

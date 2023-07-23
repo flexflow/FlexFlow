@@ -3814,6 +3814,9 @@ FFConfig::FFConfig() {
   offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
   quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
+  data_parallelism_degree = 1;
+  tensor_parallelism_degree = 1;
+  pipeline_parallelism_degree = 1;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
@@ -3855,9 +3858,6 @@ FFConfig::FFConfig() {
                     .local_address_space()
                     .only_kind(Processor::LOC_PROC)
                     .count();
-  data_parallelism_degree = 1;
-  tensor_parallelism_degree = 1;
-  pipeline_parallelism_degree = 1;
 
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
@@ -3936,6 +3936,21 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {
       only_data_parallel = true;
+      continue;
+    }
+    // data parallelism degree
+    if (!strcmp(argv[i], "-data-parallelism-degree")) {
+      data_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // tensor parallelism degree
+    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
+      tensor_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // pipeline parallelism degree
+    if (!strcmp(argv[i], "-pipeline-parallelism-degree")) {
+      pipeline_parallelism_degree = std::stoi(argv[++i]);
       continue;
     }
     if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
@@ -4186,6 +4201,23 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<
           TreeVerifyBatchConfig,
           RequestManager::prepare_next_batch_verify_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RM_LLM_SERVING_BACKGROUND_TASK_ID,
+                                   "LLM Serving Background Task");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          RequestManager::llm_serving_background_task>(
+          registrar, "LLM Serving Background Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<RequestManager::llm_serving_background_task>(
+              registrar);
     }
   }
   // ElementUnary task
