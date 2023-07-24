@@ -4,7 +4,6 @@
 #include "containers.h"
 #include "optional.h"
 #include "stack_vector.h"
-#include "containers.h"
 
 namespace FlexFlow {
 

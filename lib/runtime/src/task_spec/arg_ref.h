@@ -40,7 +40,8 @@ public:
   }
 
   template <typename T>
-  static ArgRefSpec create_device_specific(ArgRef<LABEL_TYPE, T> const &r, size_t device_idx) {
+  static ArgRefSpec create_device_specific(ArgRef<LABEL_TYPE, T> const &r,
+                                           size_t device_idx) {
     return ArgRefSpec(ArgTypeRuntimeTag::create<T>(), r.ref_type, device_idx);
   }
 
@@ -48,7 +49,9 @@ private:
   ArgRefSpec(ArgTypeRuntimeTag const &type_tag, LABEL_TYPE ref_type)
       : type_tag(type_tag), ref_type(ref_type) {}
 
-  ArgRefSpec(ArgTypeRuntimeTag const &type_tag, LABEL_TYPE ref_type, size_t device_idx)
+  ArgRefSpec(ArgTypeRuntimeTag const &type_tag,
+             LABEL_TYPE ref_type,
+             size_t device_idx)
       : type_tag(type_tag), ref_type(ref_type), device_idx(device_idx) {}
 
   ArgTypeRuntimeTag type_tag;

@@ -159,8 +159,8 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_device_specific_arg(PER_DEVICE_STATE,
-                   per_device_op_state<AggregateSpecPerDeviceState>());
+  binding.bind_device_specific_arg(
+      PER_DEVICE_STATE, per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_FWD_TASK_ID, binding};
 }
@@ -181,8 +181,8 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_device_specific_arg(PER_DEVICE_STATE,
-                   per_device_op_state<AggregateSpecPerDeviceState>());
+  binding.bind_device_specific_arg(
+      PER_DEVICE_STATE, per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_BWD_TASK_ID, binding};
 }
@@ -264,7 +264,8 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state =
-      acc.get_device_specific_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_device_specific_argument<AggregateSpecPerDeviceState>(
+          PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   int n = attrs.n;
@@ -386,7 +387,8 @@ static void forward_task(Legion::Task const *task,
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state =
-      acc.get_device_specific_argument<AggregateSpecPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_device_specific_argument<AggregateSpecPerDeviceState>(
+          PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   int n = attrs.n;

@@ -145,7 +145,6 @@ static_assert(std::is_same<visit_as_tuple_t<InternalTestType>,
 static_assert(visit_trivially_serializable<InternalTestType>::value, "");
 static_assert(is_trivially_serializable<InternalTestType>::value, "");
 
-
 template <typename T, typename Enable = void>
 struct Serialization {
   void serialize(Legion::Serializer &sez, T const &) const;

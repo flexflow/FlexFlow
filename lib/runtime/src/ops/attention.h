@@ -1,17 +1,17 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
-#include "op-attrs/ops/attention.h"
 #include "../task_spec/op_task_signature.h"
 #include "kernels/attention_kernels.h"
+#include "op-attrs/ops/attention.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {
 
 // declare Legion names
-using Legion::Runtime;
 using Legion::Context;
 using Legion::PhysicalRegion;
+using Legion::Runtime;
 using Legion::Task;
 
 template <>
@@ -26,9 +26,9 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &);
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &);
 
 static MHAPerDeviceState *init_task(Task const *task,
-                                   std::vector<PhysicalRegion> const &regions,
-                                   Context ctx,
-                                   Runtime *runtime);
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime);
 static MHAPerDeviceState *init_task_impl(TaskArgumentAccessor const &acc);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,

@@ -16,8 +16,8 @@
 #include "attention.h"
 #include "kernels/attention_kernels.h"
 #include "kernels/profiling.h"
-#include "realm_allocator.h"
 #include "model.h"
+#include "realm_allocator.h"
 
 namespace FlexFlow {
 
@@ -402,16 +402,18 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 //   /* for (int i = 0; i < numdim; i++) { */
 //   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
 //   /* } */
-//   /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1); */
-//   /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2); */
+//   /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1);
+//   */
+//   /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2);
+//   */
 //   // Check correctness
 //   /* assert(check_output_input_weight_parallel_dims()); */
 // }
 
 static MHAPerDeviceState *init_task(Task const *task,
-                                   std::vector<PhysicalRegion> const &regions,
-                                   Context ctx,
-                                   Runtime *runtime) {
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return init_task_impl(acc);
 }
@@ -428,7 +430,6 @@ static MHAPerDeviceState *init_task_impl(TaskArgumentAccessor const &acc) {
   int vProjSize = acc.get_argument<int>(VPROJSIZE);
   int oProjSize = acc.get_argument<int>(OPROJSIZE);
   Allocator allocator = acc.get_allocator();
-
 
   PerDeviceFFHandle handle = acc.get_per_device_ffhandle();
 
@@ -455,19 +456,19 @@ static MHAPerDeviceState *init_task_impl(TaskArgumentAccessor const &acc) {
   assert(oProjSize(attrs) == output.shape[legion_dim_t(0)]);
 
   MHAPerDeviceState *m = new MHAPerDeviceState(init_kernel(handle,
-                                               allocator,
-                                               num_samples,
-                                               num_heads,
-                                               qSize,
-                                               kSize,
-                                               vSize,
-                                               qProjSize,
-                                               kProjSize,
-                                               vProjSize,
-                                               oProjSize,
-                                               qoSeqLength,
-                                               kvSeqLength,
-                                               attrs.add_bias_kv));
+                                                           allocator,
+                                                           num_samples,
+                                                           num_heads,
+                                                           qSize,
+                                                           kSize,
+                                                           vSize,
+                                                           qProjSize,
+                                                           kProjSize,
+                                                           vProjSize,
+                                                           oProjSize,
+                                                           qoSeqLength,
+                                                           kvSeqLength,
+                                                           attrs.add_bias_kv));
 
   assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
   return m;
@@ -533,7 +534,6 @@ static void forward_task(Task const *task,
   auto output = acc.get_tensor<FlexFlow::Permissions::WO>(OUTPUT);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
-
 
   profile(forward_kernel,
           profiling_settings,
@@ -701,7 +701,8 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   fwd.add_weight_slot(WEIGHTS);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, forward_task);
+  register_task(
+      ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, forward_task);
 }
 
 template <>
@@ -714,23 +715,28 @@ void register_task<ATTENTION_BWD_TASK_ID>() {
   bwd.add_input_slot(VALUE);
   bwd.add_weight_slot(WEIGHTS);
 
-  OpTensorSlotSpec key_gradient = OpTensorSlotSpec(KEY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
+  OpTensorSlotSpec key_gradient = OpTensorSlotSpec(
+      KEY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
   key_gradient.is_grad = FlexFlow::IsGrad::YES;
   bwd.add_from_slot_spec(key_gradient);
 
-  OpTensorSlotSpec query_gradient = OpTensorSlotSpec(QUERY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
+  OpTensorSlotSpec query_gradient = OpTensorSlotSpec(
+      QUERY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
   query_gradient.is_grad = FlexFlow::IsGrad::YES;
   bwd.add_from_slot_spec(query_gradient);
 
-  OpTensorSlotSpec weights_gradient = OpTensorSlotSpec(WEIGHTS, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::WEIGHT);
+  OpTensorSlotSpec weights_gradient = OpTensorSlotSpec(
+      WEIGHTS, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::WEIGHT);
   weights_gradient.is_grad = FlexFlow::IsGrad::YES;
   bwd.add_from_slot_spec(weights_gradient);
 
-  OpTensorSlotSpec output_gradient = OpTensorSlotSpec(OUTPUT, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::OUTPUT);
+  OpTensorSlotSpec output_gradient = OpTensorSlotSpec(
+      OUTPUT, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::OUTPUT);
   output_gradient.is_grad = FlexFlow::IsGrad::YES;
   bwd.add_from_slot_spec(output_gradient);
 
-  register_task(ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, backward_task);
+  register_task(
+      ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, backward_task);
 }
 
 } // namespace FlexFlow

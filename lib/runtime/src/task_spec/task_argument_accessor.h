@@ -2,12 +2,12 @@
 #define _FLEXFLOW_RUNTIME_SRC_TASK_ARGUMENT_ACCESSOR_H
 
 #include "accessor.h"
+#include "realm_allocator.h"
 #include "runtime/config.h"
 #include "task_invocation.h"
 #include "utils/exception.h"
 #include "utils/stack_map.h"
 #include "utils/strong_typedef.h"
-#include "realm_allocator.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -58,11 +58,26 @@ struct TaskArgumentsFormat {
   void insert(slot_id, std::vector<region_idx_t> const &);
 };
 
-static_assert(is_neq_comparable<stack_map<slot_id, TensorArgumentFormat, MAX_NUM_TASK_REGIONS>>::value, "");
-static_assert(is_neq_comparable<stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS>>::value, "");
-static_assert(is_neq_comparable<stack_map<slot_id, FutureArgumentFormat, MAX_NUM_TASK_ARGUMENTS>>::value, "");
-static_assert(is_neq_comparable<stack_map<region_idx_t, Legion::PrivilegeMode, MAX_NUM_TASK_REGIONS>>::value, "");
-static_assert(is_neq_comparable<stack_map<region_idx_t, DataType, MAX_NUM_TASK_REGIONS>>::value, "");
+static_assert(
+    is_neq_comparable<
+        stack_map<slot_id, TensorArgumentFormat, MAX_NUM_TASK_REGIONS>>::value,
+    "");
+static_assert(
+    is_neq_comparable<
+        stack_map<slot_id, TaskArgumentFormat, MAX_NUM_TASK_ARGUMENTS>>::value,
+    "");
+static_assert(is_neq_comparable<stack_map<slot_id,
+                                          FutureArgumentFormat,
+                                          MAX_NUM_TASK_ARGUMENTS>>::value,
+              "");
+static_assert(is_neq_comparable<stack_map<region_idx_t,
+                                          Legion::PrivilegeMode,
+                                          MAX_NUM_TASK_REGIONS>>::value,
+              "");
+static_assert(
+    is_neq_comparable<
+        stack_map<region_idx_t, DataType, MAX_NUM_TASK_REGIONS>>::value,
+    "");
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
     TaskArgumentsFormat, region_idxs, args, futures, regions, data_types);

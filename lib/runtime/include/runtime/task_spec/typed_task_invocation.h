@@ -72,7 +72,7 @@ struct TypedIndexTaskInvocation {
 
   template <typename U>
   friend bool operator<(TypedIndexTaskInvocation<U> const &,
-                         TypedIndexTaskInvocation<U> const &);
+                        TypedIndexTaskInvocation<U> const &);
 
   operator TaskInvocation() const;
 
