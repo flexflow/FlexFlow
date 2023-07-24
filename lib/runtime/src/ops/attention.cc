@@ -21,12 +21,6 @@
 
 namespace FlexFlow {
 
-// declare Legion names
-using Legion::Runtime;
-using Legion::Context;
-using Legion::Task;
-using Legion::PhysicalRegion;
-
 using namespace FlexFlow::Kernels::MultiHeadAttention;
 
 enum Slots {
