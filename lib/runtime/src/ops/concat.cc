@@ -267,7 +267,7 @@ PerDeviceOpState *Concat::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
 
@@ -319,7 +319,7 @@ void Concat::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   // Concat const *cc = (Concat *)task->args;
   ConcatPerDeviceState const *m = *((ConcatPerDeviceState **)task->local_args);
   // Note that our internal axis index ordering is opposite to other frameworks
@@ -400,7 +400,7 @@ void Concat::backward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   // Concat const *cc = (Concat *)task->args;
   ConcatPerDeviceState const *m = *((ConcatPerDeviceState **)task->local_args);
   // Note that our internal axis index ordering is opposite to other frameworks

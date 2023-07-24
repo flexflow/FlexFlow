@@ -20,6 +20,8 @@
 #include "legion.h"
 #include "pcg/optimizer.h"
 #include "pcg/parallel_tensor.h"
+#include "parallel_computation_graph.h"
+
 
 namespace FlexFlow {
 

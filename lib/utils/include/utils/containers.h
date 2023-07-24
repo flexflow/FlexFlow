@@ -5,6 +5,7 @@
 #include "invoke.h"
 #include "optional.h"
 #include "type_traits.h"
+#include "type_traits_core.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -521,7 +522,7 @@ void inplace_sorted_by(C &c, F const &f) {
   CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);
 
   auto custom_comparator = [&](C const &lhs, C const &rhs) -> bool {
-      return f(lhs, rhs);
+    return f(lhs, rhs);
   };
   std::sort(c.begin(), c.end(), custom_comparator);
 }

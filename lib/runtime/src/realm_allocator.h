@@ -22,7 +22,7 @@ private:
   stack_vector<Realm::RegionInstance, MAX_INSTANCE_ALLOCATIONS> instances;
 };
 
-std::unique_ptr<IAllocator> get_gpu_memory_allocator(Legion::Task const *);
+Allocator get_gpu_memory_allocator(Legion::Task const *);
 
 } // namespace FlexFlow
 
