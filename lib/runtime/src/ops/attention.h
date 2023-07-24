@@ -8,12 +8,6 @@
 
 namespace FlexFlow {
 
-// declare Legion names
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
-
 template <>
 void register_task<ATTENTION_INIT_TASK_ID>();
 template <>
