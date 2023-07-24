@@ -232,324 +232,326 @@ if(FF_USE_NCCL)
 endif()
 
 # Legion
-include(legion)
-
-# json
-include(json)
-
-# variant
-include(variant)
-
-# optional
-include(optional)
-
-if (FF_GPU_BACKEND STREQUAL "cuda")
-  list(APPEND FF_CC_FLAGS
-    -DFF_USE_CUDA)
-  list(APPEND FF_NVCC_FLAGS
-    -DFF_USE_CUDA)
-elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
-  list(APPEND FF_CC_FLAGS
-    -DFF_USE_HIP_CUDA)
-  list(APPEND FF_HIPCC_FLAGS
-    -DFF_USE_HIP_CUDA)
-elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
-  list(APPEND FF_CC_FLAGS
-    -DFF_USE_HIP_ROCM)
-  list(APPEND FF_HIPCC_FLAGS
-    -DFF_USE_HIP_ROCM)
+if(FF_BUILD_LEGION)
+  include(legion)
 else()
-endif()
+  # json
+  include(json)
 
-# Start build FlexFlow
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  # variant
+  include(variant)
+
+  # optional
+  include(optional)
+
+  if (FF_GPU_BACKEND STREQUAL "cuda")
+    list(APPEND FF_CC_FLAGS
+      -DFF_USE_CUDA)
+    list(APPEND FF_NVCC_FLAGS
+      -DFF_USE_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
+    list(APPEND FF_CC_FLAGS
+      -DFF_USE_HIP_CUDA)
+    list(APPEND FF_HIPCC_FLAGS
+      -DFF_USE_HIP_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
+    list(APPEND FF_CC_FLAGS
+      -DFF_USE_HIP_ROCM)
+    list(APPEND FF_HIPCC_FLAGS
+      -DFF_USE_HIP_ROCM)
+  else()
+  endif()
+
+  # Start build FlexFlow
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    list(APPEND FF_CC_FLAGS
+      -DFF_DEBUG)
+    list(APPEND FF_NVCC_FLAGS
+      -DFF_DEBUG)
+  endif()
+
+  message(STATUS "FlexFlow MAX_DIM: ${FF_MAX_DIM}")
+
   list(APPEND FF_CC_FLAGS
-    -DFF_DEBUG)
+    -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+
+  if(FF_USE_AVX2)
+    list(APPEND FF_CC_FLAGS
+      -DFF_USE_AVX2
+      -mavx2)
+  endif()
+
   list(APPEND FF_NVCC_FLAGS
-    -DFF_DEBUG)
-endif()
+    -Wno-deprecated-gpu-targets
+    -DMAX_TENSOR_DIM=${FF_MAX_DIM})
 
-message(STATUS "FlexFlow MAX_DIM: ${FF_MAX_DIM}")
+  list(APPEND FF_LD_FLAGS
+    -lrt
+    -ldl
+    -rdynamic)
 
-list(APPEND FF_CC_FLAGS
-  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+  # Set FF FLAGS
+  add_compile_options(${FF_CC_FLAGS})
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${FF_NVCC_FLAGS} -UNDEBUG)
+  link_libraries(${FF_LD_FLAGS})
 
-if(FF_USE_AVX2)
-  list(APPEND FF_CC_FLAGS
-    -DFF_USE_AVX2
-    -mavx2)
-endif()
+  list(APPEND FLEXFLOW_INCLUDE_DIRS
+    ${FLEXFLOW_ROOT}/include
+    ${FLEXFLOW_ROOT})
 
-list(APPEND FF_NVCC_FLAGS
-  -Wno-deprecated-gpu-targets
-  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
-
-list(APPEND FF_LD_FLAGS
-  -lrt
-  -ldl
-  -rdynamic)
-
-# Set FF FLAGS
-add_compile_options(${FF_CC_FLAGS})
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${FF_NVCC_FLAGS} -UNDEBUG)
-link_libraries(${FF_LD_FLAGS})
-
-list(APPEND FLEXFLOW_INCLUDE_DIRS
-  ${FLEXFLOW_ROOT}/include
-  ${FLEXFLOW_ROOT})
-
-file(GLOB_RECURSE FLEXFLOW_HDR
-  LIST_DIRECTORIES False
-  ${FLEXFLOW_ROOT}/include/*.h)
-
-file(GLOB_RECURSE FLEXFLOW_SRC
-  LIST_DIRECTORIES False
-  ${FLEXFLOW_ROOT}/src/*.cc)
-list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
-
-set(FLEXFLOW_CPP_DRV_SRC
-  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
-
-add_library(substitution_loader SHARED
-  ${FLEXFLOW_ROOT}/src/runtime/substitution_loader.cc)
-target_include_directories(substitution_loader PRIVATE ${FLEXFLOW_INCLUDE_DIRS})
-target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
-
-
-#message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
-
-# compile flexflow lib
-if (FF_GPU_BACKEND STREQUAL "cuda")
-  file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+  file(GLOB_RECURSE FLEXFLOW_HDR
     LIST_DIRECTORIES False
-    ${FLEXFLOW_ROOT}/src/*.cu)
+    ${FLEXFLOW_ROOT}/include/*.h)
 
-  add_compile_definitions(FF_USE_CUDA)
-
-  if(BUILD_SHARED_LIBS)
-    cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
-  else()
-    cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
-  endif()
-elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
-  file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+  file(GLOB_RECURSE FLEXFLOW_SRC
     LIST_DIRECTORIES False
-    ${FLEXFLOW_ROOT}/src/*.cpp)
+    ${FLEXFLOW_ROOT}/src/*.cc)
+  list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
 
-  if(BUILD_SHARED_LIBS)
-    add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
-  else()
-    add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
-  endif()
+  set(FLEXFLOW_CPP_DRV_SRC
+    ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
 
-  list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
+  add_library(substitution_loader SHARED
+    ${FLEXFLOW_ROOT}/src/runtime/substitution_loader.cc)
+  target_include_directories(substitution_loader PRIVATE ${FLEXFLOW_INCLUDE_DIRS})
+  target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
 
-  find_package(hip REQUIRED)
 
-  if (FF_GPU_BACKEND STREQUAL "hip_cuda")
-    # The targets defined by the hip cmake config only target amd devices.
-    # For targeting nvidia devices, we'll make our own interface target,
-    # hip_device_nvidia, that includes the rocm and hip headers. 
-    add_library(hip_device_nvidia INTERFACE)
+  #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
-    if (NOT FF_CUDA_ARCH STREQUAL "")
-      target_compile_options(hip_device_nvidia INTERFACE -arch=compute_${FF_CUDA_ARCH})
+  # compile flexflow lib
+  if (FF_GPU_BACKEND STREQUAL "cuda")
+    file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+      LIST_DIRECTORIES False
+      ${FLEXFLOW_ROOT}/src/*.cu)
+
+    add_compile_definitions(FF_USE_CUDA)
+
+    if(BUILD_SHARED_LIBS)
+      cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+    else()
+      cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+    endif()
+  elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
+    file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+      LIST_DIRECTORIES False
+      ${FLEXFLOW_ROOT}/src/*.cpp)
+
+    if(BUILD_SHARED_LIBS)
+      add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+    else()
+      add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
     endif()
 
-    target_include_directories(hip_device_nvidia SYSTEM INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
-    target_include_directories(hip_device_nvidia INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
+    list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
 
-    add_compile_definitions(FF_USE_HIP_CUDA)
+    find_package(hip REQUIRED)
 
-    # Linking cuda: 
-    # We do not explicitly link cuda. hipcc when targeting nvidia will 
-    # use nvcc under the hood. nvcc when used for linking will handle 
-    # linking cuda dependencies
-    target_link_libraries(flexflow hip_device_nvidia)
-  elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
-    find_package(hipblas REQUIRED)
-    find_package(miopen REQUIRED)
-    # find_package(rocrand REQUIRED)
-    find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
+    if (FF_GPU_BACKEND STREQUAL "hip_cuda")
+      # The targets defined by the hip cmake config only target amd devices.
+      # For targeting nvidia devices, we'll make our own interface target,
+      # hip_device_nvidia, that includes the rocm and hip headers. 
+      add_library(hip_device_nvidia INTERFACE)
 
-    add_compile_definitions(FF_USE_HIP_ROCM)
+      if (NOT FF_CUDA_ARCH STREQUAL "")
+        target_compile_options(hip_device_nvidia INTERFACE -arch=compute_${FF_CUDA_ARCH})
+      endif()
 
-    # The hip cmake config module defines three targets, 
-    # hip::amdhip64, hip::host, and hip::device.
-    #
-    # hip::host and hip::device are interface targets. hip::amdhip64 is an 
-    # imported target for libamdhip.
-    #
-    # You do not directly link to hip::amdhip64. hip::host links to hip::amdhip64
-    # and hip::device links to hip::host. Link to hip::host to just use hip without 
-    # compiling any GPU code. Link to hip::device to compile the GPU device code.
-    #
-    # Docs (outdated):
-    # https://rocmdocs.amd.com/en/latest/Installation_Guide/Using-CMake-with-AMD-ROCm.html
-    target_link_libraries(flexflow hip::device roc::hipblas MIOpen ${HIP_RAND_LIBRARY})
+      target_include_directories(hip_device_nvidia SYSTEM INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
+      target_include_directories(hip_device_nvidia INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
+
+      add_compile_definitions(FF_USE_HIP_CUDA)
+
+      # Linking cuda: 
+      # We do not explicitly link cuda. hipcc when targeting nvidia will 
+      # use nvcc under the hood. nvcc when used for linking will handle 
+      # linking cuda dependencies
+      target_link_libraries(flexflow hip_device_nvidia)
+    elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
+      find_package(hipblas REQUIRED)
+      find_package(miopen REQUIRED)
+      # find_package(rocrand REQUIRED)
+      find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
+
+      add_compile_definitions(FF_USE_HIP_ROCM)
+
+      # The hip cmake config module defines three targets, 
+      # hip::amdhip64, hip::host, and hip::device.
+      #
+      # hip::host and hip::device are interface targets. hip::amdhip64 is an 
+      # imported target for libamdhip.
+      #
+      # You do not directly link to hip::amdhip64. hip::host links to hip::amdhip64
+      # and hip::device links to hip::host. Link to hip::host to just use hip without 
+      # compiling any GPU code. Link to hip::device to compile the GPU device code.
+      #
+      # Docs (outdated):
+      # https://rocmdocs.amd.com/en/latest/Installation_Guide/Using-CMake-with-AMD-ROCm.html
+      target_link_libraries(flexflow hip::device roc::hipblas MIOpen ${HIP_RAND_LIBRARY})
+    endif()
+  else()
+    message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
   endif()
-else()
-  message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
-endif()
 
-if(FF_USE_NCCL)
-  add_dependencies(flexflow ${NCCL_NAME})
-endif()
+  if(FF_USE_NCCL)
+    add_dependencies(flexflow ${NCCL_NAME})
+  endif()
 
-target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-# LEGION_URL is defined if we found a precompiled Legion library to download
-if(LEGION_URL)
-  # Legion builds produce two library files: one for the Legion runtime and one for the Realm runtime. 
-  # When linking FlexFlow to a precompiled version of Legion, we need to manually link to both library files.
-  target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
-  add_dependencies(flexflow ${LEGION_NAME})
-else()
-  # When building Legion from source, we do so by calling add_subdirectory(), and obtain a library with both the
-  # Legion and Realm runtimes. The library's name is saved into the LEGION_LIBRARY variable. Hence, we only need
-  # to link FlexFlow to ${LEGION_LIBRARY}
-  target_link_libraries(flexflow ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
-endif()
+  target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+  # LEGION_URL is defined if we found a precompiled Legion library to download
+  if(LEGION_URL)
+    # Legion builds produce two library files: one for the Legion runtime and one for the Realm runtime. 
+    # When linking FlexFlow to a precompiled version of Legion, we need to manually link to both library files.
+    target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
+    add_dependencies(flexflow ${LEGION_NAME})
+  else()
+    # When building Legion from source, we do so by calling add_subdirectory(), and obtain a library with both the
+    # Legion and Realm runtimes. The library's name is saved into the LEGION_LIBRARY variable. Hence, we only need
+    # to link FlexFlow to ${LEGION_LIBRARY}
+    target_link_libraries(flexflow ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
+  endif()
 
-#library api version, bump from time to time
-set(SOVERSION 1)
+  #library api version, bump from time to time
+  set(SOVERSION 1)
 
-set_target_properties(flexflow PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set_target_properties(flexflow PROPERTIES OUTPUT_NAME "flexflow${INSTALL_SUFFIX}")
-set_target_properties(flexflow PROPERTIES SOVERSION ${SOVERSION})
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set_target_properties(flexflow PROPERTIES BUILD_RPATH "\$ORIGIN")
-  set_target_properties(flexflow PROPERTIES INSTALL_RPATH "\$ORIGIN")
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set_target_properties(flexflow PROPERTIES BUILD_RPATH "@loader_path")
-  set_target_properties(flexflow PROPERTIES INSTALL_RPATH "@loader_path")
-endif()
+  set_target_properties(flexflow PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(flexflow PROPERTIES OUTPUT_NAME "flexflow${INSTALL_SUFFIX}")
+  set_target_properties(flexflow PROPERTIES SOVERSION ${SOVERSION})
+  if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set_target_properties(flexflow PROPERTIES BUILD_RPATH "\$ORIGIN")
+    set_target_properties(flexflow PROPERTIES INSTALL_RPATH "\$ORIGIN")
+  elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set_target_properties(flexflow PROPERTIES BUILD_RPATH "@loader_path")
+    set_target_properties(flexflow PROPERTIES INSTALL_RPATH "@loader_path")
+  endif()
 
-# python related
-if (FF_USE_PYTHON)
-  # create flexflow_cffi_header.py
-  add_custom_command(TARGET flexflow
-    PRE_BUILD	
-    COMMAND ${FLEXFLOW_ROOT}/python/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${FLEXFLOW_ROOT}/python/flexflow/core
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Creating flexflow_cffi_header.py..."
-  )
-  # generate the Legion Python bindings library
-  add_custom_command(TARGET flexflow
-    POST_BUILD	
-    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
-  )
-  # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
-  if (NOT FF_BUILD_FROM_PYPI)
+  # python related
+  if (FF_USE_PYTHON)
+    # create flexflow_cffi_header.py
     add_custom_command(TARGET flexflow
       PRE_BUILD	
-      COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
+      COMMAND ${FLEXFLOW_ROOT}/python/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${FLEXFLOW_ROOT}/python/flexflow/core
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      COMMENT "Creating flexflow_python interpreter..."
+      COMMENT "Creating flexflow_cffi_header.py..."
     )
-    install(PROGRAMS ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
+    # generate the Legion Python bindings library
+    add_custom_command(TARGET flexflow
+      POST_BUILD	
+      COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
+    )
+    # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
+    if (NOT FF_BUILD_FROM_PYPI)
+      add_custom_command(TARGET flexflow
+        PRE_BUILD	
+        COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Creating flexflow_python interpreter..."
+      )
+      install(PROGRAMS ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
+    endif()
   endif()
-endif()
 
-# build binary
-option(FF_BUILD_RESNET "build resnet example" OFF)
-option(FF_BUILD_RESNEXT "build resnext example" OFF)
-option(FF_BUILD_ALEXNET "build alexnet example" OFF)
-option(FF_BUILD_DLRM "build DLRM example" OFF)
-option(FF_BUILD_XDL "build XDL example" OFF)
-option(FF_BUILD_INCEPTION "build inception example" OFF)
-option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
-option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
-option(FF_BUILD_MOE "build mixture of experts example" OFF)
-option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
-option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
-option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
-option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
-option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
-option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
-option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
+  # build binary
+  option(FF_BUILD_RESNET "build resnet example" OFF)
+  option(FF_BUILD_RESNEXT "build resnext example" OFF)
+  option(FF_BUILD_ALEXNET "build alexnet example" OFF)
+  option(FF_BUILD_DLRM "build DLRM example" OFF)
+  option(FF_BUILD_XDL "build XDL example" OFF)
+  option(FF_BUILD_INCEPTION "build inception example" OFF)
+  option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
+  option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+  option(FF_BUILD_MOE "build mixture of experts example" OFF)
+  option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
+  option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
+  option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
+  option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+  option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+  option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
+  option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
 
-if(FF_BUILD_UNIT_TESTS)
-  set(BUILD_GMOCK OFF)
-  add_subdirectory(deps/googletest)
-  enable_testing()
-  add_subdirectory(tests/unit)
-endif()
+  if(FF_BUILD_UNIT_TESTS)
+    set(BUILD_GMOCK OFF)
+    add_subdirectory(deps/googletest)
+    enable_testing()
+    add_subdirectory(tests/unit)
+  endif()
 
-if(FF_BUILD_SUBSTITUTION_TOOL)
-  add_subdirectory(tools/protobuf_to_json)
-endif()
+  if(FF_BUILD_SUBSTITUTION_TOOL)
+    add_subdirectory(tools/protobuf_to_json)
+  endif()
 
-if(FF_BUILD_VISUALIZATION_TOOL)
-  add_subdirectory(tools/substitutions_to_dot)
-endif()
+  if(FF_BUILD_VISUALIZATION_TOOL)
+    add_subdirectory(tools/substitutions_to_dot)
+  endif()
 
-if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/ResNet)
-endif()
+  if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/ResNet)
+  endif()
 
-if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/resnext50)
-endif()
+  if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/resnext50)
+  endif()
 
-if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/AlexNet)
-endif()
+  if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/AlexNet)
+  endif()
 
-if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/MLP_Unify)
-endif()
+  if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/MLP_Unify)
+  endif()
 
-if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/split_test)
-endif()
+  if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/split_test)
+  endif()
 
-if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/split_test_2)
-endif()
+  if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/split_test_2)
+  endif()
 
-if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/InceptionV3)
-endif()
+  if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/InceptionV3)
+  endif()
 
-#TODO: Once functional add to BUILD_ALL_EXAMPLES
-if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/candle_uno)
-endif()
+  #TODO: Once functional add to BUILD_ALL_EXAMPLES
+  if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/candle_uno)
+  endif()
 
-if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/DLRM)
+  if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/DLRM)
 
-  #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
-  #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+    #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
+    #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 
-  #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
-  #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-endif()
+    #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
+    #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+  endif()
 
-if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/XDL)
-endif()
+  if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/XDL)
+  endif()
 
-if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/Transformer)
-endif()
+  if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/Transformer)
+  endif()
 
-if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/mixture_of_experts)
-endif()
+  if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/mixture_of_experts)
+  endif()
 
-# installation
-set(INCLUDE_DEST "include")
-set(LIB_DEST "lib")
-install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
-install(TARGETS flexflow DESTINATION ${LIB_DEST})
-# install python
-if (FF_USE_PYTHON)
-  execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
-  install(
-    DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
-    DESTINATION ${PY_DEST}/flexflow
-    FILES_MATCHING 
-    PATTERN "*.py")
+  # installation
+  set(INCLUDE_DEST "include")
+  set(LIB_DEST "lib")
+  install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
+  install(TARGETS flexflow DESTINATION ${LIB_DEST})
+  # install python
+  if (FF_USE_PYTHON)
+    execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+    install(
+      DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
+      DESTINATION ${PY_DEST}/flexflow
+      FILES_MATCHING 
+      PATTERN "*.py")
+  endif()
 endif()

@@ -64,6 +64,42 @@ jobs:
           activate-environment: flexflow
           environment-file: conda/environment.yml
           auto-activate-base: false
+        
+      - name: Build Legion
+        env: 
+          FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+
+          export FF_BUILD_LEGION=ON
+
+          cores_available=$(nproc --all)
+          n_build_cores=$(( cores_available -1 ))
+
+          mkdir build
+          cd build
+          ../config/config.linux
+          make -j $n_build_cores
+          ../config/config.linux
+          make install
+      
+      - name: Prepare library files 
+        env: 
+          FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+        run: |
+          echo "Removing unnecessary files..."
+          rm -f build/export/legion/lib/libflexflow.so
+          
+          # extract LEGION tarball file 
+          export LEGION_TARBALL="legion_${{ matrix.os }}_${{ matrix.gpu_backend }}.tar.gz"
+
+          echo "Creating archive $LEGION_TARBALL"
+          tar -zcvf $LEGION_TARBALL build/export/legion/
+          echo "Checking the size of the Legion tarball..."
+          du -h $LEGION_TARBALL
+
 
       - name: Build FlexFlow
         run: |
