@@ -4,7 +4,6 @@
 #include "bidict.h"
 #include "invoke.h"
 #include "optional.h"
-#include "type_traits.h"
 #include "type_traits_core.h"
 #include <algorithm>
 #include <cassert>
