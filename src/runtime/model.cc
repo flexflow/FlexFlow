@@ -4204,23 +4204,6 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           RequestManager::prepare_next_batch_verify_task>(registrar);
     }
   }
-  {
-    TaskVariantRegistrar registrar(RM_LLM_SERVING_BACKGROUND_TASK_ID,
-                                   "LLM Serving Background Task");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    if (pre_register) {
-      Runtime::preregister_task_variant<
-          RequestManager::llm_serving_background_task>(
-          registrar, "LLM Serving Background Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime
-          ->register_task_variant<RequestManager::llm_serving_background_task>(
-              registrar);
-    }
-  }
   // ElementUnary task
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID,

@@ -42,7 +42,28 @@ std::string LoadBytesFromFile(std::string const &path) {
 }
 
 RequestManager::RequestManager()
-    : verbose(false), next_available_guid(1000000), num_processed_requests(0) {}
+    : verbose(false), next_available_guid(1000000), num_processed_requests(0) {
+  {
+    // Initialize futures for spec infer
+    TreeVerifyBatchConfig tree_bc;
+    InferenceResult tree_ir;
+    TreeVerifyBatchConfigFuture tree_bcf =
+        Future::from_value<TreeVerifyBatchConfig>(tree_bc);
+    InferenceResultFuture tree_irf =
+        Future::from_value<InferenceResult>(tree_ir);
+    last_tree_bcf = tree_bcf;
+    last_tree_irf = tree_irf;
+  }
+  {
+    // Initialize futures for incr decoding
+    BatchConfig bc;
+    InferenceResult ir;
+    BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
+    InferenceResultFuture irf = Future::from_value<InferenceResult>(ir);
+    last_bcf = bcf;
+    last_irf = irf;
+  }
+}
 
 void RequestManager::register_tokenizer(ModelType type,
                                         std::string const &path) {
@@ -108,7 +129,6 @@ RequestManager::RequestGuid
   request.max_sequence_length = max_sequence_length;
   request.initial_len = prompt.size();
   request.tokens = prompt;
-  request.promise = new std::promise<GenerationResult>();
 
   if (get_num_ssms() == 0) {
     std::cout << "No small speculative model registered yet, using incremental "
@@ -136,6 +156,8 @@ RequestManager::RequestGuid
   gr.guid = request.guid;
   gr.input_text = "";
   gr.input_tokens = prompt;
+  gr.output_text = "";
+  gr.output_tokens = prompt;
   request_generation_results[request.guid] = gr;
 
   return request.guid;
@@ -152,7 +174,6 @@ RequestManager::RequestGuid
   request.max_sequence_length = max_sequence_length;
   request.tokens.push_back(this->model_bos_map.at(this->model_type));
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
-  request.promise = new std::promise<GenerationResult>();
 
   for (int i = 0; i < tokens.size(); i++) {
     std::cout << tokens.at(i) << "\n";
@@ -188,8 +209,25 @@ RequestManager::RequestGuid
   gr.guid = request.guid;
   gr.input_text = prompt;
   gr.input_tokens = request.tokens;
+  gr.output_text = prompt;
+  gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
   return request.guid;
+}
+
+bool RequestManager::is_request_completed(RequestGuid const &guid) {
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  assert(all_requests.find(guid) != all_requests.end());
+  Request const &request = all_requests[guid];
+  return request.tokens.size() >= request.max_sequence_length;
+}
+
+GenerationResult
+    RequestManager::get_generation_result(RequestGuid const &guid) {
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  assert(request_generation_results.find(guid) !=
+         request_generation_results.end());
+  return request_generation_results[guid];
 }
 
 size_t RequestManager::get_num_processed_requests() {
@@ -267,11 +305,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       }
       {
         // update generation result and trigger future
-        GenerationResult gr = request_generation_results[request.guid];
+        GenerationResult &gr = request_generation_results[request.guid];
         assert(gr.guid == request.guid);
         gr.output_tokens = request.tokens;
         gr.output_text = output;
-        request.promise->set_value(gr);
       }
       log_req_mgr.print("Final output: %s", output.c_str());
       num_processed_requests++;
@@ -651,11 +688,10 @@ BeamSearchBatchConfig
       std::string output = this->tokenizer_->Decode(request.tokens);
       {
         // update generation result and trigger future
-        GenerationResult gr = request_generation_results[request.guid];
+        GenerationResult &gr = request_generation_results[request.guid];
         assert(gr.guid == request.guid);
         gr.output_tokens = request.tokens;
         gr.output_text = output;
-        request.promise->set_value(gr);
       }
       log_req_mgr.print("Final output: %s", output.c_str());
       new_bc.request_completed[i] = true;
@@ -1494,14 +1530,8 @@ GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
   int tokens_to_generate = max_seq_length - all_requests[guid].tokens.size();
   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
-  {
-    BatchConfig bc;
-    InferenceResult ir;
-    BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
-    InferenceResultFuture irf = Future::from_value<InferenceResult>(ir);
-    batch_pipeline.push(std::make_pair(bcf, irf));
-  }
-  for (int i = 0; i < tokens_to_generate; i++) {
+  { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
+  while (!is_request_completed(guid)) {
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
       auto const &batch = batch_pipeline.front();
@@ -1516,6 +1546,9 @@ GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
         break;
       }
     }
+    if (is_request_completed(guid)) {
+      break;
+    }
     auto const &next_batch = batch_pipeline.back();
     BatchConfigFuture bcf =
         prepare_next_batch(next_batch.first, next_batch.second);
@@ -1523,9 +1556,11 @@ GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
     batch_pipeline.push(std::make_pair(bcf, irf));
+    last_bcf = bcf;
+    last_irf = irf;
   }
-
-  GenerationResult gr = request_generation_results[guid];
+  GenerationResult gr = get_generation_result(guid);
+  assert(gr.output_tokens.size() >= max_seq_length);
   return gr;
 }
 
@@ -1537,17 +1572,8 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
   RequestGuid guid = register_new_request(text, max_seq_length);
   std::queue<std::pair<TreeVerifyBatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
-  {
-    TreeVerifyBatchConfig tree_bc;
-    InferenceResult tree_ir;
-    TreeVerifyBatchConfigFuture tree_bcf =
-        Future::from_value<TreeVerifyBatchConfig>(tree_bc);
-    InferenceResultFuture tree_irf =
-        Future::from_value<InferenceResult>(tree_ir);
-    batch_pipeline.push(std::make_pair(tree_bcf, tree_irf));
-  }
-  size_t num_processed_requests = get_num_processed_requests();
-  while (get_num_processed_requests() == num_processed_requests) {
+  batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));
+  while (!is_request_completed(guid)) {
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
       auto const &batch = batch_pipeline.front();
@@ -1569,7 +1595,7 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
     }
-    if (get_num_processed_requests() > num_processed_requests) {
+    if (is_request_completed(guid)) {
       break;
     }
 
@@ -1592,63 +1618,14 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
       assert(fm.get_future_map_domain().get_volume() == 1);
       InferenceResultFuture tree_irf = fm.get_future(0);
       batch_pipeline.push(std::make_pair(tree_bcf, tree_irf));
+      last_tree_bcf = tree_bcf;
+      last_tree_irf = tree_irf;
     }
   }
 
-  GenerationResult gr = request_generation_results[guid];
+  GenerationResult gr = get_generation_result(guid);
+  assert(gr.output_tokens.size() >= max_seq_length);
   return gr;
-}
-
-/*static*/
-void RequestManager::serve(FFModel *llm) {
-  Runtime *runtime = Runtime::get_runtime();
-  Context ctx = Runtime::get_context();
-  TaskLauncher launcher(RM_LLM_SERVING_BACKGROUND_TASK_ID,
-                        TaskArgument(&llm, sizeof(FFModel *)));
-  runtime->execute_task(ctx, launcher);
-}
-
-/*static*/
-void RequestManager::llm_serving_background_task(
-    Task const *task,
-    std::vector<Legion::PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
-  FFModel *llm = *((FFModel **)task->args);
-  RequestManager *rm = RequestManager::get_request_manager();
-  InferenceManager *im = InferenceManager::get_inference_manager();
-  std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
-      batch_pipeline;
-  {
-    BatchConfig bc;
-    InferenceResult ir;
-    BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
-    InferenceResultFuture irf = Future::from_value<InferenceResult>(ir);
-    batch_pipeline.push(std::make_pair(bcf, irf));
-  }
-  for (int i = 0; i < 256; i++) {
-    if (batch_pipeline.size() >= 4) {
-      // Block here to avoid launching too many batches
-      auto const &batch = batch_pipeline.front();
-      batch.second.get_void_result();
-    }
-    // deque finished batches
-    while (batch_pipeline.size() > 1) {
-      auto const &batch = batch_pipeline.front();
-      if (batch.second.is_ready()) {
-        batch_pipeline.pop();
-      } else {
-        break;
-      }
-    }
-    auto const &next_batch = batch_pipeline.back();
-    BatchConfigFuture bcf =
-        rm->prepare_next_batch(next_batch.first, next_batch.second);
-    FutureMap fm = im->inference(llm, 0, bcf);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    InferenceResultFuture irf = fm.get_future(0);
-    batch_pipeline.push(std::make_pair(bcf, irf));
-  }
 }
 
 RequestManager *request_manager_singleton = nullptr;

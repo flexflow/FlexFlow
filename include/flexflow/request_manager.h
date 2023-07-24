@@ -18,7 +18,6 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
-#include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
 
@@ -66,7 +65,6 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   std::vector<struct BeamTree> beam_trees;
-  std::promise<GenerationResult> *promise;
 };
 
 // store the result of beam search
@@ -90,10 +88,10 @@ class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
-  RequestManager(ModelType model_type,
-                 std::string const &path,
-                 bool verbose = false,
-                 std::string output_filepath = "");
+  // RequestManager(ModelType model_type,
+  //                std::string const &path,
+  //                bool verbose = false,
+  //                std::string output_filepath = "");
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
@@ -112,10 +110,12 @@ public:
   GenerationResult generate_spec_infer(FFModel *model,
                                        std::string const &text,
                                        int max_seq_length);
+  GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
+  bool is_request_completed(RequestGuid const &guid);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
@@ -199,12 +199,6 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  static void llm_serving_background_task(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-
 private:
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -215,6 +209,11 @@ private:
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
+  // Legion futures for inc_decoding and spec_infer
+  BatchConfigFuture last_bcf;
+  InferenceResultFuture last_irf;
+  TreeVerifyBatchConfigFuture last_tree_bcf;
+  InferenceResultFuture last_tree_irf;
   const std::map<ModelType, int> model_bos_map = {{ModelType::LLAMA, 0},
                                                   {ModelType::OPT, 2}};
 
