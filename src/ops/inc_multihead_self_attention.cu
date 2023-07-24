@@ -180,7 +180,7 @@ __global__ void
                            bool q_tensor) {
   int proj_size = q_tensor ? qProjSize : kProjSize;
   int n_heads = q_tensor ? num_heads : num_kv_heads;
-  CUDA_KERNEL_LOOP(i, num_tokens * proj_size * num_heads / 2) {
+  CUDA_KERNEL_LOOP(i, num_tokens * proj_size * n_heads / 2) {
     // create complex number
     int head_idx = i / (num_tokens * proj_size / 2);
     int idx = i % (num_tokens * proj_size / 2);
@@ -191,6 +191,7 @@ __global__ void
     //     idx + token_idx * (proj_size / 2) +
     //     head_idx * (q_block_size + k_block_size + v_block_size) +
     //     (q_tensor ? 0 : q_block_size);
+
 
     int real_part_index = idx + token_idx * (proj_size / 2) +
                           head_idx * (q_tensor ? q_block_size : k_block_size) +
@@ -209,6 +210,24 @@ __global__ void
 
     // size_t pos = id_map[token_idx].token_position;
     size_t pos = tokenInfos[token_idx].abs_depth_in_request;
+
+    // if(q_tensor && i == 0){
+    //   printf("see index 0: %d, %d, %d\n", real_part_index,
+    //   complex_part_index, pos);
+    // }
+
+    // if(q_tensor && i == (10 * 64 * 1) / 2){
+    //   printf("see index 62:%d, %d, %d\n", num_tokens, proj_size, i);
+    // }
+    if(q_tensor && i == (10 * 64 * 1 + 63) / 2){
+      printf("see index 63:%d, %d, %d, %d, %d, %d\n", head_idx, idx, token_idx, real_part_index,
+      complex_part_index, pos);
+    }
+
+    if(q_tensor && i == (10 * 64 * 1 + 64) / 2){
+      printf("see index64:%d, %d, %d, %d, %d, %d\n", head_idx, idx, token_idx, real_part_index, complex_part_index,
+      pos);
+    }
 
     // float before_real = complex_input[i].x, before_complex =
     // complex_input[i].y;
@@ -248,82 +267,111 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // Weights: qSize x qProjSize x 3 x num_heads
   // Input: qSize x num_tokens
   // Output >>> qProjSize x num_tokens x 3 x num_heads
-  int m_q = m->qProjSize * m->num_heads;
-  int m_k = m->kProjSize * m->num_kv_heads;
-  int m_v = m->vProjSize * m->num_kv_heads;
-  // assert(m_q == m_k && m_k == m_v); // keep things simple for now
+  int m_q = m->qProjSize;
+  int m_k = m->kProjSize;
+  int m_v = m->vProjSize;
+  assert(m_q == m_k && m_k == m_v); // keep things simple for now
   int n = bc->num_active_tokens();
   int k = m->qSize;
   int lda = k, ldb = k, ldc_q = m_q, ldc_k = m_k, ldc_v = m_v;
+
+  size_t strideA = m_q * k; // query weight head size
+  size_t strideB = 0;       // input stays the same for all heads.
+  size_t strideC = m_q * n; // size of the output block for each head.
+
+
   // Q
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         m_q,
-                         n,
-                         k,
-                         &alpha,
-                         weight_ptr,
-                         cublas_data_type,
-                         lda,
-                         input_ptr,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         output_ptr,
-                         cublas_data_type,
-                         ldc_q,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                       CUBLAS_OP_T,
+                                       CUBLAS_OP_N,
+                                       m_q,
+                                       n,
+                                       k,
+                                       &alpha,
+                                       weight_ptr,
+                                       cublas_data_type,
+                                       lda,
+                                       strideA,
+                                       input_ptr,
+                                       cublas_data_type,
+                                       ldb,
+                                       strideB,
+                                       &beta,
+                                       output_ptr,
+                                       cublas_data_type,
+                                       ldc_q,
+                                       strideC,
+                                       m->num_heads,
+                                       compute_type,
+                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-  print_tensor<float>((float *)output_ptr, 32, "Query tensor");
-  print_tensor<float>((float *)input_ptr, 32, "Input tensor");
-  print_tensor<float>((float *)weight_ptr, 32, "Weight tensor");
-  assert(false);                      
+                                    
   // key
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         m_k,
-                         n,
-                         k,
-                         &alpha,
-                         weight_ptr + m->qSize * m->qProjSize * m->num_heads,
-                         cublas_data_type,
-                         lda,
-                         input_ptr,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         output_ptr + n * m->qProjSize * m->num_heads,
-                         cublas_data_type,
-                         ldc_k,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUDA(cublasGemmStridedBatchedEx(
+      m->handle.blas,
+      CUBLAS_OP_T,
+      CUBLAS_OP_N,
+      m_k,
+      n,
+      k,
+      &alpha,
+      weight_ptr + m->qSize * m->qProjSize * m->num_heads,
+      cublas_data_type,
+      lda,
+      strideA,
+      input_ptr,
+      cublas_data_type,
+      ldb,
+      strideB,
+      &beta,
+      output_ptr + n * m->qProjSize * m->num_heads,
+      cublas_data_type,
+      ldc_k,
+      strideC,
+      m->num_kv_heads,
+      compute_type,
+      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  print_tensor<float>((float *)output_ptr, 64, "QK A before ro");
+  print_tensor<float>((float *)output_ptr + 64, 32, "QK A 2 before ro");
 
-  // value
-  checkCUDA(
-      cublasGemmEx(m->handle.blas,
-                   CUBLAS_OP_T,
-                   CUBLAS_OP_N,
-                   m_v,
-                   n,
-                   k,
-                   &alpha,
-                   weight_ptr + m->qSize * (m->qProjSize * m->num_heads +
-                                            m->kProjSize * m->num_kv_heads),
-                   cublas_data_type,
-                   lda,
-                   input_ptr,
-                   cublas_data_type,
-                   ldb,
-                   &beta,
-                   output_ptr + n * (m->qProjSize * m->num_heads +
-                                     m->kProjSize * m->num_kv_heads),
-                   cublas_data_type,
-                   ldc_v,
-                   compute_type,
-                   CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  // Value
+  checkCUDA(cublasGemmStridedBatchedEx(
+      m->handle.blas,
+      CUBLAS_OP_T,
+      CUBLAS_OP_N,
+      m_v,
+      n,
+      k,
+      &alpha,
+      weight_ptr + m->qSize * (m->qProjSize * m->num_heads +
+                               m->kProjSize * m->num_kv_heads),
+      cublas_data_type,
+      lda,
+      strideA,
+      input_ptr,
+      cublas_data_type,
+      ldb,
+      strideB,
+      &beta,
+      output_ptr +
+          n * (m->qProjSize * m->num_heads + m->kProjSize * m->num_kv_heads),
+      cublas_data_type,
+      ldc_v,
+      strideC,
+      m->num_kv_heads,
+      compute_type,
+      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+  // std::cout << "----------------------- size: " << m->qSize * m->qProjSize *
+  // m->num_heads << ", " << m->qSize * (m->qProjSize * m->num_heads +
+  //                                           m->kProjSize * m->num_kv_heads)
+  //                                           << std::endl;
+  // print_tensor<float>((float *)(weight_ptr + m->qSize * m->qProjSize *
+  // m->num_heads), 32, "Query tensor after"); print_tensor<float>((float
+  // *)(weight_ptr + m->qSize * (m->qProjSize * m->num_heads +
+  //                                           m->kProjSize * m->num_kv_heads)),
+  //                                           32, "Query tensor after");
+
   // apply rotary emmmbedding for k and v
   // step1 change the k, v to complex tensor
   int num_tokens = bc->num_active_tokens();
@@ -350,9 +398,10 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                     *m->scaling_query,
                                     m->scaling_factor);
   }
-
   if (*m->apply_rotary_embedding) {
     /*q*/
+    std::cout<< "num of blockd: " << m->num_kv_heads << "\n";
+
     apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
@@ -362,12 +411,13 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        m->qProjSize,
                                        m->kProjSize,
                                        m->num_heads,
-                                       m->num_kv_heads,
                                        num_tokens,
+                                       m->num_kv_heads,
                                        q_block_size,
                                        k_block_size,
                                        q_array_size,
                                        true);
+    save_tensor<float>((float *)output_ptr, 64 * 12 * 10, "/home/ubuntu/FlexFlow/inference/q.txt");                                      
     /*k*/
     apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
@@ -378,13 +428,22 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        m->qProjSize,
                                        m->kProjSize,
                                        m->num_heads,
-                                       m->num_kv_heads,
                                        num_tokens,
+                                       m->num_kv_heads,
                                        q_block_size,
                                        k_block_size,
                                        q_array_size,
                                        false);
   }
+  // print_tensor<float>((float *)output_ptr, 64, "QK A after ro");
+  // print_tensor<float>((float *)output_ptr + 64, 32, "QK A 2 after ro");
+
+  //  print_tensor<float>((float *)output_ptr, 32, "Query tensor after");
+  // print_tensor<float>((float *)(output_ptr +  n * m->qProjSize *
+  // m->num_heads), 32, "Key tensor after"); print_tensor<float>((float
+  // *)(output_ptr + n * (m->qProjSize * m->num_heads +
+  //                                    m->kProjSize * m->num_kv_heads)), 32,
+  //                                    "Value tensor after");
 }
 
 template <typename DT>
@@ -576,7 +635,7 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
     //                     token_idx * proj_size + data_idx];
 
     DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
-                             head_idx * proj_size + token_idx * proj_size +
+                             head_idx * proj_size * num_tokens + token_idx * proj_size +
                              data_idx];
     // int const req_id = id_map[token_idx].request_index;
     // int const tok_id = id_map[token_idx].token_position;
@@ -628,11 +687,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
-  int qkv_block_size = m->qProjSize * num_tokens;
+  int q_block_size = m->qProjSize * num_tokens;
   int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
-  int kt_req_block_size = kt_block_size * m->num_heads;
+  int kt_req_block_size = kt_block_size * m->num_kv_heads;
   int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
-  int vt_req_block_size = vt_block_size * m->num_heads;
+  int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
@@ -647,10 +706,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     // a flag of using this scaling alpha
     int m_ = num_new_tokens;
     int n = total_tokens;
-    int k = m->qProjSize * m->num_heads;
+    int k = m->qProjSize;
     int lda = k, ldb = k, ldc = m_;
-    int strideA = qkv_block_size;
-    int strideB = 0;
+    int strideA = q_block_size;
+    int strideB = kt_block_size;
     int strideC = num_new_tokens * total_tokens;
     DT alpha = 1.0f, beta = 0.0f;
     if (*m->qk_prod_scaling) {
@@ -665,28 +724,45 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     // To get C, skip over QK^T products from previous requests
     void *C = (void *)(m->qk_prods);
     if (m->num_kv_heads == m->num_heads) {
-      // use cublasGemmEx
-      checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_T,
-                             CUBLAS_OP_N,
-                             m_,
-                             n,
-                             k,
-                             &alpha,
-                             A,
-                             cublas_data_type,
-                             lda,
-                             B,
-                             cublas_data_type,
-                             ldb,
-                             &beta,
-                             C,
-                             cublas_data_type,
-                             ldc,
-                             compute_type,
-                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+      print_tensor<float>((float *)A, 96, "QK A");
+      print_tensor<float>((float *)A + q_block_size, 32, "QK A 2");
+      print_tensor<float>((float *)B, 64, "QK B");
+      print_tensor<float>((float *)B + 64, 64, "QK B 2");
+      std::cout << "kt_block_size :" << kt_block_size << "\n";
+      
+
+      
+      print_tensor<float>((float *)B, 64 * 10, "/home/ubuntu/FlexFlow/inference/k.txt");
+      print_tensor<float>((float *)B + kt_block_size, 64 * 10, "/home/ubuntu/FlexFlow/inference/k2.txt");
+      print_tensor<float>((float *)m->qk_prods, 100, "QK Prod");
+      print_tensor<float>((float *)m->qk_prods + 100, 32, "QK Prod 2");
 
     } else {
+      strideB = 0;
       // use cublasGemmStridedBatchedEx
       int one_step_heads = m->num_heads / m->num_kv_heads;
       m_ = num_new_tokens;
@@ -694,30 +770,30 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       k = m->qProjSize;
       lda = k, ldb = k, ldc = m_;
       for (int step = 0; step < m->num_kv_heads; step++) {
-        checkCUDA(
-            cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_T,
-                                       CUBLAS_OP_N,
-                                       m_,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       A + step * strideA * one_step_heads,
-                                       cublas_data_type,
-                                       lda,
-                                       strideA,
-                                       B + step * kt_block_size,
-                                       cublas_data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       C + step * strideC * one_step_heads,
-                                       cublas_data_type,
-                                       ldc,
-                                       strideC,
-                                       one_step_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        checkCUDA(cublasGemmStridedBatchedEx(
+            m->handle.blas,
+            CUBLAS_OP_T,
+            CUBLAS_OP_N,
+            m_,
+            n,
+            k,
+            &alpha,
+            A + step * strideA * one_step_heads * sizeof(DT),
+            cublas_data_type,
+            lda,
+            strideA,
+            B + step * strideB,
+            cublas_data_type,
+            ldb,
+            strideB,
+            &beta,
+            C + step * strideC * one_step_heads * sizeof(DT),
+            cublas_data_type,
+            ldc,
+            strideC,
+            one_step_heads,
+            compute_type,
+            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       }
     }
 
@@ -775,10 +851,12 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                    &softmax_beta,
                                    qk_tensor,
                                    C_softmax));
+    print_tensor<float>((float *)C_softmax, 32, "QK softmax");
+    print_tensor<float>((float *)C_softmax + 1000, 32, "QK softmax 2");
     // Matmul softmax(QK^T/sqrt(d_k)) by V
     alpha = 1.0f, beta = 0.0f;
     m_ = num_new_tokens;
-    n = m->vProjSize * m->num_heads;
+    n = m->vProjSize;
     k = total_tokens;
     lda = m_, ldb = n, ldc = m_;
     strideA = num_new_tokens * total_tokens;
@@ -796,25 +874,31 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
         tokens_previous_requests * m->num_heads * m->vProjSize;
 
     if (m->num_heads == m->num_kv_heads) {
-      checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_N,
-                             CUBLAS_OP_T,
-                             m_,
-                             n,
-                             k,
-                             &alpha,
-                             A,
-                             cublas_data_type,
-                             lda,
-                             B,
-                             cublas_data_type,
-                             ldb,
-                             &beta,
-                             C,
-                             cublas_data_type,
-                             ldc,
-                             compute_type,
-                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_N,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      print_tensor<float>((float *)C, 32, "KV prod");
+      print_tensor<float>((float *)C + 1000, 32, "KV prod 2");
     } else {
       int one_step_heads = m->num_heads / m->num_kv_heads;
       n = m->vProjSize;
@@ -832,7 +916,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
             n,
             k,
             &alpha,
-            A + step * one_step_heads * strideA,
+            A + step * one_step_heads * strideA * sizeof(DT),
             cublas_data_type,
             lda,
             strideA,
@@ -844,7 +928,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
             C,
             cublas_data_type,
             ldc,
-            strideC + step * one_step_heads * strideC,
+            strideC + step * one_step_heads * strideC * sizeof(DT),
             one_step_heads,
             compute_type,
             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
@@ -857,10 +941,12 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     n = num_new_tokens;
     lda = k, ldb = n, ldc = m_;
     A = weight_ptr + m->qSize * (m->qProjSize * m->num_heads +
-                                          m->kProjSize * m->num_kv_heads +
-                                          m->vProjSize * m->num_kv_heads);
+                                 m->kProjSize * m->num_kv_heads +
+                                 m->vProjSize * m->num_kv_heads);
     B = C;
     C = static_cast<DT *>(output_ptr) + tokens_previous_requests * m->oProjSize;
+
+    print_tensor<float>((float *)A, 32, "output weight");
 
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
@@ -881,7 +967,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            ldc,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
+    print_tensor<float>((float *)C, 32, "outputs");
     tokens_previous_requests += num_new_tokens;
   }
 
@@ -973,6 +1059,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+  print_tensor<float>(output.get_float_ptr(), 32, "attention op");
+  // assert(false);
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
@@ -1099,8 +1187,14 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
     size_t qkv_max_proj_size =
         BatchConfig::MAX_NUM_TOKENS *
-        (qProjSize * num_heads + kProjSize * num_kv_heads,
+        (qProjSize * num_heads + kProjSize * num_kv_heads +
          vProjSize * num_kv_heads);
+    // std::cout << "num_kv_heads: " << BatchConfig::MAX_NUM_TOKENS << ", "
+    //           << qProjSize << ", " << kProjSize << ", " << vProjSize << ", "
+    //           << num_heads << ", " << num_kv_heads << ", " <<
+    //           qkv_max_proj_size
+    //           << std::endl;
+    // assert(false);
     size_t key_cache_size = 0, value_cache_size = 0;
     switch (infer_mode) {
       case INC_DECODING_MODE:

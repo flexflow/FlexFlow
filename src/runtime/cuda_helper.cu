@@ -219,6 +219,8 @@ __host__ void
                           cudaHostAllocPortable | cudaHostAllocMapped));
   checkCUDA(cudaMemcpyAsync(
       host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
+  cudaDeviceSynchronize();  
+  cudaStreamSynchronize(stream);      
   int idx = 0;
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
@@ -277,7 +279,8 @@ __host__ void
   checkCUDA(cudaMemcpyAsync(
       host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   // checkCUDA(cudaDeviceSynchronize());
-
+ cudaDeviceSynchronize();  
+  cudaStreamSynchronize(stream);      
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   for (unsigned i = 0; i < num_elements; i++) {
