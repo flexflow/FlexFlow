@@ -57,7 +57,7 @@ public:
                               MachineResource const &resource,
                               bool log = false) const;
   std::vector<MachineView>
-      get_valid_machine_views(OperatorParameters const &op,
+      get_valid_machine_views(PCGOperatorAttrs const &op,
                               MachineResource const &resource,
                               bool log = false) const;
 

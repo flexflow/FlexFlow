@@ -6,9 +6,11 @@
 namespace FlexFlow {
 
 ParallelComputationGraph fuse_operators(ParallelComputationGraph const &);
-ParallelComputationGraph remove_unnecessary_gradient_calculations(ParallelComputationGraph const &);
-ParallelComputationGraph enable_inplace_operators(ParallelComputationGraph const &);
+ParallelComputationGraph
+    remove_unnecessary_gradient_calculations(ParallelComputationGraph const &);
+ParallelComputationGraph
+    enable_inplace_operators(ParallelComputationGraph const &);
 
-}
+} // namespace FlexFlow
 
 #endif

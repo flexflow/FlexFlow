@@ -5,6 +5,7 @@
 #include "invoke.h"
 #include "optional.h"
 #include "type_traits.h"
+#include "type_traits_core.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -521,7 +522,7 @@ void inplace_sorted_by(C &c, F const &f) {
   CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);
 
   auto custom_comparator = [&](C const &lhs, C const &rhs) -> bool {
-      return f(lhs, rhs);
+    return f(lhs, rhs);
   };
   std::sort(c.begin(), c.end(), custom_comparator);
 }
@@ -530,6 +531,17 @@ template <typename C, typename F>
 C filter(C const &v, F const &f) {
   C result(v);
   inplace_filter(result, f);
+  return result;
+}
+
+template <typename T, typename F>
+std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
+  std::unordered_set<T> result;
+  for (T const &t : v) {
+    if (f(t)) {
+      result.insert(t);
+    }
+  }
   return result;
 }
 

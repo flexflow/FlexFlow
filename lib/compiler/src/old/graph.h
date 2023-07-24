@@ -18,7 +18,7 @@
 #include "basic_graph.h"
 /* #include "node.h" */
 #include "graph_structures.h"
-#include "op-meta/op-meta.h"
+#include "op-attrs/op-attrs.h"
 #include "pcg/machine_view.h"
 #include "utils/bidict.h"
 #include "utils/dot_file.h"
@@ -241,8 +241,8 @@
 /* //   } */
 /* // }; */
 
-/* /1* }
-/* }
-/* }
+/* /1* } // namespace Utils *1/ */
+/* } // namespace ffc */
+/* } // namespace FlexFlow */
 
 #endif

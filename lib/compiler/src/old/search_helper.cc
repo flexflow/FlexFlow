@@ -521,5 +521,5 @@ T SearchHelper::graph_cost(Graph const *graph,
   return result;
 }
 
-}
-}
+} // namespace PCG
+} // namespace FlexFlow
