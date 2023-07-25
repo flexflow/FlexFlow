@@ -10,9 +10,10 @@
 namespace FlexFlow {
 
 std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
-  std::vector<Node> nodes;
-  std::generate_n(
-      std::back_inserter(nodes), num_nodes, [&g]() { return g.add_node(); });
+  std::vector<Node> nodes;;
+  for(int i = 0; i < num_nodes; i++) {
+    nodes.push_back(g.add_node());
+  }
   return nodes;
 }
 
@@ -404,7 +405,7 @@ std::unordered_map<Node, std::unordered_set<Node>>
   for (Node const &n : topo) {
     for (Node const &pred : get_predecessors(g, n)) {
       if (contains_key(result, n)) {
-        result[n] = result.at(pred);
+        result.at(n) = result.at(pred);
       } else {
         result[n] = std::unordered_set<Node>();
         result.at(n) = intersection(result.at(n), result.at(pred));
