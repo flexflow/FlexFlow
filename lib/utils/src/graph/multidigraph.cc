@@ -124,7 +124,8 @@ MultiDiGraphView::operator GraphView() const {
   return GraphView::unsafe_create(*(this->ptr.get()));
 }
 
-MultiDiGraphView MultiDiGraphView::unsafe_create(IMultiDiGraphView const &graphView) {
+MultiDiGraphView
+    MultiDiGraphView::unsafe_create(IMultiDiGraphView const &graphView) {
   std::shared_ptr<IMultiDiGraphView const> ptr(
       (&graphView), [](IMultiDiGraphView const *ptr) {});
   return MultiDiGraphView(ptr);

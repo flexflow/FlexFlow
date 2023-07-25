@@ -29,7 +29,7 @@ public:
     return MultiDiGraphView(
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
-  
+
   static MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
 
 private:

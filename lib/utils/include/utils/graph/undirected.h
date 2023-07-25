@@ -84,12 +84,9 @@ public:
 private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
       : ptr(ptr) {}
-  friend UndirectedGraphView unsafe_create(IUndirectedGraphView const &);
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
-
-UndirectedGraphView unsafe_create(IUndirectedGraphView const &);
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;

@@ -66,7 +66,7 @@ struct GraphView {
   }
 
 private:
- GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
+  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
   std::shared_ptr<IGraphView const> ptr;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
