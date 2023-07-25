@@ -69,8 +69,8 @@ std::unordered_set<Node>
 /* unsafe_create:
 1 use the IUndirectedGraphView const &g to create the
 std::shared_ptr<IUndirectedGraphView const> ptr, and define a empty lambda
-function to delete the ptr 2 we use this ptr to create a UndirectedGraphView,
-this UndirectedGraphView is read-only. It creates a UndirectedGraphView object
+function to delete the ptr.
+2 we use this ptr to create a UndirectedGraphView, this UndirectedGraphView is read-only. It creates a UndirectedGraphView object
 that is not responsible for ownership management. Set the shared_ptr's
 destructor to a nop so that effectively there is no ownership
 */
