@@ -125,9 +125,8 @@ public:
     return UndirectedGraph(make_unique<T>());
   }
 
-  UndirectedGraph(std::unique_ptr<IUndirectedGraph> ptr);
-
 private:
+  UndirectedGraph(std::unique_ptr<IUndirectedGraph> ptr);
   cow_ptr_t<IUndirectedGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraph);
