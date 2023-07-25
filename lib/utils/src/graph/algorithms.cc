@@ -370,7 +370,8 @@ std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
                              [](DirectedEdge const &n) { return n.src; }));
 }
 
-std::unordered_set<Node> get_neighbors(MultiDiGraphView const & g, Node const & n) {
+std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
+                                       Node const &n) {
   DiGraphView digraph_view = as_digraph(g);
   return get_neighbors(digraph_view, n);
 }

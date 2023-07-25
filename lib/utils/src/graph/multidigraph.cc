@@ -153,7 +153,7 @@ Node MultiDiGraph::add_node() {
 
 std::vector<Node> MultiDiGraph::add_nodes(size_t n) {
   std::vector<Node> nodes;
-  for(size_t i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     nodes.push_back(add_node());
   }
   return nodes;
@@ -161,7 +161,7 @@ std::vector<Node> MultiDiGraph::add_nodes(size_t n) {
 
 std::vector<NodePort> MultiDiGraph::add_node_ports(size_t n) {
   std::vector<NodePort> ports;
-  for(size_t i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     ports.push_back(add_node_port());
   }
   return ports;
@@ -188,7 +188,7 @@ void MultiDiGraph::add_edge(MultiDiEdge const &e) {
 }
 
 void MultiDiGraph::add_edges(std::vector<MultiDiEdge> const &edges) {
-  for(MultiDiEdge const &e : edges) {
+  for (MultiDiEdge const &e : edges) {
     add_edge(e);
   }
 }

@@ -38,12 +38,14 @@ TEST_CASE("MultiDiGraph") {
         std::unordered_set<MultiDiEdge>{e0, e2, e3});
   CHECK(get_incoming_edges(g, {n1}) == std::unordered_set<MultiDiEdge>{});
   CHECK(get_outgoing_edges(g, {n2, n3}) == std::unordered_set<MultiDiEdge>{e3});
-  std::unordered_map<Node, std::unordered_set<Node>> res = get_predecessors(g, {n1, n2, n3});
-  std::unordered_map<Node, std::unordered_set<Node>> expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
-      {n1, {}},
-      {n2, {n1}},
-      {n3, {n0, n1, n2}},
-  };
+  std::unordered_map<Node, std::unordered_set<Node>> res =
+      get_predecessors(g, {n1, n2, n3});
+  std::unordered_map<Node, std::unordered_set<Node>> expected_result =
+      std::unordered_map<Node, std::unordered_set<Node>>{
+          {n1, {}},
+          {n2, {n1}},
+          {n3, {n0, n1, n2}},
+      };
   CHECK(res == expected_result);
 }
 
@@ -89,7 +91,8 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_dominators") {
-    std::unordered_map<Node, std::unordered_set<Node>> result = get_dominators(g);
+    std::unordered_map<Node, std::unordered_set<Node>> result =
+        get_dominators(g);
 
     CHECK(result.size() == 4);
     CHECK(result[n0] == std::unordered_set<Node>{n0});
@@ -119,7 +122,8 @@ TEST_CASE("DiGraph") {
 
   SUBCASE("get_predecessors") {
     std::unordered_set<Node> nodes{n1, n2};
-    std::unordered_map<Node, std::unordered_set<Node>> result = get_predecessors(g, nodes);
+    std::unordered_map<Node, std::unordered_set<Node>> result =
+        get_predecessors(g, nodes);
     CHECK(result.size() == 2);
 
     auto n1_predecessors = result[n1];
@@ -184,9 +188,8 @@ TEST_CASE("bfs") {
       {n[6], n[0]},
   };
 
-  for (DirectedEdge edge : edges) {
-    g.add_edge(edge);
-  }
+  g.add_edges(edges);
+
   std::vector<Node> ordering = get_bfs_ordering(g, {n[0]});
   auto CHECK_BEFORE = [&](int l, int r) {
     CHECK(index_of(ordering, n[l]).has_value());
@@ -211,21 +214,14 @@ TEST_CASE("bfs") {
 
 TEST_CASE("topological_ordering") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  std::vector<Node> n;
-  for (int i = 0; i < 6; i++) {
-    n.push_back(g.add_node());
-  }
+  std::vector<Node> n = g.add_nodes(6);
   std::vector<DirectedEdge> edges = {{n[0], n[1]},
                                      {n[0], n[2]},
                                      {n[1], n[5]},
                                      {n[2], n[3]},
                                      {n[3], n[4]},
                                      {n[4], n[5]}};
-
-  for (DirectedEdge const &edge : edges) {
-    g.add_edge(edge);
-  }
-
+  g.add_edges(edges);
   std::vector<Node> ordering = get_topological_ordering(g);
   auto CHECK_BEFORE = [&](int l, int r) {
     CHECK(index_of(ordering, n[l]).has_value());

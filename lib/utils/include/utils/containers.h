@@ -602,7 +602,7 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
       result.push_back(element.value());
     }
   }
-  if(result.empty()){
+  if (result.empty()) {
     throw std::runtime_error("value_all: empty vector");
   }
   return result;

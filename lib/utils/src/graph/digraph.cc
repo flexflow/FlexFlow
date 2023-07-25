@@ -19,7 +19,7 @@ Node DiGraph::add_node() {
 
 std::vector<Node> DiGraph::add_nodes(size_t n) {
   std::vector<Node> nodes;
-  for(size_t i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     nodes.push_back(add_node());
   }
   return nodes;
@@ -38,8 +38,8 @@ void DiGraph::add_edge(DirectedEdge const &e) {
 }
 
 void DiGraph::add_edges(std::vector<DirectedEdge> const &edges) {
-  for(DirectedEdge const & edge: edges) {
-      add_edge(edge);
+  for (DirectedEdge const &edge : edges) {
+    add_edge(edge);
   }
 }
 
@@ -78,9 +78,10 @@ std::unordered_set<DirectedEdge>
 /* unsafe_create:
 1 use the graphView to creae the std::shared_ptr<IDiGraphView const> ptr, and
 define a empty lambda function to delete the ptr 2 we use this ptr to create a
-DiGraphView, this DiGraphView is read-only. 
-It creates a DiGraphView object that is not responsible for ownership management.
- Set the shared_ptr's destructor to a nop so that effectively there is no ownership
+DiGraphView, this DiGraphView is read-only.
+It creates a DiGraphView object that is not responsible for ownership
+management. Set the shared_ptr's destructor to a nop so that effectively there
+is no ownership
 */
 DiGraphView DiGraphView::unsafe_create(IDiGraphView const &graphView) {
   std::shared_ptr<IDiGraphView const> ptr((&graphView),
