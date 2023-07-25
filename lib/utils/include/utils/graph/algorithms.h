@@ -15,8 +15,6 @@
 #include <vector>
 
 namespace FlexFlow {
-
-std::vector<Node> add_nodes(Graph &, int);
 std::vector<Node> add_nodes(DiGraph &, int);
 std::unordered_set<Node> get_nodes(GraphView const &);
 std::unordered_set<NodePort> get_node_ports(MultiDiGraphView const &);
@@ -146,7 +144,7 @@ std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
 std::unordered_set<Node> get_neighbors(DiGraphView const &, Node const &);
-
+std::unordered_set<Node> get_neighbors(MultiDiGraphView const &, Node const &);
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 

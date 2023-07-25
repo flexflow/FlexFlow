@@ -8,16 +8,6 @@
 #include <queue>
 
 namespace FlexFlow {
-
-std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
-  std::vector<Node> nodes;
-  ;
-  for (int i = 0; i < num_nodes; i++) {
-    nodes.push_back(g.add_node());
-  }
-  return nodes;
-}
-
 std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
   std::vector<Node> nodes;
   for (int i = 0; i < num_nodes; i++) {
@@ -380,6 +370,11 @@ std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
                              [](DirectedEdge const &n) { return n.src; }));
 }
 
+std::unordered_set<Node> get_neighbors(MultiDiGraphView const & g, Node const & n) {
+  DiGraphView digraph_view = as_digraph(g);
+  return get_neighbors(digraph_view, n);
+}
+
 std::vector<MultiDiEdge>
     get_edge_topological_ordering(MultiDiGraphView const &g) {
   std::vector<MultiDiEdge> result;
@@ -505,7 +500,7 @@ optional<Node> get_imm_post_dominator(DiGraphView const &g,
   if (!commonDoms.empty()) {
     return get_first(commonDoms);
   } else {
-    return tl::nullopt;
+    return nullopt;
   }
 }
 

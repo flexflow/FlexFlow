@@ -71,9 +71,8 @@ public:
     return OpenMultiDiGraph(make_unique<T>());
   }
 
-  OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> ptr);
-
 private:
+  OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> ptr);
   cow_ptr_t<IOpenMultiDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OpenMultiDiGraph);

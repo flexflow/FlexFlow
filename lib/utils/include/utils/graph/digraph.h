@@ -122,9 +122,7 @@ public:
   }
 
 private:
-  DiGraph(std::unique_ptr<IDiGraph>);
-
-private:
+  DiGraph(std::unique_ptr<IDiGraph> ptr);
   cow_ptr_t<IDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);
