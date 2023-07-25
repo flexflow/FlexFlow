@@ -165,6 +165,52 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
 }
 
 template <typename DT>
+__global__ void apply_rotary_embedding_v2(DT *input_ptr,
+                           cuFloatComplex *complex_input,
+                           BatchConfig::PerTokenInfo const *tokenInfos,
+                           int qProjSize,
+                           int kProjSize,
+                           int num_heads,
+                           int num_tokens,
+                           int num_kv_heads,
+                           int q_block_size,
+                           int k_block_size,
+                           int q_array_size,
+                           bool q_tensor) {
+  int proj_size = q_tensor ? qProjSize : kProjSize;
+  int n_heads = q_tensor ? num_heads : num_kv_heads;
+  CUDA_KERNEL_LOOP(i, num_tokens * proj_size * n_heads / 2) {
+    // create complex number
+    int head_idx = i / (num_tokens * proj_size / 2);
+    int idx = i % (num_tokens * proj_size / 2);
+    int real_part_index =
+        idx * 2 + head_idx * (q_tensor ? q_block_size : k_block_size) +
+        (q_tensor ? 0 : q_array_size);
+
+    int complex_part_index = real_part_index + 1;
+
+    complex_input[i] = {input_ptr[real_part_index],
+                        input_ptr[complex_part_index]};
+
+    int token_idx =
+        (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
+
+    // float before_real = complex_input[i].x, before_complex =
+    // complex_input[i].y;
+
+    int pos_i = i % (proj_size / 2);
+    float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
+    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
+
+    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
+    input_ptr[real_part_index] = complex_input[i].x;
+    input_ptr[complex_part_index] = complex_input[i].y;
+
+  }
+}
+
+template <typename DT>
 __global__ void
     apply_rotary_embedding(DT *input_ptr,
                            cuFloatComplex *complex_input,
@@ -236,7 +282,6 @@ __global__ void
     cuFloatComplex complex_pos = {cos(freq), sin(freq)};
 
     complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[complex_part_index] = complex_input[i].y;
   }
@@ -331,8 +376,8 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
       m->num_kv_heads,
       compute_type,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  print_tensor<float>((float *)output_ptr, 64, "QK A before ro");
-  print_tensor<float>((float *)output_ptr + 64, 32, "QK A 2 before ro");
+  // print_tensor<float>((float *)output_ptr, 64, "QK A before ro");
+  // print_tensor<float>((float *)output_ptr + 64, 32, "QK A 2 before ro");
 
   // Value
   checkCUDA(cublasGemmStridedBatchedEx(
@@ -402,7 +447,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
     /*q*/
     std::cout<< "num of blockd: " << m->num_kv_heads << "\n";
 
-    apply_rotary_embedding<<<GET_BLOCKS(parallelism),
+    apply_rotary_embedding_v2<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
                              stream>>>(output_ptr,
@@ -419,7 +464,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        true);
     save_tensor<float>((float *)output_ptr, 64 * 12 * 10, "/home/ubuntu/FlexFlow/inference/q.txt");                                      
     /*k*/
-    apply_rotary_embedding<<<GET_BLOCKS(parallelism),
+    apply_rotary_embedding_v2<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
                              stream>>>(output_ptr,
@@ -748,18 +793,18 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-      print_tensor<float>((float *)A, 96, "QK A");
-      print_tensor<float>((float *)A + q_block_size, 32, "QK A 2");
-      print_tensor<float>((float *)B, 64, "QK B");
-      print_tensor<float>((float *)B + 64, 64, "QK B 2");
-      std::cout << "kt_block_size :" << kt_block_size << "\n";
+    //  print_ten sor<float>((float *)A, 96, "QK A");
+    //   print_tensor<float>((float *)A + q_block_size, 32, "QK A 2");
+    //   print_tensor<float>((float *)B, 64, "QK B");
+    //   print_tensor<float>((float *)B + 64, 64, "QK B 2");
+    //   std::cout << "kt_block_size :" << kt_block_size << "\n";
       
 
       
-      print_tensor<float>((float *)B, 64 * 10, "/home/ubuntu/FlexFlow/inference/k.txt");
-      print_tensor<float>((float *)B + kt_block_size, 64 * 10, "/home/ubuntu/FlexFlow/inference/k2.txt");
-      print_tensor<float>((float *)m->qk_prods, 100, "QK Prod");
-      print_tensor<float>((float *)m->qk_prods + 100, 32, "QK Prod 2");
+    //   print_tensor<float>((float *)B, 64 * 10, "/home/ubuntu/FlexFlow/inference/k.txt");
+    //   print_tensor<float>((float *)B + kt_block_size, 64 * 10, "/home/ubuntu/FlexFlow/inference/k2.txt");
+    //   print_tensor<float>((float *)m->qk_prods, 100, "QK Prod");
+    //   print_tensor<float>((float *)m->qk_prods + 100, 32, "QK Prod 2");
 
     } else {
       strideB = 0;
@@ -851,8 +896,8 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                    &softmax_beta,
                                    qk_tensor,
                                    C_softmax));
-    print_tensor<float>((float *)C_softmax, 32, "QK softmax");
-    print_tensor<float>((float *)C_softmax + 1000, 32, "QK softmax 2");
+    // print_tensor<float>((float *)C_softmax, 32, "QK softmax");
+    // print_tensor<float>((float *)C_softmax + 1000, 32, "QK softmax 2");
     // Matmul softmax(QK^T/sqrt(d_k)) by V
     alpha = 1.0f, beta = 0.0f;
     m_ = num_new_tokens;
@@ -897,8 +942,8 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      print_tensor<float>((float *)C, 32, "KV prod");
-      print_tensor<float>((float *)C + 1000, 32, "KV prod 2");
+      // print_tensor<float>((float *)C, 32, "KV prod");
+      // print_tensor<float>((float *)C + 1000, 32, "KV prod 2");
     } else {
       int one_step_heads = m->num_heads / m->num_kv_heads;
       n = m->vProjSize;
@@ -946,7 +991,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     B = C;
     C = static_cast<DT *>(output_ptr) + tokens_previous_requests * m->oProjSize;
 
-    print_tensor<float>((float *)A, 32, "output weight");
+    // print_tensor<float>((float *)A, 32, "output weight");
 
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
@@ -967,7 +1012,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            ldc,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    print_tensor<float>((float *)C, 32, "outputs");
+    // print_tensor<float>((float *)C, 32, "outputs");
     tokens_previous_requests += num_new_tokens;
   }
 
@@ -1059,7 +1104,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
-  print_tensor<float>(output.get_float_ptr(), 32, "attention op");
+  // print_tensor<float>(output.get_float_ptr(), 32, "attention op");
   // assert(false);
 }
 

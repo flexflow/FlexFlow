@@ -134,19 +134,18 @@ RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
-
   // Add a new request
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  request.tokens.push_back(this->model_bos_map.at(this->model_type));
-  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
+  if (this->model_bos_map.find(this->model_type) != this->model_bos_map.end()) {
+    request.tokens.push_back(this->model_bos_map.at(this->model_type));
+  }
 
+  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
   for (int i = 0; i < tokens.size(); i++) {
     std::cout << tokens.at(i) << "\n";
   }
-
-  // assert(false);
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
 

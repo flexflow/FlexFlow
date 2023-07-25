@@ -80,10 +80,24 @@ void FALCON::create_falcon_model(FFModel &ff,
     Tensor mha;
     switch (mode) {
       case INC_DECODING_MODE: {
-        mha = ff.inc_multiquery_self_attention(
+        // mha = ff.inc_multiquery_self_attention(
+        //     att_norm,
+        //     falcon_config.dim,
+        //     falcon_config.n_heads,
+        //     falcon_config.dim / falcon_config.n_heads,
+        //     falcon_config.dim / falcon_config.n_heads,
+        //     0.0f,    /*dropout*/
+        //     false,   /*bias*/
+        //     false,   /*add_bias_kv*/
+        //     false,   /*add_zero_attn*/
+        //     DT_NONE, /*data_type*/
+        //     nullptr  /*kernel_initializer*/
+        // );
+        mha = ff.inc_multihead_self_attention(
             att_norm,
             falcon_config.dim,
             falcon_config.n_heads,
+            1,
             falcon_config.dim / falcon_config.n_heads,
             falcon_config.dim / falcon_config.n_heads,
             0.0f,    /*dropout*/
@@ -91,7 +105,8 @@ void FALCON::create_falcon_model(FFModel &ff,
             false,   /*add_bias_kv*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
-            nullptr  /*kernel_initializer*/
+            nullptr, /*kernel_initializer*/
+            false     /*apply_rotary_embedding*/
         );
         break;
       }
@@ -148,6 +163,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                             1,
                             falcon_config.dim,
                             falcon_config.dim / falcon_config.n_heads);
+  std::cout << "------laod weights ----------" << std::endl;                          
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
