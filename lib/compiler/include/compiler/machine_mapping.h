@@ -29,7 +29,7 @@ MachineMapping optimal_cost(
     std::function<std::unordered_set<MachineView>(
         Operator const &, MachineSpecification const &)> const
         &allowed_machine_views,
-    ICostEstimator const &cost_estimator,
+    CostEstimator const &cost_estimator,
     MachineSpecification const &resources,
     std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs);
 

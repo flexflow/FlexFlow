@@ -27,7 +27,7 @@ RealmAllocator::~RealmAllocator() {
   }
 }
 
-std::unique_ptr<IAllocator> get_gpu_memory_allocator(Legion::Task const *task) {
+Allocator get_gpu_memory_allocator(Legion::Task const *task) {
   Legion::Memory gpu_mem =
       Legion::Machine::MemoryQuery(Legion::Machine::get_machine())
           .only_kind(Legion::Memory::GPU_FB_MEM)
