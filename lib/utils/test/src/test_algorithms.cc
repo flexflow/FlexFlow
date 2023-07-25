@@ -13,22 +13,26 @@ using namespace FlexFlow;
 
 TEST_CASE("MultiDiGraph") {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-  Node n0 = g.add_node();
-  Node n1 = g.add_node();
-  Node n2 = g.add_node();
-  Node n3 = g.add_node();
-  NodePort p0 = g.add_node_port();
-  NodePort p1 = g.add_node_port();
-  NodePort p2 = g.add_node_port();
-  NodePort p3 = g.add_node_port();
+  std::vector<Node> nodes = g.add_nodes(4);
+  std::vector<NodePort> ports = g.add_node_ports(4);
+
+  Node n0 = nodes[0];
+  Node n1 = nodes[1];
+  Node n2 = nodes[2];
+  Node n3 = nodes[3];
+  NodePort p0 = ports[0];
+  NodePort p1 = ports[1];
+  NodePort p2 = ports[2];
+  NodePort p3 = ports[3];
+
   MultiDiEdge e0{n0, n3, p0, p3};
   MultiDiEdge e1{n1, n2, p0, p2};
   MultiDiEdge e2{n1, n3, p1, p3};
   MultiDiEdge e3{n2, n3, p2, p3};
-  g.add_edge(e0);
-  g.add_edge(e1);
-  g.add_edge(e2);
-  g.add_edge(e3);
+
+  std::vector<MultiDiEdge> edges = {e0, e1, e2, e3};
+
+  g.add_edges(edges);
 
   CHECK(get_incoming_edges(g, {n1, n3}) ==
         std::unordered_set<MultiDiEdge>{e0, e2, e3});

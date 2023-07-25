@@ -151,6 +151,22 @@ Node MultiDiGraph::add_node() {
   return this->ptr.get_mutable()->add_node();
 }
 
+std::vector<Node> MultiDiGraph::add_nodes(size_t n) {
+  std::vector<Node> nodes;
+  for(size_t i = 0; i < n; i++) {
+    nodes.push_back(this->ptr.get_mutable()->add_node());
+  }
+  return nodes;
+}
+
+std::vector<NodePort> MultiDiGraph::add_node_ports(size_t n) {
+  std::vector<NodePort> ports;
+  for(size_t i = 0; i < n; i++) {
+    ports.push_back(this->ptr.get_mutable()->add_node_port());
+  }
+  return ports;
+}
+
 NodePort MultiDiGraph::add_node_port() {
   return this->ptr.get_mutable()->add_node_port();
 }
@@ -169,6 +185,12 @@ void MultiDiGraph::remove_node_unsafe(Node const &n) {
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
   return this->ptr.get_mutable()->add_edge(e);
+}
+
+void MultiDiGraph::add_edges(std::vector<MultiDiEdge> const &edges) {
+  for(MultiDiEdge const &e : edges) {
+    this->ptr.get_mutable()->add_edge(e);
+  }
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {

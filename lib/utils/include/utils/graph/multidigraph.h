@@ -53,13 +53,15 @@ public:
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 
   Node add_node();
+  std::vector<Node> add_nodes(size_t);
   NodePort add_node_port();
+  std::vector<NodePort> add_node_ports(size_t);
   void add_node_unsafe(Node const &);
   void add_node_port_unsafe(NodePort const &);
   void remove_node_unsafe(Node const &);
-
-  void add_edge(Edge const &e);
-  void remove_edge(Edge const &e);
+  void add_edges(std::vector<Edge> const &);
+  void add_edge(Edge const &);
+  void remove_edge(Edge const &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
