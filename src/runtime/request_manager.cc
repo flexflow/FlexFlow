@@ -1595,9 +1595,9 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
     }
-    if (is_request_completed(guid)) {
-      break;
-    }
+    //if (is_request_completed(guid)) {
+    //  break;
+    //}
 
     for (size_t i = 0; i < get_num_ssms(); i++) {
       for (int depth = 0; depth < BeamSearchBatchConfig::MAX_BEAM_DEPTH;
