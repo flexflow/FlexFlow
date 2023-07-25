@@ -51,12 +51,12 @@ size_t MachineView::hash() const {
   size_t h = 0;
   hash_combine(h, device_type);
   hash_combine(h, ndims);
-  hash_combine(start_device_id);
+  hash_combine(h, start_device_id);
   for (int i = 0; i < ndims; i++) {
     hash_combine(h, dim[i]);
     hash_combine(h, stride[i]);
   }
-  return ret;
+  return h;
 }
 
 int MachineView::get_device_id(DomainPoint const &p) const {
