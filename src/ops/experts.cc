@@ -670,7 +670,7 @@ FutureMap Experts::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "Experts op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  // int num_active_tokens = bc.num_active_tokens();
+  // int num_active_tokens = bc->num_active_tokens();
   IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -733,8 +733,8 @@ void Experts::inference_task(Task const *task,
   assert(regions.size() == task->regions.size());
 
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
-  if (bc.num_tokens == 0) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
     return;
   }
 
@@ -1058,7 +1058,7 @@ void Experts::inference_task(Task const *task,
                                   output_ptr,
                                   weights_ptr,
                                   bias_ptr,
-                                  bc.num_active_tokens(),
+                                  bc->num_active_tokens(),
                                   chosen_experts,
                                   batch_size,
                                   out_dim);

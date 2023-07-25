@@ -618,8 +618,7 @@ void Linear::inference_task(Task const *task,
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
-  // BatchConfig const *bc = (BatchConfig *)task->args;
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   if (m->quantization_type == DT_NONE) {
@@ -636,7 +635,7 @@ void Linear::inference_task(Task const *task,
   int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
 
-  int batch_size = bc.num_active_tokens();
+  int batch_size = bc->num_active_tokens();
   GenericTensorAccessorR bias;
   if (m->use_bias &&
       !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {

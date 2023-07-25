@@ -254,10 +254,10 @@ BatchConfig RequestManager::prepare_next_batch_task(
     Context ctx,
     Runtime *runtime) {
   RequestManager *rm = *((RequestManager **)task->args);
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   InferenceResult const &result =
       Future(task->futures[1]).get_result<InferenceResult>();
-  return rm->prepare_next_batch(bc, result);
+  return rm->prepare_next_batch(*bc, result);
 }
 
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
@@ -1595,9 +1595,9 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
     }
-    //if (is_request_completed(guid)) {
-    //  break;
-    //}
+    // if (is_request_completed(guid)) {
+    //   break;
+    // }
 
     for (size_t i = 0; i < get_num_ssms(); i++) {
       for (int depth = 0; depth < BeamSearchBatchConfig::MAX_BEAM_DEPTH;

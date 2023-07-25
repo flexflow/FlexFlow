@@ -532,8 +532,8 @@ FutureMap IncMultiQuerySelfAttention::inference(
   size_t machine_view_hash = view->hash();
   int idx = 0;
   // log_inc_mqa.debug("BatchConfig, num_tokens: %d, num_requests: %d",
-  //                   bc.num_tokens,
-  //                   bc.num_active_requests());
+  //                   bc->num_tokens,
+  //                   bc->num_active_requests());
   IndexLauncher launcher(INC_MULTIQUERY_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -577,9 +577,8 @@ void IncMultiQuerySelfAttention::inference_task(
 
   assert(task->regions.size() == regions.size());
 
-  // BatchConfig const *bc = (BatchConfig *)task->args;
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
-  if (bc.num_tokens == 0) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
     return;
   }
 
@@ -607,7 +606,7 @@ void IncMultiQuerySelfAttention::inference_task(
   assert(output_domain.get_dim() == 4);
 
   IncMultiQuerySelfAttention::inference_kernel_wrapper(
-      m, &bc, input, weight, output);
+      m, bc, input, weight, output);
 #ifdef INFERENCE_TESTS
   printf("Checking IncMultiQuerySelfAttention computations...\n");
 
@@ -654,7 +653,7 @@ void IncMultiQuerySelfAttention::inference_task(
 
   size_t effective_batch_size = max_sequence_length * batch_size;
   float inputs_arr[data_dim][effective_batch_size] = {0};
-  for (size_t i = 0; i < data_dim * bc.num_active_tokens(); i++) {
+  for (size_t i = 0; i < data_dim * bc->num_active_tokens(); i++) {
     size_t data_index = i % data_dim;
     size_t token_index = i / data_dim;
     assert(data_index < data_dim);
@@ -686,14 +685,14 @@ void IncMultiQuerySelfAttention::inference_task(
   // column-major order.
 
   // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i, "
-  //     "bc.num_active_tokens(): %i, num_heads: %lli,
-  //     BatchConfig::MAX_NUM_REQUESTS: %i, " "bc.num_active_requests(): %i\n",
-  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc.num_active_tokens(),
-  //     num_heads, BatchConfig::MAX_NUM_REQUESTS, bc.num_active_requests());
-  // for (int t=0; t < bc.num_active_tokens(); t++) {
+  //     "bc->num_active_tokens(): %i, num_heads: %lli,
+  //     BatchConfig::MAX_NUM_REQUESTS: %i, " "bc->num_active_requests(): %i\n",
+  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
+  //     num_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
+  // for (int t=0; t < bc->num_active_tokens(); t++) {
   //   printf("token %i has request_index: %li and token_position: %li\n",
-  //   t, bc.token2ids.token_indexes[t].request_index,
-  //   bc.token2ids.token_indexes[t].token_position);
+  //   t, bc->token2ids.token_indexes[t].request_index,
+  //   bc->token2ids.token_indexes[t].token_position);
   // }
 
   // =============================================================================
@@ -753,7 +752,7 @@ void IncMultiQuerySelfAttention::inference_task(
   /* std::cout << "Torch projection weights size: " << torch_w_qkv.sizes()
             << std::endl;
   std::cout << "Torch input size: " << torch_input.sizes() << std::endl;
-  std::cout << "Number of active tokens: " << bc.num_active_tokens()
+  std::cout << "Number of active tokens: " << bc->num_active_tokens()
             << std::endl; */
   // std::cout << "torch_w_qkv:" << std::endl << torch_w_qkv << std::endl;
 
@@ -765,10 +764,10 @@ void IncMultiQuerySelfAttention::inference_task(
   torch::Tensor qkv_projs = torch::einsum(
       "ijkl,im->jmkl",
       {torch_w_qkv,
-       torch_input.index({Slice(), Slice(0, bc.num_active_tokens())})});
+       torch_input.index({Slice(), Slice(0, bc->num_active_tokens())})});
   // std::cout << "qkv_projs size: " << qkv_projs.sizes() << std::endl;
   assert(qkv_projs.sizes()[0] == m->qProjSize);
-  assert(qkv_projs.sizes()[1] == bc.num_active_tokens() &&
+  assert(qkv_projs.sizes()[1] == bc->num_active_tokens() &&
          qkv_projs.sizes()[1] <= effective_batch_size);
   assert(qkv_projs.sizes()[2] == 3);
   assert(qkv_projs.sizes()[3] == num_heads);
@@ -781,24 +780,24 @@ void IncMultiQuerySelfAttention::inference_task(
   assert(QKVProjArray_cpu != nullptr);
 
   std::vector<int> QKVProjArray_converted_shape = {
-      m->qProjSize, bc.num_active_tokens(), 3, (int)num_heads};
+      m->qProjSize, bc->num_active_tokens(), 3, (int)num_heads};
   float *QKVProjArray_converted = (float *)calloc(
-      m->qProjSize * bc.num_active_tokens() * 3 * num_heads, sizeof(float));
+      m->qProjSize * bc->num_active_tokens() * 3 * num_heads, sizeof(float));
 
   // skip over padding at the end of QKVProjArray_cpu
   // convert from column order to 3D matrix because torch cannot automatically
   // import matrices flattened in column order
-  for (size_t i = 0; i < proj_sum * bc.num_active_tokens() * num_heads; i++) {
+  for (size_t i = 0; i < proj_sum * bc->num_active_tokens() * num_heads; i++) {
     int proj_size_index = i % m->qProjSize;
-    int head_index = i / (proj_sum * bc.num_active_tokens());
+    int head_index = i / (proj_sum * bc->num_active_tokens());
     int token_index =
-        ((i - head_index * proj_sum * bc.num_active_tokens()) / m->qProjSize) %
-        bc.num_active_tokens();
-    int qkv_offset = (i - head_index * proj_sum * bc.num_active_tokens()) /
-                     (m->qProjSize * bc.num_active_tokens());
+        ((i - head_index * proj_sum * bc->num_active_tokens()) / m->qProjSize) %
+        bc->num_active_tokens();
+    int qkv_offset = (i - head_index * proj_sum * bc->num_active_tokens()) /
+                     (m->qProjSize * bc->num_active_tokens());
     assert(proj_size_index < proj_sum);
     assert(head_index < num_heads);
-    assert(token_index < bc.num_active_tokens());
+    assert(token_index < bc->num_active_tokens());
     assert(qkv_offset < 3);
     set_value_row_major(QKVProjArray_converted,
                         QKVProjArray_converted_shape,
@@ -807,7 +806,7 @@ void IncMultiQuerySelfAttention::inference_task(
   }
   torch::Tensor QKVProjArray_torch =
       torch::from_blob(QKVProjArray_converted,
-                       {m->qProjSize, bc.num_active_tokens(), 3, num_heads},
+                       {m->qProjSize, bc->num_active_tokens(), 3, num_heads},
                        torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
@@ -834,13 +833,13 @@ void IncMultiQuerySelfAttention::inference_task(
   //  ----------------------- C++ operations & checks --------------------------
   // Store projections into k/v cache arrays
   for (size_t h = 0; h < num_heads; h++) {
-    for (size_t t = 0; t < bc.num_active_tokens(); t++) {
+    for (size_t t = 0; t < bc->num_active_tokens(); t++) {
       for (size_t d = 0; d < m->kProjSize; d++) {
         size_t kcache_idx =
             d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc.tokensInfo[t].abs_depth_in_request * m->num_heads *
+            bc->tokensInfo[t].abs_depth_in_request * m->num_heads *
                 BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS + bc.tokensInfo[t].request_index;
+            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
         m->kcache[kcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
                 .item<float>();
@@ -848,9 +847,9 @@ void IncMultiQuerySelfAttention::inference_task(
       for (size_t d = 0; d < m->vProjSize; d++) {
         size_t vcache_idx =
             d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc.tokensInfo[t].abs_depth_in_request * m->num_heads *
+            bc->tokensInfo[t].abs_depth_in_request * m->num_heads *
                 BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS + bc.tokensInfo[t].request_index;
+            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
         m->vcache[vcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
                 .item<float>();
@@ -871,8 +870,8 @@ void IncMultiQuerySelfAttention::inference_task(
   std::vector<size_t> req_idxs;
   std::vector<size_t> r_first_idx;
   std::vector<size_t> r_num_tokens;
-  for (size_t t = 0; t < bc.num_active_tokens(); t++) {
-    size_t rid = bc.tokensInfo[t].request_index;
+  for (size_t t = 0; t < bc->num_active_tokens(); t++) {
+    size_t rid = bc->tokensInfo[t].request_index;
     if (req_idxs.size() == 0 || req_idxs[req_idxs.size() - 1] != rid) {
       req_idxs.push_back(rid);
       r_first_idx.push_back(t);
@@ -883,11 +882,11 @@ void IncMultiQuerySelfAttention::inference_task(
     assert(req_idxs.size() == r_first_idx.size() &&
            r_first_idx.size() == r_num_tokens.size());
   }
-  assert(req_idxs.size() == bc.num_active_requests());
+  assert(req_idxs.size() == bc->num_active_requests());
   assert(std::accumulate(r_num_tokens.begin(),
                          r_num_tokens.end(),
                          decltype(r_num_tokens)::value_type(0)) ==
-         bc.num_active_tokens());
+         bc->num_active_tokens());
 
   //  ----------------------- Loading CUDA results for this step ---------------
   float *keyCache_cpu =
@@ -945,7 +944,7 @@ void IncMultiQuerySelfAttention::inference_task(
   //  ----------------------- Comparing C++ & CUDA results ---------------------
 
   // std::cout << "kcache differences:" << std::endl;
-  // for (int i=0; i < bc.num_active_requests() + 1; i++) {
+  // for (int i=0; i < bc->num_active_requests() + 1; i++) {
   //   for (int j=0; j < num_heads; j++) {
   //     for (int l=0; l < m->kProjSize; l++) {
   //       for (int k=0; k < MAX_SEQ_LEN; k++) {
@@ -970,7 +969,7 @@ void IncMultiQuerySelfAttention::inference_task(
   // }
 
   //  std::cout << "keyCache from CUDA:" << std::endl;
-  //  for (int i=0; i<bc.num_active_requests()+1; i++) {
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
   //    for (int j=0; j<num_heads; j++) {
   //     for (int l=0; l<m->kProjSize; l++) {
   //       for (int k=0; k< MAX_SEQ_LEN; k++) {
@@ -989,7 +988,7 @@ void IncMultiQuerySelfAttention::inference_task(
   //  }
 
   //  std::cout << "valueCache from CUDA:" << std::endl;
-  //  for (int i=0; i<bc.num_active_requests()+1; i++) {
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
   //    for (int j=0; j<num_heads; j++) {
   //       for (int l=0; l<m->vProjSize; l++) {
   //         for (int k=0; k< MAX_SEQ_LEN; k++) {
@@ -1010,7 +1009,7 @@ void IncMultiQuerySelfAttention::inference_task(
   //  printf("\n");
 
   //  std::cout << "C++ kcache:" << std::endl;
-  //  for (int i=0; i<bc.num_active_requests()+1; i++) {
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
   //    for (int j=0; j < num_heads; j++) {
   //       for (int l=0; l < m->kProjSize; l++) {
   //         for (int k=0; k < MAX_SEQ_LEN; k++) {
@@ -1029,7 +1028,7 @@ void IncMultiQuerySelfAttention::inference_task(
   //  }
 
   //  std::cout << "C++ vcache:" << std::endl;
-  //  for (int i=0; i<bc.num_active_requests()+1; i++) {
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
   //    for (int j=0; j<num_heads; j++) {
   //       for (int l=0; l<m->vProjSize; l++) {
   //         for (int k=0; k< MAX_SEQ_LEN; k++) {
@@ -1116,12 +1115,12 @@ void IncMultiQuerySelfAttention::inference_task(
                                         qkv_projs.sizes()[1],
                                         qkv_projs.sizes()[3]});
 
-  torch::Tensor qk_products[bc.num_active_requests()];
-  torch::Tensor qk_softmax[bc.num_active_requests()];
-  torch::Tensor attn_heads[bc.num_active_requests()];
+  torch::Tensor qk_products[bc->num_active_requests()];
+  torch::Tensor qk_softmax[bc->num_active_requests()];
+  torch::Tensor attn_heads[bc->num_active_requests()];
 
   torch::Tensor cpp_output =
-      torch::zeros({m->oProjSize, bc.num_active_tokens()});
+      torch::zeros({m->oProjSize, bc->num_active_tokens()});
 
   //  ----------------------- Loading CUDA results for this step ---------------
   float *qk_prods_cpu = download_tensor<float>(
@@ -1141,14 +1140,14 @@ void IncMultiQuerySelfAttention::inference_task(
   //  ----------------------- Main loop (request by request) -------------------
   size_t qk_prods_cpu_offset = 0;
 
-  for (size_t r = 0; r < bc.num_active_requests(); r++) {
+  for (size_t r = 0; r < bc->num_active_requests(); r++) {
     // Compute pre-request parameters
     size_t num_new_tokens = r_num_tokens[r];
     int64_t rid = (int64_t)(req_idxs[r]);
     int64_t num_tokens_received_so_far =
-        (int64_t)(bc.requestsInfo[rid].token_start_offset +
-                  bc.requestsInfo[rid].num_tokens_in_batch);
-    assert(num_new_tokens == bc.requestsInfo[rid].num_tokens_in_batch);
+        (int64_t)(bc->requestsInfo[rid].token_start_offset +
+                  bc->requestsInfo[rid].num_tokens_in_batch);
+    assert(num_new_tokens == bc->requestsInfo[rid].num_tokens_in_batch);
     assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
 
     //  ----------------------- C++ computations -------------------------------
@@ -1338,15 +1337,15 @@ void IncMultiQuerySelfAttention::inference_task(
   std::cout << "CUDA:" <<std::endl;
   for (int i=0; i<m->oProjSize; i++) {
     std::cout << torch_out_cuda.index({i, Slice(0,
-  (int64_t)bc.num_active_tokens())}) << std::endl;
+  (int64_t)bc->num_active_tokens())}) << std::endl;
   } */
 
-  assert(
-      torch::allclose(torch_out_cuda.index(
-                          {Slice(), Slice(0, (int64_t)bc.num_active_tokens())}),
-                      cpp_output,
-                      1e-05,
-                      1e-05));
+  assert(torch::allclose(
+      torch_out_cuda.index(
+          {Slice(), Slice(0, (int64_t)bc->num_active_tokens())}),
+      cpp_output,
+      1e-05,
+      1e-05));
 
   // =============================================================================
   //  Cleanup
