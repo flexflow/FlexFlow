@@ -53,7 +53,7 @@ UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UndirectedGraph::operator UndirectedGraphView() const {
-  return UndirectedGraphView(ptr.get());
+  return unsafe_create(*this->ptr.get());
 }
 
 std::unordered_set<UndirectedEdge>
@@ -66,9 +66,11 @@ std::unordered_set<Node>
   return this->ptr->query_nodes(q);
 }
 
-// UndirectedGraphView unsafe_create(IUndirectedGraphView const & g) {
-
-// }
+UndirectedGraphView unsafe_create(IUndirectedGraphView const & g) {
+  std::shared_ptr<IUndirectedGraphView const> ptr((&g),
+                                          [](IUndirectedGraphView const *) {});
+  return UndirectedGraphView(ptr);
+}
 
 UndirectedGraphView::operator GraphView const &() const {
   return GraphView::unsafe_create(*this->ptr.get());//Note(lambda):may have some problem
