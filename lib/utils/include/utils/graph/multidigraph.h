@@ -34,13 +34,10 @@ public:
 
 private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
-  friend struct MultiDiGraph;
-  friend MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
-MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
 struct MultiDiGraph {
 public:
