@@ -14,6 +14,8 @@ struct ILabelledOpenMultiDiGraphView
     : public IOpenMultiDiGraphView,
       public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 public:
+  using INodeLabelledMultiDiGraphView<NodeLabel>::at;
+  
   virtual InputLabel const &at(InputMultiDiEdge const &e) const = 0;
   virtual OutputLabel const &at(OutputMultiDiEdge const &e) const = 0;
   virtual EdgeLabel const &at(MultiDiEdge const &e) const = 0;

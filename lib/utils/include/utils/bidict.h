@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_BIDICT_H
 
 #include <unordered_map>
+#include <cassert>
 
 namespace FlexFlow {
 

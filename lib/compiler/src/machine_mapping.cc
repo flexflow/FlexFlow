@@ -59,11 +59,12 @@ GraphSplit
 }
 
 std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
-    apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
+    apply_split(SubParallelComputationGraph const &g,
+                GraphSplit const &split) {
   OpenMultiDiGraphView g1 = get_subgraph(g, split.first);
   OpenMultiDiGraphView g2 = get_subgraph(g, split.second);
 
-  if (get_cut(g, split).size() > 0) {
+  if (get_edge_splits(g, split).size() > 0) {
     // Sequential split
     if (get_open_sinks(g1).size() <= get_open_sources(g2).size()) {
       // get_open_sinks(*g1).size() should be 1 in perfect sp graphs
@@ -93,7 +94,7 @@ struct OptimalCost {
       optional<MachineView> const &source_machine_view, // assume perfect SP
       optional<MachineView> const &sink_machine_view,
       std::function<std::unordered_set<MachineView>(
-          PCGOperatorAttrs const &, MachineSpecification const &)> const
+          Operator const &, MachineSpecification const &)> const
           &allowed_machine_views,
       std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs)
       : g(g), cost_estimator(cost_estimator), resource(resource),
@@ -141,15 +142,13 @@ struct OptimalCost {
   }
 
   MachineMapping optimal_cost(Serial const &serial) const {
-    // return sum(vector_transform([&](variant<Parallel, Node> const &t) {
-    // return visit(*this, t); }, serial.children));
     auto decomposed = decompose(serial);
     SerialParallelDecomposition pre_decompn = decomposed.first;
     SerialParallelDecomposition post_decompn = decomposed.second;
 
     auto subgraphs = apply_split(g, get_graph_split(pre_decompn, post_decompn));
     SubParallelComputationGraph pre_graph = subgraphs.first,
-                                post_graph = subgraphs.second;
+                                    post_graph = subgraphs.second;
 
     std::unordered_set<Node> pre_graph_sinks = get_closed_sinks(pre_graph);
     std::unordered_set<Node> post_graph_sources =
@@ -187,7 +186,8 @@ struct OptimalCost {
                                      sink_machine_view,
                                      allowed_machine_views,
                                      cached_subgraph_costs),
-                         post_decompn)));
+                         post_decompn)),
+               MachineMappingRuntimeCmp{});
     }
 
     return optimal_result;
@@ -237,7 +237,8 @@ struct OptimalCost {
                                      sink_machine_view,
                                      allowed_machine_views,
                                      cached_subgraph_costs),
-                         decompn2)));
+                         decompn2)),
+               MachineMappingRuntimeCmp{});
     }
 
     return optimal_result;
@@ -262,9 +263,9 @@ struct OptimalCost {
       MachineMapping optimal_result = MachineMapping::infinity();
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
         std::unordered_map<Node, MachineView> mv_map{{node, mv}};
-        minimize(
-            optimal_result,
-            {estimate_cost(g, cost_estimator, mv_map), mv_map)};
+        minimize(optimal_result,
+                 {estimate_cost(g, cost_estimator, mv_map), mv_map},
+                 MachineMappingRuntimeCmp{});
       }
       return optimal_result;
     }
@@ -276,7 +277,7 @@ struct OptimalCost {
   optional<MachineView> const &source_machine_view;
   optional<MachineView> const &sink_machine_view;
   std::function<std::unordered_set<MachineView>(
-      PCGOperatorAttrs const &, MachineSpecification const &)> const
+      Operator const &, MachineSpecification const &)> const
       &allowed_machine_views;
   std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs;
 };
@@ -284,7 +285,7 @@ struct OptimalCost {
 MachineMapping optimal_cost(
     ParallelComputationGraph const &g,
     std::function<std::unordered_set<MachineView>(
-        PCGOperatorAttrs const &, MachineSpecification const &)> const
+        Operator const &, MachineSpecification const &)> const
         &allowed_machine_views,
     ICostEstimator const &cost_estimator,
     MachineSpecification const &resources,
