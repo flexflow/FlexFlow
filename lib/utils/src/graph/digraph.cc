@@ -42,7 +42,7 @@ std::unordered_set<DirectedEdge>
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
 
 DiGraphView::operator GraphView() const {
-  return GraphView(this->ptr);
+  return GraphView::unsafe_create(*(this->ptr.get()));
 }
 
 bool DiGraphView::operator==(DiGraphView const &other) const {

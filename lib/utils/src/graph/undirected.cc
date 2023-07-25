@@ -67,7 +67,7 @@ std::unordered_set<Node>
 }
 
 UndirectedGraphView::operator GraphView const &() const {
-  return GraphView(this->ptr);
+  return GraphView::unsafe_create(*this->ptr.get());//Note(lambda):may have some problem
 }
 
 } // namespace FlexFlow

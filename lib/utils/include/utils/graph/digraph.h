@@ -74,10 +74,10 @@ public:
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
   static DiGraphView unsafe_create(IDiGraphView const &graphView);
 
 private:
+  DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
   friend DiGraphView unsafe_create(IDiGraphView const &);
 
 private:
@@ -104,7 +104,7 @@ public:
   DiGraph &operator=(DiGraph const &) = default;
 
   operator DiGraphView() const {
-    return DiGraphView(ptr.get());
+    return unsafe_create(*this->ptr);
   }
 
   friend void swap(DiGraph &, DiGraph &);

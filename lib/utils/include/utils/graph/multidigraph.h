@@ -29,10 +29,11 @@ public:
     return MultiDiGraphView(
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
+  
   static MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
 
 private:
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
   friend struct MultiDiGraph;
   friend MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
   std::shared_ptr<IMultiDiGraphView const> ptr;

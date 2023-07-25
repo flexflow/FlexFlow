@@ -121,7 +121,7 @@ void IMultiDiGraph::add_node_port_unsafe(NodePort const &np) {
 }
 
 MultiDiGraphView::operator GraphView() const {
-  return GraphView(this->ptr);
+  return GraphView::unsafe_create(*(this->ptr.get()));
 }
 
 MultiDiGraphView unsafe_create(IMultiDiGraphView const &graphView) {
@@ -143,7 +143,7 @@ void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
 }
 
 MultiDiGraph::operator MultiDiGraphView() const {
-  return MultiDiGraphView(this->ptr.get());
+  return unsafe_create(*this->ptr);
 }
 
 Node MultiDiGraph::add_node() {
