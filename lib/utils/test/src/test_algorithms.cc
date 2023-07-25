@@ -49,18 +49,20 @@ TEST_CASE("MultiDiGraph") {
 
 TEST_CASE("DiGraph") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  Node n0 = g.add_node();
-  Node n1 = g.add_node();
-  Node n2 = g.add_node();
-  Node n3 = g.add_node();
+
+  std::vector<Node> nodes = g.add_nodes(4);
+  Node n0 = nodes[0];
+  Node n1 = nodes[1];
+  Node n2 = nodes[2];
+  Node n3 = nodes[3];
+
   DirectedEdge e0{n0, n3};
   DirectedEdge e1{n0, n1};
   DirectedEdge e2{n0, n2};
   DirectedEdge e3{n1, n2};
-  g.add_edge(e0);
-  g.add_edge(e1);
-  g.add_edge(e2);
-  g.add_edge(e3);
+
+  std::vector<DirectedEdge> edges = {e0, e1, e2, e3};
+  g.add_edges(edges);
 
   CHECK(get_incoming_edges(g, {n2, n3}) ==
         std::unordered_set<DirectedEdge>{e0, e2, e3});

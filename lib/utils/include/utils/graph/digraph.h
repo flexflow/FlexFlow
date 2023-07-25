@@ -105,10 +105,12 @@ public:
   friend void swap(DiGraph &, DiGraph &);
 
   Node add_node();
+  std::vector<Node> add_nodes(size_t);
   void add_node_unsafe(Node const &);
   void remove_node_unsafe(Node const &);
 
   void add_edge(Edge const &);
+  void add_edges(std::vector<Edge> const &);
   void remove_edge(Edge const &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
