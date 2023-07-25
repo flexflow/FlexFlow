@@ -97,7 +97,7 @@ TEST_CASE("DiGraph") {
 
   SUBCASE("get_neighbors") {
     auto result = get_neighbors(g, n0);
-    auto expected = std::vector<Node>{n3, n1, n2};
+    auto expected = std::unordered_set<Node>{n3, n1, n2};
     CHECK(result == expected);
     ;
   }

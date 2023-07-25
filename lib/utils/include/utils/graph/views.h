@@ -10,7 +10,6 @@
 #include "undirected.h"
 #include "utils/bidict.h"
 #include "utils/visitable.h"
-#include <bits/fs_path.h>
 #include <memory>
 #include <vector>
 

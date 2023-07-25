@@ -18,8 +18,9 @@ std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
 
 std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
   std::vector<Node> nodes;
-  std::generate_n(
-      std::back_inserter(nodes), num_nodes, [&g]() { return g.add_node(); });
+  for(int i = 0; i < num_nodes; i++) {
+    nodes.push_back(g.add_node());
+  }
   return nodes;
 }
 
@@ -272,14 +273,8 @@ std::vector<Node>
 }
 
 std::unordered_set<Node> get_sinks(DiGraphView const &g) {
-  std::unordered_set<Node> dsts;
-  for (Node const &n : get_nodes(g)) {
-    auto outgoing = get_outgoing_edges(g, n);
-    if (outgoing.size() == 0) {
-      dsts.insert(n);
-    }
-  }
-  return dsts;
+     return filter(get_nodes(g), 
+	                 [&](Node const &n) { return get_outgoing_edges(g, n).size() == 0; });
 }
 
 std::unordered_set<Node> get_sinks(MultiDiGraphView const &g) {
@@ -292,14 +287,9 @@ DiGraphView flipped(DiGraphView const &g) {
 }
 
 std::unordered_set<Node> get_sources(DiGraphView const &g) {
-  std::unordered_set<Node> sources;
-  for (Node const &n : get_nodes(g)) {
-    auto incoming = get_incoming_edges(g, n);
-    if (incoming.size() == 0) {
-      sources.insert(n);
-    }
-  }
-  return sources;
+  return filter(get_nodes(g), 
+	                 [&](Node const &n) { return get_incoming_edges(g, n).size() == 0; });
+
 }
 
 optional<bool> is_acyclic(DiGraphView const &g) {
@@ -380,12 +370,11 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   return result;
 }
 
-std::vector<Node> get_neighbors(DiGraphView const &g, Node const &n) {
-  return as_vector(
-      set_union(transform(get_outgoing_edges(g, n),
+std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
+  return set_union(transform(get_outgoing_edges(g, n),
                           [](DirectedEdge const &n) { return n.dst; }),
                 transform(get_incoming_edges(g, n),
-                          [](DirectedEdge const &n) { return n.src; })));
+                          [](DirectedEdge const &n) { return n.src; }));
 }
 
 std::vector<MultiDiEdge>
@@ -606,8 +595,8 @@ std::vector<std::unordered_set<Node>>
       component.insert(current);
       visited.insert(current);
 
-      std::vector<Node> neighbors = get_neighbors(
-          g, current); // Replace with your own function to get neighbors
+      std::unordered_set<Node> neighbors = get_neighbors(
+          g, current);
 
       for (Node const &neighbor : neighbors) {
         stack.push(neighbor);
