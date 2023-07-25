@@ -66,6 +66,10 @@ std::unordered_set<Node>
   return this->ptr->query_nodes(q);
 }
 
+// UndirectedGraphView unsafe_create(IUndirectedGraphView const & g) {
+
+// }
+
 UndirectedGraphView::operator GraphView const &() const {
   return GraphView::unsafe_create(*this->ptr.get());//Note(lambda):may have some problem
 }
