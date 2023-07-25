@@ -34,16 +34,13 @@ TEST_CASE("MultiDiGraph") {
         std::unordered_set<MultiDiEdge>{e0, e2, e3});
   CHECK(get_incoming_edges(g, {n1}) == std::unordered_set<MultiDiEdge>{});
   CHECK(get_outgoing_edges(g, {n2, n3}) == std::unordered_set<MultiDiEdge>{e3});
-  auto res = get_predecessors(g, {n1, n2, n3});
-  auto expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
+  std::unordered_map<Node, std::unordered_set<Node>> res = get_predecessors(g, {n1, n2, n3});
+  std::unordered_map<Node, std::unordered_set<Node>> expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
       {n1, {}},
       {n2, {n1}},
       {n3, {n0, n1, n2}},
   };
-
-  for (auto kv : res) {
-    CHECK(expected_result[kv.first] == kv.second);
-  }
+  CHECK(res == expected_result);
 }
 
 TEST_CASE("DiGraph") {
@@ -75,7 +72,7 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_imm_dominators") {
-    auto result = get_imm_dominators(g);
+    std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
 
     CHECK(result.size() == 4);
     CHECK(result[n0] == nullopt);
@@ -86,7 +83,7 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_dominators") {
-    auto result = get_dominators(g);
+    std::unordered_map<Node, std::unordered_set<Node>> result = get_dominators(g);
 
     CHECK(result.size() == 4);
     CHECK(result[n0] == std::unordered_set<Node>{n0});
@@ -96,14 +93,13 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_neighbors") {
-    auto result = get_neighbors(g, n0);
+    std::unordered_set<Node> result = get_neighbors(g, n0);
     auto expected = std::unordered_set<Node>{n3, n1, n2};
     CHECK(result == expected);
-    ;
   }
 
   SUBCASE("get_sinks") {
-    auto result = get_sinks(g);
+    std::unordered_set<Node> result = get_sinks(g);
     auto expected = std::unordered_set<Node>{n2, n3};
     CHECK(result == expected);
   }
@@ -117,7 +113,7 @@ TEST_CASE("DiGraph") {
 
   SUBCASE("get_predecessors") {
     std::unordered_set<Node> nodes{n1, n2};
-    auto result = get_predecessors(g, nodes);
+    std::unordered_map<Node, std::unordered_set<Node>> result = get_predecessors(g, nodes);
     CHECK(result.size() == 2);
 
     auto n1_predecessors = result[n1];

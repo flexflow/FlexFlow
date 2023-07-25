@@ -49,7 +49,7 @@ std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
   OpenMultiDiEdgeQuery q{input_edge_query, query, output_edge_query};
 
   std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);
-  
+
   return transform(
     filter(edges, [](const OpenMultiDiEdge &edge){
     return holds_alternative<MultiDiEdge>(edge); }), 
@@ -107,7 +107,7 @@ std::unordered_set<MultiDiEdge>
 
 std::unordered_set<Node>
     MultiDiSubgraphView::query_nodes(NodeQuery const &query) const {
-  return this->g.query_nodes(query);
+  return this->g.query_nodes(query_intersection(query, {this->subgraph_nodes}));
 }
 
 UndirectedGraphView
