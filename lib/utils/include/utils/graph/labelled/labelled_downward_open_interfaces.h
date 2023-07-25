@@ -14,6 +14,10 @@ struct ILabelledDownwardOpenMultiDiGraphView
       public IDownwardOpenMultiDiGraphView {
   virtual ~ILabelledDownwardOpenMultiDiGraphView() = default;
 
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const final {
+    return this->query_edges(static_cast<DownwardOpenMultiDiEdgeQuery>(q));
+  }
+
   using ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>::at;
   virtual OutputLabel const &at(OutputMultiDiEdge const &) const = 0;
 };

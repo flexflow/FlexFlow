@@ -206,10 +206,10 @@ std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
 }
 
 template <typename C>
-std::vector<typename C::key_type> keys(C const &c) {
-  std::vector<typename C::key_type> result;
+std::unordered_set<typename C::key_type> keys(C const &c) {
+  std::unordered_set<typename C::key_type> result;
   for (auto const &kv : c) {
-    result.push_back(kv.first);
+    result.insert(kv.first);
   }
   return result;
 }

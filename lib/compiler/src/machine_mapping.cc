@@ -1,6 +1,8 @@
 #include "compiler/machine_mapping.h"
+#include "compiler/cost_estimate.h"
 #include "graph_utils.h"
 #include "pcg/parallel_computation_graph.h"
+#include "utils/exception.h"
 #include "utils/graph/serialparallel.h"
 
 namespace FlexFlow {
@@ -83,13 +85,15 @@ std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
 
 float estimate_cost(
     SubParallelComputationGraph const &g,
-    ICostEstimator const &estimator,
-    std::unordered_map<Node, MachineView> const &device_mapping) {}
+    CostEstimator const &estimator,
+    std::unordered_map<Node, MachineView> const &device_mapping) {
+  NOT_IMPLEMENTED();
+}
 
 struct OptimalCost {
   OptimalCost(
       SubParallelComputationGraph const &g,
-      ICostEstimator const &cost_estimator,
+      CostEstimator const &cost_estimator,
       MachineSpecification const &resource,
       optional<MachineView> const &source_machine_view, // assume perfect SP
       optional<MachineView> const &sink_machine_view,
@@ -102,6 +106,16 @@ struct OptimalCost {
         sink_machine_view(sink_machine_view),
         allowed_machine_views(allowed_machine_views),
         cached_subgraph_costs(cached_subgraph_costs) {}
+
+  SubParallelComputationGraph const &g;
+  CostEstimator const &cost_estimator;
+  MachineSpecification const &resource;
+  optional<MachineView> const &source_machine_view;
+  optional<MachineView> const &sink_machine_view;
+  std::function<std::unordered_set<MachineView>(
+      PCGOperatorAttrs const &, MachineSpecification const &)> const
+      &allowed_machine_views;
+  std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs;
 
   // TODO: move them out of the functor
   template <typename T>
@@ -270,16 +284,6 @@ struct OptimalCost {
       return optimal_result;
     }
   }
-
-  SubParallelComputationGraph const &g;
-  ICostEstimator const &cost_estimator;
-  MachineSpecification const &resource;
-  optional<MachineView> const &source_machine_view;
-  optional<MachineView> const &sink_machine_view;
-  std::function<std::unordered_set<MachineView>(
-      Operator const &, MachineSpecification const &)> const
-      &allowed_machine_views;
-  std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs;
 };
 
 MachineMapping optimal_cost(
@@ -287,7 +291,7 @@ MachineMapping optimal_cost(
     std::function<std::unordered_set<MachineView>(
         Operator const &, MachineSpecification const &)> const
         &allowed_machine_views,
-    ICostEstimator const &cost_estimator,
+    CostEstimator const &cost_estimator,
     MachineSpecification const &resources,
     std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs) {
   return visit(OptimalCost(pcg_to_subpcg(g),

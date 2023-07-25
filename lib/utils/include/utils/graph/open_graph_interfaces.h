@@ -2,6 +2,9 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_OPEN_GRAPH_INTERFACES_H
 
 #include "multidigraph.h"
+#include "utils/exception.h"
+#include "utils/graph/multidiedge.h"
+#include "utils/graph/multidigraph_interfaces.h"
 #include "utils/strong_typedef.h"
 #include "utils/visitable.h"
 
@@ -55,6 +58,24 @@ struct InputMultiDiEdgeQuery {
 FF_VISITABLE_STRUCT(InputMultiDiEdgeQuery, dsts, dstIdxs);
 
 struct OpenMultiDiEdgeQuery {
+  OpenMultiDiEdgeQuery() = delete;
+  OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &input_edge_query,
+                       MultiDiEdgeQuery const &standard_edge_query,
+                       OutputMultiDiEdgeQuery const &output_edge_query)
+      : input_edge_query(input_edge_query),
+        standard_edge_query(standard_edge_query),
+        output_edge_query(output_edge_query) {}
+
+  OpenMultiDiEdgeQuery(MultiDiEdgeQuery const &q)
+      : OpenMultiDiEdgeQuery(
+            InputMultiDiEdgeQuery::none(), q, OutputMultiDiEdgeQuery::none()) {}
+  OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &q)
+      : OpenMultiDiEdgeQuery(
+            q, MultiDiEdgeQuery::none(), OutputMultiDiEdgeQuery::none()) {}
+  OpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &q)
+      : OpenMultiDiEdgeQuery(
+            InputMultiDiEdgeQuery::none(), MultiDiEdgeQuery::none(), q) {}
+
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
   OutputMultiDiEdgeQuery output_edge_query;
@@ -65,20 +86,42 @@ FF_VISITABLE_STRUCT(OpenMultiDiEdgeQuery,
                     output_edge_query);
 
 struct DownwardOpenMultiDiEdgeQuery {
+  DownwardOpenMultiDiEdgeQuery() = delete;
+  DownwardOpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &output_edge_query,
+                               MultiDiEdgeQuery const &standard_edge_query) 
+    : output_edge_query(output_edge_query), standard_edge_query(standard_edge_query) { }
+  DownwardOpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &output_edge_query) 
+    : DownwardOpenMultiDiEdgeQuery(output_edge_query, MultiDiEdgeQuery::none()) { }
+  DownwardOpenMultiDiEdgeQuery(MultiDiEdgeQuery const &standard_edge_query) 
+    : DownwardOpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery::all(), standard_edge_query) { };
+
+  operator OpenMultiDiEdgeQuery() const {
+    NOT_IMPLEMENTED();
+  }
+
   OutputMultiDiEdgeQuery output_edge_query;
   MultiDiEdgeQuery standard_edge_query;
 };
-FF_VISITABLE_STRUCT(DownwardOpenMultiDiEdgeQuery,
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(DownwardOpenMultiDiEdgeQuery,
                     output_edge_query,
                     standard_edge_query);
 
 struct UpwardOpenMultiDiEdgeQuery {
+  UpwardOpenMultiDiEdgeQuery() = delete;
+  UpwardOpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &,
+                             MultiDiEdgeQuery const &);
+  UpwardOpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &);
+  UpwardOpenMultiDiEdgeQuery(MultiDiEdgeQuery const &);
+  operator OpenMultiDiEdgeQuery() const {
+    NOT_IMPLEMENTED();
+  }
+
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
 };
-FF_VISITABLE_STRUCT(UpwardOpenMultiDiEdgeQuery,
-                    input_edge_query,
-                    standard_edge_query);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(UpwardOpenMultiDiEdgeQuery,
+                                             input_edge_query,
+                                             standard_edge_query);
 
 struct IOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<OpenMultiDiEdge>
@@ -86,15 +129,27 @@ struct IOpenMultiDiGraphView : public IGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOpenMultiDiGraphView);
 
-struct IDownwardOpenMultiDiGraphView : public IGraphView {
+struct IDownwardOpenMultiDiGraphView : public IOpenMultiDiGraphView {
   virtual std::unordered_set<DownwardOpenMultiDiEdge>
       query_edges(DownwardOpenMultiDiEdgeQuery const &) const = 0;
+
+  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &q) const final {
+    return widen<OpenMultiDiEdge>(
+      this->query_edges(DownwardOpenMultiDiEdgeQuery{ q.output_edge_query, q.standard_edge_query })
+    );
+  }
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDownwardOpenMultiDiGraphView);
 
-struct IUpwardOpenMultiDiGraphView : public IGraphView {
+struct IUpwardOpenMultiDiGraphView : public IOpenMultiDiGraphView {
   virtual std::unordered_set<UpwardOpenMultiDiEdge>
       query_edges(UpwardOpenMultiDiEdgeQuery const &) const = 0;
+
+  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &q) const final {
+    return widen<OpenMultiDiEdge>(
+      this->query_edges(UpwardOpenMultiDiEdgeQuery{ q.input_edge_query, q.standard_edge_query })
+    );
+  }
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUpwardOpenMultiDiGraphView);
 

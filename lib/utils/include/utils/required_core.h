@@ -2,7 +2,6 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 
 #include "type_traits_core.h"
-#include <type_traits>
 #include <vector>
 
 namespace FlexFlow {
