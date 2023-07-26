@@ -35,34 +35,19 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
   if (m->beam_search) {
     // set all parents id zero in arg top1 case.
     checkCUDA(cudaMemset(parent, 0, batch_size * sizeof(int)));
-    checkCUDNN(
-        cudnnReduceTensor(m->handle.dnn,
-                          m->reduceMaxDesc,
-                          indices_ptr /*indices*/,
-                          batch_size * sizeof(int) /*indicesSizeInBytes*/,
-                          m->handle.workSpace,
-                          m->handle.workSpaceSize,
-                          &alpha,
-                          m->inputTensor,
-                          input_ptr,
-                          &beta,
-                          m->outputTensor,
-                          prob_ptr));
-  } else {
-    checkCUDNN(
-        cudnnReduceTensor(m->handle.dnn,
-                          m->reduceMaxDesc,
-                          indices_ptr /*indices*/,
-                          batch_size * sizeof(int) /*indicesSizeInBytes*/,
-                          m->handle.workSpace,
-                          m->handle.workSpaceSize,
-                          &alpha,
-                          m->inputTensor,
-                          input_ptr,
-                          &beta,
-                          m->outputTensor,
-                          prob_ptr));
   }
+  checkCUDNN(cudnnReduceTensor(m->handle.dnn,
+                               m->reduceMaxDesc,
+                               indices_ptr /*indices*/,
+                               batch_size * sizeof(int) /*indicesSizeInBytes*/,
+                               m->handle.workSpace,
+                               m->handle.workSpaceSize,
+                               &alpha,
+                               m->inputTensor,
+                               input_ptr,
+                               &beta,
+                               m->outputTensor,
+                               prob_ptr));
 }
 
 /*static*/
