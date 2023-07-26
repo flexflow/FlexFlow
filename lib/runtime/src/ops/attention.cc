@@ -230,7 +230,10 @@ static void forward_task(Task const *task,
                          Context ctx,
                          Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
+}
 
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
   auto value = acc.get_tensor<Permissions::RO>(VALUE);
@@ -239,7 +242,7 @@ static void forward_task(Task const *task,
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  profile(forward_kernel,
+  return profile(forward_kernel,
           profiling_settings,
           "[MultiHeadAttention] forward_time = %.2lfms\n",
           per_device_state,
@@ -255,7 +258,10 @@ static void backward_task(Task const *task,
                           Context ctx,
                           Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
 
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
   auto value = acc.get_tensor<Permissions::RO>(VALUE);
@@ -281,7 +287,7 @@ static void backward_task(Task const *task,
   assert(query_grad.shape == query.shape);
   assert(weight_grad.shape.get_volume() == weight.shape.get_volume());
 
-  profile(backward_kernel,
+  return profile(backward_kernel,
           profiling_settings,
           "[MultiHeadAttention] backward_time = %.2lfms\n",
           per_device_state,

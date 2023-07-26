@@ -31,6 +31,18 @@ static DeviceSpecificArg<MHAPerDeviceState> *init_task(Task const *task,
                                     Runtime *runtime);
 static DeviceSpecificArg<MHAPerDeviceState> *init_task_impl(TaskArgumentAccessor const &acc);
 
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime);
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc);
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime);
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc);
+
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   MultiHeadAttentionAttrs const &attrs,
                                   ParallelTensorShape const &query_shape,
