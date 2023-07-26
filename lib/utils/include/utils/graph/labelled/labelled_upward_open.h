@@ -3,6 +3,7 @@
 
 #include "labelled_open.h"
 #include "labelled_upward_open_interfaces.h"
+#include "utils/test_types.h"
 
 namespace FlexFlow {
 
@@ -13,11 +14,15 @@ private:
       ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>;
 
 public:
+  LabelledUpwardOpenMultiDiGraphView() = delete;
+
   template <typename OutputLabel>
   operator LabelledOpenMultiDiGraphView<NodeLabel,
                                         EdgeLabel,
                                         InputLabel,
-                                        OutputLabel>() const;
+                                        OutputLabel>() const {
+    NOT_IMPLEMENTED();
+  }
 
   InputLabel const &at(InputMultiDiEdge const &e) const {
     return this->ptr->at(e);
@@ -49,10 +54,19 @@ public:
   }
 
 private:
+  LabelledUpwardOpenMultiDiGraphView(
+      std::shared_ptr<Interface const> const &ptr)
+      : ptr(ptr) {}
+
   std::shared_ptr<Interface const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
-    LabelledUpwardOpenMultiDiGraphView<int, int, int>);
+    LabelledUpwardOpenMultiDiGraphView<test_types::cmp,
+                                       test_types::cmp,
+                                       test_types::cmp>);
+CHECK_NOT_ABSTRACT(LabelledUpwardOpenMultiDiGraphView<test_types::cmp,
+                                                      test_types::cmp,
+                                                      test_types::cmp>);
 
 template <typename NodeLabel, typename EdgeLabel, typename InputLabel>
 struct LabelledUpwardOpenMultiDiGraph {
@@ -61,6 +75,8 @@ private:
       ILabelledUpwardOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel>;
 
 public:
+  LabelledUpwardOpenMultiDiGraph() = delete;
+
   template <typename OutputLabel>
   operator LabelledOpenMultiDiGraphView<NodeLabel,
                                         EdgeLabel,
@@ -120,7 +136,7 @@ public:
   static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
                                  LabelledUpwardOpenMultiDiGraph>::type
       create() {
-    return LabelledUpwardOpenMultiDiGraph(make_unique<BaseImpl>());
+    return LabelledUpwardOpenMultiDiGraph{make_unique<BaseImpl>()};
   }
 
 private:

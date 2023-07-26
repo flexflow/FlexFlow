@@ -3,7 +3,6 @@
 
 #include "adjacency_digraph.h"
 #include "digraph.h"
-#include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "open_graphs.h"
 #include "tl/optional.hpp"

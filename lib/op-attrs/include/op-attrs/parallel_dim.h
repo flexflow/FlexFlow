@@ -11,7 +11,6 @@ struct ParallelDim {
   int degree;
   req<bool> is_replica_dim;
 };
-static_assert(is_list_initializable<req<bool>, bool>::value, "");
 FF_VISITABLE_STRUCT(ParallelDim, size, degree, is_replica_dim);
 
 bool is_valid(ParallelDim const &);

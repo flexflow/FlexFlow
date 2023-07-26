@@ -22,6 +22,7 @@ struct MultiDiEdgeQuery {
   MultiDiEdgeQuery with_dst_idxs(query_set<NodePort> const &) const;
 
   static MultiDiEdgeQuery all();
+  static MultiDiEdgeQuery none();
 };
 FF_VISITABLE_STRUCT(MultiDiEdgeQuery, srcs, dsts, srcIdxs, dstIdxs);
 

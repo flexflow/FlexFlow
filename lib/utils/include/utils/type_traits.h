@@ -36,6 +36,12 @@ namespace FlexFlow {
                 #__VA_ARGS__                                                   \
                 " should have a virtual destructor. See " RC_COPY_VIRTUAL_MSG)
 
+#define CHECK_NOT_ABSTRACT(...)                                                \
+  static_assert(                                                               \
+      !std::is_abstract<__VA_ARGS__>::value,                                   \
+      #__VA_ARGS__                                                             \
+      " should not be abstract (are you missing a virtual method override?)");
+
 template <typename T>
 struct is_rc_copy_virtual_compliant
     : conjunction<negation<disjunction<std::is_copy_constructible<T>,

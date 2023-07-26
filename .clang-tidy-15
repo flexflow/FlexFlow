@@ -1,0 +1,3 @@
+Checks: 'bugprone-*,-clang-diagnostic-*,modernize-*,-modernize-use-trailing-return-type'
+WarningsAsErrors: true
+AnalyzeTemporaryDtors: false
