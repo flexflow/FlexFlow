@@ -29,17 +29,15 @@ public:
     return MultiDiGraphView(
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
+
   static MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
 
 private:
-  friend struct MultiDiGraph;
-  friend MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
-MultiDiGraphView unsafe_create(IMultiDiGraphView const &);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
 struct MultiDiGraph {
 public:
@@ -55,13 +53,15 @@ public:
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 
   Node add_node();
+  std::vector<Node> add_nodes(size_t);
   NodePort add_node_port();
+  std::vector<NodePort> add_node_ports(size_t);
   void add_node_unsafe(Node const &);
   void add_node_port_unsafe(NodePort const &);
   void remove_node_unsafe(Node const &);
-
-  void add_edge(Edge const &e);
-  void remove_edge(Edge const &e);
+  void add_edges(std::vector<Edge> const &);
+  void add_edge(Edge const &);
+  void remove_edge(Edge const &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;

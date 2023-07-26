@@ -20,15 +20,14 @@ struct Serial {
   std::vector<variant<Parallel, Node>> children;
 };
 
-// FF_VISITABLE_STRUCT(Serial, children);
-// MAKE_VISIT_HASHABLE(Serial);
-
 struct Parallel {
   std::vector<variant<Serial, Node>> children;
 };
 
-// FF_VISITABLE_STRUCT(Parallel, children);
-// MAKE_VISIT_HASHABLE(Parallel);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Parallel, children);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Serial, children);
+
+// FF_VISITABLE_STRUCT(Serial, children);
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 

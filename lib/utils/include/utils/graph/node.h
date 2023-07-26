@@ -22,7 +22,10 @@ struct Node : public strong_typedef<Node, size_t> {
 };
 FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
+
 std::ostream &operator<<(std::ostream &, Node const &);
+std::ostream &operator<<(std::ostream &os,
+                         std::unordered_set<Node> const &nodes);
 
 struct NodeQuery {
   NodeQuery(query_set<Node> const &nodes) : nodes(nodes) {}
@@ -65,9 +68,8 @@ struct GraphView {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
-
 private:
+  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
   std::shared_ptr<IGraphView const> ptr;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);

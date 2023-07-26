@@ -57,12 +57,9 @@ public:
 
   friend void swap(DiGraphView &, DiGraphView &);
 
-  bool operator==(DiGraphView const &) const;
-  bool operator!=(DiGraphView const &) const;
-
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-
+  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &); // TODO
   IDiGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -74,19 +71,12 @@ public:
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
   static DiGraphView unsafe_create(IDiGraphView const &graphView);
+  
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
-  
-
-private:
-  friend DiGraphView unsafe_create(IDiGraphView const &);
-
-private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
-
-DiGraphView unsafe_create(IDiGraphView const &);
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
@@ -105,7 +95,7 @@ public:
   DiGraph &operator=(DiGraph const &) = default;
 
   operator DiGraphView() const {
-    return DiGraphView(ptr.get());
+    return DiGraphView::unsafe_create(*this->ptr);
   }
 
   friend void swap(DiGraph &, DiGraph &);
@@ -128,9 +118,7 @@ public:
   }
 
 private:
-  DiGraph(std::unique_ptr<IDiGraph>);
-
-private:
+  DiGraph(std::unique_ptr<IDiGraph> ptr);
   cow_ptr_t<IDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);

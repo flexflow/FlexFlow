@@ -1,5 +1,4 @@
 #include "utils/graph/digraph.h"
-#include <regex>
 
 namespace FlexFlow {
 
@@ -12,6 +11,10 @@ void swap(DiGraph &lhs, DiGraph &rhs) {
   using std::swap;
 
   swap(lhs.ptr, rhs.ptr);
+}
+
+bool is_ptr_equal(DiGraphView const &lhs, DiGraphView const &rhs) {
+  return lhs.ptr == rhs.ptr;
 }
 
 Node DiGraph::add_node() {
@@ -42,15 +45,7 @@ std::unordered_set<DirectedEdge>
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
 
 DiGraphView::operator GraphView() const {
-  return GraphView(this->ptr);
-}
-
-bool DiGraphView::operator==(DiGraphView const &other) const {
-  return ptr == other.ptr;
-}
-
-bool DiGraphView::operator!=(DiGraphView const &other) const {
-  return ptr != other.ptr;
+  return GraphView::unsafe_create(*(this->ptr.get()));
 }
 
 std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const &q) const {
@@ -64,11 +59,13 @@ std::unordered_set<DirectedEdge>
 
 /* unsafe_create:
 1 use the graphView to creae the std::shared_ptr<IDiGraphView const> ptr, and
-define a empty lambda function to delete the ptr 2 we use this ptr to create a
-DiGraphView, this DiGraphView is read-only. It creates a DiGraphView object that
-is not responsible for ownership management
+define a empty lambda function to delete the ptr.
+2 we use this ptr to create a DiGraphView, this DiGraphView is read-only.
+It creates a DiGraphView object that is not responsible for ownership
+management. Set the shared_ptr's destructor to a nop so that effectively there
+is no ownership
 */
-DiGraphView unsafe_create(IDiGraphView const &graphView) {
+DiGraphView DiGraphView::unsafe_create(IDiGraphView const &graphView) {
   std::shared_ptr<IDiGraphView const> ptr((&graphView),
                                           [](IDiGraphView const *) {});
   return DiGraphView(ptr);

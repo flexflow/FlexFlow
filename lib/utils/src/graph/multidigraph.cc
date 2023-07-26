@@ -13,9 +13,9 @@ MultiDiOutput get_output(MultiDiEdge const &e) {
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
-  // if (is_matchall(e.srcs)) {
-  //   throw mk_runtime_error("Expected matchall previous value");
-  // }
+  if (!is_matchall(e.srcs)) {
+    throw mk_runtime_error("Expected matchall previous value");
+  }
   e.srcs = nodes;
   return e;
 }
@@ -25,16 +25,12 @@ std::ostream &operator<<(std::ostream &os, MultiDiEdge const &edge) {
             << "," << edge.srcIdx.value() << "," << edge.dstIdx.value() << "}";
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_node(Node const &n) const {
-  return this->with_src_nodes({n});
-}
-
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
-  // if (is_matchall(e.dsts)) {
-  //   throw mk_runtime_error("Expected matchall previous value");
-  // }
+  if (!is_matchall(e.dsts)) {
+    throw mk_runtime_error("Expected matchall previous value");
+  }
   e.dsts = nodes;
   return e;
 }
@@ -62,23 +58,12 @@ MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
   return e;
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_node(Node const &n) const {
-  return this->with_dst_nodes({n});
-}
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(NodePort const &p) const {
-  return this->with_src_idxs({p});
-}
-
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const &p) const {
-  return this->with_dst_idxs({p});
-}
-
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e{*this};
-  // if (is_matchall(e.srcIdxs)) {
-  //   throw mk_runtime_error("Expected matchall previous value");
-  // }
+  if (!is_matchall(e.srcIdxs)) {
+    throw mk_runtime_error("Expected matchall previous value");
+  }
   e.srcIdxs = idxs;
   return e;
 }
@@ -86,9 +71,9 @@ MultiDiEdgeQuery
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e = *this;
-  // if (is_matchall(e.dstIdxs)) {
-  //   throw mk_runtime_error("Expected matchall previous value");
-  // }
+  if (!is_matchall(e.dstIdxs)) {
+    throw mk_runtime_error("Expected matchall previous value");
+  }
   e.dstIdxs = idxs;
   return e;
 }
@@ -110,21 +95,21 @@ std::unordered_set<MultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
-NodePort IMultiDiGraph::add_node_port() {
-  NodePort np{this->next_nodeport_idx};
-  this->next_nodeport_idx += 1;
-  return np;
-}
-
-void IMultiDiGraph::add_node_port_unsafe(NodePort const &np) {
-  this->next_nodeport_idx = std::max(this->next_nodeport_idx, np.value() + 1);
-}
-
 MultiDiGraphView::operator GraphView() const {
-  return GraphView(this->ptr);
+  return GraphView::unsafe_create(*(this->ptr.get()));
 }
 
-MultiDiGraphView unsafe_create(IMultiDiGraphView const &graphView) {
+/* unsafe_create:
+1 use the IMultiDiGraphView graphView to create the
+std::shared_ptr<IMultiDiGraphView const> ptr, and define a empty lambda function
+to delete the ptr.
+2 we use this ptr to create a IMultiDiGraphView, this IMultiDiGraphView is
+read-only. It creates a MultiDiGraphView object that is not responsible for
+ownership management. Set the shared_ptr's destructor to a nop so that
+effectively there is no ownership
+*/
+MultiDiGraphView
+    MultiDiGraphView::unsafe_create(IMultiDiGraphView const &graphView) {
   std::shared_ptr<IMultiDiGraphView const> ptr(
       (&graphView), [](IMultiDiGraphView const *ptr) {});
   return MultiDiGraphView(ptr);
@@ -143,11 +128,27 @@ void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
 }
 
 MultiDiGraph::operator MultiDiGraphView() const {
-  return MultiDiGraphView(this->ptr.get());
+  return MultiDiGraphView::unsafe_create(*this->ptr);
 }
 
 Node MultiDiGraph::add_node() {
   return this->ptr.get_mutable()->add_node();
+}
+
+std::vector<Node> MultiDiGraph::add_nodes(size_t n) {
+  std::vector<Node> nodes;
+  for (size_t i = 0; i < n; i++) {
+    nodes.push_back(add_node());
+  }
+  return nodes;
+}
+
+std::vector<NodePort> MultiDiGraph::add_node_ports(size_t n) {
+  std::vector<NodePort> ports;
+  for (size_t i = 0; i < n; i++) {
+    ports.push_back(add_node_port());
+  }
+  return ports;
 }
 
 NodePort MultiDiGraph::add_node_port() {
@@ -168,6 +169,12 @@ void MultiDiGraph::remove_node_unsafe(Node const &n) {
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
   return this->ptr.get_mutable()->add_edge(e);
+}
+
+void MultiDiGraph::add_edges(std::vector<MultiDiEdge> const &edges) {
+  for (MultiDiEdge const &e : edges) {
+    add_edge(e);
+  }
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {

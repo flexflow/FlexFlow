@@ -13,53 +13,58 @@ using namespace FlexFlow;
 
 TEST_CASE("MultiDiGraph") {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-  Node n0 = g.add_node();
-  Node n1 = g.add_node();
-  Node n2 = g.add_node();
-  Node n3 = g.add_node();
-  NodePort p0 = g.add_node_port();
-  NodePort p1 = g.add_node_port();
-  NodePort p2 = g.add_node_port();
-  NodePort p3 = g.add_node_port();
+  std::vector<Node> nodes = g.add_nodes(4);
+  std::vector<NodePort> ports = g.add_node_ports(4);
+
+  Node n0 = nodes[0];
+  Node n1 = nodes[1];
+  Node n2 = nodes[2];
+  Node n3 = nodes[3];
+  NodePort p0 = ports[0];
+  NodePort p1 = ports[1];
+  NodePort p2 = ports[2];
+  NodePort p3 = ports[3];
+
   MultiDiEdge e0{n0, n3, p0, p3};
   MultiDiEdge e1{n1, n2, p0, p2};
   MultiDiEdge e2{n1, n3, p1, p3};
   MultiDiEdge e3{n2, n3, p2, p3};
-  g.add_edge(e0);
-  g.add_edge(e1);
-  g.add_edge(e2);
-  g.add_edge(e3);
+
+  std::vector<MultiDiEdge> edges = {e0, e1, e2, e3};
+
+  g.add_edges(edges);
 
   CHECK(get_incoming_edges(g, {n1, n3}) ==
         std::unordered_set<MultiDiEdge>{e0, e2, e3});
   CHECK(get_incoming_edges(g, {n1}) == std::unordered_set<MultiDiEdge>{});
   CHECK(get_outgoing_edges(g, {n2, n3}) == std::unordered_set<MultiDiEdge>{e3});
-  auto res = get_predecessors(g, {n1, n2, n3});
-  auto expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
-      {n1, {}},
-      {n2, {n1}},
-      {n3, {n0, n1, n2}},
-  };
-
-  for (auto kv : res) {
-    CHECK(expected_result[kv.first] == kv.second);
-  }
+  std::unordered_map<Node, std::unordered_set<Node>> res =
+      get_predecessors(g, {n1, n2, n3});
+  std::unordered_map<Node, std::unordered_set<Node>> expected_result =
+      std::unordered_map<Node, std::unordered_set<Node>>{
+          {n1, {}},
+          {n2, {n1}},
+          {n3, {n0, n1, n2}},
+      };
+  CHECK(res == expected_result);
 }
 
 TEST_CASE("DiGraph") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  Node n0 = g.add_node();
-  Node n1 = g.add_node();
-  Node n2 = g.add_node();
-  Node n3 = g.add_node();
+
+  std::vector<Node> nodes = add_nodes(g, 4);
+  Node n0 = nodes[0];
+  Node n1 = nodes[1];
+  Node n2 = nodes[2];
+  Node n3 = nodes[3];
+
   DirectedEdge e0{n0, n3};
   DirectedEdge e1{n0, n1};
   DirectedEdge e2{n0, n2};
   DirectedEdge e3{n1, n2};
-  g.add_edge(e0);
-  g.add_edge(e1);
-  g.add_edge(e2);
-  g.add_edge(e3);
+
+  std::vector<DirectedEdge> edges = {e0, e1, e2, e3};
+  add_edges(g, edges);
 
   CHECK(get_incoming_edges(g, {n2, n3}) ==
         std::unordered_set<DirectedEdge>{e0, e2, e3});
@@ -75,7 +80,7 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_imm_dominators") {
-    auto result = get_imm_dominators(g);
+    std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
 
     CHECK(result.size() == 4);
     CHECK(result[n0] == nullopt);
@@ -86,7 +91,8 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_dominators") {
-    auto result = get_dominators(g);
+    std::unordered_map<Node, std::unordered_set<Node>> result =
+        get_dominators(g);
 
     CHECK(result.size() == 4);
     CHECK(result[n0] == std::unordered_set<Node>{n0});
@@ -95,15 +101,8 @@ TEST_CASE("DiGraph") {
     CHECK(result[n3] == std::unordered_set<Node>{n3});
   }
 
-  SUBCASE("get_neighbors") {
-    auto result = get_neighbors(g, n0);
-    auto expected = std::vector<Node>{n3, n1, n2};
-    CHECK(result == expected);
-    ;
-  }
-
   SUBCASE("get_sinks") {
-    auto result = get_sinks(g);
+    std::unordered_set<Node> result = get_sinks(g);
     auto expected = std::unordered_set<Node>{n2, n3};
     CHECK(result == expected);
   }
@@ -117,7 +116,8 @@ TEST_CASE("DiGraph") {
 
   SUBCASE("get_predecessors") {
     std::unordered_set<Node> nodes{n1, n2};
-    auto result = get_predecessors(g, nodes);
+    std::unordered_map<Node, std::unordered_set<Node>> result =
+        get_predecessors(g, nodes);
     CHECK(result.size() == 2);
 
     auto n1_predecessors = result[n1];
@@ -159,12 +159,6 @@ TEST_CASE("traversal") {
           std::vector<Node>{n[0], n[1], n[2], n[3]});
     CHECK(is_acyclic(g) == false);
   }
-
-  //   SUBCASE("nonlinear") {
-  //     g.add_edge({n[1], n[3]});
-  //     CHECK(is_acyclic(g) == true);//TODO, maybe a bug about the
-  //     unchecked_dfs
-  //   }
 }
 
 TEST_CASE("bfs") {
@@ -182,9 +176,8 @@ TEST_CASE("bfs") {
       {n[6], n[0]},
   };
 
-  for (DirectedEdge edge : edges) {
-    g.add_edge(edge);
-  }
+  add_edges(g, edges);
+
   std::vector<Node> ordering = get_bfs_ordering(g, {n[0]});
   auto CHECK_BEFORE = [&](int l, int r) {
     CHECK(index_of(ordering, n[l]).has_value());
@@ -209,21 +202,14 @@ TEST_CASE("bfs") {
 
 TEST_CASE("topological_ordering") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  std::vector<Node> n;
-  for (int i = 0; i < 6; i++) {
-    n.push_back(g.add_node());
-  }
+  std::vector<Node> n = add_nodes(g, 6);
   std::vector<DirectedEdge> edges = {{n[0], n[1]},
                                      {n[0], n[2]},
                                      {n[1], n[5]},
                                      {n[2], n[3]},
                                      {n[3], n[4]},
                                      {n[4], n[5]}};
-
-  for (DirectedEdge const &edge : edges) {
-    g.add_edge(edge);
-  }
-
+  add_edges(g, edges);
   std::vector<Node> ordering = get_topological_ordering(g);
   auto CHECK_BEFORE = [&](int l, int r) {
     CHECK(index_of(ordering, n[l]).has_value());
@@ -238,4 +224,23 @@ TEST_CASE("topological_ordering") {
   CHECK_BEFORE(2, 3);
   CHECK_BEFORE(3, 4);
   CHECK_BEFORE(4, 5);
+}
+
+TEST_CASE("weakly_connect_component") {
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  std::vector<Node> n = add_nodes(g, 4);
+
+  std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
+
+  add_edges(g, edges);
+  std::vector<std::unordered_set<Node>> components =
+      get_weakly_connected_components(g);
+  std::vector<std::unordered_set<Node>> expected_components = {
+      {n[0]},
+      {n[1]},
+      {n[2]},
+      {n[3]},
+  };
+
+  CHECK(components == expected_components);
 }

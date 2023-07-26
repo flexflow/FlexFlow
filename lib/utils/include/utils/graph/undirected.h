@@ -79,13 +79,11 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
+  static UndirectedGraphView unsafe_create(IUndirectedGraphView const &);
+
+private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
       : ptr(ptr) {}
-
-private:
-  friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
-
-private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
@@ -127,9 +125,8 @@ public:
     return UndirectedGraph(make_unique<T>());
   }
 
-  UndirectedGraph(std::unique_ptr<IUndirectedGraph> ptr);
-
 private:
+  UndirectedGraph(std::unique_ptr<IUndirectedGraph> ptr);
   cow_ptr_t<IUndirectedGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraph);

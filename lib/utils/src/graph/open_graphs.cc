@@ -23,11 +23,6 @@ std::unordered_set<OpenMultiDiEdge>
 OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)
     : ptr(other.ptr) {}
 
-OpenMultiDiGraph &OpenMultiDiGraph::operator=(OpenMultiDiGraph other) {
-  swap(*this, other);
-  return *this;
-}
-
 void swap(OpenMultiDiGraph &lhs, OpenMultiDiGraph &rhs) {
   using std::swap;
 
