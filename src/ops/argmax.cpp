@@ -59,7 +59,7 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
   }
 }
 
-ArgMaxMeta::ArgMaxMeta(FFHandler handle,
+ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                        Op const *op,
                        Legion::Domain const &input_domain,
                        Legion::Domain const &output_domain,

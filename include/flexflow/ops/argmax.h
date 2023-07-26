@@ -19,7 +19,7 @@ public:
   miopenTensorDescriptor_t inputTensor, outputTensor;
   miopenReduceTensorDescriptor_t reduceMaxDesc;
 #endif
-  ArgMaxMeta(FFHandler handle,
+  ArgMaxMeta(FFHandler handler,
              Op const *op,
              Legion::Domain const &input_domain,
              Legion::Domain const &output_domain,
