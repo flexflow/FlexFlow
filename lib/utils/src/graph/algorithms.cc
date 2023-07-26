@@ -585,9 +585,7 @@ std::vector<std::unordered_set<Node>>
     std::unordered_set<Node> visited;
 
     std::unordered_set<Node> nodes = get_nodes(g);
-    std::cout<<"nodes size "<<nodes.size()<<"\n";
     for (Node const& node : nodes) {
-      std::cout<<"node "<<node.value()<<"\n";
     if (visited.count(node) > 0) {
       continue;
     }
@@ -616,7 +614,6 @@ std::vector<std::unordered_set<Node>>
 
     components.push_back(std::move(component));
   }
-  std::cout<<"components size "<<components.size()<<"\n";
   return components;
 }
 
