@@ -20,6 +20,9 @@ struct query_set {
   query_set(optional<std::unordered_set<T>> const &) {
     NOT_IMPLEMENTED();
   }
+  query_set(std::initializer_list<T> const &l) 
+    : query_set(std::unordered_set<T>{l})
+  { }
 
   friend bool operator==(query_set const &lhs, query_set const &rhs) {
     return lhs.value == rhs.value;

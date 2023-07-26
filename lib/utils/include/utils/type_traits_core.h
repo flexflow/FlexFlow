@@ -75,11 +75,31 @@ using is_list_initializable = is_list_initializable_impl<T, void, Args...>;
 
 static_assert(is_list_initializable<int, int>::value, "");
 
+template <typename... Args>
+struct pack {};
+
+template <typename T, typename... Args>
+struct pack_contains_type;
+
+template <typename T, typename Head, typename... Rest>
+struct pack_contains_type<T, Head, Rest...>
+    : disjunction<std::is_same<T, Head>, pack_contains_type<T, Rest...>> {};
+
+template <typename T, typename... Args>
+struct pack_contains_type<T, pack<Args...>> : pack_contains_type<T, Args...> {};
+
+template <typename T>
+struct pack_contains_type<T> : std::false_type {};
+
+static_assert(pack_contains_type<int, float, double, int, char>::value, "");
+static_assert(!pack_contains_type<int, float, double, char>::value, "");
+
 static_assert(
     std::is_same<
         conditional_t<false, infinite_recursion<0>, type_identity<bool>>::type,
         bool>::value,
     "");
+
 /* static_assert(std::is_same<typename if_then_else<true, int, bool>::type,
  * bool>::value, ""); */
 

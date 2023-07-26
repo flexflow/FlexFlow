@@ -1,5 +1,7 @@
 #include "utils/graph/algorithms.h"
 #include "utils/containers.h"
+#include "utils/exception.h"
+#include "utils/graph/digraph.h"
 #include "utils/graph/traversal.h"
 #include "utils/graph/views.h"
 #include <algorithm>
@@ -102,6 +104,21 @@ void add_edges(UndirectedGraph &g, std::vector<UndirectedEdge> const &edges) {
   for (UndirectedEdge const &e : edges) {
     g.add_edge(e);
   }
+}
+
+bool contains_edge(MultiDiGraphView const &g, MultiDiEdge const &e) {
+  return contains(g.query_edges({e.src, e.dst, e.srcIdx, e.dstIdx}), e);
+}
+
+bool contains_edge(DiGraphView const &g, DirectedEdge const &e) {
+  return contains(g.query_edges({e.src, e.dst}), e);
+}
+
+bool contains_edge(UndirectedGraphView const &g, UndirectedEdge const &e) {
+  UndirectedEdgeQuery q = {
+    {e.bigger, e.smaller}
+  };
+  return contains(g.query_edges(q), e);
 }
 
 void remove_edges(MultiDiGraph &g,
@@ -452,6 +469,16 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
   return {
       output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx};
 }
+
+std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g,
+                                        GraphSplit const &s) {
+  return keys(get_edge_splits(g, s));
+}
+
+Node get_src_node(MultiDiEdge const &) { NOT_IMPLEMENTED(); }
+Node get_dst_node(MultiDiEdge const &) { NOT_IMPLEMENTED(); }
+Node get_src_node(InputMultiDiEdge const &) { NOT_IMPLEMENTED(); }
+Node get_dst_node(OutputMultiDiEdge const &) { NOT_IMPLEMENTED(); }
 
 UndirectedGraphView get_subgraph(UndirectedGraphView const &g,
                                  std::unordered_set<Node> const &nodes) {

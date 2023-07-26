@@ -23,6 +23,28 @@ using namespace ::mpark;
 /* template <typename T> */
 /* using holds_alternative = ::mpark::holds_alternative<T>; */
 
+template <typename Pack, typename... Args>
+struct pack_contains_all_of;
+
+template <typename HeadNeedle, typename... NeedleRest, typename... Haystack>
+struct pack_contains_all_of<pack<Haystack...>, HeadNeedle, NeedleRest...>
+    : conjunction<pack_contains_type<pack<Haystack...>, HeadNeedle>,
+                  pack_contains_all_of<pack<Haystack...>, NeedleRest...>> {};
+
+template <typename... Haystack>
+struct pack_contains_all_of<pack<Haystack...>> : std::false_type {};
+
+template <typename... Needles, typename... Haystack>
+struct pack_contains_all_of<variant<Haystack...>, Needles...>
+    : pack_contains_all_of<pack<Haystack...>, Needles...> {};
+
+template <typename T, typename... TRest, typename... Args>
+bool is(variant<Args...> const &v) {
+  static_assert(pack_contains_all_of<pack<Args...>, T, TRest...>::value, "");
+
+  return holds_alternative<T>(v) || is<TRest...>(v);
+}
+
 /* template <typename T> */
 /* using visit = mpark::visit<T>; */
 
@@ -149,10 +171,41 @@ VariantOut widen(VariantIn const &v) {
 
 template <
     typename VariantOut,
+    typename Container,
+    typename VariantIn = typename Container::value_type,
+    typename = std::enable_if<is_subeq_variant<VariantIn, VariantOut>::value>>
+auto widen(Container const &c) 
+  -> decltype(transform(c, std::declval<std::function<VariantOut(VariantIn const &)>>()))
+{
+  return transform(c, [](VariantIn const &i) { return widen<VariantOut>(i); });
+}
+
+template <
+    typename VariantOut,
     typename VariantIn,
     typename = std::enable_if<is_subeq_variant<VariantOut, VariantIn>::value>>
 optional<VariantOut> narrow(VariantIn const &v) {
   return visit(VariantNarrowFunctor<VariantOut>{}, v);
+}
+
+template <
+    typename VariantOut,
+    typename Container,
+    typename VariantIn = typename Container::value_type,
+    typename = std::enable_if<is_subeq_variant<VariantIn, VariantOut>::value>>
+auto narrow(Container const &c) 
+  -> decltype(transform(c, std::declval<std::function<optional<VariantOut>(VariantIn const &)>>()))
+{
+  return transform(c, [](VariantIn const &i) { return narrow<VariantOut>(i); });
+}
+
+
+template <typename... VariantOut,
+          typename VariantIn,
+          typename = std::enable_if<
+              is_subeq_variant<variant<VariantOut...>, VariantIn>::value>>
+optional<variant<VariantOut...>> narrow(VariantIn const &v) {
+  return visit(VariantNarrowFunctor<variant<VariantOut...>>{}, v);
 }
 
 template <typename VariantOut, typename VariantIn>

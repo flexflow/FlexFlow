@@ -312,7 +312,7 @@ struct Arbitrary<
   static_assert(is_visitable<TYPENAME>::value,                                 \
                 #TYPENAME " is not visitable (this should never "              \
                           "happen--contact the FF developers)");               \
-  static_assert(sizeof(visit_as_tuple_t<TYPENAME>) == sizeof(TYPENAME),        \
+  static_assert(sizeof(visit_as_tuple_raw_t<TYPENAME>) == sizeof(TYPENAME),    \
                 #TYPENAME " should be fully visitable");                       \
   CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME);
 

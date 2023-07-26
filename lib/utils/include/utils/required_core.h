@@ -7,14 +7,14 @@
 namespace FlexFlow {
 
 template <typename T>
-struct required {
+struct required_wrapper_impl {
 public:
-  required() = delete;
-  required(T const &t) : m_value(t) {}
-  required(T &&t) : m_value(t) {}
+  required_wrapper_impl() = delete;
+  required_wrapper_impl(T const &t) : m_value(t) {}
+  required_wrapper_impl(T &&t) : m_value(t) {}
 
   template <typename TT>
-  required(
+  required_wrapper_impl(
       TT const &tt,
       typename std::enable_if<std::is_convertible<TT, T>::value>::type * = 0)
       : m_value(static_cast<T>(tt)) {}
@@ -54,15 +54,48 @@ public:
   /* } */
 
   /* bool operator>(T const &other) const { */
-  /*   return this-> */
+  /*   return this->m_value > other; */
   /* } */
-
-  T const &value() const {
-    return this->m_value;
-  }
 
 private:
   T m_value;
+};
+
+template <typename T>
+struct required_inheritance_impl : public T {
+  static_assert(std::is_class<T>::value, "");
+
+  using T::T;
+  required_inheritance_impl() = delete;
+  required_inheritance_impl(T const &);
+  required_inheritance_impl(T &&t);
+
+  template <typename TT>
+  required_inheritance_impl(
+      TT const &tt,
+      typename std::enable_if<std::is_convertible<TT, T>::value>::type * = 0)
+      : required_inheritance_impl(static_cast<T>(tt)) {}
+
+  operator T() const;
+
+  template <typename TTT,
+            typename std::enable_if<(is_static_castable<T, TTT>::value &&
+                                     !std::is_same<T, TTT>::value),
+                                    bool>::type = true>
+  explicit operator TTT() const {
+    return static_cast<TTT>(static_cast<T>(*this));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct required : public required_wrapper_impl<T> {
+  using required_wrapper_impl<T>::required_wrapper_impl;
+};
+
+template <typename T>
+struct required<T, typename std::enable_if<std::is_class<T>::value>::type>
+    : public required_inheritance_impl<T> {
+  using required_inheritance_impl<T>::required_inheritance_impl;
 };
 
 template <typename T>
@@ -86,6 +119,12 @@ static_assert(is_static_castable<req<void *>, int *>::value, "");
 static_assert(
     std::is_same<
         void_t<decltype(std::declval<req<int>>() == std::declval<int>())>,
+        void>::value,
+    "");
+static_assert(is_list_initializable<req<bool>, bool>::value, "");
+static_assert(
+    std::is_same<
+        void_t<decltype(std::declval<req<int>>() + std::declval<int>())>,
         void>::value,
     "");
 

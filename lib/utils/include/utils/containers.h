@@ -4,6 +4,7 @@
 #include "bidict.h"
 #include "invoke.h"
 #include "optional.h"
+#include "required_core.h"
 #include "type_traits_core.h"
 #include <algorithm>
 #include <cassert>
@@ -205,10 +206,10 @@ std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
 }
 
 template <typename C>
-std::vector<typename C::key_type> keys(C const &c) {
-  std::vector<typename C::key_type> result;
+std::unordered_set<typename C::key_type> keys(C const &c) {
+  std::unordered_set<typename C::key_type> result;
   for (auto const &kv : c) {
-    result.push_back(kv.first);
+    result.insert(kv.first);
   }
   return result;
 }
@@ -446,6 +447,12 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
   return result;
+}
+
+template <typename F, typename C>
+auto transform(req<C> const &c, F const &f)
+    -> decltype(transform(std::declval<C>(), std::declval<F>())) {
+  return transform(static_cast<C>(c), f);
 }
 
 template <typename F,

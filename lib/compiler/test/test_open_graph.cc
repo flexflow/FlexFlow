@@ -80,13 +80,10 @@ TEST_CASE("get_source_sink_open_graph:complex") {
 }
 
 TEST_CASE("get_cut") {
-  OpenMultiDiGraph g(LabelledOpenMultiDiGraph<int, int>::create<
-                     UnorderedLabelledOpenMultiDiGraph<int, int>>());
+  auto g = LabelledOpenMultiDiGraph<int, int>::create<
+      UnorderedLabelledOpenMultiDiGraph<int, int>>;
 
-  std::vector<Node> ns;
-  for (int i = 0; i < 5; ++i) {
-    ns.push_back(g.add_node());
-  }
+  std::vector<Node> ns = add_nodes(g, 5);
 
   int t0 = 100000;
 

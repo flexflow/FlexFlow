@@ -1,7 +1,8 @@
-#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_UPWARD_OPEN_H
-#define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_UPWARD_OPEN_H
+#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_UPWARD_OPEN_INTERFACES_H
+#define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_UPWARD_OPEN_INTERFACES_H
 
 #include "standard_labelled_interfaces.h"
+#include "utils/graph/multidigraph.h"
 #include "utils/graph/open_graph_interfaces.h"
 
 namespace FlexFlow {
@@ -11,8 +12,15 @@ template <typename NodeLabel,
           typename InputLabel = EdgeLabel>
 struct ILabelledUpwardOpenMultiDiGraphView
     : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>,
-      public IDownwardOpenMultiDiGraphView {
+      public IUpwardOpenMultiDiGraphView {
   virtual ~ILabelledUpwardOpenMultiDiGraphView() = default;
+
+  std::unordered_set<MultiDiEdge>
+      query_edges(MultiDiEdgeQuery const &q) const final {
+    return this->query_edges(static_cast<UpwardOpenMultiDiEdgeQuery>(q));
+  }
+  virtual std::unordered_set<UpwardOpenMultiDiEdge>
+      query_edges(UpwardOpenMultiDiEdgeQuery const &q) const = 0;
 
   using ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>::at;
   virtual InputLabel const &at(InputMultiDiEdge const &) const = 0;

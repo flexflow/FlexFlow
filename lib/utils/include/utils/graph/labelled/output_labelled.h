@@ -47,6 +47,7 @@ public:
   OutputLabelledMultiDiGraph &
       operator=(OutputLabelledMultiDiGraph const &other) = default;
 
+  operator LabelledMultiDiGraphView<NodeLabel, OutputLabel>() const;
   operator MultiDiGraphView() const;
   operator GraphView() const;
 
@@ -98,6 +99,17 @@ private:
 private:
   cow_ptr_t<Interface> ptr;
 };
+
+template <typename NodeLabel,
+          typename T,
+          typename std::enable_if<
+              (std::is_convertible<T, NodeLabelledMultiDiGraphView<NodeLabel>>::
+                   value &&
+               !std::is_same<T, T>::value),
+              bool>::type = true>
+NodeLabel const &at(T const &g, Node const &n) {
+  return g.at(n);
+}
 
 } // namespace FlexFlow
 

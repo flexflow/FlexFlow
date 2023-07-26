@@ -21,63 +21,6 @@ public:
       std::unordered_set<Node> const &);
 };
 
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel>
-struct LabelledUpwardMultiDiSubgraphView {
-public:
-  LabelledUpwardMultiDiSubgraphView() = delete;
-  template <typename OutputLabel>
-  explicit LabelledUpwardMultiDiSubgraphView(
-      ILabelledOpenMultiDiGraphView<NodeLabel,
-                                    EdgeLabel,
-                                    InputLabel,
-                                    OutputLabel> const &,
-      std::unordered_set<Node> const &);
-};
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename OutputLabel = EdgeLabel>
-struct LabelledDownwardMultiDiSubgraphView {
-public:
-  LabelledDownwardMultiDiSubgraphView() = delete;
-  template <typename InputLabel>
-  explicit LabelledDownwardMultiDiSubgraphView(
-      ILabelledOpenMultiDiGraphView<NodeLabel,
-                                    EdgeLabel,
-                                    InputLabel,
-                                    OutputLabel> const &,
-      std::unordered_set<Node> const &);
-};
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-struct LabelledOpenMultiDiSubgraphView
-    : public ILabelledOpenMultiDiGraphView<NodeLabel,
-                                           EdgeLabel,
-                                           InputLabel,
-                                           OutputLabel> {
-public:
-  LabelledOpenMultiDiSubgraphView() = delete;
-  explicit LabelledOpenMultiDiSubgraphView(
-      ILabelledOpenMultiDiGraphView<NodeLabel,
-                                    EdgeLabel,
-                                    InputLabel,
-                                    OutputLabel> const &,
-      std::unordered_set<Node> const &);
-
-  std::unordered_set<OpenMultiDiEdge>
-      query_edges(OpenMultiDiEdgeQuery const &) const override;
-  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-
-  virtual InputLabel const &at(InputMultiDiEdge const &e) const override;
-  virtual OutputLabel const &at(OutputMultiDiEdge const &e) const override;
-  virtual EdgeLabel const &at(MultiDiEdge const &e) const override;
-};
-
 } // namespace FlexFlow
 
 #endif

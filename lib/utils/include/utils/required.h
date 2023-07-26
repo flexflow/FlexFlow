@@ -7,19 +7,19 @@
 
 namespace FlexFlow {
 
-static_assert(is_list_initializable<required<int>, int>::value, "");
+static_assert(is_list_initializable<req<int>, int>::value, "");
 
 }
 
 namespace nlohmann {
 template <typename T>
-struct adl_serializer<::FlexFlow::required<T>> {
-  static ::FlexFlow::required<T> from_json(json const &j) {
+struct adl_serializer<::FlexFlow::req<T>> {
+  static ::FlexFlow::req<T> from_json(json const &j) {
     return {j.template get<T>()};
   }
 
-  static void to_json(json &j, ::FlexFlow::required<T> const &t) {
-    j = t.value();
+  static void to_json(json &j, ::FlexFlow::req<T> const &t) {
+    j = static_cast<T>(t);
   }
 };
 } // namespace nlohmann
@@ -27,9 +27,9 @@ struct adl_serializer<::FlexFlow::required<T>> {
 namespace std {
 
 template <typename T>
-struct hash<::FlexFlow::required<T>> {
-  size_t operator()(::FlexFlow::required<T> const &r) const {
-    return get_std_hash(r.value());
+struct hash<::FlexFlow::req<T>> {
+  size_t operator()(::FlexFlow::req<T> const &r) const {
+    return get_std_hash(static_cast<T>(r));
   }
 };
 
@@ -42,7 +42,7 @@ struct formatter<::FlexFlow::req<T>> : formatter<T> {
   template <typename FormatContext>
   auto format(::FlexFlow::req<T> const &t, FormatContext &ctx)
       -> decltype(ctx.out()) {
-    return formatter<T>::format(t.value(), ctx);
+    return formatter<T>::format(static_cast<T>(t), ctx);
   }
 };
 
