@@ -24,14 +24,14 @@ template <typename DT>
 void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             DT *input_ptr,
                             int *indices_ptr,
-                            float *prob_ptr,
+                            DT *prob_ptr,
                             int *parent,
                             int const length,
                             int const batch_size,
                             cudaStream_t stream) {
 
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f, beta = 0.0f;
+  DT alpha = 1.0f, beta = 0.0f;
   if (m->beam_search) {
     // set all parents id zero in arg top1 case.
     checkCUDA(cudaMemset(parent, 0, batch_size * sizeof(int)));
@@ -72,7 +72,7 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
     ArgMax::forward_kernel<half>(m,
                                  input.get_half_ptr(),
                                  indices.get_int32_ptr(),
-                                 value.get_float_ptr(),
+                                 value.get_half_ptr(),
                                  m->beam_search ? parent.get_int32_ptr()
                                                 : nullptr,
                                  length,
@@ -113,7 +113,10 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceMaxDesc));
-  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(data_type);
+
+  // Float and Half use save type, according to
+  // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnReduceTensor:~:text=not%20coordinate%20tuples.-,The%20data%20types%20of%20the%20tensors,.,-Note%3A
+  cudnnDataType_t cudnn_data_type = CUDNN_DATA_FLOAT;
 
   checkCUDNN(
       cudnnSetReduceTensorDescriptor(reduceMaxDesc,
@@ -123,7 +126,7 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                                      CUDNN_REDUCE_TENSOR_FLATTENED_INDICES,
                                      CUDNN_32BIT_INDICES));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(
-      outputTensor, output_domain, DT_FLOAT));
+      outputTensor, output_domain, data_type));
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain, data_type));
 }

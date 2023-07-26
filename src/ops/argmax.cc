@@ -67,7 +67,7 @@ Tensor FFModel::argmax(const Tensor input, bool beam_search, char const *name) {
         numdims, dims, DT_INT32, li, 0, false /*create_grad*/);
     // logits
     li->outputs[1] = create_tensor_legion_ordering(
-        numdims, dims, DT_FLOAT, li, 1, false /*create_grad*/);
+        numdims, dims, input->data_type, li, 1, false /*create_grad*/);
 
     if (beam_search) {
       // parent id
@@ -132,7 +132,7 @@ ArgMax::ArgMax(FFModel &model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_INT32, this, 0 /*owner_idx*/);
   outputs[1] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this, 1 /*owner_idx*/);
+      numdim, dims, _input->data_type, this, 1 /*owner_idx*/);
   if (_beam_search) {
     outputs[2] = model.create_parallel_tensor_legion_ordering(
         numdim, dims, DT_INT32, this, 2 /*owner_idx*/);
@@ -353,7 +353,7 @@ BeamInferenceResult
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   int batch_size = bc->num_active_tokens();
   GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
-      DT_FLOAT, regions[2], task->regions[1], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[2], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[3], task->regions[1], FID_DATA, ctx, runtime);
   ArgMax::forward_kernel_wrapper(m, input, indices, value, parent);
@@ -381,7 +381,7 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
-      DT_FLOAT, regions[2], task->regions[1], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[2], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent;
   int batch_size = bc->num_active_tokens();
   ArgMax::forward_kernel_wrapper(m, input, indices, value, parent);

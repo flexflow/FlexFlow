@@ -25,7 +25,7 @@ template <typename DT>
 void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             DT *input_ptr,
                             int *indices_ptr,
-                            float *prob_ptr,
+                            DT *prob_ptr,
                             int *parent_ptr,
                             int length,
                             int batch_size,
