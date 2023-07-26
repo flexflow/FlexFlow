@@ -25,10 +25,6 @@ std::ostream &operator<<(std::ostream &os, MultiDiEdge const &edge) {
             << "," << edge.srcIdx.value() << "," << edge.dstIdx.value() << "}";
 }
 
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_node(Node const &n) const {
-  return this->with_src_nodes({n});
-}
-
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
@@ -60,17 +56,6 @@ MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
   e.srcIdxs = srcIdxs_t1;
   e.dstIdxs = dstIdxs_t1;
   return e;
-}
-
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_node(Node const &n) const {
-  return this->with_dst_nodes({n});
-}
-MultiDiEdgeQuery MultiDiEdgeQuery::with_src_idx(NodePort const &p) const {
-  return this->with_src_idxs({p});
-}
-
-MultiDiEdgeQuery MultiDiEdgeQuery::with_dst_idx(NodePort const &p) const {
-  return this->with_dst_idxs({p});
 }
 
 MultiDiEdgeQuery

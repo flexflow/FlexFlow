@@ -165,12 +165,6 @@ TEST_CASE("traversal") {
           std::vector<Node>{n[0], n[1], n[2], n[3]});
     CHECK(is_acyclic(g) == false);
   }
-
-  //   SUBCASE("nonlinear") {
-  //     g.add_edge({n[1], n[3]});
-  //     CHECK(is_acyclic(g) == true);//TODO, maybe a bug about the
-  //     unchecked_dfs
-  //   }
 }
 
 TEST_CASE("bfs") {
