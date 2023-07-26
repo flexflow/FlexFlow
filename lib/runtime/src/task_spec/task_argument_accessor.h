@@ -79,7 +79,7 @@ struct TaskArgumentAccessor {
                        Legion::Runtime *runtime);
 
   PerDeviceFFHandle get_per_device_ffhandle() const {
-    return *((PerDeviceFFHandle const *)this->task->local_args);
+    NOT_IMPLEMENTED();
   }
 
   Allocator get_allocator() const {
