@@ -37,8 +37,8 @@ MultiDiEdgeQuery
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
                                     MultiDiEdgeQuery const &rhs) {
-  assert(lhs != tl::nullopt);
-  assert(rhs != tl::nullopt);
+  assert(lhs != nullopt);
+  assert(rhs != nullopt);
 
   std::unordered_set<Node> srcs_t1 =
       intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
