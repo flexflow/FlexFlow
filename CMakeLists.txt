@@ -137,8 +137,7 @@ if ((FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx") 
     endif()
 
     if (FF_LEGION_NETWORKS STREQUAL "ucx")
-        set(ucx_DIR ${UCX_DIR}/cmake)
-        set(ENV{Legion_NETWORKS} "ucx")
+        set(ucx_ROOT ${UCX_DIR}/cmake)
         message(STATUS "Legion_NETWORKS: $ENV{Legion_NETWORKS}")
     endif()
 else()
@@ -178,13 +177,6 @@ set(FLEXFLOW_INCLUDE_DIRS "")
 set(CC_FLAGS $ENV{CC_FLAGS})
 set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
-
-# Set global FLAGS
-list(APPEND CC_FLAGS
-  -std=c++11)
-
-list(APPEND NVCC_FLAGS
-  -std=c++11)
 
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
