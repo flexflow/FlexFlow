@@ -72,7 +72,7 @@ struct OpTaskSignature {
 
   template <typename T>
   void add_unchecked_arg_slot(slot_id name) {
-    NOT_IMPLEMENTED()
+    NOT_IMPLEMENTED();
   }
 
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots();
