@@ -57,12 +57,12 @@ public:
 
   friend void swap(DiGraphView &, DiGraphView &);
 
-  bool operator==(DiGraphView const &) const;
-  bool operator!=(DiGraphView const &) const;
+  // bool operator==(DiGraphView const &) const;
+  // bool operator!=(DiGraphView const &) const;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-
+  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);//TODO
   IDiGraphView const *unsafe() const {
     return this->ptr.get();
   }

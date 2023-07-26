@@ -13,6 +13,10 @@ void swap(DiGraph &lhs, DiGraph &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
+bool is_ptr_equal(DiGraphView const & lhs, DiGraphView const & rhs) {
+  return lhs.ptr == rhs.ptr;
+}
+
 Node DiGraph::add_node() {
   return this->ptr.get_mutable()->add_node();
 }
@@ -56,14 +60,6 @@ DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
 
 DiGraphView::operator GraphView() const {
   return GraphView::unsafe_create(*(this->ptr.get()));
-}
-
-bool DiGraphView::operator==(DiGraphView const &other) const {
-  return ptr == other.ptr;
-}
-
-bool DiGraphView::operator!=(DiGraphView const &other) const {
-  return ptr != other.ptr;
 }
 
 std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const &q) const {

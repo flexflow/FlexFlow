@@ -45,8 +45,8 @@ struct IMultiDiGraphView : public IGraphView {
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
-  virtual NodePort add_node_port();
-  virtual void add_node_port_unsafe(NodePort const &);
+  virtual NodePort add_node_port()=0;
+  virtual void add_node_port_unsafe(NodePort const &)=0;
   virtual void add_edge(Edge const &) = 0;
   virtual void remove_edge(Edge const &) = 0;
 
@@ -56,7 +56,6 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   }
 
   virtual IMultiDiGraph *clone() const override = 0;
-  std::size_t next_nodeport_idx = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraph);
 

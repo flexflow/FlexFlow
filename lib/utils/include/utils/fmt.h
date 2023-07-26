@@ -14,6 +14,12 @@ template <typename T>
 struct is_fmtable<T, void_t<decltype(fmt::to_string(std::declval<T>()))>>
     : std::true_type {};
 
+// template <typename T>
+// typename std::enable_if<is_fmtable<T>::value, std::ostream &>::type
+// operator<<(std::ostream &s, T const &t) {
+//     return s << fmt::to_string(t);
+// }
+
 } // namespace FlexFlow
 
 #endif

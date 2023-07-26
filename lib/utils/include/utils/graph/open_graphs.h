@@ -49,7 +49,7 @@ public:
   OpenMultiDiGraph() = delete;
   OpenMultiDiGraph(OpenMultiDiGraph const &);
 
-  OpenMultiDiGraph &operator=(OpenMultiDiGraph);
+  // OpenMultiDiGraph &operator=(OpenMultiDiGraph);
 
   friend void swap(OpenMultiDiGraph &, OpenMultiDiGraph &);
 

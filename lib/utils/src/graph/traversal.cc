@@ -145,13 +145,12 @@ bfi bfi::operator++(int) {
 }
 
 bool bfi::operator==(bfi const &other) const {
-  return this->q == other.q && this->seen == other.seen &&
-         this->graph == other.graph;
+  return this->q == other.q && this->seen == other.seen &&  is_ptr_equal(this->graph, other.graph);
 }
 
 bool bfi::operator!=(bfi const &other) const {
   return this->q != other.q ||
-         this->seen != other.seen && this->graph != other.graph;
+         this->seen != other.seen &&   is_ptr_equal(this->graph, other.graph);
 }
 
 CheckedDFSView::CheckedDFSView(DiGraphView const &g,
