@@ -5466,19 +5466,38 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(ARGMAX_INF_TASK_ID, "ArgMax Inference");
+    TaskVariantRegistrar registrar(ARGMAX_BEAM_INF_TASK_ID,
+                                   "ArgMax Beam Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<InferenceResult,
-                                        ArgMax::inference_task>(
-          registrar, "ArgMax Inference Task");
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        ArgMax::inference_task_beam>(
+          registrar, "ArgMax Inference Task Beam");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<InferenceResult, ArgMax::inference_task>(
-          registrar);
+      runtime->register_task_variant<BeamInferenceResult,
+                                     ArgMax::inference_task_beam>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_NORM_INF_TASK_ID,
+                                   "ArgMax Norm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgMax::inference_task_norm>(
+          registrar, "ArgMax Inference Task Norm");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<InferenceResult, ArgMax::inference_task_norm>(
+              registrar);
     }
   }
   // Transpose task

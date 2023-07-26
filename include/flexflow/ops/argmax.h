@@ -10,6 +10,7 @@ namespace FlexFlow {
 
 class ArgMaxMeta : public OpMeta {
 public:
+  bool beam_search;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceMaxDesc;
@@ -28,7 +29,10 @@ class ArgMax : public Op {
 public:
   using Params = ArgMaxParams;
   using Input = ParallelTensor;
-  ArgMax(FFModel &model, const ParallelTensor input, char const *name);
+  ArgMax(FFModel &model,
+         const ParallelTensor input,
+         bool beam_search,
+         char const *name);
   ArgMax(FFModel &model, ArgMax const &other, const ParallelTensor input);
   ArgMax(FFModel &model,
          Params const &params,
@@ -58,11 +62,16 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static BeamInferenceResult
+      inference_task_beam(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
   static InferenceResult
-      inference_task(Legion::Task const *task,
-                     std::vector<Legion::PhysicalRegion> const &regions,
-                     Legion::Context ctx,
-                     Legion::Runtime *runtime);
+      inference_task_norm(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
@@ -78,16 +87,20 @@ public:
   static void forward_kernel(ArgMaxMeta const *m,
                              DT *input_ptr,
                              int *indices_ptr,
+                             float *prob_ptr,
+                             int *parent_ptr,
                              int length,
                              int batch_size,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgMaxMeta const *m,
                                      GenericTensorAccessorW const &input,
                                      GenericTensorAccessorW const &indices,
-                                     int batch_size);
+                                     GenericTensorAccessorW const &value,
+                                     GenericTensorAccessorW const &parent);
   Params get_params() const;
 
 public:
+  bool beam_search;
 };
 
 }; // namespace FlexFlow

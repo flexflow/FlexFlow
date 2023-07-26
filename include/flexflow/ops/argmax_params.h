@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 struct ArgMaxParams {
-  OperatorType op_type;
+  bool beam_search;
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(ArgMaxParams const &, ArgMaxParams const &);
