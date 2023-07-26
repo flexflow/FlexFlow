@@ -231,11 +231,11 @@ static void forward_task(Task const *task,
                          Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
-  auto query = acc.get_tensor<FlexFlow::Permissions::RO>(QUERY);
-  auto key = acc.get_tensor<FlexFlow::Permissions::RO>(KEY);
-  auto value = acc.get_tensor<FlexFlow::Permissions::RO>(VALUE);
-  auto weight = acc.get_tensor<FlexFlow::Permissions::RO>(WEIGHTS);
-  auto output = acc.get_tensor<FlexFlow::Permissions::WO>(OUTPUT);
+  auto query = acc.get_tensor<Permissions::RO>(QUERY);
+  auto key = acc.get_tensor<Permissions::RO>(KEY);
+  auto value = acc.get_tensor<Permissions::RO>(VALUE);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
@@ -256,17 +256,17 @@ static void backward_task(Task const *task,
                           Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
-  auto query = acc.get_tensor<FlexFlow::Permissions::RO>(QUERY);
-  auto key = acc.get_tensor<FlexFlow::Permissions::RO>(KEY);
-  auto value = acc.get_tensor<FlexFlow::Permissions::RO>(VALUE);
-  auto weight = acc.get_tensor<FlexFlow::Permissions::RO>(WEIGHTS);
+  auto query = acc.get_tensor<Permissions::RO>(QUERY);
+  auto key = acc.get_tensor<Permissions::RO>(KEY);
+  auto value = acc.get_tensor<Permissions::RO>(VALUE);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
 
-  auto output_grad = acc.get_tensor_grad<FlexFlow::Permissions::RO>(OUTPUT);
-  auto weight_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(WEIGHTS);
-  auto query_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(QUERY);
-  auto key_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(KEY);
-  auto value_grad = acc.get_tensor_grad<FlexFlow::Permissions::RW>(VALUE);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
+  auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHTS);
+  auto query_grad = acc.get_tensor_grad<Permissions::RW>(QUERY);
+  auto key_grad = acc.get_tensor_grad<Permissions::RW>(KEY);
+  auto value_grad = acc.get_tensor_grad<Permissions::RW>(VALUE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   float *key_grad_ptr =
@@ -340,26 +340,6 @@ void register_task<ATTENTION_BWD_TASK_ID>() {
   bwd.add_input_slot(VALUE);
   bwd.add_input_slot(VALUE);
   bwd.add_weight_slot(WEIGHTS);
-
-  OpTensorSlotSpec key_gradient = OpTensorSlotSpec(
-      KEY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
-  key_gradient.is_grad = FlexFlow::IsGrad::YES;
-  bwd.add_from_slot_spec(key_gradient);
-
-  OpTensorSlotSpec query_gradient = OpTensorSlotSpec(
-      QUERY, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::INPUT);
-  query_gradient.is_grad = FlexFlow::IsGrad::YES;
-  bwd.add_from_slot_spec(query_gradient);
-
-  OpTensorSlotSpec weights_gradient = OpTensorSlotSpec(
-      WEIGHTS, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::WEIGHT);
-  weights_gradient.is_grad = FlexFlow::IsGrad::YES;
-  bwd.add_from_slot_spec(weights_gradient);
-
-  OpTensorSlotSpec output_gradient = OpTensorSlotSpec(
-      OUTPUT, FlexFlow::SlotType::TENSOR, FlexFlow::TensorRole::OUTPUT);
-  output_gradient.is_grad = FlexFlow::IsGrad::YES;
-  bwd.add_from_slot_spec(output_gradient);
 
   register_task(
       ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, backward_task);
