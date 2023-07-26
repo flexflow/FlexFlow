@@ -214,10 +214,12 @@ void OPT::create_opt_model(FFModel &ff,
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
-    Tensor softmax = ff.softmax(lm_head, -1);
-    output = ff.beam_top_k(softmax, opt_config.max_beam_width, false);
+    // Tensor softmax = ff.softmax(lm_head, -1);
+    // output = ff.beam_top_k(softmax, opt_config.max_beam_width, false);
+    output = ff.argmax(lm_head);
   } else {
-    output = ff.arg_top_k(lm_head, /*k=*/1, false);
+    // output = ff.arg_top_k(lm_head, /*k=*/1, false);
+    output = ff.argmax(lm_head);
   }
 
   //------------------- compile the model --------------------------------

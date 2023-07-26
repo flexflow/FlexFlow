@@ -180,6 +180,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Identity";
     case OP_SAMPLING:
       return "Sampling";
+    case OP_ARGMAX:
+      return "ArgMax";
     // Parallel Ops
     case OP_REPARTITION:
       return "Repartition";

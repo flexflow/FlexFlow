@@ -25,6 +25,7 @@
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -2943,6 +2944,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_ARGMAX: {
+      Op *op = ArgMax::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -5441,6 +5447,37 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<InferenceResult, Sampling::inference_task>(
+          registrar);
+    }
+  }
+  // ArgMax task
+  {
+    TaskVariantRegistrar registrar(ARGMAX_INIT_TASK_ID, "ArgMax Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ArgMax::init_task>(
+          registrar, "ArgMax Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ArgMax::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_INF_TASK_ID, "ArgMax Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgMax::inference_task>(
+          registrar, "ArgMax Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, ArgMax::inference_task>(
           registrar);
     }
   }

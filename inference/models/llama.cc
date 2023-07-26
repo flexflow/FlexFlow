@@ -175,8 +175,9 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
-    Tensor softmax = ff.softmax(dense, -1);
-    output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
+    // Tensor softmax = ff.softmax(dense, -1);
+    // output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
+    output = ff.argmax(dense);
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
     if (samplingConfig.do_sample) {
@@ -184,7 +185,8 @@ void LLAMA::create_llama_model(FFModel &ff,
       Tensor softmax = ff.softmax(dense, -1);
       output = ff.sampling(softmax, samplingConfig.topp);
     } else {
-      output = ff.arg_top_k(dense, /*k=*/1, false);
+      // output = ff.arg_top_k(dense, /*k=*/1, false);
+      output = ff.argmax(dense);
     }
   }
 
