@@ -59,7 +59,7 @@ public:
   UndirectedGraphView() = delete;
 
   operator GraphView const &() const;
-  operator GraphView &();
+  operator GraphView &() const;
 
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 

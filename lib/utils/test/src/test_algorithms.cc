@@ -101,12 +101,6 @@ TEST_CASE("DiGraph") {
     CHECK(result[n3] == std::unordered_set<Node>{n3});
   }
 
-  SUBCASE("get_neighbors") {
-    std::unordered_set<Node> result = get_neighbors(g, n0);
-    auto expected = std::unordered_set<Node>{n3, n1, n2};
-    CHECK(result == expected);
-  }
-
   SUBCASE("get_sinks") {
     std::unordered_set<Node> result = get_sinks(g);
     auto expected = std::unordered_set<Node>{n2, n3};
@@ -231,3 +225,25 @@ TEST_CASE("topological_ordering") {
   CHECK_BEFORE(3, 4);
   CHECK_BEFORE(4, 5);
 }
+
+// TEST_CASE("weakly_component") {
+//   std::cout<<"1 weakly_component"<<std::endl;
+
+//   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+//   std::vector<Node> n = add_nodes(g, 4);
+
+//   std::vector<DirectedEdge> edges = {{n[0], n[1]},
+//                                      {n[1], n[2]},
+//                                      {n[2], n[3]},
+//                                      {n[3], n[0]}};
+//   add_edges(g, edges);
+//   std::cout<<"2 weakly_component"<<std::endl;
+//   std::vector<std::unordered_set<Node>> components =
+//       get_weakly_connected_components(g);
+ 
+//  std::vector<std::unordered_set<Node>> expected_components = {
+//       {n[0], n[1], n[2], n[3]},
+//   };
+
+//   CHECK(components[0] == expected_components[0]);
+// }

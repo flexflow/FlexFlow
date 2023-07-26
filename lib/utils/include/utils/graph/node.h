@@ -19,17 +19,11 @@ namespace FlexFlow {
 
 struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
-
-  // std::string to_string(c)
 };
 FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
+
 std::ostream &operator<<(std::ostream &, Node const &);
-// template <typename T>
-// typename std::enable_if<is_fmtable<T>::value, std::ostream &>::type
-// operator<<(std::ostream &s, T const &t) {
-//   ...
-// }
 
 struct NodeQuery {
   NodeQuery(query_set<Node> const &nodes) : nodes(nodes) {}

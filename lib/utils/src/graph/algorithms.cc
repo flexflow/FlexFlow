@@ -363,18 +363,18 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   return result;
 }
 
-std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
-  return set_union(transform(get_outgoing_edges(g, n),
-                             [](DirectedEdge const &n) { return n.dst; }),
-                   transform(get_incoming_edges(g, n),
-                             [](DirectedEdge const &n) { return n.src; }));
-}
-
-std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
+std::unordered_set<Node> get_neighbors(UndirectedGraphView const & g, 
                                        Node const &n) {
-  DiGraphView digraph_view = as_digraph(g);
-  return get_neighbors(digraph_view, n);
-}
+    UndirectedEdgeQuery query{query_set<Node>{n}};
+    std::unordered_set<UndirectedEdge>  edges =  filter(g.query_edges(query), [&](const UndirectedEdge& edge) {
+      return ((edge.smaller == n && edge.bigger != n) || (edge.smaller != n && edge.bigger == n));
+    });
+
+    return map_over_unordered_set<UndirectedEdge, Node>([&](UndirectedEdge const& edge) -> Node {
+  return (edge.smaller == n) ? edge.bigger : edge.smaller;
+}, edges);
+
+  }
 
 std::vector<MultiDiEdge>
     get_edge_topological_ordering(MultiDiGraphView const &g) {
@@ -568,15 +568,28 @@ MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &g) {
 
 std::vector<std::unordered_set<Node>>
     get_weakly_connected_components(DiGraphView const &g) {
-  std::unordered_set<Node> start_pointes = get_sources(g);
-  std::vector<Node> dfs_order = get_dfs_ordering(g, start_pointes);
+  std::cout<<"get_weakly_connected_components\n";
+  UndirectedGraphView undirected = as_undirected(g);
+  return get_connected_components(undirected);
+}
 
-  std::vector<std::unordered_set<Node>> components;
-  std::unordered_set<Node> visited;
+std::vector<std::unordered_set<Node>>
+    get_weakly_connected_components(MultiDiGraphView const & g) {
+      UndirectedGraphView undirected = as_undirected(as_digraph(g));
+      return get_connected_components(undirected);
+    }
 
-  for (Node const &node : dfs_order) {
-    if (contains(visited, node)) {
-      continue; // Skip nodes already in a component
+std::vector<std::unordered_set<Node>>
+    get_connected_components(UndirectedGraphView const & g) {
+    std::vector<std::unordered_set<Node>> components;
+    std::unordered_set<Node> visited;
+
+    std::unordered_set<Node> nodes = get_nodes(g);
+    std::cout<<"nodes size "<<nodes.size()<<"\n";
+    for (Node const& node : nodes) {
+      std::cout<<"node "<<node.value()<<"\n";
+    if (visited.count(node) > 0) {
+      continue;
     }
 
     std::unordered_set<Node> component;
@@ -587,7 +600,7 @@ std::vector<std::unordered_set<Node>>
       Node current = stack.top();
       stack.pop();
 
-      if (contains(visited, current)) {
+      if (visited.count(current) > 0) {
         continue;
       }
 
@@ -596,14 +609,14 @@ std::vector<std::unordered_set<Node>>
 
       std::unordered_set<Node> neighbors = get_neighbors(g, current);
 
-      for (Node const &neighbor : neighbors) {
+      for (const auto& neighbor : neighbors) {
         stack.push(neighbor);
       }
     }
 
     components.push_back(std::move(component));
   }
-
+  std::cout<<"components size "<<components.size()<<"\n";
   return components;
 }
 
