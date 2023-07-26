@@ -31,7 +31,16 @@ void RequestManager::load_tokens_task(
   // BatchConfig const batch_config = *((BatchConfig *)task->args);
   BatchConfig const *batch_config = BatchConfig::from_future(task->futures[0]);
   BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
-  assert(batch_config->num_tokens <= BatchConfig::MAX_NUM_TOKENS);
+
+  // Extreme long prompts are not supported, only load up to MAX_NUM_TOKENS as
+  // prompt
+  if (batch_config->num_tokens > BatchConfig::MAX_NUM_TOKENS) {
+    printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
+           BatchConfig::MAX_NUM_TOKENS);
+    printf("Got: %d tokens\n", batch_config->num_tokens);
+  }
+  // assert(batch_config->num_tokens <= BatchConfig::MAX_NUM_TOKENS);
+
   for (int i = 0; i < batch_config->num_tokens; i++) {
     dram_copy[i] = batch_config->tokensInfo[i].token_id;
   }
@@ -42,11 +51,14 @@ void RequestManager::load_tokens_task(
   assert(batch_config->num_tokens <= domain.get_volume());
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cudaMemcpyAsync(fb_ptr,
-                            dram_copy,
-                            sizeof(TokenId) * batch_config->num_tokens,
-                            cudaMemcpyHostToDevice,
-                            stream));
+  checkCUDA(
+      cudaMemcpyAsync(fb_ptr,
+                      dram_copy,
+                      batch_config->num_tokens <= BatchConfig::MAX_NUM_TOKENS
+                          ? sizeof(TokenId) * batch_config->num_tokens
+                          : sizeof(TokenId) * BatchConfig::MAX_NUM_TOKENS,
+                      cudaMemcpyHostToDevice,
+                      stream));
 }
 
 void RequestManager::load_positions_task(
