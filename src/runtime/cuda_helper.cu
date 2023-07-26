@@ -186,13 +186,6 @@ __global__ void copy_with_stride(float *output,
   }
 }
 
-__global__ void
-    half_2_float_array(half *ptr, float *ptr_f, int num_of_elements) {
-  CUDA_KERNEL_LOOP(i, num_of_elements) {
-    ptr_f[i] = __half2float(ptr[i]);
-  }
-}
-
 __host__ void updateGAS(float *para_ptr,
                         float const *grad_ptr,
                         size_t replica_size,
@@ -307,23 +300,6 @@ __host__ T *download_tensor(T const *ptr, size_t num_elements) {
   checkCUDA(cudaMemcpyAsync(
       host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   return host_ptr;
-}
-
-__host__ bool
-    download_half_2_float_tensor(half *ptr, float *dst, size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  assert(dst != nullptr);
-  float *float_ptr;
-  checkCUDA(cudaMalloc(&float_ptr, sizeof(float) * num_elements));
-  half_2_float_array<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
-      ptr, float_ptr, num_elements);
-  checkCUDA(cudaMemcpyAsync(dst,
-                            float_ptr,
-                            sizeof(float) * num_elements,
-                            cudaMemcpyDeviceToHost,
-                            stream));
-  return true;
 }
 
 template <typename T>

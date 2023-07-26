@@ -11,6 +11,7 @@ namespace FlexFlow {
 class ArgMaxMeta : public OpMeta {
 public:
   bool beam_search;
+  float *probs;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceMaxDesc;

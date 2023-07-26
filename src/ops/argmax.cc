@@ -364,7 +364,7 @@ BeamInferenceResult
   if (m->input_type[0] == DT_FLOAT) {
     download_tensor<float>(value.get_float_ptr(), ir.probs, batch_size);
   } else if (m->input_type[0] == DT_HALF) {
-    download_half_2_float_tensor(value.get_half_ptr(), ir.probs, batch_size);
+    download_tensor(m->probs, ir.probs, batch_size);
   }
 
   download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);

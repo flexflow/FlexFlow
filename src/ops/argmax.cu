@@ -19,6 +19,13 @@
 
 namespace FlexFlow {
 
+__global__ void
+    half_2_float_array(half *ptr, float *ptr_f, int num_of_elements) {
+  CUDA_KERNEL_LOOP(i, num_of_elements) {
+    ptr_f[i] = __half2float(ptr[i]);
+  }
+}
+
 /*static*/
 template <typename DT>
 void ArgMax::forward_kernel(ArgMaxMeta const *m,
@@ -78,6 +85,14 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                  length,
                                  batch_size,
                                  stream);
+    if (m->beam_search) {
+      half_2_float_array<<<GET_BLOCKS(batch_size),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream>>>(
+          value.get_half_ptr(), m->probs, batch_size);
+    }
+
   } else if (input.data_type == DT_FLOAT) {
     ArgMax::forward_kernel<float>(m,
                                   input.get_float_ptr(),
@@ -129,6 +144,8 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
       outputTensor, output_domain, data_type));
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain, data_type));
+
+  checkCUDA(cudaMalloc(&probs, sizeof(float) * BatchConfig::MAX_NUM_TOKENS));
 }
 
 }; // namespace FlexFlow
