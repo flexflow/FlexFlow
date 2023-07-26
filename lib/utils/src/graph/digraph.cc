@@ -13,20 +13,12 @@ void swap(DiGraph &lhs, DiGraph &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-bool is_ptr_equal(DiGraphView const & lhs, DiGraphView const & rhs) {
+bool is_ptr_equal(DiGraphView const &lhs, DiGraphView const &rhs) {
   return lhs.ptr == rhs.ptr;
 }
 
 Node DiGraph::add_node() {
   return this->ptr.get_mutable()->add_node();
-}
-
-std::vector<Node> DiGraph::add_nodes(size_t n) {
-  std::vector<Node> nodes;
-  for (size_t i = 0; i < n; i++) {
-    nodes.push_back(add_node());
-  }
-  return nodes;
 }
 
 void DiGraph::add_node_unsafe(Node const &n) {
@@ -39,12 +31,6 @@ void DiGraph::remove_node_unsafe(Node const &n) {
 
 void DiGraph::add_edge(DirectedEdge const &e) {
   return this->ptr.get_mutable()->add_edge(e);
-}
-
-void DiGraph::add_edges(std::vector<DirectedEdge> const &edges) {
-  for (DirectedEdge const &edge : edges) {
-    add_edge(edge);
-  }
 }
 
 void DiGraph::remove_edge(DirectedEdge const &e) {

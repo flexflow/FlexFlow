@@ -52,7 +52,7 @@ TEST_CASE("MultiDiGraph") {
 TEST_CASE("DiGraph") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
 
-  std::vector<Node> nodes = g.add_nodes(4);
+  std::vector<Node> nodes = add_nodes(g, 4);
   Node n0 = nodes[0];
   Node n1 = nodes[1];
   Node n2 = nodes[2];
@@ -64,7 +64,7 @@ TEST_CASE("DiGraph") {
   DirectedEdge e3{n1, n2};
 
   std::vector<DirectedEdge> edges = {e0, e1, e2, e3};
-  g.add_edges(edges);
+  add_edges(g, edges);
 
   CHECK(get_incoming_edges(g, {n2, n3}) ==
         std::unordered_set<DirectedEdge>{e0, e2, e3});
@@ -188,7 +188,7 @@ TEST_CASE("bfs") {
       {n[6], n[0]},
   };
 
-  g.add_edges(edges);
+  add_edges(g, edges);
 
   std::vector<Node> ordering = get_bfs_ordering(g, {n[0]});
   auto CHECK_BEFORE = [&](int l, int r) {
@@ -214,14 +214,14 @@ TEST_CASE("bfs") {
 
 TEST_CASE("topological_ordering") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  std::vector<Node> n = g.add_nodes(6);
+  std::vector<Node> n = add_nodes(g, 6);
   std::vector<DirectedEdge> edges = {{n[0], n[1]},
                                      {n[0], n[2]},
                                      {n[1], n[5]},
                                      {n[2], n[3]},
                                      {n[3], n[4]},
                                      {n[4], n[5]}};
-  g.add_edges(edges);
+  add_edges(g, edges);
   std::vector<Node> ordering = get_topological_ordering(g);
   auto CHECK_BEFORE = [&](int l, int r) {
     CHECK(index_of(ordering, n[l]).has_value());

@@ -27,7 +27,7 @@ struct Parallel {
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Parallel, children);
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Serial, children);
 
-//FF_VISITABLE_STRUCT(Serial, children);
+// FF_VISITABLE_STRUCT(Serial, children);
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 

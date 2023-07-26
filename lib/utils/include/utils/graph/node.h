@@ -20,7 +20,7 @@ namespace FlexFlow {
 struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
 
-  //std::string to_string(c)
+  // std::string to_string(c)
 };
 FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");

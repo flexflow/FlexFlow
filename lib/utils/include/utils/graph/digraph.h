@@ -62,7 +62,7 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);//TODO
+  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &); // TODO
   IDiGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -105,12 +105,10 @@ public:
   friend void swap(DiGraph &, DiGraph &);
 
   Node add_node();
-  std::vector<Node> add_nodes(size_t);
   void add_node_unsafe(Node const &);
   void remove_node_unsafe(Node const &);
 
   void add_edge(Edge const &);
-  void add_edges(std::vector<Edge> const &);
   void remove_edge(Edge const &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
