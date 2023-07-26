@@ -9,6 +9,11 @@ namespace FlexFlow {
 
 template <typename T>
 struct DeviceSpecificArg {
+
+  DeviceSpecificArg(T *){
+    NOT_IMPLEMENTED();
+  }
+
   T *get(TaskArgumentAccessor const &accessor) const {
     if (accessor.get_device_idx() != this->device_idx) {
       throw mk_runtime_error("Invalid access to DeviceSpecificArg: attempted "
