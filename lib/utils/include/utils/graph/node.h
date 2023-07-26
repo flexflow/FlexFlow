@@ -24,6 +24,8 @@ FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
 
 std::ostream &operator<<(std::ostream &, Node const &);
+std::ostream &operator<<(std::ostream &os,
+                         std::unordered_set<Node> const &nodes);
 
 struct NodeQuery {
   NodeQuery(query_set<Node> const &nodes) : nodes(nodes) {}

@@ -81,8 +81,9 @@ TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
   SUBCASE("remove_edge") {
     g.remove_edge(e1);
 
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes({n0}).with_dst_nodes(
-              {n1})) == std::unordered_set<MultiDiEdge>{});
+    CHECK(g.query_edges(
+              MultiDiEdgeQuery::all().with_src_nodes({n0}).with_dst_nodes(
+                  {n1})) == std::unordered_set<MultiDiEdge>{});
 
     CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n2})) ==
           std::unordered_set<MultiDiEdge>{e2});
