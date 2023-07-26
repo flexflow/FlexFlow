@@ -157,6 +157,8 @@ T *download_tensor(T const *ptr, size_t num_elements);
 template <typename T>
 bool download_tensor(T const *ptr, T *dst, size_t num_elements);
 
+bool download_half_2_float_tensor(half *ptr, float *dst, size_t num_elements);
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain,
                                                  DataType data_type = DT_FLOAT);

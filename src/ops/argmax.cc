@@ -361,7 +361,12 @@ BeamInferenceResult
   BeamInferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
-  download_tensor<float>(value.get_float_ptr(), ir.probs, batch_size);
+  if (m->input_type[0] == DT_FLOAT) {
+    download_tensor<float>(value.get_float_ptr(), ir.probs, batch_size);
+  } else if (m->input_type[0] == DT_HALF) {
+    download_half_2_float_tensor(value.get_half_ptr(), ir.probs, batch_size);
+  }
+
   download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
   return ir;
 }
