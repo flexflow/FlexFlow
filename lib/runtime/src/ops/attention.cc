@@ -18,10 +18,16 @@
 #include "kernels/profiling.h"
 #include "model.h"
 #include "realm_allocator.h"
+#include "legion.h"
 
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::MultiHeadAttention;
+
+using Legion::Task;
+using Legion::Context;
+using Legion::PhysicalRegion;
+using Legion::Runtime;
 
 enum Slots {
   ATTRS,
@@ -410,7 +416,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 //   /* assert(check_output_input_weight_parallel_dims()); */
 // }
 
-static MHAPerDeviceState *init_task(Task const *task,
+static DeviceSpecificArg<MHAPerDeviceState> *init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
@@ -418,7 +424,7 @@ static MHAPerDeviceState *init_task(Task const *task,
   return init_task_impl(acc);
 }
 
-static MHAPerDeviceState *init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecificArg<MHAPerDeviceState> *init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
   int kvSeqLength = acc.get_argument<int>(KVSEQLENGTH);
@@ -471,7 +477,9 @@ static MHAPerDeviceState *init_task_impl(TaskArgumentAccessor const &acc) {
                                                            attrs.add_bias_kv));
 
   assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
-  return m;
+
+  DeviceSpecificArg<MHAPerDeviceState> *n = new DeviceSpecificArg<MHAPerDeviceState>(m);
+  return n;
 }
 
 // void MultiHeadAttention::forward(FFModel const &ff) {
