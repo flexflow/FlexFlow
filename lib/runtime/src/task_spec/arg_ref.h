@@ -49,11 +49,6 @@ private:
   ArgRefSpec(ArgTypeRuntimeTag const &type_tag, LABEL_TYPE ref_type)
       : type_tag(type_tag), ref_type(ref_type) {}
 
-  ArgRefSpec(ArgTypeRuntimeTag const &type_tag,
-             LABEL_TYPE ref_type,
-             size_t device_idx)
-      : type_tag(type_tag), ref_type(ref_type), device_idx(device_idx) {}
-
   ArgTypeRuntimeTag type_tag;
   LABEL_TYPE ref_type;
   optional<size_t> device_idx = nullopt;
