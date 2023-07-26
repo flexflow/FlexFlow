@@ -5,6 +5,7 @@
 #include "invoke.h"
 #include "optional.h"
 #include "required_core.h"
+#include "type_traits_core.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -13,7 +14,6 @@
 #include <numeric>
 #include <sstream>
 #include <string>
-#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -516,19 +516,21 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
-template <typename T, typename F>
-std::vector<T> sorted_by(std::unordered_set<T> const &s, F const &f) {
-  std::vector<T> result(s.begin(), s.end());
-  inplace_sorted_by(s, f);
+template <typename C, typename F, typename Elem = typename C::value_type>
+std::vector<Elem> sorted_by(C const &c, F const &f) {
+  std::vector<Elem> result(c.begin(), c.end());
+  inplace_sorted_by(c, f);
   return result;
 }
 
-template <typename T, typename F>
-void inplace_sorted_by(std::vector<T> &v, F const &f) {
-  auto custom_comparator = [&](T const &lhs, T const &rhs) -> bool {
+template <typename C, typename F, typename Elem = typename C::value_type>
+void inplace_sorted_by(C &c, F const &f) {
+  CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);
+
+  auto custom_comparator = [&](C const &lhs, C const &rhs) -> bool {
     return f(lhs, rhs);
   };
-  std::sort(v.begin(), v.end(), custom_comparator);
+  std::sort(c.begin(), c.end(), custom_comparator);
 }
 
 template <typename C, typename F>
