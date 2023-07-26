@@ -72,19 +72,9 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
 }
 
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
-  OpTaskBinding b;
+  OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  b.bind(QUERY, input_tensor(0));
-  b.bind(KEY, input_tensor(1));
-  b.bind(VALUE, input_tensor(2));
-  b.bind_grad(QUERY, input_tensor(0));
-  b.bind_grad(KEY, input_tensor(1));
-  b.bind_grad(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, weight_tensor(0));
-  b.bind_grad(WEIGHTS, weight_tensor(0));
-  b.bind_grad(OUTPUT, output_tensor(0));
-
-  return {ATTENTION_BWD_TASK_ID, b};
+  return {BATCHMATMUL_BWD_TASK_ID, b};
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
