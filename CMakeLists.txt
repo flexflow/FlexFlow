@@ -38,6 +38,9 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 # option for using Python
 option(FF_USE_PYTHON "Enable Python" ON)
 
+# option for using Python
+option(BUILD_LEGION_ONLY "Build Legion only" OFF)
+
 # option to download pre-compiled NCCL/Legion libraries
 option(FF_USE_PREBUILT_NCCL "Enable use of NCCL pre-compiled library, if available" ON)
 option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if available" ON)
@@ -231,10 +234,13 @@ if(FF_USE_NCCL)
     -DFF_USE_NCCL)
 endif()
 
-# Legion
-if(FF_BUILD_LEGION)
+# Build Legion only, not build FlexFlow
+if(BUILD_LEGION_ONLY)
   include(legion)
 else()
+  # legion
+  include(legion)
+
   # json
   include(json)
 
