@@ -73,9 +73,10 @@ public:
       create(Args &&...args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
-
-  DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
   static DiGraphView unsafe_create(IDiGraphView const &graphView);
+private:
+  DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
+  
 
 private:
   friend DiGraphView unsafe_create(IDiGraphView const &);
