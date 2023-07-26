@@ -147,8 +147,8 @@ static_assert(is_trivially_serializable<InternalTestType>::value, "");
 
 template <typename T, typename Enable = void>
 struct Serialization {
-  void serialize(Legion::Serializer &sez, T const &) const;
-  T deserialize(Legion::Deserializer &dez) const;
+  void serialize(Legion::Serializer &, T const &) const;
+  T deserialize(Legion::Deserializer &) const;
 };
 
 template <typename T>
