@@ -10,7 +10,7 @@ namespace FlexFlow {
 template <typename T>
 struct DeviceSpecificArg {
 
-  DeviceSpecificArg(T *){
+  DeviceSpecificArg(T *) {
     NOT_IMPLEMENTED();
   }
 

@@ -19,10 +19,10 @@ namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::MultiHeadAttention;
 
-using Legion::Task;
 using Legion::Context;
 using Legion::PhysicalRegion;
 using Legion::Runtime;
+using Legion::Task;
 
 enum Slots {
   ATTRS,
@@ -151,15 +151,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-static DeviceSpecificArg<MHAPerDeviceState> *init_task(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+static DeviceSpecificArg<MHAPerDeviceState> *
+    init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return init_task_impl(acc);
 }
 
-static DeviceSpecificArg<MHAPerDeviceState> *init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecificArg<MHAPerDeviceState> *
+    init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
   int kvSeqLength = acc.get_argument<int>(KVSEQLENGTH);
@@ -213,7 +215,8 @@ static DeviceSpecificArg<MHAPerDeviceState> *init_task_impl(TaskArgumentAccessor
 
   assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
 
-  DeviceSpecificArg<MHAPerDeviceState> *n = new DeviceSpecificArg<MHAPerDeviceState>(m);
+  DeviceSpecificArg<MHAPerDeviceState> *n =
+      new DeviceSpecificArg<MHAPerDeviceState>(m);
   return n;
 }
 
@@ -235,14 +238,14 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   return profile(forward_kernel,
-          profiling_settings,
-          "[MultiHeadAttention] forward_time = %.2lfms\n",
-          per_device_state,
-          query.get_float_ptr(),
-          key.get_float_ptr(),
-          value.get_float_ptr(),
-          weight.get_float_ptr(),
-          output.get_float_ptr());
+                 profiling_settings,
+                 "[MultiHeadAttention] forward_time = %.2lfms\n",
+                 per_device_state,
+                 query.get_float_ptr(),
+                 key.get_float_ptr(),
+                 value.get_float_ptr(),
+                 weight.get_float_ptr(),
+                 output.get_float_ptr());
 }
 
 static void backward_task(Task const *task,
@@ -280,18 +283,18 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(weight_grad.shape.get_volume() == weight.shape.get_volume());
 
   return profile(backward_kernel,
-          profiling_settings,
-          "[MultiHeadAttention] backward_time = %.2lfms\n",
-          per_device_state,
-          query.get_float_ptr(),
-          query_grad.get_float_ptr(),
-          key.get_float_ptr(),
-          key_grad_ptr,
-          value.get_float_ptr(),
-          value_grad_ptr,
-          weight.get_float_ptr(),
-          weight_grad.get_float_ptr(),
-          output_grad.get_float_ptr());
+                 profiling_settings,
+                 "[MultiHeadAttention] backward_time = %.2lfms\n",
+                 per_device_state,
+                 query.get_float_ptr(),
+                 query_grad.get_float_ptr(),
+                 key.get_float_ptr(),
+                 key_grad_ptr,
+                 value.get_float_ptr(),
+                 value_grad_ptr,
+                 weight.get_float_ptr(),
+                 weight_grad.get_float_ptr(),
+                 output_grad.get_float_ptr());
 }
 
 template <>

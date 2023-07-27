@@ -82,7 +82,6 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
 
 } // namespace FlexFlow
 
-
 // Tensor FFModel::multihead_attention(const Tensor query,
 //                                     const Tensor key,
 //                                     const Tensor value,
@@ -335,8 +334,6 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
 //   /* assert(check_output_input_weight_parallel_dims()); */
 // }
 
-
-
 // void MultiHeadAttention::forward(FFModel const &ff) {
 //   ArgumentMap argmap;
 //   Context ctx = ff.config.lg_ctx;
@@ -383,8 +380,6 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
 //   launcher.add_field(4, FID_DATA);
 //   runtime->execute_index_space(ctx, launcher);
 // }
-
-
 
 // void MultiHeadAttention::backward(FFModel const &ff) {
 //   ArgumentMap argmap;
