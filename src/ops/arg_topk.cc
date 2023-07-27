@@ -302,7 +302,6 @@ InferenceResult
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
-  // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     // Directly return for empty batch config
