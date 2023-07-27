@@ -225,22 +225,20 @@ if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cudnn)
 endif()
 
-# NCCL
-if(FF_USE_NCCL)
-  include(nccl)
-  list(APPEND FF_CC_FLAGS
-    -DFF_USE_NCCL)
-  list(APPEND FF_NVCC_FLAGS
-    -DFF_USE_NCCL)
-endif()
+# legion
+include(legion)
 
-# Build Legion only, not build FlexFlow
-if(BUILD_LEGION_ONLY)
-  include(legion)
-else()
-  # legion
-  include(legion)
-
+# Not build FlexFlow if BUILD_LEGION_ONLY is ON
+if(NOT BUILD_LEGION_ONLY)
+  # NCCL
+  if(FF_USE_NCCL)
+    include(nccl)
+    list(APPEND FF_CC_FLAGS
+      -DFF_USE_NCCL)
+    list(APPEND FF_NVCC_FLAGS
+      -DFF_USE_NCCL)
+  endif()
+  
   # json
   include(json)
 
