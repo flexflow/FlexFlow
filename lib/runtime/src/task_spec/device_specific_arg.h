@@ -11,8 +11,8 @@ struct DeviceSpecificArg {
 
   DeviceSpecificArg() = delete;
 
-  template <typename ...Args>
-  static DeviceSpecificArg<T> create(size_t device_idx, Args &&... args) {
+  template <typename... Args>
+  static DeviceSpecificArg<T> create(size_t device_idx, Args &&...args) {
     NOT_IMPLEMENTED();
   }
 

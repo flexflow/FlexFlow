@@ -189,22 +189,25 @@ static DeviceSpecificArg<MHAPerDeviceState>
   assert(qoSeqLength == output.shape[legion_dim_t(1)]);
   assert(oProjSize(attrs) == output.shape[legion_dim_t(0)]);
 
- DeviceSpecificArg<MHAPerDeviceState> per_device_state = acc.create_device_specific<MHAPerDeviceState>(init_kernel(handle,
-                                                           allocator,
-                                                           num_samples,
-                                                           num_heads,
-                                                           qSize,
-                                                           kSize,
-                                                           vSize,
-                                                           qProjSize,
-                                                           kProjSize,
-                                                           vProjSize,
-                                                           oProjSize,
-                                                           qoSeqLength,
-                                                           kvSeqLength,
-                                                           attrs.add_bias_kv));
- 
-  assert(weight.shape.get_volume() * sizeof(float) == acc.unwrap(per_device_state)->weightSize);
+  DeviceSpecificArg<MHAPerDeviceState> per_device_state =
+      acc.create_device_specific<MHAPerDeviceState>(
+          init_kernel(handle,
+                      allocator,
+                      num_samples,
+                      num_heads,
+                      qSize,
+                      kSize,
+                      vSize,
+                      qProjSize,
+                      kProjSize,
+                      vProjSize,
+                      oProjSize,
+                      qoSeqLength,
+                      kvSeqLength,
+                      attrs.add_bias_kv));
+
+  assert(weight.shape.get_volume() * sizeof(float) ==
+         acc.unwrap(per_device_state)->weightSize);
   return per_device_state;
 }
 
