@@ -106,11 +106,6 @@ struct TaskArgumentAccessor {
   }
 
   template <typename T>
-  T const &get_device_specific_argument(slot_id slot) const {
-    NOT_IMPLEMENTED();
-  }
-
-  template <typename T>
   optional<T> get_optional_argument(slot_id) const {
     NOT_IMPLEMENTED();
   }

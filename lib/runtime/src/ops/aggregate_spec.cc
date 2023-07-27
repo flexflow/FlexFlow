@@ -387,7 +387,7 @@ static void forward_task(Legion::Task const *task,
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
   auto per_device_state =
-      acc.get_device_specific_argument<AggregateSpecPerDeviceState>(
+      acc.get_argument<AggregateSpecPerDeviceState>(
           PER_DEVICE_STATE);
   auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
