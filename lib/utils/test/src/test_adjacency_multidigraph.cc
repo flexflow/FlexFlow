@@ -7,15 +7,15 @@ using namespace FlexFlow;
 TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
 
-  std::vector<Node> nodes = g.add_nodes(3);
-  std::vector<NodePort> ports = g.add_node_ports(3);
+  std::vector<Node> n = g.add_nodes(3);
+  std::vector<NodePort> p = g.add_node_ports(3);
 
-  Node n0 = nodes[0];
-  Node n1 = nodes[1];
-  Node n2 = nodes[2];
-  NodePort p0 = ports[0];
-  NodePort p1 = ports[1];
-  NodePort p2 = ports[2];
+  Node n0 = n[0];
+  Node n1 = n[1];
+  Node n2 = n[2];
+  NodePort p0 = p[0];
+  NodePort p1 = p[1];
+  NodePort p2 = p[2];
   MultiDiEdge e1{n0, n1, p0, p1};
   MultiDiEdge e2{n0, n2, p0, p2};
   MultiDiEdge e3{n2, n0, p2, p0};
@@ -27,7 +27,7 @@ TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
   CHECK(g.query_nodes(NodeQuery::all()) ==
         std::unordered_set<Node>{n0, n1, n2});
 
-  CHECK(g.query_nodes(NodeQuery(query_set<Node>({n0, n2}))) ==
+  CHECK(g.query_nodes(NodeQuery{query_set<Node>{{n0, n2}}}) ==
         std::unordered_set<Node>{n0, n2});
 
   CHECK(g.query_edges(MultiDiEdgeQuery::all()) ==
