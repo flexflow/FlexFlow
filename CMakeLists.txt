@@ -38,7 +38,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 # option for using Python
 option(FF_USE_PYTHON "Enable Python" ON)
 
-# option for using Python
+# option for building legion only 
 option(BUILD_LEGION_ONLY "Build Legion only" OFF)
 
 # option to download pre-compiled NCCL/Legion libraries
