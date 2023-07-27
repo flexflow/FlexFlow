@@ -206,7 +206,7 @@ RequestManager::RequestGuid
   }
 
   // assert(false);
-  request.tokens = tokens;
+  request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
 
   if (get_num_ssms() == 0) {
