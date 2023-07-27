@@ -335,13 +335,8 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
 
 template <>
 void register_task<ATTENTION_BWD_TASK_ID>() {
-  OpTaskSignature bwd(OpTaskType::BWD);
-
-  bwd.add_input_slot(KEY);
-  bwd.add_input_slot(QUERY);
-  bwd.add_input_slot(VALUE);
-  bwd.add_input_slot(VALUE);
-  bwd.add_weight_slot(WEIGHTS);
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(AGG_SPEC_FWD_TASK_ID));
 
   register_task(
       ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, backward_task);
