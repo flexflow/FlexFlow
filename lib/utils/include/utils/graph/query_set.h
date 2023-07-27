@@ -73,26 +73,18 @@ std::unordered_map<K, V> query_keys(query_set<K> const &q, C const &m) {
   if (is_matchall(q)) {
     return m;
   }
-
-  std::unordered_set<K> q_set = allowed_values(q);
-
-  return filter_keys(m, [&](K const &key) { return contains(q_set, key); });
+  return filter_keys(m, [&](K const &key) { return contains(allowed_values(q), key); });
 }
 
 template <typename K, typename V>
 std::unordered_map<K, V> query_keys(query_set<V> const &q,
                                     bidict<K, V> const &m) {
   if (is_matchall(q)) {
-    auto filter_lambda = [](V const &value) { return true; };
-    return filter_values(m, filter_lambda);
+    return filter_values(m, [](V const &value) { return true; });
   }
-
-  std::unordered_set<V> q_set = allowed_values(q);
-  auto filter_lambda = [&q_set](V const &value) {
-    return q_set.find(value) != q_set.end();
-  };
-
-  return filter_values(m, filter_lambda); // TODO
+  return filter_values(
+    m, [&](V const &value) { return contains(allowed_values(q), value); }
+  );
 }
 
 template <typename C,
@@ -102,14 +94,8 @@ std::unordered_map<K, V> query_values(query_set<V> const &q, C const &m) {
   if (is_matchall(q)) {
     return m;
   }
+  return filter_values(m, [&](V const &value) { return contains(allowed_values(q), value); });
 
-  std::unordered_set<V> q_set = allowed_values(q);
-
-  auto filter_lambda = [&q_set](V const &value) {
-    return q_set.find(value) != q_set.end();
-  };
-
-  return filter_values(m, filter_lambda); // TODO
 }
 
 template <typename T>
