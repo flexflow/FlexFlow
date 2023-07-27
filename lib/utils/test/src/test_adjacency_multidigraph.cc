@@ -9,86 +9,80 @@ TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
 
   std::vector<Node> n = g.add_nodes(3);
   std::vector<NodePort> p = g.add_node_ports(3);
-
-  Node n0 = n[0];
-  Node n1 = n[1];
-  Node n2 = n[2];
-  NodePort p0 = p[0];
-  NodePort p1 = p[1];
-  NodePort p2 = p[2];
-  MultiDiEdge e1{n0, n1, p0, p1};
-  MultiDiEdge e2{n0, n2, p0, p2};
-  MultiDiEdge e3{n2, n0, p2, p0};
-  MultiDiEdge e4{n2, n1, p2, p1};
-
-  std::vector<MultiDiEdge> edges = {e1, e2, e3, e4};
-  g.add_edges(edges);
+  
+  std::vector<MultiDiEdge> e = {
+      {n[0], n[1], p[0], p[1]},
+      {n[0], n[2], p[0], p[2]},
+      {n[2], n[0], p[2], p[0]},
+      {n[2], n[1], p[2], p[1]}
+      };
+  g.add_edges(e);
 
   CHECK(g.query_nodes(NodeQuery::all()) ==
-        std::unordered_set<Node>{n0, n1, n2});
+        std::unordered_set<Node>{n[0], n[1], n[2]});
 
-  CHECK(g.query_nodes(NodeQuery{query_set<Node>{{n0, n2}}}) ==
-        std::unordered_set<Node>{n0, n2});
+  CHECK(g.query_nodes(NodeQuery{query_set<Node>{{n[0], n[2]}}}) ==
+        std::unordered_set<Node>{n[0], n[2]});
 
   CHECK(g.query_edges(MultiDiEdgeQuery::all()) ==
-        std::unordered_set<MultiDiEdge>{e1, e2, e3, e4});
+        std::unordered_set<MultiDiEdge>{e[0], e[1], e[2], e[3]});
 
-  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes({n1})) ==
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes({n[1]})) ==
         std::unordered_set<MultiDiEdge>{});
-  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n1})) ==
-        std::unordered_set<MultiDiEdge>{e1, e4});
-  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p1})) ==
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n[1]})) ==
+        std::unordered_set<MultiDiEdge>{e[0], e[3]});
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p[1]})) ==
         std::unordered_set<MultiDiEdge>{});
-  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs({p1})) ==
-        std::unordered_set<MultiDiEdge>{e1, e4});
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs({p[1]})) ==
+        std::unordered_set<MultiDiEdge>{e[0], e[3]});
   CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(query_set<Node>(
-            {n1, n2}))) == std::unordered_set<MultiDiEdge>{e3, e4});
+            {n[1], n[2]}))) == std::unordered_set<MultiDiEdge>{e[2], e[3]});
   CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(query_set<Node>(
-            {n0, n2}))) == std::unordered_set<MultiDiEdge>{e2, e3});
+            {n[0], n[2]}))) == std::unordered_set<MultiDiEdge>{e[1], e[2]});
   CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs(query_set<NodePort>(
-            {p1, p2}))) == std::unordered_set<MultiDiEdge>{e3, e4});
+            {p[1], p[2]}))) == std::unordered_set<MultiDiEdge>{e[2], e[3]});
   CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs(query_set<NodePort>(
-            {p0, p2}))) == std::unordered_set<MultiDiEdge>{e2, e3});
+            {p[0], p[2]}))) == std::unordered_set<MultiDiEdge>{e[1], e[2]});
   CHECK(g.query_edges(MultiDiEdgeQuery::all()
-                          .with_src_nodes({n1})
-                          .with_dst_nodes({n2})
-                          .with_src_idxs({p1})
-                          .with_dst_idxs({p2})) ==
+                          .with_src_nodes({n[1]})
+                          .with_dst_nodes({n[2]})
+                          .with_src_idxs({p[1]})
+                          .with_dst_idxs({p[2]})) ==
         std::unordered_set<MultiDiEdge>{});
-  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs({p2})) ==
-        std::unordered_set<MultiDiEdge>{e2});
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs({p[2]})) ==
+        std::unordered_set<MultiDiEdge>{e[1]});
 
   SUBCASE("remove node") {
-    g.remove_node_unsafe(n0);
+    g.remove_node_unsafe(n[0]);
 
-    CHECK(g.query_nodes(NodeQuery::all()) == std::unordered_set<Node>{n1, n2});
+    CHECK(g.query_nodes(NodeQuery::all()) == std::unordered_set<Node>{n[1], n[2]});
 
     CHECK(g.query_edges(MultiDiEdgeQuery::all()) ==
-          std::unordered_set<MultiDiEdge>{e3, e4});
+          std::unordered_set<MultiDiEdge>{e[2], e[3]});
 
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes({n0})) ==
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes({n[0]})) ==
           std::unordered_set<MultiDiEdge>{});
 
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n0})) ==
-          std::unordered_set<MultiDiEdge>{e3});
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n[0]})) ==
+          std::unordered_set<MultiDiEdge>{e[2]});
 
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p2})) ==
-          std::unordered_set<MultiDiEdge>{e3, e4});
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs({p0})) ==
-          std::unordered_set<MultiDiEdge>{e3});
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p[2]})) ==
+          std::unordered_set<MultiDiEdge>{e[2], e[3]});
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs({p[0]})) ==
+          std::unordered_set<MultiDiEdge>{e[2]});
   }
 
   SUBCASE("remove_edge") {
-    g.remove_edge(e1);
+    g.remove_edge(e[0]);
 
     CHECK(g.query_edges(
-              MultiDiEdgeQuery::all().with_src_nodes({n0}).with_dst_nodes(
-                  {n1})) == std::unordered_set<MultiDiEdge>{});
+              MultiDiEdgeQuery::all().with_src_nodes({n[0]}).with_dst_nodes(
+                  {n[1]})) == std::unordered_set<MultiDiEdge>{});
 
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n2})) ==
-          std::unordered_set<MultiDiEdge>{e2});
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n[2]})) ==
+          std::unordered_set<MultiDiEdge>{e[1]});
 
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p2})) ==
-          std::unordered_set<MultiDiEdge>{e3, e4});
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p[2]})) ==
+          std::unordered_set<MultiDiEdge>{e[2], e[3]});
   }
 }
