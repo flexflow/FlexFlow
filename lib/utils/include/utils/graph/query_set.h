@@ -94,7 +94,7 @@ std::unordered_map<K, V> query_values(query_set<V> const &q, C const &m) {
   if (is_matchall(q)) {
     return m;
   }
-  return filter_values(m, [&](V const &value) { return contains(allowed_values(q), value); });
+  return filter_values(m, [&](V const &value) { return includes(q, value); });
 
 }
 
