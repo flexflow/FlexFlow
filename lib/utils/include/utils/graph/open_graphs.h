@@ -49,8 +49,6 @@ public:
   OpenMultiDiGraph() = delete;
   OpenMultiDiGraph(OpenMultiDiGraph const &);
 
-  // OpenMultiDiGraph &operator=(OpenMultiDiGraph);
-
   friend void swap(OpenMultiDiGraph &, OpenMultiDiGraph &);
 
   operator OpenMultiDiGraphView() const;

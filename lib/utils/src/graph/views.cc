@@ -21,10 +21,6 @@ std::unordered_set<Node>
   return this->g.query_nodes(query);
 }
 
-bool JoinNodeKey::operator==(JoinNodeKey const &jnk) const {
-  return node == jnk.node && direction == jnk.direction;
-}
-
 std::unordered_set<DirectedEdge>
     ContractNodeView::query_edges(DirectedEdgeQuery const &q) const {
   return g.query_edges(q);

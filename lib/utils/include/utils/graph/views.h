@@ -89,7 +89,6 @@ struct JoinNodeKey {
   JoinNodeKey(Node const &node, LRDirection direction)
       : node(node), direction(direction) {}
 
-  bool operator==(JoinNodeKey const &) const;
   bool operator<(JoinNodeKey const &) const;
 
   Node node;
