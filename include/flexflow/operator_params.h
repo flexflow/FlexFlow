@@ -4,6 +4,7 @@
 #include "flexflow/ops/aggregate_params.h"
 #include "flexflow/ops/aggregate_spec_params.h"
 #include "flexflow/ops/arg_topk_params.h"
+#include "flexflow/ops/argmax_params.h"
 #include "flexflow/ops/attention_params.h"
 #include "flexflow/ops/batch_matmul_params.h"
 #include "flexflow/ops/beam_topk_params.h"
@@ -73,6 +74,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        TopKParams,
                                        ArgTopKParams,
                                        SamplingParams,
+                                       ArgMaxParams,
                                        SoftmaxParams,
                                        TransposeParams,
                                        RepartitionParams,
