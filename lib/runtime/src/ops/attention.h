@@ -20,26 +20,6 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &);
 OpTaskInvocation forward(MultiHeadAttentionAttrs const &);
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &);
 
-static DeviceSpecificArg<MHAPerDeviceState> *
-    init_task(Legion::Task const *task,
-              std::vector<Legion::PhysicalRegion> const &regions,
-              Legion::Context ctx,
-              Legion::Runtime *runtime);
-static DeviceSpecificArg<MHAPerDeviceState> *
-    init_task_impl(TaskArgumentAccessor const &acc);
-
-static void forward_task(Legion::Task const *task,
-                         std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc);
-
-static void backward_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc);
-
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   MultiHeadAttentionAttrs const &attrs,
                                   ParallelTensorShape const &query_shape,

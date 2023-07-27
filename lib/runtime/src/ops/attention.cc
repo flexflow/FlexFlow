@@ -152,15 +152,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 static DeviceSpecificArg<MHAPerDeviceState> *
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
-
-static DeviceSpecificArg<MHAPerDeviceState> *
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -220,12 +211,13 @@ static DeviceSpecificArg<MHAPerDeviceState> *
   return n;
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
+static DeviceSpecificArg<MHAPerDeviceState> *
+    init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
+  return init_task_impl(acc);
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -248,12 +240,12 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
+  forward_task_impl(acc);
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
@@ -295,6 +287,14 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  weight.get_float_ptr(),
                  weight_grad.get_float_ptr(),
                  output_grad.get_float_ptr());
+}
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
 }
 
 template <>
