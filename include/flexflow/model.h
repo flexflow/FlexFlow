@@ -138,6 +138,9 @@ enum TaskIDs {
   ARG_TOPK_INF_TASK_ID,
   SAMPLING_INIT_TASK_ID,
   SAMPLING_INF_TASK_ID,
+  ARGMAX_INIT_TASK_ID,
+  ARGMAX_BEAM_INF_TASK_ID,
+  ARGMAX_NORM_INF_TASK_ID,
   TRANSPOSE_INIT_TASK_ID,
   TRANSPOSE_FWD_TASK_ID,
   TRANSPOSE_BWD_TASK_ID,
@@ -315,6 +318,7 @@ class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
 class IncMultiQuerySelfAttention;
 class Sampling;
+class ArgMax;
 class Combine;
 class Repartition;
 class Reduction;
@@ -615,6 +619,7 @@ public:
                    int k,
                    bool sorted,
                    char const *name = NULL);
+  Tensor argmax(const Tensor input, bool beam_search, char const *name = NULL);
   Tensor sampling(const Tensor input, float top_p, char const *name = NULL);
   Tensor multihead_attention(const Tensor query,
                              const Tensor key,
@@ -1067,6 +1072,8 @@ public:
                          BeamTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, SamplingParams>,
                          Sampling *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ArgMaxParams>,
+                         ArgMax *>,
       std::unordered_map<
           std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
           SpecIncMultiHeadSelfAttention *>,
