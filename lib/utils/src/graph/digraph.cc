@@ -77,8 +77,8 @@ DirectedEdgeQuery DirectedEdgeQuery::all() {
 
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
                                      DirectedEdgeQuery const &rhs) {
-  assert(lhs != tl::nullopt);
-  assert(rhs != tl::nullopt);
+  assert(lhs != nullopt);
+  assert(rhs != nullopt);
   assert(lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() &&
          rhs.dsts.has_value());
 

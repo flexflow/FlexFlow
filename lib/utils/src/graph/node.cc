@@ -25,7 +25,7 @@ NodeQuery NodeQuery::all() {
 }
 
 NodeQuery query_intersection(NodeQuery const &lhs, NodeQuery const &rhs) {
-  assert(lhs != tl::nullopt && rhs != tl::nullopt);
+  assert(lhs != nullopt && rhs != nullopt);
   std::unordered_set<Node> nodes =
       intersection(allowed_values(lhs.nodes), allowed_values(rhs.nodes));
 
