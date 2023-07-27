@@ -447,6 +447,11 @@ flexflow_tensor_t flexflow_model_add_sampling(flexflow_model_t handle_,
                                               float top_p,
                                               char const *name);
 
+flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
+                                            const flexflow_tensor_t input_,
+                                            bool beam_search,
+                                            char const *name);
+
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle,
                                       flexflow_sgd_optimizer_t optimizer);
 

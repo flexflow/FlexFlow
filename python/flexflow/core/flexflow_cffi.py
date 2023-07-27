@@ -464,6 +464,13 @@ class Sampling(Op):
     super(Sampling, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# ArgMax
+# -----------------------------------------------------------------------
+class ArgMax(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ArgMax, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
 # -----------------------------------------------------------------------
 def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
@@ -553,6 +560,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return BeamTopK(handle, idx, name)
   elif op_type == OpType.SAMPLING:
     return Sampling(handle, idx, name)
+  elif op_type == OpType.ARGMAX:
+    return ArgMax(handle, idx, name)
   elif op_type == OpType.RSQRT:
     return Rsqrt(handle, idx, name)
   elif op_type == OpType.POW:
@@ -2261,6 +2270,25 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_sampling(self.handle, input.handle, top_p, c_name)
     self.add_layer(OpType.SAMPLING, name)
     return Tensor(handle, owner_op_type=OpType.SAMPLING)
+  
+  def argmax(self, input, beam_search, name=None):
+    """Defines the Sampling layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param beam_search: Whether you need to perform beam search
+    :type beam_search: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_argmax(self.handle, input.handle, beam_search, c_name)
+    self.add_layer(OpType.ARGMAX, name)
+    return Tensor(handle, owner_op_type=OpType.ARGMAX)
 
   def reset_metrics(self):
     """Reset performance metrics.

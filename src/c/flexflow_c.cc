@@ -1160,6 +1160,16 @@ flexflow_tensor_t flexflow_model_add_sampling(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
+                                            const flexflow_tensor_t input_,
+                                            bool beam_search,
+                                            char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->argmax(input, beam_search, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle_,
                                       flexflow_sgd_optimizer_t optimizer_) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);

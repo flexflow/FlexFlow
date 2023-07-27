@@ -118,13 +118,15 @@ class FlexFlowLLAMA:
             
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 softmax = ffmodel.softmax(dense, -1)
-                output = ffmodel.beam_top_k(softmax, self.llama_config.max_beam_width, False)
+                #output = ffmodel.beam_top_k(softmax, self.llama_config.max_beam_width, False)
+                output = ffmodel.argmax(softmax, True)
             else:
                 if self.sampling_config.do_sample:
                     dense = ffmodel.scalar_true_divide(dense, self.sampling_config.temperature, False)
                     softmax = ffmodel.softmax(dense, -1)
                     output = ffmodel.sampling(softmax, self.sampling_config.topp)
                 else:
-                    output = ffmodel.arg_top_k(dense, 1, False)
+                    #output = ffmodel.arg_top_k(dense, 1, False)
+                    output = ffmodel.argmax(dense, False)
 
 

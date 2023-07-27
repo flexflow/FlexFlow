@@ -73,10 +73,10 @@ class LLM:
         self.model = self.model_type(mode, sampling_config, self.ffconfig, max_batch_size, max_seq_length, max_tokens_per_batch, use_full_precision)
 
         # Create inference manager
-        self.im = InferenceManager(self.ffconfig, max_tokens_per_batch)
+        #self.im = InferenceManager(self.ffconfig, max_tokens_per_batch)
 
         # Create request manager
-        self.rm = RequestManager()
+        #self.rm = RequestManager()
         
         assert False and "Not implemented yet"
 

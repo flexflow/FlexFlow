@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# temporary workaround to avoid having to pass arguments
+import sys
+sys.argv += ['-ll:gpu', '1', '-ll:fsize', '8000', '-ll:zsize', '8000']
+
 from flexflow.serve import LLM, SamplingConfig
 from flexflow.core import *
 
