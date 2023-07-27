@@ -8,6 +8,7 @@
 #include "utils/stack_map.h"
 #include "utils/strong_typedef.h"
 #include <vector>
+#include "device_specific_arg.h"
 
 namespace FlexFlow {
 
@@ -162,6 +163,16 @@ struct TaskArgumentAccessor {
   std::vector<privilege_mode_to_accessor<PRIV>>
       get_variadic_tensor_grad(slot_id slot) const {
     NOT_IMPLEMENTED();
+  }
+
+  template <typename T>
+  T* unwrap(DeviceSpecificArg<T> const &arg) const {
+    return arg.get(this->get_device_idx());
+  }
+
+  template <typename T, typename ...Args>
+  DeviceSpecificArg<T> create_device_specific(Args &&... args) const {
+    return DeviceSpecificArg<T>::create(this->get_device_idx(), std::forward<Args>(args)...);
   }
 
   size_t get_device_idx() const {

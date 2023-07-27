@@ -2,7 +2,6 @@
 #define _FLEXFLOW_RUNTIME_SRC_DEVICE_SPECIFIC_ARG_H
 
 #include "serialization.h"
-#include "task_argument_accessor.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
@@ -10,17 +9,21 @@ namespace FlexFlow {
 template <typename T>
 struct DeviceSpecificArg {
 
-  DeviceSpecificArg(T *) {
+  DeviceSpecificArg() = delete;
+
+  template <typename ...Args>
+  static DeviceSpecificArg<T> create(size_t device_idx, Args &&... args) {
     NOT_IMPLEMENTED();
   }
 
-  T *get(TaskArgumentAccessor const &accessor) const {
-    if (accessor.get_device_idx() != this->device_idx) {
+  T *get(size_t curr_device_idx) const {
+    if (curr_device_idx != this->device_idx) {
       throw mk_runtime_error("Invalid access to DeviceSpecificArg: attempted "
                              "device_idx {} != correct device_idx {})",
-                             accessor.get_device_idx(),
+                             curr_device_idx,
                              this->device_idx);
     }
+    return this->ptr;
   }
 
 private:
