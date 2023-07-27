@@ -77,10 +77,6 @@ struct TaskArgumentAccessor {
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
 
-  PerDeviceFFHandle get_per_device_ffhandle() const {
-    NOT_IMPLEMENTED();
-  }
-
   Allocator get_allocator() const {
     return get_gpu_memory_allocator(this->task);
   }
