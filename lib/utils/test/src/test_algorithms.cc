@@ -62,9 +62,6 @@ TEST_CASE("DiGraph") {
   };
   auto res = get_predecessors(g, {n[1], n[2], n[3]});
   CHECK(res == expected_result);
-  // for (auto kv : res) {
-  //   CHECK(expected_result[kv.first] == kv.second);
-  // }
 
   SUBCASE("get_imm_dominators") {
     std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
