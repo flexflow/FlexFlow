@@ -235,13 +235,15 @@ __host__ void FusedOp::forward_task(Task const *task,
                out_dim * batch_size);
         assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
         float const *bias_ptr = nullptr;
+        LinearMeta *m = (LinearMeta *)metas->meta[op];
         if (fused->op_num_weights[op] == 2) {
           assert(my_weight_accessor[1].domain.get_volume() == out_dim);
-          bias_ptr = my_weight_accessor[1].get_float_ptr();
+          if (!m->add_bias_only_once || task->index_point.point_data[0] == 0) {
+            bias_ptr = my_weight_accessor[1].get_float_ptr();
+          }
         } else {
           assert(fused->op_num_weights[op] == 1);
         }
-        LinearMeta *m = (LinearMeta *)metas->meta[op];
         Kernels::Linear::forward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
@@ -604,13 +606,15 @@ __host__ void
                out_dim * batch_size);
         assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
         void const *bias_ptr = nullptr;
+        LinearMeta *m = (LinearMeta *)metas->meta[op];
         if (fused->op_num_weights[op] == 2) {
           assert(my_weight_accessor[1].domain.get_volume() == out_dim);
-          bias_ptr = my_weight_accessor[1].ptr;
+          if (!m->add_bias_only_once || task->index_point.point_data[0] == 0) {
+            bias_ptr = my_weight_accessor[1].ptr;
+          }
         } else {
           assert(fused->op_num_weights[op] == 1);
         }
-        LinearMeta *m = (LinearMeta *)metas->meta[op];
         assert(m->input_type[0] == my_input_accessor[0].data_type);
         assert(m->input_type[0] == my_output_accessor[0].data_type);
         batch_size = bc->num_active_tokens();
