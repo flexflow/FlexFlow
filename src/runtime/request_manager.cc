@@ -133,12 +133,13 @@ RequestManager::RequestGuid
               << BatchConfig::MAX_PROMPT_LENGTH << " tokens, but got "
               << prompt.size() << ".\n";
     // Truncate the prompt to MAX_NUM_TOKENS
-    request.tokens.insert(request.tokens.end(),
-                          prompt.begin(),
-                          prompt.begin() + BatchConfig::MAX_PROMPT_LENGTH);
-    request.initial_len = BatchConfig::MAX_PROMPT_LENGTH;
+    // request.tokens.insert(request.tokens.end(),
+    //                       prompt.begin(),
+    //                       prompt.begin() + BatchConfig::MAX_PROMPT_LENGTH);
+    // request.initial_len = BatchConfig::MAX_PROMPT_LENGTH;
     printf("tokens size: %zu\n", request.tokens.size());
     // assert(false);
+    return 0;
   } else {
     request.initial_len = prompt.size();
     request.tokens = prompt;
@@ -194,9 +195,10 @@ RequestManager::RequestGuid
               << BatchConfig::MAX_PROMPT_LENGTH << " tokens, but got "
               << tokens.size() << ".\n";
     // Truncate the prompt to MAX_NUM_TOKENS
-    tokens.resize(BatchConfig::MAX_PROMPT_LENGTH);
+    // tokens.resize(BatchConfig::MAX_PROMPT_LENGTH);
     printf("tokens size: %zu\n", tokens.size());
     // assert(false);
+    return 0;
   }
 
   for (int i = 0; i < tokens.size(); i++) {
@@ -1562,6 +1564,13 @@ GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
                                                         int max_seq_length) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid = register_new_request(text, max_seq_length);
+  if (guid == 0) {
+    std::cout
+        << "=========== Discard request exceed prompt maximum... ==========="
+        << std::endl;
+    return GenerationResult();
+  }
+
   int tokens_to_generate = max_seq_length - all_requests[guid].tokens.size();
   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
@@ -1605,6 +1614,13 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
                                                      int max_seq_length) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid = register_new_request(text, max_seq_length);
+  if (guid == 0) {
+    std::cout
+        << "=========== Discard request exceed prompt maximum... ==========="
+        << std::endl;
+    return GenerationResult();
+  }
+
   std::queue<std::pair<TreeVerifyBatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
   batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));

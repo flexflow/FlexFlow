@@ -51,14 +51,11 @@ void RequestManager::load_tokens_task(
   assert(batch_config->num_tokens <= domain.get_volume());
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(
-      cudaMemcpyAsync(fb_ptr,
-                      dram_copy,
-                      batch_config->num_tokens <= BatchConfig::MAX_NUM_TOKENS
-                          ? sizeof(TokenId) * batch_config->num_tokens
-                          : sizeof(TokenId) * BatchConfig::MAX_NUM_TOKENS,
-                      cudaMemcpyHostToDevice,
-                      stream));
+  checkCUDA(cudaMemcpyAsync(fb_ptr,
+                            dram_copy,
+                            sizeof(TokenId) * batch_config->num_tokens,
+                            cudaMemcpyHostToDevice,
+                            stream));
 }
 
 void RequestManager::load_positions_task(
