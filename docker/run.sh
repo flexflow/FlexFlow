@@ -74,9 +74,9 @@ fi
 
 inference_volumes=""
 if $ATTACH_INFERENCE_FILES ; then 
-  inference_volumes="-v "$(pwd)"/../inference/weights:/usr/FlexFlow/inference/weights \
-    -v "$(pwd)"/../inference/prompt:/usr/FlexFlow/inference/prompt \
-    -v "$(pwd)"/../inference/tokenizer:/usr/FlexFlow/inference/tokenizer"; 
+  inference_volumes="-v $(pwd)/../inference/weights:/usr/FlexFlow/inference/weights \
+    -v $(pwd)/../inference/prompt:/usr/FlexFlow/inference/prompt \
+    -v $(pwd)/../inference/tokenizer:/usr/FlexFlow/inference/tokenizer"; 
 fi
 
 eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${inference_volumes}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
