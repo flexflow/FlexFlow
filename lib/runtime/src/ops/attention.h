@@ -3,16 +3,11 @@
 
 #include "../task_spec/op_task_signature.h"
 #include "kernels/attention_kernels.h"
-#include "legion.h"
 #include "op-attrs/ops/attention.h"
 #include "sim_environment.h"
+#include "legion.h"
 
 namespace FlexFlow {
-
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
 
 template <>
 void register_task<ATTENTION_INIT_TASK_ID>();
@@ -26,23 +21,23 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &);
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &);
 
 static DeviceSpecificArg<MHAPerDeviceState> *
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime);
+    init_task(Legion::Task const *task,
+              std::vector<Legion::PhysicalRegion> const &regions,
+              Legion::Context ctx,
+              Legion::Runtime *runtime);
 static DeviceSpecificArg<MHAPerDeviceState> *
     init_task_impl(TaskArgumentAccessor const &acc);
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime);
+static void forward_task(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime);
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc);
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime);
+static void backward_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
