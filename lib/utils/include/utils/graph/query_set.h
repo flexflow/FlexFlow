@@ -73,7 +73,7 @@ std::unordered_map<K, V> query_keys(query_set<K> const &q, C const &m) {
   if (is_matchall(q)) {
     return m;
   }
-  return filter_keys(m, [&](K const &key) { return contains(allowed_values(q), key); });
+  return filter_keys(m, [&](K const &key) { return includes(q, key); });
 }
 
 template <typename K, typename V>
@@ -83,7 +83,7 @@ std::unordered_map<K, V> query_keys(query_set<V> const &q,
     return filter_values(m, [](V const &value) { return true; });
   }
   return filter_values(
-    m, [&](V const &value) { return contains(allowed_values(q), value); }
+    m, [&](V const &value) { return includes(q, value); }
   );
 }
 
