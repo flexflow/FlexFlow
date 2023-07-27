@@ -40,7 +40,8 @@ enum Slots {
   VALUE,
   WEIGHTS,
   OUTPUT,
-  PER_DEVICE_STATE
+  PER_DEVICE_STATE,
+  HANDLE
 };
 
 OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
@@ -52,8 +53,9 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   b.bind(WEIGHTS, weight_tensor(0));
   b.bind(OUTPUT, output_tensor(0));
 
+  b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
-  b.bind_arg(PROFILING, profiling_settings());
+  b.bind_arg(PER_DEVICE_STATE, per_device_op_state<MHAPerDeviceState>());
 
   return {ATTENTION_INIT_TASK_ID, b};
 }
@@ -170,7 +172,7 @@ static DeviceSpecificArg<MHAPerDeviceState> *init_task_impl(TaskArgumentAccessor
   int oProjSize = acc.get_argument<int>(OPROJSIZE);
   Allocator allocator = acc.get_allocator();
 
-  PerDeviceFFHandle handle = acc.get_per_device_ffhandle();
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
@@ -302,6 +304,8 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
   init.add_arg_slot<int>(KSIZE);
   init.add_arg_slot<int>(VSIZE);
   init.add_arg_slot<int>(QPROJSIZE);
+
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_input_slot(QUERY);
   init.add_input_slot(KEY);

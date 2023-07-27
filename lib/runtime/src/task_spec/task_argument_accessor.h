@@ -4,7 +4,6 @@
 #include "accessor.h"
 #include "realm_allocator.h"
 #include "runtime/config.h"
-#include "task_invocation.h"
 #include "utils/exception.h"
 #include "utils/stack_map.h"
 #include "utils/strong_typedef.h"

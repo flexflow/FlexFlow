@@ -70,6 +70,7 @@ struct OpTaskSignature {
     static_assert(is_serializable<T>::value, "Type must be serializable");
   }
 
+// adds arg_slot without checking is_serializable, used for arguments that are deviceSpecific
   template <typename T>
   void add_unchecked_arg_slot(slot_id name) {
     NOT_IMPLEMENTED();
