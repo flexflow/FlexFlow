@@ -151,7 +151,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-static DeviceSpecificArg<MHAPerDeviceState> *
+static DeviceSpecificArg<MHAPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -206,12 +206,11 @@ static DeviceSpecificArg<MHAPerDeviceState> *
 
   assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
 
-  DeviceSpecificArg<MHAPerDeviceState> *n =
-      new DeviceSpecificArg<MHAPerDeviceState>(m);
+  DeviceSpecificArg<MHAPerDeviceState> n = DeviceSpecificArg<MHAPerDeviceState>(m);
   return n;
 }
 
-static DeviceSpecificArg<MHAPerDeviceState> *
+static DeviceSpecificArg<MHAPerDeviceState>
     init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
