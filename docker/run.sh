@@ -17,6 +17,9 @@ ATTACH_GPUS=${ATTACH_GPUS:-true}
 gpu_arg=""
 if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
 
+# Whether to attach inference weights / files (make sure to download the weights first)
+ATTACH_INFERENCE_FILES=${ATTACH_INFERENCE_FILES:-false}
+
 # Amount of shared memory to give the Docker container access to
 # If you get a Bus Error, increase this value. If you don't have enough memory
 # on your machine, decrease this value.
@@ -69,4 +72,11 @@ if [[ "$(docker images -q "$image"-"$FF_GPU_BACKEND""$cuda_version_hyphen":lates
   exit 1
 fi
 
-eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
+inference_volumes=""
+if $ATTACH_INFERENCE_FILES ; then 
+  inference_volumes="-v "$(pwd)"/../inference/weights:/usr/FlexFlow/inference/weights \
+    -v "$(pwd)"/../inference/prompt:/usr/FlexFlow/inference/prompt \
+    -v "$(pwd)"/../inference/tokenizer:/usr/FlexFlow/inference/tokenizer"; 
+fi
+
+eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${inference_volumes}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
