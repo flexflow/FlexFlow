@@ -76,7 +76,7 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {BATCHMATMUL_BWD_TASK_ID, b};
+  return {ATTENTION_BWD_TASK_ID, b};
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
