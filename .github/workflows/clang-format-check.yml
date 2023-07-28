@@ -10,11 +10,16 @@ jobs:
           - check: "src"
             exclude: '\.proto$'
           - check: "include"
-          - check: "nmt"
+          - check: "lib"
           - check: "python"
           - check: "scripts"
           - check: "tests"
           - check: "examples"
+          - check: "bindings"
+          - check: "config"
+          - check: "deps"
+          - check: "packaging"
+          - check: "substitutions"
     steps:
       - uses: actions/checkout@v2
       - name: Run clang-format style check for C/C++/Protobuf programs.
