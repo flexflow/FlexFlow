@@ -25,7 +25,7 @@ template <typename DT>
 void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             DT *input_ptr,
                             int *indices_ptr,
-                            DT *prob_ptr,
+                            float *prob_ptr,
                             int *parent_ptr,
                             int length,
                             int batch_size,
@@ -35,8 +35,8 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
 void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                     GenericTensorAccessorW const &input,
                                     GenericTensorAccessorW const &indices,
-                                    GenericTensorAccessorW const &value,
-                                    GenericTensorAccessorW const &parent) {
+                                    GenericTensorAccessorW const &parent,
+                                    int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -63,7 +63,12 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                        Op const *op,
                        Legion::Domain const &input_domain,
                        Legion::Domain const &output_domain,
-                       GenericTensorAccessorW input)
+                       GenericTensorAccessorW input,
+                       int batch_size,
+                       int total_ele,
+                       MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {}
+
+ArgMaxMeta::~ArgMaxMeta(void) {}
 
 }; // namespace FlexFlow

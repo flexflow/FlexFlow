@@ -2,6 +2,7 @@
 
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/memory_allocator.h"
 namespace FlexFlow {
 
 class LayerNormMeta;
@@ -107,7 +108,10 @@ public:
 
 class LayerNormMeta : public OpMeta {
 public:
-  LayerNormMeta(FFHandler handle, LayerNorm const *ln);
+  LayerNormMeta(FFHandler handle,
+                LayerNorm const *ln,
+                MemoryAllocator &gpu_mem_allocator);
+  ~LayerNormMeta(void);
 
 public:
   bool elementwise_affine;
@@ -115,6 +119,7 @@ public:
   float eps;
   void *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
   char op_name[MAX_OPNAME];
+  Realm::RegionInstance reserveInst;
 };
 
 }; // namespace FlexFlow
