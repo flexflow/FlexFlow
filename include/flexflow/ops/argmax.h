@@ -5,6 +5,7 @@
 #include "flexflow/model.h"
 #include "flexflow/node.h"
 #include "flexflow/ops/argmax_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -16,13 +17,15 @@ public:
   size_t temp_storage_bytes = 0;
   int *d_offsets;
   void *d_out;
+  Realm::RegionInstance reserveInst;
   ArgMaxMeta(FFHandler handler,
              Op const *op,
              Legion::Domain const &input_domain,
              Legion::Domain const &output_domain,
              GenericTensorAccessorW input,
              int batch_size,
-             int total_ele);
+             int total_ele,
+             MemoryAllocator &gpu_mem_allocator);
 };
 
 class ArgMax : public Op {

@@ -678,7 +678,10 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   }
 }
 
-BeamTopKMeta::BeamTopKMeta(FFHandler handler, Op const *op) : OpMeta(handler) {
+BeamTopKMeta::BeamTopKMeta(FFHandler handler,
+                           Op const *op,
+                           MemoryAllocator &gpu_mem_allocator)
+    : OpMeta(handler) {
   DataType data_type = op->inputs[0]->data_type;
   checkCUDA(hipMalloc(&parent_ids,
                       sizeof(int) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *

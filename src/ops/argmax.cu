@@ -152,16 +152,29 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                        Legion::Domain const &output_domain,
                        GenericTensorAccessorW input,
                        int batch_size,
-                       int total_ele)
+                       int total_ele,
+                       MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {
   DataType data_type = op->data_type;
-
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
+  size_t d_offsets_size = batch_size;
+  assert(data_type == DT_FLOAT || data_type == DT_HALF);
+  size_t total_size = d_offsets_size * sizeof(int) +
+                      (data_type == DT_FLOAT
+                           ? sizeof(cub::KeyValuePair<int, float>) * batch_size
+                           : sizeof(cub::KeyValuePair<int, half>) * batch_size);
+  gpu_mem_allocator.create_legion_instance(reserveInst, total_size);
+  d_offsets = gpu_mem_allocator.allocate_instance<int>(d_offsets_size);
+  d_out = data_type == DT_FLOAT
+              ? gpu_mem_allocator.allocate_instance_untyped(
+                    batch_size * sizeof(cub::KeyValuePair<int, float>))
+              : gpu_mem_allocator.allocate_instance_untyped(
+                    batch_size * sizeof(cub::KeyValuePair<int, half>));
+
   // init offset
   int parallelism = total_ele;
-  cudaMalloc(&d_offsets, sizeof(int) * batch_size);
   init_offset<<<GET_BLOCKS(parallelism),
                 min(CUDA_NUM_THREADS, parallelism),
                 0,
@@ -169,7 +182,6 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
       batch_size, total_ele / batch_size, total_ele, d_offsets);
 
   if (data_type == DT_FLOAT) {
-    cudaMalloc(&d_out, sizeof(cub::KeyValuePair<int, float>) * batch_size);
     checkCUDA(cub::DeviceSegmentedReduce::ArgMax(
         d_temp_storage,
         temp_storage_bytes,
@@ -181,7 +193,6 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
         stream));
 
   } else if (data_type == DT_HALF) {
-    cudaMalloc(&d_out, sizeof(cub::KeyValuePair<int, half>) * batch_size);
     checkCUDA(cub::DeviceSegmentedReduce::ArgMax(
         d_temp_storage,
         temp_storage_bytes,
@@ -193,7 +204,9 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
         stream));
   }
 
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
+  d_temp_storage =
+      gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
 }
 
 }; // namespace FlexFlow

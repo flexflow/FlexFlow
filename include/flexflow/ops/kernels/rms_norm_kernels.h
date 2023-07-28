@@ -5,6 +5,7 @@
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 using Legion::coord_t;
@@ -13,7 +14,9 @@ class RMSNorm;
 
 class RMSNormMeta : public OpMeta {
 public:
-  RMSNormMeta(FFHandler handler, RMSNorm const *rms);
+  RMSNormMeta(FFHandler handler,
+              RMSNorm const *rms,
+              MemoryAllocator &gpu_mem_allocator);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceDesc;
@@ -34,6 +37,7 @@ public:
   int batch_size;
   int num_elements;
   char op_name[MAX_OPNAME];
+  Realm::RegionInstance reserveInst;
 };
 
 namespace Kernels {

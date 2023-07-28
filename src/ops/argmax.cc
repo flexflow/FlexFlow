@@ -242,6 +242,11 @@ OpMeta *ArgMax::init_task(Task const *task,
       ctx, task->regions[2].region.get_index_space());
   int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
   int batch_size = acc_input.domain.get_volume() / length;
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
 
   ArgMaxMeta *m = new ArgMaxMeta(handle,
                                  s,
@@ -249,7 +254,8 @@ OpMeta *ArgMax::init_task(Task const *task,
                                  output_domain,
                                  acc_input,
                                  batch_size,
-                                 length * batch_size);
+                                 length * batch_size,
+                                 gpu_mem_allocator);
   m->profiling = s->profiling;
   m->beam_search = s->beam_search;
   return m;

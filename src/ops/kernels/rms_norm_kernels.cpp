@@ -22,7 +22,9 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 
-RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
+RMSNormMeta::RMSNormMeta(FFHandler handler,
+                         RMSNorm const *rms,
+                         MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, rms) {}
 
 namespace Kernels {
