@@ -48,6 +48,10 @@ struct IGraphView {
   virtual ~IGraphView(){};
 };
 
+struct should_only_be_used_internally_tag_t {
+  explicit should_only_be_used_internally_tag_t() = default;
+};
+
 struct GraphView {
   GraphView() = delete;
 
@@ -67,6 +71,8 @@ struct GraphView {
       create(Args &&...args) {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
+  GraphView(std::shared_ptr<IGraphView const> & ptr,  should_only_be_used_internally_tag_t const & tag):GraphView(ptr) {}
+
 
 private:
   GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
