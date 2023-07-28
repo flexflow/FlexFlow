@@ -25,6 +25,17 @@ AllReduceMeta::AllReduceMeta(FFHandler handle, AllReduce const *reduct)
 namespace Kernels {
 namespace AllReduce {
 
+void inference_kernel_wrapper(AllReduceMeta const *m,
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &input,
+                              GenericTensorAccessorW const &output) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  assert(input.data_type == output.data_type);
+  assert(input.domain == output.domain);
+  assert(false && "To be implemented");
+}
+
 void forward_kernel_wrapper(AllReduceMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output) {

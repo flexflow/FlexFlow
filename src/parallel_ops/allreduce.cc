@@ -25,6 +25,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::LogicalPartition;
@@ -181,7 +182,7 @@ void AllReduce::init_inference(FFModel const &ff,
 }
 
 FutureMap AllReduce::inference(FFModel const &ff,
-                               BatchConfig const &bc,
+                               BatchConfigFuture const &bc,
                                std::vector<ParallelTensor> const &batch_inputs,
                                std::vector<ParallelTensor> const &batch_outputs,
                                MachineView const *mv) {
@@ -196,14 +197,15 @@ FutureMap AllReduce::inference(FFModel const &ff,
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(ALLREDUCE_FWD_TASK_ID,
+  IndexLauncher launcher(ALLREDUCE_INF_TASK_ID,
                          batch_outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -311,6 +313,26 @@ bool AllReduce::append_parallel_op_info(
   ret.parallel_degree = -1; // AllReduce does not affect parallel degree
   parallel_ops.push_back(ret);
   return true;
+}
+
+/*static*/
+void AllReduce::inference_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+
+  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  assert(input.data_type == output.data_type);
+  inference_kernel_wrapper(m, bc, input, output);
 }
 
 /*static*/

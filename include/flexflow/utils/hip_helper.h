@@ -1,5 +1,6 @@
 #ifndef _FLEXFLOW_HIP_HELPER_H_
 #define _FLEXFLOW_HIP_HELPER_H_
+#include "flexflow/accessor.h"
 #include "flexflow/ffconst.h"
 #include "legion.h"
 #include <hipblas.h>

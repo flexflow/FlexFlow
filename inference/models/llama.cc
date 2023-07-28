@@ -20,7 +20,6 @@ namespace FlexFlow {
 using namespace Legion;
 
 void LLAMA::create_llama_model(FFModel &ff,
-                               InferenceManager &im,
                                std::string const &model_config_file_path,
                                std::string const &weight_file_path,
                                InferenceMode mode,
@@ -190,9 +189,10 @@ void LLAMA::create_llama_model(FFModel &ff,
     }
   }
 
+  InferenceManager *im = InferenceManager::get_inference_manager();
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff);
+  im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             llama_config.n_heads,
@@ -202,7 +202,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
-  im.init_operators_inference(&ff);
+  im->init_operators_inference(&ff);
 }
 
 }; // namespace FlexFlow

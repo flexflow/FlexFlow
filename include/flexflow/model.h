@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/inference.h"
 #include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
@@ -220,6 +221,7 @@ enum TaskIDs {
   PIPELINE_FWD_TASK_ID,
   PIPELINE_BWD_TASK_ID,
   ALLREDUCE_INIT_TASK_ID,
+  ALLREDUCE_INF_TASK_ID,
   ALLREDUCE_FWD_TASK_ID,
   ALLREDUCE_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
@@ -228,6 +230,10 @@ enum TaskIDs {
   // InferenceManager & RequestManager
   RM_LOAD_TOKENS_TASK_ID,
   RM_LOAD_POSITION_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -697,6 +703,10 @@ public:
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
       char const *name = NULL);
+  // ========================================
+  // Inference APIs
+  // ========================================
+  GenerationResult generate(std::string const &text, int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],

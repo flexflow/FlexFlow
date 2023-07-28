@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_VERIFY_H
 #define _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_VERIFY_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/inference.h"
@@ -9,6 +10,7 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention_params.h"
 #include "math.h"
 #include <cfloat>
 #include <complex>
@@ -81,7 +83,7 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &,
+                              BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;

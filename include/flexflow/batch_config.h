@@ -16,6 +16,7 @@
 #pragma once
 
 #include "flexflow/ffconst.h"
+#include "legion.h"
 #include <cstddef>
 #include <cstdlib>
 
@@ -28,6 +29,12 @@ namespace FlexFlow {
 
 class InferenceResult;
 class BeamInferenceResult;
+
+using BatchConfigFuture = Legion::Future;
+using InferenceResultFuture = Legion::Future;
+using BeamSearchBatchConfigFuture = Legion::Future;
+using TreeVerifyBatchConfigFuture = Legion::Future;
+using BeamInferenceResultFuture = Legion::Future;
 
 class BatchConfig {
 public:
@@ -44,8 +51,11 @@ public:
   int num_active_tokens() const;
   void print() const;
   virtual InferenceMode get_mode() const;
-  static int const MAX_NUM_REQUESTS = 16;
+  static BatchConfig const *from_future(BatchConfigFuture const &future);
+  static int const MAX_NUM_REQUESTS = 1;
   static int const MAX_NUM_TOKENS = 64;
+  static int const MAX_PROMPT_LENGTH =
+      63; // should be MAX_NUM_TOKENS - 1 for SpecInfer
   static int const MAX_SEQ_LENGTH = 256;
 
   //  These are set by update
