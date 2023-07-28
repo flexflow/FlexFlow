@@ -814,44 +814,33 @@ void flexflow_beam_search_batch_config_destroy(
 // RequestManager
 // -----------------------------------------------------------------------
 
-flexflow_request_manager_t flexflow_request_manager_create(void);
+flexflow_request_manager_t flexflow_request_manager_get_request_manager(void);
 
-void flexflow_request_manager_destroy(flexflow_request_manager_t handle);
+// void flexflow_request_manager_destroy(flexflow_request_manager_t handle_);
 
-long unsigned int flexflow_request_manager_register_new_request(
-    flexflow_request_manager_t handle,
-    char const *prompt,
-    int max_sequence_length);
+void flexflow_request_manager_register_tokenizer(
+    flexflow_request_manager_t handle_,
+    enum ModelType model_type,
+    char const *tokenizer_filepath);
+
+void flexflow_request_manager_register_output_filepath(
+    flexflow_request_manager_t handle_, char const *output_filepath);
 
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
 
 flexflow_inference_manager_t
-    flexflow_inference_manager_create(flexflow_config_t config_handle,
-                                      int max_num_tokens_per_batch);
+    flexflow_inference_manager_get_inference_manager(void);
 
-void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle);
+// void flexflow_inference_manager_destroy(flexflow_inference_manager_t
+// handle_);
 
 void flexflow_inference_manager_compile_model_and_allocate_buffer(
-    flexflow_inference_manager_t handle, flexflow_model_t model_handle);
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle);
 
 void flexflow_inference_manager_init_operators_inference(
-    flexflow_inference_manager_t handle, flexflow_model_t model_handle);
-
-void flexflow_inference_manager_incr_decoding_loop(
-    flexflow_inference_manager_t handle,
-    flexflow_model_t model_handle,
-    flexflow_request_manager_t rm_handle,
-    int total_num_requests);
-
-void flexflow_inference_manager_spec_inference_loop(
-    flexflow_inference_manager_t handle,
-    flexflow_model_t model_handle,
-    flexflow_request_manager_t rm_handle,
-    int total_num_requests,
-    int num_ssms,
-    int *ssm_model_ids);
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle);
 
 #ifdef __cplusplus
 }

@@ -180,7 +180,7 @@ enum OperatorType {
   OP_INVALID,
 };
 
-enum ModelType { UNKNOWN, LLAMA, OPT, FALCON };
+enum ModelType { UNKNOWN = 3001, LLAMA = 3002, OPT = 3003, FALCON = 3004 };
 
 enum PMParameter {
   PM_OP_TYPE,            // AnyOp

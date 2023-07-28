@@ -17,23 +17,27 @@ from flexflow.core import *
 from transformers import AutoConfig
 import sys
 
+
 class SamplingConfig:
-    def __init__(self, do_sample = False, temperature=0.9, topp=0.8, topk=1):
+    def __init__(self, do_sample=False, temperature=0.9, topp=0.8, topk=1):
         self.do_sample = False
         self.temperature = 0.8
         self.topp = 0.6
         self.topk = 1
 
+
 class LLM:
     def __init__(self, model_name, data_type="half"):
         self.model_name = model_name
         self.supported_models = {
-            "LlamaForCausalLM": FlexFlowLLAMA,
-            "LLaMAForCausalLM": FlexFlowLLAMA,
-            "OPTForCausalLM": FlexFlowOPT,
-            "RWForCausalLM": FlexFlowFalcon # falcon
+            "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
+            "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
+            "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
+            "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
         }
-        self.model_type = self.__get_ff_model_type(model_name)
+        self.model_type, self.model_class = self.__get_ff_model_type(model_name)
+        print(self.model_type, self.model_class)
+        print(type(self.model_type), type(self.model_class))
         self.data_type = data_type
         self.ffconfig = FFConfig()
 
@@ -44,15 +48,17 @@ class LLM:
         if next(iter(architectures), None) is not None:
             ff_arch = self.supported_models.get(architectures[0])
         if ff_arch is None:
-            print("Huggingface model of type {architectures} is not yet supported by FlexFlow")
+            print(
+                "Huggingface model of type {architectures} is not yet supported by FlexFlow"
+            )
             sys.exit(1)
         return ff_arch
 
     def compile(
         self,
-        mode = InferenceMode.INC_DECODING_MODE,
-        sampling_config = SamplingConfig(),
-        use_full_precision = False,
+        mode=InferenceMode.INC_DECODING_MODE,
+        sampling_config=SamplingConfig(),
+        use_full_precision=False,
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
@@ -67,17 +73,32 @@ class LLM:
         self.pipeline_parallel_degree = pipeline_parallel_degree
         self.ssms = ssms
         self.sampling_config = SamplingConfig()
-        assert((mode == InferenceMode.INC_DECODING_MODE or mode == InferenceMode.BEAM_SEARCH_MODE) == (len(ssms) == 0))
-        
-        # Create model
-        self.model = self.model_type(mode, sampling_config, self.ffconfig, max_batch_size, max_seq_length, max_tokens_per_batch, use_full_precision)
+        assert (
+            mode == InferenceMode.INC_DECODING_MODE
+            or mode == InferenceMode.BEAM_SEARCH_MODE
+        ) == (len(ssms) == 0)
 
-        # Create inference manager
-        #self.im = InferenceManager(self.ffconfig, max_tokens_per_batch)
+        # Create model
+        self.model = self.model_class(
+            mode,
+            sampling_config,
+            self.ffconfig,
+            max_batch_size,
+            max_seq_length,
+            max_tokens_per_batch,
+            use_full_precision,
+        )
 
         # Create request manager
-        #self.rm = RequestManager()
-        
+        self.rm = RequestManager()
+        self.rm.register_tokenizer(self.model_type, "tokenizer_file_path")
+        self.rm.register_output_filepath("output_file_path")
+
+        # Create inference manager
+        self.im = InferenceManager()
+        self.im.compile_model_and_allocate_buffer(self.model)
+        self.im.init_operators_inference(self.model)
+
         assert False and "Not implemented yet"
 
     def generate(self, prompt, sampling=None):

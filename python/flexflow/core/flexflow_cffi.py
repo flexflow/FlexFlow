@@ -22,7 +22,7 @@ import logging
 import warnings
 import numpy as np
 from .flexflow_logger import fflogger
-from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, InferenceMode, OpType, ParameterSyncType, enum_to_int, int_to_enum
+from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, InferenceMode, ModelType, OpType, ParameterSyncType, enum_to_int, int_to_enum
 _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
 if not _FF_BUILD_DOCS:
   from .flexflowlib import ffi, flexflow_library
@@ -2869,34 +2869,32 @@ class BatchConfig(object):
 # -----------------------------------------------------------------------
 
 class RequestManager(object):
-  __slots__ = ['handle', '_handle']
+  __slots__ = ['handle']
   def __init__(self):
-    self.handle = ffc.flexflow_request_manager_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_request_manager_destroy)
+    self.handle = ffc.flexflow_request_manager_get_request_manager()
+    #self._handle = ffi.gc(self.handle, ffc.flexflow_request_manager_destroy)
 
-  def flexflow_request_manager_register_new_request(self, prompt, max_sequence_length):
-    return ffc.flexflow_request_manager_register_new_request(self.handle, prompt, max_sequence_length)
+  def register_tokenizer(self, model_type, tokenizer_filepath):
+    c_model_type = enum_to_int(ModelType, model_type)
+    c_tokenizer_filepath = get_c_name(tokenizer_filepath)
+    return ffc.flexflow_request_manager_register_tokenizer(self.handle, c_model_type, c_tokenizer_filepath)
+  
+  def register_output_filepath(self, output_filepath):
+    c_output_filepath = get_c_name(output_filepath)
+    return ffc.flexflow_request_manager_register_output_filepath(self.handle, c_output_filepath)
   
 # -----------------------------------------------------------------------
 # InferenceManager
 # -----------------------------------------------------------------------
 
 class InferenceManager(object):
-  __slots__ = ['handle', '_handle', 'max_num_tokens_per_batch']
-  def __init__(self, ffconfig, max_num_tokens_per_batch):
-    self.max_num_tokens_per_batch = max_num_tokens_per_batch
-    self.handle = ffc.flexflow_inference_manager_create(ffconfig.handle, max_num_tokens_per_batch)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_inference_manager_destroy)
+  __slots__ = ['handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_inference_manager_get_inference_manager()
+    #self._handle = ffi.gc(self.handle, ffc.flexflow_inference_manager_destroy)
 
   def compile_model_and_allocate_buffer(self, model):
     ffc.flexflow_inference_manager_compile_model_and_allocate_buffer(self.handle, model.handle)
 
   def init_operators_inference(self, model):
     ffc.flexflow_inference_manager_init_operators_inference(self.handle, model.handle)
-
-  def incr_decoding_loop(self, model, request_manager, total_num_requests):
-    ffc.flexflow_inference_manager_incr_decoding_loop(self.handle, model.handle, request_manager.handle, total_num_requests)
-
-  def spec_inference_loop(self, model, request_manager, total_num_requests, ssm_model_ids):
-    c_ssm_model_ids = ffi.new("int[]", ssm_model_ids)
-    ffc.flexflow_inference_manager_spec_inference_loop(self.handle, model.handle, request_manager.handle, total_num_requests, len(ssm_model_ids), c_ssm_model_ids)
