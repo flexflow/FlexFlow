@@ -24,7 +24,9 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
+LayerNormMeta::LayerNormMeta(FFHandler handle,
+                             LayerNorm const *ln,
+                             MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;

@@ -19,13 +19,6 @@
 
 namespace FlexFlow {
 
-__global__ void
-    half_2_float_array(half *ptr, float *ptr_f, int num_of_elements) {
-  CUDA_KERNEL_LOOP(i, num_of_elements) {
-    ptr_f[i] = __half2float(ptr[i]);
-  }
-}
-
 __global__ void init_offset(int batch_size,
                             int vocab_size,
                             int total_eles,
@@ -40,9 +33,14 @@ __global__ void init_offset(int batch_size,
 template <typename DT>
 __global__ void copy_result(cub::KeyValuePair<int, DT> *d_out,
                             int *indices,
-                            int batch_size) {
+                            float *prob_ptr,
+                            int batch_size,
+                            bool beam_search) {
   CUDA_KERNEL_LOOP(i, batch_size) {
     indices[i] = d_out[i].key;
+    if (beam_search) {
+      prob_ptr[i] = static_cast<float>(d_out[i].value);
+    }
   }
 }
 
@@ -51,7 +49,7 @@ template <typename DT>
 void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             DT *input_ptr,
                             int *indices_ptr,
-                            DT *prob_ptr,
+                            float *prob_ptr,
                             int *parent,
                             int const length,
                             int const batch_size,
@@ -82,14 +80,15 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                 0,
                 stream>>>(static_cast<cub::KeyValuePair<int, DT> *>(m->d_out),
                           indices_ptr,
-                          batch_size);
+                          prob_ptr,
+                          batch_size,
+                          m->beam_search);
 }
 
 /*static*/
 void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                     GenericTensorAccessorW const &input,
                                     GenericTensorAccessorW const &indices,
-                                    GenericTensorAccessorW const &value,
                                     GenericTensorAccessorW const &parent,
                                     int batch_size) {
   cudaStream_t stream;
@@ -107,25 +106,18 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
     ArgMax::forward_kernel<half>(m,
                                  input.get_half_ptr(),
                                  indices.get_int32_ptr(),
-                                 value.get_half_ptr(),
+                                 m->probs,
                                  m->beam_search ? parent.get_int32_ptr()
                                                 : nullptr,
                                  length,
                                  batch_size,
                                  stream);
-    if (m->beam_search) {
-      half_2_float_array<<<GET_BLOCKS(batch_size),
-                           CUDA_NUM_THREADS,
-                           0,
-                           stream>>>(
-          value.get_half_ptr(), m->probs, batch_size);
-    }
 
   } else if (input.data_type == DT_FLOAT) {
     ArgMax::forward_kernel<float>(m,
                                   input.get_float_ptr(),
                                   indices.get_int32_ptr(),
-                                  value.get_float_ptr(),
+                                  m->probs,
                                   m->beam_search ? parent.get_int32_ptr()
                                                  : nullptr,
                                   length,
@@ -160,11 +152,14 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
   checkCUDA(get_legion_stream(&stream));
 
   size_t d_offsets_size = batch_size;
+  size_t prob_size = batch_size;
   assert(data_type == DT_FLOAT || data_type == DT_HALF);
-  size_t total_size = d_offsets_size * sizeof(int) +
-                      (data_type == DT_FLOAT
-                           ? sizeof(cub::KeyValuePair<int, float>) * batch_size
-                           : sizeof(cub::KeyValuePair<int, half>) * batch_size);
+  size_t total_size =
+      d_offsets_size * sizeof(int) +
+      (data_type == DT_FLOAT
+           ? sizeof(cub::KeyValuePair<int, float>) * batch_size
+           : sizeof(cub::KeyValuePair<int, half>) * batch_size) +
+      prob_size * sizeof(float);
   gpu_mem_allocator.create_legion_instance(reserveInst, total_size);
   d_offsets = gpu_mem_allocator.allocate_instance<int>(d_offsets_size);
   d_out = data_type == DT_FLOAT
@@ -172,7 +167,7 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                     batch_size * sizeof(cub::KeyValuePair<int, float>))
               : gpu_mem_allocator.allocate_instance_untyped(
                     batch_size * sizeof(cub::KeyValuePair<int, half>));
-
+  probs = gpu_mem_allocator.allocate_instance<float>(prob_size);
   // init offset
   int parallelism = total_ele;
   init_offset<<<GET_BLOCKS(parallelism),

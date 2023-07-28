@@ -9,6 +9,7 @@
 #include <curand.h>
 #include <curand_kernel.h>
 #endif
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -22,6 +23,7 @@ public:
   int *idx;
   void *d_temp_storage;
   size_t temp_storage_bytes;
+  Realm::RegionInstance reserveInst;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   curandState *state;
 #endif
@@ -29,7 +31,8 @@ public:
                Op const *op,
                int batch_size,
                int total_ele,
-               GenericTensorAccessorW input);
+               GenericTensorAccessorW input,
+               MemoryAllocator &gpu_mem_allocator);
 };
 
 class Sampling : public Op {

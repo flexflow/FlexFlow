@@ -34,6 +34,7 @@ public:
   float kernel_reg_lambda;
   bool use_bias, add_bias_only_once;
   char op_name[MAX_OPNAME];
+  Realm::RegionInstance reserveInst;
 };
 
 namespace Kernels {

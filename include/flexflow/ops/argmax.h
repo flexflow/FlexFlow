@@ -90,7 +90,7 @@ public:
   static void forward_kernel(ArgMaxMeta const *m,
                              DT *input_ptr,
                              int *indices_ptr,
-                             DT *prob_ptr,
+                             float *prob_ptr,
                              int *parent_ptr,
                              int length,
                              int batch_size,
@@ -98,7 +98,6 @@ public:
   static void forward_kernel_wrapper(ArgMaxMeta const *m,
                                      GenericTensorAccessorW const &input,
                                      GenericTensorAccessorW const &indices,
-                                     GenericTensorAccessorW const &value,
                                      GenericTensorAccessorW const &parent,
                                      int batch_size);
   Params get_params() const;

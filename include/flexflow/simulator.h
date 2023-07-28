@@ -38,6 +38,7 @@ class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
 class ElementBinaryMeta;
+class LayerNormMeta;
 // class EmbeddingMeta;
 // class SoftmaxMeta;
 class BatchMatmulMeta;
@@ -351,7 +352,7 @@ private:
   std::vector<std::vector<CommDevice *>> nic_outs;   // socket_id, local_id
   std::vector<CommDevice *> pcis_to_host; // from gpu to main memory, socket_id
   std::vector<CommDevice *>
-      pcis_to_device; // from main memory to gpu, socket_id
+      pcis_to_device;                     // from main memory to gpu, socket_id
   std::vector<std::vector<CommDevice *>> nvlinks; // node_id, local_id
   std::unordered_map<size_t, CommDevice *> mem_to_nvlink;
   // set up communication paths from a config file
@@ -754,6 +755,7 @@ public:
   LinearMeta *linear_meta;
   Pool2DMeta *pool2d_meta;
   ElementUnaryMeta *ele_unary_meta;
+  LayerNormMeta *layernorm_meta;
   // ElementBinaryMeta *ele_binary_meta;
   // EmbeddingMeta *embedding_meta;
   // SoftmaxMeta *softmax_meta;

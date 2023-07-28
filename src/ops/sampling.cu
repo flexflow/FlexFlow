@@ -201,17 +201,29 @@ SamplingMeta::SamplingMeta(FFHandler handler,
                            Op const *op,
                            int batch_size,
                            int total_ele,
-                           GenericTensorAccessorW input)
+                           GenericTensorAccessorW input,
+                           MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {
   DataType data_type = op->data_type;
-  checkCUDA(cudaMalloc(&begin_offset, (batch_size + 1) * sizeof(int)));
-  checkCUDA(cudaMalloc(&end_offset, (batch_size + 1) * sizeof(int)));
-  checkCUDA(cudaMalloc(&idx, total_ele * sizeof(int)));
 
-  checkCUDA(cudaMalloc(&sorted_idx, total_ele * sizeof(int)));
-  checkCUDA(cudaMalloc(&sorted_logits, total_ele * data_type_size(data_type)));
-  cudaMalloc(&state, sizeof(curandState) * batch_size);
+  size_t begin_offset_size, end_offset_size;
+  begin_offset_size = end_offset_size = batch_size + 1;
+  size_t idx_size, sorted_idx_size, sorted_logits_size;
+  idx_size = sorted_idx_size = sorted_logits_size = total_ele;
+  size_t state_size = batch_size;
 
+  size_t totalSize = sizeof(int) * (begin_offset_size + end_offset_size +
+                                    idx_size + sorted_idx_size) +
+                     data_type_size(data_type) * sorted_logits_size +
+                     sizeof(curandState) * state_size;
+  gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
+  begin_offset = gpu_mem_allocator.allocate_instance<int>(begin_offset_size);
+  end_offset = gpu_mem_allocator.allocate_instance<int>(end_offset_size);
+  idx = gpu_mem_allocator.allocate_instance<int>(idx_size);
+  sorted_idx = gpu_mem_allocator.allocate_instance<int>(sorted_idx_size);
+  sorted_logits = gpu_mem_allocator.allocate_instance_untyped(
+      sorted_logits_size * data_type_size(data_type));
+  state = gpu_mem_allocator.allocate_instance<curandState>(state_size);
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -261,7 +273,10 @@ SamplingMeta::SamplingMeta(FFHandler handler,
   } else {
     assert(false && "input type in float and half");
   }
-  checkCUDA(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+
+  gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
+  d_temp_storage =
+      gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
 }
 
 }; // namespace FlexFlow

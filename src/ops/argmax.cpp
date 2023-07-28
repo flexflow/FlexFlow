@@ -25,7 +25,7 @@ template <typename DT>
 void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             DT *input_ptr,
                             int *indices_ptr,
-                            DT *prob_ptr,
+                            float *prob_ptr,
                             int *parent_ptr,
                             int length,
                             int batch_size,
@@ -35,8 +35,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
 void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                     GenericTensorAccessorW const &input,
                                     GenericTensorAccessorW const &indices,
-                                    GenericTensorAccessorW const &value,
-                                    GenericTensorAccessorW const &paren,
+                                    GenericTensorAccessorW const &parent,
                                     int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));

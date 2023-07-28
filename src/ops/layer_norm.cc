@@ -355,7 +355,12 @@ OpMeta *LayerNorm::init_task(Task const *task,
                              Runtime *runtime) {
   LayerNorm *ln = (LayerNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  LayerNormMeta *meta = new LayerNormMeta(handle, ln);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  LayerNormMeta *meta = new LayerNormMeta(handle, ln, gpu_mem_allocator);
   meta->input_type[0] = ln->inputs[0]->data_type;
   meta->output_type[0] = ln->outputs[0]->data_type;
   return meta;
@@ -651,7 +656,7 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
   }
   Domain input_domain = sub_input.get_domain();
   Domain output_domain = sub_output.get_domain();
-  LayerNormMeta *m = new LayerNormMeta(sim->handler, this);
+  LayerNormMeta *m = sim->layernorm_meta;
 
   sim->free_all();
   float *in_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
