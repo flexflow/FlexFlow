@@ -9,13 +9,11 @@ TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
 
   std::vector<Node> n = g.add_nodes(3);
   std::vector<NodePort> p = g.add_node_ports(3);
-  
-  std::vector<MultiDiEdge> e = {
-      {n[0], n[1], p[0], p[1]},
-      {n[0], n[2], p[0], p[2]},
-      {n[2], n[0], p[2], p[0]},
-      {n[2], n[1], p[2], p[1]}
-      };
+
+  std::vector<MultiDiEdge> e = {{n[0], n[1], p[0], p[1]},
+                                {n[0], n[2], p[0], p[2]},
+                                {n[2], n[0], p[2], p[0]},
+                                {n[2], n[1], p[2], p[1]}};
   g.add_edges(e);
 
   CHECK(g.query_nodes(NodeQuery::all()) ==
@@ -55,7 +53,8 @@ TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
   SUBCASE("remove node") {
     g.remove_node_unsafe(n[0]);
 
-    CHECK(g.query_nodes(NodeQuery::all()) == std::unordered_set<Node>{n[1], n[2]});
+    CHECK(g.query_nodes(NodeQuery::all()) ==
+          std::unordered_set<Node>{n[1], n[2]});
 
     CHECK(g.query_edges(MultiDiEdgeQuery::all()) ==
           std::unordered_set<MultiDiEdge>{e[2], e[3]});

@@ -96,7 +96,6 @@ std::unordered_set<MultiDiEdge>
 }
 
 MultiDiGraphView::operator GraphView() const {
-  //return GraphView::unsafe_create(*(this->ptr.get()));
   return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
 }
 

@@ -363,12 +363,13 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   return result;
 }
 
-std::unordered_set<Node> get_neighbors(DiGraphView const & g, Node const & n) {
+std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
   UndirectedGraphView undirected = as_undirected(g);
   return get_neighbors(undirected, n);
 }
 
-std::unordered_set<Node> get_neighbors(MultiDiGraphView const & g, Node const &n) {
+std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
+                                       Node const &n) {
   UndirectedGraphView undirected = as_undirected(as_digraph(g));
   return get_neighbors(undirected, n);
 }

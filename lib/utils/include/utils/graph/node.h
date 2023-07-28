@@ -71,7 +71,9 @@ struct GraphView {
       create(Args &&...args) {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
-  GraphView(std::shared_ptr<IGraphView const> const & ptr,  should_only_be_used_internally_tag_t const & tag):GraphView(ptr) {}
+  GraphView(std::shared_ptr<IGraphView const> const &ptr,
+            should_only_be_used_internally_tag_t const &tag)
+      : GraphView(ptr) {}
 
 private:
   GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}

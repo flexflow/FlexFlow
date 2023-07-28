@@ -83,8 +83,7 @@ UndirectedGraphView
 }
 
 UndirectedGraphView::operator GraphView const &() const {
-  return GraphView::unsafe_create(
-      *this->ptr.get()); // Note(lambda):may have some problem
+  return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
 }
 
 } // namespace FlexFlow

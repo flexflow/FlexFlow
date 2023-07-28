@@ -14,7 +14,7 @@ using namespace FlexFlow;
 TEST_CASE("MultiDiGraph") {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
   std::vector<Node> n = g.add_nodes(4);
-  std::vector<NodePort> p= g.add_node_ports(4);
+  std::vector<NodePort> p = g.add_node_ports(4);
 
   std::vector<MultiDiEdge> e = {
       {n[0], n[3], p[0], p[3]},
@@ -28,7 +28,8 @@ TEST_CASE("MultiDiGraph") {
   CHECK(get_incoming_edges(g, {n[1], n[3]}) ==
         std::unordered_set<MultiDiEdge>{e[0], e[2], e[3]});
   CHECK(get_incoming_edges(g, {n[1]}) == std::unordered_set<MultiDiEdge>{});
-  CHECK(get_outgoing_edges(g, {n[2], n[3]}) == std::unordered_set<MultiDiEdge>{e[3]});
+  CHECK(get_outgoing_edges(g, {n[2], n[3]}) ==
+        std::unordered_set<MultiDiEdge>{e[3]});
   std::unordered_map<Node, std::unordered_set<Node>> res =
       get_predecessors(g, {n[1], n[2], n[3]});
   std::unordered_map<Node, std::unordered_set<Node>> expected_result =
@@ -45,16 +46,17 @@ TEST_CASE("DiGraph") {
 
   std::vector<Node> n = add_nodes(g, 4);
   std::vector<DirectedEdge> e = {
-    {n[0], n[3]},
-    {n[0], n[1]},
-    {n[0], n[2]},
-    {n[1], n[2]},
+      {n[0], n[3]},
+      {n[0], n[1]},
+      {n[0], n[2]},
+      {n[1], n[2]},
   };
   add_edges(g, e);
 
   CHECK(get_incoming_edges(g, {n[2], n[3]}) ==
         std::unordered_set<DirectedEdge>{e[0], e[2], e[3]});
-  CHECK(get_outgoing_edges(g, {n[2], n[3]}) == std::unordered_set<DirectedEdge>{});
+  CHECK(get_outgoing_edges(g, {n[2], n[3]}) ==
+        std::unordered_set<DirectedEdge>{});
   auto expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
       {n[1], {n[0]}},
       {n[2], {n[0], n[1]}},
@@ -117,9 +119,7 @@ TEST_CASE("DiGraph") {
 TEST_CASE("traversal") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> const n = add_nodes(g, 4);
-  std::vector<DirectedEdge> edges = {{n[0], n[1]},
-                                     {n[1], n[2]},
-                                     {n[2], n[3]}};
+  std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
   add_edges(g, edges);
 
   CHECK(get_sources(g) == std::unordered_set<Node>{n[0]});
@@ -144,12 +144,11 @@ TEST_CASE("traversal") {
           std::vector<Node>{n[0], n[1], n[2], n[3]});
     CHECK(is_acyclic(g) == false);
   }
-    // SUBCASE("nonlinear") {
-    //     g.add_edge({n[1], n[3]});
-    //   CHECK(is_acyclic(g) == true);//TODO, maybe a bug about the
-    //   unchecked_dfs
-    // }
-
+  // SUBCASE("nonlinear") {
+  //     g.add_edge({n[1], n[3]});
+  //   CHECK(is_acyclic(g) == true);//TODO, maybe a bug about the
+  //   unchecked_dfs
+  // }
 }
 
 TEST_CASE("bfs") {

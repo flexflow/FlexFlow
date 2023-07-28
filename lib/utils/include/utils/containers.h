@@ -584,13 +584,13 @@ T reversed(T const &t) {
 
 template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
-  return transform(v, [](optional<T> const &t) { 
-      if(t == nullopt) {
-        throw std::runtime_error("value is nullopt");
-      } else {
-        return t.value();
-      }
-   });
+  return transform(v, [](optional<T> const &t) {
+    if (t == nullopt) {
+      throw std::runtime_error("value is nullopt");
+    } else {
+      return t.value();
+    }
+  });
 }
 
 template <typename T>

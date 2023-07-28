@@ -45,7 +45,6 @@ std::unordered_set<DirectedEdge>
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
 
 DiGraphView::operator GraphView() const {
-  //return GraphView::unsafe_create(*(this->ptr.get()));
   return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
 }
 

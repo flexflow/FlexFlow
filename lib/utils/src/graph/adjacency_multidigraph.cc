@@ -11,7 +11,7 @@ Node AdjacencyMultiDiGraph::add_node() {
 }
 
 NodePort AdjacencyMultiDiGraph::add_node_port() {
-  auto nodePort  = NodePort{this->next_node_port};
+  auto nodePort = NodePort{this->next_node_port};
   this->next_node_port++;
   return nodePort;
 }
