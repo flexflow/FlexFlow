@@ -240,9 +240,16 @@ OpMeta *ArgMax::init_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
+  int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
+  int batch_size = acc_input.domain.get_volume() / length;
 
-  ArgMaxMeta *m =
-      new ArgMaxMeta(handle, s, input_domain, output_domain, acc_input);
+  ArgMaxMeta *m = new ArgMaxMeta(handle,
+                                 s,
+                                 input_domain,
+                                 output_domain,
+                                 acc_input,
+                                 batch_size,
+                                 length * batch_size);
   m->profiling = s->profiling;
   m->beam_search = s->beam_search;
   return m;
@@ -356,7 +363,7 @@ BeamInferenceResult
       m->input_type[0], regions[2], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[3], task->regions[1], FID_DATA, ctx, runtime);
-  ArgMax::forward_kernel_wrapper(m, input, indices, value, parent);
+  ArgMax::forward_kernel_wrapper(m, input, indices, value, parent, batch_size);
 
   BeamInferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
@@ -389,7 +396,7 @@ InferenceResult
       m->input_type[0], regions[2], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent;
   int batch_size = bc->num_active_tokens();
-  ArgMax::forward_kernel_wrapper(m, input, indices, value, parent);
+  ArgMax::forward_kernel_wrapper(m, input, indices, value, parent, batch_size);
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);

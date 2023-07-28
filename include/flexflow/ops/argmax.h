@@ -12,18 +12,17 @@ class ArgMaxMeta : public OpMeta {
 public:
   bool beam_search;
   float *probs;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnReduceTensorDescriptor_t reduceMaxDesc;
-#else
-  miopenTensorDescriptor_t inputTensor, outputTensor;
-  miopenReduceTensorDescriptor_t reduceMaxDesc;
-#endif
+  void *d_temp_storage;
+  size_t temp_storage_bytes = 0;
+  int *d_offsets;
+  void *d_out;
   ArgMaxMeta(FFHandler handler,
              Op const *op,
              Legion::Domain const &input_domain,
              Legion::Domain const &output_domain,
-             GenericTensorAccessorW input);
+             GenericTensorAccessorW input,
+             int batch_size,
+             int total_ele);
 };
 
 class ArgMax : public Op {
@@ -97,7 +96,8 @@ public:
                                      GenericTensorAccessorW const &input,
                                      GenericTensorAccessorW const &indices,
                                      GenericTensorAccessorW const &value,
-                                     GenericTensorAccessorW const &parent);
+                                     GenericTensorAccessorW const &parent,
+                                     int batch_size);
   Params get_params() const;
 
 public:
