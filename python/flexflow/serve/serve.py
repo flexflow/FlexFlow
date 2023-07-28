@@ -27,7 +27,7 @@ class SamplingConfig:
 
 
 class LLM:
-    def __init__(self, model_name, data_type="half"):
+    def __init__(self, model_name, data_type="half", tokenizer_path="", output_file=""):
         self.model_name = model_name
         self.supported_models = {
             "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
@@ -37,6 +37,8 @@ class LLM:
         }
         self.model_type, self.model_class = self.__get_ff_model_type(model_name)
         self.data_type = data_type
+        self.tokenizer_path = tokenizer_path
+        self.output_file = output_file
         self.ffconfig = FFConfig()
 
     def __get_ff_model_type(self, model_name):
@@ -89,13 +91,13 @@ class LLM:
 
         # Create request manager
         self.rm = RequestManager()
-        self.rm.register_tokenizer(self.model_type, "tokenizer_file_path")
-        self.rm.register_output_filepath("output_file_path")
+        self.rm.register_tokenizer(self.model_type, self.tokenizer_path)
+        self.rm.register_output_filepath(self.output_file)
 
         # Create inference manager
         self.im = InferenceManager()
-        self.im.compile_model_and_allocate_buffer(self.model)
-        self.im.init_operators_inference(self.model)
+        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
+        self.im.init_operators_inference(self.model.ffmodel)
 
         assert False and "Not implemented yet"
 
