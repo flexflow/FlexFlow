@@ -72,6 +72,7 @@ jobs:
           export PATH=/opt/conda/bin:$PATH
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
+          export FF_CUDA_ARCH=all
 
           export BUILD_LEGION_ONLY=ON
 
