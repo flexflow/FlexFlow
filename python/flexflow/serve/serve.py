@@ -36,8 +36,6 @@ class LLM:
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
         }
         self.model_type, self.model_class = self.__get_ff_model_type(model_name)
-        print(self.model_type, self.model_class)
-        print(type(self.model_type), type(self.model_class))
         self.data_type = data_type
         self.ffconfig = FFConfig()
 
