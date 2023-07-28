@@ -65,4 +65,5 @@ SamplingMeta::SamplingMeta(FFHandler handler,
                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {}
 
+SamplingMeta::~SamplingMeta(void) {}
 }; // namespace FlexFlow

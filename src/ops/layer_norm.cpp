@@ -40,6 +40,8 @@ LayerNormMeta::LayerNormMeta(FFHandler handle,
   checkCUDA(hipMalloc(&bias_ptr, sizeof(float) * effective_batch_size));
 }
 
+LayerNormMeta::~LayerNormMeta(void) {}
+
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
                                             unsigned int delta,

@@ -111,6 +111,7 @@ public:
   LayerNormMeta(FFHandler handle,
                 LayerNorm const *ln,
                 MemoryAllocator &gpu_mem_allocator);
+  ~LayerNormMeta(void);
 
 public:
   bool elementwise_affine;

@@ -49,6 +49,11 @@ RMSNormMeta::RMSNormMeta(FFHandler handler,
   norm_ptr = gpu_mem_allocator.allocate_instance_untyped(
       norm_ptr_size * data_type_size(data_type));
 }
+RMSNormMeta::~RMSNormMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
 
 namespace Kernels {
 namespace RMSNorm {

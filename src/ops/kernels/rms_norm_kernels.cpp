@@ -26,7 +26,7 @@ RMSNormMeta::RMSNormMeta(FFHandler handler,
                          RMSNorm const *rms,
                          MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, rms) {}
-
+RMSNormMeta::~RMSNormMeta(void) {}
 namespace Kernels {
 namespace RMSNorm {
 

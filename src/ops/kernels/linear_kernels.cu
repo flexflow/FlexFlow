@@ -65,6 +65,12 @@ LinearMeta::LinearMeta(FFHandler handler,
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
 }
 
+LinearMeta::~LinearMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
+
 namespace Kernels {
 namespace Linear {
 

@@ -26,6 +26,7 @@ public:
              int batch_size,
              int total_ele,
              MemoryAllocator &gpu_mem_allocator);
+  ~ArgMaxMeta(void);
 };
 
 class ArgMax : public Op {

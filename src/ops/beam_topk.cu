@@ -746,22 +746,11 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler,
   request_id = gpu_mem_allocator.allocate_instance<int>(request_id_size);
   tokens_per_request =
       gpu_mem_allocator.allocate_instance<int>(tokens_per_request_size);
-  // checkCUDA(cudaMalloc(&parent_ids,
-  //                          sizeof(int) *
-  //                          BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-  //                              BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  // checkCUDA(cudaMalloc(&acc_probs,
-  //                      data_type_size(data_type) *
-  //                          BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-  //                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  // checkCUDA(cudaMalloc(&block_start_index,
-  //                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-  //                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  // checkCUDA(cudaMalloc(&request_id,
-  //                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-  //                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  // checkCUDA(cudaMalloc(&tokens_per_request,
-  //                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-  //                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+}
+
+BeamTopKMeta::~BeamTopKMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
 }
 }; // namespace FlexFlow

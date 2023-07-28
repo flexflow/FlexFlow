@@ -50,6 +50,12 @@ LayerNormMeta::LayerNormMeta(FFHandler handle,
       data_type_size(data_type) * effective_batch_size);
 }
 
+LayerNormMeta::~LayerNormMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
+
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
                                             unsigned int delta,

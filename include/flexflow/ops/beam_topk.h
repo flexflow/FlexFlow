@@ -14,6 +14,7 @@ public:
   BeamTopKMeta(FFHandler handle,
                Op const *op,
                MemoryAllocator &gpu_mem_allocator);
+  ~BeamTopKMeta(void);
   bool sorted;
   int max_beam_width;
   int *parent_ids;

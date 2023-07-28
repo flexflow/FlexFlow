@@ -69,4 +69,6 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                        MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {}
 
+ArgMaxMeta::~ArgMaxMeta(void) {}
+
 }; // namespace FlexFlow

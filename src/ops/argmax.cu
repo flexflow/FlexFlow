@@ -204,4 +204,9 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
       gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
 }
 
+ArgMaxMeta::~ArgMaxMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
 }; // namespace FlexFlow

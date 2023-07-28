@@ -41,6 +41,7 @@ LinearMeta::LinearMeta(FFHandler handler,
   checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
 }
+LinearMeta::~LinearMeta(void) {}
 
 namespace Kernels {
 namespace Linear {

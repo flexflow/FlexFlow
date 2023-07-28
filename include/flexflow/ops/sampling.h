@@ -33,6 +33,7 @@ public:
                int total_ele,
                GenericTensorAccessorW input,
                MemoryAllocator &gpu_mem_allocator);
+  ~SamplingMeta(void);
 };
 
 class Sampling : public Op {

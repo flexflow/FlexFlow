@@ -700,4 +700,6 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler,
                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
 }
+
+BeamTopKMeta::~BeamTopKMeta(void) {}
 }; // namespace FlexFlow

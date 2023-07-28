@@ -15,6 +15,7 @@ public:
              Linear const *li,
              MemoryAllocator gpu_mem_allocator,
              int weightSize);
+  ~LinearMeta(void);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;

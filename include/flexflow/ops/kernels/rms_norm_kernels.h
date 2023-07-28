@@ -17,6 +17,7 @@ public:
   RMSNormMeta(FFHandler handler,
               RMSNorm const *rms,
               MemoryAllocator &gpu_mem_allocator);
+  ~RMSNormMeta(void);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceDesc;
