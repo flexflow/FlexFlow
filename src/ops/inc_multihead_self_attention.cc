@@ -35,6 +35,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::Machine;
@@ -648,7 +649,7 @@ void IncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 FutureMap IncMultiHeadSelfAttention::inference(
     FFModel const &ff,
-    BatchConfig const &bc,
+    BatchConfigFuture const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -660,17 +661,18 @@ FutureMap IncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
-                    bc.num_tokens,
-                    bc.num_active_requests());
+  // log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
+  //                   bc->num_tokens,
+  //                   bc->num_active_requests());
   IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -718,7 +720,15 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(task->regions.size() == regions.size());
 
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  // BatchConfig const *bc = (BatchConfig *)task->args;
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
+                    bc->num_tokens,
+                    bc->num_active_requests());
+  if (bc->num_tokens == 0) {
+    return;
+  }
+
   IncMultiHeadSelfAttentionMeta const *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
 

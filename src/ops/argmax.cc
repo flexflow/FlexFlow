@@ -254,7 +254,7 @@ void ArgMax::forward(FFModel const &ff) {
 }
 
 FutureMap ArgMax::inference(FFModel const &ff,
-                            BatchConfig const &bc,
+                            BatchConfigFuture const &bc,
                             std::vector<ParallelTensor> const &batch_inputs,
                             std::vector<ParallelTensor> const &batch_outputs,
                             MachineView const *mv) {
@@ -270,12 +270,13 @@ FutureMap ArgMax::inference(FFModel const &ff,
   if (beam_search) {
     IndexLauncher launcher(ARGMAX_BEAM_INF_TASK_ID,
                            parallel_is,
-                           TaskArgument(&bc, sizeof(BatchConfig)),
+                           TaskArgument(nullptr, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
                            machine_view_hash);
+    launcher.add_future(bc);
     launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                       0 /*projection id*/,
                                                       READ_WRITE,
@@ -307,12 +308,13 @@ FutureMap ArgMax::inference(FFModel const &ff,
   } else {
     IndexLauncher launcher(ARGMAX_NORM_INF_TASK_ID,
                            parallel_is,
-                           TaskArgument(&bc, sizeof(BatchConfig)),
+                           TaskArgument(nullptr, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
                            machine_view_hash);
+    launcher.add_future(bc);
     launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                       0 /*projection id*/,
                                                       READ_WRITE,
@@ -344,7 +346,12 @@ BeamInferenceResult
                                 Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    // Directly return for empty batch config
+    BeamInferenceResult ir;
+    return ir;
+  }
   ArgMaxMeta const *m = *((ArgMaxMeta **)task->local_args);
 
   GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(
@@ -378,8 +385,13 @@ InferenceResult
                                 Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  BatchConfig const *bc = (BatchConfig *)task->args;
   ArgMaxMeta const *m = *((ArgMaxMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    // Directly return for empty batch config
+    InferenceResult ir;
+    return ir;
+  }
 
   GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);

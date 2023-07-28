@@ -20,7 +20,6 @@ namespace FlexFlow {
 using namespace Legion;
 
 void OPT::create_opt_model(FFModel &ff,
-                           InferenceManager &im,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
                            InferenceMode mode,
@@ -224,7 +223,8 @@ void OPT::create_opt_model(FFModel &ff,
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff);
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             opt_config.num_attention_heads,
@@ -233,7 +233,7 @@ void OPT::create_opt_model(FFModel &ff,
                                 opt_config.num_attention_heads);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
-  im.init_operators_inference(&ff);
+  im->init_operators_inference(&ff);
 }
 
 }; // namespace FlexFlow

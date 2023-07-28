@@ -38,7 +38,7 @@ public:
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &,
+                              BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;

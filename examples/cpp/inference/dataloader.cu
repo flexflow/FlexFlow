@@ -15,6 +15,7 @@
 
 #include "dataloader.h"
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 void DataLoader::load_input(Task const *task,
