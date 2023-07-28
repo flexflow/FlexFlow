@@ -84,8 +84,9 @@ function get_build_configs() {
 
 if [ -n "$1" ] && [ "$1" == "CMAKE_FLAGS" ]; then
     . $(dirname $0)/config.inc
-    # You can pass the name of the variable you want to print out as $1. This
-    # is used in the python setup script to get the cmake config
+    # Passing CMAKE_FLAGS as $1 will print the value of the CMAKE_FLAGS variable, 
+    # which is set in the config.inc file. This is used in the python setup.py script 
+    # to get the cmake config
     echo "${!1}"
 elif [ -z "$1" ] || [ "$1" != "get-docker-configs" ]; then
     . $(dirname $0)/config.inc
