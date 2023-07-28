@@ -386,8 +386,7 @@ std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
   return map_over_unordered_set<UndirectedEdge, Node>(
       [&](UndirectedEdge const &edge) -> Node {
         return (edge.smaller == n) ? edge.bigger : edge.smaller;
-      },
-      edges);
+      }, edges);
 }
 
 std::vector<MultiDiEdge>
