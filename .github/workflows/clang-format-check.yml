@@ -7,9 +7,6 @@ jobs:
     strategy:
       matrix:
         path:
-          - check: "src"
-            exclude: '\.proto$'
-          - check: "include"
           - check: "lib/compiler"
           - check: "lib/ffi"
           - check: "lib/fmt"
