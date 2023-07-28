@@ -73,8 +73,11 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_CUDA_ARCH=all
-
           export BUILD_LEGION_ONLY=ON
+
+          # create and export the installation path
+          export INSTALL_DIR="build/export/legion/"
+          mkdir -p export/legion
 
           cores_available=$(nproc --all)
           n_build_cores=$(( cores_available -1 ))
@@ -89,16 +92,9 @@ jobs:
       - name: Prepare library files 
         env: 
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-        run: |
-          echo "Removing unnecessary files..."
-          rm -f build/export/legion/lib/libflexflow.so
-          
+        run: |          
           # extract LEGION tarball file 
           export LEGION_TARBALL="legion_${{ matrix.os }}_${{ matrix.gpu_backend }}.tar.gz"
-
-          # create and export the installation path
-          mkdir -p export/legion
-          export INSTALL_DIR="build/export/legion/"
           echo "Creating archive $LEGION_TARBALL"
           tar -zcvf $LEGION_TARBALL build/export/legion/
           echo "Checking the size of the Legion tarball..."
