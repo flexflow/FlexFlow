@@ -76,7 +76,7 @@ jobs:
           export BUILD_LEGION_ONLY=ON
 
           # create and export the installation path
-          export INSTALL_DIR="build/export/legion/"
+          export INSTALL_DIR="export/legion"
           mkdir -p export/legion
 
           cores_available=$(nproc --all)
@@ -90,9 +90,10 @@ jobs:
           make install
            
           # prepare library files extract LEGION tarball file 
-          export LEGION_TARBALL="legion_${{ matrix.os }}_${{ matrix.gpu_backend }}.tar.gz"
+          os_version=$(lsb_release -a)
+          export LEGION_TARBALL="legion_$os_version_${{ matrix.gpu_backend }}.tar.gz"
           echo "Creating archive $LEGION_TARBALL"
-          cd build/export
+          cd export
           tar -zcvf $LEGION_TARBALL 
           echo "Checking the size of the Legion tarball..."
           du -h $LEGION_TARBALL
