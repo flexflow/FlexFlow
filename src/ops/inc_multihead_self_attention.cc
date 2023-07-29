@@ -119,6 +119,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   int kParas = kProjSize * kSize;
   int vParas = vProjSize * vSize;
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
+  int weight_size = qParas * num_heads + kParas * num_kv_heads + vParas * num_kv_heads + oParas * num_heads; 
   int one_head_size = qParas + kParas + vParas + oParas;
   {
     // compress the weight size if quantization.
@@ -126,7 +127,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
       one_head_size = get_quantization_to_byte_size(
           data_type, quantization_type, one_head_size);
     }
-    int dims[1] = {one_head_size * num_heads};
+    int dims[1] = {weight_size};
     li->weights[0] = create_weight_legion_ordering(
         1,
         dims,
@@ -138,7 +139,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {(qProjSize + kProjSize + vProjSize) * num_heads + oProjSize};
+    int dims[1] = {qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -276,8 +277,6 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[i] = _input->dims[i];
     x *= _input->dims[i].size;
   }
-  std::cout << "7jjijiji: "<<"\n";
-  std::cout << x <<"\n";
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
@@ -293,11 +292,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParallelDim dims[3];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
-    dims[1].size = this->num_heads * (qParas + kParas + vParas + oParas);
+    dims[1].size = this->num_heads * (qParas + oParas ) + this->num_kv_heads * (kParas + vParas + oParas);
     dims[1].degree = 1;
     dims[1].parallel_idx = -1;
-    std::cout << "8131221: "<<"\n";
-     std::cout <<dims[0].size<<"\n";
 
     // dims[1] = inputs[0]->dims[num_dims - 1];
     // dims[1].size = this->num_heads;
@@ -309,7 +306,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
 
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
-          data_type, quantization_type, dims[2].size);
+          data_type, quantization_type, (qParas + kParas + vParas + oParas));
     }
     // dims[2].degree = 1;
     // dims[2].parallel_idx = -1;
@@ -325,7 +322,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       bias_shape.dims[0].size =
-          (qProjSize + kProjSize + vProjSize) * num_heads + oProjSize;
+          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -411,14 +408,14 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
-    dims[1].size = this->num_heads * (qParas + kParas + vParas + oParas);
+    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
     // dims[1] = inputs[0]->dims[num_dims - 1];
     // dims[1].size = this->num_heads;
     // dims[1].is_replica_dim = false;
     // dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
-          data_type, quantization_type, dims[2].size);
+          data_type, quantization_type, (qParas + kParas + vParas + oParas));
     }
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
@@ -432,7 +429,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       bias_shape.dims[0].size =
-          (qProjSize + kProjSize + vProjSize) * num_heads + oProjSize;
+          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
