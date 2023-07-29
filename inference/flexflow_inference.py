@@ -47,7 +47,7 @@ from flexflow.core import *
 def top_level_task():
     # Incremental decoding
     llama = LLM(
-        "decapoda-research/llama-30b-hf",
+        "decapoda-research/llama-7b-hf",
         data_type=DataType.DT_HALF,
         tokenizer_path=args.tokenizer,
         weights_path=args.llm_weight,

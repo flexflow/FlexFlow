@@ -53,6 +53,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_tree_verify_batch_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_beam_search_batch_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
+FF_NEW_OPAQUE_TYPE(flexflow_file_data_loader_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -841,6 +842,18 @@ void flexflow_inference_manager_compile_model_and_allocate_buffer(
 
 void flexflow_inference_manager_init_operators_inference(
     flexflow_inference_manager_t handle_, flexflow_model_t model_handle);
+
+// -----------------------------------------------------------------------
+// FileDataLoader
+// -----------------------------------------------------------------------
+
+flexflow_file_data_loader_t
+    flexflow_file_data_loader_create(char const *weight_file_path,
+                                     int num_heads,
+                                     int hidden_dim,
+                                     int qkv_inner_dim);
+
+void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 #ifdef __cplusplus
 }

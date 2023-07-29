@@ -78,7 +78,7 @@ class LLM:
             local_revision = "".join(open(local_revision_file).read().split())
         hf_api = HfApi()
         latest_revision = hf_api.model_info(self.hf_config._name_or_path).sha
-        print(local_revision, latest_revision)
+
         # Download if needed
         if local_revision != latest_revision:
             print(
@@ -92,6 +92,10 @@ class LLM:
             with open(local_revision_file, "w+") as f:
                 f.write(latest_revision)
             print("Done converting the weights...")
+        else:
+            print(
+                f"Loading '{self.hf_config._name_or_path}' model weights from the cache..."
+            )
 
     def load_hf_weights(self):
         print("Loading hf weights...")
@@ -160,7 +164,16 @@ class LLM:
 
         # Create inference manager
         self.im = InferenceManager()
-        # self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
+        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
+
+        # Create file data loader, load weights into tensors
+        self.fileloader = FileDataLoader(
+            self.weights_path,
+            self.hf_config.num_attention_heads,
+            self.hf_config.hidden_size,
+            self.hf_config.hidden_size // self.hf_config.num_attention_heads,
+        )
+
         # self.im.init_operators_inference(self.model.ffmodel)
 
         assert False and "Not implemented yet"

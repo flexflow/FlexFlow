@@ -17,6 +17,7 @@
 #include "flexflow/dataloader.h"
 #include "flexflow/mapper.h"
 #include "flexflow/request_manager.h"
+#include "inference/file_loader.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -64,6 +65,7 @@ public:
                         BeamSearchBatchConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_inference_manager_t, InferenceManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
 };
 
 Logger ffc_log("flexflow_c");
@@ -2217,4 +2219,28 @@ void flexflow_inference_manager_init_operators_inference(
   FFModel *model = FFCObjectWrapper::unwrap(model_handle);
   DEBUG_PRINT("[InferenceManager] init_operators_inference %p", handle);
   handle->init_operators_inference(model);
+}
+
+// -----------------------------------------------------------------------
+// FileDataLoader
+// -----------------------------------------------------------------------
+
+flexflow_file_data_loader_t
+    flexflow_file_data_loader_create(char const *weight_file_path,
+                                     int num_heads,
+                                     int hidden_dim,
+                                     int qkv_inner_dim) {
+  assert(weight_file_path != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  std::string const weight_file_path_str(weight_file_path);
+  FileDataLoader *handle = new FileDataLoader(
+      "", weight_file_path_str, num_heads, hidden_dim, qkv_inner_dim);
+  DEBUG_PRINT("[FileDataLoader] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_) {
+  FileDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[FileDataLoader] delete %p", handle);
+  delete handle;
 }
