@@ -447,7 +447,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
     /*q*/
     std::cout<< "num of blockd: " << m->num_kv_heads << "\n";
 
-    apply_rotary_embedding_v2<<<GET_BLOCKS(parallelism),
+    apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
                              stream>>>(output_ptr,
@@ -464,7 +464,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        true);
     save_tensor<float>((float *)output_ptr, 64 * 12 * 10, "/home/ubuntu/FlexFlow/inference/q.txt");                                      
     /*k*/
-    apply_rotary_embedding_v2<<<GET_BLOCKS(parallelism),
+    apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
                              stream>>>(output_ptr,
@@ -1104,6 +1104,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+
+  // print_tensor<float>(input.get_float_ptr(), 32, "attention ip");
   // print_tensor<float>(output.get_float_ptr(), 32, "attention op");
   // assert(false);
 }

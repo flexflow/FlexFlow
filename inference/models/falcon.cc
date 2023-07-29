@@ -157,12 +157,14 @@ void FALCON::create_falcon_model(FFModel &ff,
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff);
+  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   FileDataLoader fileloader("",
                             weight_file_path,
                             falcon_config.n_heads,
                             1,
                             falcon_config.dim,
-                            falcon_config.dim / falcon_config.n_heads);
+                            falcon_config.dim / falcon_config.n_heads,
+                            tensor_partition_num);
   std::cout << "------laod weights ----------" << std::endl;                          
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;

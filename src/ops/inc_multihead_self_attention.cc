@@ -126,9 +126,9 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
       one_head_size = get_quantization_to_byte_size(
           data_type, quantization_type, one_head_size);
     }
-    int dims[2] = {one_head_size, num_heads};
+    int dims[1] = {one_head_size * num_heads};
     li->weights[0] = create_weight_legion_ordering(
-        2,
+        1,
         dims,
         quantization_type == DT_NONE ? data_type : quantization_type,
         li,
@@ -271,9 +271,13 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
   numOutputs = 1;
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
+  size_t x = 1;
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
+    x *= _input->dims[i].size;
   }
+  std::cout << "7jjijiji: "<<"\n";
+  std::cout << x <<"\n";
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
@@ -289,20 +293,29 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParallelDim dims[3];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads;
-    dims[1].is_replica_dim = false;
-    dims[2].size = qParas + kParas + vParas + oParas;
+    dims[1].size = this->num_heads * (qParas + kParas + vParas + oParas);
+    dims[1].degree = 1;
+    dims[1].parallel_idx = -1;
+    std::cout << "8131221: "<<"\n";
+     std::cout <<dims[0].size<<"\n";
+
+    // dims[1] = inputs[0]->dims[num_dims - 1];
+    // dims[1].size = this->num_heads;
+    // dims[1].is_replica_dim = false;
+    // dims[2].size = qParas + kParas + vParas + oParas;
+    
+    // std::cout <<dims[2].is_replica_dim <<"\n";
+    
 
     if (quantization_type != DT_NONE) {
-      dims[2].size = get_quantization_to_byte_size(
+      dims[1].size = get_quantization_to_byte_size(
           data_type, quantization_type, dims[2].size);
     }
-    dims[2].degree = 1;
-    dims[2].parallel_idx = -1;
+    // dims[2].degree = 1;
+    // dims[2].parallel_idx = -1;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-    weights[0] = model.create_parallel_weight<3>(
+    weights[0] = model.create_parallel_weight<2>(
         dims,
         quantization_type == DT_NONE ? this->data_type : quantization_type,
         nullptr /*owner_op*/,
@@ -395,20 +408,21 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     int vParas = this->vProjSize * this->vSize;
     int oParas =
         this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
-    ParallelDim dims[3];
+    ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads;
-    dims[1].is_replica_dim = false;
-    dims[2].size = qParas + kParas + vParas + oParas;
+    dims[1].size = this->num_heads * (qParas + kParas + vParas + oParas);
+    // dims[1] = inputs[0]->dims[num_dims - 1];
+    // dims[1].size = this->num_heads;
+    // dims[1].is_replica_dim = false;
+    // dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
-      dims[2].size = get_quantization_to_byte_size(
+      dims[1].size = get_quantization_to_byte_size(
           data_type, quantization_type, dims[2].size);
     }
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-    weights[0] = model.create_parallel_weight<3>(
+    weights[0] = model.create_parallel_weight<2>(
         dims,
         quantization_type == DT_NONE ? this->data_type : quantization_type,
         NULL /*owner_op*/,
@@ -620,7 +634,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
   assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
-  int num_heads = weight.domain.hi()[1] - weight.domain.lo()[1] + 1;
+  int num_heads = 12;
   assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -634,6 +648,8 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
     gpu_mem_allocator.register_reserved_work_space(
         handle.offload_reserve_space, handle.offload_reserve_space_size);
   }
+
+  std::cout << "num heads: " << num_heads << "\n";
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
       handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
   if (handle.offload_reserve_space == nullptr) {
@@ -643,6 +659,8 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   }
   m->profiling = attn->profiling;
   if (attn->quantization_type == DT_NONE) {
+    std::cout<<"-----------"<<"\n";
+    std::cout<< "weight.domain.get_volume() : " << weight.domain.get_volume() << ", " << m->weightSize<<"\n";
     assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
            m->weightSize);
   }
@@ -760,7 +778,7 @@ void IncMultiHeadSelfAttention::inference_task(
       ctx, task->regions[2].region.get_index_space());
 
   assert(input_domain.get_dim() == 4);
-  assert(weight_domain.get_dim() == 3);
+  assert(weight_domain.get_dim() == 2);
   assert(output_domain.get_dim() == 4);
 
   assert(task->index_point.get_dim() == 1);

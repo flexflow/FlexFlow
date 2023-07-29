@@ -29,7 +29,8 @@ public:
                  int _num_heads,
                  int _num_kv_heads,
                  size_t _hidden_dim,
-                 size_t _qkv_inner_dim);
+                 size_t _qkv_inner_dim,
+                 int _tensor_partition_num);
 
   BatchConfig::TokenId *generate_requests(int num, int length);
 
@@ -55,7 +56,7 @@ public:
                       int offset);
 
 private:
-  int num_heads, num_kv_heads;
+  int num_heads, num_kv_heads, tensor_partition_num;
   size_t hidden_dim, qkv_inner_dim;
   std::string input_path;
   std::string weight_file_path;

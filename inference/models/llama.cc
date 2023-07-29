@@ -225,12 +225,15 @@ void LLAMA::create_llama_model(FFModel &ff,
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff);
+
+  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   FileDataLoader fileloader("",
                             weight_file_path,
                             llama_config.n_heads,
                             llama_config.n_heads,
                             llama_config.dim,
-                            llama_config.dim / llama_config.n_heads);
+                            llama_config.dim / llama_config.n_heads,
+                            tensor_partition_num);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 

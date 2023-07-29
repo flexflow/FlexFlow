@@ -242,13 +242,14 @@ void OPT::create_opt_model(FFModel &ff,
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
   im.compile_model_and_allocate_buffer(&ff);
+  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   FileDataLoader fileloader("",
                             weight_file_path,
                             opt_config.num_attention_heads,
                             opt_config.num_attention_heads,
                             opt_config.hidden_size,
                             opt_config.hidden_size /
-                                opt_config.num_attention_heads);
+                                opt_config.num_attention_heads,tensor_partition_num);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
   im.init_operators_inference(&ff);
