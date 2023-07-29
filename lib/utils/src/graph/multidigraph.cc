@@ -100,8 +100,9 @@ MultiDiGraphView::operator GraphView() const {
 }
 
 /* unsafe_create:
-1 create the std::shared_ptr<IMultiDiGraphView const> ptr, and define a empty lambda function to delete the ptr.
-2 use this ptr to create a MultiDiGraphView. It is read-only and it is not responsible for ownership management.
+1 create the std::shared_ptr<IMultiDiGraphView const> ptr, and define a empty
+lambda function to delete the ptr. 2 use this ptr to create a MultiDiGraphView.
+It is read-only and it is not responsible for ownership management.
 */
 MultiDiGraphView
     MultiDiGraphView::unsafe_create(IMultiDiGraphView const &graphView) {

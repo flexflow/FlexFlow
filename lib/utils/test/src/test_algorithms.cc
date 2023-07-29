@@ -66,7 +66,9 @@ TEST_CASE("DiGraph") {
   CHECK(res == expected_result);
 
   SUBCASE("get_imm_dominators") {
-    std::unordered_map<Node, Node> result = map_values(get_imm_dominators(g), [&](optional<Node> const & node) { return *node; });
+    std::unordered_map<Node, Node> result =
+        map_values(get_imm_dominators(g),
+                   [&](optional<Node> const &node) { return *node; });
 
     std::unordered_map<Node, Node> expected_result = {
         {n[2], n[0]},
@@ -81,11 +83,13 @@ TEST_CASE("DiGraph") {
     std::unordered_map<Node, std::unordered_set<Node>> result =
         get_dominators(g);
 
-    CHECK(result.size() == 4);
-    CHECK(result[n[0]] == std::unordered_set<Node>{n[0]});
-    CHECK(result[n[1]] == std::unordered_set<Node>{n[1]});
-    CHECK(result[n[2]] == std::unordered_set<Node>{n[0], n[2]});
-    CHECK(result[n[3]] == std::unordered_set<Node>{n[3]});
+    std::unordered_map<Node, std::unordered_set<Node>> expected = {
+        {n[0], {n[0]}},
+        {n[1], {n[1]}},
+        {n[2], {n[0], n[2]}},
+        {n[3], {n[3]}},
+    };
+    CHECK(result == expected);
   }
 
   SUBCASE("get_sinks") {
@@ -102,18 +106,14 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_predecessors") {
-    std::unordered_set<Node> nodes{n[1], n[2]};
     std::unordered_map<Node, std::unordered_set<Node>> result =
-        get_predecessors(g, nodes);
+        get_predecessors(g, {n[1], n[2]});
     CHECK(result.size() == 2);
 
-    auto n1_predecessors = result[n[1]];
-    auto n1_expected = std::unordered_set<Node>{n[0]};
-    CHECK(n1_predecessors == n1_expected);
-
-    auto n2_predecessors = result[n[2]];
-    auto n2_expected = std::unordered_set<Node>{n[0], n[1]};
-    CHECK(n2_predecessors == n2_expected);
+    std::unordered_map<Node, std::unordered_set<Node>> expected_result = {
+        {n[1], {n[0]}},
+        {n[2], {n[0], n[1]}},
+    };
   }
 }
 
@@ -145,11 +145,10 @@ TEST_CASE("traversal") {
           std::vector<Node>{n[0], n[1], n[2], n[3]});
     CHECK(is_acyclic(g) == false);
   }
-  // SUBCASE("nonlinear") {
-  //     g.add_edge({n[1], n[3]});
-  //   CHECK(is_acyclic(g) == true);//TODO, maybe a bug about the
-  //   unchecked_dfs
-  // }
+  SUBCASE("nonlinear") {
+    g.add_edge({n[1], n[3]});
+    CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the  unchecked_dfs
+  }
 }
 
 TEST_CASE("bfs") {
@@ -191,7 +190,7 @@ TEST_CASE("bfs") {
   CHECK_BEFORE(4, 5);
 }
 
-TEST_CASE("topological_ordering") {
+TEST_CASE("get_topological_ordering") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> n = add_nodes(g, 6);
   std::vector<DirectedEdge> edges = {{n[0], n[1]},

@@ -19,7 +19,7 @@ namespace FlexFlow {
 
 struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
-    bool operator==(const Node& other) const {
+  bool operator==(Node const &other) const {
     // Replace this with your actual comparison logic
     return this->value() == other.value();
   }

@@ -58,8 +58,9 @@ std::unordered_set<DirectedEdge>
 }
 
 /* unsafe_create:
-1 create the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda function to delete the ptr.
-2 use this ptr to create a DiGraphView. It is read-only and is not responsible for ownership management.
+1 create the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda
+function to delete the ptr. 2 use this ptr to create a DiGraphView. It is
+read-only and is not responsible for ownership management.
 */
 DiGraphView DiGraphView::unsafe_create(IDiGraphView const &graphView) {
   std::shared_ptr<IDiGraphView const> ptr((&graphView),

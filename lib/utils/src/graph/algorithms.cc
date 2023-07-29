@@ -318,7 +318,6 @@ std::vector<Node> get_unchecked_topological_ordering(DiGraphView const &g) {
   std::unordered_set<Node> seen;
   std::unordered_map<Node, std::unordered_set<Node>> predecessors =
       get_predecessors(g, get_nodes(g));
-
   auto all_predecessors_seen = [&](Node const &n) -> bool {
     bool result = true;
     for (Node const &pred : predecessors.at(n)) {
@@ -386,7 +385,8 @@ std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
   return map_over_unordered_set<UndirectedEdge, Node>(
       [&](UndirectedEdge const &edge) -> Node {
         return (edge.smaller == n) ? edge.bigger : edge.smaller;
-      }, edges);
+      },
+      edges);
 }
 
 std::vector<MultiDiEdge>
