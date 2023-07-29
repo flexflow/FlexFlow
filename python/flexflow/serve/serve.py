@@ -117,7 +117,15 @@ class LLM:
         else:
             self.download_hf_weights()
 
-        # TODO: load the weights
+        # Create file data loader, load weights into tensors
+        self.fileloader = FileDataLoader(
+            self.weights_path,
+            self.hf_config.num_attention_heads,
+            self.hf_config.hidden_size,
+            self.hf_config.hidden_size // self.hf_config.num_attention_heads,
+        )
+
+        # TODO: actually load
 
     def compile(
         self,
@@ -154,8 +162,6 @@ class LLM:
             max_tokens_per_batch,
         )
 
-        # Download the weights from huggingface, if needed
-        self.load_hf_weights()
 
         # Create request manager
         self.rm = RequestManager()
@@ -166,13 +172,8 @@ class LLM:
         self.im = InferenceManager()
         self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
 
-        # Create file data loader, load weights into tensors
-        self.fileloader = FileDataLoader(
-            self.weights_path,
-            self.hf_config.num_attention_heads,
-            self.hf_config.hidden_size,
-            self.hf_config.hidden_size // self.hf_config.num_attention_heads,
-        )
+        # Download the weights from huggingface (if needed) and load them
+        self.load_hf_weights()
 
         # self.im.init_operators_inference(self.model.ffmodel)
 
