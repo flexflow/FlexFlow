@@ -66,14 +66,15 @@ TEST_CASE("DiGraph") {
   CHECK(res == expected_result);
 
   SUBCASE("get_imm_dominators") {
-    std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
+    std::unordered_map<Node, Node> result = map_values(get_imm_dominators(g), [&](optional<Node> const & node) { return *node; });
 
-    CHECK(result.size() == 4);
-    CHECK(result[n[0]] == nullopt);
-
-    CHECK(*result[n[1]] == n[0]);
-    CHECK(*result[n[2]] == n[0]);
-    CHECK(*result[n[3]] == n[0]);
+    std::unordered_map<Node, Node> expected_result = {
+        {n[2], n[0]},
+        {n[1], n[0]},
+        {n[3], n[0]},
+        {n[0], n[0]},
+    };
+    CHECK(result == expected_result);
   }
 
   SUBCASE("get_dominators") {
