@@ -24,16 +24,19 @@ sys.argv += [
     "8000",
     "-tokenizer",
     "../inference/tokenizer/tokenizer.model",
-    "-output-file",
-    "../inference/output/llama_python_inference.txt",
+    # "-output-file",
+    # "../inference/output/llama_python_inference.txt",
 ]
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-tokenizer", help="path to the tokenizer file or folder", type=str, required=True
+    "-llm-weight", help="path to the weights for the LLM", type=str, default=""
 )
 parser.add_argument(
-    "-output-file", help="path to the output file", type=str, required=True
+    "-tokenizer", help="path to the tokenizer file or folder", type=str, default=""
+)
+parser.add_argument(
+    "-output-file", help="path to the output file", type=str, default=""
 )
 args, unknown = parser.parse_known_args()
 
@@ -45,15 +48,15 @@ def top_level_task():
     # Incremental decoding
     llama = LLM(
         "decapoda-research/llama-30b-hf",
-        data_type="half",
+        data_type=DataType.DT_HALF,
         tokenizer_path=args.tokenizer,
+        weights_path=args.llm_weight,
         output_file=args.output_file,
     )
     sampling_config = SamplingConfig(do_sample=False, temperature=0.9, topp=0.8, topk=1)
     llama.compile(
         InferenceMode.INC_DECODING_MODE,
         sampling_config,
-        use_full_precision=False,
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,

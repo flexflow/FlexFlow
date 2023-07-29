@@ -17,20 +17,17 @@ import random
 
 
 class LLAMAConfig:
-    def __init__(self):
-        self.n_layers = 32
-        self.vocab_size = 3200
-        self.n_heads = 32
-        self.dim = 4096
-        self.multiple_of = 256
-        self.norm_eps = 1e-6
-        self.total_requests = 2560
-        self.incremental_mode = True
-        self.hidden_dim = 11008
+    def __init__(self, hf_config):
         self.max_seq_len = 256
         self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
+        self.num_hidden_layers = hf_config.num_hidden_layers
+        self.vocab_size = hf_config.vocab_size
+        self.num_attention_heads = hf_config.num_attention_heads
+        self.hidden_size = hf_config.hidden_size
+        self.rms_norm_eps = hf_config.rms_norm_eps
+        self.intermediate_size = hf_config.intermediate_size
 
 
 class FlexFlowLLAMA:
@@ -39,19 +36,24 @@ class FlexFlowLLAMA:
         mode,
         sampling_config,
         ffconfig,
+        hf_config,
+        data_type,
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
-        use_full_precision=False,
+        weights_filepath="",
+        tokenizer_filepath="",
     ):
         self.mode = mode
         self.sampling_config = sampling_config
         self.ffconfig = ffconfig
         self.max_batch_size = max_batch_size
-        self.use_full_precision = use_full_precision
-        self.llama_config = LLAMAConfig()
+        self.data_type = data_type
+        self.llama_config = LLAMAConfig(hf_config)
         self.llama_config.max_seq_length = max_seq_length
         self.llama_config.max_num_tokens = max_tokens_per_batch
+        self.weights_filepath = weights_filepath
+        self.tokenizer_filepath = tokenizer_filepath
 
         self.build_model()
 
@@ -65,27 +67,29 @@ class FlexFlowLLAMA:
         token = ffmodel.embedding(
             input_tensor,
             self.llama_config.vocab_size,
-            self.llama_config.dim,
+            self.llama_config.hidden_size,
             AggrMode.AGGR_MODE_NONE,
-            DataType.DT_FLOAT if self.use_full_precision else DataType.DT_HALF,
+            self.data_type,
             None,
             embed_init,
         )
 
-        for i in range(self.llama_config.n_layers):
+        for i in range(self.llama_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
 
             attn_norm = ffmodel.rms_norm(
-                token, self.llama_config.norm_eps, self.llama_config.dim
+                token, self.llama_config.rms_norm_eps, self.llama_config.hidden_size
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.spec_inc_multihead_attention(
                     attn_norm,
-                    self.llama_config.dim,
-                    self.llama_config.n_heads,
-                    self.llama_config.dim // self.llama_config.n_heads,
-                    self.llama_config.dim // self.llama_config.n_heads,
+                    self.llama_config.hidden_size,
+                    self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # bias
                     False,  # add_bias_kv
@@ -96,10 +100,12 @@ class FlexFlowLLAMA:
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multihead_self_attention_verify(
                     attn_norm,
-                    self.llama_config.dim,
-                    self.llama_config.n_heads,
-                    self.llama_config.dim // self.llama_config.n_heads,
-                    self.llama_config.dim // self.llama_config.n_heads,
+                    self.llama_config.hidden_size,
+                    self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # bias
                     False,  # add_bias_kv
@@ -110,10 +116,12 @@ class FlexFlowLLAMA:
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multihead_attention(
                     attn_norm,
-                    self.llama_config.dim,
-                    self.llama_config.n_heads,
-                    self.llama_config.dim // self.llama_config.n_heads,
-                    self.llama_config.dim // self.llama_config.n_heads,
+                    self.llama_config.hidden_size,
+                    self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # bias
                     False,  # add_bias_kv
@@ -126,24 +134,30 @@ class FlexFlowLLAMA:
 
             token = ffmodel.add(token, mha)
             ff_norm = ffmodel.rms_norm(
-                token, self.llama_config.norm_eps, self.llama_config.dim
+                token, self.llama_config.rms_norm_eps, self.llama_config.hidden_size
             )
             w1 = ffmodel.dense(
-                ff_norm, self.llama_config.hidden_dim, ActiMode.AC_MODE_NONE, False
+                ff_norm,
+                self.llama_config.intermediate_size,
+                ActiMode.AC_MODE_NONE,
+                False,
             )
             w3 = ffmodel.dense(
-                ff_norm, self.llama_config.hidden_dim, ActiMode.AC_MODE_NONE, False
+                ff_norm,
+                self.llama_config.intermediate_size,
+                ActiMode.AC_MODE_NONE,
+                False,
             )
             sigmoid = ffmodel.sigmoid(w1)
             silu = ffmodel.multiply(w1, sigmoid)
             multi = ffmodel.multiply(silu, w3)
             w2 = ffmodel.dense(
-                multi, self.llama_config.dim, ActiMode.AC_MODE_NONE, False
+                multi, self.llama_config.hidden_size, ActiMode.AC_MODE_NONE, False
             )
             token = ffmodel.add(token, w2)
 
             token = ffmodel.rms_norm(
-                token, self.llama_config.norm_eps, self.llama_config.dim
+                token, self.llama_config.rms_norm_eps, self.llama_config.hidden_size
             )
             dense = ffmodel.dense(
                 token, self.llama_config.vocab_size, ActiMode.AC_MODE_NONE, False
@@ -165,3 +179,25 @@ class FlexFlowLLAMA:
                     output = ffmodel.argmax(dense, False)
 
             self.ffmodel = ffmodel
+
+    def convert_hf_model(model, dst_folder):
+        os.makedirs(dst_folder, exist_ok=True)
+        for name, params in model.named_parameters():
+            name = (
+                name.replace(".", "_")
+                .replace("self_attn", "attention")
+                .replace("q_proj", "wq")
+                .replace("k_proj", "wk")
+                .replace("v_proj", "wv")
+                .replace("o_proj", "wo")
+                .replace("mlp", "feed_forward")
+                .replace("gate_proj", "w1")
+                .replace("down_proj", "w2")
+                .replace("up_proj", "w3")
+                .replace("input_layernorm", "attention_norm")
+                .replace("post_attention_layernorm", "ffn_norm")
+                .replace("embed_tokens", "tok_embeddings")
+                .replace("lm_head", "output")
+                .replace("model_", "")
+            )
+            params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
