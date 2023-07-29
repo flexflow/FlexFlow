@@ -92,7 +92,7 @@ jobs:
           # prepare library files extract LEGION tarball file 
           export LEGION_TARBALL="legion_${{ matrix.os }}_${{ matrix.gpu_backend }}.tar.gz"
           echo "Creating archive $LEGION_TARBALL"
-          cd build/export/legion/
+          cd build/export
           tar -zcvf $LEGION_TARBALL 
           echo "Checking the size of the Legion tarball..."
           du -h $LEGION_TARBALL
