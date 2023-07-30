@@ -85,14 +85,13 @@ function get_build_configs() {
     BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} NCCL_DIR=${NCCL_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} BUILD_LEGION_ONLY=${BUILD_LEGION_ONLY} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_UCX_URL=${FF_UCX_URL} FF_LEGION_NETWORKS=${FF_LEGION_NETWORKS} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND}"
 }
 
-if [ -n "$1" ]; then
-    if [ "$1" != "get-docker-configs" ]; then
-        . $(dirname $0)/config.inc
-        # You can pass the name of the variable you want to print out as $1. This
-        # is used in the python setup script to get the cmake config
-        echo "${!1}"
-    fi
-else
+if [[ -n "$1" && ( "$1" == "CMAKE_FLAGS" || "$1" == "CUDA_PATH" ) ]]; then
+    . $(dirname $0)/config.inc
+    # Passing CMAKE_FLAGS or CUDA_PATH as $1 will print the value of the CMAKE_FLAGS/CUDA_PATH variable, 
+    # which are set here or in the config.inc file. This is used in the python setup.py script 
+    # to get the cmake config
+    echo "${!1}"
+elif [[ -z "$1" || "$1" != "get-docker-configs" ]]; then
     . $(dirname $0)/config.inc
     run_cmake $*
 fi
