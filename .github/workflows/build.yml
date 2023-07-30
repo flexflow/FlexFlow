@@ -93,6 +93,7 @@ jobs:
           export LEGION_TARBALL="legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz"
           echo "Creating archive $LEGION_TARBALL"
           cd export
+          touch "$LEGION_TARBALL"
           tar --exclude="$LEGION_TARBALL" -zcvf $LEGION_TARBALL .
           echo "Checking the size of the Legion tarball..."
           du -h $LEGION_TARBALL
