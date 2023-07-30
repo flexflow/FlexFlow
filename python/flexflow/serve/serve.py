@@ -14,7 +14,7 @@
 
 from flexflow.serve.models import FlexFlowLLAMA, FlexFlowOPT, FlexFlowFalcon
 from flexflow.core import *
-from transformers import AutoConfig, AutoModelForCausalLM
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
 import sys, torch
 
@@ -97,6 +97,61 @@ class LLM:
                 f"Loading '{self.hf_config._name_or_path}' model weights from the cache..."
             )
 
+    def load_hf_tokenizer(self):
+        print("Loading tokenizer...")
+        if len(self.tokenizer_path) > 0:
+            print(f"Using tokenizer from {self.tokenizer_path}")
+            # check that tokenizer exist
+            if not os.path.exists(self.tokenizer_path):
+                raise FileNotFoundError(f"Path {self.tokenizer_path} does not exist")
+            elif (
+                os.path.isdir(self.tokenizer_path)
+                and len(os.listdir(self.tokenizer_path)) == 0
+            ):
+                raise FileNotFoundError(f"Folder {self.tokenizer_path} is empty")
+            return
+
+        # Download tokenizer
+
+        # Use local cache, or download new version
+        self.tokenizer_path = os.path.expanduser(
+            f"~/.cache/flexflow/tokenizers/{self.hf_config._name_or_path}/"
+        )
+        if not os.path.exists(self.tokenizer_path):
+            print(f"Creating directory {self.tokenizer_path}...")
+        os.makedirs(self.tokenizer_path, exist_ok=True)
+
+        # Get local revision SHA, check if it matches latest one on huggingface
+        local_revision = None
+        local_revision_file = os.path.join(self.tokenizer_path, "rev_sha.txt")
+        if os.path.exists(local_revision_file):
+            local_revision = "".join(open(local_revision_file).read().split())
+        hf_api = HfApi()
+        latest_revision = hf_api.model_info(self.hf_config._name_or_path).sha
+
+        # Download if needed
+        if local_revision != latest_revision:
+            print(
+                f"'{self.hf_config._name_or_path}' tokenizer not found in cache or outdated. Downloading from huggingface.co ..."
+            )
+            if self.model_type == ModelType.LLAMA:
+                hf_tokenizer = LlamaTokenizer.from_pretrained(
+                    self.hf_config._name_or_path, use_fast=True
+                )
+            else:
+                hf_tokenizer = AutoTokenizer.from_pretrained(
+                    self.hf_config._name_or_path
+                )
+            hf_tokenizer.save_pretrained(self.tokenizer_path)
+            print("Done downloading HF tokenizer.")
+            with open(local_revision_file, "w+") as f:
+                f.write(latest_revision)
+            print("Loading the tokenizer...")
+        else:
+            print(
+                f"Loading '{self.hf_config._name_or_path}' tokenizer from the cache..."
+            )
+
     def load_hf_weights(self):
         print("Loading hf weights...")
 
@@ -104,7 +159,7 @@ class LLM:
             torch.set_default_tensor_type(torch.HalfTensor)
 
         if len(self.weights_path) > 0:
-            print(f"Using weights from {self.weights_path.length}")
+            print(f"Using weights from {self.weights_path}")
             # check that weights exist
             if not os.path.exists(self.weights_path) or not os.path.isdir(
                 self.weights_path
@@ -165,17 +220,18 @@ class LLM:
             max_tokens_per_batch,
         )
 
-        # Create request manager
-        self.rm = RequestManager()
-        self.rm.register_tokenizer(self.model_type, self.tokenizer_path)
-        self.rm.register_output_filepath(self.output_file)
-
         # Create inference manager
         self.im = InferenceManager()
         self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
 
-        # Download the weights from huggingface (if needed) and load them
+        # Download the weights and tokenizer from huggingface (if needed) and load them
         self.load_hf_weights()
+        self.load_hf_tokenizer()
+
+        # Create request manager
+        self.rm = RequestManager()
+        self.rm.register_tokenizer(self.model_type, self.tokenizer_path)
+        self.rm.register_output_filepath(self.output_file)
 
         self.im.init_operators_inference(self.model.ffmodel)
 

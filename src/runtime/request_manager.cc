@@ -69,12 +69,18 @@ void RequestManager::register_tokenizer(ModelType type,
                                         std::string const &path) {
   // bos id
   this->model_type = type;
+  std::string tokenizer_folder =
+      (!path.empty() && path.back() != '/') ? path + '/' : path;
   if (model_type == ModelType::LLAMA) {
+    bool path_to_file = !path.empty() &&
+                        (path.size() >= strlen("tokenizer.model")) &&
+                        path.find("tokenizer.model") ==
+                            (path.size() - strlen("tokenizer.model"));
+    std::string tokenizer_filepath =
+        path_to_file ? path : tokenizer_folder + "tokenizer.model";
     this->tokenizer_ =
-        Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(path));
+        Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(tokenizer_filepath));
   } else if (model_type == ModelType::OPT) {
-    std::string tokenizer_folder =
-        (!path.empty() && path.back() != '/') ? path + '/' : path;
     std::string vocab_file = tokenizer_folder + "gpt2-vocab.json";
     std::string merges_file = tokenizer_folder + "gpt2-merges.txt";
     std::string added_tokens_file = tokenizer_folder + "added_tokens.json";
