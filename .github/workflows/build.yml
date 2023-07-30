@@ -90,8 +90,7 @@ jobs:
           make install
            
           # prepare library files extract LEGION tarball file 
-          os_version=$(lsb_release -a)
-          export LEGION_TARBALL="legion_$os_version_${{ matrix.gpu_backend }}.tar.gz"
+          export LEGION_TARBALL="legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz"
           echo "Creating archive $LEGION_TARBALL"
           cd export
           tar -zcvf $LEGION_TARBALL 
