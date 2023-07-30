@@ -2645,6 +2645,10 @@ class FFModel(object):
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array   
+  
+  def generate(self, text, max_sequence_length):
+    c_text = get_c_name(text)
+    ffc.flexflow_model_generate(self.handle, c_text, max_sequence_length)
 
 # -----------------------------------------------------------------------
 # SGDOptimizer

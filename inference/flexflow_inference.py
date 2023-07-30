@@ -66,7 +66,7 @@ def top_level_task():
         pipeline_parallel_degree=1,
     )
 
-    prompts = llama.generate(prompts, sampling=sampling_config)
+    prompts = llama.generate("Give three tips for staying healthy.")
     # result = llama.generate("What's the best xxx in yyy?", sampling = sampling_config)
     # print(result)
 
