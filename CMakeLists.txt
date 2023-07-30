@@ -462,6 +462,7 @@ if (FF_USE_PYTHON)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
   )
   # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
+  # create set_python_envs.sh script to set up the environment variables to run flexflow_python
   if (NOT FF_BUILD_FROM_PYPI)
     add_custom_command(TARGET flexflow
       PRE_BUILD	
