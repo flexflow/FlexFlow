@@ -179,8 +179,6 @@ class LLM:
 
         self.im.init_operators_inference(self.model.ffmodel)
 
-        assert False and "Not implemented yet"
-
     def generate(self, prompt, sampling=None):
         self.sampling = sampling if sampling is not None else self.default_config
         assert False and "Not implemented yet"
