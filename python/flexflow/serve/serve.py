@@ -177,7 +177,7 @@ class LLM:
         # Download the weights from huggingface (if needed) and load them
         self.load_hf_weights()
 
-        # self.im.init_operators_inference(self.model.ffmodel)
+        self.im.init_operators_inference(self.model.ffmodel)
 
         assert False and "Not implemented yet"
 

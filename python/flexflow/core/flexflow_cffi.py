@@ -2951,5 +2951,4 @@ class FileDataLoader(object):
     # Check data type and create use_full_precision boolean
     assert(data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF)
     use_full_precision = data_type == DataType.DT_FLOAT
-    print(use_full_precision)
     ffc.flexflow_file_data_loader_load_weights(self.handle, model.handle, num_layers, layer_names_c, layer_handles_c, use_full_precision)

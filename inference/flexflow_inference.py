@@ -17,15 +17,17 @@ import sys, argparse
 
 sys.argv += [
     "-ll:gpu",
-    "1",
+    "4",
     "-ll:fsize",
-    "8000",
+    "14000",
     "-ll:zsize",
-    "8000",
+    "30000",
     "-tokenizer",
     "../inference/tokenizer/tokenizer.model",
     # "-output-file",
     # "../inference/output/llama_python_inference.txt",
+    "-pipeline-parallelism-degree",
+    "4",
 ]
 
 parser = argparse.ArgumentParser()
@@ -60,8 +62,8 @@ def top_level_task():
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
-        tensor_parallel_degree=4,
-        pipeline_parallel_degree=2,
+        tensor_parallel_degree=1,
+        pipeline_parallel_degree=1,
     )
 
     prompts = llama.generate(prompts, sampling=sampling_config)
