@@ -39,6 +39,8 @@ def get_c_name(name):
     return ffi.new("char[]", name.encode('ascii'))
 
 def get_datatype_size(datatype):
+  if (datatype == DataType.DT_HALF):
+    return 2
   if (datatype == DataType.DT_FLOAT):
     return 4
   elif (datatype == DataType.DT_DOUBLE):
@@ -724,7 +726,11 @@ class Tensor(object):
       assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     c_dims = ffi.new("int[]", self.dims)
     np_raw_ptr = np_array.__array_interface__['data']
-    if np_array.dtype == np.float32:
+    if np_array.dtype == np.float16:
+      assert self.data_type == DataType.DT_HALF, "Wrong datatype"
+      raw_ptr = ffi.cast("half*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
+    elif np_array.dtype == np.float32:
       assert self.data_type == DataType.DT_FLOAT, "Wrong datatype"
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
       ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
@@ -739,7 +745,9 @@ class Tensor(object):
     
   def get_tensor(self, ffmodel):
     shape = self.dims
-    if self.data_type == DataType.DT_FLOAT:
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
@@ -763,7 +771,9 @@ class Tensor(object):
 
   def get_gradients(self, ffmodel, comm_type):
     shape = self.dims
-    if self.data_type == DataType.DT_FLOAT:
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
@@ -788,7 +798,9 @@ class Tensor(object):
   
   def get_model_output_gradients(self, ffmodel, comm_type):
     shape = self.dims
-    if self.data_type == DataType.DT_FLOAT:
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
@@ -809,7 +821,9 @@ class Tensor(object):
   
   def get_model_output_tensor(self, ffmodel):
     shape = self.dims
-    if self.data_type == DataType.DT_FLOAT:
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
@@ -829,7 +843,9 @@ class Tensor(object):
 
   def __get_raw_ptr(self, ffmodel, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"
-    if (data_type == DataType.DT_FLOAT):
+    if (data_type == DataType.DT_HALF):
+      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
+    elif (data_type == DataType.DT_FLOAT):
       return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
     elif (data_type == DataType.DT_INT32):
       return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, ffmodel.handle, ffconfig.handle)
@@ -1529,7 +1545,7 @@ class FFModel(object):
   def dense(self, input, out_dim, 
             activation=ActiMode.AC_MODE_NONE, 
             use_bias=True, 
-            datatype=DataType.DT_FLOAT, 
+            datatype=DataType.DT_NONE, 
             shared_op=None,
             kernel_initializer=None, bias_initializer=None, 
             kernel_regularizer=None, name=None):
@@ -2542,7 +2558,9 @@ class FFModel(object):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     num_dim = len(full_array_shape)
-    if (full_array.dtype == "float32"):
+    if (full_array.dtype == "float16"):
+      datatype = DataType.DT_HALF
+    elif (full_array.dtype == "float32"):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
@@ -2569,7 +2587,9 @@ class FFModel(object):
   def __create_data_loader_ptr(self, batch_tensor, full_array):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
-    if (full_array.dtype == "float32"):
+    if (full_array.dtype == "float16"):
+      datatype = DataType.DT_HALF
+    elif (full_array.dtype == "float32"):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
@@ -2602,7 +2622,9 @@ class FFModel(object):
   
   def get_output_tensor(self, ffmodel, data_type):
     shape = self.dims
-    if data_type == DataType.DT_FLOAT:
+    if data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif data_type == DataType.DT_FLOAT:
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
@@ -2819,7 +2841,9 @@ class RegionNdarray(object):
   __slots__ = ['__array_interface__']
   def __init__(self, shape, data_type, base_ptr, strides, read_only):
     # See: https://docs.scipy.org/doc/numpy/reference/arrays.interface.html
-    if (data_type == DataType.DT_FLOAT):
+    if (data_type == DataType.DT_HALF):
+      field_type = "<f2" 
+    elif (data_type == DataType.DT_FLOAT):
       field_type = "<f4"
     elif (data_type == DataType.DT_INT32):
       field_type = "<i4"
@@ -2927,4 +2951,5 @@ class FileDataLoader(object):
     # Check data type and create use_full_precision boolean
     assert(data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF)
     use_full_precision = data_type == DataType.DT_FLOAT
+    print(use_full_precision)
     ffc.flexflow_file_data_loader_load_weights(self.handle, model.handle, num_layers, layer_names_c, layer_handles_c, use_full_precision)

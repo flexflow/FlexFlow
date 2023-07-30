@@ -2259,5 +2259,6 @@ void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
     Layer *layer_ptr = FFCObjectWrapper::unwrap(layers[i]);
     weights_layers.emplace(layer_name, layer_ptr);
   }
+  std::cout << "use_full_precision in C: " << use_full_precision << std::endl;
   handle->load_weights(model, weights_layers, use_full_precision);
 }

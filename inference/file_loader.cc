@@ -709,7 +709,6 @@ void FileDataLoader::load_weights(
       if (weight == NULL) {
         continue;
       }
-
       switch (weight->data_type) {
         case DT_HALF:
           load_single_weight_tensor<half>(ff, weight, i, v.first);

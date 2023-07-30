@@ -66,7 +66,7 @@ class LLM:
     def download_hf_weights(self):
         # Use local cache, or download new version
         self.weights_path = os.path.expanduser(
-            f"~/.cache/flexflow/models/{self.hf_config._name_or_path}"
+            f"~/.cache/flexflow/models/{self.hf_config._name_or_path}/{'full-precision' if self.data_type == DataType.DT_FLOAT else 'half-precision'}"
         )
         os.makedirs(self.weights_path, exist_ok=True)
         print(f"Creating directory {self.weights_path}...")
