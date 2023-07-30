@@ -2909,3 +2909,22 @@ class FileDataLoader(object):
     c_weight_file_path = get_c_name(weight_file_path)
     self.handle = ffc.flexflow_file_data_loader_create(c_weight_file_path, num_heads, hidden_dim, qkv_inner_dim)
     self._handle = ffi.gc(self.handle, ffc.flexflow_file_data_loader_destroy)
+  
+  def load_weights(self, model, model_layers_with_weights, data_type):
+    # Extract keys and values into arrays
+    layer_names = list(model_layers_with_weights.keys()) 
+    layers = list(model_layers_with_weights.values())
+    
+    # Convert to char** and flexflow_op_t* for CFFI
+    layer_names_c = [ffi.new("char[]", x.encode('ascii')) for x in layer_names]
+    layer_handles_list = [layer.handle for layer in layers]
+    layer_handles_c = ffi.new("flexflow_op_t[]", layer_handles_list)
+    
+    # Compute number of layers (key-value pairs)
+    num_layers = len(layer_names)
+    assert(len(layer_names) == len(layers))
+
+    # Check data type and create use_full_precision boolean
+    assert(data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF)
+    use_full_precision = data_type == DataType.DT_FLOAT
+    ffc.flexflow_file_data_loader_load_weights(self.handle, model.handle, num_layers, layer_names_c, layer_handles_c, use_full_precision)

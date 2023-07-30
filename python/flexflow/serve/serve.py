@@ -125,7 +125,10 @@ class LLM:
             self.hf_config.hidden_size // self.hf_config.num_attention_heads,
         )
 
-        # TODO: actually load
+        model_layers_with_weights = self.model.get_layers_with_weights()
+        self.fileloader.load_weights(
+            self.model.ffmodel, model_layers_with_weights, self.data_type
+        )
 
     def compile(
         self,
@@ -161,7 +164,6 @@ class LLM:
             max_seq_length,
             max_tokens_per_batch,
         )
-
 
         # Create request manager
         self.rm = RequestManager()

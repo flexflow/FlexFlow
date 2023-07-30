@@ -72,13 +72,17 @@ class FlexFlowLLAMA:
             self.data_type,
             None,
             embed_init,
+            name="tok_embeddings_weight",
         )
 
         for i in range(self.llama_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
 
             attn_norm = ffmodel.rms_norm(
-                token, self.llama_config.rms_norm_eps, self.llama_config.hidden_size
+                token,
+                self.llama_config.rms_norm_eps,
+                self.llama_config.hidden_size,
+                name=f"layers_{i}_attention_norm_weight",
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -96,6 +100,7 @@ class FlexFlowLLAMA:
                     False,  # add_zero_attn
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
+                    name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multihead_self_attention_verify(
@@ -112,6 +117,7 @@ class FlexFlowLLAMA:
                     False,  # add_zero_attn
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
+                    name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multihead_attention(
@@ -128,57 +134,74 @@ class FlexFlowLLAMA:
                     False,  # add_zero_attn
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
+                    name=f"layers_{i}_attention_weight",
                 )
             else:
                 assert False
 
             token = ffmodel.add(token, mha)
             ff_norm = ffmodel.rms_norm(
-                token, self.llama_config.rms_norm_eps, self.llama_config.hidden_size
+                token,
+                self.llama_config.rms_norm_eps,
+                self.llama_config.hidden_size,
+                name=f"layers_{i}_ffn_norm_weight",
             )
             w1 = ffmodel.dense(
                 ff_norm,
                 self.llama_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 False,
+                name=f"layers_{i}_feed_forward_w1_weight",
             )
             w3 = ffmodel.dense(
                 ff_norm,
                 self.llama_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 False,
+                name=f"layers_{i}_feed_forward_w3_weight",
             )
             sigmoid = ffmodel.sigmoid(w1)
             silu = ffmodel.multiply(w1, sigmoid)
             multi = ffmodel.multiply(silu, w3)
             w2 = ffmodel.dense(
-                multi, self.llama_config.hidden_size, ActiMode.AC_MODE_NONE, False
+                multi,
+                self.llama_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers_{i}_feed_forward_w2_weight",
             )
             token = ffmodel.add(token, w2)
 
-            token = ffmodel.rms_norm(
-                token, self.llama_config.rms_norm_eps, self.llama_config.hidden_size
-            )
-            dense = ffmodel.dense(
-                token, self.llama_config.vocab_size, ActiMode.AC_MODE_NONE, False
-            )
+        token = ffmodel.rms_norm(
+            token,
+            self.llama_config.rms_norm_eps,
+            self.llama_config.hidden_size,
+            name="norm_weight",
+        )
+        dense = ffmodel.dense(
+            token,
+            self.llama_config.vocab_size,
+            ActiMode.AC_MODE_NONE,
+            False,
+            name="output_weight",
+        )
 
-            if self.mode == InferenceMode.BEAM_SEARCH_MODE:
+        if self.mode == InferenceMode.BEAM_SEARCH_MODE:
+            softmax = ffmodel.softmax(dense, -1)
+            # output = ffmodel.beam_top_k(softmax, self.llama_config.max_beam_width, False)
+            output = ffmodel.argmax(softmax, True)
+        else:
+            if self.sampling_config.do_sample:
+                dense = ffmodel.scalar_true_divide(
+                    dense, self.sampling_config.temperature, False
+                )
                 softmax = ffmodel.softmax(dense, -1)
-                # output = ffmodel.beam_top_k(softmax, self.llama_config.max_beam_width, False)
-                output = ffmodel.argmax(softmax, True)
+                output = ffmodel.sampling(softmax, self.sampling_config.topp)
             else:
-                if self.sampling_config.do_sample:
-                    dense = ffmodel.scalar_true_divide(
-                        dense, self.sampling_config.temperature, False
-                    )
-                    softmax = ffmodel.softmax(dense, -1)
-                    output = ffmodel.sampling(softmax, self.sampling_config.topp)
-                else:
-                    # output = ffmodel.arg_top_k(dense, 1, False)
-                    output = ffmodel.argmax(dense, False)
+                # output = ffmodel.arg_top_k(dense, 1, False)
+                output = ffmodel.argmax(dense, False)
 
-            self.ffmodel = ffmodel
+        self.ffmodel = ffmodel
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
@@ -201,3 +224,23 @@ class FlexFlowLLAMA:
                 .replace("model_", "")
             )
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
+
+    def get_layers_with_weights(self):
+        layer_names = ["tok_embeddings_weight", "norm_weight", "output_weight"] + [
+            expr
+            for i in range(self.llama_config.num_hidden_layers)
+            for expr in (
+                f"layers_{i}_attention_norm_weight",
+                f"layers_{i}_attention_weight",
+                f"layers_{i}_ffn_norm_weight",
+                f"layers_{i}_feed_forward_w1_weight",
+                f"layers_{i}_feed_forward_w3_weight",
+                f"layers_{i}_feed_forward_w2_weight",
+            )
+        ]
+        layers_with_weights = {
+            layer_name: self.ffmodel.get_layer_by_name(layer_name)
+            for layer_name in layer_names
+        }
+
+        return layers_with_weights
