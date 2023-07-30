@@ -66,6 +66,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_inference_manager_t, InferenceManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_generation_result_t, GenerationResult *);
 };
 
 Logger ffc_log("flexflow_c");
@@ -1223,6 +1224,16 @@ flexflow_perf_metrics_t
 void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   handle->set_transformer_layer_id(id);
+}
+
+flexflow_generation_result_t flexflow_model_generate(flexflow_model_t handle_,
+                                                     char const *text,
+                                                     int max_seq_length) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  std::string const text_str(text);
+  GenerationResult result = handle->generate(text_str, max_seq_length);
+  DEBUG_PRINT("[Model] generate %p %s %i", handle, text_str, max_seq_length);
+  return FFCObjectWrapper::wrap(&result);
 }
 
 // -----------------------------------------------------------------------

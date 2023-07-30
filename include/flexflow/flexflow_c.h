@@ -54,6 +54,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_beam_search_batch_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_file_data_loader_t);
+FF_NEW_OPAQUE_TYPE(flexflow_generation_result_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -473,6 +474,10 @@ flexflow_perf_metrics_t
     flexflow_model_get_perf_metrics(flexflow_model_t handle);
 
 void flexflow_model_set_transformer_layer_id(flexflow_model_t handle, int id);
+
+flexflow_generation_result_t flexflow_model_generate(flexflow_model_t handle_,
+                                                     char const *text,
+                                                     int max_seq_length);
 
 // -----------------------------------------------------------------------
 // Tensor
