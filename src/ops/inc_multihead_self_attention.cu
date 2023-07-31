@@ -165,27 +165,28 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
 }
 
 template <typename DT>
-__global__ void apply_rotary_embedding_v2(DT *input_ptr,
-                           cuFloatComplex *complex_input,
-                           BatchConfig::PerTokenInfo const *tokenInfos,
-                           int qProjSize,
-                           int kProjSize,
-                           int num_heads,
-                           int num_tokens,
-                           int num_kv_heads,
-                           int q_block_size,
-                           int k_block_size,
-                           int q_array_size,
-                           bool q_tensor) {
+__global__ void
+    apply_rotary_embedding_v2(DT *input_ptr,
+                              cuFloatComplex *complex_input,
+                              BatchConfig::PerTokenInfo const *tokenInfos,
+                              int qProjSize,
+                              int kProjSize,
+                              int num_heads,
+                              int num_tokens,
+                              int num_kv_heads,
+                              int q_block_size,
+                              int k_block_size,
+                              int q_array_size,
+                              bool q_tensor) {
   int proj_size = q_tensor ? qProjSize : kProjSize;
   int n_heads = q_tensor ? num_heads : num_kv_heads;
   CUDA_KERNEL_LOOP(i, num_tokens * proj_size * n_heads / 2) {
     // create complex number
     int head_idx = i / (num_tokens * proj_size / 2);
     int idx = i % (num_tokens * proj_size / 2);
-    int real_part_index =
-        idx * 2 + head_idx * (q_tensor ? q_block_size : k_block_size) +
-        (q_tensor ? 0 : q_array_size);
+    int real_part_index = idx * 2 +
+                          head_idx * (q_tensor ? q_block_size : k_block_size) +
+                          (q_tensor ? 0 : q_array_size);
 
     int complex_part_index = real_part_index + 1;
 
@@ -206,7 +207,6 @@ __global__ void apply_rotary_embedding_v2(DT *input_ptr,
     complex_input[i] = cuCmulf(complex_input[i], complex_pos);
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[complex_part_index] = complex_input[i].y;
-
   }
 }
 
@@ -238,7 +238,6 @@ __global__ void
     //     head_idx * (q_block_size + k_block_size + v_block_size) +
     //     (q_tensor ? 0 : q_block_size);
 
-
     int real_part_index = idx + token_idx * (proj_size / 2) +
                           head_idx * (q_tensor ? q_block_size : k_block_size) +
                           (q_tensor ? 0 : q_array_size);
@@ -265,15 +264,15 @@ __global__ void
     // if(q_tensor && i == (10 * 64 * 1) / 2){
     //   printf("see index 62:%d, %d, %d\n", num_tokens, proj_size, i);
     // }
-    if(q_tensor && i == (10 * 64 * 1 + 63) / 2){
-      printf("see index 63:%d, %d, %d, %d, %d, %d\n", head_idx, idx, token_idx, real_part_index,
-      complex_part_index, pos);
-    }
+    // if(q_tensor && i == (10 * 64 * 1 + 63) / 2){
+    //   printf("see index 63:%d, %d, %d, %d, %d, %d\n", head_idx, idx,
+    //   token_idx, real_part_index, complex_part_index, pos);
+    // }
 
-    if(q_tensor && i == (10 * 64 * 1 + 64) / 2){
-      printf("see index64:%d, %d, %d, %d, %d, %d\n", head_idx, idx, token_idx, real_part_index, complex_part_index,
-      pos);
-    }
+    // if(q_tensor && i == (10 * 64 * 1 + 64) / 2){
+    //   printf("see index64:%d, %d, %d, %d, %d, %d\n", head_idx, idx,
+    //   token_idx, real_part_index, complex_part_index, pos);
+    // }
 
     // float before_real = complex_input[i].x, before_complex =
     // complex_input[i].y;
@@ -324,7 +323,6 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   size_t strideB = 0;       // input stays the same for all heads.
   size_t strideC = m_q * n; // size of the output block for each head.
 
-
   // Q
   checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                        CUBLAS_OP_T,
@@ -349,9 +347,22 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        m->num_heads,
                                        compute_type,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
-                                    
-  // key
+  // cudaDeviceSynchronize();
+  // cudaStreamSynchronize(stream);
+  // std::cout<<"shard_id : " << m->num_heads << ", " << strideA * 3 << "\n";
+  // print_tensor<float>((float *)weight_ptr, 64, "weight 0", shard_id);
+  // print_tensor<float>((float *)weight_ptr + strideA * 3, 64, "weight 1",
+  // shard_id); print_tensor<float>((float *)weight_ptr + + strideA * 6, 64,
+  // "weight 2", shard_id); print_tensor<float>((float *)weight_ptr + + strideA
+  // * 9, 64, "weight 3", shard_id); print_tensor<float>((float *)weight_ptr +
+  // strideC, 64, "weight 3"); print_tensor<float>((float *)weight_ptr + strideC
+  // * 3, 64, "weight 3"); print_tensor<float>((float *)output_ptr + strideC *
+  // 0, 64, "Q 1", shard_id); print_tensor<float>((float *)output_ptr + strideC
+  // * 3, 64, "Q 2", shard_id); print_tensor<float>((float *)output_ptr +
+  // strideC * 6, 64, "Q 3", shard_id); print_tensor<float>((float *)output_ptr
+  // + strideC * 9, 64, "Q 4", shard_id); print_tensor<float>((float
+  // *)output_ptr + 3 * m->qProjSize * bc->num_active_tokens(), 64, "QK A 2
+  // before ro"); assert(false); key
   checkCUDA(cublasGemmStridedBatchedEx(
       m->handle.blas,
       CUBLAS_OP_T,
@@ -376,7 +387,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
       m->num_kv_heads,
       compute_type,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // print_tensor<float>((float *)output_ptr, 64, "QK A before ro");
+
   // print_tensor<float>((float *)output_ptr + 64, 32, "QK A 2 before ro");
 
   // Value
@@ -445,8 +456,6 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
   if (*m->apply_rotary_embedding) {
     /*q*/
-    std::cout<< "num of blockd: " << m->num_kv_heads << "\n";
-
     apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
@@ -462,7 +471,13 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        k_block_size,
                                        q_array_size,
                                        true);
-    save_tensor<float>((float *)output_ptr, 64 * 12 * 10, "/home/ubuntu/FlexFlow/inference/q.txt");                                      
+    // print_tensor<float>((float *)output_ptr, 64, "Q 1", shard_id);
+    // print_tensor<float>((float *)output_ptr + bc->num_active_tokens() *
+    // m->qProjSize * 3, 64, "Q 2", shard_id); print_tensor<float>((float
+    // *)output_ptr + bc->num_active_tokens() * m->qProjSize * 6, 64, "Q 3",
+    // shard_id); print_tensor<float>((float *)output_ptr +
+    // bc->num_active_tokens() * m->qProjSize * 9, 64, "Q 4", shard_id);
+
     /*k*/
     apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
@@ -680,8 +695,8 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
     //                     token_idx * proj_size + data_idx];
 
     DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
-                             head_idx * proj_size * num_tokens + token_idx * proj_size +
-                             data_idx];
+                             head_idx * proj_size * num_tokens +
+                             token_idx * proj_size + data_idx];
     // int const req_id = id_map[token_idx].request_index;
     // int const tok_id = id_map[token_idx].token_position;
     int const req_id = tokenInfos[token_idx].request_index;
@@ -793,18 +808,17 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-    //  print_ten sor<float>((float *)A, 96, "QK A");
-    //   print_tensor<float>((float *)A + q_block_size, 32, "QK A 2");
-    //   print_tensor<float>((float *)B, 64, "QK B");
-    //   print_tensor<float>((float *)B + 64, 64, "QK B 2");
-    //   std::cout << "kt_block_size :" << kt_block_size << "\n";
-      
+      //   print_tensor<float>((float *)A + q_block_size, 32, "QK A 2");
+      //   print_tensor<float>((float *)B, 64, "QK B");
+      //   print_tensor<float>((float *)B + 64, 64, "QK B 2");
+      //   std::cout << "kt_block_size :" << kt_block_size << "\n";
 
-      
-    //   print_tensor<float>((float *)B, 64 * 10, "/home/ubuntu/FlexFlow/inference/k.txt");
-    //   print_tensor<float>((float *)B + kt_block_size, 64 * 10, "/home/ubuntu/FlexFlow/inference/k2.txt");
-    //   print_tensor<float>((float *)m->qk_prods, 100, "QK Prod");
-    //   print_tensor<float>((float *)m->qk_prods + 100, 32, "QK Prod 2");
+      //   print_tensor<float>((float *)B, 64 * 10,
+      //   "/home/ubuntu/FlexFlow/inference/k.txt"); print_tensor<float>((float
+      //   *)B + kt_block_size, 64 * 10,
+      //   "/home/ubuntu/FlexFlow/inference/k2.txt"); print_tensor<float>((float
+      //   *)m->qk_prods, 100, "QK Prod"); print_tensor<float>((float
+      //   *)m->qk_prods + 100, 32, "QK Prod 2");
 
     } else {
       strideB = 0;
@@ -942,6 +956,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      //  print_tensor<float>((float *)C, 96, "KV prod", shard_id);
+      //  print_tensor<float>((float *)C + strideC * 3, 96, "KV prod 1",
+      //  shard_id); print_tensor<float>((float *)C + strideC * 6, 96, "KV prod
+      //  2", shard_id); print_tensor<float>((float *)C + strideC * 9, 96, "KV
+      //  prod 3", shard_id);
       // print_tensor<float>((float *)C, 32, "KV prod");
       // print_tensor<float>((float *)C + 1000, 32, "KV prod 2");
     } else {
@@ -1012,7 +1031,37 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            ldc,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // print_tensor<float>((float *)C, 32, "outputs");
+    // print_tensor<float>((float *)C, 32, "outputs", shard_id);
+    // print_tensor<float>((float *)A, 96, "output weight", shard_id);
+    std::string filepath = "/home/ubuntu/FlexFlow/inference/" + std::to_string(shard_id) + "B.txt";
+    save_tensor<float>((float *)B,
+                       n * k,
+                       filepath.c_str());
+    std::string filepath1 = "/home/ubuntu/FlexFlow/inference/" + std::to_string(shard_id) + "A.txt";
+    save_tensor<float>((float *)A,
+                       m_ * k,
+                       filepath1.c_str());                   
+
+    // save_tensor<float>((float *)B,
+    //                    n * k / 4,
+    //                    "/home/ubuntu/FlexFlow/inference/xxx.txt");
+    // save_tensor<float>((float *)A + ,
+    //                    m_ * k / 4,
+    //                    "/home/ubuntu/FlexFlow/inference/y.txt");
+    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize,
+    //                    100,
+    //                    "output->1");                                      
+    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 3,
+    //                    bc->num_active_tokens() * bc->num_active_tokens(),
+    //                    "output->2");
+    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 6,
+    //                    bc->num_active_tokens() * bc->num_active_tokens(),
+    //                    "output->3");
+
+    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 9,
+    //                    bc->num_active_tokens() * bc->num_active_tokens(),
+    //                    "output->4");                   
+
     tokens_previous_requests += num_new_tokens;
   }
 
@@ -1105,8 +1154,10 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // acc_output.rect, "[Attention:forward:output]");
   }
 
-  // print_tensor<float>(input.get_float_ptr(), 32, "attention ip");
-  // print_tensor<float>(output.get_float_ptr(), 32, "attention op");
+  // print_tensor<float>(input.get_float_ptr(), 32, "attention ip", shard_id);
+  // print_tensor<float>(output.get_float_ptr(), 32, "attention op", shard_id);
+  // // print_tensor<float>(output.get_float_ptr() + bc->num_active_tokens() * 768
+  // // / 4, 32, "attention op 1", shard_id);
   // assert(false);
 }
 
@@ -1116,7 +1167,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
-    int _num_heads)
+    int _num_heads,
+    int _num_kv_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
                                     INC_DECODING_MODE,
                                     attn,
@@ -1138,7 +1190,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     num_samples,
                                     attn->num_heads,
                                     _num_heads,
-                                    attn->num_kv_heads,
+                                    _num_kv_heads,
                                     attn->quantization_type,
                                     attn->offload) {}
 

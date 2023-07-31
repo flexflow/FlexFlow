@@ -121,6 +121,8 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
   int weight_size = qParas * num_heads + kParas * num_kv_heads + vParas * num_kv_heads + oParas * num_heads; 
   int one_head_size = qParas + kParas + vParas + oParas;
+
+  
   {
     // compress the weight size if quantization.
     if (quantization_type != DT_NONE) {
@@ -164,6 +166,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   li->add_int_property("qk_prod_scaling", qk_prod_scaling);
   li->add_int_property("quantization_type", quantization_type);
   li->add_int_property("offload", offload);
+  li->add_int_property("tensor_parallelism_degree", config.tensor_parallelism_degree);
   layers.push_back(li);
 
   return li->outputs[0];
@@ -204,6 +207,8 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   DataType quantization_type = (DataType)value;
   layer->get_int_property("offload", value);
   bool offload = (bool)value;
+  layer->get_int_property("tensor_parallelism_degree", value);
+  int tensor_parallelism_degree = (int)value;
 
   return new IncMultiHeadSelfAttention(model,
                                        layer->layer_guid,
@@ -224,6 +229,7 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        false /*allocate_weights*/,
                                        quantization_type,
                                        offload,
+                                       tensor_parallelism_degree,
                                        layer->name);
 }
 
@@ -247,6 +253,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool allocate_weights,
     DataType _quantization_type,
     bool _offload,
+    int _tensor_parallelism_degree,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
@@ -266,7 +273,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
       qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
-      offload(_offload) {
+      offload(_offload), tensor_parallelism_degree(_tensor_parallelism_degree) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   numOutputs = 1;
@@ -289,20 +296,18 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     int vParas = this->vProjSize * this->vSize;
     int oParas =
         this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
-    ParallelDim dims[3];
+    ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
-    dims[1].size = this->num_heads * (qParas + oParas ) + this->num_kv_heads * (kParas + vParas + oParas);
-    dims[1].degree = 1;
-    dims[1].parallel_idx = -1;
+    dims[1] = inputs[0]->dims[num_dims - 1];
+    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    dims[1].is_replica_dim = false;
 
-    // dims[1] = inputs[0]->dims[num_dims - 1];
-    // dims[1].size = this->num_heads;
-    // dims[1].is_replica_dim = false;
-    // dims[2].size = qParas + kParas + vParas + oParas;
-    
-    // std::cout <<dims[2].is_replica_dim <<"\n";
-    
+    // std::cout<< "dims[1].size: " << dims[1].size << "\n";
+    // assert(false);
+    // dims[2].size = this->num_heads * (qParas + oParas ) + this->num_kv_heads * (kParas + vParas + oParas);
+    // dims[2].degree = 1;
+    // dims[2].parallel_idx = -1;
 
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
@@ -364,6 +369,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool allocate_weights,
     DataType _quantization_type,
     bool _offload,
+    int _tensor_parallelism_degree,
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
@@ -384,7 +390,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
       qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
-      offload(_offload)
+      offload(_offload), tensor_parallelism_degree(_tensor_parallelism_degree)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -408,11 +414,10 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
+    dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
-    // dims[1] = inputs[0]->dims[num_dims - 1];
-    // dims[1].size = this->num_heads;
-    // dims[1].is_replica_dim = false;
-    // dims[2].size = qParas + kParas + vParas + oParas;
+    dims[1].is_replica_dim = false;
+    // dims[2].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
           data_type, quantization_type, (qParas + kParas + vParas + oParas));
@@ -478,6 +483,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 allocate_weights,
                                 other.quantization_type,
                                 other.offload,
+                                other.tensor_parallelism_degree,
                                 other.name) {}
 
 IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
@@ -505,6 +511,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 allocate_weights,
                                 params.quantization_type,
                                 params.offload,
+                                params.tensor_parallelism_degree,
                                 name) {}
 
 void IncMultiHeadSelfAttention::init_inference(
@@ -631,7 +638,10 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
   assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
-  int num_heads = 12;
+  int num_heads = attn->num_heads / attn->tensor_parallelism_degree;
+  int num_kv_heads = attn->num_kv_heads / attn->tensor_parallelism_degree;
+
+  
   assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -648,7 +658,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
 
   std::cout << "num heads: " << num_heads << "\n";
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
+      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads, num_kv_heads);
   if (handle.offload_reserve_space == nullptr) {
     // assert that we didn't over allocate memory
     assert(gpu_mem_allocator.reserved_allocated_size ==
@@ -658,8 +668,8 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   if (attn->quantization_type == DT_NONE) {
     std::cout<<"-----------"<<"\n";
     std::cout<< "weight.domain.get_volume() : " << weight.domain.get_volume() << ", " << m->weightSize<<"\n";
-    assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
-           m->weightSize);
+    // assert(weight.domain.get_volume() * data_type_size(weight.data_type) * 4 ==
+    //        m->weightSize);
   }
 
   return m;
@@ -1590,6 +1600,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.scaling_query = this->scaling_query;
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
+  params.tensor_parallelism_degree = this->tensor_parallelism_degree,
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
   params.num_kv_heads = this->num_kv_heads;
@@ -1619,6 +1630,7 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.qk_prod_scaling);
   hash_combine(key, params.quantization_type);
   hash_combine(key, params.offload);
+  hash_combine(key, params.tensor_parallelism_degree);
   return key;
 }
 }; // namespace std

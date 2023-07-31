@@ -210,7 +210,7 @@ __host__ void updateGAS(float *para_ptr,
 
 template <typename T>
 __host__ void
-    print_tensor(T const *ptr, size_t num_elements, char const *prefix) {
+    print_tensor(T const *ptr, size_t num_elements, char const *prefix, int shard_id) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
@@ -222,7 +222,7 @@ __host__ void
   cudaDeviceSynchronize();  
   cudaStreamSynchronize(stream);      
   int idx = 0;
-  printf("%s", prefix);
+  printf("%s, %d---->", prefix, shard_id);
   for (idx = 0; idx < num_elements; idx++) {
     printf(" %.20lf", (float)host_ptr[idx]);
     if (idx >= 100) {
@@ -570,15 +570,15 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
                                                        int64_t scale);
 
 template __host__ void
-    print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
+    print_tensor<float>(float const *ptr, size_t rect, char const *prefix, int shard_id);
 template __host__ void
-    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
+    print_tensor<double>(double const *ptr, size_t rect, char const *prefix, int shard_id);
 template __host__ void
-    print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
+    print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix, int shard_id);
 template __host__ void
-    print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+    print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix, int shard_id);
 template __host__ void
-    print_tensor<half>(half const *ptr, size_t rect, char const *prefix);
+    print_tensor<half>(half const *ptr, size_t rect, char const *prefix, int shard_id);
 
 template __host__ void print_beam_tensor<float>(float const *ptr,
                                                 size_t num_elements,
