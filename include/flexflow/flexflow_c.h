@@ -438,6 +438,21 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     bool qk_prod_scaling,
     char const *name);
 
+flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    enum DataType data_type,
+    flexflow_initializer_t kernel_initializer_,
+    char const *name);
+
 flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
                                               const flexflow_tensor_t input_,
                                               float eps,

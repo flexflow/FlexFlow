@@ -438,6 +438,27 @@ class IncMultiHeadAttention(Op):
     super(IncMultiHeadAttention, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Speculative Incremental MultiHeadAttention
+# -----------------------------------------------------------------------
+class SpecIncMultiHeadSelfAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(SpecIncMultiHeadSelfAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# TreeVerify Incremental MultiHeadAttention
+# -----------------------------------------------------------------------
+class TreeIncMultiHeadSelfAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(TreeIncMultiHeadSelfAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Multi-query Incremental MultiHeadAttention
+# -----------------------------------------------------------------------
+class IncMultiQuerySelfAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(IncMultiQuerySelfAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # RMS Norm
 # -----------------------------------------------------------------------
 class RMSNorm(Op):
@@ -554,6 +575,12 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return MultiHeadAttention(handle, idx, name)
   elif op_type == OpType.INC_MULTIHEAD_ATTENTION:
     return IncMultiHeadAttention(handle, idx, name)
+  elif op_type == OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION:
+    return SpecIncMultiHeadSelfAttention(handle, idx, name)
+  elif op_type == OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION:
+    return TreeIncMultiHeadSelfAttention(handle, idx, name)
+  elif op_type == OpType.INC_MULTIQUERY_SELF_ATTENTION:
+    return IncMultiQuerySelfAttention(handle, idx, name)
   elif op_type == OpType.RMS_NORM:
     return RMSNorm(handle, idx, name)
   elif op_type == OpType.ARG_TOPK:
@@ -2246,6 +2273,59 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
     self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
+  
+  def inc_multiquery_self_attention(self, input, 
+                                          embed_dim, num_heads, 
+                                          kdim=0, vdim=0, dropout=0.0, 
+                                          bias=False, add_bias_kv=False, add_zero_attn=False, 
+                                          data_type=DataType.DT_NONE, kernel_initializer=None, 
+                                          name=None):
+    """Defines the Multi-query self attention operation
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, c_name)
+    self.add_layer(OpType.INC_MULTIQUERY_SELF_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.INC_MULTIQUERY_SELF_ATTENTION)
   
   def rms_norm(self, input, eps, dim, name=None):
     """Defines the RMS Norm layer.

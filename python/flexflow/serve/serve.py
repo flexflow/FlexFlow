@@ -16,7 +16,7 @@ from flexflow.serve.models import FlexFlowLLAMA, FlexFlowOPT, FlexFlowFalcon
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
-import sys, torch
+import sys, torch, shutil
 
 
 class SamplingConfig:
@@ -34,6 +34,7 @@ class LLM:
         data_type=DataType.DT_HALF,
         tokenizer_path="",
         weights_path="",
+        clean_cache=False,
         output_file="",
     ):
         self.supported_models = {
@@ -42,12 +43,13 @@ class LLM:
             "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
         }
-        self.hf_config = AutoConfig.from_pretrained(model_name)
+        self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_type, self.model_class = self.__get_ff_model_type()
         self.data_type = data_type
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
         self.tokenizer_path = tokenizer_path
         self.weights_path = weights_path
+        self.clean_cache = clean_cache
         self.output_file = output_file
         self.ffconfig = FFConfig()
 
@@ -68,8 +70,14 @@ class LLM:
         self.weights_path = os.path.expanduser(
             f"~/.cache/flexflow/models/{self.hf_config._name_or_path}/{'full-precision' if self.data_type == DataType.DT_FLOAT else 'half-precision'}"
         )
+        if self.clean_cache:
+            print(
+                f"Discarding cached weights (if they exist) for model {self.hf_config._name_or_path}..."
+            )
+            if os.path.exists(self.weights_path):
+                shutil.rmtree(self.weights_path)
         os.makedirs(self.weights_path, exist_ok=True)
-        print(f"Creating directory {self.weights_path}...")
+        print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
 
         # Get local revision SHA, check if it matches latest one on huggingface
         local_revision = None
@@ -85,7 +93,7 @@ class LLM:
                 f"'{self.hf_config._name_or_path}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
             )
             hf_model = AutoModelForCausalLM.from_pretrained(
-                self.hf_config._name_or_path
+                self.hf_config._name_or_path, trust_remote_code=True
             )
             print("Done downloading HF weights. Converting them now...")
             self.model_class.convert_hf_model(hf_model, self.weights_path)
@@ -117,8 +125,14 @@ class LLM:
         self.tokenizer_path = os.path.expanduser(
             f"~/.cache/flexflow/tokenizers/{self.hf_config._name_or_path}/"
         )
+        if self.clean_cache:
+            print(
+                f"Discarding cached tokenizer files (if they exist) for model {self.hf_config._name_or_path}..."
+            )
+            if os.path.exists(self.tokenizer_path):
+                shutil.rmtree(self.tokenizer_path)
         if not os.path.exists(self.tokenizer_path):
-            print(f"Creating directory {self.tokenizer_path}...")
+            print(f"Creating directory {self.tokenizer_path} (if it doesn't exist)...")
         os.makedirs(self.tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface

@@ -28,6 +28,7 @@ sys.argv += [
     # "../inference/output/llama_python_inference.txt",
     "-pipeline-parallelism-degree",
     "4",
+    #"-clean-model-cache",
 ]
 
 parser = argparse.ArgumentParser()
@@ -40,6 +41,9 @@ parser.add_argument(
 parser.add_argument(
     "-output-file", help="path to the output file", type=str, default=""
 )
+parser.add_argument(
+    "-clean-model-cache", help="whether to discard previous weights/tokenizer cache for this model", action="store_true"
+)
 args, unknown = parser.parse_known_args()
 
 from flexflow.serve import LLM, SamplingConfig
@@ -50,11 +54,13 @@ def top_level_task():
     # Incremental decoding
     # model_name = "decapoda-research/llama-7b-hf"
     model_name = "facebook/opt-6.7b"
+    # model_name = "tiiuae/falcon-7b"
     llama = LLM(
         model_name,
         data_type=DataType.DT_HALF,
         tokenizer_path=args.tokenizer,
         weights_path=args.llm_weight,
+        clean_cache=args.clean_model_cache,
         output_file=args.output_file,
     )
     sampling_config = SamplingConfig(do_sample=False, temperature=0.9, topp=0.8, topk=1)
