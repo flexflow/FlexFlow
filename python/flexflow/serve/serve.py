@@ -206,15 +206,11 @@ class LLM:
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
-        tensor_parallel_degree=4,
-        pipeline_parallel_degree=2,
         ssms=[],
     ):
         self.max_batch_size = max_batch_size
         self.max_seq_length = max_seq_length
         self.max_tokens_per_batch = max_tokens_per_batch
-        self.tensor_parallel_degree = tensor_parallel_degree
-        self.pipeline_parallel_degree = pipeline_parallel_degree
         self.ssms = ssms
         self.sampling_config = SamplingConfig()
         assert (
