@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # temporary workaround to avoid having to pass arguments
-import sys, argparse
+import sys, argparse, json
 
 sys.argv += [
     "-ll:gpu",
@@ -26,23 +26,36 @@ sys.argv += [
     # "../inference/tokenizer/tokenizer.model",
     # "-output-file",
     # "../inference/output/llama_python_inference.txt",
+    # "-clean-model-cache",
     "-pipeline-parallelism-degree",
     "4",
-    #"-clean-model-cache",
+    "-model-name",
+    "decapoda-research/llama-7b-hf",
+    "-prompt",
+    "../inference/prompt/chatgpt.json",
 ]
 
 parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-model-name",
+    help="the name of the HuggingFace model to use",
+    type=str,
+    required=True,
+)
 parser.add_argument(
     "-llm-weight", help="path to the weights for the LLM", type=str, default=""
 )
 parser.add_argument(
     "-tokenizer", help="path to the tokenizer file or folder", type=str, default=""
 )
+parser.add_argument("-prompt", help="path to the prompt file", type=str, required=True)
 parser.add_argument(
     "-output-file", help="path to the output file", type=str, default=""
 )
 parser.add_argument(
-    "-clean-model-cache", help="whether to discard previous weights/tokenizer cache for this model", action="store_true"
+    "-clean-model-cache",
+    help="whether to discard previous weights/tokenizer cache for this model",
+    action="store_true",
 )
 args, unknown = parser.parse_known_args()
 
@@ -52,12 +65,9 @@ from flexflow.core import *
 
 def top_level_task():
     # Incremental decoding
-    # model_name = "decapoda-research/llama-7b-hf"
-    model_name = "facebook/opt-6.7b"
-    # model_name = "tiiuae/falcon-7b"
     llama = LLM(
-        model_name,
-        data_type=DataType.DT_HALF,
+        args.model_name,
+        data_type=DataType.DT_FLOAT,
         tokenizer_path=args.tokenizer,
         weights_path=args.llm_weight,
         clean_cache=args.clean_model_cache,
@@ -73,10 +83,8 @@ def top_level_task():
         tensor_parallel_degree=1,
         pipeline_parallel_degree=1,
     )
-
-    prompts = llama.generate("Give three tips for staying healthy.")
-    # result = llama.generate("What's the best xxx in yyy?", sampling = sampling_config)
-    # print(result)
+    prompts = [s for s in json.load(open(args.prompt))]
+    results = llama.generate(prompts)
 
     # # Speculative inference
     # llama = LLM("decapoda-research/llama-30b-hf", data_type = "half")

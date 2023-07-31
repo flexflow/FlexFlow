@@ -249,7 +249,14 @@ class LLM:
 
         self.im.init_operators_inference(self.model.ffmodel)
 
-    def generate(self, prompt):
-        # self.sampling = sampling if sampling is not None else self.default_config
-        self.model.ffmodel.generate(prompt, 128)
-        # assert False and "Not implemented yet"
+    def generate(self, prompts):
+        if type(prompts) == str:
+            if len(prompts) == 0:
+                return None
+            return self.model.ffmodel.generate(prompts, 128)
+        elif type(prompts) == list:
+            if len(prompts) == 0:
+                return []
+            return [self.model.ffmodel.generate(prompt, 128) for prompt in prompts]
+        else:
+            assert False, "Please pass a non-empty string or list of strings"
