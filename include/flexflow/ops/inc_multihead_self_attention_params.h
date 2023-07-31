@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 struct IncMultiHeadSelfAttentionParams {
   LayerID layer_guid;
-  int embed_dim, num_heads, kdim, vdim, num_kv_heads;
+  int embed_dim, num_heads, kdim, vdim, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
   bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
       qk_prod_scaling;

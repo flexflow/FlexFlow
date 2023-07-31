@@ -106,7 +106,7 @@ void FALCON::create_falcon_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
-            false     /*apply_rotary_embedding*/
+            true     /*apply_rotary_embedding*/
         );
         break;
       }
@@ -115,10 +115,14 @@ void FALCON::create_falcon_model(FFModel &ff,
       }
     }
     Layer *attention_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_self_attention_dense_weight",
-                           attention_layer);
 
+    //multi query
+    // weights_layers.emplace("layers_" + std::to_string(i) +
+    //                            "_self_attention_dense_weight",
+    //                        attention_layer);
+    
+    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
+                           attention_layer);
     Tensor dense_h_to_4h =
         ff.dense(att_norm, falcon_config.dim * 4, AC_MODE_NONE, false);
     Layer *dense_h_to_4h_layer = ff.layers.back();

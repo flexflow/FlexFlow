@@ -657,6 +657,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   }
 
   std::cout << "num heads: " << num_heads << "\n";
+  std::cout << "num kv heads: " << num_kv_heads << "\n";
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
       handle, attn, weight, gpu_mem_allocator, num_samples, num_heads, num_kv_heads);
   if (handle.offload_reserve_space == nullptr) {

@@ -137,6 +137,7 @@ void compute_qkv_kernel(IncMultiQuerySelfAttentionMeta const *m,
                                        m->num_heads,
                                        compute_type,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  print_tensor<float>((float*)output_ptr, 32, "Q tensor init");                                     
   // k
   int m_ = m->kProjSize;
   int k_ = m->embed_dim;
@@ -409,6 +410,7 @@ void compute_attention_kernel(IncMultiQuerySelfAttentionMeta const *m,
     // padding)
     void const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
     // To get C, skip over QK^T products from previous requests
+    
     void *C = (void *)(m->qk_prods);
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
@@ -434,6 +436,11 @@ void compute_attention_kernel(IncMultiQuerySelfAttentionMeta const *m,
                                          m->num_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    // if(bc->num_active_tokens() == 1){
+    //   print_tensor<float>((float*)A, 32, "Q tensor");
+    //   print_tensor<float>((float*)B, 32, "key cache");
+    //   print_tensor<float>((float*)C, 32, "QK prod");
+    // }                                     
     // save_tensor<DT>(
     //     (DT *)A, 64 * 7 * 2, "/home/ubuntu/FlexFlow/inference/query.txt");
     // save_tensor<DT>((DT *)B, 64 * 7,
@@ -513,6 +520,9 @@ void compute_attention_kernel(IncMultiQuerySelfAttentionMeta const *m,
     B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
     // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
     // requests
+    // if(bc->num_active_tokens() == 1){
+    //   print_tensor<float>((float*)B, 32, "value cache");
+    // }
     C = static_cast<DT *>(m->attn_heads) +
         tokens_previous_requests * m->num_heads * m->vProjSize;
 
@@ -630,6 +640,8 @@ void IncMultiQuerySelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+  // print_tensor<float>(weight.get_float_ptr(), 32, "attention weights");
+  print_tensor<float>(output.get_float_ptr(), 32, "attention op");
 }
 
 IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(
