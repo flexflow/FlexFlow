@@ -5,6 +5,7 @@
 #include "flexflow/model.h"
 #include "flexflow/node.h"
 #include "flexflow/ops/argmax_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -12,18 +13,20 @@ class ArgMaxMeta : public OpMeta {
 public:
   bool beam_search;
   float *probs;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnReduceTensorDescriptor_t reduceMaxDesc;
-#else
-  miopenTensorDescriptor_t inputTensor, outputTensor;
-  miopenReduceTensorDescriptor_t reduceMaxDesc;
-#endif
+  void *d_temp_storage;
+  size_t temp_storage_bytes = 0;
+  int *d_offsets;
+  void *d_out;
+  Realm::RegionInstance reserveInst;
   ArgMaxMeta(FFHandler handler,
              Op const *op,
              Legion::Domain const &input_domain,
              Legion::Domain const &output_domain,
-             GenericTensorAccessorW input);
+             GenericTensorAccessorW input,
+             int batch_size,
+             int total_ele,
+             MemoryAllocator &gpu_mem_allocator);
+  ~ArgMaxMeta(void);
 };
 
 class ArgMax : public Op {
@@ -88,7 +91,7 @@ public:
   static void forward_kernel(ArgMaxMeta const *m,
                              DT *input_ptr,
                              int *indices_ptr,
-                             DT *prob_ptr,
+                             float *prob_ptr,
                              int *parent_ptr,
                              int length,
                              int batch_size,
@@ -96,8 +99,8 @@ public:
   static void forward_kernel_wrapper(ArgMaxMeta const *m,
                                      GenericTensorAccessorW const &input,
                                      GenericTensorAccessorW const &indices,
-                                     GenericTensorAccessorW const &value,
-                                     GenericTensorAccessorW const &parent);
+                                     GenericTensorAccessorW const &parent,
+                                     int batch_size);
   Params get_params() const;
 
 public:

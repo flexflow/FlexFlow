@@ -24,7 +24,9 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
+LayerNormMeta::LayerNormMeta(FFHandler handle,
+                             LayerNorm const *ln,
+                             MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
@@ -37,6 +39,8 @@ LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
   checkCUDA(hipMalloc(&scale_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(hipMalloc(&bias_ptr, sizeof(float) * effective_batch_size));
 }
+
+LayerNormMeta::~LayerNormMeta(void) {}
 
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,

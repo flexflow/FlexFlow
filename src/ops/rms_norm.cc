@@ -27,6 +27,8 @@ using Legion::Context;
 using Legion::Domain;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
+using Legion::Machine;
+using Legion::Memory;
 using Legion::PhysicalRegion;
 using Legion::Predicate;
 using Legion::Rect;
@@ -289,7 +291,12 @@ OpMeta *RMSNorm::init_task(Task const *task,
                            Runtime *runtime) {
   RMSNorm *rn = (RMSNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  RMSNormMeta *meta = new RMSNormMeta(handle, rn);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  RMSNormMeta *meta = new RMSNormMeta(handle, rn, gpu_mem_allocator);
   return meta;
 }
 

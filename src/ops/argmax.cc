@@ -51,7 +51,7 @@ Tensor FFModel::argmax(const Tensor input, bool beam_search, char const *name) {
                         name,
                         1 /*inputs*/,
                         0 /*weights*/,
-                        beam_search ? 3 : 2 /*outputs*/,
+                        beam_search ? 2 : 1 /*outputs*/,
                         input);
   {
     int numdims = input->num_dims;
@@ -65,13 +65,9 @@ Tensor FFModel::argmax(const Tensor input, bool beam_search, char const *name) {
     //     numdims, dims, input->data_type, li, 0, true /*create_grad*/);
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, DT_INT32, li, 0, false /*create_grad*/);
-    // logits
-    li->outputs[1] = create_tensor_legion_ordering(
-        numdims, dims, input->data_type, li, 1, false /*create_grad*/);
-
     if (beam_search) {
       // parent id
-      li->outputs[2] = create_tensor_legion_ordering(
+      li->outputs[1] = create_tensor_legion_ordering(
           numdims, dims, DT_INT32, li, 1, false /*create_grad*/);
     }
   }
@@ -116,7 +112,7 @@ ArgMax::ArgMax(FFModel &model,
          name,
          1 /*inputs*/,
          0 /*weights*/,
-         _beam_search ? 3 : 2 /*outputs*/,
+         _beam_search ? 2 : 1 /*outputs*/,
          _input),
       beam_search(_beam_search) {
   int numdim = inputs[0]->num_dims;
@@ -131,11 +127,9 @@ ArgMax::ArgMax(FFModel &model,
   //       numdim, dims, _input->data_type, this, 0 /*owner_idx*/);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_INT32, this, 0 /*owner_idx*/);
-  outputs[1] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, _input->data_type, this, 1 /*owner_idx*/);
   if (_beam_search) {
-    outputs[2] = model.create_parallel_tensor_legion_ordering(
-        numdim, dims, DT_INT32, this, 2 /*owner_idx*/);
+    outputs[1] = model.create_parallel_tensor_legion_ordering(
+        numdim, dims, DT_INT32, this, 1 /*owner_idx*/);
   }
 }
 
@@ -180,12 +174,6 @@ void ArgMax::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[1]->region));
-  launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -240,9 +228,22 @@ OpMeta *ArgMax::init_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
+  int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
+  int batch_size = acc_input.domain.get_volume() / length;
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
 
-  ArgMaxMeta *m =
-      new ArgMaxMeta(handle, s, input_domain, output_domain, acc_input);
+  ArgMaxMeta *m = new ArgMaxMeta(handle,
+                                 s,
+                                 input_domain,
+                                 output_domain,
+                                 acc_input,
+                                 batch_size,
+                                 length * batch_size,
+                                 gpu_mem_allocator);
   m->profiling = s->profiling;
   m->beam_search = s->beam_search;
   return m;
@@ -297,13 +298,6 @@ FutureMap ArgMax::inference(FFModel const &ff,
                           EXCLUSIVE,
                           batch_outputs[1]->region));
     launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[2]->part,
-                          0 /*projection id*/,
-                          WRITE_ONLY,
-                          EXCLUSIVE,
-                          batch_outputs[2]->region));
-    launcher.add_field(3, FID_DATA);
     return runtime->execute_index_space(ctx, launcher);
   } else {
     IndexLauncher launcher(ARGMAX_NORM_INF_TASK_ID,
@@ -328,13 +322,6 @@ FutureMap ArgMax::inference(FFModel const &ff,
                           EXCLUSIVE,
                           batch_outputs[0]->region));
     launcher.add_field(1, FID_DATA);
-    launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[1]->part,
-                          0 /*projection id*/,
-                          WRITE_ONLY,
-                          EXCLUSIVE,
-                          batch_outputs[1]->region));
-    launcher.add_field(2, FID_DATA);
     return runtime->execute_index_space(ctx, launcher);
   }
 }
@@ -344,8 +331,8 @@ BeamInferenceResult
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     // Directly return for empty batch config
@@ -359,21 +346,14 @@ BeamInferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   int batch_size = bc->num_active_tokens();
-  GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
-      m->input_type[0], regions[2], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
-      DT_INT32, regions[3], task->regions[1], FID_DATA, ctx, runtime);
-  ArgMax::forward_kernel_wrapper(m, input, indices, value, parent);
+      DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
 
   BeamInferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
-  if (m->input_type[0] == DT_FLOAT) {
-    download_tensor<float>(value.get_float_ptr(), ir.probs, batch_size);
-  } else if (m->input_type[0] == DT_HALF) {
-    download_tensor(m->probs, ir.probs, batch_size);
-  }
-
+  download_tensor(m->probs, ir.probs, batch_size);
   download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
   return ir;
 }
@@ -383,8 +363,8 @@ InferenceResult
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   ArgMaxMeta const *m = *((ArgMaxMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
@@ -397,11 +377,9 @@ InferenceResult
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
-      m->input_type[0], regions[2], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent;
   int batch_size = bc->num_active_tokens();
-  ArgMax::forward_kernel_wrapper(m, input, indices, value, parent);
+  ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
