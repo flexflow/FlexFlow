@@ -74,8 +74,6 @@ def top_level_task():
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
-        tensor_parallel_degree=1,
-        pipeline_parallel_degree=1,
     )
     prompts = [s for s in json.load(open(args.prompt))]
     results = llama.generate(prompts)
@@ -112,8 +110,6 @@ def top_level_task():
     #     max_batch_size=1,
     #     max_seq_length=256,
     #     max_tokens_per_batch=64,
-    #     tensor_parallel_degree=1,
-    #     pipeline_parallel_degree=1,
     # )
     # ssm2.compile(
     #     InferenceMode.BEAM_SEARCH_MODE,
@@ -121,8 +117,6 @@ def top_level_task():
     #     max_batch_size=1,
     #     max_seq_length=256,
     #     max_tokens_per_batch=64,
-    #     tensor_parallel_degree=1,
-    #     pipeline_parallel_degree=1,
     # )
     # llama.compile(
     #     InferenceMode.TREE_VERIFY_MODE,
@@ -130,8 +124,6 @@ def top_level_task():
     #     max_batch_size=1,
     #     max_seq_length=256,
     #     max_tokens_per_batch=64,
-    #     tensor_parallel_degree=1,
-    #     pipeline_parallel_degree=1,
     #     ssms=[ssm1, ssm2],
     # )
 
