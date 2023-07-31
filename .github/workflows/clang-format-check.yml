@@ -10,26 +10,15 @@ jobs:
         path:
           - check: "lib/compiler"
           - check: "lib/ffi"
-          - check: "lib/fmt"
           - check: "lib/kernels"
           - check: "lib/op-attrs"
           - check: "lib/pcg"
-          - check: "lib/runtime/ffi"
-          - check: "lib/runtime/include"
-          - check: "lib/runtime/src"
-          - check: "lib/runtime/test"
+          - check: "lib/runtime"
           - check: "lib/substitutions"
-          - check: "lib/triton"
           - check: "lib/utils"
-          - check: "python"
-          - check: "scripts"
           - check: "tests"
           - check: "examples"
           - check: "bindings"
-          - check: "config"
-          - check: "deps"
-          - check: "packaging"
-          - check: "substitutions"
     steps:
       - uses: actions/checkout@v2
       - name: Run clang-format style check for C/C++/Protobuf programs.
