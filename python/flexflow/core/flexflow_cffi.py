@@ -2044,10 +2044,12 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.MULTIHEAD_ATTENTION)
   
   def inc_multihead_attention(self, input, 
-                          embed_dim, num_heads, 
-                          kdim=0, vdim=0, dropout=0.0, 
-                          bias=True, add_bias_kv=False, add_zero_attn=False, 
-                          kernel_initializer=None, apply_rotary_embedding=False, name=None):
+                              embed_dim, num_heads, 
+                              kdim=0, vdim=0, dropout=0.0, 
+                              bias=True, add_bias_kv=False, add_zero_attn=False, 
+                              data_type=DataType.DT_NONE, kernel_initializer=None, 
+                              apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                              qk_prod_scaling=True, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
     and returns the dot-product attention between them:.
@@ -2078,12 +2080,24 @@ class FFModel(object):
                           
     :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
     :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
     
     :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
     :type kernel_initializer: Initializer
 
     :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
     :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2092,15 +2106,18 @@ class FFModel(object):
     """     
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    handle = ffc.flexflow_model_add_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, apply_rotary_embedding, c_name)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
     self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
   
   def spec_inc_multihead_attention(self, input, 
-                          embed_dim, num_heads, 
-                          kdim=0, vdim=0, dropout=0.0, 
-                          bias=True, add_bias_kv=False, add_zero_attn=False, 
-                          kernel_initializer=None, apply_rotary_embedding=False, name=None):
+                                   embed_dim, num_heads, 
+                                   kdim=0, vdim=0, dropout=0.0, 
+                                   bias=True, add_bias_kv=False, add_zero_attn=False, 
+                                   data_type=DataType.DT_NONE, kernel_initializer=None, 
+                                   apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                                   qk_prod_scaling=True, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
     and returns the dot-product attention between them:.
@@ -2131,12 +2148,24 @@ class FFModel(object):
                           
     :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
     :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
     
     :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
     :type kernel_initializer: Initializer
 
     :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
     :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2145,15 +2174,18 @@ class FFModel(object):
     """     
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    handle = ffc.flexflow_model_add_spec_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, apply_rotary_embedding, c_name)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_spec_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
     self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
   
   def inc_multihead_self_attention_verify(self, input, 
-                          embed_dim, num_heads, 
-                          kdim=0, vdim=0, dropout=0.0, 
-                          bias=True, add_bias_kv=False, add_zero_attn=False, 
-                          kernel_initializer=None, apply_rotary_embedding=False, name=None):
+                                          embed_dim, num_heads, 
+                                          kdim=0, vdim=0, dropout=0.0, 
+                                          bias=True, add_bias_kv=False, add_zero_attn=False, 
+                                          data_type=DataType.DT_NONE, kernel_initializer=None, 
+                                          apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                                          qk_prod_scaling=True, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
     and returns the dot-product attention between them:.
@@ -2184,12 +2216,24 @@ class FFModel(object):
                           
     :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
     :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
     
     :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
     :type kernel_initializer: Initializer
 
     :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
     :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2198,7 +2242,8 @@ class FFModel(object):
     """     
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    handle = ffc.flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, apply_rotary_embedding, c_name)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
     self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
   

@@ -1027,8 +1027,12 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1043,9 +1047,12 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
                                                        bias,
                                                        add_bias_kv,
                                                        add_zero_attn,
-                                                       input->data_type,
+                                                       data_type,
                                                        kernel_initializer,
                                                        apply_rotary_embedding,
+                                                       scaling_query,
+                                                       scaling_factor,
+                                                       qk_prod_scaling,
                                                        name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1061,8 +1068,12 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1078,9 +1089,12 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
                                                 bias,
                                                 add_bias_kv,
                                                 add_zero_attn,
-                                                input->data_type,
+                                                data_type,
                                                 kernel_initializer,
                                                 apply_rotary_embedding,
+                                                scaling_query,
+                                                scaling_factor,
+                                                qk_prod_scaling,
                                                 name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1096,8 +1110,12 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1113,9 +1131,12 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
                                                   bias,
                                                   add_bias_kv,
                                                   add_zero_attn,
-                                                  input->data_type,
+                                                  data_type,
                                                   kernel_initializer,
                                                   apply_rotary_embedding,
+                                                  scaling_query,
+                                                  scaling_factor,
+                                                  qk_prod_scaling,
                                                   name);
   return FFCObjectWrapper::wrap(tensor);
 }

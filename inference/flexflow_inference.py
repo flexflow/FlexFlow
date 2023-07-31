@@ -48,8 +48,10 @@ from flexflow.core import *
 
 def top_level_task():
     # Incremental decoding
+    # model_name = "decapoda-research/llama-7b-hf"
+    model_name = "facebook/opt-6.7b"
     llama = LLM(
-        "decapoda-research/llama-7b-hf",
+        model_name,
         data_type=DataType.DT_HALF,
         tokenizer_path=args.tokenizer,
         weights_path=args.llm_weight,

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from flexflow.core import *
+from .base import FlexFlowModel
 import random
 
 
@@ -30,7 +31,7 @@ class LLAMAConfig:
         self.intermediate_size = hf_config.intermediate_size
 
 
-class FlexFlowLLAMA:
+class FlexFlowLLAMA(FlexFlowModel):
     def __init__(
         self,
         mode,
@@ -54,6 +55,7 @@ class FlexFlowLLAMA:
         self.llama_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
+        self.maxint = 2**31 - 1
 
         self.build_model()
 
@@ -63,7 +65,7 @@ class FlexFlowLLAMA:
         tokens_dims = [self.llama_config.max_num_tokens, 1]
         input_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
-        embed_init = UniformInitializer(random.randint(0, 2**31 - 1), 0, 0)
+        embed_init = UniformInitializer(random.randint(0, self.maxint), 0, 0)
         token = ffmodel.embedding(
             input_tensor,
             self.llama_config.vocab_size,
@@ -98,6 +100,7 @@ class FlexFlowLLAMA:
                     False,  # bias
                     False,  # add_bias_kv
                     False,  # add_zero_attn
+                    DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
                     name=f"layers_{i}_attention_weight",
@@ -115,6 +118,7 @@ class FlexFlowLLAMA:
                     False,  # bias
                     False,  # add_bias_kv
                     False,  # add_zero_attn
+                    DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
                     name=f"layers_{i}_attention_weight",
@@ -132,6 +136,7 @@ class FlexFlowLLAMA:
                     False,  # bias
                     False,  # add_bias_kv
                     False,  # add_zero_attn
+                    DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
                     name=f"layers_{i}_attention_weight",

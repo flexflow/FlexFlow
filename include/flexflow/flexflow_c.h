@@ -392,8 +392,12 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
@@ -407,8 +411,12 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
@@ -422,8 +430,12 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
