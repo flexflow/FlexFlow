@@ -337,7 +337,7 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
 template <>
 void register_task<ATTENTION_BWD_TASK_ID>() {
   OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(AGG_SPEC_FWD_TASK_ID));
+      infer_bwd_signature(get_op_signature(ATTENTION_FWD_TASK_ID));
 
   register_task(
       ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, backward_task);
