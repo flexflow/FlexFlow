@@ -3035,6 +3035,9 @@ class RequestManager(object):
   def register_output_filepath(self, output_filepath):
     c_output_filepath = get_c_name(output_filepath)
     return ffc.flexflow_request_manager_register_output_filepath(self.handle, c_output_filepath)
+
+  def register_ssm_model(self, model):
+    return ffc.flexflow_request_manager_register_ssm_model(self.handle, model.handle)
   
 # -----------------------------------------------------------------------
 # InferenceManager

@@ -859,6 +859,9 @@ void flexflow_request_manager_register_tokenizer(
 void flexflow_request_manager_register_output_filepath(
     flexflow_request_manager_t handle_, char const *output_filepath);
 
+int flexflow_request_manager_register_ssm_model(
+    flexflow_request_manager_t handle_, flexflow_model_t model_handle_);
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------

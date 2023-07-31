@@ -249,6 +249,9 @@ class LLM:
 
         self.im.init_operators_inference(self.model.ffmodel)
 
+        for ssm in self.ssms:
+            self.rm.register_ssm_model(ssm.model.ffmodel)
+
     def generate(self, prompts):
         if type(prompts) == str:
             if len(prompts) == 0:

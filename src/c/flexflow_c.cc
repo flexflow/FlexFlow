@@ -2259,6 +2259,14 @@ void flexflow_request_manager_register_output_filepath(
               output_filepath_str);
 }
 
+int flexflow_request_manager_register_ssm_model(
+    flexflow_request_manager_t handle_, flexflow_model_t model_handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT("[RequestManager] register ssm %p %p", handle, model_handle);
+  return handle->register_ssm_model(model_handle);
+}
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
