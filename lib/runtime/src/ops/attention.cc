@@ -14,6 +14,8 @@
  */
 
 #include "attention.h"
+#include "kernels/attention_kernels.h"
+#include "legion.h"
 
 namespace FlexFlow {
 
