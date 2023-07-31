@@ -104,16 +104,25 @@ def top_level_task():
         clean_cache=args.clean_model_cache,
         output_file=args.output_file,
     )
-    # ssm2 = LLM(
-    #     "facebook/opt-125m",
-    #     data_type=DataType.DT_FLOAT,
-    #     tokenizer_path=args.tokenizer,
-    #     weights_path=args.llm_weight,
-    #     clean_cache=args.clean_model_cache,
-    #     output_file=args.output_file,
-    # )
+    ssm2 = LLM(
+        "facebook/opt-125m",
+        data_type=DataType.DT_FLOAT,
+        tokenizer_path=args.tokenizer,
+        weights_path=args.llm_weight,
+        clean_cache=args.clean_model_cache,
+        output_file=args.output_file,
+    )
     sampling_config = SamplingConfig(do_sample=False, temperature=0.9, topp=0.8, topk=1)
     ssm1.compile(
+        InferenceMode.BEAM_SEARCH_MODE,
+        sampling_config,
+        max_batch_size=1,
+        max_seq_length=256,
+        max_tokens_per_batch=64,
+        tensor_parallel_degree=1,
+        pipeline_parallel_degree=1,
+    )
+    ssm2.compile(
         InferenceMode.BEAM_SEARCH_MODE,
         sampling_config,
         max_batch_size=1,
@@ -130,9 +139,7 @@ def top_level_task():
         max_tokens_per_batch=64,
         tensor_parallel_degree=1,
         pipeline_parallel_degree=1,
-        ssms=[
-            ssm1,
-        ],
+        ssms=[ssm1, ssm2],
     )
 
     prompts = [s for s in json.load(open(args.prompt))]
