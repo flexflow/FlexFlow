@@ -54,8 +54,7 @@ public:
   static BatchConfig const *from_future(BatchConfigFuture const &future);
   static int const MAX_NUM_REQUESTS = 1;
   static int const MAX_NUM_TOKENS = 64;
-  static int const MAX_PROMPT_LENGTH =
-      63; // should be MAX_NUM_TOKENS - 1 for SpecInfer
+  static int const MAX_PROMPT_LENGTH = 62;
   static int const MAX_SEQ_LENGTH = 256;
 
   //  These are set by update

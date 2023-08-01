@@ -1101,7 +1101,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.num_tokens++;
       new_bc.requestsInfo[i].num_tokens_in_batch++;
 
-      if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
+      if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS - 1) {
         break;
       }
     }
@@ -1155,6 +1155,7 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
         std::cout << "i = " << i << ", result index = " << result_index
                   << ", value: " << result.token_ids[result_index] << "\n";
       }
+
       int index = old_bc.tokensInfo[i - 1].request_index;
       int beam_size = old_bc.beamRequestsInfo[index].beam_size;
       int depth = old_bc.beamRequestsInfo[index].current_depth;
