@@ -287,9 +287,9 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                                  CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size =
-          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads,
-      oProjSize;
+      bias_shape.dims[0].size = qProjSize * num_heads +
+                                (kProjSize + vProjSize) * num_kv_heads +
+                                oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
