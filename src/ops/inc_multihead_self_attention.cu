@@ -863,7 +863,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     //   print_tensor<float>((float*)A, 32, "Q tensor");
     //   print_tensor<float>((float*)B, 32, "key cache");
     //   print_tensor<float>((float*)C, 32, "QK prod");
-    // } 
+    // }
 
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
@@ -984,30 +984,30 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       strideB = 0;
       strideC = num_new_tokens * m->vProjSize;
       for (int step = 0; step < m->num_kv_heads; step++) {
-        checkCUDA(cublasGemmStridedBatchedEx(
-            m->handle.blas,
-            CUBLAS_OP_N,
-            CUBLAS_OP_T,
-            m_,
-            n,
-            k,
-            &alpha,
-            A + step * one_step_heads * strideA,
-            cublas_data_type,
-            lda,
-            strideA,
-            B + step * vt_block_size,
-            cublas_data_type,
-            ldb,
-            strideB,
-            &beta,
-            C + step * one_step_heads * strideC,
-            cublas_data_type,
-            ldc,
-            strideC,
-            one_step_heads,
-            compute_type,
-            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        checkCUDA(
+            cublasGemmStridedBatchedEx(m->handle.blas,
+                                       CUBLAS_OP_N,
+                                       CUBLAS_OP_T,
+                                       m_,
+                                       n,
+                                       k,
+                                       &alpha,
+                                       A + step * one_step_heads * strideA,
+                                       cublas_data_type,
+                                       lda,
+                                       strideA,
+                                       B + step * vt_block_size,
+                                       cublas_data_type,
+                                       ldb,
+                                       strideB,
+                                       &beta,
+                                       C + step * one_step_heads * strideC,
+                                       cublas_data_type,
+                                       ldc,
+                                       strideC,
+                                       one_step_heads,
+                                       compute_type,
+                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       }
     }
     // Project to output, save result directly on output tensor
@@ -1045,14 +1045,14 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     // print_tensor<float>((float *)C, 32, "outputs", shard_id);
     // print_tensor<float>((float *)A, 96, "output weight", shard_id);
-    // std::string filepath = "/home/ubuntu/FlexFlow/inference/" + std::to_string(shard_id) + "B.txt";
-    // save_tensor<float>((float *)B,
+    // std::string filepath = "/home/ubuntu/FlexFlow/inference/" +
+    // std::to_string(shard_id) + "B.txt"; save_tensor<float>((float *)B,
     //                    n * k,
     //                    filepath.c_str());
-    // std::string filepath1 = "/home/ubuntu/FlexFlow/inference/" + std::to_string(shard_id) + "A.txt";
-    // save_tensor<float>((float *)A,
+    // std::string filepath1 = "/home/ubuntu/FlexFlow/inference/" +
+    // std::to_string(shard_id) + "A.txt"; save_tensor<float>((float *)A,
     //                    m_ * k,
-    //                    filepath1.c_str());                   
+    //                    filepath1.c_str());
 
     // save_tensor<float>((float *)B,
     //                    n * k / 4,
@@ -1062,7 +1062,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     //                    "/home/ubuntu/FlexFlow/inference/y.txt");
     // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize,
     //                    100,
-    //                    "output->1");                                      
+    //                    "output->1");
     // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 3,
     //                    bc->num_active_tokens() * bc->num_active_tokens(),
     //                    "output->2");
@@ -1072,7 +1072,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
     // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 9,
     //                    bc->num_active_tokens() * bc->num_active_tokens(),
-    //                    "output->4");                   
+    //                    "output->4");
 
     tokens_previous_requests += num_new_tokens;
   }
@@ -1168,10 +1168,12 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // print_tensor<float>(input.get_float_ptr(), 32, "attention ip", shard_id);
   // print_tensor<float>(output.get_float_ptr(), 32, "attention op", shard_id);
-  // // print_tensor<float>(output.get_float_ptr() + bc->num_active_tokens() * 768
+  // // print_tensor<float>(output.get_float_ptr() + bc->num_active_tokens() *
+  // 768
   // // / 4, 32, "attention op 1", shard_id);
-  // print_tensor<float>(weight.get_float_ptr(), 32, "attention weights", shard_id);
-  // print_tensor<float>(output.get_float_ptr(), 32, "attention op", shard_id);
+  // print_tensor<float>(weight.get_float_ptr(), 32, "attention weights",
+  // shard_id); print_tensor<float>(output.get_float_ptr(), 32, "attention op",
+  // shard_id);
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(

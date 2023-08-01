@@ -121,7 +121,8 @@ Tensor FFModel::inc_multihead_self_attention_verify(
   int vParas = vProjSize * vSize;
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
   int one_head_size = qParas + kParas + vParas + oParas;
-  int weight_size = qParas * num_heads + kParas * num_kv_heads + vParas * num_kv_heads + oParas * num_heads; 
+  int weight_size = qParas * num_heads + kParas * num_kv_heads +
+                    vParas * num_kv_heads + oParas * num_heads;
   {
     // compress the weight size if quantization.
     if (quantization_type != DT_NONE) {
@@ -141,7 +142,8 @@ Tensor FFModel::inc_multihead_self_attention_verify(
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize};
+    int dims[1] = {qProjSize * num_heads +
+                   (kProjSize + vProjSize) * num_kv_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -166,7 +168,8 @@ Tensor FFModel::inc_multihead_self_attention_verify(
   li->add_int_property("qk_prod_scaling", qk_prod_scaling);
   li->add_int_property("quantization_type", quantization_type);
   li->add_int_property("offload", offload);
-  li->add_int_property("tensor_parallelism_degree", config.tensor_parallelism_degree);
+  li->add_int_property("tensor_parallelism_degree",
+                       config.tensor_parallelism_degree);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -208,27 +211,28 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
   bool offload = (bool)value;
   layer->get_int_property("tensor_parallelism_degree", value);
   int tensor_parallelism_degree = (int)value;
-  return new TreeIncMultiHeadSelfAttention(model,
-                                           layer->layer_guid,
-                                           inputs[0],
-                                           embed_dim,
-                                           num_heads,
-                                           num_kv_heads
-                                           kdim,
-                                           vdim,
-                                           dropout,
-                                           bias,
-                                           add_bias_kv,
-                                           add_zero_attn,
-                                           apply_rotary_embedding,
-                                           scaling_query,
-                                           scaling_factor,
-                                           qk_prod_scaling,
-                                           false /*allocate_weights*/,
-                                           quantization_type,
-                                           offload,
-                                           tensor_parallelism_degree
-                                           layer->name);
+  return new TreeIncMultiHeadSelfAttention(
+      model,
+      layer->layer_guid,
+      inputs[0],
+      embed_dim,
+      num_heads,
+      num_kv_heads,
+      kdim,
+      vdim,
+      dropout,
+      bias,
+      add_bias_kv,
+      add_zero_attn,
+      apply_rotary_embedding,
+      scaling_query,
+      scaling_factor,
+      qk_prod_scaling,
+      false /*allocate_weights*/,
+      quantization_type,
+      offload,
+      tensor_parallelism_degree,
+      layer->name);
 }
 
 TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
@@ -262,8 +266,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
          (_bias ? 2 : 1) /*weights*/,
          1 /*outputs*/,
          _input),
-      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
-      add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -271,7 +275,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
       qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
-      offload(_offload) ,tensor_parallelism_degree(_tensor_parallelism_degree){
+      offload(_offload), tensor_parallelism_degree(_tensor_parallelism_degree) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -297,7 +301,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    dims[1].size = this->num_heads * (qParas + oParas) +
+                   this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
     // dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
@@ -317,8 +322,9 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size =
-          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize;
+      bias_shape.dims[0].size = qProjSize * num_heads +
+                                (kProjSize + vProjSize) * num_kv_heads +
+                                oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -372,8 +378,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
          1 /*outputs*/,
          _input,
          _weight),
-      num_heads(_num_heads), , num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
-      add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -406,7 +412,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    dims[1].size = this->num_heads * (qParas + oParas) +
+                   this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
     // dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
@@ -424,8 +431,9 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size =
-          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize;
+      bias_shape.dims[0].size = qProjSize * num_heads +
+                                (kProjSize + vProjSize) * num_kv_heads +
+                                oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -647,8 +655,14 @@ OpMeta *TreeIncMultiHeadSelfAttention::init_task(
     gpu_mem_allocator.register_reserved_work_space(
         handle.offload_reserve_space, handle.offload_reserve_space_size);
   }
-  TreeIncMultiHeadSelfAttentionMeta *m = new TreeIncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
+  TreeIncMultiHeadSelfAttentionMeta *m =
+      new TreeIncMultiHeadSelfAttentionMeta(handle,
+                                            attn,
+                                            weight,
+                                            gpu_mem_allocator,
+                                            num_samples,
+                                            num_heads,
+                                            num_kv_heads);
   if (!attn->offload) {
     // assert that we didn't over allocate memory
     assert(gpu_mem_allocator.reserved_allocated_size ==

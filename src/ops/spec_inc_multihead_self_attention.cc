@@ -129,7 +129,7 @@ Tensor
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads, oProjSize};
+    int dims[1] = {qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -579,7 +579,7 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
   assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
-  int num_heads = weight.domain.hi()[1] - weight.domain.lo()[1] + 1;
+  int num_heads = attn->num_heads;
   int num_kv_heads = attn->num_kv_heads;
   assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
@@ -590,7 +590,7 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   // We don't do offloading for SSMs (small speculative models)
   SpecIncMultiHeadSelfAttentionMeta *m = new SpecIncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads);
+      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads, num_kv_heads);
   // assert that we didn't over allocate memory
   assert(gpu_mem_allocator.instance_allocated_size ==
          gpu_mem_allocator.instance_total_size);

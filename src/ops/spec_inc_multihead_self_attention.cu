@@ -43,23 +43,24 @@ __global__ void spec_store_kv_cache(
     int vProjSize,
     int num_tokens,
     int num_heads,
+    int num_kv_heads,
     int max_seq_len,
     int max_beam_width,
     bool k_cache,
     bool is_root) {
-  CUDA_KERNEL_LOOP(i,
-                   num_tokens * (k_cache ? kProjSize : vProjSize) * num_heads) {
+  CUDA_KERNEL_LOOP(
+      i, num_tokens * (k_cache ? kProjSize : vProjSize) * num_kv_heads) {
     int proj_size = k_cache ? kProjSize : vProjSize;
     int head_idx = i / (num_tokens * proj_size);
     int token_idx = (i - head_idx * (num_tokens * proj_size)) / proj_size;
     int data_idx = i % proj_size;
 
-    int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
-    int current_head_block_size =
-        num_tokens * (k_cache ? qProjSize : qProjSize + kProjSize);
-    DT val =
-        devQKVProjArray[head_idx * qkv_block_size + current_head_block_size +
-                        token_idx * proj_size + data_idx];
+    // int qkv_block_size = (qProjSize + kProjSize + vProjSize) * num_tokens;
+    // int current_head_block_size =
+    //     num_tokens * (k_cache ? qProjSize : qProjSize + kProjSize);
+    // DT val =
+    //     devQKVProjArray[head_idx * qkv_block_size + current_head_block_size +
+    //                     token_idx * proj_size + data_idx];
 
     // above no need to be changed
     // int const req_id = id_map[token_idx].request_index;
@@ -68,6 +69,13 @@ __global__ void spec_store_kv_cache(
     // int const parent_id = id_map[token_idx].parent_id;
     // int const beam_depth = id_map[token_idx].beam_depth;
     // int const beam_width = id_map[token_idx].beam_width;
+
+    int q_array_size = qProjSize * num_tokens * num_heads;
+    int k_array_size = kProjSize * num_tokens * num_kv_heads;
+
+    DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
+                             head_idx * proj_size * num_tokens +
+                             token_idx * proj_size + data_idx];
 
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
@@ -78,7 +86,7 @@ __global__ void spec_store_kv_cache(
 
     // new token
     int new_token_cache_idx = (req_id * max_beam_width + sub_req_id) *
-                                  (num_heads * max_seq_len * proj_size) +
+                                  (num_kv_heads * max_seq_len * proj_size) +
                               head_idx * (max_seq_len * proj_size) +
                               tok_id * proj_size + data_idx;
     cache_ptr[new_token_cache_idx] = val;
@@ -87,7 +95,7 @@ __global__ void spec_store_kv_cache(
     if (beam_depth == 1) {
       for (int i = 1; i < beam_width; i++) {
         cache_ptr[(req_id * max_beam_width + i) *
-                      (num_heads * max_seq_len * proj_size) +
+                      (num_kv_heads * max_seq_len * proj_size) +
                   head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
                   data_idx] = val;
       }
@@ -97,7 +105,8 @@ __global__ void spec_store_kv_cache(
     //   // printf("token idx %d\n", token_idx);
     //   printf("data idx: %d, tok_id %d, new_token_cache_idx %d, parent_id %d,
     //   "
-    //          "sub_req_id %d, num_tokens %d, kProjSize %d, num_heads %d, val "
+    //          "sub_req_id %d, num_tokens %d, kProjSize %d, num_kv_heads %d,
+    //          val "
     //          "%f, beam_width %d\n",
     //          data_idx,
     //          tok_id,
@@ -106,7 +115,7 @@ __global__ void spec_store_kv_cache(
     //          sub_req_id,
     //          num_tokens,
     //          kProjSize,
-    //          num_heads,
+    //          num_kv_heads,
     //          val,
     //          beam_width);
     // }
@@ -126,11 +135,11 @@ __global__ void spec_store_kv_cache(
       for (int depth = 0; depth < beam_depth; depth++) {
         int steal_token_idx = tok_id - beam_depth + depth;
         int steal_from_idx = (req_id * max_beam_width + parent_id) *
-                                 (num_heads * max_seq_len * proj_size) +
+                                 (num_kv_heads * max_seq_len * proj_size) +
                              head_idx * (max_seq_len * proj_size) +
                              steal_token_idx * proj_size + data_idx;
         int steal_to_idx = (req_id * max_beam_width + sub_req_id) *
-                               (num_heads * max_seq_len * proj_size) +
+                               (num_kv_heads * max_seq_len * proj_size) +
                            head_idx * (max_seq_len * proj_size) +
                            steal_token_idx * proj_size + data_idx;
         cache_ptr[steal_to_idx] = cache_ptr[steal_from_idx];
@@ -167,7 +176,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // printf("curr depth: %d\n", curr_depth);
   // assert(curr_depth < 3);
   if (num_tokens > 0) {
-    int parallelism = m->kProjSize * num_tokens * m->num_heads;
+    int parallelism = m->kProjSize * num_tokens * m->num_kv_heads;
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
@@ -182,12 +191,13 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     m->vProjSize,
                                     num_tokens,
                                     m->num_heads,
+                                    m->num_kv_heads,
                                     BatchConfig::MAX_SEQ_LENGTH,
                                     BeamSearchBatchConfig::MAX_BEAM_WIDTH,
                                     /* k_cache = */ true,
                                     /*root*/ curr_depth == 0);
 
-    parallelism = m->vProjSize * num_tokens * m->num_heads;
+    parallelism = m->vProjSize * num_tokens * m->num_kv_heads;
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
@@ -202,6 +212,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     m->vProjSize,
                                     num_tokens,
                                     m->num_heads,
+                                    m->num_kv_heads,
                                     BatchConfig::MAX_SEQ_LENGTH,
                                     BeamSearchBatchConfig::MAX_BEAM_WIDTH,
                                     /* k_cache = */ false,
@@ -232,6 +243,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                               int shard_id,
                               DT *output_ptr,
                               DT const *bias_ptr,
+                              DT const *weight_ptr,
                               cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -248,12 +260,14 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
   int tokens_prev_requests_squares = 0;
-  int qkv_block_size =
-      (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
+  // int qkv_block_size =
+  //     (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
+  int q_block_size = m->qProjSize * num_tokens;
+
   int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
-  int kt_req_block_size = kt_block_size * m->num_heads;
+  int kt_req_block_size = kt_block_size * m->num_kv_heads;
   int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
-  int vt_req_block_size = vt_block_size * m->num_heads;
+  int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
@@ -273,7 +287,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       int n = total_tokens;
       int k = m->qProjSize;
       int lda = k, ldb = k, ldc = m_;
-      int strideA = qkv_block_size;
+      int strideA = q_block_size;
       int strideB = kt_block_size;
       int strideC = num_new_tokens * total_tokens;
 
@@ -298,29 +312,66 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // To get C, skip over QK^T products from previous requests
       void *C = static_cast<DT *>(m->qk_prods) +
                 m->num_heads * tokens_prev_requests_squares;
-      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                           CUBLAS_OP_T,
-                                           CUBLAS_OP_N,
-                                           m_,
-                                           n,
-                                           k,
-                                           &alpha,
-                                           A,
-                                           cublas_data_type,
-                                           lda,
-                                           strideA,
-                                           B,
-                                           cublas_data_type,
-                                           ldb,
-                                           strideB,
-                                           &beta,
-                                           C,
-                                           cublas_data_type,
-                                           ldc,
-                                           strideC,
-                                           m->num_heads,
-                                           compute_type,
-                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+      if (m->num_heads == m->num_kv_heads) {
+        checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                             CUBLAS_OP_T,
+                                             CUBLAS_OP_N,
+                                             m_,
+                                             n,
+                                             k,
+                                             &alpha,
+                                             A,
+                                             cublas_data_type,
+                                             lda,
+                                             strideA,
+                                             B,
+                                             cublas_data_type,
+                                             ldb,
+                                             strideB,
+                                             &beta,
+                                             C,
+                                             cublas_data_type,
+                                             ldc,
+                                             strideC,
+                                             m->num_heads,
+                                             compute_type,
+                                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      } else {
+        strideB = 0;
+        int one_step_heads = m->num_heads / m->num_kv_heads;
+        m_ = num_new_tokens;
+        n = total_tokens;
+        k = m->qProjSize;
+        lda = k, ldb = k, ldc = m_;
+        for (int step = 0; step < m->num_kv_heads; step++) {
+          checkCUDA(cublasGemmStridedBatchedEx(
+              m->handle.blas,
+              CUBLAS_OP_T,
+              CUBLAS_OP_N,
+              m_,
+              n,
+              k,
+              &alpha,
+              A + step * strideA * one_step_heads,
+              cublas_data_type,
+              lda,
+              strideA,
+              B + step * kt_block_size,
+              cublas_data_type,
+              ldb,
+              strideB,
+              &beta,
+              C + step * strideC * one_step_heads * sizeof(DT),
+              cublas_data_type,
+              ldc,
+              strideC,
+              one_step_heads,
+              compute_type,
+              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        }
+      }
+
       // Fill all elements above diagonal in qk prods with -inf to force
       // causal attention.
       assert(num_new_tokens <= total_tokens);
@@ -397,36 +448,74 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       C = static_cast<DT *>(m->attn_heads) +
           tokens_previous_requests * m->num_heads * m->vProjSize;
 
-      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                           CUBLAS_OP_N,
-                                           CUBLAS_OP_T,
-                                           m_,
-                                           n,
-                                           k,
-                                           &alpha,
-                                           A,
-                                           cublas_data_type,
-                                           lda,
-                                           strideA,
-                                           B,
-                                           cublas_data_type,
-                                           ldb,
-                                           strideB,
-                                           &beta,
-                                           C,
-                                           cublas_data_type,
-                                           ldc,
-                                           strideC,
-                                           m->num_heads,
-                                           compute_type,
-                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->num_heads == m->num_kv_heads) {
+        checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                             CUBLAS_OP_N,
+                                             CUBLAS_OP_T,
+                                             m_,
+                                             n,
+                                             k,
+                                             &alpha,
+                                             A,
+                                             cublas_data_type,
+                                             lda,
+                                             strideA,
+                                             B,
+                                             cublas_data_type,
+                                             ldb,
+                                             strideB,
+                                             &beta,
+                                             C,
+                                             cublas_data_type,
+                                             ldc,
+                                             strideC,
+                                             m->num_heads,
+                                             compute_type,
+                                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      } else {
+        int one_step_heads = m->num_heads / m->num_kv_heads;
+        n = m->vProjSize;
+        lda = m_, ldb = n, ldc = m_;
+        strideA = num_new_tokens * total_tokens;
+        strideB = 0;
+        strideC = num_new_tokens * m->vProjSize;
+        for (int step = 0; step < m->num_kv_heads; step++) {
+          checkCUDA(
+              cublasGemmStridedBatchedEx(m->handle.blas,
+                                         CUBLAS_OP_N,
+                                         CUBLAS_OP_T,
+                                         m_,
+                                         n,
+                                         k,
+                                         &alpha,
+                                         A + step * one_step_heads * strideA,
+                                         cublas_data_type,
+                                         lda,
+                                         strideA,
+                                         B + step * vt_block_size,
+                                         cublas_data_type,
+                                         ldb,
+                                         strideB,
+                                         &beta,
+                                         C + step * one_step_heads * strideC,
+                                         cublas_data_type,
+                                         ldc,
+                                         strideC,
+                                         one_step_heads,
+                                         compute_type,
+                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        }
+      }
+
       // Project to output, save result directly on output tensor
       alpha = 1.0f, beta = 0.0f;
       m_ = m->oProjSize;
       k = m->vProjSize * m->num_heads;
       n = num_new_tokens;
       lda = k, ldb = n, ldc = m_;
-      A = static_cast<DT *>(m->W_out_contiguous);
+      A = weight_ptr + m->qSize * (m->qProjSize * m->num_heads +
+                                   m->kProjSize * m->num_kv_heads +
+                                   m->vProjSize * m->num_kv_heads);
       B = static_cast<DT *>(C);
       C = static_cast<DT *>(output_ptr) +
           tokens_previous_requests * m->oProjSize;
@@ -455,11 +544,14 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     }
     if (*m->bias && shard_id == 0) {
       int parallelism = m->oProjSize * num_tokens;
+      int qkv_weight_size = m->qProjSize * m->num_heads +
+                            m->kProjSize * m->num_kv_heads +
+                            m->vProjSize * m->num_kv_heads;
       apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
                           stream>>>(
-          output_ptr, bias_ptr, num_tokens, 0, m->oProjSize);
+          output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
     }
   }
 
@@ -512,7 +604,8 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  compute_attention_kernel(m, bc, shard_id, output_ptr, bias_ptr, stream);
+  compute_attention_kernel(
+      m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
 }
 
 } // namespace SpecIncMultiHeadAttention
@@ -591,7 +684,8 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
-    int _num_heads)
+    int _num_heads,
+    int _num_kv_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
                                     BEAM_SEARCH_MODE,
                                     attn,
@@ -613,7 +707,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     num_samples,
                                     attn->num_heads,
                                     _num_heads,
-                                    attn->num_heads,
+                                    _num_kv_heads,
                                     DT_NONE,
                                     false) {
   cudaStream_t stream;
