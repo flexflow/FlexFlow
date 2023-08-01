@@ -259,3 +259,26 @@ class LLM:
             return [self.model.ffmodel.generate(prompt, 128) for prompt in prompts]
         else:
             assert False, "Please pass a non-empty string or list of strings"
+
+
+class SSM(LLM):
+    def __init__(
+        self,
+        model_name,
+        data_type=DataType.DT_HALF,
+        tokenizer_path="",
+        weights_path="",
+        clean_cache=False,
+        output_file="",
+    ):
+        super().__init__(
+            model_name,
+            data_type,
+            tokenizer_path,
+            weights_path,
+            clean_cache,
+            output_file,
+        )
+        self.ffconfig.data_parallelism_degree = 1
+        self.ffconfig.tensor_parallelism_degree = 1
+        self.ffconfig.pipeline_parallelism_degree = 1

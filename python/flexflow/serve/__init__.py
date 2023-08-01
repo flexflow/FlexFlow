@@ -110,6 +110,5 @@ def init(configs):
     if fusion:
         sys.argv += ["--fusion"]
 
-    global LLM
-    global SamplingConfig
-    from .serve import LLM, SamplingConfig
+    global LLM, SSM, SamplingConfig
+    from .serve import LLM, SSM, SamplingConfig

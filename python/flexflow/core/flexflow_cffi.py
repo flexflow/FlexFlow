@@ -636,6 +636,42 @@ class FFConfig(object):
   @property
   def enable_control_replication(self):
     return ffc.flexflow_config_get_enable_control_replication(self.handle)
+  
+  @property
+  def data_parallelism_degree(self):
+    return ffc.flexflow_config_get_data_parallelism_degree(self.handle)
+  
+  @data_parallelism_degree.setter
+  def data_parallelism_degree(self, value):
+    if type(value) is not int: 
+      raise ValueError("The data parallelism degree must be specified as an integer number")
+    elif value < 1:
+      raise ValueError("The data parallelism degree cannot be lower than 1")
+    ffc.flexflow_config_set_data_parallelism_degree(self.handle, value)
+  
+  @property
+  def tensor_parallelism_degree(self):
+    return ffc.flexflow_config_get_tensor_parallelism_degree(self.handle)
+  
+  @tensor_parallelism_degree.setter
+  def tensor_parallelism_degree(self, value):
+    if type(value) is not int: 
+      raise ValueError("The tensor parallelism degree must be specified as an integer number")
+    elif value < 1:
+      raise ValueError("The tensor parallelism degree cannot be lower than 1")
+    ffc.flexflow_config_set_tensor_parallelism_degree(self.handle, value)
+  
+  @property
+  def pipeline_parallelism_degree(self):
+    return ffc.flexflow_config_get_pipeline_parallelism_degree(self.handle)
+  
+  @pipeline_parallelism_degree.setter
+  def pipeline_parallelism_degree(self, value):
+    if type(value) is not int: 
+      raise ValueError("The pipeline parallelism degree must be specified as an integer number")
+    elif value < 1:
+      raise ValueError("The pipeline parallelism degree cannot be lower than 1")
+    ffc.flexflow_config_set_pipeline_parallelism_degree(self.handle, value)
     
   @property
   def python_data_loader_type(self):

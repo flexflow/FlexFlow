@@ -61,14 +61,14 @@ def top_level_task():
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
-            "tensor_parallelism_degree": 1,
-            "pipeline_parallelism_degree": 4,
+            "tensor_parallelism_degree": 4,
+            "pipeline_parallelism_degree": 1,
             "offload": False,
             "offload_reserve_space_size": 1024**2,
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
             "profiling": False,
-            "fusion": True,
+            "fusion": False,
         }
     )
 
@@ -92,7 +92,7 @@ def top_level_task():
         ff_data_type = (
             ff.DataType.DT_FLOAT if ssm_config.full_precision else ff.DataType.DT_HALF
         )
-        ssm = ff.LLM(
+        ssm = ff.SSM(
             ssm_config.ssm_model,
             data_type=ff_data_type,
             tokenizer_path=ssm_config.ssm_tokenizer,

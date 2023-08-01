@@ -80,6 +80,21 @@ int flexflow_config_get_epochs(flexflow_config_t handle);
 
 bool flexflow_config_get_enable_control_replication(flexflow_config_t handle);
 
+int flexflow_config_get_data_parallelism_degree(flexflow_config_t handle_);
+
+int flexflow_config_get_tensor_parallelism_degree(flexflow_config_t handle_);
+
+int flexflow_config_get_pipeline_parallelism_degree(flexflow_config_t handle_);
+
+void flexflow_config_set_data_parallelism_degree(flexflow_config_t handle_,
+                                                 int value);
+
+void flexflow_config_set_tensor_parallelism_degree(flexflow_config_t handle_,
+                                                   int value);
+
+void flexflow_config_set_pipeline_parallelism_degree(flexflow_config_t handle_,
+                                                     int value);
+
 int flexflow_config_get_python_data_loader_type(flexflow_config_t handle);
 
 // -----------------------------------------------------------------------

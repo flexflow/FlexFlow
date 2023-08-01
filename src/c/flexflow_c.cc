@@ -133,6 +133,39 @@ bool flexflow_config_get_enable_control_replication(flexflow_config_t handle_) {
   return handle->enable_control_replication;
 }
 
+int flexflow_config_get_data_parallelism_degree(flexflow_config_t handle_) {
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->data_parallelism_degree;
+}
+
+int flexflow_config_get_tensor_parallelism_degree(flexflow_config_t handle_) {
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->tensor_parallelism_degree;
+}
+
+int flexflow_config_get_pipeline_parallelism_degree(flexflow_config_t handle_) {
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->pipeline_parallelism_degree;
+}
+
+void flexflow_config_set_data_parallelism_degree(flexflow_config_t handle_,
+                                                 int value) {
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->data_parallelism_degree = value;
+}
+
+void flexflow_config_set_tensor_parallelism_degree(flexflow_config_t handle_,
+                                                   int value) {
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->tensor_parallelism_degree = value;
+}
+
+void flexflow_config_set_pipeline_parallelism_degree(flexflow_config_t handle_,
+                                                     int value) {
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->pipeline_parallelism_degree = value;
+}
+
 int flexflow_config_get_python_data_loader_type(flexflow_config_t handle_) {
   FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
   return handle->python_data_loader_type;
@@ -1287,7 +1320,7 @@ flexflow_generation_result_t flexflow_model_generate(flexflow_model_t handle_,
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::string const text_str(text);
   GenerationResult result = handle->generate(text_str, max_seq_length);
-  DEBUG_PRINT("[Model] generate %p %s %i", handle, text_str, max_seq_length);
+  DEBUG_PRINT("[Model] generate %p %s %i", handle, text, max_seq_length);
   return FFCObjectWrapper::wrap(&result);
 }
 
@@ -2242,9 +2275,8 @@ void flexflow_request_manager_register_tokenizer(
          "Cannot convert nullptr char * to std::string");
   std::string const tokenizer_filepath_str(tokenizer_filepath);
   handle->register_tokenizer(model_type, tokenizer_filepath_str);
-  DEBUG_PRINT("[RequestManager] register tokenizer %p %s",
-              handle,
-              tokenizer_filepath_str);
+  DEBUG_PRINT(
+      "[RequestManager] register tokenizer %p %s", handle, tokenizer_filepath);
 }
 
 void flexflow_request_manager_register_output_filepath(
@@ -2256,7 +2288,7 @@ void flexflow_request_manager_register_output_filepath(
   handle->register_output_filepath(output_filepath_str);
   DEBUG_PRINT("[RequestManager] register output filepath %p %s",
               handle,
-              output_filepath_str);
+              output_filepath);
 }
 
 int flexflow_request_manager_register_ssm_model(
