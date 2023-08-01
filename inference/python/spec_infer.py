@@ -68,7 +68,7 @@ def top_level_task():
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
             "profiling": False,
-            "fusion": False,
+            "fusion": True,
         }
     )
 

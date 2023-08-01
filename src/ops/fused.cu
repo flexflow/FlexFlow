@@ -32,6 +32,7 @@
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
+#include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
@@ -416,6 +417,26 @@ __host__ void FusedOp::forward_task(Task const *task,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].domain.get_volume());
+        break;
+      }
+      case OP_SOFTMAX: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
+        SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
+        if (m->input_type == DT_HALF) {
+          Kernels::Softmax::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_half_ptr(),
+              my_output_accessor[0].get_half_ptr());
+        } else if (m->input_type == DT_FLOAT) {
+          Kernels::Softmax::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr());
+        }
         break;
       }
       case OP_RESHAPE: {
@@ -878,6 +899,26 @@ __host__ void
         }
         LayerNorm::forward_kernel_wrapper(
             m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
+        break;
+      }
+      case OP_SOFTMAX: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
+        SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
+        if (m->input_type == DT_HALF) {
+          Kernels::Softmax::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_half_ptr(),
+              my_output_accessor[0].get_half_ptr());
+        } else if (m->input_type == DT_FLOAT) {
+          Kernels::Softmax::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr());
+        }
         break;
       }
       case OP_ALLREDUCE: {

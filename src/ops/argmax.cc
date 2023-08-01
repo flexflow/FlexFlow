@@ -227,7 +227,7 @@ OpMeta *ArgMax::init_task(Task const *task,
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
   int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
   int batch_size = acc_input.domain.get_volume() / length;
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
