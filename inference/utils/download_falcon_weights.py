@@ -10,6 +10,9 @@ model = AutoModelForCausalLM.from_pretrained("tiiuae/falcon-7b", trust_remote_co
 # model = RWForCausalLM.from_pretrained("tiiuae/falcon-7b")
 # print(model.config)
 
+#lm_head
+lm_head_weight = model.lm_head.weight
+lm_head_weight.detach().cpu().numpy().tofile('/home/ubuntu/FlexFlow/inference/weights/falcon_7B_weights_new/lm_head_weight')
 
 for name, params in model.named_parameters():
     name = (
@@ -39,3 +42,4 @@ for name, params in model.named_parameters():
     
     else:
        params.detach().cpu().numpy().tofile('/home/ubuntu/FlexFlow/inference/weights/falcon_7B_weights_new/' + name)
+

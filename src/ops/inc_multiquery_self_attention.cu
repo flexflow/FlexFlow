@@ -137,7 +137,7 @@ void compute_qkv_kernel(IncMultiQuerySelfAttentionMeta const *m,
                                        m->num_heads,
                                        compute_type,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  print_tensor<float>((float*)output_ptr, 32, "Q tensor init");                                     
+  // print_tensor<float>((float*)output_ptr, 32, "Q tensor init");                                     
   // k
   int m_ = m->kProjSize;
   int k_ = m->embed_dim;
@@ -641,7 +641,7 @@ void IncMultiQuerySelfAttention::inference_kernel_wrapper(
     // acc_output.rect, "[Attention:forward:output]");
   }
   // print_tensor<float>(weight.get_float_ptr(), 32, "attention weights");
-  print_tensor<float>(output.get_float_ptr(), 32, "attention op");
+  // print_tensor<float>(output.get_float_ptr(), 32, "attention op");
 }
 
 IncMultiQuerySelfAttentionMeta::IncMultiQuerySelfAttentionMeta(

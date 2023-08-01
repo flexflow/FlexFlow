@@ -349,7 +349,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // cudaDeviceSynchronize();
   // cudaStreamSynchronize(stream);
-  print_tensor<float>((float*)output_ptr, 32, "Q tensor init");
+  // print_tensor<float>((float*)output_ptr, 32, "Q tensor init");
   // std::cout<<"shard_id : " << m->num_heads << ", " << strideA * 3 << "\n";
   // print_tensor<float>((float *)weight_ptr, 64, "weight 0", shard_id);
   // print_tensor<float>((float *)weight_ptr + strideA * 3, 64, "weight 1",
@@ -841,11 +841,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
             n,
             k,
             &alpha,
-            A + step * strideA * one_step_heads * sizeof(DT),
+            A + step * strideA * one_step_heads,
             cublas_data_type,
             lda,
             strideA,
-            B + step * strideB,
+            B + step * kt_block_size,
             cublas_data_type,
             ldb,
             strideB,
@@ -982,7 +982,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       lda = m_, ldb = n, ldc = m_;
       strideA = num_new_tokens * total_tokens;
       strideB = 0;
-      // strideB = vt_block_size;
       strideC = num_new_tokens * m->vProjSize;
       for (int step = 0; step < m->num_kv_heads; step++) {
         checkCUDA(cublasGemmStridedBatchedEx(
@@ -993,7 +992,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
             n,
             k,
             &alpha,
-            A + step * one_step_heads * strideA * sizeof(DT),
+            A + step * one_step_heads * strideA,
             cublas_data_type,
             lda,
             strideA,
@@ -1002,10 +1001,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
             ldb,
             strideB,
             &beta,
-            C,
+            C + step * one_step_heads * strideC,
             cublas_data_type,
             ldc,
-            strideC + step * one_step_heads * strideC * sizeof(DT),
+            strideC,
             one_step_heads,
             compute_type,
             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
@@ -1172,7 +1171,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   // // print_tensor<float>(output.get_float_ptr() + bc->num_active_tokens() * 768
   // // / 4, 32, "attention op 1", shard_id);
   // print_tensor<float>(weight.get_float_ptr(), 32, "attention weights", shard_id);
-  print_tensor<float>(output.get_float_ptr(), 32, "attention op", shard_id);
+  // print_tensor<float>(output.get_float_ptr(), 32, "attention op", shard_id);
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
