@@ -20,7 +20,6 @@ namespace FlexFlow {
 using namespace Legion;
 
 void FALCON::create_falcon_model(FFModel &ff,
-                                 InferenceManager &im,
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
@@ -199,8 +198,9 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff);
   int tensor_partition_num = ff.config.tensor_parallelism_degree;
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             falcon_config.n_heads,
@@ -213,7 +213,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
-  im.init_operators_inference(&ff);
+  im->init_operators_inference(&ff);
 }
 
 }; // namespace FlexFlow

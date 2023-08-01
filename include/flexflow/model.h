@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/inference.h"
 #include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
@@ -138,6 +139,9 @@ enum TaskIDs {
   ARG_TOPK_INF_TASK_ID,
   SAMPLING_INIT_TASK_ID,
   SAMPLING_INF_TASK_ID,
+  ARGMAX_INIT_TASK_ID,
+  ARGMAX_BEAM_INF_TASK_ID,
+  ARGMAX_NORM_INF_TASK_ID,
   TRANSPOSE_INIT_TASK_ID,
   TRANSPOSE_FWD_TASK_ID,
   TRANSPOSE_BWD_TASK_ID,
@@ -217,6 +221,7 @@ enum TaskIDs {
   PIPELINE_FWD_TASK_ID,
   PIPELINE_BWD_TASK_ID,
   ALLREDUCE_INIT_TASK_ID,
+  ALLREDUCE_INF_TASK_ID,
   ALLREDUCE_FWD_TASK_ID,
   ALLREDUCE_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
@@ -225,6 +230,10 @@ enum TaskIDs {
   // InferenceManager & RequestManager
   RM_LOAD_TOKENS_TASK_ID,
   RM_LOAD_POSITION_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -315,6 +324,7 @@ class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
 class IncMultiQuerySelfAttention;
 class Sampling;
+class ArgMax;
 class Combine;
 class Repartition;
 class Reduction;
@@ -467,7 +477,7 @@ public:
                  char const *name = NULL);
   // Add an embedding layer
   Tensor embedding(const Tensor input,
-                   int num_entires,
+                   int num_entries,
                    int outDim,
                    AggrMode aggr,
                    DataType dtype = DT_FLOAT,
@@ -615,6 +625,7 @@ public:
                    int k,
                    bool sorted,
                    char const *name = NULL);
+  Tensor argmax(const Tensor input, bool beam_search, char const *name = NULL);
   Tensor sampling(const Tensor input, float top_p, char const *name = NULL);
   Tensor multihead_attention(const Tensor query,
                              const Tensor key,
@@ -695,6 +706,10 @@ public:
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
       char const *name = NULL);
+  // ========================================
+  // Inference APIs
+  // ========================================
+  GenerationResult generate(std::string const &text, int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1070,6 +1085,8 @@ public:
                          BeamTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, SamplingParams>,
                          Sampling *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ArgMaxParams>,
+                         ArgMax *>,
       std::unordered_map<
           std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
           SpecIncMultiHeadSelfAttention *>,

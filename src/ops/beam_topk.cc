@@ -29,6 +29,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::InlineLauncher;
@@ -270,7 +271,12 @@ OpMeta *BeamTopK::init_task(Task const *task,
                             Runtime *runtime) {
   BeamTopK *topk = (BeamTopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  BeamTopKMeta *m = new BeamTopKMeta(handle, topk);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  BeamTopKMeta *m = new BeamTopKMeta(handle, topk, gpu_mem_allocator);
   m->profiling = topk->profiling;
   m->sorted = topk->sorted;
   m->max_beam_width = topk->max_beam_width;
@@ -283,7 +289,7 @@ void BeamTopK::forward(FFModel const &ff) {
 }
 
 FutureMap BeamTopK::inference(FFModel const &ff,
-                              BatchConfig const &bc,
+                              BatchConfigFuture const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
                               MachineView const *mv) {
@@ -295,17 +301,15 @@ FutureMap BeamTopK::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(
-      BEAM_TOPK_INF_TASK_ID,
-      parallel_is,
-      TaskArgument(
-          &bc, std::max(sizeof(BatchConfig), sizeof(BeamSearchBatchConfig))),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      machine_view_hash);
-
+  IndexLauncher launcher(BEAM_TOPK_INF_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -342,10 +346,16 @@ BeamInferenceResult
 
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
+  // BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
+  BeamSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
   // std::cout << "beam search topk inference: "
   //           << "\n";
+  if (bc.num_tokens == 0) {
+    BeamInferenceResult ir;
+    return ir;
+  }
 
   BeamTopKMeta const *m = *((BeamTopKMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
@@ -374,14 +384,12 @@ BeamInferenceResult
   // embedding size: eg. 4096
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
 
-  int k =
-      out2_domain.hi()[0] - out2_domain.lo()[0] + 1; /*TODO: This prints to 5*/
+  // int k = out2_domain.hi()[0] - out2_domain.lo()[0] + 1;
 
   // total token nums
-  size_t tokens_per_request = in1_domain.hi()[1] - in1_domain.lo()[1] + 1;
-  int batch_size = bc->num_active_tokens();
-  // std::cout << "beam search topk params: " << length << ", " << k << ", "
-  //           << batch_size << "\n";
+  // size_t tokens_per_request = in1_domain.hi()[1] - in1_domain.lo()[1] + 1;
+  // size_t batch_size = in1_domain.get_volume() / length;
+  size_t batch_size = bc.num_active_tokens();
   // std::vector<int> beam_width;
   // std::unordered_map<size_t, int> sub_requests = bc->sub_requests;
   // for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
@@ -395,7 +403,7 @@ BeamInferenceResult
 
   // need meta for: how many sub requests in a main request
   BeamTopK::forward_kernel_wrapper(m,
-                                   bc,
+                                   &bc,
                                    input,
                                    value_ptr,
                                    index_ptr,

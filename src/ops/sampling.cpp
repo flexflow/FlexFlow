@@ -61,7 +61,9 @@ SamplingMeta::SamplingMeta(FFHandler handler,
                            Op const *op,
                            int batch_size,
                            int total_ele,
-                           GenericTensorAccessorW input)
+                           GenericTensorAccessorW input,
+                           MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {}
 
+SamplingMeta::~SamplingMeta(void) {}
 }; // namespace FlexFlow

@@ -16,6 +16,7 @@
 #include "flexflow/flexflow_c.h"
 #include "flexflow/dataloader.h"
 #include "flexflow/mapper.h"
+#include "flexflow/request_manager.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -55,6 +56,14 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dlrm_config_t, DLRMConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_t, SingleDataLoader *);
+  // inference
+  FF_NEW_OPAQUE_WRAPPER(flexflow_batch_config_t, BatchConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_tree_verify_batch_config_t,
+                        TreeVerifyBatchConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_beam_search_batch_config_t,
+                        BeamSearchBatchConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_inference_manager_t, InferenceManager *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
 };
 
 Logger ffc_log("flexflow_c");
@@ -456,9 +465,10 @@ flexflow_tensor_t
 flexflow_tensor_t
     flexflow_model_add_embedding(flexflow_model_t handle_,
                                  const flexflow_tensor_t input_,
-                                 int num_entires,
+                                 int num_entries,
                                  int out_dim,
                                  enum AggrMode aggr,
+                                 DataType dtype,
                                  flexflow_op_t shared_op_,
                                  flexflow_initializer_t kernel_initializer_,
                                  char const *name) {
@@ -470,20 +480,21 @@ flexflow_tensor_t
   // TODO: update the flexflow_c and Python API to support other data types
   // Currently we assume it's float
   Tensor tensor = handle->embedding(input,
-                                    num_entires,
+                                    num_entries,
                                     out_dim,
                                     aggr,
-                                    DT_FLOAT,
+                                    dtype,
                                     shared_op,
                                     kernel_initializer,
                                     name);
-  DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entires %d, out_dim "
-              "%d, aggr %d, shared_op %p, kernel_init %p, name %s",
+  DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entries %d, out_dim "
+              "%d, aggr %d, dtype %d, shared_op %p, kernel_init %p, name %s",
               tensor,
               input,
-              num_entires,
+              num_entries,
               out_dim,
               aggr,
+              dtype,
               shared_op,
               kernel_initializer,
               name);
@@ -1014,6 +1025,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     bool add_bias_kv,
     bool add_zero_attn,
     flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1031,7 +1043,121 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
                                                        add_zero_attn,
                                                        input->data_type,
                                                        kernel_initializer,
+                                                       apply_rotary_embedding,
                                                        name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
+    char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Initializer *kernel_initializer =
+      FFCObjectWrapper::unwrap(kernel_initializer_);
+  Tensor tensor =
+      handle->spec_inc_multihead_self_attention(input,
+                                                embed_dim,
+                                                num_heads,
+                                                kdim,
+                                                vdim,
+                                                dropout,
+                                                bias,
+                                                add_bias_kv,
+                                                add_zero_attn,
+                                                input->data_type,
+                                                kernel_initializer,
+                                                apply_rotary_embedding,
+                                                name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    bool apply_rotary_embedding,
+    char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Initializer *kernel_initializer =
+      FFCObjectWrapper::unwrap(kernel_initializer_);
+  Tensor tensor =
+      handle->inc_multihead_self_attention_verify(input,
+                                                  embed_dim,
+                                                  num_heads,
+                                                  kdim,
+                                                  vdim,
+                                                  dropout,
+                                                  bias,
+                                                  add_bias_kv,
+                                                  add_zero_attn,
+                                                  input->data_type,
+                                                  kernel_initializer,
+                                                  apply_rotary_embedding,
+                                                  name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
+                                              const flexflow_tensor_t input_,
+                                              float eps,
+                                              int dim,
+                                              char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->rms_norm(input, eps, dim, input->data_type, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
+                                               const flexflow_tensor_t input_,
+                                               int k,
+                                               bool sorted,
+                                               char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->arg_top_k(input, k, sorted, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_beam_top_k(flexflow_model_t handle_,
+                                                const flexflow_tensor_t input_,
+                                                int max_beam_size,
+                                                bool sorted,
+                                                char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->beam_top_k(input, max_beam_size, sorted, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_sampling(flexflow_model_t handle_,
+                                              const flexflow_tensor_t input_,
+                                              float top_p,
+                                              char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->sampling(input, top_p, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -1081,6 +1207,11 @@ flexflow_perf_metrics_t
               perf_metrics,
               perf_metrics->train_correct);
   return FFCObjectWrapper::wrap(perf_metrics);
+}
+
+void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_transformer_layer_id(id);
 }
 
 // -----------------------------------------------------------------------
@@ -1961,4 +2092,151 @@ void flexflow_perform_registration(void) {
                                          true /*global*/);
   Runtime::perform_registration_callback(FFMapper::update_mappers,
                                          true /*global*/);
+}
+
+// -----------------------------------------------------------------------
+// BatchConfig
+// -----------------------------------------------------------------------
+
+flexflow_batch_config_t flexflow_batch_config_create(void) {
+  BatchConfig *config = new BatchConfig();
+  DEBUG_PRINT("[BatchConfig] new %p", config);
+  return FFCObjectWrapper::wrap(config);
+}
+
+void flexflow_batch_config_destroy(flexflow_batch_config_t handle_) {
+  BatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[BatchConfig] delete %p", handle);
+  delete handle;
+}
+
+// -----------------------------------------------------------------------
+// TreeVerifyBatchConfig
+// -----------------------------------------------------------------------
+
+flexflow_tree_verify_batch_config_t
+    flexflow_tree_verify_batch_config_create(void) {
+  TreeVerifyBatchConfig *config = new TreeVerifyBatchConfig();
+  DEBUG_PRINT("[TreeVerifyBatchConfig] new %p", config);
+  return FFCObjectWrapper::wrap(config);
+}
+
+void flexflow_tree_verify_batch_config_destroy(
+    flexflow_tree_verify_batch_config_t handle_) {
+  TreeVerifyBatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[TreeVerifyBatchConfig] delete %p", handle);
+  delete handle;
+}
+
+// -----------------------------------------------------------------------
+// BeamSearchBatchConfig
+// -----------------------------------------------------------------------
+
+flexflow_beam_search_batch_config_t
+    flexflow_beam_search_batch_config_create(void) {
+  BeamSearchBatchConfig *config = new BeamSearchBatchConfig();
+  DEBUG_PRINT("[BeamSearchBatchConfig] new %p", config);
+  return FFCObjectWrapper::wrap(config);
+}
+
+void flexflow_beam_search_batch_config_destroy(
+    flexflow_beam_search_batch_config_t handle_) {
+  BeamSearchBatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[BeamSearchBatchConfig] delete %p", handle);
+  delete handle;
+}
+
+// -----------------------------------------------------------------------
+// RequestManager
+// -----------------------------------------------------------------------
+
+flexflow_request_manager_t flexflow_request_manager_create(void) {
+  RequestManager *rm = new RequestManager();
+  DEBUG_PRINT("[RequestManager] new %p", rm);
+  return FFCObjectWrapper::wrap(rm);
+}
+
+void flexflow_request_manager_destroy(flexflow_request_manager_t handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[RequestManager] delete %p", handle);
+  delete handle;
+}
+
+long unsigned int flexflow_request_manager_register_new_request(
+    flexflow_request_manager_t handle_,
+    char const *prompt,
+    int max_sequence_length) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  assert(prompt != nullptr && "Cannot convert nullptr char * to std::string");
+  std::string const prompt_str(prompt);
+  DEBUG_PRINT("[RequestManager] register_new_request %p %s", handle, prompt);
+  return handle->register_new_request(prompt_str, max_sequence_length);
+}
+
+// -----------------------------------------------------------------------
+// InferenceManager
+// -----------------------------------------------------------------------
+
+flexflow_inference_manager_t
+    flexflow_inference_manager_create(flexflow_config_t config_handle,
+                                      int max_num_tokens_per_batch) {
+  FFConfig *config = FFCObjectWrapper::unwrap(config_handle);
+  InferenceManager *im =
+      new InferenceManager(*config, max_num_tokens_per_batch);
+  DEBUG_PRINT("[InferenceManager] new %p", im);
+  return FFCObjectWrapper::wrap(im);
+}
+
+void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle_) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[InferenceManager] delete %p", handle);
+  delete handle;
+}
+
+void flexflow_inference_manager_compile_model_and_allocate_buffer(
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle_) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT("[InferenceManager] compile_model_and_allocate_buffer %p",
+              handle);
+  handle->compile_model_and_allocate_buffer(model_handle);
+}
+
+void flexflow_inference_manager_init_operators_inference(
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle_) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT("[InferenceManager] init_operators_inference %p", handle);
+  handle->init_operators_inference(model_handle);
+}
+
+void flexflow_inference_manager_incr_decoding_loop(
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle_,
+    flexflow_request_manager_t rm_handle_,
+    int total_num_requests) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  RequestManager *rm_handle = FFCObjectWrapper::unwrap(rm_handle_);
+  DEBUG_PRINT("[InferenceManager] incr_decoding_loop %p", handle);
+  handle->incr_decoding_loop(model_handle, *rm_handle, total_num_requests);
+}
+
+void flexflow_inference_manager_spec_inference_loop(
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle_,
+    flexflow_request_manager_t rm_handle_,
+    int total_num_requests,
+    int num_ssms,
+    int *ssm_model_ids) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  RequestManager *rm_handle = FFCObjectWrapper::unwrap(rm_handle_);
+  std::vector<int> ssm_model_ids_vec;
+  for (int i = 0; i < num_ssms; i++) {
+    ssm_model_ids_vec.push_back(ssm_model_ids[i]);
+  }
+  DEBUG_PRINT("[InferenceManager] spec_inference_loop %p", handle);
+  handle->spec_inference_loop(
+      model_handle, *rm_handle, total_num_requests, ssm_model_ids_vec);
 }

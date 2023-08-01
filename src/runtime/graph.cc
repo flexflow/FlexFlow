@@ -17,6 +17,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/beam_topk.h"
@@ -2937,6 +2938,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_SAMPLING: {
         node = Sampling::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_ARGMAX: {
+        node = ArgMax::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_GROUP_BY: {

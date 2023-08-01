@@ -219,8 +219,7 @@ __host__ void
                           cudaHostAllocPortable | cudaHostAllocMapped));
   checkCUDA(cudaMemcpyAsync(
       host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
-  cudaDeviceSynchronize();  
-  cudaStreamSynchronize(stream);      
+  cudaDeviceSynchronize();
   int idx = 0;
   printf("%s, %d---->", prefix, shard_id);
   for (idx = 0; idx < num_elements; idx++) {

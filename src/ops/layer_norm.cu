@@ -24,7 +24,9 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
+LayerNormMeta::LayerNormMeta(FFHandler handle,
+                             LayerNorm const *ln,
+                             MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
@@ -32,18 +34,26 @@ LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
   profiling = ln->profiling;
   eps = ln->eps;
   DataType data_type = ln->data_type;
-  checkCUDA(
-      cudaMalloc(&mean_ptr, data_type_size(data_type) * effective_batch_size));
-  checkCUDA(
-      cudaMalloc(&rstd_ptr, data_type_size(data_type) * effective_batch_size));
-  checkCUDA(
-      cudaMalloc(&ds_ptr, data_type_size(data_type) * effective_batch_size));
-  checkCUDA(
-      cudaMalloc(&db_ptr, data_type_size(data_type) * effective_batch_size));
-  checkCUDA(
-      cudaMalloc(&scale_ptr, data_type_size(data_type) * effective_batch_size));
-  checkCUDA(
-      cudaMalloc(&bias_ptr, data_type_size(data_type) * effective_batch_size));
+  size_t totalSize = effective_batch_size * data_type_size(data_type) * 6;
+  gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
+  mean_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      data_type_size(data_type) * effective_batch_size);
+  rstd_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      data_type_size(data_type) * effective_batch_size);
+  ds_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      data_type_size(data_type) * effective_batch_size);
+  db_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      data_type_size(data_type) * effective_batch_size);
+  scale_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      data_type_size(data_type) * effective_batch_size);
+  bias_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      data_type_size(data_type) * effective_batch_size);
+}
+
+LayerNormMeta::~LayerNormMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
 }
 
 template <typename T>

@@ -5,12 +5,16 @@
 #include "flexflow/model.h"
 #include "flexflow/node.h"
 #include "flexflow/ops/beam_topk_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
 class BeamTopKMeta : public OpMeta {
 public:
-  BeamTopKMeta(FFHandler handle, Op const *op);
+  BeamTopKMeta(FFHandler handle,
+               Op const *op,
+               MemoryAllocator &gpu_mem_allocator);
+  ~BeamTopKMeta(void);
   bool sorted;
   int max_beam_width;
   int *parent_ids;
@@ -18,6 +22,7 @@ public:
   int *block_start_index;
   int *request_id;
   int *tokens_per_request;
+  Realm::RegionInstance reserveInst;
 };
 
 class BeamTopK : public Op {
@@ -43,7 +48,7 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &,
+                              BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;

@@ -223,9 +223,13 @@ OpMeta *Sampling::init_task(Task const *task,
 
   int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
   int batch_size = acc_input.domain.get_volume() / length;
-
-  SamplingMeta *m =
-      new SamplingMeta(handle, s, batch_size, length * batch_size, acc_input);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  SamplingMeta *m = new SamplingMeta(
+      handle, s, batch_size, length * batch_size, acc_input, gpu_mem_allocator);
   m->profiling = s->profiling;
   m->top_p = s->top_p;
   return m;
@@ -237,7 +241,7 @@ void Sampling::forward(FFModel const &ff) {
 }
 
 FutureMap Sampling::inference(FFModel const &ff,
-                              BatchConfig const &bc,
+                              BatchConfigFuture const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
                               MachineView const *mv) {

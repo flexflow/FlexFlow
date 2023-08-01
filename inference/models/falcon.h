@@ -17,6 +17,7 @@
 #include "file_loader.h"
 #include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include <nlohmann/json.hpp>
 #include <string>
 using json = nlohmann::json;
@@ -106,7 +107,6 @@ public:
   };
 
   static void create_falcon_model(FFModel &ff,
-                                  InferenceManager &im,
                                   std::string const &model_config_file_path,
                                   std::string const &weight_file_path,
                                   InferenceMode mode,

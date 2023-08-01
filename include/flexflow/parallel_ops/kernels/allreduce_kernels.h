@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ALLREDUCE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ALLREDUCE_KERNELS_H
 
+#include "flexflow/batch_config.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
@@ -15,6 +16,11 @@ public:
 
 namespace Kernels {
 namespace AllReduce {
+
+void inference_kernel_wrapper(AllReduceMeta const *m,
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &input,
+                              GenericTensorAccessorW const &output);
 
 void forward_kernel_wrapper(AllReduceMeta const *m,
                             GenericTensorAccessorR const &input,

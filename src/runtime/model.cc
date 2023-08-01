@@ -25,6 +25,7 @@
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -65,6 +66,7 @@
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/substitution.h"
 #include "flexflow/utils/random_utils.h"
 #include "flexflow/utils/test_utils.h"
@@ -2943,6 +2945,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_ARGMAX: {
+      Op *op = ArgMax::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2984,7 +2991,8 @@ void FFModel::create_operators_from_layers() {
     // add a combine before arg_topk
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 &&
-        (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX)) {
+        (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
+         l->op_type == OP_ARGMAX)) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Combine *comb = new Combine(*this,
@@ -3814,6 +3822,9 @@ FFConfig::FFConfig() {
   offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
   quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
+  data_parallelism_degree = 1;
+  tensor_parallelism_degree = 1;
+  pipeline_parallelism_degree = 1;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
@@ -3855,9 +3866,6 @@ FFConfig::FFConfig() {
                     .local_address_space()
                     .only_kind(Processor::LOC_PROC)
                     .count();
-  data_parallelism_degree = 1;
-  tensor_parallelism_degree = 1;
-  pipeline_parallelism_degree = 1;
 
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
@@ -3936,6 +3944,21 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {
       only_data_parallel = true;
+      continue;
+    }
+    // data parallelism degree
+    if (!strcmp(argv[i], "-data-parallelism-degree")) {
+      data_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // tensor parallelism degree
+    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
+      tensor_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // pipeline parallelism degree
+    if (!strcmp(argv[i], "-pipeline-parallelism-degree")) {
+      pipeline_parallelism_degree = std::stoi(argv[++i]);
       continue;
     }
     if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
@@ -4102,6 +4125,90 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       }
       runtime->register_task_variant<RequestManager::load_positions_task>(
           registrar);
+    }
+  }
+  // RequestManager prepare_next_batch
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_TASK_ID,
+                                   "RequestManager Prepare Next Batch");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BatchConfig,
+          RequestManager::prepare_next_batch_task>(
+          registrar, "RequestManager Prepare Next Batch Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchConfig,
+                                     RequestManager::prepare_next_batch_task>(
+          registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_beam
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+                                   "RequestManager Prepare Next Batch (Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_beam_task>(
+          registrar, "RequestManager Prepare Next Batch (Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_beam_task>(
+              registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_init
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+        "RequestManager Prepare Next Batch (Init Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_init_task>(
+          registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_init_task>(
+              registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_verify
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
+        "RequestManager Prepare Next Batch (Verify)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(
+          registrar, "RequestManager Prepare Next Batch (Verify) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(registrar);
     }
   }
   // ElementUnary task
@@ -5444,6 +5551,56 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  // ArgMax task
+  {
+    TaskVariantRegistrar registrar(ARGMAX_INIT_TASK_ID, "ArgMax Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ArgMax::init_task>(
+          registrar, "ArgMax Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ArgMax::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_BEAM_INF_TASK_ID,
+                                   "ArgMax Beam Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        ArgMax::inference_task_beam>(
+          registrar, "ArgMax Inference Task Beam");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     ArgMax::inference_task_beam>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_NORM_INF_TASK_ID,
+                                   "ArgMax Norm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgMax::inference_task_norm>(
+          registrar, "ArgMax Inference Task Norm");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<InferenceResult, ArgMax::inference_task_norm>(
+              registrar);
+    }
+  }
   // Transpose task
   {
     TaskVariantRegistrar registrar(TRANSPOSE_INIT_TASK_ID, "Transpose Init");
@@ -5949,6 +6106,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<OpMeta *, AllReduce::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
+                                   "AllReduce Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::inference_task>(
+          registrar, "AllReduce Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::inference_task>(registrar);
     }
   }
   {

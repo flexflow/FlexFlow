@@ -29,6 +29,7 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::InlineLauncher;
@@ -250,7 +251,7 @@ void ArgTopK::forward(FFModel const &ff) {
 }
 
 FutureMap ArgTopK::inference(FFModel const &ff,
-                             BatchConfig const &bc,
+                             BatchConfigFuture const &bc,
                              std::vector<ParallelTensor> const &batch_inputs,
                              std::vector<ParallelTensor> const &batch_outputs,
                              MachineView const *mv) {
@@ -265,12 +266,13 @@ FutureMap ArgTopK::inference(FFModel const &ff,
             << std::endl; */
   IndexLauncher launcher(ARG_TOPK_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -300,7 +302,12 @@ InferenceResult
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    // Directly return for empty batch config
+    InferenceResult ir;
+    return ir;
+  }
   ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(

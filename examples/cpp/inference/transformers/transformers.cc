@@ -15,6 +15,7 @@
 
 #include "transformers.h"
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>

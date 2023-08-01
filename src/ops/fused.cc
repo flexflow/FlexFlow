@@ -470,7 +470,7 @@ void FusedOp::forward(FFModel const &ff) {
 }
 
 FutureMap FusedOp::inference(FFModel const &ff,
-                             BatchConfig const &bc,
+                             BatchConfigFuture const &bc,
                              std::vector<ParallelTensor> const &batch_inputs,
                              std::vector<ParallelTensor> const &batch_outputs,
                              MachineView const *mv) {
@@ -484,16 +484,17 @@ FutureMap FusedOp::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   // bc is one of BatchConfig, TreeVerifyBatchConfig, and BeamSearchBatchConfig
   // so we transfer the maximum of them
-  size_t batch_config_size =
-      std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
+  // size_t batch_config_size =
+  //    std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
   IndexLauncher launcher(FUSEDOP_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, batch_config_size),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   int offset = 0;
   for (int i = 0; i < numInputs; i++) {
     assert(inputs[i]->part != LogicalPartition::NO_PART);
