@@ -2,6 +2,7 @@
     "n_layers": 32,
     "vocab_size": 65024,
     "n_heads": 71,
+    "n_kv_heads" : 1,
     "dim": 4544,
     "multiple_of": 256,
     "norm_eps": 1e-05,

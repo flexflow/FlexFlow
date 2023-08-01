@@ -54,6 +54,7 @@ public:
           n_layers = config_json["n_layers"];
           vocab_size = config_json["vocab_size"];
           n_heads = config_json["n_heads"];
+          n_kv_heads = config_json["n_kv_heads"];
           dim = config_json["dim"];
           multiple_of = config_json["multiple_of"];
           norm_eps = config_json["norm_eps"];
