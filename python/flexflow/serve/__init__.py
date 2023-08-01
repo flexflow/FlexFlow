@@ -65,6 +65,10 @@ def init(configs):
     # parse optional arguments
     num_cpus = configs_dict.get("num_cpus")
     parse_positive_int_config("num_cpus", num_cpus, "-ll:cpu")
+    legion_utility_processors = configs_dict.get("legion_utility_processors")
+    parse_positive_int_config(
+        "legion_utility_processors", legion_utility_processors, "-ll:util"
+    )
 
     data_parallelism_degree = configs_dict.get("data_parallelism_degree")
     tensor_parallelism_degree = configs_dict.get("tensor_parallelism_degree")
