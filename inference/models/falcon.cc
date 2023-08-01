@@ -28,6 +28,12 @@ void FALCON::create_falcon_model(FFModel &ff,
   Config falcon_config(model_config_file_path);
   falcon_config.printConfig();
 
+  if (ff.config.tensor_parallelism_degree > falcon_config.n_heads ||
+      ff.config.tensor_parallelism_degree > falcon_config.n_kv_heads) {
+    assert(false && "The degree of tensor parallelism should be greater than "
+                    "or equal to the number of heads");
+  }
+
   int num_devices = ff.config.workersPerNode * ff.config.numNodes;
   int num_transformer_layers = falcon_config.n_layers;
   assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
@@ -35,7 +41,7 @@ void FALCON::create_falcon_model(FFModel &ff,
       num_transformer_layers / ff.config.pipeline_parallelism_degree;
   int num_devices_per_data_parallelism_line =
       num_devices / ff.config.data_parallelism_degree;
-  
+
   std::unordered_map<std::string, Layer *> weights_layers;
 
   Tensor input;
@@ -73,7 +79,8 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   // int num_transformer_layers = falcon_config.n_layers;
   // int num_transformer_layers_per_stage =
-  //     (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
+  //     (num_transformer_layers + num_pipeline_stages - 1) /
+  //     num_pipeline_stages;
 
   for (int i = 0; i < num_transformer_layers; i++) {
     // set transformer layer id
@@ -123,7 +130,7 @@ void FALCON::create_falcon_model(FFModel &ff,
         );
         break;
       }
-      
+
       case INC_DECODING_MODE: {
         mha = ff.inc_multihead_self_attention(
             att_norm,
@@ -148,11 +155,11 @@ void FALCON::create_falcon_model(FFModel &ff,
     }
     Layer *attention_layer = ff.layers.back();
 
-    //multi query
-    // weights_layers.emplace("layers_" + std::to_string(i) +
-    //                            "_self_attention_dense_weight",
-    //                        attention_layer);
-    
+    // multi query
+    //  weights_layers.emplace("layers_" + std::to_string(i) +
+    //                             "_self_attention_dense_weight",
+    //                         attention_layer);
+
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
                            attention_layer);
     Tensor dense_h_to_4h =
@@ -201,7 +208,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                             falcon_config.dim,
                             falcon_config.dim / falcon_config.n_heads,
                             tensor_partition_num);
-  std::cout << "------laod weights ----------" << std::endl;                          
+  std::cout << "------laod weights ----------" << std::endl;
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 

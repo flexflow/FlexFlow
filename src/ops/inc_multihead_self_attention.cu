@@ -841,11 +841,11 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
             n,
             k,
             &alpha,
-            A + step * strideA * one_step_heads,
+            A + step * strideA * one_step_heads * sizeof(DT),
             cublas_data_type,
             lda,
             strideA,
-            B + step * kt_block_size,
+            B + step * kt_block_size * sizeof(DT),
             cublas_data_type,
             ldb,
             strideB,
@@ -984,30 +984,30 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       strideB = 0;
       strideC = num_new_tokens * m->vProjSize;
       for (int step = 0; step < m->num_kv_heads; step++) {
-        checkCUDA(
-            cublasGemmStridedBatchedEx(m->handle.blas,
-                                       CUBLAS_OP_N,
-                                       CUBLAS_OP_T,
-                                       m_,
-                                       n,
-                                       k,
-                                       &alpha,
-                                       A + step * one_step_heads * strideA,
-                                       cublas_data_type,
-                                       lda,
-                                       strideA,
-                                       B + step * vt_block_size,
-                                       cublas_data_type,
-                                       ldb,
-                                       strideB,
-                                       &beta,
-                                       C + step * one_step_heads * strideC,
-                                       cublas_data_type,
-                                       ldc,
-                                       strideC,
-                                       one_step_heads,
-                                       compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        checkCUDA(cublasGemmStridedBatchedEx(
+            m->handle.blas,
+            CUBLAS_OP_N,
+            CUBLAS_OP_T,
+            m_,
+            n,
+            k,
+            &alpha,
+            A + step * one_step_heads * strideA * sizeof(DT),
+            cublas_data_type,
+            lda,
+            strideA,
+            B + step * vt_block_size * sizeof(DT),
+            cublas_data_type,
+            ldb,
+            strideB,
+            &beta,
+            C + step * one_step_heads * strideC * sizeof(DT),
+            cublas_data_type,
+            ldc,
+            strideC,
+            one_step_heads,
+            compute_type,
+            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       }
     }
     // Project to output, save result directly on output tensor
@@ -1256,7 +1256,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   global_num_heads = _global_num_heads;
   num_heads = _num_heads;
   num_kv_heads = _num_kv_heads;
-  // weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
+  // weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize
+  // +
   //                   oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   // weightSize = weights_params * num_heads * size_of_dt;
 

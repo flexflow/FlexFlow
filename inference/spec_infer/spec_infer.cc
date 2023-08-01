@@ -58,6 +58,8 @@ void parse_input_args(char **argv,
                      [](unsigned char c) { return std::tolower(c); });
       if (model_type_str == "llama") {
         model_types.llm_model_type = ModelType::LLAMA;
+      } else if (model_type_str == "llama2") {
+        model_types.llm_model_type = ModelType::LLAMA2;
       } else if (model_type_str == "opt") {
         model_types.llm_model_type = ModelType::OPT;
       } else if (model_type_str == "falcon") {
@@ -86,6 +88,8 @@ void parse_input_args(char **argv,
                      [](unsigned char c) { return std::tolower(c); });
       if (model_type_str == "llama") {
         model_types.ssm_model_types.push_back(ModelType::LLAMA);
+      } else if (model_type_str == "llama2") {
+        model_types.ssm_model_types.push_back(ModelType::LLAMA2);
       } else if (model_type_str == "opt") {
         model_types.ssm_model_types.push_back(ModelType::OPT);
       } else if (model_type_str == "falcon") {
@@ -213,7 +217,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
-  if (model_types.llm_model_type == ModelType::LLAMA) {
+  if (model_types.llm_model_type == ModelType::LLAMA ||
+      model_types.llm_model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(tree_model,
                               im,
                               file_paths.llm_config_file_path,
@@ -253,7 +258,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
     FFModel &beam_model = ssm_models[ssm_id];
-    if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA) {
+    if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA ||
+        model_types.ssm_model_types[ssm_id] == ModelType::LLAMA2) {
       LLAMA::create_llama_model(beam_model,
                                 im,
                                 file_paths.ssm_config_file_paths[ssm_id],

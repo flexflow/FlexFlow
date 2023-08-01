@@ -54,6 +54,8 @@ void parse_input_args(char **argv,
                      [](unsigned char c) { return std::tolower(c); });
       if (model_type_str == "llama") {
         llm_model_type = ModelType::LLAMA;
+      } else if (model_type_str == "llama2") {
+        llm_model_type = ModelType::LLAMA2;
       } else if (model_type_str == "opt") {
         llm_model_type = ModelType::OPT;
       } else if (model_type_str == "falcon") {
@@ -180,7 +182,7 @@ void FlexFlow::top_level_task(Task const *task,
                     file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
-  if (model_type == ModelType::LLAMA) {
+  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(model,
                               im,
                               file_paths.llm_config_file_path,

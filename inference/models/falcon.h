@@ -31,6 +31,7 @@ public:
       n_layers = 32;
       vocab_size = 32000;
       n_heads = 32;
+      n_kv_heads = 1;
       dim = 4096;
       multiple_of = 256;
       norm_eps = 1e-6;
@@ -99,7 +100,7 @@ public:
 
     int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
         total_requests, incremental_mode, max_seq_len, max_num_tokens,
-        max_beam_width, max_beam_depth, head_dim;
+        max_beam_width, max_beam_depth, head_dim, n_kv_heads;
     float norm_eps;
   };
 

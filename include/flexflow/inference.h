@@ -162,7 +162,8 @@ private:
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
   const std::map<ModelType, int> model_bos_map = {{ModelType::LLAMA, 0},
-                                                  {ModelType::OPT, 2}};
+                                                  {ModelType::OPT, 2},
+                                                  {ModelType::LLAMA2, 1}};
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,

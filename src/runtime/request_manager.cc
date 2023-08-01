@@ -53,7 +53,7 @@ RequestManager::RequestManager(ModelType model_type,
 
   // bos id
   this->model_type = model_type;
-  if (model_type == ModelType::LLAMA) {
+  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     this->tokenizer_ =
         Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(path));
   } else if (model_type == ModelType::OPT) {
