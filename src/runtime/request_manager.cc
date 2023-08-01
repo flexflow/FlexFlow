@@ -68,7 +68,7 @@ RequestManager::RequestManager()
 void RequestManager::register_tokenizer(ModelType type,
                                         std::string const &path) {
   // bos id
-  this->model_type = model_type;
+  this->model_type = type;
   if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     this->tokenizer_ =
         Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(path));

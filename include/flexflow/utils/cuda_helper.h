@@ -141,7 +141,10 @@ __host__ void updateGAS(float *para_ptr,
                         float learning_rate);
 
 template <typename T>
-void print_tensor(T const *ptr, size_t num_elements, char const *prefix, int shard_id = 0);
+void print_tensor(T const *ptr,
+                  size_t num_elements,
+                  char const *prefix,
+                  int shard_id = 0);
 template <typename T>
 void print_beam_tensor(T const *ptr,
                        size_t num_elements,

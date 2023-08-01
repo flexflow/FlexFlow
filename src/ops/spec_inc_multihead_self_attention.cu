@@ -480,30 +480,30 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
         strideB = 0;
         strideC = num_new_tokens * m->vProjSize;
         for (int step = 0; step < m->num_kv_heads; step++) {
-          checkCUDA(
-              cublasGemmStridedBatchedEx(m->handle.blas,
-                                         CUBLAS_OP_N,
-                                         CUBLAS_OP_T,
-                                         m_,
-                                         n,
-                                         k,
-                                         &alpha,
-                                         A + step * one_step_heads * strideA * sizeof(DT),
-                                         cublas_data_type,
-                                         lda,
-                                         strideA,
-                                         B + step * vt_block_size * sizeof(DT),
-                                         cublas_data_type,
-                                         ldb,
-                                         strideB,
-                                         &beta,
-                                         C + step * one_step_heads * strideC * sizeof(DT),
-                                         cublas_data_type,
-                                         ldc,
-                                         strideC,
-                                         one_step_heads,
-                                         compute_type,
-                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+          checkCUDA(cublasGemmStridedBatchedEx(
+              m->handle.blas,
+              CUBLAS_OP_N,
+              CUBLAS_OP_T,
+              m_,
+              n,
+              k,
+              &alpha,
+              A + step * one_step_heads * strideA * sizeof(DT),
+              cublas_data_type,
+              lda,
+              strideA,
+              B + step * vt_block_size * sizeof(DT),
+              cublas_data_type,
+              ldb,
+              strideB,
+              &beta,
+              C + step * one_step_heads * strideC * sizeof(DT),
+              cublas_data_type,
+              ldc,
+              strideC,
+              one_step_heads,
+              compute_type,
+              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
         }
       }
 
@@ -544,9 +544,9 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     }
     if (*m->bias && shard_id == 0) {
       int parallelism = m->oProjSize * num_tokens;
-      int qkv_weight_size = m->qProjSize * m->num_heads +
-                            m->kProjSize * m->num_kv_heads +
-                            m->vProjSize * m->num_kv_heads;
+      int qkv_weight_size = m->qProjSize * m->global_num_heads +
+                            m->kProjSize * m->global_num_kv_heads +
+                            m->vProjSize * m->global_num_kv_heads;
       apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
@@ -706,6 +706,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     gpu_mem_allocator,
                                     num_samples,
                                     attn->num_heads,
+                                    attn->num_kv_heads,
                                     _num_heads,
                                     _num_kv_heads,
                                     DT_NONE,

@@ -12,14 +12,6 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
-__global__ void build_w_out_tensor(DT const *weight_ptr,
-                                   DT *contiguous_weight_ptr,
-                                   int vProjSize,
-                                   int oProjSize,
-                                   int num_heads,
-                                   int qkv_weight_block_size);
-
-template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
                                   int num_tokens,

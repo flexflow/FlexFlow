@@ -472,30 +472,30 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
         int one_step_heads = m->num_heads / m->num_kv_heads;
         strideB = 0;
         for (int step = 0; step < m->num_kv_heads; step++) {
-          checkCUDA(
-              cublasGemmStridedBatchedEx(m->handle.blas,
-                                         CUBLAS_OP_N,
-                                         CUBLAS_OP_T,
-                                         m_,
-                                         n,
-                                         k,
-                                         &alpha,
-                                         A + step * one_step_heads * strideA * sizeof(DT),
-                                         cublas_data_type,
-                                         lda,
-                                         strideA,
-                                         B + step * vt_block_size * sizeof(DT),
-                                         cublas_data_type,
-                                         ldb,
-                                         strideB,
-                                         &beta,
-                                         C + step * one_step_heads * strideC * sizeof(DT),
-                                         cublas_data_type,
-                                         ldc,
-                                         strideC,
-                                         one_step_heads,
-                                         compute_type,
-                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+          checkCUDA(cublasGemmStridedBatchedEx(
+              m->handle.blas,
+              CUBLAS_OP_N,
+              CUBLAS_OP_T,
+              m_,
+              n,
+              k,
+              &alpha,
+              A + step * one_step_heads * strideA * sizeof(DT),
+              cublas_data_type,
+              lda,
+              strideA,
+              B + step * vt_block_size * sizeof(DT),
+              cublas_data_type,
+              ldb,
+              strideB,
+              &beta,
+              C + step * one_step_heads * strideC * sizeof(DT),
+              cublas_data_type,
+              ldc,
+              strideC,
+              one_step_heads,
+              compute_type,
+              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
         }
       }
 
@@ -539,9 +539,9 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   }
   if (*m->bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
-    int qkv_weight_size = m->qProjSize * m->num_heads +
-                          m->kProjSize * m->num_kv_heads +
-                          m->vProjSize * m->num_kv_heads;
+    int qkv_weight_size = m->qProjSize * m->global_num_heads +
+                          m->kProjSize * m->global_num_kv_heads +
+                          m->vProjSize * m->global_num_kv_heads;
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
                         0,
@@ -565,35 +565,21 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
   // additional processing for weight uploading
-  // if (m->handle.offload_reserve_space != nullptr) {
-  //   // Note that we update weight_ptr and bias_ptr when uploading weight and
-  //   // bias
-  //   cudaMemcpyAsync(m->weight_ptr,
-  //                   weight_ptr,
-  //                   m->weightSize,
-  //                   cudaMemcpyHostToDevice,
-  //                   stream);
-  //   weight_ptr = static_cast<DT *>(m->weight_ptr);
-  //   if (m->biasSize > 0) {
-  //     cudaMemcpyAsync(
-  //         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice,
-  //         stream);
-  //     bias_ptr = static_cast<DT *>(m->bias_ptr);
-  //   }
-  //   // reload weight_o for offloading case
-  //   int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
-  //   build_w_out_tensor<<<GET_BLOCKS(parallelism),
-  //                        min(CUDA_NUM_THREADS, parallelism),
-  //                        0,
-  //                        stream>>>(weight_ptr,
-  //                                  static_cast<DT *>(m->W_out_contiguous),
-  //                                  m->vProjSize,
-  //                                  m->oProjSize,
-  //                                  m->num_heads,
-  //                                  (m->qSize * m->qProjSize +
-  //                                   m->kSize * m->kProjSize +
-  //                                   m->vSize * m->vProjSize));
-  // }
+  if (m->handle.offload_reserve_space != nullptr) {
+    // Note that we update weight_ptr and bias_ptr when uploading weight and
+    // bias
+    cudaMemcpyAsync(m->weight_ptr,
+                    weight_ptr,
+                    m->weightSize,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    weight_ptr = static_cast<DT *>(m->weight_ptr);
+    if (m->biasSize > 0) {
+      cudaMemcpyAsync(
+          m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
+      bias_ptr = static_cast<DT *>(m->bias_ptr);
+    }
+  }
   // copy committed tokens info to GPU for the commit_tokens kernel
   // Note that m->num_active_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
@@ -749,6 +735,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     gpu_mem_allocator,
                                     num_samples,
                                     attn->num_heads,
+                                    attn->num_kv_heads,
                                     _num_heads,
                                     _num_kv_heads,
                                     attn->quantization_type,

@@ -92,6 +92,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _global_num_heads,
+    int _global_num_kv_heads,
     int _num_heads,
     DataType _quantization_type,
     bool _offload)

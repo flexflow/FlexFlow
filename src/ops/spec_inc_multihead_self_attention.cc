@@ -117,7 +117,8 @@ Tensor
   int kParas = kProjSize * kSize;
   int vParas = vProjSize * vSize;
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-  int weight_size = qParas * num_heads + kParas * num_kv_heads + vParas * num_kv_heads + oParas * num_heads; 
+  int weight_size = qParas * num_heads + kParas * num_kv_heads +
+                    vParas * num_kv_heads + oParas * num_heads;
   {
     int dims[1] = {weight_size};
     li->weights[0] = create_weight_legion_ordering(1,
@@ -130,7 +131,8 @@ Tensor
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize};
+    int dims[1] = {qProjSize * num_heads +
+                   (kProjSize + vProjSize) * num_kv_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -238,8 +240,8 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
          (_bias ? 2 : 1) /*weights*/,
          1 /*outputs*/,
          _input),
-      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
-      add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -272,7 +274,8 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    dims[1].size = this->num_heads * (qParas + oParas) +
+                   this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
@@ -285,7 +288,8 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       bias_shape.dims[0].size =
-          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads, oProjSize;
+          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads,
+      oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -336,8 +340,8 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
          1 /*outputs*/,
          _input,
          _weight),
-      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
-      add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -369,7 +373,8 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    dims[1].size = this->num_heads * (qParas + oParas) +
+                   this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
     // dims[2].size = qParas + kParas + vParas + oParas;
     int seed = std::rand();
@@ -382,8 +387,9 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                                  CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size =
-          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize;
+      bias_shape.dims[0].size = qProjSize * num_heads +
+                                (kProjSize + vProjSize) * num_kv_heads +
+                                oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -590,8 +596,14 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   // We don't do offloading for SSMs (small speculative models)
-  SpecIncMultiHeadSelfAttentionMeta *m = new SpecIncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads, num_kv_heads);
+  SpecIncMultiHeadSelfAttentionMeta *m =
+      new SpecIncMultiHeadSelfAttentionMeta(handle,
+                                            attn,
+                                            weight,
+                                            gpu_mem_allocator,
+                                            num_samples,
+                                            num_heads,
+                                            num_kv_heads);
   // assert that we didn't over allocate memory
   assert(gpu_mem_allocator.instance_allocated_size ==
          gpu_mem_allocator.instance_total_size);
@@ -783,7 +795,7 @@ SpecIncMultiHeadSelfAttentionParams
   params.scaling_query = this->scaling_query;
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
-  
+
   return params;
 }
 

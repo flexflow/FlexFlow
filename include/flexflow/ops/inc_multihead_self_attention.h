@@ -158,6 +158,7 @@ public:
                                 MemoryAllocator &gpu_mem_allocator,
                                 int num_samples,
                                 int _global_num_heads,
+                                int _global_num_kv_heads,
                                 int _num_heads,
                                 int _num_kv_heads,
                                 DataType _quantization_type,
@@ -169,7 +170,7 @@ public:
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int global_num_heads, num_heads, num_kv_heads;
+  int global_num_heads, global_num_kv_heads, num_heads, num_kv_heads;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *bias;

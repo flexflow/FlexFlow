@@ -212,28 +212,27 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
   bool offload = (bool)value;
   layer->get_int_property("tensor_parallelism_degree", value);
   int tensor_parallelism_degree = (int)value;
-  return new TreeIncMultiHeadSelfAttention(
-      model,
-      layer->layer_guid,
-      inputs[0],
-      embed_dim,
-      num_heads,
-      num_kv_heads,
-      kdim,
-      vdim,
-      dropout,
-      bias,
-      add_bias_kv,
-      add_zero_attn,
-      apply_rotary_embedding,
-      scaling_query,
-      scaling_factor,
-      qk_prod_scaling,
-      false /*allocate_weights*/,
-      quantization_type,
-      offload,
-      tensor_parallelism_degree,
-      layer->name);
+  return new TreeIncMultiHeadSelfAttention(model,
+                                           layer->layer_guid,
+                                           inputs[0],
+                                           embed_dim,
+                                           num_heads,
+                                           num_kv_heads,
+                                           kdim,
+                                           vdim,
+                                           dropout,
+                                           bias,
+                                           add_bias_kv,
+                                           add_zero_attn,
+                                           apply_rotary_embedding,
+                                           scaling_query,
+                                           scaling_factor,
+                                           qk_prod_scaling,
+                                           false /*allocate_weights*/,
+                                           quantization_type,
+                                           offload,
+                                           tensor_parallelism_degree,
+                                           layer->name);
 }
 
 TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(

@@ -210,7 +210,6 @@ void FlexFlow::top_level_task(Task const *task,
                           use_full_precision);
   } else if (model_types.llm_model_type == ModelType::FALCON) {
     FALCON::create_falcon_model(tree_model,
-                                im,
                                 file_paths.llm_config_file_path,
                                 file_paths.llm_weight_file_path,
                                 TREE_VERIFY_MODE,
@@ -249,7 +248,6 @@ void FlexFlow::top_level_task(Task const *task,
                             use_full_precision);
     } else if (model_types.ssm_model_types[ssm_id] == ModelType::FALCON) {
       FALCON::create_falcon_model(beam_model,
-                                  im,
                                   file_paths.ssm_config_file_paths[ssm_id],
                                   file_paths.ssm_weight_file_paths[ssm_id],
                                   BEAM_SEARCH_MODE,

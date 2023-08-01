@@ -120,10 +120,10 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   int kParas = kProjSize * kSize;
   int vParas = vProjSize * vSize;
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-  int weight_size = qParas * num_heads + kParas * num_kv_heads + vParas * num_kv_heads + oParas * num_heads; 
+  int weight_size = qParas * num_heads + kParas * num_kv_heads +
+                    vParas * num_kv_heads + oParas * num_heads;
   int one_head_size = qParas + kParas + vParas + oParas;
 
-  
   {
     // compress the weight size if quantization.
     if (quantization_type != DT_NONE) {
@@ -142,7 +142,8 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize};
+    int dims[1] = {qProjSize * num_heads +
+                   (kProjSize + vProjSize) * num_kv_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -167,7 +168,8 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   li->add_int_property("qk_prod_scaling", qk_prod_scaling);
   li->add_int_property("quantization_type", quantization_type);
   li->add_int_property("offload", offload);
-  li->add_int_property("tensor_parallelism_degree", config.tensor_parallelism_degree);
+  li->add_int_property("tensor_parallelism_degree",
+                       config.tensor_parallelism_degree);
   layers.push_back(li);
 
   return li->outputs[0];
@@ -265,8 +267,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          (_bias ? 2 : 1), /*weights*/
          1 /*outputs*/,
          _input),
-      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
-      add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -301,21 +303,14 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    dims[1].size = this->num_heads * (qParas + oParas) +
+                   this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
-
-    // std::cout<< "dims[1].size: " << dims[1].size << "\n";
-    // assert(false);
-    // dims[2].size = this->num_heads * (qParas + oParas ) + this->num_kv_heads * (kParas + vParas + oParas);
-    // dims[2].degree = 1;
-    // dims[2].parallel_idx = -1;
 
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
           data_type, quantization_type, (qParas + kParas + vParas + oParas));
     }
-    // dims[2].degree = 1;
-    // dims[2].parallel_idx = -1;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
     weights[0] = model.create_parallel_weight<2>(
@@ -327,8 +322,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size =
-          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize;
+      bias_shape.dims[0].size = qProjSize * num_heads +
+                                (kProjSize + vProjSize) * num_kv_heads +
+                                oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -382,8 +378,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          1 /*outputs*/,
          _input,
          _weight),
-      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout), bias(_bias),
-      add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -416,9 +412,11 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    dims[1].size = this->num_heads * (qParas + oParas) +
+                   this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
-    // dims[2].size = this->num_heads * (qParas + oParas) + this->num_kv_heads * (kParas + vParas);
+    // dims[2].size = this->num_heads * (qParas + oParas) + this->num_kv_heads *
+    // (kParas + vParas);
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
           data_type, quantization_type, (qParas + kParas + vParas + oParas));
@@ -434,8 +432,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size =
-          qProjSize * num_heads + (kProjSize + vProjSize) * num_kv_heads + oProjSize;
+      bias_shape.dims[0].size = qProjSize * num_heads +
+                                (kProjSize + vProjSize) * num_kv_heads +
+                                oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -642,7 +641,6 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   int num_heads = attn->num_heads / attn->tensor_parallelism_degree;
   int num_kv_heads = attn->num_kv_heads / attn->tensor_parallelism_degree;
 
-  
   assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -656,11 +654,14 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
     gpu_mem_allocator.register_reserved_work_space(
         handle.offload_reserve_space, handle.offload_reserve_space_size);
   }
-
-  std::cout << "num heads: " << num_heads << "\n";
-  std::cout << "num kv heads: " << num_kv_heads << "\n";
-  IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-      handle, attn, weight, gpu_mem_allocator, num_samples, num_heads, num_kv_heads);
+  IncMultiHeadSelfAttentionMeta *m =
+      new IncMultiHeadSelfAttentionMeta(handle,
+                                        attn,
+                                        weight,
+                                        gpu_mem_allocator,
+                                        num_samples,
+                                        num_heads,
+                                        num_kv_heads);
   if (handle.offload_reserve_space == nullptr) {
     // assert that we didn't over allocate memory
     assert(gpu_mem_allocator.reserved_allocated_size ==
@@ -668,10 +669,8 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   }
   m->profiling = attn->profiling;
   if (attn->quantization_type == DT_NONE) {
-    std::cout<<"-----------"<<"\n";
-    std::cout<< "weight.domain.get_volume() : " << weight.domain.get_volume() << ", " << m->weightSize<<"\n";
-    // assert(weight.domain.get_volume() * data_type_size(weight.data_type) * 4 ==
-    //        m->weightSize);
+    assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
+           m->weightSize);
   }
 
   return m;
