@@ -1256,9 +1256,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   global_num_heads = _global_num_heads;
   num_heads = _num_heads;
   num_kv_heads = _num_kv_heads;
-  weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
-                    oProjSize * (vProjSize > 0 ? vProjSize : vSize));
-  weightSize = weights_params * num_heads * size_of_dt;
+  // weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
+  //                   oProjSize * (vProjSize > 0 ? vProjSize : vSize));
+  // weightSize = weights_params * num_heads * size_of_dt;
+
+  weightSize =
+      ((qSize * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : vSize)) *
+           num_heads +
+       (kSize * kProjSize + vSize * vProjSize) * num_kv_heads) *
+      size_of_dt;
   if (quantization_type != DT_NONE) {
     quantized_weightSize = get_quantization_to_byte_size(
         attn->data_type, quantization_type, weightSize);

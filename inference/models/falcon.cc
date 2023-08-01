@@ -23,11 +23,19 @@ void FALCON::create_falcon_model(FFModel &ff,
                                  InferenceManager &im,
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
-                                 int num_pipeline_stages,
                                  InferenceMode mode,
                                  bool use_full_precision) {
   Config falcon_config(model_config_file_path);
   falcon_config.printConfig();
+
+  int num_devices = ff.config.workersPerNode * ff.config.numNodes;
+  int num_transformer_layers = falcon_config.n_layers;
+  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
+  int num_layers_per_pp_block =
+      num_transformer_layers / ff.config.pipeline_parallelism_degree;
+  int num_devices_per_data_parallelism_line =
+      num_devices / ff.config.data_parallelism_degree;
+  
   std::unordered_map<std::string, Layer *> weights_layers;
 
   Tensor input;
@@ -63,9 +71,9 @@ void FALCON::create_falcon_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  int num_transformer_layers = falcon_config.n_layers;
-  int num_transformer_layers_per_stage =
-      (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
+  // int num_transformer_layers = falcon_config.n_layers;
+  // int num_transformer_layers_per_stage =
+  //     (num_transformer_layers + num_pipeline_stages - 1) / num_pipeline_stages;
 
   for (int i = 0; i < num_transformer_layers; i++) {
     // set transformer layer id
@@ -79,20 +87,44 @@ void FALCON::create_falcon_model(FFModel &ff,
                            attention_norm);
     Tensor mha;
     switch (mode) {
+      case BEAM_SEARCH_MODE: {
+        mha = ff.spec_inc_multihead_self_attention(
+            att_norm,
+            falcon_config.dim,
+            falcon_config.n_heads,
+            1,
+            falcon_config.dim / falcon_config.n_heads,
+            falcon_config.dim / falcon_config.n_heads,
+            0.0f,
+            false,
+            false,
+            false,
+            DT_NONE,
+            NULL,
+            true);
+        break;
+      }
+
+      case TREE_VERIFY_MODE: {
+        mha = ff.inc_multihead_self_attention_verify(
+            att_norm,
+            falcon_config.dim,
+            falcon_config.n_heads,
+            1,
+            falcon_config.dim / falcon_config.n_heads,
+            falcon_config.dim / falcon_config.n_heads,
+            0.0f,    /*dropout*/
+            false,   /*bias*/
+            false,   /*add_bias_kv*/
+            false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
+            nullptr, /*kernel_initializer*/
+            true     /*apply_rotary_embedding*/
+        );
+        break;
+      }
+      
       case INC_DECODING_MODE: {
-        // mha = ff.inc_multiquery_self_attention(
-        //     att_norm,
-        //     falcon_config.dim,
-        //     falcon_config.n_heads,
-        //     falcon_config.dim / falcon_config.n_heads,
-        //     falcon_config.dim / falcon_config.n_heads,
-        //     0.0f,    /*dropout*/
-        //     false,   /*bias*/
-        //     false,   /*add_bias_kv*/
-        //     false,   /*add_zero_attn*/
-        //     DT_NONE, /*data_type*/
-        //     nullptr  /*kernel_initializer*/
-        // );
         mha = ff.inc_multihead_self_attention(
             att_norm,
             falcon_config.dim,
