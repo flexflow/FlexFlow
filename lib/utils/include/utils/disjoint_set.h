@@ -41,7 +41,7 @@ private:
   mutable std::unordered_map<optional<T>, optional<T>> mapping;
 };
 
-// Custom comparator for tl::optional
+// Custom comparator for optional
 template <typename T>
 struct OptionalComparator {
   bool operator()(const optional<T>& lhs, const optional<T>& rhs) const {
@@ -69,7 +69,6 @@ public:
   std::map<optional<T>, optional<T>, Compare> get_mapping() const {
     std::map<optional<T>, optional<T>, Compare> mapping;
     for (optional<T> const &t : this->nodes) {
-      std::cout<<"t.value(): "<<t.value()<<" and this->ds.find(t):value:"<<this->ds.find(t).value()<<std::endl;
       mapping[t] = this->ds.find(t);
     }
     return mapping;
@@ -83,7 +82,7 @@ private:
   }
 
   mutable m_disjoint_set<T> ds;
-  mutable std::set<optional<T>, Compare> nodes; // 
+  mutable std::set<optional<T>, Compare> nodes; // Note(lambda): make mutable to allow using ds->find() to be const because while the result is invariant to path compression, etc.
 };
 
 } // namespace FlexFlow

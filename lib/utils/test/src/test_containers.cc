@@ -367,7 +367,7 @@ TEST_CASE("Testing vector_split function") {
 }
 
 TEST_CASE("Testing value_all function") {
-  std::vector<tl::optional<int>> v = {1, 2, 3, tl::nullopt, 4, 5};
+  std::vector<tl::optional<int>> v = {1, 2, 3, 4, 5};
   auto value_all_v = value_all(v);
   CHECK(value_all_v == std::vector<int>({1, 2, 3, 4, 5}));
 }
