@@ -17,7 +17,7 @@ std::string generate_element<std::string>(int seed) {
 }
 
 TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
-  disjoint_set<optional<T>> ds; // Use tl::optional<T> in the disjoint_set
+  disjoint_set<optional<T>> ds; 
 
   SUBCASE("SingleElementSets") {
     optional<T> element = generate_element<T>(1);

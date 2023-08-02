@@ -3,10 +3,9 @@
 #include <sstream>
 
 TEST_CASE("DotFile") {
+  std::ostringstream oss;
+  DotFile<std::string> dotFile(oss);
   SUBCASE("add_node") {
-    std::ostringstream oss;
-    DotFile<std::string> dotFile(oss);
-
     dotFile.add_node("A", {{"shape", "circle"}, {"label", "Node A"}});
     dotFile.add_node("B", {{"shape", "rectangle"}, {"label", "Node B"}});
 
@@ -20,9 +19,6 @@ TEST_CASE("DotFile") {
   }
 
   SUBCASE("add_edge") {
-    std::ostringstream oss;
-    DotFile<std::string> dotFile(oss);
-
     dotFile.add_edge("A", "B");
     dotFile.add_edge("B", "C");
 
@@ -37,8 +33,6 @@ TEST_CASE("DotFile") {
   }
 
   SUBCASE("add_record_node") {
-    std::ostringstream oss;
-    DotFile<std::string> dotFile(oss);
     RecordFormatter rf;
 
     rf << "Field1";
@@ -59,9 +53,6 @@ TEST_CASE("DotFile") {
   }
 
   SUBCASE("add_node_to_subgraph") {
-    std::ostringstream oss;
-    DotFile<std::string> dotFile(oss);
-
     size_t subgraph1 = dotFile.add_subgraph();
     size_t subgraph2 = dotFile.add_subgraph(subgraph1);
 
