@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import json, sys
+from typing import Union
 from ..type import *
 
 
-def parse_positive_int_config(name, variable, ff_cli_name=None):
+def parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None):
     if variable is not None:
         if type(variable) is not int:
             raise ValueError(
@@ -32,7 +33,32 @@ def parse_positive_int_config(name, variable, ff_cli_name=None):
             sys.argv += [f"{ff_cli_name}", str(variable)]
 
 
-def init(configs):
+def init(configs: Union[str, dict]):
+    """Configure FlexFlow for inference and start the FlexFlow runtime by importing the flexflow.core package.
+
+    The init function takes three mandatory parameters, which cannot be changed after starting the runtime. These are:
+    - num_gpus: the number of GPUs to reserve for the runtime
+    - memory_per_gpu: the amount of memory (in MB) to pre-allocate on each GPU
+    - zero_copy_memory_per_gpu: the amount of zero-copy memory (in MB) to pre-allocate for each GPU
+
+    In addition, the following optional parameters can be passed:
+    - num_cpus: the number of CPU processors to reserve for the runtime, defaults to 4
+    - legion_utility_processors: number of Legion utility threads to create per process, defaults to 1
+    - data_parallelism_degree: the degree of parallelization in the data parallel dimension, defaults to 1
+    - tensor_parallelism_degree: the degree of parallelization in the tensor parallel dimension (using the Megatron technique), defaults to 1
+    - pipeline_parallelism_degree: the degree of parallelization in the pipeline parallel dimension, defaults to 1
+    - offload: whether to enable offloading of the weights to CPU, defaults to False
+    - offload_reserve_space_size: the space (in MB) to reserve on CPU for offloading, default to 1024^2
+    - use_4bit_quantization: whether to use 4-bit quantization, defaults to False
+    - use_8bit_quantization: whether to use 8-bit quantization, defaults to False
+    - profiling: whether to enable the FlexFlow profiling mode, defaults to False
+    - fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
+
+    :param configs: The runtime configs, in the form of a dictionary or the path to a JSON file
+    :type configs: Union[str, dict]
+    :raises ValueError: This function will raise an exception if the JSON file pointed to by the input string is not in the right format
+    :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_gpu
+    """
     configs_dict = {}
     if type(configs) == str:
         try:

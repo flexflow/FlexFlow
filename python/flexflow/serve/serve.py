@@ -17,26 +17,63 @@ from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
 import sys, torch, shutil
+from typing import Union, List
 
 
 class SamplingConfig:
-    def __init__(self, do_sample=False, temperature=0.9, topp=0.8, topk=1):
-        self.do_sample = False
-        self.temperature = 0.8
-        self.topp = 0.6
-        self.topk = 1
+    """A class to store the sampling configs."""
+
+    def __init__(
+        self,
+        do_sample: bool = False,
+        temperature: float = 0.9,
+        topp: float = 0.8,
+        topk: int = 1,
+    ):
+        """Initialize the sampling configs
+
+        :param do_sample: Whether to perform sampling, or use greedy decoding, defaults to False
+        :type do_sample: bool, optional
+        :param temperature: The temperature setting, defaults to 0.9
+        :type temperature: float, optional
+        :param topp: The top probabilities (top-p) setting, defaults to 0.8
+        :type topp: float, optional
+        :param topk: The top-k setting, defaults to 1
+        :type topk: int, optional
+        """
+        self.do_sample = do_sample
+        self.temperature = temperature
+        self.topp = topp
+        self.topk = topk
 
 
 class LLM:
+    """This class creates a LLM (Large-Language Model) object based on a model from HuggingFace"""
+
     def __init__(
         self,
-        model_name,
-        data_type=DataType.DT_HALF,
-        tokenizer_path="",
-        weights_path="",
-        clean_cache=False,
-        output_file="",
+        model_name: str,
+        data_type: DataType = DataType.DT_HALF,
+        tokenizer_path: str = "",
+        weights_path: str = "",
+        clean_cache: bool = False,
+        output_file: str = "",
     ):
+        """Create the LLM object
+
+        :param model_name: The name of the HuggingFace model to use. E.g. 'decapoda-research/llama-7b-hf'
+        :type model_name: str
+        :param data_type: The data type to use for the tensors (e.g. DataType.DT_FLOAT for full precision, or DataType.DT_HALF for half precision), defaults to DataType.DT_HALF
+        :type data_type: DataType, optional
+        :param tokenizer_path: Path to the tokenizer file or folder for the LLM. If left blank, FlexFlow will download (and cache) the relevant tokenizer from HuggingFace, defaults to ""
+        :type tokenizer_path: str, optional
+        :param weights_path: Path to the weights for the LLM. If left blank, FlexFlow will download (and cache) the weights from HuggingFace, defaults to ""
+        :type weights_path: str, optional
+        :param clean_cache: Use this flag to discard previous weights/tokenizer cache for this LLM, defaults to False
+        :type clean_cache: bool, optional
+        :param output_file: Path to the output file. If left blank, the output will not be written to file, defaults to ""
+        :type output_file: str, optional
+        """
         self.supported_models = {
             "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
@@ -65,7 +102,7 @@ class LLM:
             sys.exit(1)
         return ff_arch
 
-    def download_hf_weights(self):
+    def __download_hf_weights(self):
         # Use local cache, or download new version
         self.weights_path = os.path.expanduser(
             f"~/.cache/flexflow/models/{self.hf_config._name_or_path}/{'full-precision' if self.data_type == DataType.DT_FLOAT else 'half-precision'}"
@@ -105,7 +142,7 @@ class LLM:
                 f"Loading '{self.hf_config._name_or_path}' model weights from the cache..."
             )
 
-    def load_hf_tokenizer(self):
+    def __load_hf_tokenizer(self):
         print("Loading tokenizer...")
         if len(self.tokenizer_path) > 0:
             print(f"Using tokenizer from {self.tokenizer_path}")
@@ -166,7 +203,7 @@ class LLM:
                 f"Loading '{self.hf_config._name_or_path}' tokenizer from the cache..."
             )
 
-    def load_hf_weights(self):
+    def __load_hf_weights(self):
         print("Loading hf weights...")
 
         if self.data_type == DataType.DT_HALF:
@@ -184,7 +221,7 @@ class LLM:
             elif len(os.listdir(self.weights_path)) == 0:
                 raise FileNotFoundError(f"Folder {self.weights_path} is empty")
         else:
-            self.download_hf_weights()
+            self.__download_hf_weights()
 
         # Create file data loader, load weights into tensors
         self.fileloader = FileDataLoader(
@@ -201,13 +238,28 @@ class LLM:
 
     def compile(
         self,
-        mode=InferenceMode.INC_DECODING_MODE,
-        sampling_config=SamplingConfig(),
-        max_batch_size=1,
-        max_seq_length=256,
-        max_tokens_per_batch=64,
-        ssms=[],
+        mode: InferenceMode = InferenceMode.INC_DECODING_MODE,
+        sampling_config: SamplingConfig = SamplingConfig(),
+        max_batch_size: int = 1,
+        max_seq_length: int = 256,
+        max_tokens_per_batch: int = 64,
+        ssms: list = [],
     ):
+        """Compile the LLM for inference and load the weights into memory
+
+        :param mode: The LLM inference mode (InferenceMode.INC_DECODING_MODE for incremental decoding, InferenceMode.BEAM_SEARCH_MODE for beam search, or InferenceMode.TREE_VERIFY_MODE for token tree verification), defaults to InferenceMode.INC_DECODING_MODE
+        :type mode: InferenceMode, optional
+        :param sampling_config: The SamplingConfig object with the configurations to use for sampling, defaults to SamplingConfig()
+        :type sampling_config: SamplingConfig, optional
+        :param max_batch_size: The maximum batch size to allow, defaults to 1
+        :type max_batch_size: int, optional
+        :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
+        :type max_seq_length: int, optional
+        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
+        :type max_tokens_per_batch: int, optional
+        :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
+        :type ssms: list, optional
+        """
         self.max_batch_size = max_batch_size
         self.max_seq_length = max_seq_length
         self.max_tokens_per_batch = max_tokens_per_batch
@@ -218,7 +270,7 @@ class LLM:
             or mode == InferenceMode.BEAM_SEARCH_MODE
         ) == (len(ssms) == 0)
 
-        # Create model
+        # Instantiate the relevant model
         self.model = self.model_class(
             mode,
             sampling_config,
@@ -235,8 +287,8 @@ class LLM:
         self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
 
         # Download the weights and tokenizer from huggingface (if needed) and load them
-        self.load_hf_weights()
-        self.load_hf_tokenizer()
+        self.__load_hf_weights()
+        self.__load_hf_tokenizer()
 
         # Create request manager
         self.rm = RequestManager()
@@ -248,7 +300,14 @@ class LLM:
         for ssm in self.ssms:
             self.rm.register_ssm_model(ssm.model.ffmodel)
 
-    def generate(self, prompts):
+    def generate(self, prompts: Union[str, List[str]]):
+        """Generate tokens based on the input prompt(s)
+
+        :param prompts: The generation prompt(s) in the form of a string, or list of strings
+        :type prompts: Union[str, List[str]]
+        :return: the generation results
+        :rtype: GenerationResult
+        """
         if type(prompts) == str:
             if len(prompts) == 0:
                 return None
@@ -262,15 +321,32 @@ class LLM:
 
 
 class SSM(LLM):
+    """This class creates a SSM (Small-Speculative Model) object based on a model from HuggingFace"""
+
     def __init__(
         self,
-        model_name,
-        data_type=DataType.DT_HALF,
-        tokenizer_path="",
-        weights_path="",
-        clean_cache=False,
-        output_file="",
+        model_name: str,
+        data_type: DataType = DataType.DT_HALF,
+        tokenizer_path: str = "",
+        weights_path: str = "",
+        clean_cache: bool = False,
+        output_file: str = "",
     ):
+        """Create the SSM object
+
+        :param model_name: The name of the HuggingFace model to use. E.g. 'decapoda-research/llama-7b-hf'
+        :type model_name: str
+        :param data_type: The data type to use for the tensors (e.g. DataType.DT_FLOAT for full precision, or DataType.DT_HALF for half precision), defaults to DataType.DT_HALF
+        :type data_type: DataType, optional
+        :param tokenizer_path: Path to the tokenizer file or folder for the LLM. If left blank, FlexFlow will download (and cache) the relevant tokenizer from HuggingFace, defaults to ""
+        :type tokenizer_path: str, optional
+        :param weights_path: Path to the weights for the LLM. If left blank, FlexFlow will download (and cache) the weights from HuggingFace, defaults to ""
+        :type weights_path: str, optional
+        :param clean_cache: Use this flag to discard previous weights/tokenizer cache for this LLM, defaults to False
+        :type clean_cache: bool, optional
+        :param output_file: Path to the output file. If left blank, the output will not be written to file, defaults to ""
+        :type output_file: str, optional
+        """
         super().__init__(
             model_name,
             data_type,

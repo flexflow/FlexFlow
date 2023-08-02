@@ -2809,7 +2809,7 @@ class FFModel(object):
   
   def generate(self, text, max_sequence_length):
     c_text = get_c_name(text)
-    ffc.flexflow_model_generate(self.handle, c_text, max_sequence_length)
+    return ffc.flexflow_model_generate(self.handle, c_text, max_sequence_length)
 
 # -----------------------------------------------------------------------
 # SGDOptimizer
