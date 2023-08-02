@@ -72,10 +72,10 @@ public:
   }
   static DiGraphView unsafe_create(IDiGraphView const &graphView);
 
-
   DiGraphView(std::shared_ptr<IDiGraphView const> const &ptr,
               should_only_be_used_internally_tag_t const &tag)
       : DiGraphView(ptr) {}
+
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
   std::shared_ptr<IDiGraphView const> ptr;

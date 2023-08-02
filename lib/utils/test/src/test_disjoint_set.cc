@@ -54,18 +54,15 @@ TEST_CASE_TEMPLATE("DisjointSetMapping", T, int, std::string) {
   ds.m_union(1, 4);
   ds.m_union(5, 6);
 
-  std::map<optional<int>, optional<int>, OptionalComparator<int>> expectedMapping = {
-    {1, 4},
-    {2, 4},
-    {3, 4},
-    {4, 4},
-    {5, 6},
-    {6, 6}
-  };
+  std::map<optional<int>, optional<int>, OptionalComparator<int>>
+      expectedMapping = {{1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 6}, {6, 6}};
 
-  std::map<optional<int>, optional<int>, OptionalComparator<int>> mapping = ds.get_mapping();
+  std::map<optional<int>, optional<int>, OptionalComparator<int>> mapping =
+      ds.get_mapping();
 
-  for (const auto& kv : mapping) {
-    REQUIRE(*kv.second == *expectedMapping[kv.first]); // Compare the values inside the optionals
+  for (auto const &kv : mapping) {
+    REQUIRE(
+        *kv.second ==
+        *expectedMapping[kv.first]); // Compare the values inside the optionals
   }
 }

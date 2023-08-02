@@ -13,7 +13,7 @@ TEST_CASE("select_random") {
 
   SUBCASE("Invalid arguments") {
     std::vector<float> weights = {0.1f, 0.3f, 0.2f};
-    std::cout<<select_random(values, weights);
+    std::cout << select_random(values, weights);
     CHECK_EQ(select_random(values, weights), 3);
   }
 }
@@ -24,7 +24,7 @@ TEST_CASE("select_random - Weighted Random Selection") {
     std::vector<float> weights = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
 
     std::vector<int> counts(values.size(), 0);
-    const int numIterations = 10000;
+    int const numIterations = 10000;
     for (int i = 0; i < numIterations; i++) {
       int selected = select_random(values, weights);
       counts[selected - 1]++;
@@ -33,7 +33,8 @@ TEST_CASE("select_random - Weighted Random Selection") {
     for (int i = 0; i < values.size(); i++) {
       float expectedProbability = 1.0f / values.size();
       float observedProbability = static_cast<float>(counts[i]) / numIterations;
-      CHECK(observedProbability == doctest::Approx(expectedProbability).epsilon(0.01f));
+      CHECK(observedProbability ==
+            doctest::Approx(expectedProbability).epsilon(0.01f));
     }
   }
 
@@ -42,7 +43,7 @@ TEST_CASE("select_random - Weighted Random Selection") {
     std::vector<float> weights = {0.1f, 0.2f, 0.3f, 0.2f, 0.2f};
 
     std::vector<int> counts(values.size(), 0);
-    const int numIterations = 10000;
+    int const numIterations = 10000;
     for (int i = 0; i < numIterations; i++) {
       int selected = select_random(values, weights);
       counts[selected - 1]++;
@@ -56,7 +57,8 @@ TEST_CASE("select_random - Weighted Random Selection") {
     for (int i = 0; i < values.size(); i++) {
       float expectedProbability = weights[i] / totalWeight;
       float observedProbability = static_cast<float>(counts[i]) / numIterations;
-      CHECK(observedProbability == doctest::Approx(expectedProbability).epsilon(0.01f));
+      CHECK(observedProbability ==
+            doctest::Approx(expectedProbability).epsilon(0.01f));
     }
   }
 }

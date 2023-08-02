@@ -3,9 +3,9 @@
 
 #include <cassert>
 #include <map>
+#include <optional>
 #include <set>
 #include <unordered_map>
-#include <optional>
 
 namespace FlexFlow {
 
@@ -44,7 +44,7 @@ private:
 // Custom comparator for optional
 template <typename T>
 struct OptionalComparator {
-  bool operator()(const optional<T>& lhs, const optional<T>& rhs) const {
+  bool operator()(optional<T> const &lhs, optional<T> const &rhs) const {
     if (!lhs.has_value() || !rhs.has_value()) {
       return false;
     }
@@ -82,7 +82,9 @@ private:
   }
 
   mutable m_disjoint_set<T> ds;
-  mutable std::set<optional<T>, Compare> nodes; // Note(lambda): make mutable to allow using ds->find() to be const because while the result is invariant to path compression, etc.
+  mutable std::set<optional<T>, Compare>
+      nodes; // Note(lambda): make mutable to allow using ds->find() to be const
+             // because while the result is invariant to path compression, etc.
 };
 
 } // namespace FlexFlow

@@ -1,6 +1,6 @@
 #include "doctest.h"
-#include <sstream>
 #include "utils/dot_file.h"
+#include <sstream>
 
 TEST_CASE("DotFile") {
   SUBCASE("add_node") {
@@ -12,7 +12,9 @@ TEST_CASE("DotFile") {
 
     dotFile.close();
 
-    std::string expectedOutput = "digraph taskgraph {\n  node0 [label=Node A,shape=circle];\n  node1 [label=Node B,shape=rectangle];\n}";
+    std::string expectedOutput =
+        "digraph taskgraph {\n  node0 [label=Node A,shape=circle];\n  node1 "
+        "[label=Node B,shape=rectangle];\n}";
 
     CHECK_EQ(oss.str(), expectedOutput);
   }
@@ -39,8 +41,8 @@ TEST_CASE("DotFile") {
     DotFile<std::string> dotFile(oss);
     RecordFormatter rf;
 
-    rf << "Field1" ;
-    rf<< 42;
+    rf << "Field1";
+    rf << 42;
     rf << "Field2";
     rf << float(3.14);
 
@@ -52,8 +54,6 @@ TEST_CASE("DotFile") {
         R"EXPECTED_OUTPUT(digraph taskgraph {
   node0 [label="{ Field1 | 42 | Field2 | 3.140000e+00 }",shape=record];
 })EXPECTED_OUTPUT";
-
-  
 
     CHECK_EQ(oss.str(), expectedOutput);
   }

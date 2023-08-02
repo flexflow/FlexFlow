@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_DEDUPLICATED_PRIORITY_QUEUE_H
 #define _FLEXFLOW_UTILS_DEDUPLICATED_PRIORITY_QUEUE_H
 
+#include <queue>
 #include <unordered_set>
 #include <vector>
-#include <queue>
 
 namespace FlexFlow {
 

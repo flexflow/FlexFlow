@@ -34,9 +34,9 @@ TEST_CASE("seq_tail") {
 }
 
 TEST_CASE("seq_prepend") {
-    using ResultType = typename FlexFlow::seq_prepend<1, 2,3>::type;
-    using ExpectedType = FlexFlow::seq<1, 2, 3>;
-    CHECK(std::is_same<ResultType, ExpectedType>::value);
+  using ResultType = typename FlexFlow::seq_prepend<1, 2, 3>::type;
+  using ExpectedType = FlexFlow::seq<1, 2, 3>;
+  CHECK(std::is_same<ResultType, ExpectedType>::value);
 }
 
 TEST_CASE("seq_append") {
@@ -117,7 +117,6 @@ TEST_CASE("seq_enumerate_args") {
 //   };
 // };
 
-
 // TEST_CASE("seq_transform_type") {
 //   using Seq = seq<1, 2, 3>;
 //   using ResultType = seq_transform_type_t<F, Seq>;
@@ -170,4 +169,3 @@ TEST_CASE("seq_enumerate_args") {
 //   int result = seq_get(F{}, 3, Seq{});
 //   CHECK(result == 16);
 // }
-
