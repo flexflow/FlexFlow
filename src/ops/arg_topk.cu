@@ -410,8 +410,6 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                                      int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // print_tensor<float>(input.get_float_ptr(), 32, "logits");
-  // assert(false);
 
   // Domain in1_domain = runtime->get_index_space_domain(
   //     ctx, task->regions[0].region.get_index_space());

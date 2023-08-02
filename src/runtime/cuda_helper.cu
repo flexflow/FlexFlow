@@ -281,7 +281,6 @@ __host__ void
       host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   // checkCUDA(cudaDeviceSynchronize());
   cudaDeviceSynchronize();
-  cudaStreamSynchronize(stream);
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   for (unsigned i = 0; i < num_elements; i++) {
