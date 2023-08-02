@@ -3,13 +3,11 @@
 
 using namespace FlexFlow;
 
-// Test fixture for bidict tests
-struct BidictTestFixture {
-  bidict<int, std::string> dict;
-};
+TEST_CASE("bidict"){
 
+  bidict<int, std::string> dict;
 // Test the equate() function
-TEST_CASE_FIXTURE(BidictTestFixture, "Equate") {
+  SUBCASE("Equate") {
   dict.equate(1, "one");
   dict.equate(2, "two");
 
@@ -20,7 +18,7 @@ TEST_CASE_FIXTURE(BidictTestFixture, "Equate") {
 }
 
 // Test the erase_l() function
-TEST_CASE_FIXTURE(BidictTestFixture, "EraseL") {
+SUBCASE("EraseL") {
   dict.equate(1, "one");
   dict.equate(2, "two");
 
@@ -32,7 +30,7 @@ TEST_CASE_FIXTURE(BidictTestFixture, "EraseL") {
 }
 
 // Test the erase_r() function
-TEST_CASE_FIXTURE(BidictTestFixture, "EraseR") {
+SUBCASE("EraseR") {
   dict.equate(1, "one");
   dict.equate(2, "two");
 
@@ -44,7 +42,7 @@ TEST_CASE_FIXTURE(BidictTestFixture, "EraseR") {
 }
 
 // Test the reversed() function
-TEST_CASE_FIXTURE(BidictTestFixture, "Reversed") {
+SUBCASE("Reversed") {
   dict.equate(1, "one");
   dict.equate(2, "two");
 
@@ -55,9 +53,11 @@ TEST_CASE_FIXTURE(BidictTestFixture, "Reversed") {
 }
 
 // Test the size() function
-TEST_CASE_FIXTURE(BidictTestFixture, "Size") {
+SUBCASE("Size") {
   dict.equate(1, "one");
   dict.equate(2, "two");
 
   CHECK_EQ(dict.size(), 2);
+}
+
 }
