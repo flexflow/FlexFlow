@@ -1,11 +1,10 @@
 #include "doctest.h"
 #include "utils/containers.h"
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 using namespace FlexFlow;
-// Please ensure you include your function definitions here
-
 TEST_CASE("join_strings") {
   std::vector<std::string> v = {"Hello", "world"};
   CHECK(join_strings(v.begin(), v.end(), " ") == "Hello world");
@@ -164,24 +163,24 @@ TEST_CASE("restrict_keys") {
 TEST_CASE("merge_maps(unordered_map)") {
   std::unordered_map<int, std::string> lhs = {{1, "one"}, {2, "two"}};
   std::unordered_map<int, std::string> rhs = {{3, "three"}, {4, "four"}};
-  auto result = merge_maps(lhs, rhs);
-  CHECK(result.size() == 4);
-  CHECK(result[1] == "one");
-  CHECK(result[2] == "two");
-  CHECK(result[3] == "three");
-  CHECK(result[4] == "four");
+  std::unordered_map<int, std::string> result = merge_maps(lhs, rhs);
+  std::unordered_map<int, std::string> expected = {
+      {1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}};
+  CHECK(result == expected);
 }
 
 TEST_CASE("merge_maps(bidict)") {
-  std::unordered_map<int, std::string> lhs = {{1, "one"}, {2, "two"}};
-  std::unordered_map<int, std::string> rhs = {{3, "three"}, {4, "four"}};
+  std::unordered_map<int, std::string> fwd_map1 = {{1, "one"}, {2, "two"}};
+  std::unordered_map<std::string, int> bwd_map1 = {{"one", 1}, {"two", 2}};
+  std::unordered_map<int, std::string> fwd_map2 = {{3, "three"}, {4, "four"}};
+  std::unordered_map<std::string, int> bwd_map2 = {{"three", 3}, {"four", 4}};
+  bidict<int, std::string> lhs{fwd_map1, bwd_map1} ;
+  bidict<int, std::string> rhs{fwd_map2, bwd_map2};
 
-  auto result = merge_maps(lhs, rhs);
-  CHECK(result.size() == 4);
-  CHECK(result[1] == std::string("one"));
-  CHECK(result[2] == std::string("two"));
-  CHECK(result[3] == std::string("three"));
-  CHECK(result[4] == std::string("four"));
+  std::unordered_map<int, std::string> result = merge_maps(lhs, rhs);//impicit conversion
+  std::unordered_map<int, std::string> expected = {
+      {1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}};
+  CHECK(result == expected);
 }
 
 TEST_CASE("lookup_in") {
@@ -214,12 +213,9 @@ TEST_CASE("lookup_in_r") {
 TEST_CASE("set_union") {
   std::unordered_set<int> s1 = {1, 2, 3};
   std::unordered_set<int> s2 = {2, 3, 4};
-  auto result = set_union(s1, s2);
-  CHECK(result.size() == 4);
-  CHECK(result.count(1) == 1);
-  CHECK(result.count(2) == 1);
-  CHECK(result.count(3) == 1);
-  CHECK(result.count(4) == 1);
+  std::unordered_set<int> result = set_union(s1, s2);
+  std::unordered_set<int> expected = {1, 2, 3, 4};
+  CHECK(result == expected);
 }
 
 TEST_CASE("is_subseteq_of") {
@@ -239,11 +235,9 @@ TEST_CASE("is_superseteq_of") {
 TEST_CASE("map_over_unordered_set") {
   std::unordered_set<int> s = {1, 2, 3};
   std::function<int(int const &)> func = [](int const &x) { return x * x; };
-  auto result = map_over_unordered_set(func, s);
-  CHECK(result.size() == 3);
-  CHECK(result.count(1) == 1);
-  CHECK(result.count(4) == 1);
-  CHECK(result.count(9) == 1);
+  std::unordered_set<int> result = map_over_unordered_set(func, s);
+  std::unordered_set<int> expected = {1, 4, 9};
+  CHECK(result == expected);
 }
 
 TEST_CASE("get_only") {
@@ -261,10 +255,8 @@ TEST_CASE("extend") {
   std::unordered_set<int> s = {4, 5, 6};
   extend(v, s);
   CHECK(v.size() == 6);
-  // Check each element is in the result
-  for (int i = 1; i <= 6; i++) {
-    CHECK(std::count(v.begin(), v.end(), i) == 1);
-  }
+  std::vector<int> expected = {1, 2, 3, 6, 5, 4};
+  CHECK(v == expected);
 }
 
 TEST_CASE("all_of") {
@@ -294,9 +286,8 @@ TEST_CASE("vector_transform") {
 
 TEST_CASE("as_vector") {
   std::unordered_set<int> s = {1, 2, 3};
-  auto result = as_vector(s);
-  std::sort(result.begin(), result.end());
-  CHECK(result == std::vector<int>({1, 2, 3}));
+  std::vector<int> result = as_vector(s);
+  CHECK(result == std::vector<int>({3, 2, 1}));
 }
 
 TEST_CASE("transform_vector") {
@@ -319,14 +310,9 @@ TEST_CASE("transform_string") {
 
 TEST_CASE("Testing the 'enumerate' function") {
   std::unordered_set<int> input_set = {1, 2, 3, 4, 5};
-  auto result = enumerate(input_set);
-
-  // Checking the mapping is as expected
-  REQUIRE(result.at_l(0) == 5);
-  REQUIRE(result.at_l(1) == 4);
-  REQUIRE(result.at_l(2) == 3);
-  REQUIRE(result.at_l(3) == 2);
-  REQUIRE(result.at_l(4) == 1);
+  std::unordered_map<long unsigned int, int> result = enumerate(input_set);
+  std::unordered_map<long unsigned int, int> expected = {{1, 4}, {2, 3}, {3, 2}, {4, 1}, {0, 5}};
+  CHECK(result == expected);
 }
 
 TEST_CASE("Testing the 'maximum' function") {

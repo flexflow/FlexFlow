@@ -145,12 +145,10 @@ struct bidict {
   operator std::unordered_map<L, R> const &() const {
     return this->fwd_map;
   }
-
-private:
   bidict(std::unordered_map<L, R> const &fwd_map,
          std::unordered_map<R, L> const &bwd_map)
       : fwd_map(fwd_map), bwd_map(bwd_map) {}
-
+private:
   friend struct bidict<R, L>;
 
   std::unordered_map<L, R> fwd_map;
