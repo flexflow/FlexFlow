@@ -70,6 +70,36 @@ region_idx_t get_region_idx(TaskArgumentsFormat const &,
                             parallel_tensor_guid_t const &);
 DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 
+
+struct ITaskArgumentAccessor {
+template <typename T> T const &get_argument(slot_id slot) const;
+template <typename T> optional<T> get_optional_argument(slot_id slot) const;
+template <typename T> std::vector<T> get_variadic_argument(slot_id slot) const;
+template <Permissions PRIV> get_tensor(slot_id slot) const ;
+template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const;
+template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor(slot_id slot) const;
+  template <Permissions PRIV>
+std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor_grad(slot_id slot) const;
+};
+
+struct ILegionTaskArgumentAccessor: public ITaskArgumentAccessor{
+
+private:
+  Legion::Task const *task;
+  std::vector<Legion::PhysicalRegion> const &regions;
+  Legion::Context ctx;
+  Legion::Runtime *runtime;
+  TaskArgumentsFormat const &args_fmt;
+};
+
+struct ILocalTaskArgumentAccessor: public ITaskArgumentAccessor{
+
+};
+
 struct TaskArgumentAccessor {
   TaskArgumentAccessor(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
@@ -168,6 +198,8 @@ private:
   Legion::Context ctx;
   Legion::Runtime *runtime;
   TaskArgumentsFormat const &args_fmt;
+  //cow_ptr_t<IMultiDiGraph> const & ITaskArgumentAccesor; 
+  cow_ptr_t<ITaskArgumentAccessor> const & ptr;
 };
 
 } // namespace FlexFlow
