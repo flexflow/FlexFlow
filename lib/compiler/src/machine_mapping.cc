@@ -90,6 +90,10 @@ float estimate_cost(
   NOT_IMPLEMENTED();
 }
 
+void minimize_runtime(MachineMapping &m1, MachineMapping const &m2) {
+  minimize(m1, m2, MachineMappingRuntimeCmp{});
+}
+
 struct OptimalCost {
   OptimalCost(
       SubParallelComputationGraph const &g,
@@ -113,7 +117,7 @@ struct OptimalCost {
   optional<MachineView> const &source_machine_view;
   optional<MachineView> const &sink_machine_view;
   std::function<std::unordered_set<MachineView>(
-      PCGOperatorAttrs const &, MachineSpecification const &)> const
+      Operator const &, MachineSpecification const &)> const
       &allowed_machine_views;
   std::unordered_map<size_t, MachineMapping> &cached_subgraph_costs;
 
@@ -183,7 +187,7 @@ struct OptimalCost {
       optional<MachineView> post_source_mv =
           contains(post_graph_sources, split_point) ? make_optional(mv)
                                                     : nullopt;
-      minimize(optimal_result,
+      minimize_runtime(optimal_result,
                MachineMapping::sequential_combine(
                    visit(OptimalCost(pre_graph,
                                      cost_estimator,
@@ -200,8 +204,7 @@ struct OptimalCost {
                                      sink_machine_view,
                                      allowed_machine_views,
                                      cached_subgraph_costs),
-                         post_decompn)),
-               MachineMappingRuntimeCmp{});
+                         post_decompn)));
     }
 
     return optimal_result;
@@ -234,7 +237,7 @@ struct OptimalCost {
               decompn2));
 
     for (auto const &resource_split : get_resource_split(resource)) {
-      minimize(optimal_result,
+      minimize_runtime(optimal_result,
                MachineMapping::parallel_combine(
                    visit(OptimalCost(g1,
                                      cost_estimator,
@@ -251,8 +254,7 @@ struct OptimalCost {
                                      sink_machine_view,
                                      allowed_machine_views,
                                      cached_subgraph_costs),
-                         decompn2)),
-               MachineMappingRuntimeCmp{});
+                         decompn2)));
     }
 
     return optimal_result;
@@ -277,9 +279,8 @@ struct OptimalCost {
       MachineMapping optimal_result = MachineMapping::infinity();
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
         std::unordered_map<Node, MachineView> mv_map{{node, mv}};
-        minimize(optimal_result,
-                 {estimate_cost(g, cost_estimator, mv_map), mv_map},
-                 MachineMappingRuntimeCmp{});
+        minimize_runtime(optimal_result,
+                 {estimate_cost(g, cost_estimator, mv_map), mv_map});
       }
       return optimal_result;
     }

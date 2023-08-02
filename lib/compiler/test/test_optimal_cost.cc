@@ -2,7 +2,7 @@
 #include "test_generator.h"
 
 TEST_CASE("optimal_cost") {
-  rc::check([](ParallelComputationGraph const &g) {
+  rc::check([](ParallelComputationGraph const &g, MachineSpecification const &machine_spec) {
     std::unordered_map<size_t, MachineMapping> cached_subgraph_costs;
     MachineMapping machine_mapping = optimal_cost(
         g,
@@ -10,11 +10,9 @@ TEST_CASE("optimal_cost") {
           return std::unordered_set<MachineView>{make_1d_machine_view(0, 1, 1)};
         },
         TestCostEstimator{},
-        MachineSpecification{1, 1, 4, 0.1, 0.2},
+        machine_spec,
         cached_subgraph_costs);
     RC_ASSERT(machine_mapping.runtime > 0);
-    for (auto node : get_nodes(g)) {
-      RC_ASSERT(contains_key(machine_mapping.machine_views, node));
-    }
+    RC_ASSERT(keys(machine_mapping.machine_views) == get_nodes(g));
   });
 }
