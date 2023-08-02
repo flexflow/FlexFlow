@@ -5,8 +5,35 @@
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/ops/linear.h"
+#include <map>
+#include <unordered_map>
+#include <mutex>
 
 namespace FlexFlow {
+
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+struct cublasAlgoConfig_t {
+  int            batch_count;
+  int            m;
+  int            n;
+  int            k;
+  int            data_type;
+  bool           operator==(cublasAlgoConfig_t const& config) const
+  {
+      return (batch_count == config.batch_count) && (m == config.m) && (n == config.n) && (k == config.k)
+              && (data_type == config.data_type);
+  }
+};
+
+class cublasAlgoConfig_hasher {
+public:
+  std::size_t operator()(cublasAlgoConfig_t const& config) const
+  {
+      return config.batch_count * 98317ull ^ config.m * 49157ull ^ config.n * 24593ull ^ config.k * 196613ull
+              ^ (config.data_type) * 6151ull;
+  }
+};
+#endif
 
 class LinearMeta : public OpMeta {
 public:
@@ -18,6 +45,9 @@ public:
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
+  static std::mutex profile_lock;
+  static std::unordered_map<cublasAlgoConfig_t, int, cublasAlgoConfig_hasher> algo_map;
+  void findBestAlgoID(int m, int n, int k);
 #else
   miopenTensorDescriptor_t outputTensor;
   miopenActivationDescriptor_t actiDesc;

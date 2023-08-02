@@ -16,6 +16,8 @@
 #ifndef _INITIALIZER_H_
 #define _INITIALIZER_H_
 
+#include <sys/time.h>
+
 #include "legion.h"
 #include "parallel_tensor.h"
 
@@ -117,6 +119,9 @@ public:
   int64_t int64_value;
   int int32_value;
 };
+
+template<typename T>
+void cudaRandomUniform(T* buffer, const size_t size);
 
 }; // namespace FlexFlow
 #endif

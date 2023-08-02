@@ -310,4 +310,26 @@ void ConstantInitializer::init_task(Task const *task,
   checkCUDA(cudaDeviceSynchronize());
 }
 
+template<typename T>
+__global__ void cuda_random_uniform_kernel(T* buffer, const size_t size, const int seq_offset)
+{
+    const int     idx = blockIdx.x * blockDim.x + threadIdx.x;
+    curandState_t local_state;
+    curand_init((unsigned long long int)1337, idx + seq_offset, 0, &local_state);
+    for (size_t index = idx; index < size; index += blockDim.x * gridDim.x) {
+        buffer[index] = (T)(curand_uniform(&local_state) * 0.2f - 0.1f);
+    }
+}
+
+template<typename T>
+void cudaRandomUniform(T* buffer, const size_t size)
+{
+    static int seq_offset = 0;
+    cuda_random_uniform_kernel<T><<<256, 256>>>(buffer, size, seq_offset);
+    seq_offset += 256 * 256;
+}
+
+template void cudaRandomUniform(float* buffer, const size_t size);
+template void cudaRandomUniform(half* buffer, const size_t size);
+
 }; // namespace FlexFlow

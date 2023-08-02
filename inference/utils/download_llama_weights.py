@@ -16,6 +16,7 @@ if not args.use_full_precision:
 # Change working dir to folder storing this script
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
+print(dname)
 os.chdir(dname)
 
 def convert_hf_model(model, dst_folder):

@@ -16,6 +16,7 @@
 #include "cuComplex.h"
 #endif
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/initializer.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
@@ -191,7 +192,11 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   size_t strideB = 0;    // input stays the same for all heads.
   size_t strideC =
       (m_q + m_k + m_v) * n; // size of the output block for each head.
+
+  int token_idx = n;// ==1 ? 0 : 1; // TODO: token_idx -> n
+  int use_algo = static_cast<int>(CUBLAS_GEMM_DEFAULT_TENSOR_OP);
   // Q
+  use_algo = m->profiled_best_algo[token_idx][0]; // -> [n][0]
   checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                        CUBLAS_OP_T,
                                        CUBLAS_OP_N,
@@ -214,8 +219,9 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        strideC,
                                        m->num_heads,
                                        compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
+                                       use_algo == -1 ? static_cast<cublasGemmAlgo_t>(use_algo) : CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  // K
+  use_algo = m->profiled_best_algo[token_idx][1];
   checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                        CUBLAS_OP_T,
                                        CUBLAS_OP_N,
@@ -238,8 +244,9 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        strideC,
                                        m->num_heads,
                                        compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+                                       use_algo == -1 ? static_cast<cublasGemmAlgo_t>(use_algo) : CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // V
+  use_algo = m->profiled_best_algo[token_idx][2];
   checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                        CUBLAS_OP_T,
                                        CUBLAS_OP_N,
@@ -262,7 +269,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        strideC,
                                        m->num_heads,
                                        compute_type,
-                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+                                       use_algo == -1 ? static_cast<cublasGemmAlgo_t>(use_algo) : CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
   // apply rotary emmmbedding for k and v
   // step1 change the k, v to complex tensor
@@ -771,6 +778,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
+    // --profiling
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
@@ -1105,6 +1113,184 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     }
   }
   cudaStreamSynchronize(stream);
+}
+
+bool IncMultiHeadSelfAttentionMeta::has_profiled = false;
+int IncMultiHeadSelfAttentionMeta::profiled_best_algo[BatchConfig::MAX_NUM_TOKENS][3];
+std::mutex IncMultiHeadSelfAttentionMeta::profile_lock;
+
+void IncMultiHeadSelfAttentionMeta::findBestAlgoID(){
+  std::lock_guard<std::mutex> lock(profile_lock);
+  // profile_lock.lock();
+  if(has_profiled){
+    return;
+  }
+  has_profiled = true;
+  // profile_lock.unlock();
+  memset(profiled_best_algo, -1, sizeof(profiled_best_algo));
+  // return; // NO_PROF
+
+  const int gemm_num = 3;
+  int       M[gemm_num];
+  int       N[gemm_num];
+  int       K[gemm_num];
+  int       ldAs[gemm_num], ldBs[gemm_num], ldCs[gemm_num];
+  int       batchCount[gemm_num];
+  int64_t   strideA[gemm_num];
+  int64_t   strideB[gemm_num];
+  int64_t   strideC[gemm_num];
+  char      mess[gemm_num][256];
+  // float     exec_times[gemm_num];
+
+  // const int active_tokens[] = {1, BatchConfig::MAX_NUM_TOKENS};
+  // const int n_active_token = 2;
+  const int n_active_token = BatchConfig::MAX_NUM_TOKENS;
+  
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
+  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(output_type[0]);
+  #if CUDA_VERSION >= 11000
+    // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  #else
+  cudaDataType_t compute_type = cublas_data_type;
+  #endif
+
+  switch (output_type[0]){
+  case DT_FLOAT:
+    cudaRandomUniform(static_cast<float*>(handle.workSpace), handle.workSpaceSize / data_type_size(DT_FLOAT));
+    break;
+  case DT_HALF:
+    cudaRandomUniform(static_cast<half*>(handle.workSpace), handle.workSpaceSize / data_type_size(DT_HALF));
+    break;
+  default:
+    assert(false);
+    break;
+  }
+
+  for(int token_idx = 0; token_idx < n_active_token; token_idx++){
+    int n_token = token_idx + 1;
+    // gemm 0
+    M[0]          = qProjSize;
+    N[0]          = n_token;
+    K[0]          = qSize;
+    ldAs[0]       = qSize;
+    ldBs[0]       = qSize;
+    ldCs[0]       = qProjSize;
+    batchCount[0] = num_heads;
+    strideA[0]    = weights_params;
+    strideB[0]    = 0;
+    strideC[0]    = (qProjSize + kProjSize + vProjSize) * N[0];
+    strcpy(mess[0], "tensor * weightQ");
+
+    // gemm 1
+    M[1]          = kProjSize;
+    N[1]          = n_token;
+    K[1]          = qSize;
+    ldAs[1]       = qSize;
+    ldBs[1]       = qSize;
+    ldCs[1]       = kProjSize;
+    batchCount[1] = num_heads;
+    strideA[1]    = weights_params;
+    strideB[1]    = 0;
+    strideC[1]    = (qProjSize + kProjSize + vProjSize) * N[1];
+    strcpy(mess[1], "tensor * weightK");
+
+    // gemm 2
+    M[2]          = vProjSize;
+    N[2]          = n_token;
+    K[2]          = qSize;
+    ldAs[2]       = qSize;
+    ldBs[2]       = qSize;
+    ldCs[2]       = vProjSize;
+    batchCount[2] = num_heads;
+    strideA[2]    = weights_params;
+    strideB[2]    = 0;
+    strideC[2]    = (qProjSize + kProjSize + vProjSize) * N[2];
+    strcpy(mess[2], "tensor * weightV");
+
+    // cuda init here
+    half alpha = 1.0f, beta = 0.0f;
+    
+    int startAlgo, endAlgo;
+    const int      ites = 100;
+    struct timeval start, end;
+    // TODO: only support 16F
+    if(compute_type == CUBLAS_COMPUTE_16F){
+        startAlgo   = (int)CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+        endAlgo     = (int)CUBLAS_GEMM_ALGO15_TENSOR_OP;
+    }else if (compute_type == CUBLAS_COMPUTE_32F){
+        startAlgo   = (int)CUBLAS_GEMM_DEFAULT;
+        endAlgo     = (int)CUBLAS_GEMM_ALGO23;
+    }else{
+      assert(false);
+    }
+    
+    printf("***Cublas Gemm Testing Begin***\n");
+    for (int i = 0; i < gemm_num; ++i){
+      int m = M[i], n = N[i], k = K[i];
+      printf("\n-----------------------------\n");
+      printf("GEMM test %d: [M: %d, K: %d, N: %d] %s\n", i, m, k, n, mess[i]);
+      // todo
+      void* d_A = handle.workSpace;
+      void* d_B = d_A + m * k * batchCount[i] * data_type_size(output_type[0]);
+      void* d_C = d_B + k * n * batchCount[i] * data_type_size(output_type[0]);
+
+      float exec_time = 99999.0f;
+      int   fast_algo = 0;
+
+      for (int algo = startAlgo; algo <= endAlgo; algo++) {
+          cublasStatus_t status;
+          cudaDeviceSynchronize();
+          gettimeofday(&start, NULL);
+          for (int ite = 0; ite < ites; ++ite) {
+            status = cublasGemmStridedBatchedEx(handle.blas,
+                                                CUBLAS_OP_T,
+                                                CUBLAS_OP_N,
+                                                M[i],
+                                                N[i],
+                                                K[i],
+                                                &alpha,
+                                                d_A,
+                                                cublas_data_type,
+                                                ldAs[i],
+                                                strideA[i],
+                                                d_B,
+                                                cublas_data_type,
+                                                ldBs[i],
+                                                strideB[i],
+                                                &beta,
+                                                d_C,
+                                                cublas_data_type,
+                                                ldCs[i],
+                                                strideC[i],
+                                                batchCount[i],
+                                                compute_type,
+                                                static_cast<cublasGemmAlgo_t>(algo));
+
+            if (status != CUBLAS_STATUS_SUCCESS) {
+              break;
+            }
+          }
+          cudaDeviceSynchronize();
+          gettimeofday(&end, NULL);
+          if (status == CUBLAS_STATUS_SUCCESS) {
+              printf("algo_%d costs %.3fms \n", algo, diffTime(start, end) / ites);
+              if (diffTime(start, end) / ites < exec_time) {
+                  exec_time = diffTime(start, end) / ites;
+                  fast_algo = algo;
+              }
+          }
+      }
+
+      printf("fast_algo %d costs %.3f ms\n", fast_algo, exec_time);
+      profiled_best_algo[token_idx][i] = fast_algo;
+    }
+
+  }
+
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {

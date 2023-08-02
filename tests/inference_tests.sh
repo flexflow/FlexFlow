@@ -13,24 +13,24 @@ cd "${BASH_SOURCE[0]%/*}"
 TENSOR_PARALLELISM_TESTS=${TENSOR_PARALLELISM_TESTS:-OFF}
 
 # Clean up before test (just in case)
-cleanup
+# cleanup
 
 # Update the transformers library to support the LLAMA model
 
-pip3 install --upgrade transformers sentencepiece
+# pip3 install --upgrade transformers sentencepiece
 
 # Download the weights in both half and full precision
-python3 ../inference/utils/download_llama_weights.py
-python3 ../inference/utils/download_llama_weights.py --use-full-precision
-python3 ../inference/utils/download_opt_weights.py
-python3 ../inference/utils/download_opt_weights.py --use-full-precision
+# python3 ../inference/utils/download_llama_weights.py
+# python3 ../inference/utils/download_llama_weights.py --use-full-precision
+# python3 ../inference/utils/download_opt_weights.py
+# python3 ../inference/utils/download_opt_weights.py --use-full-precision
 
 # Create test prompt file
-mkdir -p ../inference/prompt
-echo '["Give three tips for staying healthy."]' > ../inference/prompt/test.json
+# mkdir -p ../inference/prompt
+# echo '["Give three tips for staying healthy."]' > ../inference/prompt/test.json
 
 # Create output folder
-mkdir -p ../inference/output
+# mkdir -p ../inference/output
 
 ###############################################################################################
 ############################ Speculative inference tests ######################################
