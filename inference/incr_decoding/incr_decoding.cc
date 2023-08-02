@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include "models/falcon.h"
 #include "models/llama.h"
 #include "models/opt.h"
@@ -38,9 +39,9 @@ void parse_input_args(char **argv,
                       ModelType &llm_model_type,
                       bool &use_full_precision,
                       bool &verbose,
-                      int &data_parallelism_degree,
-                      int &tensor_parallelism_degree,
-                      int &pipeline_parallelism_degree) {
+                      bool &do_sample,
+                      float &temperature,
+                      float &topp) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -51,6 +52,8 @@ void parse_input_args(char **argv,
                      [](unsigned char c) { return std::tolower(c); });
       if (model_type_str == "llama") {
         llm_model_type = ModelType::LLAMA;
+      } else if (model_type_str == "llama2") {
+        llm_model_type = ModelType::LLAMA2;
       } else if (model_type_str == "opt") {
         llm_model_type = ModelType::OPT;
       } else if (model_type_str == "falcon") {
@@ -85,21 +88,6 @@ void parse_input_args(char **argv,
       paths.output_file_path = std::string(argv[++i]);
       continue;
     }
-    // data parallelism degree
-    if (!strcmp(argv[i], "-data-parallelism-degree")) {
-      data_parallelism_degree = std::stoi(argv[++i]);
-      continue;
-    }
-    // tensor parallelism degree
-    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
-      tensor_parallelism_degree = std::stoi(argv[++i]);
-      continue;
-    }
-    // pipeline parallelism degree
-    if (!strcmp(argv[i], "-pipeline-parallelism-degree")) {
-      pipeline_parallelism_degree = std::stoi(argv[++i]);
-      continue;
-    }
     if (!strcmp(argv[i], "--use-full-precision")) {
       use_full_precision = true;
       continue;
@@ -107,6 +95,18 @@ void parse_input_args(char **argv,
     // verbose logging to stdout
     if (!strcmp(argv[i], "--verbose")) {
       verbose = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--do-sample")) {
+      do_sample = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--temperature")) {
+      temperature = std::stof(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--topp")) {
+      topp = std::stof(argv[++i]);
       continue;
     }
   }
@@ -124,9 +124,10 @@ void FlexFlow::top_level_task(Task const *task,
   ModelType model_type;
   bool use_full_precision = false;
   bool verbose = false;
+  bool do_sample = false;
+  float temperature = 0.0f;
+  float topp = 0.0f;
   size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
-  int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
-      pipeline_parallelism_degree = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -137,46 +138,45 @@ void FlexFlow::top_level_task(Task const *task,
                    model_type,
                    use_full_precision,
                    verbose,
-                   data_parallelism_degree,
-                   tensor_parallelism_degree,
-                   pipeline_parallelism_degree);
-  ffconfig.data_parallelism_degree = data_parallelism_degree;
-  ffconfig.tensor_parallelism_degree = tensor_parallelism_degree;
-  ffconfig.pipeline_parallelism_degree = pipeline_parallelism_degree;
-  assert(data_parallelism_degree * tensor_parallelism_degree *
-             pipeline_parallelism_degree ==
+                   do_sample,
+                   temperature,
+                   topp);
+
+  assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
+             ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
-  InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
-  RequestManager rm(model_type,
-                    file_paths.tokenizer_file_path,
-                    /*verbose*/ verbose,
-                    file_paths.output_file_path);
+  SamplingConfig samplingConfig(do_sample, temperature, topp);
+  RequestManager *rm = RequestManager::get_request_manager();
+  rm->register_tokenizer(model_type, file_paths.tokenizer_file_path);
+  rm->register_output_filepath(file_paths.output_file_path);
+  // InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
+  // RequestManager rm(model_type,
+  //                   file_paths.tokenizer_file_path,
+  //                   /*verbose*/ verbose,
+  //                   file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
-  if (model_type == ModelType::LLAMA) {
+  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(model,
-                              im,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
                               INC_DECODING_MODE,
+                              samplingConfig,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,
-                          im,
                           file_paths.llm_config_file_path,
                           file_paths.llm_weight_file_path,
                           INC_DECODING_MODE,
                           use_full_precision);
   } else if (model_type == ModelType::FALCON) {
     FALCON::create_falcon_model(model,
-                                im,
                                 file_paths.llm_config_file_path,
                                 file_paths.llm_weight_file_path,
-                                ffconfig.workersPerNode * ffconfig.numNodes,
                                 INC_DECODING_MODE,
                                 use_full_precision);
   } else {
@@ -196,21 +196,9 @@ void FlexFlow::top_level_task(Task const *task,
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      rm.register_new_request(text, 128 /*max_sequence_length*/);
+      GenerationResult result =
+          model.generate(text, 128 /*max_sequence_length*/);
     }
-  }
-
-  BatchConfig bc;
-  InferenceResult ir;
-  while (rm.get_num_processed_requests() < total_num_requests) {
-    bc = rm.prepare_next_batch(bc, ir);
-    if (rm.get_num_processed_requests() >= total_num_requests) {
-      break;
-    }
-    FutureMap fm = im.inference(&model, 0, bc);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    Future future = fm.get_future(0);
-    ir = future.get_result<InferenceResult>();
   }
 
   // Execution fence

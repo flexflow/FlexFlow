@@ -163,10 +163,12 @@ enum OperatorType {
   OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
   OP_RMS_NORM,
   OP_BEAM_TOPK,
+  OP_ARGMAX,
   OP_INC_MULTIHEAD_SELF_ATTENTION,
   OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
   OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
   OP_INC_MULTIQUERY_SELF_ATTENTION,
+  OP_SAMPLING,
   // Parallel Ops
   OP_REPARTITION,
   OP_COMBINE,
@@ -178,7 +180,7 @@ enum OperatorType {
   OP_INVALID,
 };
 
-enum ModelType { UNKNOWN, LLAMA, OPT, FALCON };
+enum ModelType { UNKNOWN, LLAMA, LLAMA2, OPT, FALCON };
 
 enum PMParameter {
   PM_OP_TYPE,            // AnyOp

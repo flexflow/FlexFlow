@@ -17,6 +17,7 @@
 #include "file_loader.h"
 #include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include <nlohmann/json.hpp>
 #include <string>
 using json = nlohmann::json;
@@ -31,6 +32,7 @@ public:
       n_layers = 32;
       vocab_size = 32000;
       n_heads = 32;
+      n_kv_heads = 1;
       dim = 4096;
       multiple_of = 256;
       norm_eps = 1e-6;
@@ -53,6 +55,7 @@ public:
           n_layers = config_json["n_layers"];
           vocab_size = config_json["vocab_size"];
           n_heads = config_json["n_heads"];
+          n_kv_heads = config_json["n_kv_heads"];
           dim = config_json["dim"];
           multiple_of = config_json["multiple_of"];
           norm_eps = config_json["norm_eps"];
@@ -99,15 +102,13 @@ public:
 
     int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
         total_requests, incremental_mode, max_seq_len, max_num_tokens,
-        max_beam_width, max_beam_depth, head_dim;
+        max_beam_width, max_beam_depth, head_dim, n_kv_heads;
     float norm_eps;
   };
 
   static void create_falcon_model(FFModel &ff,
-                                  InferenceManager &im,
                                   std::string const &model_config_file_path,
                                   std::string const &weight_file_path,
-                                  int num_pipeline_stages,
                                   InferenceMode mode,
                                   bool use_full_precision = false);
 };

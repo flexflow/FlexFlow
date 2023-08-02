@@ -2,6 +2,7 @@
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -28,6 +29,7 @@
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sampling.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
@@ -130,6 +132,10 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((ArgTopK *)op)->get_params();
     case OP_BEAM_TOPK:
       return ((BeamTopK *)op)->get_params();
+    case OP_SAMPLING:
+      return ((Sampling *)op)->get_params();
+    case OP_ARGMAX:
+      return ((ArgMax *)op)->get_params();
 
       // TODO: implement the get_params() function for the operators below and
       // uncomment the lines below

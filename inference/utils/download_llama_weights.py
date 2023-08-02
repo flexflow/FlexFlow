@@ -6,8 +6,12 @@ import argparse
 from transformers import AutoModelForCausalLM
 
 # You can pass the --use-full-precision flag to use the full-precision weight. By default, we use half precision.
+# and pass "--use_13B", "--use_30B", and "--use_65B" to use the corresponding "llama-13B/30B/65B" model weights
 parser = argparse.ArgumentParser()
 parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
+parser.add_argument("--use_13B", action="store_true", help="choose to use llama-13B")
+parser.add_argument("--use_30B", action="store_true", help="choose to use llama-30B")
+parser.add_argument("--use_65B", action="store_true", help="choose to use llama-65B")
 args = parser.parse_args()
 if not args.use_full_precision:
     import torch
@@ -45,6 +49,22 @@ def convert_hf_model(model, dst_folder):
 model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
 dst_folder="../weights/llama_7B_weights" if args.use_full_precision else "../weights/llama_7B_weights_half"
 convert_hf_model(model, dst_folder)
+
+# Download and convert model weights only for hf
+if args.use_13B:
+    model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-13b-hf")
+    dst_folder="../weights/llama_13B_weights_half"
+    convert_hf_model(model, dst_folder)
+
+if args.use_30B:
+    model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-30b-hf")
+    dst_folder="../weights/llama_30B_weights_half"
+    convert_hf_model(model, dst_folder)
+
+if args.use_65B:
+    model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-65b-hf")
+    dst_folder="../weights/llama_65B_weights_half"
+    convert_hf_model(model, dst_folder)
 
 # Download and convert small model weights
 model = AutoModelForCausalLM.from_pretrained("JackFram/llama-160m")

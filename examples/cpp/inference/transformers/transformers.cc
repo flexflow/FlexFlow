@@ -15,6 +15,7 @@
 
 #include "transformers.h"
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -45,6 +46,7 @@ Tensor create_inc_multihead_attention_decoder(
           ? model->inc_multihead_self_attention(
                 input,
                 transformerConfig->hidden_size,
+                transformerConfig->num_attention_heads,
                 transformerConfig->num_attention_heads,
                 transformerConfig->attention_kdim,
                 transformerConfig->attention_vdim)

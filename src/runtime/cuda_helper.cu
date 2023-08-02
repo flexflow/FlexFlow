@@ -1,5 +1,12 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/cuda_helper.h"
+#ifdef FF_USE_CUDA
+#include "realm/cuda/cuda_module.h"
+#elif FF_USE_HIP_CUDA
+#include "realm/hip/hip_module.h"
+#else
+#error "Unknown device, please make sure if CUDA is enabled"
+#endif
 
 using Legion::coord_t;
 using Legion::Domain;
@@ -9,23 +16,16 @@ namespace FlexFlow {
 
 #ifdef FF_USE_CUDA
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifdef DISABLE_LEGION_CUDA_HIJACK
-  *stream = (cudaStream_t)0;
+  *stream = Realm::Cuda::get_task_cuda_stream();
+  Realm::Cuda::set_task_ctxsync_required(false);
+  assert(*stream != 0);
   return cudaSuccess;
-#else
-  return cudaStreamCreate(stream);
-#endif
 }
 #elif FF_USE_HIP_CUDA
-extern "C" {
-cudaStream_t hipGetTaskStream();
-}
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifdef DISABLE_LEGION_CUDA_HIJACK
-  *stream = (cudaStream_t)0;
-#else
-  *stream = hipGetTaskStream();
-#endif
+  *stream = Realm::Hip::get_task_hip_stream();
+  Realm::Hip::set_task_ctxsync_required(false);
+  assert(*stream != 0);
   return cudaSuccess;
 }
 #else
@@ -209,19 +209,21 @@ __host__ void updateGAS(float *para_ptr,
 }
 
 template <typename T>
-__host__ void
-    print_tensor(T const *ptr, size_t num_elements, char const *prefix) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+__host__ void print_tensor(T const *ptr,
+                           size_t num_elements,
+                           char const *prefix,
+                           int shard_id) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
+  cudaDeviceSynchronize();
   int idx = 0;
-  printf("%s", prefix);
+  printf("%s, %d---->", prefix, shard_id);
   for (idx = 0; idx < num_elements; idx++) {
     printf(" %.20lf", (float)host_ptr[idx]);
     if (idx >= 100) {
@@ -238,14 +240,17 @@ __host__ void print_beam_tensor(T const *ptr,
                                 int skip,
                                 int channel,
                                 char const *prefix) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * channel * skip,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * channel * skip, cudaMemcpyDeviceToHost));
+  checkCUDA(cudaMemcpyAsync(host_ptr,
+                            ptr,
+                            sizeof(T) * channel * skip,
+                            cudaMemcpyDeviceToHost,
+                            stream));
   // checkCUDA(cudaDeviceSynchronize());
   int idx = 0;
   printf("%s", prefix);
@@ -266,16 +271,16 @@ __host__ void print_beam_tensor(T const *ptr,
 template <typename T>
 __host__ void
     save_tensor(T const *ptr, size_t num_elements, char const *file_name) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
+  checkCUDA(cudaMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   // checkCUDA(cudaDeviceSynchronize());
-
+  cudaDeviceSynchronize();
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   for (unsigned i = 0; i < num_elements; i++) {
@@ -288,26 +293,24 @@ __host__ void
 
 template <typename T>
 __host__ T *download_tensor(T const *ptr, size_t num_elements) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   return host_ptr;
 }
 
 template <typename T>
 __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   assert(dst != nullptr);
-  checkCUDA(
-      cudaMemcpy(dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaMemcpyAsync(
+      dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
   return true;
 }
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(
@@ -566,16 +569,26 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
                                                        size_t size,
                                                        int64_t scale);
 
-template __host__ void
-    print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<half>(half const *ptr, size_t rect, char const *prefix);
+template __host__ void print_tensor<float>(float const *ptr,
+                                           size_t rect,
+                                           char const *prefix,
+                                           int shard_id);
+template __host__ void print_tensor<double>(double const *ptr,
+                                            size_t rect,
+                                            char const *prefix,
+                                            int shard_id);
+template __host__ void print_tensor<int32_t>(int32_t const *ptr,
+                                             size_t rect,
+                                             char const *prefix,
+                                             int shard_id);
+template __host__ void print_tensor<int64_t>(int64_t const *ptr,
+                                             size_t rect,
+                                             char const *prefix,
+                                             int shard_id);
+template __host__ void print_tensor<half>(half const *ptr,
+                                          size_t rect,
+                                          char const *prefix,
+                                          int shard_id);
 
 template __host__ void print_beam_tensor<float>(float const *ptr,
                                                 size_t num_elements,

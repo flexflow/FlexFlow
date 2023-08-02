@@ -15,6 +15,7 @@
 
 #include "moe.h"
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -77,6 +78,7 @@ Tensor create_moe_encoder(FFModel *model,
                    ? model->inc_multihead_self_attention(
                          x,
                          moeConfig->hidden_size,
+                         moeConfig->num_attention_heads,
                          moeConfig->num_attention_heads,
                          moeConfig->attention_kdim,
                          moeConfig->attention_vdim)

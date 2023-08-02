@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,18 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-# IMPORTANT:
-#   * legion_cffi.py.in is used as an input to string.format()
-#   * legion_cffi.py is a generated file and should not be modified by hand
-
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-import cffi
-
-header = {header}
-
-ffi = cffi.FFI()
-ffi.cdef(header)
-lib = ffi.dlopen(None)
+from .llama import FlexFlowLLAMA
+from .opt import FlexFlowOPT
+from .falcon import FlexFlowFalcon

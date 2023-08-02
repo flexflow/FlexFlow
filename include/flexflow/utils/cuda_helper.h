@@ -1,5 +1,6 @@
 #ifndef _FLEXFLOW_CUDA_HELPER_H_
 #define _FLEXFLOW_CUDA_HELPER_H_
+#include "flexflow/accessor.h"
 #include "flexflow/ffconst.h"
 #include "legion.h"
 #include <curand_kernel.h>
@@ -141,7 +142,10 @@ __host__ void updateGAS(float *para_ptr,
                         float learning_rate);
 
 template <typename T>
-void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
+void print_tensor(T const *ptr,
+                  size_t num_elements,
+                  char const *prefix,
+                  int shard_id = 0);
 template <typename T>
 void print_beam_tensor(T const *ptr,
                        size_t num_elements,

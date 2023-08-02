@@ -511,7 +511,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                               float *output_ptr,
                               int *indices_ptr,
                               int *parent_ptr,
-                              size_t batch_size,
+                              int batch_size,
                               int length,
                               bool sorted,
                               cudaStream_t stream) {
@@ -662,7 +662,7 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
                                       float *output_ptr,
                                       int *indices_ptr,
                                       int *parent_ptr,
-                                      size_t batch_size,
+                                      int batch_size,
                                       int length,
                                       bool sorted) {
   cudaStream_t stream;
@@ -710,23 +710,47 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   }
 }
 
-BeamTopKMeta::BeamTopKMeta(FFHandler handler, Op const *op) : OpMeta(handler) {
+BeamTopKMeta::BeamTopKMeta(FFHandler handler,
+                           Op const *op,
+                           MemoryAllocator &gpu_mem_allocator)
+    : OpMeta(handler) {
   DataType data_type = op->inputs[0]->data_type;
-  checkCUDA(cudaMalloc(&parent_ids,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(cudaMalloc(&acc_probs,
-                       data_type_size(data_type) *
-                           BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(cudaMalloc(&block_start_index,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(cudaMalloc(&request_id,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(cudaMalloc(&tokens_per_request,
-                       sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                           BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  size_t parent_id_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t acc_probs_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t block_start_index_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                                  BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t request_id_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t tokens_per_request_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                                   BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t totalSize = sizeof(int) * parent_id_size +
+                     data_type_size(data_type) * acc_probs_size +
+                     sizeof(int) * block_start_index_size +
+                     sizeof(int) * request_id_size +
+                     sizeof(int) * tokens_per_request_size;
+
+  gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
+  parent_ids = gpu_mem_allocator.allocate_instance<int>(parent_id_size);
+  if (data_type == DT_FLOAT) {
+    acc_probs = gpu_mem_allocator.allocate_instance<float>(acc_probs_size);
+  } else if (data_type == DT_HALF) {
+    acc_probs = gpu_mem_allocator.allocate_instance<half>(acc_probs_size);
+  } else {
+    assert(false);
+  }
+
+  block_start_index =
+      gpu_mem_allocator.allocate_instance<int>(block_start_index_size);
+  request_id = gpu_mem_allocator.allocate_instance<int>(request_id_size);
+  tokens_per_request =
+      gpu_mem_allocator.allocate_instance<int>(tokens_per_request_size);
+}
+
+BeamTopKMeta::~BeamTopKMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
 }
 }; // namespace FlexFlow

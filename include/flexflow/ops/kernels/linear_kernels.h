@@ -42,6 +42,7 @@ public:
              Linear const *li,
              MemoryAllocator gpu_mem_allocator,
              int weightSize);
+  ~LinearMeta(void);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
@@ -64,6 +65,7 @@ public:
   float kernel_reg_lambda;
   bool use_bias, add_bias_only_once;
   char op_name[MAX_OPNAME];
+  Realm::RegionInstance reserveInst;
 };
 
 namespace Kernels {

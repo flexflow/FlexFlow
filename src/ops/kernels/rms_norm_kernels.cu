@@ -27,7 +27,9 @@ using Legion::coord_t;
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
-RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
+RMSNormMeta::RMSNormMeta(FFHandler handler,
+                         RMSNorm const *rms,
+                         MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, rms) {
   eps = rms->eps;
   alpha = 1.0f;
@@ -38,8 +40,19 @@ RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
   num_elements = in_dim * batch_size;
 
   DataType data_type = rms->weights[0]->data_type;
-  checkCUDA(cudaMalloc(&rms_ptr, batch_size * data_type_size(data_type)));
-  checkCUDA(cudaMalloc(&norm_ptr, num_elements * data_type_size(data_type)));
+  size_t rms_ptr_size = batch_size;
+  size_t norm_ptr_size = num_elements;
+  size_t totalSize = (rms_ptr_size + norm_ptr_size) * data_type_size(data_type);
+  gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
+  rms_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      rms_ptr_size * data_type_size(data_type));
+  norm_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      norm_ptr_size * data_type_size(data_type));
+}
+RMSNormMeta::~RMSNormMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
 }
 
 namespace Kernels {

@@ -12,17 +12,10 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
-__global__ void build_w_out_tensor(DT const *weight_ptr,
-                                   DT *contiguous_weight_ptr,
-                                   int vProjSize,
-                                   int oProjSize,
-                                   int num_heads,
-                                   int qkv_weight_block_size);
-
-template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
                                   int num_tokens,
+                                  int qkv_weight_size,
                                   int oProjSize);
 
 template <typename DT>
@@ -34,6 +27,7 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     int kProjSize,
                                     int vProjSize,
                                     int num_heads,
+                                    int num_kv_heads,
                                     bool scaling_query,
                                     float scaling_factor);
 
@@ -46,9 +40,10 @@ __global__ void
                            int kProjSize,
                            int num_heads,
                            int num_tokens,
+                           int num_kv_heads,
                            int q_block_size,
                            int k_block_size,
-                           int v_block_size,
+                           int q_array_size,
                            bool q_tensor);
 
 template <typename DT>

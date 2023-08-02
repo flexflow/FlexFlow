@@ -37,7 +37,7 @@ jobs:
     # 10h timeout, instead of default of 360min (6h)
     timeout-minutes: 600
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
@@ -86,7 +86,7 @@ jobs:
     runs-on: self-hosted
     needs: gpu-ci-concierge
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     # 10h timeout, instead of default of 360min (6h)
     timeout-minutes: 600
@@ -137,7 +137,7 @@ jobs:
     runs-on: self-hosted
     needs: gpu-ci-concierge
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version

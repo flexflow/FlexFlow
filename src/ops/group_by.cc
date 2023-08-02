@@ -312,7 +312,7 @@ void Group_by::forward(FFModel const &ff) {
 }
 
 FutureMap Group_by::inference(FFModel const &ff,
-                              BatchConfig const &bc,
+                              BatchConfigFuture const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
                               MachineView const *mv) {

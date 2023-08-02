@@ -40,7 +40,10 @@ LinearMeta::LinearMeta(FFHandler handler,
     }
   }
   // Allocate an all-one's vector
-  checkCUDA(cudaMalloc(&one_ptr, data_type_size(data_type) * batch_size));
+  gpu_mem_allocator.create_legion_instance(
+      reserveInst, data_type_size(data_type) * batch_size);
+  one_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      data_type_size(data_type) * batch_size);
   int parallelism = batch_size;
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -192,6 +195,11 @@ void LinearMeta::findBestAlgoID(int m, int n, int k){
 
 }
 #endif
+LinearMeta::~LinearMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
 
 namespace Kernels {
 namespace Linear {

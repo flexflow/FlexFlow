@@ -196,7 +196,7 @@ public:
   virtual void backward(FFModel const &) = 0;
   // Pure virtual functions for inference
   virtual Legion::FutureMap inference(FFModel const &,
-                                      BatchConfig const &,
+                                      BatchConfigFuture const &,
                                       std::vector<ParallelTensor> const &,
                                       std::vector<ParallelTensor> const &,
                                       MachineView const *mv = nullptr) {

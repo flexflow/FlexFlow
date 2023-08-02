@@ -4,6 +4,7 @@
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/rms_norm_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -38,7 +39,7 @@ public:
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &,
+                              BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;

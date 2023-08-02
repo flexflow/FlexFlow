@@ -24,6 +24,30 @@ AllReduceMeta::AllReduceMeta(FFHandler handle, AllReduce const *reduct)
 namespace Kernels {
 namespace AllReduce {
 
+void inference_kernel_wrapper(AllReduceMeta const *m,
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &input,
+                              GenericTensorAccessorW const &output) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  assert(input.data_type == output.data_type);
+  assert(input.domain == output.domain);
+  size_t hidden_dim_size = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  size_t num_elements = bc->num_tokens * hidden_dim_size;
+#ifdef FF_USE_NCCL
+  ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
+  checkNCCL(ncclAllReduce(input.ptr,
+                          output.ptr,
+                          num_elements,
+                          nccl_data_type,
+                          ncclSum,
+                          m->handle.ncclComm,
+                          stream));
+#else
+  assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
+#endif
+}
+
 void forward_kernel_wrapper(AllReduceMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output) {

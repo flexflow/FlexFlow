@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_SPEC_INC_MULTIHEAD_SELF_ATTENTION_H
 #define _FLEXFLOW_SPEC_INC_MULTIHEAD_SELF_ATTENTION_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/inference.h"
@@ -28,6 +29,7 @@ public:
                                 const ParallelTensor _input,
                                 int _embed_dim,
                                 int _num_heads,
+                                int _num_kv_heads,
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
@@ -45,6 +47,7 @@ public:
                                 const ParallelTensor _weight,
                                 int _embed_dim,
                                 int _num_heads,
+                                int _num_kv_heads,
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
@@ -78,7 +81,7 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &,
+                              BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
@@ -113,7 +116,7 @@ public:
   Params get_params() const;
 
 public:
-  int num_heads;
+  int num_heads, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
   bool bias;
   bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
@@ -129,7 +132,8 @@ public:
                                     GenericTensorAccessorR const &weight,
                                     MemoryAllocator &gpu_mem_allocator,
                                     int num_samples,
-                                    int _num_heads);
+                                    int _num_heads,
+                                    int _num_kv_heads);
   ~SpecIncMultiHeadSelfAttentionMeta(void);
 
 public:

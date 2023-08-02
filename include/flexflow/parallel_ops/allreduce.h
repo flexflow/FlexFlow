@@ -35,7 +35,7 @@ public:
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
-                              BatchConfig const &bc,
+                              BatchConfigFuture const &bc,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
@@ -47,6 +47,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,

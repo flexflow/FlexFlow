@@ -20,31 +20,12 @@ namespace FlexFlow {
 using namespace Legion;
 
 void OPT::create_opt_model(FFModel &ff,
-                           InferenceManager &im,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
                            InferenceMode mode,
                            bool use_full_precision) {
   Config opt_config(model_config_file_path);
   opt_config.printConfig();
-  //---------------------- parallelization setup work ----------------------
-  int num_devices = ff.config.workersPerNode * ff.config.numNodes;
-  int num_transformer_layers = opt_config.num_hidden_layers;
-  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
-  int num_layers_per_pp_block =
-      num_transformer_layers / ff.config.pipeline_parallelism_degree;
-  int num_devices_per_data_parallelism_line =
-      num_devices / ff.config.data_parallelism_degree;
-
-  // std::cout << "dp: " << ff.config.data_parallelism_degree
-  //           << " tp: " << ff.config.tensor_parallelism_degree
-  //           << " pp: " << ff.config.pipeline_parallelism_degree << std::endl;
-  // std::cout << "num_devices: " << num_devices << std::endl;
-  // std::cout << "num_transformer_layers: " << num_transformer_layers
-  //           << std::endl;
-  // std::cout << "num_devices_per_data_parallelism_line: "
-  //           << num_devices_per_data_parallelism_line << std::endl;
-  // std::cout << "num layers: " << opt_config.num_hidden_layers << std::endl;
 
   std::unordered_map<std::string, Layer *> weights_layers;
 
@@ -128,6 +109,7 @@ void OPT::create_opt_model(FFModel &ff,
             hidden_states,
             opt_config.hidden_size,
             opt_config.num_attention_heads,
+            opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,
@@ -149,6 +131,7 @@ void OPT::create_opt_model(FFModel &ff,
             hidden_states,
             opt_config.hidden_size,
             opt_config.num_attention_heads,
+            opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,
@@ -169,6 +152,7 @@ void OPT::create_opt_model(FFModel &ff,
         mha = ff.inc_multihead_self_attention(
             hidden_states,
             opt_config.hidden_size,
+            opt_config.num_attention_heads,
             opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
@@ -233,23 +217,29 @@ void OPT::create_opt_model(FFModel &ff,
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
-    output = ff.beam_top_k(softmax, opt_config.max_beam_width, false);
+    // output = ff.beam_top_k(softmax, opt_config.max_beam_width, false);
+    output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {
-    output = ff.arg_top_k(lm_head, /*k=*/1, false);
+    // output = ff.arg_top_k(lm_head, /*k=*/1, false);
+    output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
-  im.compile_model_and_allocate_buffer(&ff);
+  int tensor_partition_num = ff.config.tensor_parallelism_degree;
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
                             opt_config.num_attention_heads,
+                            opt_config.num_attention_heads,
                             opt_config.hidden_size,
                             opt_config.hidden_size /
-                                opt_config.num_attention_heads);
+                                opt_config.num_attention_heads,
+                            tensor_partition_num);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
-  im.init_operators_inference(&ff);
+  im->init_operators_inference(&ff);
 }
 
 }; // namespace FlexFlow
