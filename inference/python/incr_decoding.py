@@ -13,67 +13,38 @@
 # limitations under the License.
 
 import flexflow.serve as ff
-import argparse, json
+import argparse, json, os
+from types import SimpleNamespace
 
 
-def parse_args():
+def get_configs():
     parser = argparse.ArgumentParser()
-    # LLM arguments
     parser.add_argument(
-        "-llm-model",
-        help="The name of the HuggingFace model to use. E.g. 'decapoda-research/llama-7b-hf'",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "-llm-weight",
-        help="Path to the weights for the LLM. If omitted, FlexFlow will download (and cache) the weights from HuggingFace",
+        "-config-file",
+        help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
         type=str,
         default="",
     )
-    parser.add_argument(
-        "-llm-tokenizer",
-        help="Path to the tokenizer file or folder for the LLM. If omitted, FlexFlow will download (and cache) the relevant tokenizer from HuggingFace",
-        type=str,
-        default="",
-    )
-    parser.add_argument(
-        "-clean-model-cache",
-        help="Use this flag to discard previous weights/tokenizer cache for this LLM.",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-full-precision",
-        help="Use this flag to require the use of full precision weights for the LLM.",
-        action="store_true",
-    )
-    # Generation arguments
-    parser.add_argument(
-        "-prompt",
-        help="Path to the prompt file. If omitted, a sample prompt will be used instead.",
-        type=str,
-        default="",
-    )
-    parser.add_argument(
-        "-output-file",
-        help="Path to the output file. If omitted, the output will not be written to file.",
-        type=str,
-        default="",
-    )
-    return parser.parse_args()
+    args = parser.parse_args()
 
-
-def main():
-    args = parse_args()
-
-    # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
-    ff.init(
-        {
-            # required arguments
+    # Load configs from JSON file (if specified)
+    if len(args.config_file) > 0:
+        if not os.path.isfile(args.config_file):
+            raise FileNotFoundError(f"Config file {args.config_file} not found.")
+        try:
+            with open(args.config_file) as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            print("JSON format error:")
+            print(e)
+    else:
+        # Define sample configs
+        ff_init_configs = {
+            # required parameters
             "num_gpus": 4,
             "memory_per_gpu": 14000,
             "zero_copy_memory_per_gpu": 30000,
-            # optional arguments
+            # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
@@ -86,17 +57,40 @@ def main():
             "profiling": False,
             "fusion": True,
         }
-    )
+        llm_configs = {
+            # required parameters
+            "llm_model": "decapoda-research/llama-7b-hf",
+            # optional parameters
+            "llm_weight": "",
+            "llm_tokenizer": "",
+            "clean_model_cache": False,
+            "full_precision": False,
+            "prompt": "",
+            "output_file": "",
+        }
+        # Merge dictionaries
+        ff_init_configs.update(llm_configs)
+        return ff_init_configs
+
+
+def main():
+    configs_dict = get_configs()
+    configs = SimpleNamespace(**configs_dict)
+
+    # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
+    ff.init(configs_dict)
 
     # Create the FlexFlow LLM
-    ff_data_type = ff.DataType.DT_FLOAT if args.full_precision else ff.DataType.DT_HALF
+    ff_data_type = (
+        ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
+    )
     llm = ff.LLM(
-        args.llm_model,
+        configs.llm_model,
         data_type=ff_data_type,
-        tokenizer_path=args.llm_tokenizer,
-        weights_path=args.llm_weight,
-        clean_cache=args.clean_model_cache,
-        output_file=args.output_file,
+        tokenizer_path=configs.llm_tokenizer,
+        weights_path=configs.llm_weight,
+        clean_cache=configs.clean_model_cache,
+        output_file=configs.output_file,
     )
 
     # Compile the LLM for inference and load the weights into memory
@@ -112,13 +106,13 @@ def main():
     )
 
     # Generation begins!
-    if len(args.prompt) > 0:
-        prompts = [s for s in json.load(open(args.prompt))]
+    if len(configs.prompt) > 0:
+        prompts = [s for s in json.load(open(configs.prompt))]
         results = llm.generate(prompts)
     else:
         result = llm.generate("Here are some travel tips for Tokyo:\n")
 
 
 if __name__ == "__main__":
-    print("flexflow inference (incremental decoding)")
+    print("flexflow inference example (incremental decoding)")
     main()

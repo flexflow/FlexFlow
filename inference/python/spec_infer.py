@@ -13,56 +13,43 @@
 # limitations under the License.
 
 import flexflow.serve as ff
-import os, json
+import argparse, json, os
 from types import SimpleNamespace
 
 
-def parse_configs():
-    os.chdir(os.path.dirname(__file__))
-    configs = {
-        "llm_model": "decapoda-research/llama-7b-hf",
-        "llm_weight": "",
-        "llm_tokenizer": "",
-        "clean_model_cache": False,
-        "full_precision": False,
-        "ssms": [
-            {
-                "ssm_model": "JackFram/llama-160m",
-                "ssm_weight": "",
-                "ssm_tokenizer": "",
-                "clean_model_cache": False,
-                "full_precision": False,
-            },
-            {
-                "ssm_model": "facebook/opt-125m",
-                "ssm_weight": "",
-                "ssm_tokenizer": "",
-                "clean_model_cache": False,
-                "full_precision": False,
-            },
-        ],
-        "prompt": "../prompt/test.json",
-        "output_file": "",
-    }
-    return SimpleNamespace(**configs)
+def get_configs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-config-file",
+        help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
+        type=str,
+        default="",
+    )
+    args = parser.parse_args()
 
-
-def top_level_task():
-    configs = parse_configs()
-
-    # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
-    ff.init(
-        {
-            # required arguments
+    # Load configs from JSON file (if specified)
+    if len(args.config_file) > 0:
+        if not os.path.isfile(args.config_file):
+            raise FileNotFoundError(f"Config file {args.config_file} not found.")
+        try:
+            with open(args.config_file) as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            print("JSON format error:")
+            print(e)
+    else:
+        # Define sample configs
+        ff_init_configs = {
+            # required parameters
             "num_gpus": 4,
             "memory_per_gpu": 14000,
             "zero_copy_memory_per_gpu": 30000,
-            # optional arguments
+            # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
-            "tensor_parallelism_degree": 4,
-            "pipeline_parallelism_degree": 1,
+            "tensor_parallelism_degree": 2,
+            "pipeline_parallelism_degree": 2,
             "offload": False,
             "offload_reserve_space_size": 1024**2,
             "use_4bit_quantization": False,
@@ -70,7 +57,48 @@ def top_level_task():
             "profiling": False,
             "fusion": True,
         }
-    )
+        llm_configs = {
+            # required llm arguments
+            "llm_model": "decapoda-research/llama-7b-hf",
+            # optional llm parameters
+            "llm_weight": "",
+            "llm_tokenizer": "",
+            "clean_model_cache": False,
+            "full_precision": False,
+            "ssms": [
+                {
+                    # required ssm parameter
+                    "ssm_model": "JackFram/llama-160m",
+                    # optional ssm parameters
+                    "ssm_weight": "",
+                    "ssm_tokenizer": "",
+                    "clean_model_cache": False,
+                    "full_precision": False,
+                },
+                {
+                    # required ssm parameter
+                    "ssm_model": "facebook/opt-125m",
+                    # optional ssm parameters
+                    "ssm_weight": "",
+                    "ssm_tokenizer": "",
+                    "clean_model_cache": False,
+                    "full_precision": False,
+                },
+            ],
+            "prompt": "../prompt/test.json",
+            "output_file": "",
+        }
+        # Merge dictionaries
+        ff_init_configs.update(llm_configs)
+        return ff_init_configs
+
+
+def main():
+    configs_dict = get_configs()
+    configs = SimpleNamespace(**configs_dict)
+
+    # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
+    ff.init(configs_dict)
 
     # Create the FlexFlow LLM
     ff_data_type = (
@@ -136,5 +164,5 @@ def top_level_task():
 
 
 if __name__ == "__main__":
-    print("flexflow inference (speculative inference)")
-    top_level_task()
+    print("flexflow inference example (speculative inference)")
+    main()
