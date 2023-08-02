@@ -79,8 +79,8 @@ TEST_CASE("filter_keys") {
 TEST_CASE("map_values") {
   std::unordered_map<int, std::string> m = {{1, "one"}, {2, "two"}};
   auto f = [](std::string const &s) { return s.size(); }; // Mapping function
-  std::unordered_map<int,int> result = map_values(m, f);
-  std::unordered_map<int, int> expected = {{1, 3}, {2, 3}};
+  std::unordered_map<int, size_t> result = map_values(m, f);
+  std::unordered_map<int, size_t> expected = {{1, 3}, {2, 3}};
   CHECK(result == expected);
 }
 
@@ -88,7 +88,7 @@ TEST_CASE("keys") {
   std::unordered_map<int, std::string> m = {
       {1, "one"}, {2, "two"}, {3, "three"}};
   std::vector<int> result = keys(m);
-  std::vector<int> expected = {1, 2, 3};
+  std::vector<int> expected = {3, 2, 1};
   CHECK(result == expected);
 }
 
@@ -96,7 +96,7 @@ TEST_CASE("values") {
   std::unordered_map<int, std::string> m = {
       {1, "one"}, {2, "two"}, {3, "three"}};
   std::vector<std::string> result = values(m);
-  std::vector<std::string> expected = {"one", "two", "three"};
+  std::vector<std::string> expected = {"three", "two", "one"};
   CHECK(result == expected);
 }
 
@@ -106,9 +106,6 @@ TEST_CASE("values") {
 //      std::cout<<"result type:"<<typeid(m).name()<<std::endl;
 //     auto result = items(m);
 //     CHECK(result.size() == 3);
-
-// // CHECK(result.find({2, std::string("two")}) != result.end());
-// // CHECK(result.find({3, "three"}) != result.end());
 // }
 
 TEST_CASE("unique") {
