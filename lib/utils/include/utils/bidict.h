@@ -148,6 +148,7 @@ struct bidict {
   bidict(std::unordered_map<L, R> const &fwd_map,
          std::unordered_map<R, L> const &bwd_map)
       : fwd_map(fwd_map), bwd_map(bwd_map) {}
+
 private:
   friend struct bidict<R, L>;
 

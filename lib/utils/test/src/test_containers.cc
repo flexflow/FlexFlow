@@ -174,10 +174,11 @@ TEST_CASE("merge_maps(bidict)") {
   std::unordered_map<std::string, int> bwd_map1 = {{"one", 1}, {"two", 2}};
   std::unordered_map<int, std::string> fwd_map2 = {{3, "three"}, {4, "four"}};
   std::unordered_map<std::string, int> bwd_map2 = {{"three", 3}, {"four", 4}};
-  bidict<int, std::string> lhs{fwd_map1, bwd_map1} ;
+  bidict<int, std::string> lhs{fwd_map1, bwd_map1};
   bidict<int, std::string> rhs{fwd_map2, bwd_map2};
 
-  std::unordered_map<int, std::string> result = merge_maps(lhs, rhs);//impicit conversion
+  std::unordered_map<int, std::string> result =
+      merge_maps(lhs, rhs); // impicit conversion
   std::unordered_map<int, std::string> expected = {
       {1, "one"}, {2, "two"}, {3, "three"}, {4, "four"}};
   CHECK(result == expected);
@@ -310,8 +311,9 @@ TEST_CASE("transform_string") {
 
 TEST_CASE("Testing the 'enumerate' function") {
   std::unordered_set<int> input_set = {1, 2, 3, 4, 5};
-  std::unordered_map<long unsigned int, int> result = enumerate(input_set);
-  std::unordered_map<long unsigned int, int> expected = {{1, 4}, {2, 3}, {3, 2}, {4, 1}, {0, 5}};
+  std::unordered_map<size_t, int> result = enumerate(input_set);
+  std::unordered_map<size_t, int> expected = {
+      {1, 4}, {2, 3}, {3, 2}, {4, 1}, {0, 5}};
   CHECK(result == expected);
 }
 
@@ -325,14 +327,11 @@ TEST_CASE("Testing the 'maximum' function") {
 
 TEST_CASE("Testing the 'reversed' function") {
   std::vector<int> input_vec = {1, 2, 3, 4, 5};
-  auto result = reversed(input_vec);
+  std::vector<int> result = reversed(input_vec);
+  std::vector<int> expected = {5, 4, 3, 2, 1};
 
   // Checking the reversed sequence is as expected
-  REQUIRE(result[0] == 5);
-  REQUIRE(result[1] == 4);
-  REQUIRE(result[2] == 3);
-  REQUIRE(result[3] == 2);
-  REQUIRE(result[4] == 1);
+  CHECK(result == expected);
 }
 
 TEST_CASE("Testing sorted_by function") {
