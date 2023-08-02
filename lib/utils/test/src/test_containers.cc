@@ -6,12 +6,12 @@
 
 using namespace FlexFlow;
 TEST_CASE("join_strings") {
-  std::vector<std::string> v = {"Hello", "world"};
-  CHECK(join_strings(v.begin(), v.end(), " ") == "Hello world");
+  std::vector<std::string> const v = {"Hello", "world", "!"};
+  CHECK(join_strings(v.begin(), v.end(), " ") == "Hello world !");
 }
 
 TEST_CASE("join_strings with container") {
-  std::vector<std::string> v = {"Hello", "world"};
+  std::vector<std::string> const v = {"Hello", "world"};
   CHECK(join_strings(v, " ") == "Hello world");
 }
 
@@ -29,7 +29,7 @@ TEST_CASE("sum") {
 TEST_CASE("sum with condition") {
   std::vector<int> v = {1, 2, 3, 4, 5};
   auto condition = [](int x) { return x % 2 == 0; }; // Sum of even numbers only
-  CHECK(sum(v, condition) == 6);
+  CHECK(sum_where(v, condition) == 6);
 }
 
 TEST_CASE("product") {
@@ -71,40 +71,33 @@ TEST_CASE("filter_keys") {
   std::unordered_map<int, std::string> m = {
       {1, "one"}, {2, "two"}, {3, "three"}};
   auto f = [](int x) { return x % 2 == 1; }; // Filtering function
-  auto result = filter_keys(m, f);
-  CHECK(result.size() == 2);
-  CHECK(contains_key(result, 1));
-  CHECK(!contains_key(result, 2));
-  CHECK(contains_key(result, 3));
+  std::unordered_map<int, std::string> result = filter_keys(m, f);
+  std::unordered_map<int, std::string> expected = {{1, "one"}, {3, "three"}};
+  CHECK(result == expected);
 }
 
 TEST_CASE("map_values") {
   std::unordered_map<int, std::string> m = {{1, "one"}, {2, "two"}};
   auto f = [](std::string const &s) { return s.size(); }; // Mapping function
-  auto result = map_values(m, f);
-  CHECK(result.size() == 2);
-  CHECK(result[1] == 3);
-  CHECK(result[2] == 3);
+  std::unordered_map<int,int> result = map_values(m, f);
+  std::unordered_map<int, int> expected = {{1, 3}, {2, 3}};
+  CHECK(result == expected);
 }
 
 TEST_CASE("keys") {
   std::unordered_map<int, std::string> m = {
       {1, "one"}, {2, "two"}, {3, "three"}};
-  auto result = keys(m);
-  CHECK(result.size() == 3);
-  CHECK(std::find(result.begin(), result.end(), 1) != result.end());
-  CHECK(std::find(result.begin(), result.end(), 2) != result.end());
-  CHECK(std::find(result.begin(), result.end(), 3) != result.end());
+  std::vector<int> result = keys(m);
+  std::vector<int> expected = {1, 2, 3};
+  CHECK(result == expected);
 }
 
 TEST_CASE("values") {
   std::unordered_map<int, std::string> m = {
       {1, "one"}, {2, "two"}, {3, "three"}};
-  auto result = values(m);
-  CHECK(result.size() == 3);
-  CHECK(std::find(result.begin(), result.end(), "one") != result.end());
-  CHECK(std::find(result.begin(), result.end(), "two") != result.end());
-  CHECK(std::find(result.begin(), result.end(), "three") != result.end());
+  std::vector<std::string> result = values(m);
+  std::vector<std::string> expected = {"one", "two", "three"};
+  CHECK(result == expected);
 }
 
 // TEST_CASE("items") {
@@ -120,11 +113,9 @@ TEST_CASE("values") {
 
 TEST_CASE("unique") {
   std::vector<int> v = {1, 2, 3, 2, 1};
-  auto result = unique(v);
-  CHECK(result.size() == 3);
-  CHECK(result.find(1) != result.end());
-  CHECK(result.find(2) != result.end());
-  CHECK(result.find(3) != result.end());
+  std::unordered_set<int> result = unique(v);
+  std::unordered_set<int> expected = {1, 2, 3};
+  CHECK(result == expected);
 }
 
 TEST_CASE("index_of") {
@@ -136,10 +127,9 @@ TEST_CASE("index_of") {
 TEST_CASE("intersection") {
   std::unordered_set<int> l = {1, 2, 3};
   std::unordered_set<int> r = {2, 3, 4};
-  auto result = intersection(l, r);
-  CHECK(result.size() == 2);
-  CHECK(result.count(2) == 1);
-  CHECK(result.count(3) == 1);
+  std::unordered_set<int> result = intersection(l, r);
+  std::unordered_set<int> expected = {2, 3};
+  CHECK(result == expected);
 }
 
 TEST_CASE("are_disjoint") {
@@ -154,10 +144,9 @@ TEST_CASE("restrict_keys") {
   std::unordered_map<int, std::string> m = {
       {1, "one"}, {2, "two"}, {3, "three"}};
   std::unordered_set<int> mask = {2, 3, 4};
-  auto result = restrict_keys(m, mask);
-  CHECK(result.size() == 2);
-  CHECK(result.count(2) == 1);
-  CHECK(result.count(3) == 1);
+  std::unordered_map<int, std::string> result = restrict_keys(m, mask);
+  std::unordered_map<int, std::string> expected = {{2, "two"}, {3, "three"}};
+  CHECK(result == expected);
 }
 
 TEST_CASE("merge_maps(unordered_map)") {
