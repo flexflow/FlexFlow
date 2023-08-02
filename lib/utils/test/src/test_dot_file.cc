@@ -11,9 +11,10 @@ TEST_CASE("DotFile") {
 
     dotFile.close();
 
-    std::string expectedOutput =
-        "digraph taskgraph {\n  node0 [label=Node A,shape=circle];\n  node1 "
-        "[label=Node B,shape=rectangle];\n}";
+    std::string expectedOutput = R"EXPECTED_OUTPUT(digraph taskgraph {
+  node0 [label=Node A,shape=circle];
+  node1 [label=Node B,shape=rectangle];
+})EXPECTED_OUTPUT";
 
     CHECK_EQ(oss.str(), expectedOutput);
   }
