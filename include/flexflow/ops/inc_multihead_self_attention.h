@@ -192,11 +192,11 @@ public:
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cuFloatComplex *complex_input;
 #endif
-  static int profiled_best_algo[BatchConfig::MAX_NUM_TOKENS][3]; // [token, gemm_num]
+  static int
+      profiled_best_algo[BatchConfig::MAX_NUM_TOKENS]; // [token, gemm_num]
   static std::mutex profile_lock;
   static bool has_profiled;
   void findBestAlgoID();
-
 };
 
 }; // namespace FlexFlow
