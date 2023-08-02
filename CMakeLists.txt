@@ -321,11 +321,13 @@ list(APPEND FLEXFLOW_INCLUDE_DIRS
 file(GLOB_RECURSE FLEXFLOW_HDR
   LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/include/*.h)
+  list(APPEND FLEXFLOW_HDR ${FLEXFLOW_ROOT}/inference/file_loader.h)
 
 file(GLOB_RECURSE FLEXFLOW_SRC
   LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/src/*.cc)
 list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
+list(APPEND FLEXFLOW_SRC ${FLEXFLOW_ROOT}/inference/file_loader.cc)
 
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
@@ -460,6 +462,7 @@ if (FF_USE_PYTHON)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
   )
   # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
+  # create set_python_envs.sh script to set up the environment variables to run flexflow_python
   if (NOT FF_BUILD_FROM_PYPI)
     add_custom_command(TARGET flexflow
       PRE_BUILD	

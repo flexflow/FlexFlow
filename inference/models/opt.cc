@@ -120,7 +120,7 @@ void OPT::create_opt_model(FFModel &ff,
             NULL,
             false,
             /*scaling query*/ true,
-            /*sacling factor*/
+            /*scaling factor*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5),
             /*qk_prod_scaling*/ false);
@@ -142,7 +142,7 @@ void OPT::create_opt_model(FFModel &ff,
             NULL,
             false,
             /*scaling query*/ true,
-            /*sacling factor*/
+            /*scaling factor*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5),
             /*qk_prod_scaling*/ false);
@@ -164,7 +164,7 @@ void OPT::create_opt_model(FFModel &ff,
             NULL,
             false,
             /*scaling query*/ true,
-            /*sacling factor*/
+            /*scaling factor*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5),
             /*qk_prod_scaling*/ false);

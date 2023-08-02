@@ -153,11 +153,6 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager *rm = RequestManager::get_request_manager();
   rm->register_tokenizer(model_type, file_paths.tokenizer_file_path);
   rm->register_output_filepath(file_paths.output_file_path);
-  // InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
-  // RequestManager rm(model_type,
-  //                   file_paths.tokenizer_file_path,
-  //                   /*verbose*/ verbose,
-  //                   file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
