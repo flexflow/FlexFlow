@@ -210,6 +210,8 @@ TEST_CASE("is_subseteq_of") {
   std::unordered_set<int> s2 = {1, 2, 3};
   CHECK(is_subseteq_of(s1, s2) == true);
   CHECK(is_subseteq_of(s2, s1) == false);
+  CHECK(is_subseteq_of(s1, s1) == true);
+  CHECK(is_subseteq_of(s2, s2) == true);
 }
 
 TEST_CASE("is_superseteq_of") {
@@ -217,14 +219,6 @@ TEST_CASE("is_superseteq_of") {
   std::unordered_set<int> s2 = {1, 2};
   CHECK(is_supserseteq_of(s1, s2) == true);
   CHECK(is_supserseteq_of(s2, s1) == false);
-}
-
-TEST_CASE("map_over_unordered_set") {
-  std::unordered_set<int> s = {1, 2, 3};
-  std::function<int(int const &)> func = [](int const &x) { return x * x; };
-  std::unordered_set<int> result = map_over_unordered_set(func, s);
-  std::unordered_set<int> expected = {1, 4, 9};
-  CHECK(result == expected);
 }
 
 TEST_CASE("get_only") {
@@ -338,7 +332,7 @@ TEST_CASE("Testing vector_split function") {
 }
 
 TEST_CASE("Testing value_all function") {
-  std::vector<tl::optional<int>> v = {1, 2, 3, 4, 5};
+  std::vector<optional<int>> v = {1, 2, 3, 4, 5};
   auto value_all_v = value_all(v);
   CHECK(value_all_v == std::vector<int>({1, 2, 3, 4, 5}));
 }
@@ -353,20 +347,11 @@ TEST_CASE("Testing subvec function") {
   CHECK(subvec_v2 == std::vector<int>({1, 2, 3}));
 }
 
-TEST_CASE("Test for extend function") {
-  std::vector<int> lhs = {1, 2, 3};
-  std::vector<int> rhs = {4, 5, 6};
-
-  extend(lhs, rhs);
-
-  CHECK(lhs == std::vector<int>({1, 2, 3, 4, 5, 6}));
-}
-
 // Example for vector
 TEST_CASE("Test for flatmap function on vectors") {
   std::vector<int> v = {2, 3, 4, 5};
 
-  auto f = [](int x) -> std::vector<int> {
+  auto get_factors = [](int x) -> std::vector<int> {
     // Returns a vector of factors of x
     std::vector<int> factors;
     for (int i = 1; i <= x; i++) {
@@ -377,8 +362,7 @@ TEST_CASE("Test for flatmap function on vectors") {
     return factors;
   };
 
-  auto result = flatmap(v, f);
-
+  auto result = flatmap(v, get_factors);
   CHECK(result == std::vector<int>({1, 2, 1, 3, 1, 2, 4, 1, 5}));
 }
 

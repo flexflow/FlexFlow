@@ -435,15 +435,6 @@ bool are_all_same(C const &c) {
   return true;
 }
 
-template <typename F,
-          typename In,
-          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
-std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
-  std::vector<Out> result;
-  std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
-  return result;
-}
-
 template <typename C, typename E = typename C::value_type>
 std::vector<E> as_vector(C const &c) {
   std::vector<E> result(c.cbegin(), c.end());
@@ -457,6 +448,13 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
   return result;
+}
+
+template <typename F,
+          typename In,
+          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
+  return transform(v, f);
 }
 
 template <typename F,
