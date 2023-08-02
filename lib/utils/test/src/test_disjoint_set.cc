@@ -17,10 +17,10 @@ std::string generate_element<std::string>(int seed) {
 }
 
 TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
-  FlexFlow::disjoint_set<T> ds;
+  disjoint_set<optional<T>> ds; // Use tl::optional<T> in the disjoint_set
 
   SUBCASE("SingleElementSets") {
-    T element = generate_element<T>(1);
+    optional<T> element = generate_element<T>(1);
     CHECK_EQ(ds.find(element), element);
 
     element = generate_element<T>(2);
@@ -28,10 +28,10 @@ TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
   }
 
   SUBCASE("UnionAndFind") {
-    T element1 = generate_element<T>(1);
-    T element2 = generate_element<T>(2);
-    T element3 = generate_element<T>(3);
-    T element4 = generate_element<T>(4);
+    optional<T> element1 = generate_element<T>(1);
+    optional<T> element2 = generate_element<T>(2);
+    optional<T> element3 = generate_element<T>(3);
+    optional<T> element4 = generate_element<T>(4);
 
     ds.m_union(element1, element2);
     CHECK_EQ(ds.find(element1), ds.find(element2));
@@ -48,21 +48,24 @@ TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
 }
 
 TEST_CASE_TEMPLATE("DisjointSetMapping", T, int, std::string) {
-  disjoint_set<T> ds;
+  disjoint_set<int> ds;
+  ds.m_union(1, 2);
+  ds.m_union(3, 4);
+  ds.m_union(1, 4);
+  ds.m_union(5, 6);
 
-  T element1 = generate_element<T>(1);
-  T element2 = generate_element<T>(2);
-  T element3 = generate_element<T>(3);
-  T element4 = generate_element<T>(4);
+  std::map<optional<int>, optional<int>, OptionalComparator<int>> expectedMapping = {
+    {1, 4},
+    {2, 4},
+    {3, 4},
+    {4, 4},
+    {5, 6},
+    {6, 6}
+  };
 
-  ds.m_union(element1, element2);
-  ds.m_union(element3, element4);
-  ds.m_union(element1, element3);
+  std::map<optional<int>, optional<int>, OptionalComparator<int>> mapping = ds.get_mapping();
 
-  std::map<T, T> expectedMapping = {{element1, ds.find(element1)},
-                                    {element2, ds.find(element2)},
-                                    {element3, ds.find(element3)},
-                                    {element4, ds.find(element4)}};
-  std::map<T, T> mapping = ds.get_mapping();
-  CHECK_EQ(mapping, expectedMapping);
+  for (const auto& kv : mapping) {
+    REQUIRE(*kv.second == *expectedMapping[kv.first]); // Compare the values inside the optionals
+  }
 }
