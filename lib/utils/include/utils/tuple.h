@@ -54,8 +54,7 @@ T const &&get(std::tuple<Types...> const &&t) noexcept {
 template <int Idx, typename Visitor, typename... Types>
 void visit_tuple_impl(Visitor &v, std::tuple<Types...> const &tup) {
   v(Idx, std::get<Idx>(tup));
-  if (Idx >= std::tuple_size<
-                 typename std::remove_reference<decltype(tup)>::type>::value) {
+  if (Idx >= std::tuple_size<decltype(tup)>::value) {
     return;
   } else {
     visit_tuple_impl<(Idx + 1)>(v, tup);
