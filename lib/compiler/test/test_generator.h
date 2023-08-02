@@ -40,7 +40,7 @@ MultiDiGraph generate_sp_graph(std::vector<Compn> const &composition) {
   disjoint_set<Node> node_id; // initially we have 2E nodes, and we will merge
                               // them during the iteration
   std::vector<Node> src,
-      dst;                    // src and dst nodes for each edge before merging
+      dst; // src and dst nodes for each edge before merging
   std::vector<NodePort> srcIdx,
       dstIdx; // src and dst node ports for each edge (I assume it is sufficient
               // to make different edges have different NodePort. Correct me if
@@ -141,12 +141,13 @@ template <>
 struct Arbitrary<MachineSpecification> {
   static Gen<MachineSpecification> arbitrary() {
     return gen::build<MachineMapping>(
-      gen::set(&MachineSpecification::num_nodes, gen::inRange(1, 64)),
-      gen::set(&MachineSpecification::num_cpus_per_node, gen::inRange(1, 64)),
-      gen::set(&MachineSpecification::num_gpus_per_node, gen::inRange(1, 16)),
-      gen::set(&MachineSpecification::inter_node_bandwidth, gen::nonZero<float>()),
-      gen::set(&MachineSpecification::intra_node_bandwidth, gen::nonZero<float>())
-    );
+        gen::set(&MachineSpecification::num_nodes, gen::inRange(1, 64)),
+        gen::set(&MachineSpecification::num_cpus_per_node, gen::inRange(1, 64)),
+        gen::set(&MachineSpecification::num_gpus_per_node, gen::inRange(1, 16)),
+        gen::set(&MachineSpecification::inter_node_bandwidth,
+                 gen::nonZero<float>()),
+        gen::set(&MachineSpecification::intra_node_bandwidth,
+                 gen::nonZero<float>()));
   }
 }
 

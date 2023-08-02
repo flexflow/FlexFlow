@@ -150,16 +150,39 @@ ResultType get_subgraph(LabelledOpenMultiDiGraph<NodeLabel,
                       OutputLabel>(as_view(g), nodes);
 }
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel, typename OutputLabel>
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel,
+          typename OutputLabel>
 LabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>
-as_upward_open(LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &g) {
-  return LabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>::template create<ViewLabelledOpenMultiDiGraphAsUpwardOpen<NodeLabel, EdgeLabel, InputLabel, OutputLabel>>(g);
+    as_upward_open(LabelledOpenMultiDiGraphView<NodeLabel,
+                                                EdgeLabel,
+                                                InputLabel,
+                                                OutputLabel> const &g) {
+  return LabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>::
+      template create<ViewLabelledOpenMultiDiGraphAsUpwardOpen<NodeLabel,
+                                                               EdgeLabel,
+                                                               InputLabel,
+                                                               OutputLabel>>(g);
 }
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel, typename OutputLabel>
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel,
+          typename OutputLabel>
 LabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>
-as_downward_open(LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &g) {
-  return LabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>::template create<ViewLabelledOpenMultiDiGraphAsDownwardOpen<NodeLabel, EdgeLabel, InputLabel, OutputLabel>>(g);
+    as_downward_open(LabelledOpenMultiDiGraphView<NodeLabel,
+                                                  EdgeLabel,
+                                                  InputLabel,
+                                                  OutputLabel> const &g) {
+  return LabelledDownwardOpenMultiDiGraphView<NodeLabel,
+                                              EdgeLabel,
+                                              InputLabel>::
+      template create<ViewLabelledOpenMultiDiGraphAsDownwardOpen<NodeLabel,
+                                                                 EdgeLabel,
+                                                                 InputLabel,
+                                                                 OutputLabel>>(
+          g);
 }
 
 } // namespace FlexFlow

@@ -2,7 +2,8 @@
 #include "test_generator.h"
 
 TEST_CASE("optimal_cost") {
-  rc::check([](ParallelComputationGraph const &g, MachineSpecification const &machine_spec) {
+  rc::check([](ParallelComputationGraph const &g,
+               MachineSpecification const &machine_spec) {
     std::unordered_map<size_t, MachineMapping> cached_subgraph_costs;
     MachineMapping machine_mapping = optimal_cost(
         g,

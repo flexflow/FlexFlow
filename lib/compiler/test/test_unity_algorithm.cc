@@ -19,5 +19,5 @@ TEST_CASE("graph_optimize") {
     RC_ASSERT(get_nodes(s.pcg).size() > 0);
     RC_ASSERT(s.machine_mapping.runtime > 0);
     RC_ASSERT(keys(s.machine_mapping.machine_views) == get_nodes(s.pcg));
-    });
+  });
 }

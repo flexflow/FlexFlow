@@ -61,8 +61,7 @@ GraphSplit
 }
 
 std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
-    apply_split(SubParallelComputationGraph const &g,
-                GraphSplit const &split) {
+    apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
   OpenMultiDiGraphView g1 = get_subgraph(g, split.first);
   OpenMultiDiGraphView g2 = get_subgraph(g, split.second);
 
@@ -166,7 +165,7 @@ struct OptimalCost {
 
     auto subgraphs = apply_split(g, get_graph_split(pre_decompn, post_decompn));
     SubParallelComputationGraph pre_graph = subgraphs.first,
-                                    post_graph = subgraphs.second;
+                                post_graph = subgraphs.second;
 
     std::unordered_set<Node> pre_graph_sinks = get_closed_sinks(pre_graph);
     std::unordered_set<Node> post_graph_sources =
@@ -188,23 +187,23 @@ struct OptimalCost {
           contains(post_graph_sources, split_point) ? make_optional(mv)
                                                     : nullopt;
       minimize_runtime(optimal_result,
-               MachineMapping::sequential_combine(
-                   visit(OptimalCost(pre_graph,
-                                     cost_estimator,
-                                     resource,
-                                     source_machine_view,
-                                     pre_sink_mv,
-                                     allowed_machine_views,
-                                     cached_subgraph_costs),
-                         pre_decompn),
-                   visit(OptimalCost(post_graph,
-                                     cost_estimator,
-                                     resource,
-                                     post_source_mv,
-                                     sink_machine_view,
-                                     allowed_machine_views,
-                                     cached_subgraph_costs),
-                         post_decompn)));
+                       MachineMapping::sequential_combine(
+                           visit(OptimalCost(pre_graph,
+                                             cost_estimator,
+                                             resource,
+                                             source_machine_view,
+                                             pre_sink_mv,
+                                             allowed_machine_views,
+                                             cached_subgraph_costs),
+                                 pre_decompn),
+                           visit(OptimalCost(post_graph,
+                                             cost_estimator,
+                                             resource,
+                                             post_source_mv,
+                                             sink_machine_view,
+                                             allowed_machine_views,
+                                             cached_subgraph_costs),
+                                 post_decompn)));
     }
 
     return optimal_result;
@@ -238,23 +237,23 @@ struct OptimalCost {
 
     for (auto const &resource_split : get_resource_split(resource)) {
       minimize_runtime(optimal_result,
-               MachineMapping::parallel_combine(
-                   visit(OptimalCost(g1,
-                                     cost_estimator,
-                                     resource_split.first,
-                                     source_machine_view,
-                                     sink_machine_view,
-                                     allowed_machine_views,
-                                     cached_subgraph_costs),
-                         decompn1),
-                   visit(OptimalCost(g2,
-                                     cost_estimator,
-                                     resource_split.second,
-                                     source_machine_view,
-                                     sink_machine_view,
-                                     allowed_machine_views,
-                                     cached_subgraph_costs),
-                         decompn2)));
+                       MachineMapping::parallel_combine(
+                           visit(OptimalCost(g1,
+                                             cost_estimator,
+                                             resource_split.first,
+                                             source_machine_view,
+                                             sink_machine_view,
+                                             allowed_machine_views,
+                                             cached_subgraph_costs),
+                                 decompn1),
+                           visit(OptimalCost(g2,
+                                             cost_estimator,
+                                             resource_split.second,
+                                             source_machine_view,
+                                             sink_machine_view,
+                                             allowed_machine_views,
+                                             cached_subgraph_costs),
+                                 decompn2)));
     }
 
     return optimal_result;
@@ -280,7 +279,7 @@ struct OptimalCost {
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
         std::unordered_map<Node, MachineView> mv_map{{node, mv}};
         minimize_runtime(optimal_result,
-                 {estimate_cost(g, cost_estimator, mv_map), mv_map});
+                         {estimate_cost(g, cost_estimator, mv_map), mv_map});
       }
       return optimal_result;
     }

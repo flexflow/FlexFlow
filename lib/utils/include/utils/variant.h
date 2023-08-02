@@ -174,9 +174,8 @@ template <
     typename Container,
     typename VariantIn = typename Container::value_type,
     typename = std::enable_if<is_subeq_variant<VariantIn, VariantOut>::value>>
-auto widen(Container const &c) 
-  -> decltype(transform(c, std::declval<std::function<VariantOut(VariantIn const &)>>()))
-{
+auto widen(Container const &c) -> decltype(transform(
+    c, std::declval<std::function<VariantOut(VariantIn const &)>>())) {
   return transform(c, [](VariantIn const &i) { return widen<VariantOut>(i); });
 }
 
@@ -193,12 +192,11 @@ template <
     typename Container,
     typename VariantIn = typename Container::value_type,
     typename = std::enable_if<is_subeq_variant<VariantIn, VariantOut>::value>>
-auto narrow(Container const &c) 
-  -> decltype(transform(c, std::declval<std::function<optional<VariantOut>(VariantIn const &)>>()))
-{
+auto narrow(Container const &c) -> decltype(transform(
+    c,
+    std::declval<std::function<optional<VariantOut>(VariantIn const &)>>())) {
   return transform(c, [](VariantIn const &i) { return narrow<VariantOut>(i); });
 }
-
 
 template <typename... VariantOut,
           typename VariantIn,

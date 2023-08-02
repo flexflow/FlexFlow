@@ -9,12 +9,12 @@
 #include "labelled_upward_open_interfaces.h"
 #include "standard_labelled.h"
 #include "utils/exception.h"
+#include "utils/graph/algorithms.h"
 #include "utils/graph/multidiedge.h"
 #include "utils/graph/open_graph_interfaces.h"
 #include "utils/graph/open_graphs.h"
 #include "utils/type_traits.h"
 #include "utils/visitable.h"
-#include "utils/graph/algorithms.h"
 
 namespace FlexFlow {
 
@@ -51,48 +51,97 @@ public:
       std::unordered_set<Node> const &);
 };
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel, typename OutputLabel>
-struct ViewLabelledOpenMultiDiGraphAsUpwardOpen : public ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel> {
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel,
+          typename OutputLabel>
+struct ViewLabelledOpenMultiDiGraphAsUpwardOpen
+    : public ILabelledUpwardOpenMultiDiGraphView<NodeLabel,
+                                                 EdgeLabel,
+                                                 InputLabel> {
 public:
-  using InputType = LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>;
+  using InputType = LabelledOpenMultiDiGraphView<NodeLabel,
+                                                 EdgeLabel,
+                                                 InputLabel,
+                                                 OutputLabel>;
 
-  explicit ViewLabelledOpenMultiDiGraphAsUpwardOpen(InputType const &g) : g(g) { }
+  explicit ViewLabelledOpenMultiDiGraphAsUpwardOpen(InputType const &g)
+      : g(g) {}
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override { return this->g.query_nodes(q); }
-
-  std::unordered_set<UpwardOpenMultiDiEdge> query_edges(UpwardOpenMultiDiEdgeQuery const &q) const override {
-    return value_all(narrow<UpwardOpenMultiDiEdgeQuery>(this->g.query_edges(q)));
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+    return this->g.query_nodes(q);
   }
 
-  NodeLabel const &at(Node const &n) const override { return this->g.at(n); }
-  InputLabel const &at(InputMultiDiEdge const &e) const override { return this->g.at(e); }
-  EdgeLabel const &at(MultiDiEdge const &e) const override { return this->g.at(e); }
+  std::unordered_set<UpwardOpenMultiDiEdge>
+      query_edges(UpwardOpenMultiDiEdgeQuery const &q) const override {
+    return value_all(
+        narrow<UpwardOpenMultiDiEdgeQuery>(this->g.query_edges(q)));
+  }
+
+  NodeLabel const &at(Node const &n) const override {
+    return this->g.at(n);
+  }
+  InputLabel const &at(InputMultiDiEdge const &e) const override {
+    return this->g.at(e);
+  }
+  EdgeLabel const &at(MultiDiEdge const &e) const override {
+    return this->g.at(e);
+  }
+
 private:
   InputType g;
 };
-CHECK_NOT_ABSTRACT(ViewLabelledOpenMultiDiGraphAsUpwardOpen<test_types::hash_cmp, test_types::hash_cmp, test_types::hash_cmp, test_types::hash_cmp>);
+CHECK_NOT_ABSTRACT(
+    ViewLabelledOpenMultiDiGraphAsUpwardOpen<test_types::hash_cmp,
+                                             test_types::hash_cmp,
+                                             test_types::hash_cmp,
+                                             test_types::hash_cmp>);
 
-template <typename NodeLabel, typename EdgeLabel, typename InputLabel, typename OutputLabel>
-struct ViewLabelledOpenMultiDiGraphAsDownwardOpen : public ILabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, OutputLabel> {
+template <typename NodeLabel,
+          typename EdgeLabel,
+          typename InputLabel,
+          typename OutputLabel>
+struct ViewLabelledOpenMultiDiGraphAsDownwardOpen
+    : public ILabelledDownwardOpenMultiDiGraphView<NodeLabel,
+                                                   EdgeLabel,
+                                                   OutputLabel> {
 public:
-  using InputType = LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>;
+  using InputType = LabelledOpenMultiDiGraphView<NodeLabel,
+                                                 EdgeLabel,
+                                                 InputLabel,
+                                                 OutputLabel>;
 
-  explicit ViewLabelledOpenMultiDiGraphAsDownwardOpen(InputType const &g) : g(g) { }
+  explicit ViewLabelledOpenMultiDiGraphAsDownwardOpen(InputType const &g)
+      : g(g) {}
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override { return this->g.query_nodes(q); }
-
-  std::unordered_set<DownwardOpenMultiDiEdge> query_edges(DownwardOpenMultiDiEdgeQuery const &q) const override {
-    return value_all(narrow<DownwardOpenMultiDiEdgeQuery>(this->g.query_edges(q)));
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+    return this->g.query_nodes(q);
   }
 
-  NodeLabel const &at(Node const &n) const override { return this->g.at(n); }
-  OutputLabel const &at(OutputMultiDiEdge const &e) const override { return this->g.at(e); }
-  EdgeLabel const &at(MultiDiEdge const &e) const override { return this->g.at(e); }
+  std::unordered_set<DownwardOpenMultiDiEdge>
+      query_edges(DownwardOpenMultiDiEdgeQuery const &q) const override {
+    return value_all(
+        narrow<DownwardOpenMultiDiEdgeQuery>(this->g.query_edges(q)));
+  }
+
+  NodeLabel const &at(Node const &n) const override {
+    return this->g.at(n);
+  }
+  OutputLabel const &at(OutputMultiDiEdge const &e) const override {
+    return this->g.at(e);
+  }
+  EdgeLabel const &at(MultiDiEdge const &e) const override {
+    return this->g.at(e);
+  }
 
 private:
   InputType g;
 };
-CHECK_NOT_ABSTRACT(ViewLabelledOpenMultiDiGraphAsUpwardOpen<test_types::hash_cmp, test_types::hash_cmp, test_types::hash_cmp, test_types::hash_cmp>);
+CHECK_NOT_ABSTRACT(
+    ViewLabelledOpenMultiDiGraphAsUpwardOpen<test_types::hash_cmp,
+                                             test_types::hash_cmp,
+                                             test_types::hash_cmp,
+                                             test_types::hash_cmp>);
 
 template <InputSettings INPUT_SETTINGS,
           OutputSettings OUTPUT_SETTINGS,
@@ -176,9 +225,13 @@ struct LabelledOpenMultiDiSubgraphView<InputSettings::INCLUDE,
   using ResultType =
       LabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>;
 
-  LabelledOpenMultiDiSubgraphView(LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const &g, std::unordered_set<Node> const &nodes)
-    : g(g), nodes(nodes)
-  { }
+  LabelledOpenMultiDiSubgraphView(
+      LabelledOpenMultiDiGraphView<NodeLabel,
+                                   EdgeLabel,
+                                   InputLabel,
+                                   OutputLabel> const &g,
+      std::unordered_set<Node> const &nodes)
+      : g(g), nodes(nodes) {}
 
   std::unordered_set<UpwardOpenMultiDiEdge>
       query_edges(UpwardOpenMultiDiEdgeQuery const &q) const override {
@@ -186,7 +239,7 @@ struct LabelledOpenMultiDiSubgraphView<InputSettings::INCLUDE,
   }
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
     return static_cast<UpwardOpenMultiDiGraphView>(this->g).query_nodes(q);
-                  
+
     NOT_IMPLEMENTED();
   }
 
