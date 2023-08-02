@@ -568,9 +568,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     // padding)
     void const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
     // To get C, skip over QK^T products from previous requests
-    // if(bc->num_active_tokens() == 1){
-    //   print_tensor<float>((float*)B, 32, "key cache");
-    // }
     void *C = (void *)(m->qk_prods);
     if (m->num_kv_heads == m->num_heads) {
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
@@ -632,11 +629,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       }
     }
-    // if(bc->num_active_tokens() == 1){
-    //   print_tensor<float>((float*)A, 32, "Q tensor");
-    //   print_tensor<float>((float*)B, 32, "key cache");
-    //   print_tensor<float>((float*)C, 32, "QK prod");
-    // }
 
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
@@ -692,8 +684,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                    &softmax_beta,
                                    qk_tensor,
                                    C_softmax));
-    // print_tensor<float>((float *)C_softmax, 32, "QK softmax");
-    // print_tensor<float>((float *)C_softmax + 1000, 32, "QK softmax 2");
     // Matmul softmax(QK^T/sqrt(d_k)) by V
     alpha = 1.0f, beta = 0.0f;
     m_ = num_new_tokens;
@@ -713,10 +703,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     // requests
     C = static_cast<DT *>(m->attn_heads) +
         tokens_previous_requests * m->num_heads * m->vProjSize;
-
-    // if(bc->num_active_tokens() == 1){
-    //   print_tensor<float>((float*)B, 32, "value cache");
-    // }
 
     if (m->num_heads == m->num_kv_heads) {
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
@@ -742,13 +728,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      //  print_tensor<float>((float *)C, 96, "KV prod", shard_id);
-      //  print_tensor<float>((float *)C + strideC * 3, 96, "KV prod 1",
-      //  shard_id); print_tensor<float>((float *)C + strideC * 6, 96, "KV prod
-      //  2", shard_id); print_tensor<float>((float *)C + strideC * 9, 96, "KV
-      //  prod 3", shard_id);
-      // print_tensor<float>((float *)C, 32, "KV prod");
-      // print_tensor<float>((float *)C + 1000, 32, "KV prod 2");
     } else {
       int one_step_heads = m->num_heads / m->num_kv_heads;
       n = m->vProjSize;
@@ -795,8 +774,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     B = C;
     C = static_cast<DT *>(output_ptr) + tokens_previous_requests * m->oProjSize;
 
-    // print_tensor<float>((float *)A, 32, "output weight");
-
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_T,
@@ -816,36 +793,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            ldc,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // print_tensor<float>((float *)C, 32, "outputs", shard_id);
-    // print_tensor<float>((float *)A, 96, "output weight", shard_id);
-    // std::string filepath = "/home/ubuntu/FlexFlow/inference/" +
-    // std::to_string(shard_id) + "B.txt"; save_tensor<float>((float *)B,
-    //                    n * k,
-    //                    filepath.c_str());
-    // std::string filepath1 = "/home/ubuntu/FlexFlow/inference/" +
-    // std::to_string(shard_id) + "A.txt"; save_tensor<float>((float *)A,
-    //                    m_ * k,
-    //                    filepath1.c_str());
-
-    // save_tensor<float>((float *)B,
-    //                    n * k / 4,
-    //                    "/home/ubuntu/FlexFlow/inference/xxx.txt");
-    // save_tensor<float>((float *)A + ,
-    //                    m_ * k / 4,
-    //                    "/home/ubuntu/FlexFlow/inference/y.txt");
-    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize,
-    //                    100,
-    //                    "output->1");
-    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 3,
-    //                    bc->num_active_tokens() * bc->num_active_tokens(),
-    //                    "output->2");
-    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 6,
-    //                    bc->num_active_tokens() * bc->num_active_tokens(),
-    //                    "output->3");
-
-    // print_tensor<float>((float *)B + num_new_tokens * m->vProjSize * 9,
-    //                    bc->num_active_tokens() * bc->num_active_tokens(),
-    //                    "output->4");
 
     tokens_previous_requests += num_new_tokens;
   }
@@ -938,15 +885,6 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
-
-  // print_tensor<float>(input.get_float_ptr(), 32, "attention ip", shard_id);
-  // print_tensor<float>(output.get_float_ptr(), 32, "attention op", shard_id);
-  // // print_tensor<float>(output.get_float_ptr() + bc->num_active_tokens() *
-  // 768
-  // // / 4, 32, "attention op 1", shard_id);
-  // print_tensor<float>(weight.get_float_ptr(), 32, "attention weights",
-  // shard_id); print_tensor<float>(output.get_float_ptr(), 32, "attention op",
-  // shard_id);
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
