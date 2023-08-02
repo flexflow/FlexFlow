@@ -1,0 +1,6 @@
+#ifndef _FLEXFLOW_RUNTIME_FFI_INTERNAL_INTERNAL_RUNTIME_H
+#define _FLEXFLOW_RUNTIME_FFI_INTERNAL_INTERNAL_RUNTIME_H
+
+#include "flexflow/runtime.h"
+
+#endif

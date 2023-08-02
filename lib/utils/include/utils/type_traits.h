@@ -51,6 +51,14 @@ struct is_rc_copy_virtual_compliant
                   std::has_virtual_destructor<T>> {};
 
 template <typename T, typename Enable = void>
+struct is_clonable : std::false_type {};
+
+template <typename T>
+struct is_clonable<T, void_t<decltype(std::declval<T>().clone())>>
+    : std::true_type {};
+
+
+template <typename T, typename Enable = void>
 struct is_streamable : std::false_type {};
 
 template <typename T>

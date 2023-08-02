@@ -5,6 +5,29 @@
 
 FLEXFLOW_FFI_BEGIN()
 
+// Error handling
+
+typedef enum {
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_PARAM_SYNC_VALUE,
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_DATATYPE_VALUE,
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_ACTIVATION_VALUE,
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_POOL_OP_VALUE,
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_AGGREGATE_OP_VALUE,
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_OP_TYPE_VALUE
+} flexflow_opattrs_error_code_t;
+
+FF_NEW_OPAQUE_TYPE(flexflow_opattrs_error_t);
+flexflow_error_t flexflow_opattrs_error_wrap(flexflow_opattrs_error_t);
+flexflow_error_t flexflow_opattrs_error_unwrap(flexflow_error_t, 
+                                                flexflow_opattrs_error_t *);
+flexflow_error_t flexflow_opattrs_error_is_ok(flexflow_opattrs_error_t, bool *);
+flexflow_error_t flexflow_opattrs_error_get_string(flexflow_opattrs_error_t, char **);
+flexflow_error_t flexflow_opattrs_error_destroy(flexflow_opattrs_error_t);
+
+//
+
+FF_NEW_OPAQUE_TYPE(flexflow_regularizer_attrs_t);
+
 typedef enum {
   FLEXFLOW_DATATYPE_BOOL,
   FLEXFLOW_DATATYPE_INT32,
@@ -29,18 +52,14 @@ typedef enum {
 
 typedef enum {
   FLEXFLOW_PARAM_SYNC_PARAMETER_SERVER,
-  FLEXFLOW_PARAM_SYNC_NCCL
+  FLEXFLOW_PARAM_SYNC_NCCL,
+  FLEXFLOW_PARAM_SYNC_NONE
 } flexflow_param_sync_t;
 
 typedef enum {
   FLEXFLOW_AGGREGATE_OP_SUM,
   FLEXFLOW_AGGREGATE_OP_AVG,
 } flexflow_aggregate_op_t;
-
-typedef enum {
-  FLEXFLOW_OPATTRS_STATUS_OK,
-  FLEXFLOW_OPATTRS_ERROR_UNKNOWN
-} flexflow_opattrs_error_t;
 
 typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
   FLEXFLOW_OP_TYPE_NOOP,

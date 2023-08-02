@@ -9,11 +9,6 @@
 FLEXFLOW_FFI_BEGIN();
 
 typedef enum {
-  FLEXFLOW_PCG_STATUS_OK,
-  FLEXFLOW_PCG_ERROR_UNKNOWN,
-} flexflow_pcg_error_t;
-
-typedef enum {
   FLEXFLOW_DEVICE_TYPE_CPU,
   FLEXFLOW_DEVICE_TYPE_GPU,
 } flexflow_device_type_t;
@@ -30,22 +25,41 @@ FF_NEW_OPAQUE_TYPE(flexflow_optimizer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_machine_specification_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_compilation_input_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_compilation_result_t);
+FF_NEW_OPAQUE_TYPE(flexflow_pcg_error_t);
+FF_NEW_OPAQUE_TYPE(flexflow_tensor_list_t);
+
+typedef enum {
+  FLEXFLOW_PCG_STATUS_INVALID_ERROR_CODE,
+  FLEXFLOW_PCG_STATUS_INVALID_FILE_PTR,
+  FLEXFLOW_PCG_STATUS_FILE_WRITE_FAILED,
+  FLEXFLOW_PCG_STATUS_FILE_READ_FAILED,
+  FLEXFLOW_PCG_ERROR_UNKNOWN,
+} flexflow_pcg_error_code_t;
 
 extern flexflow_initializer_t NO_INITIALIZER;
+extern flexflow_regularizer_attrs_t NO_REGULARIZER;
 
-flexflow_error_t make_pcg_error(flexflow_pcg_error_t);
+flexflow_error_t flexflow_pcg_error_wrap(flexflow_pcg_error_t);
+flexflow_error_t flexflow_pcg_error_unwrap(flexflow_error_t, 
+                                           flexflow_pcg_error_t *);
+flexflow_error_t flexflow_pcg_error_is_ok(flexflow_pcg_error_t, bool *);
+flexflow_error_t flexflow_pcg_error_get_string(flexflow_pcg_error_t, char **);
+flexflow_error_t flexflow_pcg_error_get_error_code(flexflow_pcg_error_t, flexflow_pcg_error_code_t *);
+flexflow_error_t flexflow_pcg_error_destroy(flexflow_pcg_error_t);
 
-char *flexflow_pcg_get_error_string(flexflow_pcg_error_t);
+flexflow_error_t flexflow_tensor_list_get_num_elements(flexflow_tensor_list_t, size_t *out);
+flexflow_error_t flexflow_tensor_list_get_element(flexflow_tensor_list_t, size_t, flexflow_tensor_t *out);
+flexflow_error_t flexflow_tensor_list_destroy(flexflow_tensor_list_t);
 
 flexflow_error_t
     flexflow_computation_graph_create(flexflow_computation_graph_t *out);
 flexflow_error_t
     flexflow_computation_graph_destroy(flexflow_computation_graph_t);
 
-flexflow_error_t flexflow_computation_graph_serialize_to_buf(
-    flexflow_computation_graph_t, void *buf, size_t buf_size);
-flexflow_error_t flexflow_computation_graph_deserialize_from_buf(
-    flexflow_computation_graph_t, void *buf, size_t buf_size);
+flexflow_error_t flexflow_computation_graph_serialize_to_buffer(
+    flexflow_computation_graph_t, char **out);
+flexflow_error_t flexflow_computation_graph_deserialize_from_buffer(
+    char *buf, flexflow_computation_graph_t *out);
 
 flexflow_error_t
     flexflow_computation_graph_serialize_to_file(flexflow_computation_graph_t,
@@ -68,8 +82,7 @@ flexflow_error_t flexflow_tensor_get_datatype(flexflow_tensor_t,
                                               flexflow_datatype_t *out);
 flexflow_error_t flexflow_tensor_get_num_dims(flexflow_tensor_t, int *out);
 flexflow_error_t flexflow_tensor_get_dims(flexflow_tensor_t, int *out);
-flexflow_error_t flexflow_tensor_destroy(flexflow_computation_graph_t,
-                                         flexflow_tensor_t);
+flexflow_error_t flexflow_tensor_destroy(flexflow_tensor_t);
 
 flexflow_error_t
     flexflow_computation_graph_add_op_exp(flexflow_computation_graph_t,
@@ -120,14 +133,14 @@ flexflow_error_t
 flexflow_error_t
     flexflow_computation_graph_add_op_pow(flexflow_computation_graph_t,
                                           flexflow_tensor_t,
-                                          flexflow_tensor_t *out,
                                           float exponent,
+                                          flexflow_tensor_t *out,
                                           char *name = NULL);
 flexflow_error_t flexflow_computation_graph_add_op_scalar_multiply(
     flexflow_computation_graph_t,
     flexflow_tensor_t,
-    flexflow_tensor_t *out,
     float scalar,
+    flexflow_tensor_t *out,
     char *name = NULL);
 flexflow_error_t
     flexflow_computation_graph_add_op_scalar_add(flexflow_computation_graph_t,
@@ -203,12 +216,14 @@ flexflow_error_t flexflow_computation_graph_add_op_conv2d(
     bool use_bias = true,
     flexflow_initializer_t kernel_initializer = NO_INITIALIZER,
     flexflow_initializer_t bias_initializer = NO_INITIALIZER,
+    flexflow_regularizer_attrs_t kernel_regularizer = NO_REGULARIZER,
     char *name = NULL);
 flexflow_error_t
     flexflow_computation_graph_add_op_dropout(flexflow_computation_graph_t,
                                               flexflow_tensor_t,
                                               float rate,
-                                              unsigned long long seed,
+                                              flexflow_tensor_t *out,
+                                              unsigned long long seed = 0,
                                               char *name = NULL);
 flexflow_error_t flexflow_computation_graph_add_op_embedding(
     flexflow_computation_graph_t,
@@ -216,22 +231,24 @@ flexflow_error_t flexflow_computation_graph_add_op_embedding(
     int num_entries,
     int out_dim,
     flexflow_aggregate_op_t aggr_op,
-    flexflow_datatype_t output_type,
+    flexflow_tensor_t *out,
+    flexflow_datatype_t output_type = FLEXFLOW_DATATYPE_FLOAT,
     flexflow_initializer_t initializer = NO_INITIALIZER,
     char *name = NULL);
 flexflow_error_t
     flexflow_computation_graph_add_op_gather(flexflow_computation_graph_t,
-                                             flexflow_tensor_t,
-                                             flexflow_tensor_t *outs,
+                                             flexflow_tensor_t input,
+                                             flexflow_tensor_t index,
                                              int dim,
+                                             flexflow_tensor_list_t *out,
                                              char *name = NULL);
 flexflow_error_t
     flexflow_computation_graph_add_op_group_by(flexflow_computation_graph_t,
                                                flexflow_tensor_t data,
                                                flexflow_tensor_t assign,
-                                               flexflow_tensor_t *outs,
                                                int n,
                                                float alpha,
+                                               flexflow_tensor_list_t *out,
                                                char *name = NULL);
 flexflow_error_t flexflow_computation_graph_add_op_cache(
     flexflow_computation_graph_t,
