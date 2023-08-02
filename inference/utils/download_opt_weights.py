@@ -8,16 +8,20 @@ from transformers import AutoModelForCausalLM
 
 # You can pass the --use-full-precision flag to use the full-precision weight. By default, we use half precision.
 parser = argparse.ArgumentParser()
-parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
+parser.add_argument(
+    "--use-full-precision", action="store_true", help="Use full precision"
+)
 args = parser.parse_args()
 if not args.use_full_precision:
     import torch
+
     torch.set_default_tensor_type(torch.HalfTensor)
 
 # Change working dir to folder storing this script
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
+
 
 def convert_hf_model(model, dst_folder):
     os.makedirs(dst_folder, exist_ok=True)
@@ -34,29 +38,41 @@ def convert_hf_model(model, dst_folder):
         )
         params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
     # copy embedding weights
-    shutil.copy(os.path.join(dst_folder, "embed_tokens_weight"), os.path.join(dst_folder, "embed_tokens_weight_lm_head"))
+    shutil.copy(
+        os.path.join(dst_folder, "embed_tokens_weight"),
+        os.path.join(dst_folder, "embed_tokens_weight_lm_head"),
+    )
+
 
 # Download and convert big model weights
 model = AutoModelForCausalLM.from_pretrained("facebook/opt-6.7b")
-dst_folder="../weights/opt_6B_weights" if args.use_full_precision else "../weights/opt_6B_weights_half"
+dst_folder = (
+    "../weights/opt_6B_weights"
+    if args.use_full_precision
+    else "../weights/opt_6B_weights_half"
+)
 convert_hf_model(model, dst_folder)
 
 # Download and convert small model weights
 model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m")
-dst_folder="../weights/opt_125M_weights" if args.use_full_precision else "../weights/opt_125M_weights_half"
+dst_folder = (
+    "../weights/opt_125M_weights"
+    if args.use_full_precision
+    else "../weights/opt_125M_weights_half"
+)
 convert_hf_model(model, dst_folder)
 
 # Download tokenizer files
 os.makedirs("../tokenizer", exist_ok=True)
-tokenizer_filepath = '../tokenizer/gpt2-vocab.json'
-url = 'https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json'
+tokenizer_filepath = "../tokenizer/vocab.json"
+url = "https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-vocab.json"
 r = requests.get(url)
-open(tokenizer_filepath , 'wb').write(r.content)
-tokenizer_filepath = '../tokenizer/gpt2-merges.txt'
-url = 'https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt'
+open(tokenizer_filepath, "wb").write(r.content)
+tokenizer_filepath = "../tokenizer/merges.txt"
+url = "https://raw.githubusercontent.com/facebookresearch/metaseq/main/projects/OPT/assets/gpt2-merges.txt"
 r = requests.get(url)
-open(tokenizer_filepath , 'wb').write(r.content)
-tokenizer_filepath = '../tokenizer/added_tokens.json'
-url = 'https://huggingface.co/truongpdd/vietnews-gpt2/raw/main/added_tokens.json'
+open(tokenizer_filepath, "wb").write(r.content)
+tokenizer_filepath = "../tokenizer/special_tokens_map.json"
+url = "https://huggingface.co/truongpdd/vietnews-gpt2/raw/main/added_tokens.json"
 r = requests.get(url)
-open(tokenizer_filepath , 'wb').write(r.content)
+open(tokenizer_filepath, "wb").write(r.content)
