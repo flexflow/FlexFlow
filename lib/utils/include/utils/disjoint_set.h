@@ -11,19 +11,20 @@ namespace FlexFlow {
 template <typename T>
 class m_disjoint_set {
 public:
-  void m_union(T const *l, T const *r) {
+  void m_union(optional<T> const & l, optional<T> const &r) {
     this->add_node_if_missing(l);
     this->add_node_if_missing(r);
-    T const *ll = this->find(l);
-    T const *rr = this->find(r);
+    optional<T> const ll = this->find(l);
+    optional<T> const rr = this->find(r);
     if (ll != rr) {
       this->mapping[ll] = rr;
     }
   }
-  T const *find(T const *t) {
+
+  optional<T> const find(optional<T> const &t) const {
     this->add_node_if_missing(t);
-    T const *parent = this->mapping.at(t);
-    if (parent == nullptr) {
+    optional<T> const parent = this->mapping.at(t);
+    if (parent == nullopt) {
       return t;
     } else {
       return this->find(parent);
@@ -31,45 +32,46 @@ public:
   }
 
 private:
-  void add_node_if_missing(T const *t) {
+  void add_node_if_missing(optional<T> const &t) {
     if (mapping.find(t) == mapping.end()) {
-      mapping[t] = nullptr;
+      mapping[t] = nullopt;
     }
   }
-  std::unordered_map<T const *, T const *> mapping;
+  std::unordered_map< optional<T> , optional<T> > mapping;
 };
 
 template <typename T, typename Compare = std::less<T>>
 class disjoint_set {
 public:
-  void m_union(T const &l, T const &r) {
+  void m_union(optional<T>  const &l, optional<T>  const &r) {
     this->nodes.insert(l);
     this->nodes.insert(r);
     this->ds.m_union(this->get_node(l), this->get_node(r));
   }
-  T const &find(T const &t) {
+
+  optional<T> const find(optional<T> const &t) {
     this->nodes.insert(t);
-    return *this->ds.find(this->get_node(t));
+    return this->ds.find(this->get_node(t));
   }
-  std::map<T, T, Compare> get_mapping() const {
-    std::map<T, T, Compare> mapping;
+
+  std::map<optional<T> , optional<T> , Compare> get_mapping() const {
+    std::map<optional<T> , optional<T> , Compare> mapping;
     for (T const &t : this->nodes) {
-      mapping[t] = *this->ds.find(&t);
+      mapping[t] = this->ds.find(t);
     }
     return mapping;
   }
 
 private:
-  T const *get_node(T const &t) {
+  optional<T> const get_node(optional<T> const &t) {
     auto it = this->nodes.find(t);
     assert(it != this->nodes.end());
-    return &*it;
+    return *it;
   }
 
   mutable m_disjoint_set<T>
-      ds; // Note(lambda):add mutable, can make ds be mutable, so we can use the
-          // ds->find() in const function
-  std::set<T, Compare> nodes;
+      ds;// Note(lambda): make mutable to allow using ds->find() to be const because while the result is invariant to path compression, 
+  std::set<optional<T>, Compare> nodes;
 };
 
 } // namespace FlexFlow
