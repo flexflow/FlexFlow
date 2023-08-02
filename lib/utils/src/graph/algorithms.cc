@@ -318,7 +318,6 @@ std::vector<Node> get_unchecked_topological_ordering(DiGraphView const &g) {
   std::unordered_set<Node> seen;
   std::unordered_map<Node, std::unordered_set<Node>> predecessors =
       get_predecessors(g, get_nodes(g));
-
   auto all_predecessors_seen = [&](Node const &n) -> bool {
     bool result = true;
     for (Node const &pred : predecessors.at(n)) {
@@ -363,19 +362,26 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   return result;
 }
 
+std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
+  UndirectedGraphView undirected = as_undirected(g);
+  return get_neighbors(undirected, n);
+}
+
+std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
+                                       Node const &n) {
+  UndirectedGraphView undirected = as_undirected(as_digraph(g));
+  return get_neighbors(undirected, n);
+}
+
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
                                        Node const &n) {
-  UndirectedEdgeQuery query{query_set<Node>{n}};
+
   std::unordered_set<UndirectedEdge> edges =
-      filter(g.query_edges(query), [&](UndirectedEdge const &edge) {
+      filter(get_node_edges(g, n), [&](UndirectedEdge const &edge) {
         return ((edge.smaller == n && edge.bigger != n) ||
                 (edge.smaller != n && edge.bigger == n));
       });
-  for (UndirectedEdge const &edge : edges) {
-    // assert(edge.smaller == n || edge.bigger == n);
-    std::cout << "edge.smaller: " << edge.smaller
-              << ", edge.bigger: " << edge.bigger << std::endl;
-  }
+
   return map_over_unordered_set<UndirectedEdge, Node>(
       [&](UndirectedEdge const &edge) -> Node {
         return (edge.smaller == n) ? edge.bigger : edge.smaller;
@@ -575,14 +581,12 @@ MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &g) {
 
 std::vector<std::unordered_set<Node>>
     get_weakly_connected_components(DiGraphView const &g) {
-  UndirectedGraphView undirected = as_undirected(g);
-  return get_connected_components(undirected);
+  return get_connected_components(as_undirected(g));
 }
 
 std::vector<std::unordered_set<Node>>
     get_weakly_connected_components(MultiDiGraphView const &g) {
-  UndirectedGraphView undirected = as_undirected(as_digraph(g));
-  return get_connected_components(undirected);
+  return get_connected_components(as_undirected(as_digraph(g)));
 }
 
 std::vector<std::unordered_set<Node>>

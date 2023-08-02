@@ -35,7 +35,13 @@ udi &udi::operator++() {
 
   std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(graph, {last});
   for (DirectedEdge const &e : outgoing) {
-    stack.push_back(e.dst);
+    auto it = std::find(stack.begin(), stack.end(), e.dst);
+    if (it == stack.end()) {
+      stack.push_back(e.dst);
+    } else {
+      stack.erase(it);
+      stack.push_back(e.dst);
+    }
   }
   return *this;
 }

@@ -59,7 +59,7 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &); // TODO
+  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);
   IDiGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -71,7 +71,11 @@ public:
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
   static DiGraphView unsafe_create(IDiGraphView const &graphView);
-  
+
+
+  DiGraphView(std::shared_ptr<IDiGraphView const> const &ptr,
+              should_only_be_used_internally_tag_t const &tag)
+      : DiGraphView(ptr) {}
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
   std::shared_ptr<IDiGraphView const> ptr;
@@ -95,7 +99,7 @@ public:
   DiGraph &operator=(DiGraph const &) = default;
 
   operator DiGraphView() const {
-    return DiGraphView::unsafe_create(*this->ptr);
+    return DiGraphView(this->ptr.get(), should_only_be_used_internally_tag_t{});
   }
 
   friend void swap(DiGraph &, DiGraph &);

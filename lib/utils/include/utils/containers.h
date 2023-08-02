@@ -168,17 +168,6 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
 }
 
 template <typename K, typename V, typename F>
-std::unordered_map<K, V> filter_keys(bidict<K, V> const &m, F const &f) {
-  std::unordered_map<K, V> result;
-  for (auto const &kv : m) {
-    if (f(kv.first)) {
-      result.insert(kv);
-    }
-  }
-  return result;
-}
-
-template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_values(bidict<K, V> const &m, F const &f) {
   std::unordered_map<K, V> result;
   for (auto const &kv : m) {
@@ -595,17 +584,13 @@ T reversed(T const &t) {
 
 template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
-  std::vector<T> result;
-
-  for (auto const &element : v) {
-    if (element != nullopt) {
-      result.push_back(element.value());
+  return transform(v, [](optional<T> const &t) {
+    if (t == nullopt) {
+      throw std::runtime_error("value is nullopt");
+    } else {
+      return t.value();
     }
-  }
-  if (result.empty()) {
-    throw std::runtime_error("value_all: empty vector");
-  }
-  return result;
+  });
 }
 
 template <typename T>

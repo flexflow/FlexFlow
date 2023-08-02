@@ -36,6 +36,7 @@ struct unchecked_dfs_iterator {
 
 private:
   std::vector<Node> stack;
+  std::unordered_set<Node> seen;
   DiGraphView graph;
 
   friend struct checked_dfs_iterator;
