@@ -10,13 +10,13 @@ TEST_CASE_TEMPLATE("PushBack", T, int, double, char) {
   StackVector vector;
 
   vector.push_back(10);
-  CHECK_EQ(vector.size(), 1);
-  CHECK_EQ(vector[0], 10);
+  std::vector<T> res = vector;
+  std::vector<T> expected = {10};
+  CHECK(res == expected);
 
   vector.push_back(20);
-  CHECK_EQ(vector.size(), 2);
-  CHECK_EQ(vector[0], 10);
-  CHECK_EQ(vector[1], 20);
+  expected = {10, 20};
+  CHECK(res == expected);
 }
 
 TEST_CASE_TEMPLATE("OperatorIndex", T, int, double, char) {
@@ -28,9 +28,9 @@ TEST_CASE_TEMPLATE("OperatorIndex", T, int, double, char) {
   vector.push_back(20);
   vector.push_back(30);
 
-  CHECK_EQ(vector[0], 10);
-  CHECK_EQ(vector[1], 20);
-  CHECK_EQ(vector[2], 30);
+  CHECK(vector[0] == 10);
+  CHECK(vector[1] == 20);
+  CHECK(vector[2] == 30);
 }
 
 TEST_CASE_TEMPLATE("Size", T, int, double, char) {
@@ -38,13 +38,13 @@ TEST_CASE_TEMPLATE("Size", T, int, double, char) {
   using StackVector = stack_vector<T, MAXSIZE>;
   StackVector vector;
 
-  CHECK_EQ(vector.size(), 0);
+  CHECK(vector.size() == 0);
 
   vector.push_back(10);
-  CHECK_EQ(vector.size(), 1);
+  CHECK(vector.size() == 1);
 
   vector.push_back(20);
-  CHECK_EQ(vector.size(), 2);
+  CHECK(vector.size() == 2);
 }
 
 TEST_CASE_TEMPLATE("==", T, int, double, char) {
@@ -60,7 +60,7 @@ TEST_CASE_TEMPLATE("==", T, int, double, char) {
   vector2.push_back(15);
   vector2.push_back(20);
 
-  CHECK_EQ(vector1, vector2);
+  CHECK(vector1 == vector2);
 }
 
 TEST_CASE_TEMPLATE("EmplaceBack", T, int, double, char) {
@@ -69,8 +69,8 @@ TEST_CASE_TEMPLATE("EmplaceBack", T, int, double, char) {
   StackVector vector;
 
   vector.push_back(10);
-  CHECK_EQ(vector.back(), 10);
+  CHECK(vector.back() == 10);
 
   vector.push_back(20);
-  CHECK_EQ(vector.back(), 20);
+  CHECK(vector.back() == 20);
 }
