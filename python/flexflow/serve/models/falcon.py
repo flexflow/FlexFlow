@@ -94,10 +94,11 @@ class FlexFlowFalcon(FlexFlowModel):
             )
 
             if self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multiquery_self_attention(
+                mha = ffmodel.inc_multihead_self_attention(
                     att_norm,
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
+                    1,
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     0.0,  # dropout

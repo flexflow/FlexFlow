@@ -227,8 +227,10 @@ class LLM:
         self.fileloader = FileDataLoader(
             self.weights_path,
             self.hf_config.num_attention_heads,
+            self.hf_config.num_attention_heads,
             self.hf_config.hidden_size,
             self.hf_config.hidden_size // self.hf_config.num_attention_heads,
+            self.ffconfig.tensor_parallelism_degree,
         )
 
         model_layers_with_weights = self.model.get_layers_with_weights()

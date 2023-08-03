@@ -92,6 +92,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     attn_norm,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
+                    self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
@@ -110,6 +111,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     attn_norm,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
+                    self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
@@ -127,6 +129,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 mha = ffmodel.inc_multihead_attention(
                     attn_norm,
                     self.llama_config.hidden_size,
+                    self.llama_config.num_attention_heads,
                     self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,

@@ -118,6 +118,7 @@ class FlexFlowOPT(FlexFlowModel):
                     hidden_states,
                     self.opt_config.hidden_size,
                     self.opt_config.num_attention_heads,
+                    self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
@@ -138,6 +139,7 @@ class FlexFlowOPT(FlexFlowModel):
                     hidden_states,
                     self.opt_config.hidden_size,
                     self.opt_config.num_attention_heads,
+                    self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
@@ -157,6 +159,7 @@ class FlexFlowOPT(FlexFlowModel):
                 mha = ffmodel.inc_multihead_attention(
                     hidden_states,
                     self.opt_config.hidden_size,
+                    self.opt_config.num_attention_heads,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
