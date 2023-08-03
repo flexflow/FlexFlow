@@ -347,11 +347,7 @@ TEST_CASE("Testing subvec function") {
   CHECK(subvec_v2 == std::vector<int>({1, 2, 3}));
 }
 
-// Example for vector
-TEST_CASE("Test for flatmap function on vectors") {
-  std::vector<int> v = {2, 3, 4, 5};
-
-  auto get_factors = [](int x) -> std::vector<int> {
+auto get_factors = [](int x) -> std::vector<int> {
     // Returns a vector of factors of x
     std::vector<int> factors;
     for (int i = 1; i <= x; i++) {
@@ -362,26 +358,10 @@ TEST_CASE("Test for flatmap function on vectors") {
     return factors;
   };
 
+// Example for vector
+TEST_CASE("Test for flatmap function on vectors") {
+  std::vector<int> v = {2, 3, 4, 5};
   auto result = flatmap(v, get_factors);
   CHECK(result == std::vector<int>({1, 2, 1, 3, 1, 2, 4, 1, 5}));
 }
 
-// Example for unordered set
-TEST_CASE("Test for flatmap function on unordered_set") {
-  std::vector<int> v = {2, 3, 4, 5};
-
-  auto f = [](int x) -> std::vector<int> {
-    // Returns a set of factors of x
-    std::vector<int> factors;
-    for (int i = 1; i <= x; i++) {
-      if (x % i == 0) {
-        factors.push_back(i);
-      }
-    }
-    return factors;
-  };
-
-  auto result = flatmap(v, f);
-
-  CHECK(result == std::vector<int>({1, 2, 1, 3, 1, 2, 4, 1, 5}));
-}

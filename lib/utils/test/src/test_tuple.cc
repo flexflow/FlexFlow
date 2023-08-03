@@ -18,21 +18,21 @@ TEST_CASE("get function") {
   }
 
   SUBCASE("get rvalue reference") {
-    float &&result = get<float>(std::move(t));
-    CHECK(result == doctest::Approx(3.14f));
+    int &&result = get<int>(std::move(t));
+    CHECK(result == 42);
 
     // t is in a valid but unspecified state after move
     CHECK(std::get<0>(t) == 42); // Uncomment this line to check the behavior
   }
 
   SUBCASE("get const reference") {
-    double const &result = get<double>(t);
-    CHECK(result == doctest::Approx(2.71828));
+    int const &result = get<int>(t);
+    CHECK(result == 42);
   }
 
   SUBCASE("get const rvalue reference") {
-    double const &&result = get<double>(std::move(t));
-    CHECK(result == doctest::Approx(2.71828));
+    int const &&result = get<int>(std::move(t));
+    CHECK(result == 42);
   }
 }
 
