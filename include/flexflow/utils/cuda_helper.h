@@ -179,9 +179,9 @@ ncclDataType_t ff_to_nccl_datatype(DataType type);
 cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type);
 cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type);
 
-static double diffTime(timeval start, timeval end)
-{
-    return (end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec) * 0.001;
+static double diffTime(timeval start, timeval end) {
+  return (end.tv_sec - start.tv_sec) * 1000 +
+         (end.tv_usec - start.tv_usec) * 0.001;
 }
 
 #endif

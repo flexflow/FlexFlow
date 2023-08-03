@@ -14,10 +14,10 @@
  */
 
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/initializer.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "flexflow/initializer.h"
 
 namespace FlexFlow {
 
@@ -68,68 +68,73 @@ LinearMeta::LinearMeta(FFHandler handler,
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 std::mutex LinearMeta::profile_lock;
-std::unordered_map<cublasAlgoConfig_t, int, cublasAlgoConfig_hasher> LinearMeta::algo_map;
+std::unordered_map<cublasAlgoConfig_t, int, cublasAlgoConfig_hasher>
+    LinearMeta::algo_map;
 
-void LinearMeta::findBestAlgoID(int m, int n, int k){
+void LinearMeta::findBestAlgoID(int m, int n, int k) {
   // return; // NO_PROF
 
   std::lock_guard<std::mutex> lock(profile_lock);
-  
+
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(output_type[0]);
-  #if CUDA_VERSION >= 11000
-    // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-    cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  #else
-    cudaDataType_t compute_type = cublas_data_type;
-  #endif
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#else
+  cudaDataType_t compute_type = cublas_data_type;
+#endif
 
   cublasAlgoConfig_t mark{1, m, n, k, (int)compute_type};
   auto iter = algo_map.find(mark);
-  if(iter != algo_map.end()) return;
+  if (iter != algo_map.end()) {
+    return;
+  }
 
   // don't find, profile required
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
-  switch (output_type[0]){
-  case DT_FLOAT:
-    cudaRandomUniform(static_cast<float*>(handle.workSpace), handle.workSpaceSize / data_type_size(DT_FLOAT));
-    break;
-  case DT_HALF:
-    cudaRandomUniform(static_cast<half*>(handle.workSpace), handle.workSpaceSize / data_type_size(DT_HALF));
-    break;
-  default:
-    assert(false);
-    break;
+  switch (output_type[0]) {
+    case DT_FLOAT:
+      cudaRandomUniform(static_cast<float *>(handle.workSpace),
+                        handle.workSpaceSize / data_type_size(DT_FLOAT));
+      break;
+    case DT_HALF:
+      cudaRandomUniform(static_cast<half *>(handle.workSpace),
+                        handle.workSpaceSize / data_type_size(DT_HALF));
+      break;
+    default:
+      assert(false);
+      break;
   }
 
   float alpha = 1.0f, beta = 0.0f;
-    
+
   int startAlgo, endAlgo;
-  const int      ites = 100;
+  int const ites = 100;
   struct timeval start, end;
   // TODO: only support 16F
-  if(compute_type == CUBLAS_COMPUTE_16F){
-      startAlgo   = (int)CUBLAS_GEMM_DEFAULT_TENSOR_OP;
-      endAlgo     = (int)CUBLAS_GEMM_ALGO15_TENSOR_OP;
-  }else if (compute_type == CUDA_R_32F){
-      startAlgo   = (int)CUBLAS_GEMM_DEFAULT;
-      endAlgo     = (int)CUBLAS_GEMM_ALGO23;
-  }else{
+  if (compute_type == CUBLAS_COMPUTE_16F) {
+    startAlgo = (int)CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+    endAlgo = (int)CUBLAS_GEMM_ALGO15_TENSOR_OP;
+  } else if (compute_type == CUDA_R_32F) {
+    startAlgo = (int)CUBLAS_GEMM_DEFAULT;
+    endAlgo = (int)CUBLAS_GEMM_ALGO23;
+  } else {
     assert(false);
   }
-  
+
   printf("***Cublas Gemm Testing Begin (Linear)***\n");
   printf("\n-----------------------------\n");
   printf("GEMM test: [M: %d, K: %d, N: %d] for linear\n", m, k, n);
   // todo
-  void* d_A = handle.workSpace;
-  void* d_B = d_A + m * k * data_type_size(output_type[0]);
-  void* d_C = d_B + k * n * data_type_size(output_type[0]);
+  void *d_A = handle.workSpace;
+  void *d_B = d_A + m * k * data_type_size(output_type[0]);
+  void *d_C = d_B + k * n * data_type_size(output_type[0]);
 
   float exec_time = 99999.0f;
-  int   fast_algo = 0;
+  int fast_algo = 0;
 
   for (int algo = startAlgo; algo <= endAlgo; algo++) {
     cublasStatus_t status;
@@ -158,9 +163,9 @@ void LinearMeta::findBestAlgoID(int m, int n, int k){
       status = cublasGemmEx(handle.blas,
                             CUBLAS_OP_T,
                             CUBLAS_OP_N,
-                            m,      // out_dim
-                            n,      // batch_size
-                            k,      // in_dim
+                            m, // out_dim
+                            n, // batch_size
+                            k, // in_dim
                             &alpha,
                             d_A,
                             cublas_data_type,
@@ -182,17 +187,16 @@ void LinearMeta::findBestAlgoID(int m, int n, int k){
     cudaDeviceSynchronize();
     gettimeofday(&end, NULL);
     if (status == CUBLAS_STATUS_SUCCESS) {
-        printf("algo_%d costs %.3fms \n", algo, diffTime(start, end) / ites);
-        if (diffTime(start, end) / ites < exec_time) {
-            exec_time = diffTime(start, end) / ites;
-            fast_algo = algo;
-        }
+      printf("algo_%d costs %.3fms \n", algo, diffTime(start, end) / ites);
+      if (diffTime(start, end) / ites < exec_time) {
+        exec_time = diffTime(start, end) / ites;
+        fast_algo = algo;
+      }
     }
   }
 
   printf("fast_algo %d costs %.3f ms\n", fast_algo, exec_time);
   algo_map.insert(std::pair<const cublasAlgoConfig_t, int>(mark, fast_algo));
-
 }
 #endif
 LinearMeta::~LinearMeta(void) {
@@ -450,9 +454,11 @@ void forward_kernel(LinearMeta const *m,
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cublasAlgoConfig_t mark{1, out_dim, batch_size, in_dim, (int)compute_type};
   auto iter = m->algo_map.find(mark);
-  cublasGemmAlgo_t algo_best= iter == m->algo_map.end() ? CUBLAS_GEMM_DEFAULT_TENSOR_OP : static_cast<cublasGemmAlgo_t>(iter->second);
+  cublasGemmAlgo_t algo_best =
+      iter == m->algo_map.end() ? CUBLAS_GEMM_DEFAULT_TENSOR_OP
+                                : static_cast<cublasGemmAlgo_t>(iter->second);
 #else
-  cublasGemmAlgo_t algo_best= CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+  cublasGemmAlgo_t algo_best = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
 #endif
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
@@ -478,9 +484,11 @@ void forward_kernel(LinearMeta const *m,
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
     mark.k = 1;
     auto iter = m->algo_map.find(mark);
-    algo_best= iter==m->algo_map.end() ? CUBLAS_GEMM_DEFAULT_TENSOR_OP : static_cast<cublasGemmAlgo_t>(iter->second);
+    algo_best = iter == m->algo_map.end()
+                    ? CUBLAS_GEMM_DEFAULT_TENSOR_OP
+                    : static_cast<cublasGemmAlgo_t>(iter->second);
 #else
-    algo_best= CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+    algo_best = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
 #endif
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,

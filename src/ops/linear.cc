@@ -510,7 +510,9 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->offload = linear->offload;
 
   m->findBestAlgoID(out_dim, batch_size, in_dim);
-  if(m->use_bias) m->findBestAlgoID(out_dim, batch_size, 1);
+  if (m->use_bias) {
+    m->findBestAlgoID(out_dim, batch_size, 1);
+  }
   std::strcpy(m->op_name, linear->name);
 
   init_kernel(m, batch_size, out_dim);

@@ -120,8 +120,8 @@ public:
   int int32_value;
 };
 
-template<typename T>
-void cudaRandomUniform(T* buffer, const size_t size);
+template <typename T>
+void cudaRandomUniform(T *buffer, const size_t size);
 
 }; // namespace FlexFlow
 #endif
