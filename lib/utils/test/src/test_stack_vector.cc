@@ -16,6 +16,7 @@ TEST_CASE_TEMPLATE("PushBack", T, int, double, char) {
 
   vector.push_back(20);
   expected = {10, 20};
+  res = vector;
   CHECK(res == expected);
 }
 

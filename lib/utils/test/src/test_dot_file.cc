@@ -16,7 +16,7 @@ TEST_CASE("DotFile") {
   node1 [label=Node B,shape=rectangle];
 })EXPECTED_OUTPUT";
 
-    CHECK_EQ(oss.str(), expectedOutput);
+    CHECK(oss.str() == expectedOutput);
   }
 
   SUBCASE("add_edge") {
@@ -30,7 +30,7 @@ TEST_CASE("DotFile") {
   node1 -> node2;
 })EXPECTED_OUTPUT";
 
-    CHECK_EQ(oss.str(), expectedOutput);
+    CHECK(oss.str() == expectedOutput);
   }
 
   SUBCASE("add_record_node") {
@@ -50,7 +50,7 @@ TEST_CASE("DotFile") {
   node0 [label="{ Field1 | 42 | Field2 | 3.140000e+00 }",shape=record];
 })EXPECTED_OUTPUT";
 
-    CHECK_EQ(oss.str(), expectedOutput);
+    CHECK(oss.str() == expectedOutput);
   }
 
   SUBCASE("add_node_to_subgraph") {
@@ -72,6 +72,6 @@ node1;
 }
 })EXPECTED_OUTPUT";
 
-    CHECK_EQ(oss.str(), expectedOutput);
+    CHECK(oss.str() == expectedOutput);
   }
 }

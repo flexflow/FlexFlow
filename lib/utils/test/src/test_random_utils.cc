@@ -14,7 +14,7 @@ TEST_CASE("select_random") {
   SUBCASE("Invalid arguments") {
     std::vector<float> weights = {0.1f, 0.3f, 0.2f};
     std::cout << select_random(values, weights);
-    CHECK_EQ(select_random(values, weights), 3);
+    CHECK(select_random(values, weights) == 3);
   }
 }
 

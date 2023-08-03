@@ -9,25 +9,25 @@ TEST_CASE_TEMPLATE("StackStringConstruction", T, char) {
 
   SUBCASE("DefaultConstruction") {
     StackString str;
-    CHECK_EQ(str.size(), 0);
-    CHECK_EQ(str.length(), 0);
-    CHECK_EQ(static_cast<std::string>(str), "");
+    CHECK(str.size() == 0);
+    CHECK(str.length() == 0);
+    CHECK(static_cast<std::string>(str) == "");
   }
 
   SUBCASE("CStringConstruction") {
     char const *cstr = "Hello";
     StackString str(cstr);
-    CHECK_EQ(str.size(), 5);
-    CHECK_EQ(str.length(), 5);
-    CHECK_EQ(static_cast<std::string>(str), "Hello");
+    CHECK(str.size() == 5);
+    CHECK(str.length() == 5);
+    CHECK(static_cast<std::string>(str) == "Hello");
   }
 
   SUBCASE("StdStringConstruction") {
     std::basic_string<T> stdStr = "World";
     StackString str(stdStr);
-    CHECK_EQ(str.size(), 5);
-    CHECK_EQ(str.length(), 5);
-    CHECK_EQ(static_cast<std::string>(str), "World");
+    CHECK(str.size() == 5);
+    CHECK(str.length() == 5);
+    CHECK(static_cast<std::string>(str) == "World");
   }
 }
 
@@ -52,14 +52,14 @@ TEST_CASE_TEMPLATE("StackStringSize", T, char) {
 
   SUBCASE("EmptyString") {
     StackString str;
-    CHECK_EQ(str.size(), 0);
-    CHECK_EQ(str.length(), 0);
+    CHECK(str.size() == 0);
+    CHECK(str.length() == 0);
   }
 
   SUBCASE("NonEmptyString") {
     StackString str{"Hello"};
-    CHECK_EQ(str.size(), 5);
-    CHECK_EQ(str.length(), 5);
+    CHECK(str.size() == 5);
+    CHECK(str.length() == 5);
   }
 }
 
@@ -69,5 +69,5 @@ TEST_CASE_TEMPLATE("StackStringConversion", T, char) {
 
   StackString str{"Hello"};
   std::string stdStr = static_cast<std::string>(str);
-  CHECK_EQ(stdStr, "Hello");
+  CHECK(stdStr == "Hello");
 }
