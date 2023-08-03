@@ -113,7 +113,7 @@ void LinearMeta::findBestAlgoID(int m, int n, int k){
   if(compute_type == CUBLAS_COMPUTE_16F){
       startAlgo   = (int)CUBLAS_GEMM_DEFAULT_TENSOR_OP;
       endAlgo     = (int)CUBLAS_GEMM_ALGO15_TENSOR_OP;
-  }else if (compute_type == CUBLAS_COMPUTE_32F){
+  }else if (compute_type == CUDA_R_32F){
       startAlgo   = (int)CUBLAS_GEMM_DEFAULT;
       endAlgo     = (int)CUBLAS_GEMM_ALGO23;
   }else{

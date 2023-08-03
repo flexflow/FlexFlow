@@ -19,6 +19,7 @@
 #include "flexflow/utils/cuda_helper.h"
 #include <ctime>
 #include <curand.h>
+#include <curand_kernel.h>
 #include <random>
 
 namespace FlexFlow {
