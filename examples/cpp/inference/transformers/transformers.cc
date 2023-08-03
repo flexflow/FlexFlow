@@ -47,6 +47,7 @@ Tensor create_inc_multihead_attention_decoder(
                 input,
                 transformerConfig->hidden_size,
                 transformerConfig->num_attention_heads,
+                transformerConfig->num_attention_heads,
                 transformerConfig->attention_kdim,
                 transformerConfig->attention_vdim)
           : model->multihead_attention(input,

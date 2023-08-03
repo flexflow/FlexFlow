@@ -75,8 +75,9 @@ class InferenceMode(Enum):
 class ModelType(Enum):
     UNKNOWN = 3001
     LLAMA = 3002
-    OPT = 3003
-    FALCON = 3004
+    LLAMA2 = 3003
+    OPT = 3004
+    FALCON = 3005
 
 
 class OpType(Enum):
@@ -118,7 +119,6 @@ class OpType(Enum):
     INC_MULTIHEAD_ATTENTION = 2061
     SPEC_INC_MULTIHEAD_SELF_ATTENTION = 2062
     TREE_INC_MULTIHEAD_SELF_ATTENTION = 2063
-    INC_MULTIQUERY_SELF_ATTENTION = 2064
     SAMPLING = 2065
     ARGMAX = 2066
     GETITEM = 2070

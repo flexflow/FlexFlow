@@ -64,7 +64,8 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
-    int _num_heads)
+    int _num_heads,
+    int _num_kv_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
                                     BEAM_SEARCH_MODE,
                                     attn,
@@ -85,7 +86,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     gpu_mem_allocator,
                                     num_samples,
                                     attn->num_heads,
+                                    attn->num_kv_heads,
                                     _num_heads,
+                                    _num_kv_heads,
                                     DT_NONE,
                                     false) {
   hipStream_t stream;

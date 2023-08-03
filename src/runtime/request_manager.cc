@@ -71,7 +71,7 @@ void RequestManager::register_tokenizer(ModelType type,
   this->model_type = type;
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
-  if (model_type == ModelType::LLAMA) {
+  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     bool path_to_file = !path.empty() &&
                         (path.size() >= strlen("tokenizer.model")) &&
                         path.find("tokenizer.model") ==
@@ -189,14 +189,15 @@ RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
-
   // Add a new request
   Request request;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  request.tokens.push_back(this->model_bos_map.at(this->model_type));
-  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
+  if (this->model_bos_map.find(this->model_type) != this->model_bos_map.end()) {
+    request.tokens.push_back(this->model_bos_map.at(this->model_type));
+  }
 
+  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
   if (tokens.size() > BatchConfig::MAX_PROMPT_LENGTH) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
               << BatchConfig::MAX_PROMPT_LENGTH << " tokens, but got "
@@ -207,12 +208,9 @@ RequestManager::RequestGuid
     // assert(false);
     return 0;
   }
-
   for (int i = 0; i < tokens.size(); i++) {
     std::cout << "[" << i << "]" << tokens.at(i) << "\n";
   }
-
-  // assert(false);
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
 

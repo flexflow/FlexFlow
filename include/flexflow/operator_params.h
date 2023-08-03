@@ -20,7 +20,6 @@
 #include "flexflow/ops/gather_params.h"
 #include "flexflow/ops/groupby_params.h"
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
-#include "flexflow/ops/inc_multiquery_attention_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
 #include "flexflow/ops/pool_2d_params.h"

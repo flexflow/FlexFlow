@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/inference.h"
+#include "models/falcon.h"
 #include "models/llama.h"
 #include "models/opt.h"
 #include <filesystem>
@@ -54,8 +55,12 @@ void parse_input_args(char **argv,
                      [](unsigned char c) { return std::tolower(c); });
       if (model_type_str == "llama") {
         model_types.llm_model_type = ModelType::LLAMA;
+      } else if (model_type_str == "llama2") {
+        model_types.llm_model_type = ModelType::LLAMA2;
       } else if (model_type_str == "opt") {
         model_types.llm_model_type = ModelType::OPT;
+      } else if (model_type_str == "falcon") {
+        model_types.llm_model_type = ModelType::FALCON;
       } else {
         model_types.llm_model_type = ModelType::UNKNOWN;
       }
@@ -80,8 +85,12 @@ void parse_input_args(char **argv,
                      [](unsigned char c) { return std::tolower(c); });
       if (model_type_str == "llama") {
         model_types.ssm_model_types.push_back(ModelType::LLAMA);
+      } else if (model_type_str == "llama2") {
+        model_types.ssm_model_types.push_back(ModelType::LLAMA2);
       } else if (model_type_str == "opt") {
         model_types.ssm_model_types.push_back(ModelType::OPT);
+      } else if (model_type_str == "falcon") {
+        model_types.ssm_model_types.push_back(ModelType::FALCON);
       } else {
         model_types.ssm_model_types.push_back(ModelType::UNKNOWN);
       }
@@ -185,7 +194,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
-  if (model_types.llm_model_type == ModelType::LLAMA) {
+  if (model_types.llm_model_type == ModelType::LLAMA ||
+      model_types.llm_model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(tree_model,
                               file_paths.llm_config_file_path,
                               file_paths.llm_weight_file_path,
@@ -198,6 +208,12 @@ void FlexFlow::top_level_task(Task const *task,
                           file_paths.llm_weight_file_path,
                           TREE_VERIFY_MODE,
                           use_full_precision);
+  } else if (model_types.llm_model_type == ModelType::FALCON) {
+    FALCON::create_falcon_model(tree_model,
+                                file_paths.llm_config_file_path,
+                                file_paths.llm_weight_file_path,
+                                TREE_VERIFY_MODE,
+                                use_full_precision);
   } else {
     assert(false && "Invalid LLM model type passed (or no type was passed).");
   }
@@ -216,7 +232,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
     FFModel &beam_model = ssm_models[ssm_id];
-    if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA) {
+    if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA ||
+        model_types.ssm_model_types[ssm_id] == ModelType::LLAMA2) {
       LLAMA::create_llama_model(beam_model,
                                 file_paths.ssm_config_file_paths[ssm_id],
                                 file_paths.ssm_weight_file_paths[ssm_id],
@@ -229,6 +246,12 @@ void FlexFlow::top_level_task(Task const *task,
                             file_paths.ssm_weight_file_paths[ssm_id],
                             BEAM_SEARCH_MODE,
                             use_full_precision);
+    } else if (model_types.ssm_model_types[ssm_id] == ModelType::FALCON) {
+      FALCON::create_falcon_model(beam_model,
+                                  file_paths.ssm_config_file_paths[ssm_id],
+                                  file_paths.ssm_weight_file_paths[ssm_id],
+                                  BEAM_SEARCH_MODE,
+                                  use_full_precision);
     } else {
       assert(false && "Invalid SSM model type passed.");
     }

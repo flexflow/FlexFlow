@@ -38,6 +38,7 @@ public:
       total_requests = 2560;
       incremental_mode = true;
       hidden_dim = 11008;
+      n_kv_heads = 32;
       max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
       max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
       max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
@@ -54,6 +55,7 @@ public:
           n_layers = config_json["n_layers"];
           vocab_size = config_json["vocab_size"];
           n_heads = config_json["n_heads"];
+          n_kv_heads = config_json["n_kv_heads"];
           dim = config_json["dim"];
           multiple_of = config_json["multiple_of"];
           norm_eps = config_json["norm_eps"];
@@ -99,7 +101,7 @@ public:
 
     int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
         total_requests, incremental_mode, max_seq_len, max_num_tokens,
-        max_beam_width, max_beam_depth;
+        max_beam_width, max_beam_depth, n_kv_heads;
     float norm_eps;
   };
 

@@ -33,7 +33,6 @@
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
-#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2326,6 +2325,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qk_prod_scaling);
         sez.serialize(attn->quantization_type);
         sez.serialize(attn->offload);
+        sez.serialize(attn->num_kv_heads);
+        sez.serialize(attn->tensor_parallelism_degree);
         break;
       }
       case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2345,6 +2346,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->scaling_query);
         sez.serialize(attn->scaling_factor);
         sez.serialize(attn->qk_prod_scaling);
+        sez.serialize(attn->num_kv_heads);
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2366,20 +2368,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qk_prod_scaling);
         sez.serialize(attn->quantization_type);
         sez.serialize(attn->offload);
-        break;
-      }
-      case OP_INC_MULTIQUERY_SELF_ATTENTION: {
-        IncMultiQuerySelfAttention *attn = (IncMultiQuerySelfAttention *)op;
-        sez.serialize(attn->layer_guid.id);
-        sez.serialize(attn->layer_guid.transformer_layer_id);
-        sez.serialize(attn->oProjSize);
-        sez.serialize(attn->num_heads);
-        sez.serialize(attn->qProjSize);
-        sez.serialize(attn->vProjSize);
-        sez.serialize(attn->dropout);
-        sez.serialize(attn->bias);
-        sez.serialize(attn->add_bias_kv);
-        sez.serialize(attn->add_zero_attn);
+        sez.serialize(attn->num_kv_heads);
+        sez.serialize(attn->tensor_parallelism_degree);
         break;
       }
       case OP_SOFTMAX: {
@@ -2746,7 +2736,8 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim;
+        int embed_dim, num_heads, k_dim, v_dim, num_kv_heads,
+            tensor_parallelism_degree;
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, offload;
@@ -2769,6 +2760,8 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(qk_prod_scaling);
         dez.deserialize(quantization_type);
         dez.deserialize(offload);
+        dez.deserialize(num_kv_heads);
+        dez.deserialize(tensor_parallelism_degree);
 
         IncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2786,12 +2779,14 @@ void FFModel::deserialize_graph_optimal_view(
         params.qk_prod_scaling = qk_prod_scaling;
         params.quantization_type = quantization_type;
         params.offload = offload;
+        params.num_kv_heads = num_kv_heads;
+        params.tensor_parallelism_degree = tensor_parallelism_degree;
         node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }
       case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim;
+        int embed_dim, num_heads, k_dim, v_dim, num_kv_heads;
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling;
@@ -2811,6 +2806,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(scaling_query);
         dez.deserialize(scaling_factor);
         dez.deserialize(qk_prod_scaling);
+        dez.deserialize(num_kv_heads);
 
         SpecIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2826,13 +2822,15 @@ void FFModel::deserialize_graph_optimal_view(
         params.scaling_query = scaling_query;
         params.scaling_factor = scaling_factor;
         params.qk_prod_scaling = qk_prod_scaling;
+        params.num_kv_heads = num_kv_heads;
         node = get_or_create_node<SpecIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim;
+        int embed_dim, num_heads, k_dim, v_dim, num_kv_heads,
+            tensor_parallelism_degree;
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, offload;
@@ -2855,6 +2853,8 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(qk_prod_scaling);
         dez.deserialize(quantization_type);
         dez.deserialize(offload);
+        dez.deserialize(num_kv_heads);
+        dez.deserialize(tensor_parallelism_degree);
 
         TreeIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2872,41 +2872,10 @@ void FFModel::deserialize_graph_optimal_view(
         params.qk_prod_scaling = qk_prod_scaling;
         params.quantization_type = quantization_type;
         params.offload = offload;
+        params.num_kv_heads = num_kv_heads;
+        params.tensor_parallelism_degree = tensor_parallelism_degree;
         node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
-        break;
-      }
-      case OP_INC_MULTIQUERY_SELF_ATTENTION: {
-        assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim;
-        float dropout, scaling_factor;
-        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
-            scaling_query, qk_prod_scaling;
-        size_t id, transformer_layer_id;
-        dez.deserialize(id);
-        dez.deserialize(transformer_layer_id);
-        LayerID layer_guid(id, transformer_layer_id);
-        dez.deserialize(embed_dim);
-        dez.deserialize(num_heads);
-        dez.deserialize(k_dim);
-        dez.deserialize(v_dim);
-        dez.deserialize(dropout);
-        dez.deserialize(bias);
-        dez.deserialize(add_bias_kv);
-        dez.deserialize(add_zero_attn);
-
-        IncMultiQuerySelfAttentionParams params;
-        params.embed_dim = embed_dim;
-        params.num_heads = num_heads;
-        params.kdim = k_dim;
-        params.vdim = v_dim;
-        params.dropout = dropout;
-        params.bias = bias;
-        params.add_bias_kv = add_bias_kv;
-        params.add_zero_attn = add_zero_attn;
-        params.layer_guid = layer_guid;
-        node =
-            get_or_create_node<IncMultiQuerySelfAttention>(inputs[0], params);
         break;
       }
       case OP_TOPK: {

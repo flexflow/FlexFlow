@@ -214,8 +214,8 @@ private:
   InferenceResultFuture last_irf;
   TreeVerifyBatchConfigFuture last_tree_bcf;
   InferenceResultFuture last_tree_irf;
-  const std::map<ModelType, int> model_bos_map = {{ModelType::LLAMA, 0},
-                                                  {ModelType::OPT, 2}};
+  const std::map<ModelType, int> model_bos_map = {
+      {ModelType::LLAMA, 0}, {ModelType::OPT, 2}, {ModelType::LLAMA2, 1}};
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,

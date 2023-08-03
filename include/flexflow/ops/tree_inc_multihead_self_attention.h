@@ -29,6 +29,7 @@ public:
                                 const ParallelTensor _input,
                                 int _embed_dim,
                                 int _num_heads,
+                                int _num_kv_heads,
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
@@ -42,12 +43,14 @@ public:
                                 bool allocate_weights,
                                 DataType _quantization_type,
                                 bool _offload,
+                                int _tensor_parallelism_degree,
                                 char const *name);
   TreeIncMultiHeadSelfAttention(FFModel &model,
                                 const ParallelTensor _input,
                                 const ParallelTensor _weight,
                                 int _embed_dim,
                                 int _num_heads,
+                                int _num_kv_heads,
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
@@ -61,6 +64,7 @@ public:
                                 bool allocate_weights,
                                 DataType _quantization_type,
                                 bool _offload,
+                                int _tensor_parallelism_degree,
                                 char const *name);
   TreeIncMultiHeadSelfAttention(FFModel &model,
                                 TreeIncMultiHeadSelfAttention const &other,
@@ -115,7 +119,7 @@ public:
   Params get_params() const;
 
 public:
-  int num_heads;
+  int num_heads, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
   bool bias;
   bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
@@ -133,7 +137,8 @@ public:
                                     GenericTensorAccessorR const &weight,
                                     MemoryAllocator &gpu_mem_allocator,
                                     int num_samples,
-                                    int _num_heads);
+                                    int _num_heads,
+                                    int _num_kv_heads);
   ~TreeIncMultiHeadSelfAttentionMeta(void);
 
 public:
