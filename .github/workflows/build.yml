@@ -97,6 +97,44 @@ jobs:
           tar --exclude="$LEGION_TARBALL" -zcvf $LEGION_TARBALL .
           echo "Checking the size of the Legion tarball..."
           du -h $LEGION_TARBALL
+
+        - name: Archive compiled Legion library (CUDA)
+          env: 
+            FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+          uses: actions/upload-artifact@v3
+          with:
+          name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}
+          path: legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz
+  
+  create-release:
+    name: Create new release
+    runs-on: ubuntu-20.04
+    needs: build-dependencies
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+      - name: Create folder for artifacts
+        run: mkdir artifacts unwrapped_artifacts
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+      - name: Display structure of downloaded files
+        working-directory: ./artifacts
+        run: ls -R
+      - name: Unwrap all artifacts
+        working-directory: ./artifacts
+        run: find . -maxdepth 2 -mindepth 2 -type f -name "*.tar.gz" -exec mv {} ../unwrapped_artifacts/  \;
+      - name: Get datetime
+        run: echo "RELEASE_DATETIME=$(date '+%Y-%m-%dT%H-%M-%S')" >> $GITHUB_ENV
+      - name: Release
+        env:
+          NAME: ${{ env.RELEASE_DATETIME }}
+          TAG_NAME: ${{ env.RELEASE_DATETIME }}
+          GITHUB_TOKEN: ${{ secrets.FLEXFLOW_TOKEN }}
+        run: gh release create $TAG_NAME ./unwrapped_artifacts/*.tar.gz --repo flexflow/flexflow-third-party
   
   cmake-build:
     name: Build FlexFlow with CMake
