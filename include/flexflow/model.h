@@ -156,8 +156,6 @@ enum TaskIDs {
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-  INC_MULTIQUERY_SELF_ATTENTION_INIT_TASK_ID,
-  INC_MULTIQUERY_SELF_ATTENTION_INF_TASK_ID,
   SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
@@ -322,7 +320,6 @@ class Transpose;
 class RMSNorm;
 class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
-class IncMultiQuerySelfAttention;
 class Sampling;
 class ArgMax;
 class Combine;
@@ -658,18 +655,6 @@ public:
                                       float scaling_factor = 1.0f,
                                       bool qk_prod_scaling = true,
                                       char const *name = NULL);
-  Tensor inc_multiquery_self_attention(const Tensor input,
-                                       int embed_dim,
-                                       int num_heads,
-                                       int kdim = 0,
-                                       int vdim = 0,
-                                       float dropout = 0.0f,
-                                       bool bias = false,
-                                       bool add_bias_kv = false,
-                                       bool add_zero_attn = false,
-                                       DataType data_type = DT_NONE,
-                                       Initializer *kernel_initializer = NULL,
-                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(const Tensor input,
                                         int embed_dim,
@@ -1078,9 +1063,6 @@ public:
       std::unordered_map<
           std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionParams>,
           IncMultiHeadSelfAttention *>,
-      std::unordered_map<
-          std::pair<ParallelTensorShape, IncMultiQuerySelfAttentionParams>,
-          IncMultiQuerySelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, BeamTopKParams>,
                          BeamTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, SamplingParams>,

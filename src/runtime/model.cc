@@ -44,7 +44,6 @@
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
-#include "flexflow/ops/inc_multiquery_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2641,10 +2640,6 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type != OP_ALLREDUCE) {
       continue;
     }
-    // don't fuse softmax since it returns inference results
-    if (operators[l]->op_type == OP_SOFTMAX) {
-      continue;
-    }
     size_t start = 0;
     {
       Op *opl = operators[l];
@@ -2801,12 +2796,6 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
       Op *op = TreeIncMultiHeadSelfAttention::create_operator_from_layer(
-          *this, layer, inputs);
-      operators.push_back(op);
-      return op;
-    }
-    case OP_INC_MULTIQUERY_SELF_ATTENTION: {
-      Op *op = IncMultiQuerySelfAttention::create_operator_from_layer(
           *this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -5728,43 +5717,6 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       }
       runtime->register_task_variant<IncMultiHeadSelfAttention::inference_task>(
           registrar);
-    }
-  }
-  // MultiQueryAttention task
-  {
-    TaskVariantRegistrar registrar(INC_MULTIQUERY_SELF_ATTENTION_INIT_TASK_ID,
-                                   "IncMultiQuerySelfAttention Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<OpMeta *,
-                                        IncMultiQuerySelfAttention::init_task>(
-          registrar, "IncMultiQuerySelfAttention Init Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime->register_task_variant<OpMeta *,
-                                     IncMultiQuerySelfAttention::init_task>(
-          registrar);
-    }
-  }
-  {
-    TaskVariantRegistrar registrar(INC_MULTIQUERY_SELF_ATTENTION_INF_TASK_ID,
-                                   "IncMultiQuerySelfAttention Inference");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<
-          IncMultiQuerySelfAttention::inference_task>(
-          registrar, "IncMultiQuerySelfAttention Inference Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime
-          ->register_task_variant<IncMultiQuerySelfAttention::inference_task>(
-              registrar);
     }
   }
   // speculative MultiHeadAttention task

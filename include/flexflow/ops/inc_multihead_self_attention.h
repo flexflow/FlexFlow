@@ -190,6 +190,7 @@ public:
   DataType quantization_type;
   bool offload;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  cudnnTensorDescriptor_t qk_tensor;
   cuFloatComplex *complex_input;
 #endif
   static int

@@ -167,7 +167,6 @@ enum OperatorType {
   OP_INC_MULTIHEAD_SELF_ATTENTION,
   OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
   OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
-  OP_INC_MULTIQUERY_SELF_ATTENTION,
   OP_SAMPLING,
   // Parallel Ops
   OP_REPARTITION,
@@ -180,7 +179,13 @@ enum OperatorType {
   OP_INVALID,
 };
 
-enum ModelType { UNKNOWN, LLAMA, LLAMA2, OPT, FALCON };
+enum ModelType {
+  UNKNOWN = 3001,
+  LLAMA = 3002,
+  LLAMA2 = 3003,
+  OPT = 3004,
+  FALCON = 3005
+};
 
 enum PMParameter {
   PM_OP_TYPE,            // AnyOp

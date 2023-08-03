@@ -53,6 +53,8 @@ FF_NEW_OPAQUE_TYPE(flexflow_tree_verify_batch_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_beam_search_batch_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
+FF_NEW_OPAQUE_TYPE(flexflow_file_data_loader_t);
+FF_NEW_OPAQUE_TYPE(flexflow_generation_result_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -77,6 +79,21 @@ int flexflow_config_get_num_nodes(flexflow_config_t handle);
 int flexflow_config_get_epochs(flexflow_config_t handle);
 
 bool flexflow_config_get_enable_control_replication(flexflow_config_t handle);
+
+int flexflow_config_get_data_parallelism_degree(flexflow_config_t handle_);
+
+int flexflow_config_get_tensor_parallelism_degree(flexflow_config_t handle_);
+
+int flexflow_config_get_pipeline_parallelism_degree(flexflow_config_t handle_);
+
+void flexflow_config_set_data_parallelism_degree(flexflow_config_t handle_,
+                                                 int value);
+
+void flexflow_config_set_tensor_parallelism_degree(flexflow_config_t handle_,
+                                                   int value);
+
+void flexflow_config_set_pipeline_parallelism_degree(flexflow_config_t handle_,
+                                                     int value);
 
 int flexflow_config_get_python_data_loader_type(flexflow_config_t handle);
 
@@ -384,14 +401,19 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     const flexflow_tensor_t input_,
     int embed_dim,
     int num_heads,
+    int num_kv_heads,
     int kdim,
     int vdim,
     float dropout,
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
@@ -399,14 +421,19 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
     const flexflow_tensor_t input_,
     int embed_dim,
     int num_heads,
+    int num_kv_heads,
     int kdim,
     int vdim,
     float dropout,
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
@@ -414,14 +441,19 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     const flexflow_tensor_t input_,
     int embed_dim,
     int num_heads,
+    int num_kv_heads,
     int kdim,
     int vdim,
     float dropout,
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
+    enum DataType data_type,
     flexflow_initializer_t kernel_initializer_,
     bool apply_rotary_embedding,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
@@ -447,6 +479,11 @@ flexflow_tensor_t flexflow_model_add_sampling(flexflow_model_t handle_,
                                               float top_p,
                                               char const *name);
 
+flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
+                                            const flexflow_tensor_t input_,
+                                            bool beam_search,
+                                            char const *name);
+
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle,
                                       flexflow_sgd_optimizer_t optimizer);
 
@@ -467,6 +504,10 @@ flexflow_perf_metrics_t
     flexflow_model_get_perf_metrics(flexflow_model_t handle);
 
 void flexflow_model_set_transformer_layer_id(flexflow_model_t handle, int id);
+
+flexflow_generation_result_t flexflow_model_generate(flexflow_model_t handle_,
+                                                     char const *text,
+                                                     int max_seq_length);
 
 // -----------------------------------------------------------------------
 // Tensor
@@ -809,44 +850,56 @@ void flexflow_beam_search_batch_config_destroy(
 // RequestManager
 // -----------------------------------------------------------------------
 
-flexflow_request_manager_t flexflow_request_manager_create(void);
+flexflow_request_manager_t flexflow_request_manager_get_request_manager(void);
 
-void flexflow_request_manager_destroy(flexflow_request_manager_t handle);
+// void flexflow_request_manager_destroy(flexflow_request_manager_t handle_);
 
-long unsigned int flexflow_request_manager_register_new_request(
-    flexflow_request_manager_t handle,
-    char const *prompt,
-    int max_sequence_length);
+void flexflow_request_manager_register_tokenizer(
+    flexflow_request_manager_t handle_,
+    enum ModelType model_type,
+    char const *tokenizer_filepath);
+
+void flexflow_request_manager_register_output_filepath(
+    flexflow_request_manager_t handle_, char const *output_filepath);
+
+int flexflow_request_manager_register_ssm_model(
+    flexflow_request_manager_t handle_, flexflow_model_t model_handle_);
 
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
 
 flexflow_inference_manager_t
-    flexflow_inference_manager_create(flexflow_config_t config_handle,
-                                      int max_num_tokens_per_batch);
+    flexflow_inference_manager_get_inference_manager(void);
 
-void flexflow_inference_manager_destroy(flexflow_inference_manager_t handle);
+// void flexflow_inference_manager_destroy(flexflow_inference_manager_t
+// handle_);
 
 void flexflow_inference_manager_compile_model_and_allocate_buffer(
-    flexflow_inference_manager_t handle, flexflow_model_t model_handle);
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle);
 
 void flexflow_inference_manager_init_operators_inference(
-    flexflow_inference_manager_t handle, flexflow_model_t model_handle);
+    flexflow_inference_manager_t handle_, flexflow_model_t model_handle);
 
-void flexflow_inference_manager_incr_decoding_loop(
-    flexflow_inference_manager_t handle,
-    flexflow_model_t model_handle,
-    flexflow_request_manager_t rm_handle,
-    int total_num_requests);
+// -----------------------------------------------------------------------
+// FileDataLoader
+// -----------------------------------------------------------------------
 
-void flexflow_inference_manager_spec_inference_loop(
-    flexflow_inference_manager_t handle,
-    flexflow_model_t model_handle,
-    flexflow_request_manager_t rm_handle,
-    int total_num_requests,
-    int num_ssms,
-    int *ssm_model_ids);
+flexflow_file_data_loader_t
+    flexflow_file_data_loader_create(char const *weight_file_path,
+                                     int num_heads,
+                                     int hidden_dim,
+                                     int qkv_inner_dim,
+                                     int tensor_partition_num);
+
+void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
+
+void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
+                                            flexflow_model_t model_handle_,
+                                            int num_layers,
+                                            char const **layer_names,
+                                            flexflow_op_t *layers,
+                                            bool use_full_precision);
 
 #ifdef __cplusplus
 }

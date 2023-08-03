@@ -255,13 +255,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
         alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
       }
       // To get A, skip over Q entries from previous requests (same head)
-      void const *A = static_cast<DT *>(m->devQKVProjArray) +
-                      processed_tokens_in_batch * m->qProjSize;
+      DT const *A = static_cast<DT *>(m->devQKVProjArray) +
+                    processed_tokens_in_batch * m->qProjSize;
       // To get B, skip over K entries from previous requests (all heads +
       // padding)
-      void const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
+      DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
       // To get C, skip over QK^T products from previous requests
-      void *C = static_cast<DT *>(m->qk_prods);
+      DT *C = static_cast<DT *>(m->qk_prods);
 
       if (m->num_heads == m->num_kv_heads) {
         checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
@@ -291,30 +291,30 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
         strideB = 0;
         int one_step_heads = m->num_heads / m->num_kv_heads;
         for (int step = 0; step < m->num_kv_heads; step++) {
-          checkCUDA(cublasGemmStridedBatchedEx(
-              m->handle.blas,
-              CUBLAS_OP_T,
-              CUBLAS_OP_N,
-              m_,
-              n,
-              k,
-              &alpha,
-              A + step * strideA * one_step_heads * sizeof(DT),
-              cublas_data_type,
-              lda,
-              strideA,
-              B + step * kt_block_size * sizeof(DT),
-              cublas_data_type,
-              ldb,
-              strideB,
-              &beta,
-              C + step * strideC * one_step_heads * sizeof(DT),
-              cublas_data_type,
-              ldc,
-              strideC,
-              one_step_heads,
-              compute_type,
-              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+          checkCUDA(
+              cublasGemmStridedBatchedEx(m->handle.blas,
+                                         CUBLAS_OP_T,
+                                         CUBLAS_OP_N,
+                                         m_,
+                                         n,
+                                         k,
+                                         &alpha,
+                                         A + step * strideA * one_step_heads,
+                                         cublas_data_type,
+                                         lda,
+                                         strideA,
+                                         B + step * kt_block_size,
+                                         cublas_data_type,
+                                         ldb,
+                                         strideB,
+                                         &beta,
+                                         C + step * strideC * one_step_heads,
+                                         cublas_data_type,
+                                         ldc,
+                                         strideC,
+                                         one_step_heads,
+                                         compute_type,
+                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
         }
       }
 
@@ -329,15 +329,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                                parallelism),
                                            0,
                                            stream>>>(
-            static_cast<DT *>(C),
+            C,
             num_new_tokens,
             total_tokens_in_request,
             m->num_heads,
             static_cast<DT>(-INFINITY));
       }
       // Compute Softmax(QK^T/sqrt(d_k))
-      cudnnTensorDescriptor_t qk_tensor;
-      checkCUDNN(cudnnCreateTensorDescriptor(&qk_tensor));
       // Before modifying the parameters below, make sure to read the following
       // description of the CUDNN_TENSOR_NCHW tensor layout, from
       // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
@@ -351,7 +349,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       int c_param = total_tokens_in_request;
       int h_param = 1;
       int w_param = num_new_tokens;
-      checkCUDNN(cudnnSetTensor4dDescriptor(qk_tensor,
+      checkCUDNN(cudnnSetTensor4dDescriptor(m->qk_tensor,
                                             CUDNN_TENSOR_NCHW,
                                             cudnn_data_type,
                                             n_param,
@@ -359,7 +357,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                             h_param,
                                             w_param));
       float softmax_alpha = 1.0f, softmax_beta = 0.0f;
-      void *C_softmax = (void *)(m->qk_prods_softmax);
+      DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
       // The softmax operation below is executed according to the
       // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
       // softmax operation is computed per spatial location (H,W) per image (N)
@@ -368,10 +366,10 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                      CUDNN_SOFTMAX_ACCURATE,
                                      CUDNN_SOFTMAX_MODE_CHANNEL,
                                      &softmax_alpha,
-                                     qk_tensor,
+                                     m->qk_tensor,
                                      C,
                                      &softmax_beta,
-                                     qk_tensor,
+                                     m->qk_tensor,
                                      C_softmax));
       // Matmul softmax(QK^T/sqrt(d_k)) by V
       alpha = 1.0f, beta = 0.0f;
@@ -384,7 +382,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       strideC = num_new_tokens * m->vProjSize;
       // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
       // requests (all heads)
-      A = static_cast<DT *>(C_softmax);
+      A = C_softmax;
       // To get B, skip over V^T entries from previous requests (all heads +
       // padding)
       B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
@@ -421,30 +419,30 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
         int one_step_heads = m->num_heads / m->num_kv_heads;
         strideB = 0;
         for (int step = 0; step < m->num_kv_heads; step++) {
-          checkCUDA(cublasGemmStridedBatchedEx(
-              m->handle.blas,
-              CUBLAS_OP_N,
-              CUBLAS_OP_T,
-              m_,
-              n,
-              k,
-              &alpha,
-              A + step * one_step_heads * strideA * sizeof(DT),
-              cublas_data_type,
-              lda,
-              strideA,
-              B + step * vt_block_size * sizeof(DT),
-              cublas_data_type,
-              ldb,
-              strideB,
-              &beta,
-              C + step * one_step_heads * strideC * sizeof(DT),
-              cublas_data_type,
-              ldc,
-              strideC,
-              one_step_heads,
-              compute_type,
-              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+          checkCUDA(
+              cublasGemmStridedBatchedEx(m->handle.blas,
+                                         CUBLAS_OP_N,
+                                         CUBLAS_OP_T,
+                                         m_,
+                                         n,
+                                         k,
+                                         &alpha,
+                                         A + step * one_step_heads * strideA,
+                                         cublas_data_type,
+                                         lda,
+                                         strideA,
+                                         B + step * vt_block_size,
+                                         cublas_data_type,
+                                         ldb,
+                                         strideB,
+                                         &beta,
+                                         C + step * one_step_heads * strideC,
+                                         cublas_data_type,
+                                         ldc,
+                                         strideC,
+                                         one_step_heads,
+                                         compute_type,
+                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
         }
       }
 
