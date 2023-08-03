@@ -10,38 +10,38 @@ TEST_CASE("bidict") {
 
   // Test the equate() function
   SUBCASE("Equate") {
-    CHECK(dict.at_l(1) ==  "one");
-    CHECK(dict.at_r("one") ==  1);
-    CHECK(dict.at_l(2) ==  "two");
-    CHECK(dict.at_r("two") ==  2);
+    CHECK(dict.at_l(1) == "one");
+    CHECK(dict.at_r("one") == 1);
+    CHECK(dict.at_l(2) == "two");
+    CHECK(dict.at_r("two") == 2);
   }
 
   // Test the erase_l() function
   SUBCASE("EraseL") {
     dict.erase_l(1);
-    CHECK(dict.size() ==  1);
+    CHECK(dict.size() == 1);
     CHECK_THROWS_AS(dict.at_l(1), std::out_of_range);
-    CHECK(dict.at_r("two") ==  2);
+    CHECK(dict.at_r("two") == 2);
   }
 
   // Test the erase_r() function
   SUBCASE("EraseR") {
     dict.erase_r("one");
-    CHECK(dict.size() ==  1);
-    CHECK_THROWS_AS(dict.at_r("one"),std::out_of_range);
-    CHECK(dict.at_l(2) ==  "two");
+    CHECK(dict.size() == 1);
+    CHECK_THROWS_AS(dict.at_r("one"), std::out_of_range);
+    CHECK(dict.at_l(2) == "two");
   }
 
   // Test the reversed() function
   SUBCASE("Reversed") {
     bidict<std::string, int> reversed_dict = dict.reversed();
-    CHECK(reversed_dict.at_l("one") ==  1);
-    CHECK(reversed_dict.at_r(2) ==  "two");
+    CHECK(reversed_dict.at_l("one") == 1);
+    CHECK(reversed_dict.at_r(2) == "two");
   }
 
   // Test the size() function
   SUBCASE("Size") {
-    CHECK(dict.size() ==  2);
+    CHECK(dict.size() == 2);
   }
 
   SUBCASE("implicitly convert to std::unordered_map") {

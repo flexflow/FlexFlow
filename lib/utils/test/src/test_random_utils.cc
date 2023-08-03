@@ -2,12 +2,16 @@
 #include "doctest.h"
 #include "utils/random_utils.h"
 
-void checkProbabilities(const std::vector<int>& counts, int numIterations, const std::vector<float>& weights, float totalWeight) {
-    for (int i = 0; i < counts.size(); i++) {
-        float expectedProbability = weights[i] / totalWeight;
-        float observedProbability = static_cast<float>(counts[i]) / numIterations;
-        CHECK(observedProbability == doctest::Approx(expectedProbability).epsilon(0.01f));
-    }
+void checkProbabilities(std::vector<int> const &counts,
+                        int numIterations,
+                        std::vector<float> const &weights,
+                        float totalWeight) {
+  for (int i = 0; i < counts.size(); i++) {
+    float expectedProbability = weights[i] / totalWeight;
+    float observedProbability = static_cast<float>(counts[i]) / numIterations;
+    CHECK(observedProbability ==
+          doctest::Approx(expectedProbability).epsilon(0.01f));
+  }
 }
 
 TEST_CASE("select_random") {

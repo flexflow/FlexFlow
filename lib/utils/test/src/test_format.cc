@@ -1,10 +1,10 @@
 #include "doctest.h"
 #include "utils/record_formatter.h"
 
-std::string formatRecord(const RecordFormatter& formatter) {
-    std::ostringstream oss;
-    oss << formatter;
-    return oss.str();
+std::string formatRecord(RecordFormatter const &formatter) {
+  std::ostringstream oss;
+  oss << formatter;
+  return oss.str();
 }
 
 TEST_CASE("RecordFormatter") {

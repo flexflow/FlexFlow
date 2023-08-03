@@ -21,10 +21,10 @@ TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
 
   SUBCASE("SingleElementSets") {
     optional<T> element = generate_element<T>(1);
-    CHECK(ds.find(element)==element);
+    CHECK(ds.find(element) == element);
 
     element = generate_element<T>(2);
-    CHECK(ds.find(element) ==element);
+    CHECK(ds.find(element) == element);
   }
 
   SUBCASE("UnionAndFind") {
@@ -41,7 +41,7 @@ TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
 
     ds.m_union(element1, element3);
     CHECK(ds.find(element1) == ds.find(element3));
-    CHECK(ds.find(element2)== ds.find(element4));
+    CHECK(ds.find(element2) == ds.find(element4));
     CHECK(ds.find(element1) == ds.find(element2));
     CHECK(ds.find(element1) == ds.find(element4));
   }
