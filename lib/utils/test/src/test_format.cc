@@ -1,27 +1,24 @@
 #include "doctest.h"
 #include "utils/record_formatter.h"
 
-TEST_CASE("RecordFormatter") {
-  SUBCASE("Appending string") {
-    RecordFormatter formatter;
-    formatter << "Hello";
-    formatter << "World";
-
+std::string formatRecord(const RecordFormatter& formatter) {
     std::ostringstream oss;
     oss << formatter;
+    return oss.str();
+}
 
-    CHECK(oss.str() == "{ Hello | World }");
+TEST_CASE("RecordFormatter") {
+  RecordFormatter formatter;
+  SUBCASE("Appending string") {
+    formatter << "Hello";
+    formatter << "World";
+    CHECK(formatRecord(formatter) == "{ Hello | World }");
   }
 
   SUBCASE("Appending integer and float") {
-    RecordFormatter formatter;
     formatter << 42;
     formatter << 3.14f;
-
-    std::ostringstream oss;
-    oss << formatter;
-
-    CHECK(oss.str() == "{ 42 | 3.140000e+00 }");
+    CHECK(formatRecord(formatter) == "{ 42 | 3.140000e+00 }");
   }
 
   SUBCASE("Appending another RecordFormatter") {
@@ -36,6 +33,6 @@ TEST_CASE("RecordFormatter") {
     std::ostringstream oss;
     oss << formatter;
 
-    CHECK(oss.str() == "{ Hello | { Sub | Formatter } }");
+    CHECK(formatRecord(formatter) == "{ Hello | { Sub | Formatter } }");
   }
 }

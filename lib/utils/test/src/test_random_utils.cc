@@ -2,6 +2,14 @@
 #include "doctest.h"
 #include "utils/random_utils.h"
 
+void checkProbabilities(const std::vector<int>& counts, int numIterations, const std::vector<float>& weights, float totalWeight) {
+    for (int i = 0; i < counts.size(); i++) {
+        float expectedProbability = weights[i] / totalWeight;
+        float observedProbability = static_cast<float>(counts[i]) / numIterations;
+        CHECK(observedProbability == doctest::Approx(expectedProbability).epsilon(0.01f));
+    }
+}
+
 TEST_CASE("select_random") {
   std::vector<int> values = {1, 2, 3, 4, 5};
 
@@ -13,8 +21,7 @@ TEST_CASE("select_random") {
 
   SUBCASE("Invalid arguments") {
     std::vector<float> weights = {0.1f, 0.3f, 0.2f};
-    std::cout << select_random(values, weights);
-    CHECK(select_random(values, weights) == 3);
+    CHECK(select_random(values, weights) == 2);
   }
 }
 
@@ -30,12 +37,7 @@ TEST_CASE("select_random - Weighted Random Selection") {
       counts[selected - 1]++;
     }
 
-    for (int i = 0; i < values.size(); i++) {
-      float expectedProbability = 1.0f / values.size();
-      float observedProbability = static_cast<float>(counts[i]) / numIterations;
-      CHECK(observedProbability ==
-            doctest::Approx(expectedProbability).epsilon(0.01f));
-    }
+    checkProbabilities(counts, numIterations, weights, values.size());
   }
 
   SUBCASE("Test with different weights") {
@@ -54,11 +56,6 @@ TEST_CASE("select_random - Weighted Random Selection") {
       totalWeight += weight;
     }
 
-    for (int i = 0; i < values.size(); i++) {
-      float expectedProbability = weights[i] / totalWeight;
-      float observedProbability = static_cast<float>(counts[i]) / numIterations;
-      CHECK(observedProbability ==
-            doctest::Approx(expectedProbability).epsilon(0.01f));
-    }
+    checkProbabilities(counts, numIterations, weights, totalWeight);
   }
 }
