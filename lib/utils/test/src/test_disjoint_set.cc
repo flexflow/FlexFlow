@@ -21,10 +21,10 @@ TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
 
   SUBCASE("SingleElementSets") {
     optional<T> element = generate_element<T>(1);
-    CHECK_EQ(ds.find(element), element);
+    CHECK(ds.find(element)==element);
 
     element = generate_element<T>(2);
-    CHECK_EQ(ds.find(element), element);
+    CHECK(ds.find(element) ==element);
   }
 
   SUBCASE("UnionAndFind") {
@@ -34,16 +34,16 @@ TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
     optional<T> element4 = generate_element<T>(4);
 
     ds.m_union(element1, element2);
-    CHECK_EQ(ds.find(element1), ds.find(element2));
+    CHECK(ds.find(element1) == ds.find(element2));
 
     ds.m_union(element3, element4);
-    CHECK_EQ(ds.find(element3), ds.find(element4));
+    CHECK(ds.find(element3) == ds.find(element4));
 
     ds.m_union(element1, element3);
-    CHECK_EQ(ds.find(element1), ds.find(element3));
-    CHECK_EQ(ds.find(element2), ds.find(element4));
-    CHECK_EQ(ds.find(element1), ds.find(element2));
-    CHECK_EQ(ds.find(element1), ds.find(element4));
+    CHECK(ds.find(element1) == ds.find(element3));
+    CHECK(ds.find(element2)== ds.find(element4));
+    CHECK(ds.find(element1) == ds.find(element2));
+    CHECK(ds.find(element1) == ds.find(element4));
   }
 }
 
@@ -61,7 +61,7 @@ TEST_CASE_TEMPLATE("DisjointSetMapping", T, int, std::string) {
       ds.get_mapping();
 
   for (auto const &kv : mapping) {
-    REQUIRE(
+    CHECK(
         *kv.second ==
         *expectedMapping[kv.first]); // Compare the values inside the optionals
   }
