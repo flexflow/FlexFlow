@@ -64,7 +64,7 @@ jobs:
           activate-environment: flexflow
           environment-file: conda/environment.yml
           auto-activate-base: false
-        
+          
       - name: Build Legion
         env: 
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
