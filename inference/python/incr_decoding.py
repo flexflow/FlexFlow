@@ -61,9 +61,8 @@ def get_configs():
             # required parameters
             "llm_model": "decapoda-research/llama-7b-hf",
             # optional parameters
-            "llm_weight": "",
-            "llm_tokenizer": "",
-            "clean_model_cache": False,
+            "cache_path": "",
+            "refresh_cache": False,
             "full_precision": False,
             "prompt": "",
             "output_file": "",
@@ -87,9 +86,8 @@ def main():
     llm = ff.LLM(
         configs.llm_model,
         data_type=ff_data_type,
-        tokenizer_path=configs.llm_tokenizer,
-        weights_path=configs.llm_weight,
-        clean_cache=configs.clean_model_cache,
+        cache_path=configs.cache_path,
+        refresh_cache=configs.refresh_cache,
         output_file=configs.output_file,
     )
 

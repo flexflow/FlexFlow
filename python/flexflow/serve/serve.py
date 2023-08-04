@@ -54,9 +54,8 @@ class LLM:
         self,
         model_name: str,
         data_type: DataType = DataType.DT_HALF,
-        tokenizer_path: str = "",
-        weights_path: str = "",
-        clean_cache: bool = False,
+        cache_path: str = "~/.cache/flexflow",
+        refresh_cache: bool = False,
         output_file: str = "",
     ):
         """Create the LLM object
@@ -65,12 +64,10 @@ class LLM:
         :type model_name: str
         :param data_type: The data type to use for the tensors (e.g. DataType.DT_FLOAT for full precision, or DataType.DT_HALF for half precision), defaults to DataType.DT_HALF
         :type data_type: DataType, optional
-        :param tokenizer_path: Path to the tokenizer file or folder for the LLM. If left blank, FlexFlow will download (and cache) the relevant tokenizer from HuggingFace, defaults to ""
+        :param cache_path: Path to the folder (which will be created if it does not yet exist) to use for the FlexFlow weights/tokenizers cache, defaults to "~/.cache/flexflow"
         :type tokenizer_path: str, optional
-        :param weights_path: Path to the weights for the LLM. If left blank, FlexFlow will download (and cache) the weights from HuggingFace, defaults to ""
-        :type weights_path: str, optional
-        :param clean_cache: Use this flag to discard previous weights/tokenizer cache for this LLM, defaults to False
-        :type clean_cache: bool, optional
+        :param refresh_cache: Use this flag to force the refresh of the model's weights/tokenizer cache, defaults to False
+        :type refresh_cache: bool, optional
         :param output_file: Path to the output file. If left blank, the output will not be written to file, defaults to ""
         :type output_file: str, optional
         """
@@ -81,12 +78,12 @@ class LLM:
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+        self.model_name = hf_config._name_or_path
         self.model_type, self.model_class = self.__get_ff_model_type()
         self.data_type = data_type
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
-        self.tokenizer_path = tokenizer_path
-        self.weights_path = weights_path
-        self.clean_cache = clean_cache
+        self.cache_path = cache_path
+        self.refresh_cache = refresh_cache
         self.output_file = output_file
         self.ffconfig = FFConfig()
 
@@ -102,14 +99,22 @@ class LLM:
             sys.exit(1)
         return ff_arch
 
-    def __download_hf_weights(self):
+    def download_hf_weights_if_needed(self):
+        """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
+        If not, or if the refresh_cache parameter is set to True, download new weights.
+        """
         # Use local cache, or download new version
-        self.weights_path = os.path.expanduser(
-            f"~/.cache/flexflow/models/{self.hf_config._name_or_path}/{'full-precision' if self.data_type == DataType.DT_FLOAT else 'half-precision'}"
+        self.weights_path = os.path.join(
+            os.path.expanduser(self.cache_path),
+            "weights",
+            self.model_name.lower(),
+            "full-precision"
+            if self.data_type == DataType.DT_FLOAT
+            else "half-precision",
         )
-        if self.clean_cache:
+        if self.refresh_cache:
             print(
-                f"Discarding cached weights (if they exist) for model {self.hf_config._name_or_path}..."
+                f"Refreshing weights in cache for model {self.model_name} at path {self.weights_path} ..."
             )
             if os.path.exists(self.weights_path):
                 shutil.rmtree(self.weights_path)
@@ -122,15 +127,15 @@ class LLM:
         if os.path.exists(local_revision_file):
             local_revision = "".join(open(local_revision_file).read().split())
         hf_api = HfApi()
-        latest_revision = hf_api.model_info(self.hf_config._name_or_path).sha
+        latest_revision = hf_api.model_info(self.model_name).sha
 
         # Download if needed
         if local_revision != latest_revision:
             print(
-                f"'{self.hf_config._name_or_path}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
+                f"'{self.model_name}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
             )
             hf_model = AutoModelForCausalLM.from_pretrained(
-                self.hf_config._name_or_path, trust_remote_code=True
+                self.model_name, trust_remote_code=True
             )
             print("Done downloading HF weights. Converting them now...")
             self.model_class.convert_hf_model(hf_model, self.weights_path)
@@ -138,33 +143,23 @@ class LLM:
                 f.write(latest_revision)
             print("Done converting the weights...")
         else:
-            print(
-                f"Loading '{self.hf_config._name_or_path}' model weights from the cache..."
-            )
+            print(f"Loading '{self.model_name}' model weights from the cache...")
 
-    def __load_hf_tokenizer(self):
+    def download_hf_tokenizer_if_needed(self):
+        """Check in the folder specified by the cache_path whether the LLM's tokenizer files are available and up to date.
+        If not, or if the refresh_cache parameter is set to True, download new tokenizer files.
+        """
         print("Loading tokenizer...")
-        if len(self.tokenizer_path) > 0:
-            print(f"Using tokenizer from {self.tokenizer_path}")
-            # check that tokenizer exist
-            if not os.path.exists(self.tokenizer_path):
-                raise FileNotFoundError(f"Path {self.tokenizer_path} does not exist")
-            elif (
-                os.path.isdir(self.tokenizer_path)
-                and len(os.listdir(self.tokenizer_path)) == 0
-            ):
-                raise FileNotFoundError(f"Folder {self.tokenizer_path} is empty")
-            return
-
-        # Download tokenizer
 
         # Use local cache, or download new version
-        self.tokenizer_path = os.path.expanduser(
-            f"~/.cache/flexflow/tokenizers/{self.hf_config._name_or_path}/"
+        self.tokenizer_path = os.path.join(
+            os.path.expanduser(self.cache_path),
+            "tokenizers",
+            self.model_name.lower(),
         )
-        if self.clean_cache:
+        if self.refresh_cache:
             print(
-                f"Discarding cached tokenizer files (if they exist) for model {self.hf_config._name_or_path}..."
+                f"Discarding cached tokenizer files (if they exist) for model {self.model_name}..."
             )
             if os.path.exists(self.tokenizer_path):
                 shutil.rmtree(self.tokenizer_path)
@@ -178,30 +173,26 @@ class LLM:
         if os.path.exists(local_revision_file):
             local_revision = "".join(open(local_revision_file).read().split())
         hf_api = HfApi()
-        latest_revision = hf_api.model_info(self.hf_config._name_or_path).sha
+        latest_revision = hf_api.model_info(self.model_name).sha
 
         # Download if needed
         if local_revision != latest_revision:
             print(
-                f"'{self.hf_config._name_or_path}' tokenizer not found in cache or outdated. Downloading from huggingface.co ..."
+                f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ..."
             )
             if self.model_type == ModelType.LLAMA:
                 hf_tokenizer = LlamaTokenizer.from_pretrained(
-                    self.hf_config._name_or_path, use_fast=True
+                    self.model_name, use_fast=True
                 )
             else:
-                hf_tokenizer = AutoTokenizer.from_pretrained(
-                    self.hf_config._name_or_path
-                )
+                hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             hf_tokenizer.save_pretrained(self.tokenizer_path)
             print("Done downloading HF tokenizer.")
             with open(local_revision_file, "w+") as f:
                 f.write(latest_revision)
             print("Loading the tokenizer...")
         else:
-            print(
-                f"Loading '{self.hf_config._name_or_path}' tokenizer from the cache..."
-            )
+            print(f"Loading '{self.model_name}' tokenizer from the cache...")
 
     def __load_hf_weights(self):
         print("Loading hf weights...")
@@ -209,19 +200,7 @@ class LLM:
         if self.data_type == DataType.DT_HALF:
             torch.set_default_tensor_type(torch.HalfTensor)
 
-        if len(self.weights_path) > 0:
-            print(f"Using weights from {self.weights_path}")
-            # check that weights exist
-            if not os.path.exists(self.weights_path) or not os.path.isdir(
-                self.weights_path
-            ):
-                raise FileNotFoundError(
-                    f"Path {self.weights_path} does not exist or is not a directory"
-                )
-            elif len(os.listdir(self.weights_path)) == 0:
-                raise FileNotFoundError(f"Folder {self.weights_path} is empty")
-        else:
-            self.__download_hf_weights()
+        self.download_hf_weights_if_needed()
 
         # Create file data loader, load weights into tensors
         self.fileloader = FileDataLoader(
@@ -290,7 +269,7 @@ class LLM:
 
         # Download the weights and tokenizer from huggingface (if needed) and load them
         self.__load_hf_weights()
-        self.__load_hf_tokenizer()
+        self.download_hf_tokenizer_if_needed()
 
         # Create request manager
         self.rm = RequestManager()
@@ -329,9 +308,8 @@ class SSM(LLM):
         self,
         model_name: str,
         data_type: DataType = DataType.DT_HALF,
-        tokenizer_path: str = "",
-        weights_path: str = "",
-        clean_cache: bool = False,
+        cache_path: str = "~/.cache/flexflow",
+        refresh_cache: bool = False,
         output_file: str = "",
     ):
         """Create the SSM object
@@ -340,21 +318,18 @@ class SSM(LLM):
         :type model_name: str
         :param data_type: The data type to use for the tensors (e.g. DataType.DT_FLOAT for full precision, or DataType.DT_HALF for half precision), defaults to DataType.DT_HALF
         :type data_type: DataType, optional
-        :param tokenizer_path: Path to the tokenizer file or folder for the LLM. If left blank, FlexFlow will download (and cache) the relevant tokenizer from HuggingFace, defaults to ""
+        :param cache_path: Path to the folder (which will be created if it does not yet exist) to use for the FlexFlow weights/tokenizers cache, defaults to "~/.cache/flexflow"
         :type tokenizer_path: str, optional
-        :param weights_path: Path to the weights for the LLM. If left blank, FlexFlow will download (and cache) the weights from HuggingFace, defaults to ""
-        :type weights_path: str, optional
-        :param clean_cache: Use this flag to discard previous weights/tokenizer cache for this LLM, defaults to False
-        :type clean_cache: bool, optional
+        :param refresh_cache: Use this flag to force the refresh of the model's weights/tokenizer cache, defaults to False
+        :type refresh_cache: bool, optional
         :param output_file: Path to the output file. If left blank, the output will not be written to file, defaults to ""
         :type output_file: str, optional
         """
         super().__init__(
             model_name,
             data_type,
-            tokenizer_path,
-            weights_path,
-            clean_cache,
+            cache_path,
+            refresh_cache,
             output_file,
         )
         self.ffconfig.data_parallelism_degree = 1

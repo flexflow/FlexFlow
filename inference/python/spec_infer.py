@@ -61,27 +61,24 @@ def get_configs():
             # required llm arguments
             "llm_model": "decapoda-research/llama-7b-hf",
             # optional llm parameters
-            "llm_weight": "",
-            "llm_tokenizer": "",
-            "clean_model_cache": False,
+            "cache_path": "",
+            "refresh_cache": False,
             "full_precision": False,
             "ssms": [
                 {
                     # required ssm parameter
                     "ssm_model": "JackFram/llama-160m",
                     # optional ssm parameters
-                    "ssm_weight": "",
-                    "ssm_tokenizer": "",
-                    "clean_model_cache": False,
+                    "cache_path": "",
+                    "refresh_cache": False,
                     "full_precision": False,
                 },
                 {
                     # required ssm parameter
                     "ssm_model": "facebook/opt-125m",
                     # optional ssm parameters
-                    "ssm_weight": "",
-                    "ssm_tokenizer": "",
-                    "clean_model_cache": False,
+                    "cache_path": "",
+                    "refresh_cache": False,
                     "full_precision": False,
                 },
             ],
@@ -107,9 +104,8 @@ def main():
     llm = ff.LLM(
         configs.llm_model,
         data_type=ff_data_type,
-        tokenizer_path=configs.llm_tokenizer,
-        weights_path=configs.llm_weight,
-        clean_cache=configs.clean_model_cache,
+        cache_path=configs.cache_path,
+        refresh_cache=configs.refresh_cache,
         output_file=configs.output_file,
     )
 
@@ -123,9 +119,8 @@ def main():
         ssm = ff.SSM(
             ssm_config.ssm_model,
             data_type=ff_data_type,
-            tokenizer_path=ssm_config.ssm_tokenizer,
-            weights_path=ssm_config.ssm_weight,
-            clean_cache=ssm_config.clean_model_cache,
+            cache_path=ssm_config.cache_path,
+            refresh_cache=ssm_config.refresh_cache,
             output_file=configs.output_file,
         )
         ssms.append(ssm)
