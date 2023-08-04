@@ -78,7 +78,7 @@ UndirectedGraphView
   return UndirectedGraphView(ptr);
 }
 
-UndirectedGraphView::operator GraphView const &() const {
+UndirectedGraphView::operator GraphView() const {
   return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
 }
 

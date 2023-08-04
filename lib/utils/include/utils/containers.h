@@ -4,6 +4,7 @@
 #include "bidict.h"
 #include "invoke.h"
 #include "optional.h"
+#include "utils/exception.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -586,7 +587,7 @@ template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
   return transform(v, [](optional<T> const &t) {
     if (t == nullopt) {
-      throw std::runtime_error("value is nullopt");
+      throw mk_runtime_error("value is nullopt");
     } else {
       return t.value();
     }
