@@ -244,6 +244,7 @@ DiGraphView with_added_edges(DiGraphView const &,
                              std::unordered_set<DirectedEdge> const &);
 
 UndirectedGraphView as_undirected(DiGraphView const &);
+UndirectedGraphView as_undirected(MultiDiGraphView const &);
 MultiDiGraphView as_multidigraph(DiGraphView const &);
 DiGraphView as_digraph(MultiDiGraphView const &);
 MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &);

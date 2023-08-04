@@ -369,7 +369,7 @@ std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
 
 std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
                                        Node const &n) {
-  UndirectedGraphView undirected = as_undirected(as_digraph(g));
+  UndirectedGraphView undirected = as_undirected(g);
   return get_neighbors(undirected, n);
 }
 
@@ -567,6 +567,11 @@ UndirectedGraphView as_undirected(DiGraphView const &g) {
   return UndirectedGraphView::create<ViewDiGraphAsUndirectedGraph>(g);
 }
 
+UndirectedGraphView as_undirected(MultiDiGraphView const & g) {
+  DiGraphView dg = as_digraph(g);
+  return as_undirected(dg);
+}
+
 MultiDiGraphView as_multidigraph(DiGraphView const &g) {
   return MultiDiGraphView::create<ViewDiGraphAsMultiDiGraph>(g);
 }
@@ -586,7 +591,7 @@ std::vector<std::unordered_set<Node>>
 
 std::vector<std::unordered_set<Node>>
     get_weakly_connected_components(MultiDiGraphView const &g) {
-  return get_connected_components(as_undirected(as_digraph(g)));
+  return get_connected_components(as_undirected(g));
 }
 
 std::vector<std::unordered_set<Node>>
