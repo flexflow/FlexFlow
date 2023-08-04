@@ -512,6 +512,10 @@ BeamSearchBatchConfig
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (old_bc.request_completed[i]) {
       continue;
+    } else if (old_bc.requestsInfo[i].num_tokens_in_batch <= 0) {
+      // make it idle in batch
+      new_bc.request_completed[i] = false;
+      continue;
     }
     // Comment out this assertion since num_tokens_in_batch can be
     // zero when beam search has reached required sequence length
