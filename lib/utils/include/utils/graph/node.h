@@ -64,7 +64,7 @@ struct GraphView {
     return this->ptr.get();
   }
 
-  static GraphView unsafe_create(IGraphView const &);
+  static GraphView unsafe_create_without_ownership(IGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
@@ -117,11 +117,11 @@ public:
 
   
   // Graph(std::shared_ptr<IGraph const> const &ptr,
-  //             should_only_be_used_internally_tag_t const &tag)
-  //     : ptr(std::move(ptr)) {}  
-
+  //             should_only_be_used_internally_tag_t const &tag): Graph(ptr) {} 
+  
 private:
   Graph(std::unique_ptr<IGraph> ptr): ptr(std::move(ptr)) {}
+//  Graph(std::shared_ptr<IGraph const> ptr): ptr(to_cow_ptr(ptr)) {}
   cow_ptr_t<IGraph> ptr;
 };
 

@@ -79,7 +79,7 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  static UndirectedGraphView unsafe_create(IUndirectedGraphView const &);
+  static UndirectedGraphView unsafe_create_without_ownership(IUndirectedGraphView const &);
 
 private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
