@@ -66,7 +66,7 @@ jobs:
           auto-activate-base: false
 
       - name: Build Legion
-        env: 
+        env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         run: |
           export PATH=/opt/conda/bin:$PATH
@@ -98,14 +98,14 @@ jobs:
           echo "Checking the size of the Legion tarball..."
           du -h $LEGION_TARBALL
 
-        - name: Archive compiled Legion library (CUDA)
-          env: 
-            FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-          uses: actions/upload-artifact@v3
-          with:
+      - name: Archive compiled Legion library (CUDA)
+        env:
+          FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+        uses: actions/upload-artifact@v3
+        with:
           name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}
           path: legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz
-  
+
   create-release:
     name: Create new release
     runs-on: ubuntu-20.04
@@ -135,7 +135,7 @@ jobs:
           TAG_NAME: ${{ env.RELEASE_DATETIME }}
           GITHUB_TOKEN: ${{ secrets.FLEXFLOW_TOKEN }}
         run: gh release create $TAG_NAME ./unwrapped_artifacts/*.tar.gz --repo flexflow/flexflow-third-party
-  
+
   cmake-build:
     name: Build FlexFlow with CMake
     runs-on: ubuntu-20.04
