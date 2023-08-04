@@ -449,6 +449,15 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   return result;
 }
 
+template <typename F,
+          typename It,
+          typename Out = decltype(std::declval<F>()(*std::declval<It>()))>
+std::vector<Out> transform(It start, It end, F const &f) {
+  std::vector<Out> result;
+  std::transform(start, end, std::back_inserter(result), f);
+  return result;
+}
+
 template <typename F, typename C>
 auto transform(req<C> const &c, F const &f)
     -> decltype(transform(std::declval<C>(), std::declval<F>())) {

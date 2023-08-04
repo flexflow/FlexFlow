@@ -4,6 +4,7 @@
 #include "op-attrs/op.h"
 #include "op-attrs/ops/embedding.h"
 #include "utils/bidict.h"
+#include "internal/enums.h"
 
 flexflow_utils_exception_t make_opattrs_exception(flexflow_opattrs_error_code_t);
 
@@ -153,24 +154,6 @@ REGISTER_FFI_ENUM(
   });
 
 flexflow_error_t make_opattrs_error(flexflow_opattrs_error_code_t);
-
-template <typename ExternalEnum>
-external_to_internal_t<ExternalEnum> to_internal_impl(ExternalEnum e) {
-  return enum_mapping<ExternalEnum>::mapping
-    .maybe_at_l(e)
-    .or_else([] { throw make_opattrs_error(enum_mapping<ExternalEnum>::err_code); })
-    .value();
-}
-
-template <typename InternalEnum>
-internal_to_external_t<InternalEnum> to_external_impl(InternalEnum i) {
-  using Mapping = enum_mapping<internal_to_external_t<InternalEnum>>;
-
-  return Mapping::mapping
-    .maybe_at_r(i)
-    .or_else([] { throw make_opattrs_error(Mapping::err_code); })
-    .value();
-}
 
 ParamSync to_internal(flexflow_param_sync_t e) { return to_internal_impl(e); }
 flexflow_param_sync_t to_external(ParamSync i) { return to_external_impl(i); }

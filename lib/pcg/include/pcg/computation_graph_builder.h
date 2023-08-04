@@ -119,27 +119,29 @@ std::vector<Tensor> group_by(ComputationGraph &,
               float alpha,
               optional<std::string> const &name = nullopt);
 // Add a cache layer
-Tensor cache(Tensor const &input,
+Tensor cache(ComputationGraph &, 
+             Tensor const &input,
              int num_batches,
              std::function<float(float *, void const *, void const *, int)>
                  score_f = {},
              optional<std::string> const &name = nullopt);
 // Add aggregate layer
-Tensor aggregate(Tensor const &gate_preds,
+Tensor aggregate(ComputationGraph &,
+                 Tensor const &gate_preds,
                  Tensor const &gate_assign,
                  Tensor const &true_gate_assign,
                  Tensor const &full_gate_gradients,
                  std::vector<Tensor> const &exp_preds,
-                 int n,
                  float lambda_bal,
-                 optional<std::string> const &maybe_name);
+                 optional<std::string> const &name = nullopt);
 // Add aggregate_spec layer
-Tensor aggregate_spec(std::vector<Tensor> const &inputs,
-                      int n,
+Tensor aggregate_spec(ComputationGraph &,
+                      std::vector<Tensor> const &inputs,
                       float lambda_bal,
                       optional<std::string> const &name = nullopt);
 // Add a 2D pooling layer
-Tensor pool2d(Tensor const &input,
+Tensor pool2d(ComputationGraph &,
+              Tensor const &input,
               int kernelH,
               int kernelW,
               int strideH,
@@ -149,81 +151,95 @@ Tensor pool2d(Tensor const &input,
               PoolOp type = PoolOp::MAX,
               optional<Activation> const &activation = nullopt,
               optional<std::string> const &name = nullopt);
-Tensor layer_norm(Tensor const &input,
+Tensor layer_norm(ComputationGraph &,
+                  Tensor const &input,
                   std::vector<int> const &axes,
                   bool elementwise_affine,
                   float eps,
                   optional<std::string> const &name = nullopt);
-Tensor batch_norm(Tensor const &input,
+Tensor batch_norm(ComputationGraph &, 
+                  Tensor const &input,
                   bool relu = true,
                   optional<std::string> const &name = nullopt);
-Tensor batch_matmul(Tensor const &A,
+Tensor batch_matmul(ComputationGraph &, 
+                    Tensor const &A,
                     Tensor const &B,
                     int a_seq_length_dim = -1,
                     int b_seq_length_dim = -1,
                     optional<std::string> const &name = nullopt);
-Tensor dense(Tensor const &input,
+Tensor dense(ComputationGraph &,
+             Tensor const &input,
              int outDim,
              optional<Activation> activation = nullopt,
              bool use_bias = true,
              DataType data_type = DataType::FLOAT,
-             optional<Initializer const &> kernel_initializer = nullopt,
-             optional<Initializer const &> bias_initializer = nullopt,
+             optional<Initializer> const &kernel_initializer = nullopt,
+             optional<Initializer> const &bias_initializer = nullopt,
              optional<std::string> const &name = nullopt);
 // Add a cast layer
-Tensor cast(Tensor const &input,
+Tensor cast(ComputationGraph &, 
+            Tensor const &input,
             DataType dtype,
             optional<std::string> const &name = nullopt);
 // Add a concat layer
-Tensor concat(int n,
+Tensor concat(ComputationGraph &,
               std::vector<Tensor> const &tensors,
               int axis,
               optional<std::string> const &name = nullopt);
 // Add a mean layer
-Tensor mean(Tensor const &input,
+Tensor mean(ComputationGraph &, 
+            Tensor const &input,
             std::vector<int> const &dims,
             bool keepdims,
-            char const *name);
+            optional<std::string> const &name = nullopt);
 // Add a moe layer (wrapping topk, group_by and aggregate operators)
-Tensor moe(Tensor const &input,
+Tensor moe(ComputationGraph &, 
+           Tensor const &input,
            int num_exp,
            int num_select,
            int expert_hidden_size,
            float alpha,
-           float lambda);
+           float lambda,
+           optional<std::string> const &name = nullopt);
 // Add a split layer
-void split(Tensor const &input,
-           Tensor *outputs,
+std::vector<Tensor> split(ComputationGraph &, 
+                          Tensor const &input,
            std::vector<int> const &split,
            int axis,
            optional<std::string> const &name = nullopt);
 // Add a flat layer
-Tensor flat(Tensor const &input, optional<std::string> const &name = nullopt);
+Tensor flat(ComputationGraph &, Tensor const &input, optional<std::string> const &name = nullopt);
 // Add a softmax layer
-Tensor softmax(Tensor const &input,
+Tensor softmax(ComputationGraph &,
+               Tensor const &input,
                int dim = -1,
                optional<std::string> const &name = nullopt);
 // Create input tensors and constants
-Tensor transpose(Tensor const &input,
+Tensor transpose(ComputationGraph &,
+                 Tensor const &input,
                  std::vector<int> const &perm,
                  optional<std::string> const &name = nullopt);
-Tensor reduce_sum(Tensor const &input,
+Tensor reduce_sum(ComputationGraph &,
+                  Tensor const &input,
                   std::vector<int> const &axes,
                   bool keepdims = false,
                   optional<std::string> const &name = nullopt);
-Tensor reshape(Tensor const &input,
+Tensor reshape(ComputationGraph &,
+               Tensor const &input,
                std::vector<int> const &shape,
                optional<std::string> const &name = nullopt);
-Tensor reverse(Tensor const &input,
+Tensor reverse(ComputationGraph &,
+               Tensor const &input,
                int axis,
                optional<std::string> const &name = nullopt);
-void top_k(Tensor const &input,
-           Tensor *outputs,
+std::vector<Tensor> top_k(ComputationGraph &,
+                          Tensor const &input,
            int k,
            bool sorted,
            optional<std::string> const &name = nullopt);
 Tensor
-    multihead_attention(Tensor const &query,
+    multihead_attention(ComputationGraph &,
+                        Tensor const &query,
                         Tensor const &key,
                         Tensor const &value,
                         int embed_dim,
@@ -234,7 +250,7 @@ Tensor
                         bool bias = true,
                         bool add_bias_kv = false,
                         bool add_zero_attn = false,
-                        optional<Initializer const &> initializer = nullopt,
+                        optional<Initializer> const &initializer = nullopt,
                         optional<std::string> const &name = nullopt);
 Tensor create_tensor(ComputationGraph &, TensorShape const &, bool create_grad = true);
 Parameter create_weight(TensorShape const &,

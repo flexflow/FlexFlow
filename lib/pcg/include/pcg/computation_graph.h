@@ -13,6 +13,8 @@ namespace FlexFlow {
 struct ComputationGraph
     : public strong_typedef<ComputationGraph,
                             OutputLabelledMultiDiGraph<Layer, Tensor>> {
+  ComputationGraph();
+
   using strong_typedef::strong_typedef;
 };
 
