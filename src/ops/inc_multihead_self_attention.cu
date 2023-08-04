@@ -186,7 +186,6 @@ __global__ void
     int idx = real_i % (num_tokens * proj_size / 2);
     int token_idx =
         (real_i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-
     int real_part_index = idx + token_idx * (proj_size / 2) +
                           head_idx * (q_tensor ? q_block_size : k_block_size) +
                           (q_tensor ? 0 : q_array_size);
@@ -283,6 +282,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_kv_heads,
                                        compute_type,
                                        use_algo));
+                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
   // apply rotary emmmbedding for q and k
   // step1 change the k, v to complex tensor
