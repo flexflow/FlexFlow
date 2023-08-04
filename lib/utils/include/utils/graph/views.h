@@ -349,9 +349,8 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 
 namespace std {
 template <>
-struct hash<FlexFlow::required<FlexFlow::LRDirection>> {
+struct hash<FlexFlow::req<FlexFlow::LRDirection>> {
     std::size_t operator()(const FlexFlow::required<FlexFlow::LRDirection>& direction) const {
-        // 使用std::hash将底层类型哈希化
         return std::hash<FlexFlow::LRDirection>{}(direction.value());
     }
 };
