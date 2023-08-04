@@ -64,7 +64,7 @@ jobs:
           activate-environment: flexflow
           environment-file: conda/environment.yml
           auto-activate-base: false
-          
+
       - name: Build Legion
         env: 
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
@@ -109,7 +109,7 @@ jobs:
   create-release:
     name: Create new release
     runs-on: ubuntu-20.04
-    needs: build-dependencies
+    needs: prebuild-legion
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
