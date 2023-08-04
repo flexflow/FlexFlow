@@ -115,10 +115,13 @@ public:
     return Graph(make_unique<T>());
   }
 
-private:
-  Graph(std::unique_ptr<IGraph>);
+  
+  // Graph(std::shared_ptr<IGraph const> const &ptr,
+  //             should_only_be_used_internally_tag_t const &tag)
+  //     : ptr(std::move(ptr)) {}  
 
 private:
+  Graph(std::unique_ptr<IGraph> ptr): ptr(std::move(ptr)) {}
   cow_ptr_t<IGraph> ptr;
 };
 

@@ -103,6 +103,10 @@ public:
     return DiGraphView(this->ptr.get(), should_only_be_used_internally_tag_t{});
   }
 
+  // operator Graph() const {
+  //   return Graph(this->ptr, should_only_be_used_internally_tag_t{});
+  // }
+
   friend void swap(DiGraph &, DiGraph &);
 
   Node add_node();
