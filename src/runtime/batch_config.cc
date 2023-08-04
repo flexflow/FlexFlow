@@ -58,109 +58,18 @@ InferenceMode BatchConfig::get_mode() const {
   return INC_DECODING_MODE;
 }
 
-// Deprecated API; should use RequestManager::update_batch
-int BatchConfig::update_results(InferenceResult const *ir) {
-  assert(false);
-  int completed = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (request_completed[i]) {
-      continue;
-    }
-    assert(requestsInfo[i].num_tokens_in_batch > 0);
-    int processed_tokens = requestsInfo[i].token_start_offset +
-                           requestsInfo[i].num_tokens_in_batch;
-    if (processed_tokens >= requestsInfo[i].max_sequence_length
-        // || ir.results[t] == 0 TODO: replace this with <EOS>
-    ) {
-      log_bc.print("[Done] guid(%zu) final_length(%d)",
-                   requestsInfo[i].request_guid,
-                   processed_tokens);
-      request_completed[i] = true;
-      requestsInfo[i].num_tokens_in_batch = 0;
-      requestsInfo[i].token_start_offset = 0;
-      completed++;
-    } else {
-      requestsInfo[i].token_start_offset += requestsInfo[i].num_tokens_in_batch;
-      requestsInfo[i].num_tokens_in_batch = 1;
-    }
-  }
-  return completed;
-}
-
-// Deprecated API; RequestManager::new_batch and RequestManager::update_batch
-// automatically register new requests.
-bool BatchConfig::register_new_request(size_t guid,
-                                       int initial_len,
-                                       int tokens_to_generate) {
-  assert(false);
-  assert(initial_len > 0 && tokens_to_generate > 0);
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (request_completed[i]) {
-      log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, initial_len);
-      requestsInfo[i].token_start_offset = 0;
-      requestsInfo[i].num_tokens_in_batch = initial_len;
-      requestsInfo[i].request_guid = guid;
-      requestsInfo[i].max_sequence_length = initial_len + tokens_to_generate;
-      request_completed[i] = false;
-      update_num_active_requests_tokens();
-      return true;
-    }
-  }
-  update_num_active_requests_tokens();
-  return false;
-}
-
-// Deprecated API
-void BatchConfig::prepare_next_batch() {
-  assert(false);
-  assert(num_tokens > 0);
-  log_bc.print("[NextBatch] num_tokens(%d)", num_tokens);
-}
-
-// Deprecated API; cannot use this since we need to
-// add token_id, which is missing in this API
-void BatchConfig::update_num_active_requests_tokens() {
-  assert(false);
-  num_tokens = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (!request_completed[i]) {
-      int start_idx = requestsInfo[i].token_start_offset;
-      for (int j = 0; j < requestsInfo[i].num_tokens_in_batch; j++) {
-        tokensInfo[num_tokens].abs_depth_in_request = start_idx + j;
-        tokensInfo[num_tokens].request_index = i;
-        num_tokens++;
-      }
-    }
-  }
-}
-
 int BatchConfig::num_active_requests() const {
   int num_requests = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
-      // } else {
-      //   std::cout << "request " << i << " is completed" << std::endl;
     }
   }
   return num_requests;
-  // if (cached_results) {
-  //   return num_requests;
-  // } else {
-  //   assert(false &&
-  //          "some BatchConfig functions updated requests but didn't call "
-  //          "() before exit");
-  // }
 }
 
 int BatchConfig::num_active_tokens() const {
-  // if (cached_results) {
   return num_tokens;
-  //} else {
-  //  assert(false &&
-  //         "some BatchConfig functions updated requests but didn't call "
-  //         "update_num_active_requests_tokens() before exit");
-  //}
 }
 
 void BatchConfig::print() const {
