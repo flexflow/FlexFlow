@@ -9,6 +9,7 @@
 #include "utils/type_traits.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
+#include "utils/internal_only_tag.h"
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -50,10 +51,6 @@ struct IGraphView {
 
   virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
   virtual ~IGraphView(){};
-};
-
-struct should_only_be_used_internally_tag_t {
-  explicit should_only_be_used_internally_tag_t() = default;
 };
 
 struct GraphView {
