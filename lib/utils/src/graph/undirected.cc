@@ -53,7 +53,7 @@ UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UndirectedGraph::operator UndirectedGraphView() const {
-  return UndirectedGraphView::unsafe_create_without_ownership(*this->ptr.get());
+  return UndirectedGraphView(this->ptr.get(), should_only_be_used_internally_tag_t{});
 }
 
 std::unordered_set<UndirectedEdge>

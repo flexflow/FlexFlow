@@ -80,7 +80,9 @@ public:
   }
 
   static UndirectedGraphView unsafe_create_without_ownership(IUndirectedGraphView const &);
-
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> const &ptr,
+              should_only_be_used_internally_tag_t const &tag)
+      : UndirectedGraphView(ptr) {}
 private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
       : ptr(ptr) {}
