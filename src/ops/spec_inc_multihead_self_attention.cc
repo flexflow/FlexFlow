@@ -60,7 +60,6 @@ Tensor
     FFModel::spec_inc_multihead_self_attention(const Tensor input,
                                                int embed_dim,
                                                int num_heads,
-                                               int num_kv_heads,
                                                int kdim,
                                                int vdim,
                                                float dropout,
@@ -74,6 +73,43 @@ Tensor
                                                float scaling_factor,
                                                bool qk_prod_scaling,
                                                char const *name) {
+  return spec_inc_multiquery_self_attention(input,
+                                            embed_dim,
+                                            num_heads,
+                                            num_heads,
+                                            kdim,
+                                            vdim,
+                                            dropout,
+                                            bias,
+                                            add_bias_kv,
+                                            add_zero_attn,
+                                            data_type,
+                                            kernel_initializer,
+                                            apply_rotary_embedding,
+                                            scaling_query,
+                                            scaling_factor,
+                                            qk_prod_scaling,
+                                            name);
+}
+
+Tensor
+    FFModel::spec_inc_multiquery_self_attention(const Tensor input,
+                                                int embed_dim,
+                                                int num_q_heads,
+                                                int num_kv_heads,
+                                                int kdim,
+                                                int vdim,
+                                                float dropout,
+                                                bool bias,
+                                                bool add_bias_kv,
+                                                bool add_zero_attn,
+                                                DataType data_type,
+                                                Initializer *kernel_initializer,
+                                                bool apply_rotary_embedding,
+                                                bool scaling_query,
+                                                float scaling_factor,
+                                                bool qk_prod_scaling,
+                                                char const *name) {
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
@@ -117,8 +153,8 @@ Tensor
   int kParas = kProjSize * kSize;
   int vParas = vProjSize * vSize;
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-  int weight_size = qParas * num_heads + kParas * num_kv_heads +
-                    vParas * num_kv_heads + oParas * num_heads;
+  int weight_size = qParas * num_q_heads + kParas * num_kv_heads +
+                    vParas * num_kv_heads + oParas * num_q_heads;
   {
     int dims[1] = {weight_size};
     li->weights[0] = create_weight_legion_ordering(1,
@@ -131,7 +167,7 @@ Tensor
   }
   if (bias) {
     // q, k, v, o
-    int dims[1] = {qProjSize * num_heads +
+    int dims[1] = {qProjSize * num_q_heads +
                    (kProjSize + vProjSize) * num_kv_heads + oProjSize};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
@@ -143,7 +179,7 @@ Tensor
   }
   li->data_type = data_type;
   li->add_int_property("embed_dim", embed_dim);
-  li->add_int_property("num_heads", num_heads);
+  li->add_int_property("num_q_heads", num_q_heads);
   li->add_int_property("num_kv_heads", num_kv_heads);
   li->add_int_property("kdim", kdim);
   li->add_int_property("vdim", vdim);
@@ -168,8 +204,8 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
   long long value;
   layer->get_int_property("embed_dim", value);
   int embed_dim = value;
-  layer->get_int_property("num_heads", value);
-  int num_heads = value;
+  layer->get_int_property("num_q_heads", value);
+  int num_q_heads = value;
   layer->get_int_property("num_kv_heads", value);
   int num_kv_heads = value;
   layer->get_int_property("kdim", value);
@@ -196,7 +232,7 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
                                            layer->layer_guid,
                                            inputs[0],
                                            embed_dim,
-                                           num_heads,
+                                           num_q_heads,
                                            num_kv_heads,
                                            kdim,
                                            vdim,
@@ -217,7 +253,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     LayerID const &_layer_guid,
     const ParallelTensor _input,
     int _embed_dim,
-    int _num_heads,
+    int _num_q_heads,
     int _num_kv_heads,
     int _kdim,
     int _vdim,
@@ -240,7 +276,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
          (_bias ? 2 : 1) /*weights*/,
          1 /*outputs*/,
          _input),
-      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
       bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
@@ -274,7 +310,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) +
+    dims[1].size = this->num_q_heads * (qParas + oParas) +
                    this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
     int seed = std::rand();
@@ -287,7 +323,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                                  CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size = qProjSize * num_heads +
+      bias_shape.dims[0].size = qProjSize * num_q_heads +
                                 (kProjSize + vProjSize) * num_kv_heads +
                                 oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
@@ -316,7 +352,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     const ParallelTensor _input,
     const ParallelTensor _weight,
     int _embed_dim,
-    int _num_heads,
+    int _num_q_heads,
     int _num_kv_heads,
     int _kdim,
     int _vdim,
@@ -340,7 +376,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
          1 /*outputs*/,
          _input,
          _weight),
-      num_heads(_num_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
+      num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
       bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
@@ -373,7 +409,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_heads * (qParas + oParas) +
+    dims[1].size = this->num_q_heads * (qParas + oParas) +
                    this->num_kv_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
     // dims[2].size = qParas + kParas + vParas + oParas;
@@ -387,7 +423,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                                  CHOSEN_SYNC_TYPE);
     if (bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size = qProjSize * num_heads +
+      bias_shape.dims[0].size = qProjSize * num_q_heads +
                                 (kProjSize + vProjSize) * num_kv_heads +
                                 oProjSize;
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
@@ -423,7 +459,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                     other.layer_guid,
                                     input,
                                     other.oProjSize,
-                                    other.num_heads,
+                                    other.num_q_heads,
                                     other.num_kv_heads,
                                     other.qProjSize,
                                     other.vProjSize,
@@ -448,7 +484,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                     params.layer_guid,
                                     input,
                                     params.embed_dim,
-                                    params.num_heads,
+                                    params.num_q_heads,
                                     params.num_kv_heads,
                                     params.kdim,
                                     params.vdim,
@@ -586,7 +622,7 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
   int num_samples = input.domain.hi()[2] - input.domain.lo()[2] + 1;
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
   assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
-  int num_heads = attn->num_heads;
+  int num_q_heads = attn->num_q_heads;
   int num_kv_heads = attn->num_kv_heads;
   assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
@@ -602,7 +638,7 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
                                             weight,
                                             gpu_mem_allocator,
                                             num_samples,
-                                            num_heads,
+                                            num_q_heads,
                                             num_kv_heads);
   // assert that we didn't over allocate memory
   assert(gpu_mem_allocator.instance_allocated_size ==
@@ -745,7 +781,7 @@ bool SpecIncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
                                                       int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
-      *value = num_heads;
+      *value = num_q_heads;
       return true;
     default:
       return Op::get_int_parameter(para, value);
@@ -768,7 +804,7 @@ bool SpecIncMultiHeadSelfAttention::measure_operator_cost(
 bool operator==(SpecIncMultiHeadSelfAttentionParams const &lhs,
                 SpecIncMultiHeadSelfAttentionParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
-         lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
+         lhs.num_q_heads == rhs.num_q_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
          lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
          lhs.add_zero_attn == rhs.add_zero_attn &&
@@ -783,7 +819,7 @@ SpecIncMultiHeadSelfAttentionParams
   SpecIncMultiHeadSelfAttentionParams params;
   params.layer_guid = this->layer_guid;
   params.embed_dim = this->oProjSize;
-  params.num_heads = this->num_heads;
+  params.num_q_heads = this->num_q_heads;
   params.num_kv_heads = this->num_kv_heads;
   params.kdim = this->kProjSize;
   params.vdim = this->vProjSize;
@@ -807,7 +843,7 @@ size_t hash<FlexFlow::SpecIncMultiHeadSelfAttentionParams>::operator()(
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.embed_dim);
-  hash_combine(key, params.num_heads);
+  hash_combine(key, params.num_q_heads);
   hash_combine(key, params.num_kv_heads);
   hash_combine(key, params.kdim);
   hash_combine(key, params.vdim);

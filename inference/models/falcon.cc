@@ -89,7 +89,7 @@ void FALCON::create_falcon_model(FFModel &ff,
     Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
-        mha = ff.spec_inc_multihead_self_attention(
+        mha = ff.spec_inc_multiquery_self_attention(
             att_norm,
             falcon_config.dim,
             falcon_config.n_heads,
@@ -107,7 +107,7 @@ void FALCON::create_falcon_model(FFModel &ff,
       }
 
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multihead_self_attention_verify(
+        mha = ff.inc_multiquery_self_attention_verify(
             att_norm,
             falcon_config.dim,
             falcon_config.n_heads,
@@ -126,7 +126,7 @@ void FALCON::create_falcon_model(FFModel &ff,
       }
 
       case INC_DECODING_MODE: {
-        mha = ff.inc_multihead_self_attention(
+        mha = ff.inc_multiquery_self_attention(
             att_norm,
             falcon_config.dim,
             falcon_config.n_heads,

@@ -43,13 +43,13 @@ __global__ void spec_store_kv_cache(
     int kProjSize,
     int vProjSize,
     int num_tokens,
-    int num_heads,
+    int num_q_heads,
     int num_kv_heads,
     int max_seq_len,
     int max_beam_width,
     bool is_root) {
   CUDA_KERNEL_LOOP(i, num_tokens * (kProjSize + vProjSize) * num_kv_heads) {
-    int q_array_size = qProjSize * num_tokens * num_heads;
+    int q_array_size = qProjSize * num_tokens * num_q_heads;
     int k_array_size = kProjSize * num_tokens * num_kv_heads;
 
     bool k_cache = i < k_array_size;
@@ -189,7 +189,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     m->kProjSize,
                                     m->vProjSize,
                                     num_tokens,
-                                    m->num_heads,
+                                    m->num_q_heads,
                                     m->num_kv_heads,
                                     BatchConfig::MAX_SEQ_LENGTH,
                                     BeamSearchBatchConfig::MAX_BEAM_WIDTH,
@@ -201,9 +201,9 @@ template <typename DT>
 __global__ void spec_fill_entries_above_diagonal(DT *matrix,
                                                  size_t new_tokens,
                                                  size_t total_tokens_in_request,
-                                                 size_t num_heads,
+                                                 size_t num_q_heads,
                                                  DT value) {
-  CUDA_KERNEL_LOOP(i, new_tokens * total_tokens_in_request * num_heads) {
+  CUDA_KERNEL_LOOP(i, new_tokens * total_tokens_in_request * num_q_heads) {
     // size_t head_idx = i / (new_tokens * total_tokens_in_request);
     size_t src_idx = (i / new_tokens) % total_tokens_in_request;
     size_t dst_idx = i % new_tokens + total_tokens_in_request - new_tokens;
@@ -288,9 +288,9 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // }
       // To get C, skip over QK^T products from previous requests
       DT *C = static_cast<DT *>(m->qk_prods) +
-              m->num_heads * tokens_prev_requests_squares;
+              m->num_q_heads * tokens_prev_requests_squares;
 
-      if (m->num_heads == m->num_kv_heads) {
+      if (m->num_q_heads == m->num_kv_heads) {
         checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                              CUBLAS_OP_T,
                                              CUBLAS_OP_N,
@@ -311,12 +311,12 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                              cublas_data_type,
                                              ldc,
                                              strideC,
-                                             m->num_heads,
+                                             m->num_q_heads,
                                              compute_type,
                                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       } else {
         strideB = 0;
-        int one_step_heads = m->num_heads / m->num_kv_heads;
+        int one_step_heads = m->num_q_heads / m->num_kv_heads;
         m_ = num_new_tokens;
         n = total_tokens;
         k = m->qProjSize;
@@ -353,7 +353,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // causal attention.
       assert(num_new_tokens <= total_tokens);
       if (num_new_tokens > 1) {
-        size_t parallelism = m->num_heads * num_new_tokens * total_tokens;
+        size_t parallelism = m->num_q_heads * num_new_tokens * total_tokens;
         spec_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
                                            min((size_t)CUDA_NUM_THREADS,
                                                parallelism),
@@ -362,7 +362,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
             C,
             num_new_tokens,
             total_tokens,
-            m->num_heads,
+            m->num_q_heads,
             static_cast<DT>(-INFINITY));
       }
       // Compute Softmax(QK^T/sqrt(d_k))
@@ -375,7 +375,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // with no padding between images, feature maps, rows, and columns; the
       // columns are the inner dimension and the images are the outermost
       // dimension.
-      int n_param = m->num_heads;
+      int n_param = m->num_q_heads;
       int c_param = total_tokens;
       int h_param = 1;
       int w_param = num_new_tokens;
@@ -388,7 +388,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                             w_param));
       float softmax_alpha = 1.0f, softmax_beta = 0.0f;
       DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax) +
-                      m->num_heads * tokens_prev_requests_squares;
+                      m->num_q_heads * tokens_prev_requests_squares;
       // The softmax operation below is executed according to the
       // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
       // softmax operation is computed per spatial location (H,W) per image (N)
@@ -421,9 +421,9 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
       // requests
       C = static_cast<DT *>(m->attn_heads) +
-          tokens_previous_requests * m->num_heads * m->vProjSize;
+          tokens_previous_requests * m->num_q_heads * m->vProjSize;
 
-      if (m->num_heads == m->num_kv_heads) {
+      if (m->num_q_heads == m->num_kv_heads) {
         checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                              CUBLAS_OP_N,
                                              CUBLAS_OP_T,
@@ -444,11 +444,11 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                              cublas_data_type,
                                              ldc,
                                              strideC,
-                                             m->num_heads,
+                                             m->num_q_heads,
                                              compute_type,
                                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       } else {
-        int one_step_heads = m->num_heads / m->num_kv_heads;
+        int one_step_heads = m->num_q_heads / m->num_kv_heads;
         n = m->vProjSize;
         lda = m_, ldb = n, ldc = m_;
         strideA = num_new_tokens * total_tokens;
@@ -485,10 +485,10 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // Project to output, save result directly on output tensor
       alpha = 1.0f, beta = 0.0f;
       m_ = m->oProjSize;
-      k = m->vProjSize * m->num_heads;
+      k = m->vProjSize * m->num_q_heads;
       n = num_new_tokens;
       lda = k, ldb = n, ldc = m_;
-      A = weight_ptr + m->qSize * (m->qProjSize * m->num_heads +
+      A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
                                    m->kProjSize * m->num_kv_heads +
                                    m->vProjSize * m->num_kv_heads);
       B = C;
@@ -519,7 +519,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     }
     if (*m->bias && shard_id == 0) {
       int parallelism = m->oProjSize * num_tokens;
-      int qkv_weight_size = m->qProjSize * m->global_num_heads +
+      int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                             m->kProjSize * m->global_num_kv_heads +
                             m->vProjSize * m->global_num_kv_heads;
       apply_proj_bias_w<<<GET_BLOCKS(parallelism),
@@ -658,7 +658,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
-    int _num_heads,
+    int _num_q_heads,
     int _num_kv_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
                                     BEAM_SEARCH_MODE,
@@ -679,9 +679,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     weight,
                                     gpu_mem_allocator,
                                     num_samples,
-                                    attn->num_heads,
+                                    attn->num_q_heads,
                                     attn->num_kv_heads,
-                                    _num_heads,
+                                    _num_q_heads,
                                     _num_kv_heads,
                                     DT_NONE,
                                     false) {

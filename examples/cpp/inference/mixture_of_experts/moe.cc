@@ -79,7 +79,6 @@ Tensor create_moe_encoder(FFModel *model,
                          x,
                          moeConfig->hidden_size,
                          moeConfig->num_attention_heads,
-                         moeConfig->num_attention_heads,
                          moeConfig->attention_kdim,
                          moeConfig->attention_vdim)
                    : model->multihead_attention(x,

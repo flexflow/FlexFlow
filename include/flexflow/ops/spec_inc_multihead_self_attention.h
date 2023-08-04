@@ -28,7 +28,7 @@ public:
                                 LayerID const &layer_guid,
                                 const ParallelTensor _input,
                                 int _embed_dim,
-                                int _num_heads,
+                                int _num_q_heads,
                                 int _num_kv_heads,
                                 int _kdim,
                                 int _vdim,
@@ -46,7 +46,7 @@ public:
                                 const ParallelTensor _input,
                                 const ParallelTensor _weight,
                                 int _embed_dim,
-                                int _num_heads,
+                                int _num_q_heads,
                                 int _num_kv_heads,
                                 int _kdim,
                                 int _vdim,
@@ -116,7 +116,7 @@ public:
   Params get_params() const;
 
 public:
-  int num_heads, num_kv_heads, tensor_parallelism_degree;
+  int num_q_heads, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
   bool bias;
   bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
@@ -132,7 +132,7 @@ public:
                                     GenericTensorAccessorR const &weight,
                                     MemoryAllocator &gpu_mem_allocator,
                                     int num_samples,
-                                    int _num_heads,
+                                    int _num_q_heads,
                                     int _num_kv_heads);
   ~SpecIncMultiHeadSelfAttentionMeta(void);
 

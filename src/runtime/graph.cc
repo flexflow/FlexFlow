@@ -2312,7 +2312,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->layer_guid.transformer_layer_id);
         sez.serialize(attn->oProjSize);
-        sez.serialize(attn->num_heads);
+        sez.serialize(attn->num_q_heads);
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
@@ -2335,7 +2335,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->layer_guid.transformer_layer_id);
         sez.serialize(attn->oProjSize);
-        sez.serialize(attn->num_heads);
+        sez.serialize(attn->num_q_heads);
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
@@ -2355,7 +2355,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->layer_guid.transformer_layer_id);
         sez.serialize(attn->oProjSize);
-        sez.serialize(attn->num_heads);
+        sez.serialize(attn->num_q_heads);
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
@@ -2736,7 +2736,7 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim, num_kv_heads,
+        int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
@@ -2747,7 +2747,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(transformer_layer_id);
         LayerID layer_guid(id, transformer_layer_id);
         dez.deserialize(embed_dim);
-        dez.deserialize(num_heads);
+        dez.deserialize(num_q_heads);
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
@@ -2765,7 +2765,7 @@ void FFModel::deserialize_graph_optimal_view(
 
         IncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
-        params.num_heads = num_heads;
+        params.num_q_heads = num_q_heads;
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
@@ -2786,7 +2786,7 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim, num_kv_heads;
+        int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads;
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling;
@@ -2795,7 +2795,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(transformer_layer_id);
         LayerID layer_guid(id, transformer_layer_id);
         dez.deserialize(embed_dim);
-        dez.deserialize(num_heads);
+        dez.deserialize(num_q_heads);
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
@@ -2810,7 +2810,7 @@ void FFModel::deserialize_graph_optimal_view(
 
         SpecIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
-        params.num_heads = num_heads;
+        params.num_q_heads = num_q_heads;
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
@@ -2829,7 +2829,7 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        int embed_dim, num_heads, k_dim, v_dim, num_kv_heads,
+        int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
@@ -2840,7 +2840,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(transformer_layer_id);
         LayerID layer_guid(id, transformer_layer_id);
         dez.deserialize(embed_dim);
-        dez.deserialize(num_heads);
+        dez.deserialize(num_q_heads);
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
@@ -2858,7 +2858,7 @@ void FFModel::deserialize_graph_optimal_view(
 
         TreeIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
-        params.num_heads = num_heads;
+        params.num_q_heads = num_q_heads;
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
