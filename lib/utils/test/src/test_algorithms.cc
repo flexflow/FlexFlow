@@ -91,6 +91,11 @@ TEST_CASE("DiGraph") {
     CHECK(get_sinks(g) == expected);
   }
 
+  SUBCASE("get_neightbors") {
+    std::unordered_set<Node> expected = {n[1], n[2], n[3]};
+    CHECK(get_neighbors(g,n[0]) == expected);
+  }
+
   SUBCASE("get_bfs") {
     std::unordered_set<Node> start_points = std::unordered_set<Node>{n[0]};
     auto expected = std::vector<Node>{n[0], n[2], n[1], n[3]};

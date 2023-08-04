@@ -375,13 +375,13 @@ std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
                                        Node const &n) {
-
+  std::cout<<"get_node_edges(g, n).size():"<<get_node_edges(g, n).size()<<"\n";                           
   std::unordered_set<UndirectedEdge> edges =
       filter(get_node_edges(g, n), [&](UndirectedEdge const &edge) {
         return ((edge.smaller == n && edge.bigger != n) ||
                 (edge.smaller != n && edge.bigger == n));
       });
-
+  std::cout<<"get_neighbors: "<<edges.size()<<"\n";
   return map_over_unordered_set<UndirectedEdge, Node>(
       [&](UndirectedEdge const &edge) -> Node {
         return (edge.smaller == n) ? edge.bigger : edge.smaller;
