@@ -30,15 +30,13 @@ TEST_CASE("MultiDiGraph") {
   CHECK(get_incoming_edges(g, {n[1]}) == std::unordered_set<MultiDiEdge>{});
   CHECK(get_outgoing_edges(g, {n[2], n[3]}) ==
         std::unordered_set<MultiDiEdge>{e[3]});
-  std::unordered_map<Node, std::unordered_set<Node>> res =
-      get_predecessors(g, {n[1], n[2], n[3]});
   std::unordered_map<Node, std::unordered_set<Node>> expected_result =
       std::unordered_map<Node, std::unordered_set<Node>>{
           {n[1], {}},
           {n[2], {n[1]}},
           {n[3], {n[0], n[1], n[2]}},
       };
-  CHECK(res == expected_result);
+  CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 }
 
 TEST_CASE("DiGraph") {
@@ -62,8 +60,7 @@ TEST_CASE("DiGraph") {
       {n[2], {n[0], n[1]}},
       {n[3], {n[0]}},
   };
-  auto res = get_predecessors(g, {n[1], n[2], n[3]});
-  CHECK(res == expected_result);
+  CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 
   SUBCASE("get_imm_dominators") {
     std::unordered_map<Node, Node> result =
@@ -80,40 +77,32 @@ TEST_CASE("DiGraph") {
   }
 
   SUBCASE("get_dominators") {
-    std::unordered_map<Node, std::unordered_set<Node>> result =
-        get_dominators(g);
-
     std::unordered_map<Node, std::unordered_set<Node>> expected = {
         {n[0], {n[0]}},
         {n[1], {n[1]}},
         {n[2], {n[0], n[2]}},
         {n[3], {n[3]}},
     };
-    CHECK(result == expected);
+    CHECK(get_dominators(g) == expected);
   }
 
   SUBCASE("get_sinks") {
-    std::unordered_set<Node> result = get_sinks(g);
     auto expected = std::unordered_set<Node>{n[2], n[3]};
-    CHECK(result == expected);
+    CHECK(get_sinks(g) == expected);
   }
 
   SUBCASE("get_bfs") {
     std::unordered_set<Node> start_points = std::unordered_set<Node>{n[0]};
-    auto result = get_bfs_ordering(g, start_points);
     auto expected = std::vector<Node>{n[0], n[2], n[1], n[3]};
-    CHECK(result == expected);
+    CHECK(get_bfs_ordering(g, start_points) == expected);
   }
 
   SUBCASE("get_predecessors") {
-    std::unordered_map<Node, std::unordered_set<Node>> result =
-        get_predecessors(g, {n[1], n[2]});
-    CHECK(result.size() == 2);
-
     std::unordered_map<Node, std::unordered_set<Node>> expected_result = {
         {n[1], {n[0]}},
         {n[2], {n[0], n[1]}},
     };
+    CHECK(get_predecessors(g, {n[1], n[2]}) == expected_result);
   }
 }
 
