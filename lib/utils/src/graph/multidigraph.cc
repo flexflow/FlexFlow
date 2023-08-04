@@ -99,11 +99,7 @@ MultiDiGraphView::operator GraphView() const {
   return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
 }
 
-/* unsafe_create_without_ownership:
-1 create the std::shared_ptr<IMultiDiGraphView const> ptr, and define a empty
-lambda function to delete the ptr. 2 use this ptr to create a MultiDiGraphView.
-It is read-only and it is not responsible for ownership management.
-*/
+// Set the shared_ptr's destructor to a nop so that effectively there is no ownership
 MultiDiGraphView
     MultiDiGraphView::unsafe_create_without_ownership(IMultiDiGraphView const &graphView) {
   std::shared_ptr<IMultiDiGraphView const> ptr(

@@ -39,11 +39,7 @@ std::unordered_set<Node> GraphView::query_nodes(NodeQuery const &g) const {
   return this->ptr->query_nodes(g);
 }
 
-/* unsafe_create_without_ownership:
-1 create the std::shared_ptr<IGraphView const> ptr, and define a empty lambda
-function to delete the ptr. 2 use this ptr to create GraphView. It is read-only
-and it is not responsible for ownership management.
-*/
+// Set the shared_ptr's destructor to a nop so that effectively there is no ownership
 GraphView GraphView::unsafe_create_without_ownership(IGraphView const &graphView) {
   std::shared_ptr<IGraphView const> ptr((&graphView),
                                         [](IGraphView const *) {});

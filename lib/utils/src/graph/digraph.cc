@@ -57,11 +57,7 @@ std::unordered_set<DirectedEdge>
   return ptr->query_edges(query);
 }
 
-/* unsafe_create_without_ownership:
-1 create the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda
-function to delete the ptr. 2 use this ptr to create a DiGraphView. It is
-read-only and is not responsible for ownership management.
-*/
+// Set the shared_ptr's destructor to a nop so that effectively there is no ownership
 DiGraphView DiGraphView::unsafe_create_without_ownership(IDiGraphView const &graphView) {
   std::shared_ptr<IDiGraphView const> ptr((&graphView),
                                           [](IDiGraphView const *) {});
