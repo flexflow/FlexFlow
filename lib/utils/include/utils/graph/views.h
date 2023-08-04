@@ -84,6 +84,7 @@ private:
 
 enum class LRDirection { LEFT, RIGHT };
 
+
 struct JoinNodeKey {
   JoinNodeKey() = delete;
   JoinNodeKey(Node const &node, LRDirection direction)
@@ -92,7 +93,7 @@ struct JoinNodeKey {
   bool operator<(JoinNodeKey const &) const;
 
   Node node;
-  LRDirection direction;
+  req<LRDirection> direction;
 };
 
 FF_VISITABLE_STRUCT(JoinNodeKey, node, direction);
@@ -345,5 +346,16 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 }
 
 } // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<FlexFlow::required<FlexFlow::LRDirection>> {
+    std::size_t operator()(const FlexFlow::required<FlexFlow::LRDirection>& direction) const {
+        // 使用std::hash将底层类型哈希化
+        return std::hash<FlexFlow::LRDirection>{}(direction.value());
+    }
+};
+} // namespace std
+
 
 #endif

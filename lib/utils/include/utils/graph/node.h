@@ -60,10 +60,6 @@ struct GraphView {
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
-  IGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
   static GraphView unsafe_create_without_ownership(IGraphView const &);
 
   template <typename T, typename... Args>
