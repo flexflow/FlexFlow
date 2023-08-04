@@ -104,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}
-          path: legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz
+          path: build/export/legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz
 
   create-release:
     name: Create new release
