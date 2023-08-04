@@ -54,33 +54,6 @@ InferenceManager::InferenceManager(FFConfig const &_config,
              num_devices &&
          "Product of data, tensor, and pipeline parallelism degrees does not "
          "match the number of available devices");
-  // Deprecated logic below
-  // populate array of valid single-device machine views
-  for (int i = 0; i < num_devices; i++) {
-    MachineView view;
-    view.device_type = MachineView::GPU;
-    view.ndims = 1;
-    view.dim[0] = 1;
-    view.stride[0] = 0;
-    view.start_device_id = i;
-    // std::cout << "Registering machine view: " << view << std::endl;
-    machine_views.push_back(view);
-  }
-  // multiple-device machine views
-  if (ff_config.tensor_parallelism_degree > 1) {
-    for (int i = 0; i < num_devices; i++) {
-      if (i + ff_config.tensor_parallelism_degree <= num_devices) {
-        MachineView view;
-        view.device_type = MachineView::GPU;
-        view.ndims = 1;
-        view.dim[0] = ff_config.tensor_parallelism_degree;
-        view.stride[0] = 1;
-        view.start_device_id = i;
-        // std::cout << "Registering machine view: " << view << std::endl;
-        machine_views.push_back(view);
-      }
-    }
-  }
 }
 
 InferenceManager *inference_manager_singleton = nullptr;
@@ -289,13 +262,6 @@ void InferenceManager::init_operators_inference(FFModel *model) {
       op->init_inference(*model, inputs, outputs);
     }
   }
-}
-
-// Deprecated API
-MachineView *InferenceManager::get_machine_view(int mv_id) {
-  assert(false);
-  assert(mv_id >= 0 && mv_id < machine_views.size());
-  return &machine_views[mv_id];
 }
 
 FutureMap InferenceManager::inference(FFModel *model,

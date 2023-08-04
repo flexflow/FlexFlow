@@ -34,7 +34,6 @@ public:
   static InferenceManager *get_inference_manager();
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
-  MachineView *get_machine_view(int mv_id);
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
@@ -55,7 +54,6 @@ public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
   int max_num_tokens_per_batch;
   int num_devices;
-  std::vector<MachineView> machine_views;
 };
 
 struct Request {

@@ -41,12 +41,6 @@ public:
   using RequestGuid = size_t;
   using TokenId = int;
   BatchConfig();
-  bool register_new_request(size_t guid,
-                            int initial_len,
-                            int tokens_to_generate);
-  void prepare_next_batch();
-  int update_results(InferenceResult const *ir);
-  void update_num_active_requests_tokens();
   int num_active_requests() const;
   int num_active_tokens() const;
   void print() const;
@@ -74,7 +68,6 @@ public:
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
-  // size_t max_sequence_length[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
 };
 
@@ -84,16 +77,11 @@ public:
   ~TreeVerifyBatchConfig();
   InferenceMode get_mode() const;
   void print() const;
-  // struct PerTokenInfo : BatchConfig::PerTokenInfo {
-  //   int tree_branch_idx;
-  // };
   struct CommittedTokensInfo {
     int token_index;   // the index of the token in the previous batch
     int request_index; // request index in the batch
     int token_depth;   // position of the token in the request's sequence
   };
-
-  // void compute_tree_branch_indexes();
 
   int num_tokens_to_commit;
   CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
@@ -145,7 +133,6 @@ public:
   BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
   // why is this == MAX_NUM_REQUESTS * MAX_BEAM_WIDTH?
   int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
-  // BeamSlot beam_slots[MAX_NUM_REQUESTS];
 
 private:
   size_t current_iteration;

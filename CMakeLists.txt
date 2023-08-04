@@ -593,11 +593,6 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
 endif()
 
-if(FF_BUILD_MOE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/mixture_of_experts)
-  add_subdirectory(examples/cpp/inference/transformers)
-endif()
-
 if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(inference/spec_infer)
   add_subdirectory(inference/incr_decoding)
