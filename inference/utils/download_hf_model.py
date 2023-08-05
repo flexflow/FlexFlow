@@ -49,6 +49,7 @@ def main(args):
             )
             llm.download_hf_weights_if_needed()
             llm.download_hf_tokenizer_if_needed()
+            llm.download_hf_config()
 
 
 if __name__ == "__main__":

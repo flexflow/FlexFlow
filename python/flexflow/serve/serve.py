@@ -98,6 +98,17 @@ class LLM:
             sys.exit(1)
         return ff_arch
 
+    def download_hf_config(self):
+        """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
+        self.config_dir = os.path.join(
+            os.path.expanduser(self.cache_path), "configs", self.model_name.lower()
+        )
+        self.config_path = os.path.join(self.config_dir, "config.json")
+        os.makedirs(self.config_dir, exist_ok=True)
+        print(f"Creating directory {self.config_dir} (if it doesn't exist)...")
+        print(f"Saving {self.model_name} configs to file {self.config_path}...")
+        self.hf_config.to_json_file(self.config_path)
+
     def download_hf_weights_if_needed(self):
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
