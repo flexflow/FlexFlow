@@ -4,12 +4,12 @@
 #include "cow_ptr_t.h"
 #include "query_set.h"
 #include "utils/fmt.h"
+#include "utils/internal_only_tag.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
-#include "utils/internal_only_tag.h"
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -107,12 +107,13 @@ public:
     return Graph(make_unique<T>());
   }
 
-  Graph(cow_ptr_t<IGraph> const &ptr, should_only_be_used_internally_tag_t const &tag)
-  :ptr(std::move(ptr)){} 
-  
+  Graph(cow_ptr_t<IGraph> const &ptr,
+        should_only_be_used_internally_tag_t const &tag)
+      : ptr(std::move(ptr)) {}
+
 private:
-  Graph(std::unique_ptr<IGraph> ptr): ptr(std::move(ptr)) {}
-//  Graph(std::shared_ptr<IGraph const> ptr): ptr(to_cow_ptr(ptr)) {}
+  Graph(std::unique_ptr<IGraph> ptr) : ptr(std::move(ptr)) {}
+  //  Graph(std::shared_ptr<IGraph const> ptr): ptr(to_cow_ptr(ptr)) {}
   cow_ptr_t<IGraph> ptr;
 };
 

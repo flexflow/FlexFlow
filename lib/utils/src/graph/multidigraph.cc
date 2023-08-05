@@ -37,18 +37,41 @@ MultiDiEdgeQuery
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
                                     MultiDiEdgeQuery const &rhs) {
-  assert(lhs != nullopt);
-  assert(rhs != nullopt);
+  std::unordered_set<Node> srcs_t1;
+  if (is_matchall(lhs.srcs) && !is_matchall(rhs.srcs)) {
+    srcs_t1 = allowed_values(rhs.srcs);
+  } else if (!is_matchall(lhs.srcs) && is_matchall(rhs.srcs)) {
+    srcs_t1 = allowed_values(lhs.srcs);
+  } else if (!is_matchall(lhs.srcs) && !is_matchall(rhs.srcs)) {
+    srcs_t1 = allowed_values(query_intersection(lhs.srcs, rhs.srcs));
+  }
 
-  std::unordered_set<Node> srcs_t1 =
-      intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
-  std::unordered_set<Node> dsts_t1 =
-      intersection(allowed_values(lhs.dsts), allowed_values(rhs.dsts));
+  std::unordered_set<Node> dsts_t1;
+  if (is_matchall(lhs.dsts) && !is_matchall(rhs.dsts)) {
+    dsts_t1 = allowed_values(rhs.dsts);
+  } else if (!is_matchall(lhs.dsts) && is_matchall(rhs.dsts)) {
+    dsts_t1 = allowed_values(lhs.dsts);
+  } else if (!is_matchall(lhs.dsts) && !is_matchall(rhs.dsts)) {
+    dsts_t1 = allowed_values(query_intersection(lhs.dsts, rhs.dsts));
+  }
 
-  std::unordered_set<NodePort> srcIdxs_t1 =
-      intersection(allowed_values(lhs.srcIdxs), allowed_values(rhs.srcIdxs));
-  std::unordered_set<NodePort> dstIdxs_t1 =
-      intersection(allowed_values(lhs.dstIdxs), allowed_values(rhs.dstIdxs));
+  std::unordered_set<NodePort> srcIdxs_t1;
+  if (is_matchall(lhs.srcIdxs) && !is_matchall(rhs.srcIdxs)) {
+    srcIdxs_t1 = allowed_values(rhs.srcIdxs);
+  } else if (!is_matchall(lhs.srcIdxs) && is_matchall(rhs.srcIdxs)) {
+    srcIdxs_t1 = allowed_values(lhs.srcIdxs);
+  } else if (!is_matchall(lhs.srcIdxs) && !is_matchall(rhs.srcIdxs)) {
+    srcIdxs_t1 = allowed_values(query_intersection(lhs.srcIdxs, rhs.srcIdxs));
+  }
+
+  std::unordered_set<NodePort> dstIdxs_t1;
+  if (is_matchall(lhs.dstIdxs) && !is_matchall(rhs.dstIdxs)) {
+    dstIdxs_t1 = allowed_values(rhs.dstIdxs);
+  } else if (!is_matchall(lhs.dstIdxs) && is_matchall(rhs.dstIdxs)) {
+    dstIdxs_t1 = allowed_values(lhs.dstIdxs);
+  } else if (!is_matchall(lhs.dstIdxs) && !is_matchall(rhs.dstIdxs)) {
+    dstIdxs_t1 = allowed_values(query_intersection(lhs.dstIdxs, rhs.dstIdxs));
+  }
 
   MultiDiEdgeQuery e = MultiDiEdgeQuery::all();
   e.srcs = srcs_t1;
@@ -99,9 +122,10 @@ MultiDiGraphView::operator GraphView() const {
   return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
 }
 
-// Set the shared_ptr's destructor to a nop so that effectively there is no ownership
-MultiDiGraphView
-    MultiDiGraphView::unsafe_create_without_ownership(IMultiDiGraphView const &graphView) {
+// Set the shared_ptr's destructor to a nop so that effectively there is no
+// ownership
+MultiDiGraphView MultiDiGraphView::unsafe_create_without_ownership(
+    IMultiDiGraphView const &graphView) {
   std::shared_ptr<IMultiDiGraphView const> ptr(
       (&graphView), [](IMultiDiGraphView const *ptr) {});
   return MultiDiGraphView(ptr);

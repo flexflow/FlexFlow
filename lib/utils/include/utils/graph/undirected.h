@@ -59,13 +59,13 @@ public:
   UndirectedGraphView() = delete;
 
   operator GraphView() const;
- // operator GraphView &();
+  // operator GraphView &();
 
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-  
+
   template <typename T, typename... Args>
   static
       typename std::enable_if<std::is_base_of<IUndirectedGraphView, T>::value,
@@ -75,10 +75,12 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  static UndirectedGraphView unsafe_create_without_ownership(IUndirectedGraphView const &);
+  static UndirectedGraphView
+      unsafe_create_without_ownership(IUndirectedGraphView const &);
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> const &ptr,
-              should_only_be_used_internally_tag_t const &tag)
+                      should_only_be_used_internally_tag_t const &tag)
       : UndirectedGraphView(ptr) {}
+
 private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
       : ptr(ptr) {}

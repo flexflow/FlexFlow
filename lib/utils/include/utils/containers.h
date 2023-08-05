@@ -268,11 +268,12 @@ std::unordered_set<T> intersection(std::unordered_set<T> const &l,
 }
 
 template <typename T>
-std::unordered_set<T> intersection(std::vector<std::unordered_set<T>> const &v) {
+std::unordered_set<T>
+    intersection(std::vector<std::unordered_set<T>> const &v) {
   if (v.empty()) {
     throw mk_runtime_error("cannot take intersection of no sets");
   }
-  
+
   std::unordered_set<T> result = v[0];
   for (int i = 1; i < v.size(); i++) {
     result = intersection(result, v[i]);

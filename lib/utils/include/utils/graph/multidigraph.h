@@ -26,7 +26,8 @@ public:
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
 
-  static MultiDiGraphView unsafe_create_without_ownership(IMultiDiGraphView const &);
+  static MultiDiGraphView
+      unsafe_create_without_ownership(IMultiDiGraphView const &);
 
 private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}

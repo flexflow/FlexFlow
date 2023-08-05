@@ -39,8 +39,10 @@ std::unordered_set<Node> GraphView::query_nodes(NodeQuery const &g) const {
   return this->ptr->query_nodes(g);
 }
 
-// Set the shared_ptr's destructor to a nop so that effectively there is no ownership
-GraphView GraphView::unsafe_create_without_ownership(IGraphView const &graphView) {
+// Set the shared_ptr's destructor to a nop so that effectively there is no
+// ownership
+GraphView
+    GraphView::unsafe_create_without_ownership(IGraphView const &graphView) {
   std::shared_ptr<IGraphView const> ptr((&graphView),
                                         [](IGraphView const *) {});
   return GraphView(ptr);

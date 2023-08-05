@@ -68,7 +68,8 @@ public:
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  static DiGraphView unsafe_create_without_ownership(IDiGraphView const &graphView);
+  static DiGraphView
+      unsafe_create_without_ownership(IDiGraphView const &graphView);
 
   DiGraphView(std::shared_ptr<IDiGraphView const> const &ptr,
               should_only_be_used_internally_tag_t const &tag)
@@ -101,8 +102,10 @@ public:
   }
 
   operator Graph() const {
-    return Graph(std::static_pointer_cast<IGraph>(this->ptr.get_mutable()), should_only_be_used_internally_tag_t{});
-  }//Note(lambda):because ptr is cow_ptr_t<IDiGraph>, but ptr in Graph is cow_ptr_t<IGraph>, so we need to static_pointer_cast
+    return Graph(std::static_pointer_cast<IGraph>(this->ptr.get_mutable()),
+                 should_only_be_used_internally_tag_t{});
+  } // Note(lambda):because ptr is cow_ptr_t<IDiGraph>, but ptr in Graph is
+    // cow_ptr_t<IGraph>, so we need to static_pointer_cast
 
   friend void swap(DiGraph &, DiGraph &);
 

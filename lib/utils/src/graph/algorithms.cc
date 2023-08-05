@@ -375,13 +375,14 @@ std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
                                        Node const &n) {
-  std::cout<<"get_node_edges(g, n).size():"<<get_node_edges(g, n).size()<<"\n";                           
+  std::cout << "get_node_edges(g, n).size():" << get_node_edges(g, n).size()
+            << "\n";
   std::unordered_set<UndirectedEdge> edges =
       filter(get_node_edges(g, n), [&](UndirectedEdge const &edge) {
         return ((edge.smaller == n && edge.bigger != n) ||
                 (edge.smaller != n && edge.bigger == n));
       });
-  std::cout<<"get_neighbors: "<<edges.size()<<"\n";
+  std::cout << "get_neighbors: " << edges.size() << "\n";
   return map_over_unordered_set<UndirectedEdge, Node>(
       [&](UndirectedEdge const &edge) -> Node {
         return (edge.smaller == n) ? edge.bigger : edge.smaller;
@@ -486,34 +487,35 @@ optional<Node> get_imm_post_dominator(DiGraphView const &g, Node const &n) {
 }
 
 std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &g) {
-    std::vector<Node> topo_ordering = get_topological_ordering(g);
-    std::unordered_map<Node, int> topo_rank;
-    for (int i = 0; i < topo_ordering.size(); i++) {
-        topo_rank[topo_ordering[i]] = i;
-    }
-    return topo_rank;
+  std::vector<Node> topo_ordering = get_topological_ordering(g);
+  std::unordered_map<Node, int> topo_rank;
+  for (int i = 0; i < topo_ordering.size(); i++) {
+    topo_rank[topo_ordering[i]] = i;
+  }
+  return topo_rank;
 }
 
-Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const & nodes, DiGraphView const &g) {
-    std::unordered_map<Node, int> topo_rank = calculate_topo_rank(g);
-    return *std::max_element(nodes.cbegin(),
-                             nodes.cend(),
-                             [&topo_rank](Node const &lhs, Node const &rhs) {
-                               return topo_rank.at(lhs) < topo_rank.at(rhs);
-                             });
+Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &nodes,
+                                      DiGraphView const &g) {
+  std::unordered_map<Node, int> topo_rank = calculate_topo_rank(g);
+  return *std::max_element(nodes.cbegin(),
+                           nodes.cend(),
+                           [&topo_rank](Node const &lhs, Node const &rhs) {
+                             return topo_rank.at(lhs) < topo_rank.at(rhs);
+                           });
 }
 
 optional<Node> get_imm_post_dominator(DiGraphView const &g,
                                       std::unordered_set<Node> const &nodes) {
 
-  std::unordered_set<Node> commonDoms = intersection(values(restrict_keys(get_post_dominators(g), nodes)));
+  std::unordered_set<Node> commonDoms =
+      intersection(values(restrict_keys(get_post_dominators(g), nodes)));
 
-  if(!commonDoms.empty()){
+  if (!commonDoms.empty()) {
     return get_node_with_greatest_topo_rank(commonDoms, g);
-  }else{
+  } else {
     return nullopt;
   }
-
 }
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge>
@@ -565,7 +567,7 @@ UndirectedGraphView as_undirected(DiGraphView const &g) {
   return UndirectedGraphView::create<ViewDiGraphAsUndirectedGraph>(g);
 }
 
-UndirectedGraphView as_undirected(MultiDiGraphView const & g) {
+UndirectedGraphView as_undirected(MultiDiGraphView const &g) {
   DiGraphView dg = as_digraph(g);
   return as_undirected(dg);
 }

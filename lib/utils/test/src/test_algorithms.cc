@@ -93,7 +93,7 @@ TEST_CASE("DiGraph") {
 
   SUBCASE("get_neightbors") {
     std::unordered_set<Node> expected = {n[1], n[2], n[3]};
-    CHECK(get_neighbors(g,n[0]) == expected);
+    CHECK(get_neighbors(g, n[0]) == expected);
   }
 
   SUBCASE("get_bfs") {
