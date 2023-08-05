@@ -140,3 +140,12 @@ def init(configs: Union[str, dict]):
 
     global LLM, SSM, SamplingConfig
     from .serve import LLM, SSM, SamplingConfig
+
+
+def init_cpu():
+    """Start the FlexFlow runtime and import the inference package without access to GPU functionalities.
+    This is useful to access the utilies from the flexflow package without using up GPU memory.
+    """
+    sys.argv += ["CPU_ONLY_TEST", "1"]
+    global LLM, SSM, SamplingConfig
+    from .serve import LLM, SSM, SamplingConfig
