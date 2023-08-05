@@ -20,10 +20,6 @@ namespace FlexFlow {
 
 struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
-  bool operator==(Node const &other) const {
-    // Replace this with your actual comparison logic
-    return this->value() == other.value();
-  }
 };
 FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
