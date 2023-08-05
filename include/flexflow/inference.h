@@ -15,6 +15,8 @@
 
 #pragma once
 #include "flexflow/batch_config.h"
+#include <string>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -39,5 +41,10 @@ struct GenerationResult {
   std::vector<TokenId> input_tokens;
   std::vector<TokenId> output_tokens;
 };
+
+#include <string>
+#include <vector>
+
+std::string join_path(const std::vector<std::string>& paths);
 
 } // namespace FlexFlow

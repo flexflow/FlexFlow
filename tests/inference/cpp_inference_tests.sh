@@ -20,10 +20,7 @@ cleanup
 pip3 install --upgrade transformers sentencepiece
 
 # Download the weights in both half and full precision
-python3 ../../inference/utils/download_llama_weights.py
-python3 ../../inference/utils/download_llama_weights.py --use-full-precision
-python3 ../../inference/utils/download_opt_weights.py
-python3 ../../inference/utils/download_opt_weights.py --use-full-precision
+python3 ../../inference/utils/download_hf_model.py --cache-folder "../../inference" "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m"
 
 # Create test prompt file
 mkdir -p ../../inference/prompt
@@ -37,7 +34,7 @@ mkdir -p ../../inference/output
 ###############################################################################################
 
 # LLAMA
-../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights/ -llm-config ../../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../../inference/weights/llama_160M_weights/ -ssm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama.txt -pipeline-parallelism-degree 4
+../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/decapoda-research/llama-7b-hf/ -llm-config ../../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../../inference/weights/llama_160M_weights/ -ssm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama.txt -pipeline-parallelism-degree 4
 # LLAMA (half precision)
 ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights_half/ -llm-config ../../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../../inference/weights/llama_160M_weights_half/ -ssm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_half.txt -pipeline-parallelism-degree 4
 

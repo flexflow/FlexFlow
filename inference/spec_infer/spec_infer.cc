@@ -25,13 +25,14 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_app("llama");
 
 struct FilePaths {
-  std::string llm_weight_file_path;
-  std::string llm_config_file_path;
-  std::vector<std::string> ssm_weight_file_paths;
-  std::vector<std::string> ssm_config_file_paths;
+  std::string cache_folder_path;
   std::string prompt_file_path;
-  std::string tokenizer_file_path;
   std::string output_file_path;
+};
+
+struct ModelNames {
+  std::string llm_model_name;
+  std::vector<std::string> ssm_model_names;
 };
 
 struct ModelTypes {
@@ -42,80 +43,29 @@ struct ModelTypes {
 void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
-                      ModelTypes &model_types,
+                      ModelNames &model_names,
                       bool &use_full_precision,
                       bool &verbose) {
   for (int i = 1; i < argc; i++) {
-    // llm model type
+    // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
-      std::string model_type_str = std::string(argv[++i]);
-      std::transform(model_type_str.begin(),
-                     model_type_str.end(),
-                     model_type_str.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      if (model_type_str == "llama") {
-        model_types.llm_model_type = ModelType::LLAMA;
-      } else if (model_type_str == "llama2") {
-        model_types.llm_model_type = ModelType::LLAMA2;
-      } else if (model_type_str == "opt") {
-        model_types.llm_model_type = ModelType::OPT;
-      } else if (model_type_str == "falcon") {
-        model_types.llm_model_type = ModelType::FALCON;
-      } else {
-        model_types.llm_model_type = ModelType::UNKNOWN;
-      }
+      model_names.llm_model_name = std::string(argv[++i]);
       continue;
     }
-    // llm model weights
-    if (!strcmp(argv[i], "-llm-weight")) {
-      paths.llm_weight_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // llm model configs
-    if (!strcmp(argv[i], "-llm-config")) {
-      paths.llm_config_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // ssm models types
+    // ssm models names
     if (!strcmp(argv[i], "-ssm-model")) {
       std::string model_type_str = std::string(argv[++i]);
-      std::transform(model_type_str.begin(),
-                     model_type_str.end(),
-                     model_type_str.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      if (model_type_str == "llama") {
-        model_types.ssm_model_types.push_back(ModelType::LLAMA);
-      } else if (model_type_str == "llama2") {
-        model_types.ssm_model_types.push_back(ModelType::LLAMA2);
-      } else if (model_type_str == "opt") {
-        model_types.ssm_model_types.push_back(ModelType::OPT);
-      } else if (model_type_str == "falcon") {
-        model_types.ssm_model_types.push_back(ModelType::FALCON);
-      } else {
-        model_types.ssm_model_types.push_back(ModelType::UNKNOWN);
-      }
+      model_names.ssm_model_names.push_back(model_type_str);
       continue;
     }
-    // ssm model weights
-    if (!strcmp(argv[i], "-ssm-weight")) {
-      std::string file_path = std::string(argv[++i]);
-      paths.ssm_weight_file_paths.push_back(file_path);
-      continue;
-    }
-    // ssm model configs
-    if (!strcmp(argv[i], "-ssm-config")) {
-      std::string file_path = std::string(argv[++i]);
-      paths.ssm_config_file_paths.push_back(file_path);
+    // cache folder
+    if (!strcmp(argv[i], "-cache-folder")) {
+      paths.cache_folder_path = std::string(argv[++i]);
       continue;
     }
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // tokenizer
-    if (!strcmp(argv[i], "-tokenizer")) {
-      paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -133,6 +83,9 @@ void parse_input_args(char **argv,
       continue;
     }
   }
+  if (paths.cache_folder_path.empty()) {
+    paths.cache_folder_path = "~/.cache/flexflow";
+  }
 }
 
 void FlexFlow::top_level_task(Task const *task,
@@ -141,38 +94,29 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   FFConfig ffconfig;
   FilePaths file_paths;
-  ModelTypes model_types;
+  ModelNames model_names;
   bool use_full_precision = false;
   bool verbose = false;
-  size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
-  int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
-      pipeline_parallelism_degree = 1;
+
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
   parse_input_args(
-      argv, argc, file_paths, model_types, use_full_precision, verbose);
+      argv, argc, file_paths, model_names, use_full_precision, verbose);
+  
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
 
-  if (file_paths.ssm_weight_file_paths.size() == 0) {
+  if (model_names.ssm_model_names.size() == 0) {
     assert(false &&
            "SpecInfer needs at least one SSM for speculative inference");
   }
-  if (file_paths.ssm_config_file_paths.size() !=
-      file_paths.ssm_weight_file_paths.size()) {
-    assert(false && "Number of SSM config files passed does not match number "
-                    "of SSM weights");
-  }
+  
   assert(model_types.llm_model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
-  if (model_types.ssm_model_types.size() !=
-      file_paths.ssm_weight_file_paths.size()) {
-    assert(false && "Number of valid SSM model types passed does not match "
-                    "number of SSM weights");
-  }
+  
   for (auto mt : model_types.ssm_model_types) {
     if (mt == ModelType::UNKNOWN) {
       assert(false && "One of the SSM model types passed is invalid.");

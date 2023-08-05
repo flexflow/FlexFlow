@@ -22,21 +22,20 @@
 #include <nlohmann/json.hpp>
 
 using namespace Legion;
+using json = nlohmann::json;
 
 LegionRuntime::Logger::Category log_app("llama");
 
 struct FilePaths {
-  std::string llm_weight_file_path;
-  std::string llm_config_file_path;
+  std::string cache_folder_path;
   std::string prompt_file_path;
-  std::string tokenizer_file_path;
   std::string output_file_path;
 };
 
 void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
-                      ModelType &llm_model_type,
+                      std::string &llm_model_name,
                       bool &use_full_precision,
                       bool &verbose,
                       bool &do_sample,
@@ -45,42 +44,17 @@ void parse_input_args(char **argv,
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
-      std::string model_type_str = std::string(argv[++i]);
-      std::transform(model_type_str.begin(),
-                     model_type_str.end(),
-                     model_type_str.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      if (model_type_str == "llama") {
-        llm_model_type = ModelType::LLAMA;
-      } else if (model_type_str == "llama2") {
-        llm_model_type = ModelType::LLAMA2;
-      } else if (model_type_str == "opt") {
-        llm_model_type = ModelType::OPT;
-      } else if (model_type_str == "falcon") {
-        llm_model_type = ModelType::FALCON;
-      } else {
-        llm_model_type = ModelType::UNKNOWN;
-      }
+      llm_model_name = std::string(argv[++i]);
       continue;
     }
-    // llm model weights
-    if (!strcmp(argv[i], "-llm-weight")) {
-      paths.llm_weight_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // llm model configs
-    if (!strcmp(argv[i], "-llm-config")) {
-      paths.llm_config_file_path = std::string(argv[++i]);
+    // cache folder
+    if (!strcmp(argv[i], "-cache-folder")) {
+      paths.cache_folder_path = std::string(argv[++i]);
       continue;
     }
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // tokenizer
-    if (!strcmp(argv[i], "-tokenizer")) {
-      paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -110,6 +84,9 @@ void parse_input_args(char **argv,
       continue;
     }
   }
+  if (paths.cache_folder_path.empty()) {
+    paths.cache_folder_path = "~/.cache/flexflow";
+  }
 }
 
 void FlexFlow::top_level_task(Task const *task,
@@ -121,13 +98,12 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "Doesn't support quantization in non-offload mode");
   }
   FilePaths file_paths;
-  ModelType model_type;
+  std::string llm_model_name;
   bool use_full_precision = false;
   bool verbose = false;
   bool do_sample = false;
   float temperature = 0.0f;
   float topp = 0.0f;
-  size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -135,7 +111,7 @@ void FlexFlow::top_level_task(Task const *task,
   parse_input_args(argv,
                    argc,
                    file_paths,
-                   model_type,
+                   llm_model_name,
                    use_full_precision,
                    verbose,
                    do_sample,
@@ -146,32 +122,63 @@ void FlexFlow::top_level_task(Task const *task,
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
 
+  std::string config_filepath = join_path({file_paths.cache_folder_path, "configs", llm_model_name, "config.json"});
+  std::string tokenizer_filepath = join_path({file_paths.cache_folder_path, "tokenizers", llm_model_name});
+  std::string weights_filepath = join_path({file_paths.cache_folder_path, "weights", llm_model_name, use_full_precision ? "full-precision" : "half-precision"});
+
+  std::ifstream config_file_handle(config_filepath);
+  assert(config_file_handle.good() && "Model config file does not exist.");
+  json model_config = json::parse(config_file_handle,
+                                  /*parser_callback_t */ nullptr,
+                                  /*allow_exceptions */ true,
+                                  /*ignore_comments */ true);
+  
+  ModelType model_type = ModelType::UNKNOWN;
+  auto architectures = model_config["architectures"];
+  for(const auto& str : architectures) {
+    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
+      std::string nameOrPath = model_config["_name_or_path"];
+      // TODO: support LLAMA-2 models not from Meta
+      bool llama2 = nameOrPath.find("meta-llama/Llama-2") == 0;
+      if (llama2) {
+        model_type = ModelType::LLAMA2;
+      } else {
+        model_type = ModelType::LLAMA;
+      }
+      break;
+    } else if (str == "OPTForCausalLM") {
+      model_type = ModelType::OPT;
+    } else if (str == "RWForCausalLM") {
+      model_type == ModelType::FALCON;
+    }
+  }
+
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
   SamplingConfig samplingConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
-  rm->register_tokenizer(model_type, file_paths.tokenizer_file_path);
+  rm->register_tokenizer(model_type, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(model,
-                              file_paths.llm_config_file_path,
-                              file_paths.llm_weight_file_path,
+                              model_config,
+                              weights_filepath,
                               INC_DECODING_MODE,
                               samplingConfig,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,
-                          file_paths.llm_config_file_path,
-                          file_paths.llm_weight_file_path,
+                          model_config,
+                          weights_filepath,
                           INC_DECODING_MODE,
                           use_full_precision);
   } else if (model_type == ModelType::FALCON) {
     FALCON::create_falcon_model(model,
-                                file_paths.llm_config_file_path,
-                                file_paths.llm_weight_file_path,
+                                model_config,
+                                weights_filepath,
                                 INC_DECODING_MODE,
                                 use_full_precision);
   } else {
