@@ -18,14 +18,15 @@
 namespace FlexFlow {
 
 using namespace Legion;
+using json = nlohmann::json;
 
 void FALCON::create_falcon_model(FFModel &ff,
-                                 std::string const &model_config_file_path,
+                                 json model_config,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
                                  bool use_full_precision) {
-  Config falcon_config(model_config_file_path);
-  falcon_config.printConfig();
+  FalconConfig falcon_config(model_config);
+  falcon_config.print();
 
   if (ff.config.tensor_parallelism_degree > falcon_config.n_heads ||
       ff.config.tensor_parallelism_degree > falcon_config.n_kv_heads) {

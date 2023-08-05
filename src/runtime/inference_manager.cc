@@ -678,21 +678,18 @@ void FFModel::compile_inference() {
 #endif
 }
 
-std::string join_path(const std::vector<std::string>& paths) {
+std::string join_path(std::vector<std::string> const &paths) {
   std::string joined;
-  for(const auto& path : paths) {
-    if(joined.empty()) {
+  for (auto const &path : paths) {
+    if (joined.empty()) {
       joined = path;
-    }
-    else {
-      if(path[0] == '/') {
-        joined = path; 
-      }
-      else if(joined.back() != '/') {
+    } else {
+      if (path[0] == '/') {
+        joined = path;
+      } else if (joined.back() != '/') {
         joined += '/';
         joined += path;
-      } 
-      else {
+      } else {
         joined += path;
       }
     }

@@ -26,88 +26,52 @@ namespace FlexFlow {
 
 class FALCON {
 public:
-  struct Config {
-    Config(void) {
-      // todo read from config/param file
-      n_layers = 32;
-      vocab_size = 32000;
-      n_heads = 32;
-      n_kv_heads = 1;
-      dim = 4096;
-      multiple_of = 256;
-      norm_eps = 1e-6;
-      total_requests = 2560;
-      incremental_mode = true;
-      hidden_dim = 11008;
+  struct FalconConfig {
+    FalconConfig(json model_config) {
+      try {
+        bias = model_config["bias"];
+        hidden_size = model_config["hidden_size"];
+        layer_norm_epsilon = model_config["layer_norm_epsilon"];
+        multi_query = model_config["multi_query"];
+        n_head = model_config["n_head"];
+        n_layer = model_config["n_layer"];
+        parallel_attn = model_config["parallel_attn"];
+        vocab_size = model_config["vocab_size"];
+      } catch (json::exception const &e) {
+        std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
+        assert(false);
+      }
       max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
       max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
       max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
       max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
     }
 
-    Config(std::string config_filepath) {
-      std::ifstream config_file(config_filepath);
-      if (config_file.is_open()) {
-        try {
-          json config_json;
-          config_file >> config_json;
-
-          n_layers = config_json["n_layers"];
-          vocab_size = config_json["vocab_size"];
-          n_heads = config_json["n_heads"];
-          n_kv_heads = config_json["n_kv_heads"];
-          dim = config_json["dim"];
-          multiple_of = config_json["multiple_of"];
-          norm_eps = config_json["norm_eps"];
-          total_requests = config_json["total_requests"];
-          incremental_mode = config_json["incremental_mode"];
-          hidden_dim = config_json["hidden_dim"];
-          head_dim = dim / n_heads;
-          // Override values below
-          /* max_seq_len = config_json["max_seq_len"];
-          max_num_tokens = config_json["max_num_tokens"];
-          max_beam_width = config_json["max_beam_width"];
-          max_beam_depth = config_json["max_beam_depth"];
-          hidden_dim = config_json["hidden_dim"]; */
-          max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
-          max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
-          max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-          max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
-        } catch (json::exception const &e) {
-          std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
-          assert(false);
-        }
-      } else {
-        std::cerr << "Error opening JSON file." << std::endl;
-        assert(false);
-      }
-    }
-
-    void printConfig() const {
+    void print() const {
       std::cout << "Falcon Config:" << std::endl;
-      std::cout << "n_layers: " << n_layers << std::endl;
-      std::cout << "vocab_size: " << vocab_size << std::endl;
-      std::cout << "n_heads: " << n_heads << std::endl;
-      std::cout << "dim: " << dim << std::endl;
-      std::cout << "multiple_of: " << multiple_of << std::endl;
-      std::cout << "norm_eps: " << norm_eps << std::endl;
-      std::cout << "total_requests: " << total_requests << std::endl;
-      std::cout << "incremental_mode: " << incremental_mode << std::endl;
-      std::cout << "max_seq_len: " << max_seq_len << std::endl;
-      std::cout << "max_num_tokens: " << max_num_tokens << std::endl;
-      std::cout << "max_beam_width: " << max_beam_width << std::endl;
-      std::cout << "max_beam_depth: " << max_beam_depth << std::endl;
-      std::cout << "hidden_dim: " << hidden_dim << std::endl;
+      std::cout << "\tbias: " << bias << std::endl;
+      std::cout << "\thidden_size: " << hidden_size << std::endl;
+      std::cout << "\tlayer_norm_epsilon: " << layer_norm_epsilon << std::endl;
+      std::cout << "\tmulti_query: " << multi_query << std::endl;
+      std::cout << "\tn_head: " << n_head << std::endl;
+      std::cout << "\tn_layer: " << n_layer << std::endl;
+      std::cout << "\tparallel_attn: " << parallel_attn << std::endl;
+      std::cout << "\tvocab_size: " << vocab_size << std::endl;
+
+      std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
+      std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
+      std::cout << "\tmax_beam_width: " << max_beam_width << std::endl;
+      std::cout << "\tmax_beam_depth: " << max_beam_depth << std::endl;
     }
 
-    int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
-        total_requests, incremental_mode, max_seq_len, max_num_tokens,
-        max_beam_width, max_beam_depth, head_dim, n_kv_heads;
-    float norm_eps;
+    bool bias, multi_query, parallel_attn;
+    int hidden_size, n_head, n_layer, vocab_size;
+    float layer_norm_epsilon;
+    int max_seq_len, max_num_tokens, max_beam_width, max_beam_depth;
   };
 
   static void create_falcon_model(FFModel &ff,
-                                  std::string const &model_config_file_path,
+                                  json model_config,
                                   std::string const &weight_file_path,
                                   InferenceMode mode,
                                   bool use_full_precision = false);

@@ -18,16 +18,17 @@
 namespace FlexFlow {
 
 using namespace Legion;
+using json = nlohmann::json;
 
 void LLAMA::create_llama_model(FFModel &ff,
-                               std::string const &model_config_file_path,
+                               json model_config,
                                std::string const &weight_file_path,
                                InferenceMode mode,
                                SamplingConfig samplingConfig,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
-  Config llama_config(model_config_file_path);
-  llama_config.printConfig();
+  LLAMAConfig llama_config(model_config);
+  llama_config.print();
 
   std::unordered_map<std::string, Layer *> weights_layers;
 

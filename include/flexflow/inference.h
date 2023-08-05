@@ -45,6 +45,6 @@ struct GenerationResult {
 #include <string>
 #include <vector>
 
-std::string join_path(const std::vector<std::string>& paths);
+std::string join_path(std::vector<std::string> const &paths);
 
 } // namespace FlexFlow

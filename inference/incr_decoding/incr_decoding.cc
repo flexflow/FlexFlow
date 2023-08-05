@@ -122,9 +122,15 @@ void FlexFlow::top_level_task(Task const *task,
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
 
-  std::string config_filepath = join_path({file_paths.cache_folder_path, "configs", llm_model_name, "config.json"});
-  std::string tokenizer_filepath = join_path({file_paths.cache_folder_path, "tokenizers", llm_model_name});
-  std::string weights_filepath = join_path({file_paths.cache_folder_path, "weights", llm_model_name, use_full_precision ? "full-precision" : "half-precision"});
+  std::string config_filepath = join_path(
+      {file_paths.cache_folder_path, "configs", llm_model_name, "config.json"});
+  std::string tokenizer_filepath =
+      join_path({file_paths.cache_folder_path, "tokenizers", llm_model_name});
+  std::string weights_filepath =
+      join_path({file_paths.cache_folder_path,
+                 "weights",
+                 llm_model_name,
+                 use_full_precision ? "full-precision" : "half-precision"});
 
   std::ifstream config_file_handle(config_filepath);
   assert(config_file_handle.good() && "Model config file does not exist.");
@@ -132,10 +138,10 @@ void FlexFlow::top_level_task(Task const *task,
                                   /*parser_callback_t */ nullptr,
                                   /*allow_exceptions */ true,
                                   /*ignore_comments */ true);
-  
+
   ModelType model_type = ModelType::UNKNOWN;
   auto architectures = model_config["architectures"];
-  for(const auto& str : architectures) {
+  for (auto const &str : architectures) {
     if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
       std::string nameOrPath = model_config["_name_or_path"];
       // TODO: support LLAMA-2 models not from Meta

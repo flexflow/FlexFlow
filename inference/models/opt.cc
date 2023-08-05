@@ -18,14 +18,15 @@
 namespace FlexFlow {
 
 using namespace Legion;
+using json = nlohmann::json;
 
 void OPT::create_opt_model(FFModel &ff,
-                           std::string const &model_config_file_path,
+                           json model_config,
                            std::string const &weight_file_path,
                            InferenceMode mode,
                            bool use_full_precision) {
-  Config opt_config(model_config_file_path);
-  opt_config.printConfig();
+  OPTConfig opt_config(model_config);
+  opt_config.print();
 
   std::unordered_map<std::string, Layer *> weights_layers;
 
