@@ -76,6 +76,9 @@ def init(configs: Union[str, dict]):
             "configs should be a dictionary or the path to a valid JSON file"
         )
 
+    # Remove the arguments to avoid interferences
+    sys.argv = [sys.argv[0]]
+
     # configs should contain the following mandatory keys with non-zero integer values:
     num_gpus = configs_dict.get("num_gpus")
     memory_per_gpu = configs_dict.get("memory_per_gpu")
@@ -146,6 +149,10 @@ def init_cpu():
     """Start the FlexFlow runtime and import the inference package without access to GPU functionalities.
     This is useful to access the utilies from the flexflow package without using up GPU memory.
     """
+    # Remove the arguments to avoid interferences
+    sys.argv = [sys.argv[0]]
+    # Ask the runtime to avoid using GPU/GPU memory
     os.environ["CPU_ONLY_TEST"] = "1"
+
     global LLM, SSM, SamplingConfig
     from .serve import LLM, SSM, SamplingConfig

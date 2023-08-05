@@ -54,7 +54,7 @@ class LLM:
         self,
         model_name: str,
         data_type: DataType = DataType.DT_HALF,
-        cache_path: str = "~/.cache/flexflow",
+        cache_path: str = "",
         refresh_cache: bool = False,
         output_file: str = "",
     ):
@@ -78,14 +78,13 @@ class LLM:
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-        self.model_name = hf_config._name_or_path
+        self.model_name = self.hf_config._name_or_path
         self.model_type, self.model_class = self.__get_ff_model_type()
         self.data_type = data_type
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
-        self.cache_path = cache_path
+        self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
         self.refresh_cache = refresh_cache
         self.output_file = output_file
-        self.ffconfig = FFConfig()
 
     def __get_ff_model_type(self):
         architectures = getattr(self.hf_config, "architectures", [])
@@ -246,6 +245,7 @@ class LLM:
         self.max_tokens_per_batch = max_tokens_per_batch
         self.ssms = ssms
         self.sampling_config = SamplingConfig()
+        self.ffconfig = FFConfig()
         assert (
             mode == InferenceMode.INC_DECODING_MODE
             or mode == InferenceMode.BEAM_SEARCH_MODE
@@ -332,6 +332,3 @@ class SSM(LLM):
             refresh_cache,
             output_file,
         )
-        self.ffconfig.data_parallelism_degree = 1
-        self.ffconfig.tensor_parallelism_degree = 1
-        self.ffconfig.pipeline_parallelism_degree = 1

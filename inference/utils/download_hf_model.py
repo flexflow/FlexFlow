@@ -6,7 +6,7 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "model_name", type=str, nargs="+", help="Name of the model(s) to download"
+        "model_names", type=str, nargs="+", help="Name of the model(s) to download"
     )
     parser.add_argument(
         "--cache-folder",
@@ -30,8 +30,25 @@ def parse_args():
 
 
 def main(args):
+    # Initialize FF serve to gain access to its utils
     ff.init_cpu()
-    print(args)
+
+    if args.full_precision_only:
+        data_types = ff.DataType.DT_FLOAT
+    elif args.half_precision_only:
+        data_types = ff.DataType.DT_HALF
+    else:
+        data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF)
+
+    for model_name in args.model_names:
+        for data_type in data_types:
+            llm = ff.LLM(
+                model_name,
+                data_type=data_type,
+                cache_path=args.cache_folder,
+            )
+            llm.download_hf_weights_if_needed()
+            llm.download_hf_tokenizer_if_needed()
 
 
 if __name__ == "__main__":
