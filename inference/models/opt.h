@@ -27,22 +27,30 @@ namespace FlexFlow {
 class OPT {
 public:
   struct OPTConfig {
-    OPTConfig(json model_config) {
-      try {
-        do_layer_norm_before = model_config["do_layer_norm_before"];
-        dropout = model_config["dropout"];
-        enable_bias = model_config["enable_bias"];
-        ffn_dim = model_config["ffn_dim"];
-        hidden_size = model_config["hidden_size"];
-        layer_norm_elementwise_affine =
-            model_config["layer_norm_elementwise_affine"];
-        max_position_embeddings = model_config["max_position_embeddings"];
-        num_attention_heads = model_config["num_attention_heads"];
-        num_hidden_layers = model_config["num_hidden_layers"];
-        vocab_size = model_config["vocab_size"];
-        word_embed_proj_dim = model_config["word_embed_proj_dim"];
-      } catch (json::exception const &e) {
-        std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
+    OPTConfig(std::string const &model_config_file_path) {
+      std::ifstream config_file(model_config_file_path);
+      if (config_file.is_open()) {
+        try {
+          json model_config;
+          do_layer_norm_before = model_config["do_layer_norm_before"];
+          dropout = model_config["dropout"];
+          enable_bias = model_config["enable_bias"];
+          ffn_dim = model_config["ffn_dim"];
+          hidden_size = model_config["hidden_size"];
+          layer_norm_elementwise_affine =
+              model_config["layer_norm_elementwise_affine"];
+          max_position_embeddings = model_config["max_position_embeddings"];
+          num_attention_heads = model_config["num_attention_heads"];
+          num_hidden_layers = model_config["num_hidden_layers"];
+          vocab_size = model_config["vocab_size"];
+          word_embed_proj_dim = model_config["word_embed_proj_dim"];
+        } catch (json::exception const &e) {
+          std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
+          assert(false);
+        }
+      } else {
+        std::cerr << "Error opening JSON file " << model_config_file_path
+                  << std::endl;
         assert(false);
       }
       max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
@@ -84,7 +92,7 @@ public:
   };
 
   static void create_opt_model(FFModel &ff,
-                               json model_config,
+                               std::string const &model_config_file_path,
                                std::string const &weight_file_path,
                                InferenceMode mode,
                                bool use_full_precision = false);

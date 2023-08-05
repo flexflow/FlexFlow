@@ -27,16 +27,25 @@ namespace FlexFlow {
 class LLAMA {
 public:
   struct LLAMAConfig {
-    LLAMAConfig(json model_config) {
-      try {
-        num_hidden_layers = model_config["num_hidden_layers"];
-        vocab_size = model_config["vocab_size"];
-        num_attention_heads = model_config["num_attention_heads"];
-        hidden_size = model_config["hidden_size"];
-        rms_norm_eps = model_config["rms_norm_eps"];
-        intermediate_size = model_config["intermediate_size"];
-      } catch (json::exception const &e) {
-        std::cerr << "Error parsing LLAMA config from JSON file: " << e.what()
+    LLAMAConfig(std::string const &model_config_file_path) {
+      std::ifstream config_file(model_config_file_path);
+      if (config_file.is_open()) {
+        try {
+          json model_config;
+          config_file >> model_config;
+          num_hidden_layers = model_config["num_hidden_layers"];
+          vocab_size = model_config["vocab_size"];
+          num_attention_heads = model_config["num_attention_heads"];
+          hidden_size = model_config["hidden_size"];
+          rms_norm_eps = model_config["rms_norm_eps"];
+          intermediate_size = model_config["intermediate_size"];
+        } catch (json::exception const &e) {
+          std::cerr << "Error parsing LLAMA config from JSON file: " << e.what()
+                    << std::endl;
+          assert(false);
+        }
+      } else {
+        std::cerr << "Error opening JSON file " << model_config_file_path
                   << std::endl;
         assert(false);
       }
@@ -69,7 +78,7 @@ public:
   };
 
   static void create_llama_model(FFModel &ff,
-                                 json model_config,
+                                 std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
                                  SamplingConfig samplingConfig,

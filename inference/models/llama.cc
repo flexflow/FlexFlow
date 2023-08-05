@@ -21,13 +21,13 @@ using namespace Legion;
 using json = nlohmann::json;
 
 void LLAMA::create_llama_model(FFModel &ff,
-                               json model_config,
+                               std::string const &model_config_file_path,
                                std::string const &weight_file_path,
                                InferenceMode mode,
                                SamplingConfig samplingConfig,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
-  LLAMAConfig llama_config(model_config);
+  LLAMAConfig llama_config(model_config_file_path);
   llama_config.print();
 
   std::unordered_map<std::string, Layer *> weights_layers;

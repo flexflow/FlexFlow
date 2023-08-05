@@ -173,20 +173,20 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(model,
-                              model_config,
+                              config_filepath,
                               weights_filepath,
                               INC_DECODING_MODE,
                               samplingConfig,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,
-                          model_config,
+                          config_filepath,
                           weights_filepath,
                           INC_DECODING_MODE,
                           use_full_precision);
   } else if (model_type == ModelType::FALCON) {
     FALCON::create_falcon_model(model,
-                                model_config,
+                                config_filepath,
                                 weights_filepath,
                                 INC_DECODING_MODE,
                                 use_full_precision);

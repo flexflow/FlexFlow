@@ -42,10 +42,10 @@ struct ModelMeta {
   ModelType llm_model_type;
   std::string llm_tokenizer_path;
   std::string llm_weights_path;
-  json llm_model_config;
+  std::string llm_model_config_path;
 
   std::vector<ModelType> ssm_model_types;
-  std::vector<json> ssm_model_configs;
+  std::vector<std::string> ssm_model_config_paths;
   std::vector<std::string> ssm_model_weights_paths;
 };
 
@@ -111,7 +111,7 @@ void get_model_meta(FilePaths &file_paths,
     assert(false && "SpecInfer needs at least one LLM and one SSM for "
                     "speculative inference");
   }
-  std::string llm_config_path =
+  model_metadata.llm_model_config_path =
       join_path({file_paths.cache_folder_path,
                  "configs",
                  model_metadata.model_names.llm_model_name,
@@ -126,19 +126,19 @@ void get_model_meta(FilePaths &file_paths,
                  model_metadata.model_names.llm_model_name,
                  use_full_precision ? "full-precision" : "half-precision"});
 
-  std::ifstream llm_config_file_handle(llm_config_path);
+  std::ifstream llm_config_file_handle(model_metadata.llm_model_config_path);
   assert(llm_config_file_handle.good() &&
          "LLM Model config file does not exist.");
-  model_metadata.llm_model_config = json::parse(llm_config_file_handle,
-                                                /*parser_callback_t */ nullptr,
-                                                /*allow_exceptions */ true,
-                                                /*ignore_comments */ true);
+  json llm_model_config = json::parse(llm_config_file_handle,
+                                      /*parser_callback_t */ nullptr,
+                                      /*allow_exceptions */ true,
+                                      /*ignore_comments */ true);
 
   model_metadata.llm_model_type = ModelType::UNKNOWN;
-  auto architectures = model_metadata.llm_model_config["architectures"];
+  auto architectures = llm_model_config["architectures"];
   for (auto const &str : architectures) {
     if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
-      std::string nameOrPath = model_metadata.llm_model_config["_name_or_path"];
+      std::string nameOrPath = llm_model_config["_name_or_path"];
       // TODO: support LLAMA-2 models not from Meta
       bool llama2 = nameOrPath.find("meta-llama/Llama-2") == 0;
       if (llama2) {
@@ -195,7 +195,8 @@ void get_model_meta(FilePaths &file_paths,
       }
     }
     model_metadata.ssm_model_types.push_back(ssm_model_type);
-    model_metadata.ssm_model_configs.push_back(ssm_model_type);
+    model_metadata.ssm_model_config_paths.push_back(ssm_config_path);
+    model_metadata.ssm_model_weights_paths.push_back(ssm_weights_path);
   }
 
   assert(model_metadata.llm_model_type != ModelType::UNKNOWN &&
@@ -247,20 +248,20 @@ void FlexFlow::top_level_task(Task const *task,
   if (model_metadata.llm_model_type == ModelType::LLAMA ||
       model_metadata.llm_model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(tree_model,
-                              model_metadata.llm_model_config,
+                              model_metadata.llm_model_config_path,
                               model_metadata.llm_weights_path,
                               TREE_VERIFY_MODE,
                               samplingConfig,
                               use_full_precision);
   } else if (model_metadata.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
-                          model_metadata.llm_model_config,
+                          model_metadata.llm_model_config_path,
                           model_metadata.llm_weights_path,
                           TREE_VERIFY_MODE,
                           use_full_precision);
   } else if (model_metadata.llm_model_type == ModelType::FALCON) {
     FALCON::create_falcon_model(tree_model,
-                                model_metadata.llm_model_config,
+                                model_metadata.llm_model_config_path,
                                 model_metadata.llm_weights_path,
                                 TREE_VERIFY_MODE,
                                 use_full_precision);
@@ -285,21 +286,21 @@ void FlexFlow::top_level_task(Task const *task,
     if (model_metadata.ssm_model_types[ssm_id] == ModelType::LLAMA ||
         model_metadata.ssm_model_types[ssm_id] == ModelType::LLAMA2) {
       LLAMA::create_llama_model(beam_model,
-                                model_metadata.ssm_model_configs[ssm_id],
+                                model_metadata.ssm_model_config_paths[ssm_id],
                                 model_metadata.ssm_model_weights_paths[ssm_id],
                                 BEAM_SEARCH_MODE,
                                 samplingConfig,
                                 use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,
-                            model_metadata.ssm_model_configs[ssm_id],
+                            model_metadata.ssm_model_config_paths[ssm_id],
                             model_metadata.ssm_model_weights_paths[ssm_id],
                             BEAM_SEARCH_MODE,
                             use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::FALCON) {
       FALCON::create_falcon_model(
           beam_model,
-          model_metadata.ssm_model_configs[ssm_id],
+          model_metadata.ssm_model_config_paths[ssm_id],
           model_metadata.ssm_model_weights_paths[ssm_id],
           BEAM_SEARCH_MODE,
           use_full_precision);

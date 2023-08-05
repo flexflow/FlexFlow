@@ -21,11 +21,11 @@ using namespace Legion;
 using json = nlohmann::json;
 
 void FALCON::create_falcon_model(FFModel &ff,
-                                 json model_config,
+                                 std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
                                  bool use_full_precision) {
-  FalconConfig falcon_config(model_config);
+  FalconConfig falcon_config(model_config_file_path);
   falcon_config.print();
 
   if (ff.config.tensor_parallelism_degree > falcon_config.n_head ||

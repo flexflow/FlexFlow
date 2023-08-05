@@ -21,11 +21,11 @@ using namespace Legion;
 using json = nlohmann::json;
 
 void OPT::create_opt_model(FFModel &ff,
-                           json model_config,
+                           std::string const &model_config_file_path,
                            std::string const &weight_file_path,
                            InferenceMode mode,
                            bool use_full_precision) {
-  OPTConfig opt_config(model_config);
+  OPTConfig opt_config(model_config_file_path);
   opt_config.print();
 
   std::unordered_map<std::string, Layer *> weights_layers;

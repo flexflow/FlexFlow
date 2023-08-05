@@ -27,18 +27,26 @@ namespace FlexFlow {
 class FALCON {
 public:
   struct FalconConfig {
-    FalconConfig(json model_config) {
-      try {
-        bias = model_config["bias"];
-        hidden_size = model_config["hidden_size"];
-        layer_norm_epsilon = model_config["layer_norm_epsilon"];
-        multi_query = model_config["multi_query"];
-        n_head = model_config["n_head"];
-        n_layer = model_config["n_layer"];
-        parallel_attn = model_config["parallel_attn"];
-        vocab_size = model_config["vocab_size"];
-      } catch (json::exception const &e) {
-        std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
+    FalconConfig(std::string const &model_config_file_path) {
+      std::ifstream config_file(model_config_file_path);
+      if (config_file.is_open()) {
+        try {
+          json model_config;
+          bias = model_config["bias"];
+          hidden_size = model_config["hidden_size"];
+          layer_norm_epsilon = model_config["layer_norm_epsilon"];
+          multi_query = model_config["multi_query"];
+          n_head = model_config["n_head"];
+          n_layer = model_config["n_layer"];
+          parallel_attn = model_config["parallel_attn"];
+          vocab_size = model_config["vocab_size"];
+        } catch (json::exception const &e) {
+          std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
+          assert(false);
+        }
+      } else {
+        std::cerr << "Error opening JSON file " << model_config_file_path
+                  << std::endl;
         assert(false);
       }
       max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
@@ -71,7 +79,7 @@ public:
   };
 
   static void create_falcon_model(FFModel &ff,
-                                  json model_config,
+                                  std::string const &model_config_file_path,
                                   std::string const &weight_file_path,
                                   InferenceMode mode,
                                   bool use_full_precision = false);
