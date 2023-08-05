@@ -59,12 +59,18 @@ void parse_input_args(char **argv,
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
       model_names.llm_model_name = std::string(argv[++i]);
+      for (char &c : model_names.llm_model_name) {
+        c = std::tolower(c);
+      }
       continue;
     }
     // ssm models names
     if (!strcmp(argv[i], "-ssm-model")) {
-      std::string model_type_str = std::string(argv[++i]);
-      model_names.ssm_model_names.push_back(model_type_str);
+      std::string ssm_model_name = std::string(argv[++i]);
+      for (char &c : ssm_model_name) {
+        c = std::tolower(c);
+      }
+      model_names.ssm_model_names.push_back(ssm_model_name);
       continue;
     }
     // cache folder

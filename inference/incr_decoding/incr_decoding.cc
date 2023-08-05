@@ -45,6 +45,9 @@ void parse_input_args(char **argv,
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
       llm_model_name = std::string(argv[++i]);
+      for (char &c : llm_model_name) {
+        c = std::tolower(c);
+      }
       continue;
     }
     // cache folder
