@@ -20,7 +20,7 @@ cleanup
 pip3 install --upgrade transformers sentencepiece
 
 # Download the weights in both half and full precision
-python3 ../../inference/utils/download_hf_model.py --cache-folder "../../inference" "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m"
+python3 ../../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m"
 
 # Create test prompt file
 mkdir -p ../../inference/prompt
