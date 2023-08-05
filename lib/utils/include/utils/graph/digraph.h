@@ -103,9 +103,9 @@ public:
     return DiGraphView(this->ptr.get(), should_only_be_used_internally_tag_t{});
   }
 
-  // operator Graph() const {
-  //   return Graph(this->ptr.get(), should_only_be_used_internally_tag_t{});
-  // }
+  operator Graph() const {
+    return Graph(std::static_pointer_cast<IGraph>(this->ptr.get_mutable()), should_only_be_used_internally_tag_t{});
+  }//Note(lambda):because ptr is cow_ptr_t<IDiGraph>, but ptr in Graph is cow_ptr_t<IGraph>, so we need to static_pointer_cast
 
   friend void swap(DiGraph &, DiGraph &);
 
