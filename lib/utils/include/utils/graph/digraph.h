@@ -60,9 +60,6 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
   friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);
-  IDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,

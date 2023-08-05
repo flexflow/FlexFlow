@@ -65,11 +65,7 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-
-  IUndirectedGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
+  
   template <typename T, typename... Args>
   static
       typename std::enable_if<std::is_base_of<IUndirectedGraphView, T>::value,

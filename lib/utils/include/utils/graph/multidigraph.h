@@ -15,10 +15,6 @@ public:
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
-  IMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
