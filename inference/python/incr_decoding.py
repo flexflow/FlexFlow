@@ -59,7 +59,7 @@ def get_configs():
         }
         llm_configs = {
             # required parameters
-            "llm_model": "decapoda-research/llama-7b-hf",
+            "llm_model": "tiiuae/falcon-7b",
             # optional parameters
             "cache_path": "",
             "refresh_cache": False,

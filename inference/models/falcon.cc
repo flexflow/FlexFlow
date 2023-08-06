@@ -193,7 +193,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   FileDataLoader fileloader("",
                             weight_file_path,
                             falcon_config.n_head,
-                            1,
+                            falcon_config.n_head_kv,
                             falcon_config.hidden_size,
                             falcon_config.hidden_size / falcon_config.n_head,
                             ff.config.tensor_parallelism_degree);

@@ -217,12 +217,20 @@ class LLM:
         self.download_hf_weights_if_needed()
 
         # Create file data loader, load weights into tensors
+        if self.model_type == ModelType.FALCON:
+            n_q_heads = self.hf_config.num_attention_heads
+            if "n_head_kv" in self.hf_config.__dict__:
+                n_kv_heads = self.hf_config.n_head_kv
+            else:
+                n_kv_heads = 1
+        else:
+            n_q_heads = n_kv_heads = self.hf_config.num_attention_heads
         self.fileloader = FileDataLoader(
             self.weights_path,
-            self.hf_config.num_attention_heads,
-            self.hf_config.num_attention_heads,
+            n_q_heads,
+            n_kv_heads,
             self.hf_config.hidden_size,
-            self.hf_config.hidden_size // self.hf_config.num_attention_heads,
+            self.hf_config.hidden_size // n_q_heads,
             self.ffconfig.tensor_parallelism_degree,
         )
 

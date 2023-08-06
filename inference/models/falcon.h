@@ -38,6 +38,11 @@ public:
           layer_norm_epsilon = model_config["layer_norm_epsilon"];
           multi_query = model_config["multi_query"];
           n_head = model_config["n_head"];
+          if (model_config.contains("n_head_kv")) {
+            n_head_kv = model_config["n_head_kv"];
+          } else {
+            n_head_kv = 1;
+          }
           n_layer = model_config["n_layer"];
           parallel_attn = model_config["parallel_attn"];
           vocab_size = model_config["vocab_size"];
@@ -63,6 +68,7 @@ public:
       std::cout << "\tlayer_norm_epsilon: " << layer_norm_epsilon << std::endl;
       std::cout << "\tmulti_query: " << multi_query << std::endl;
       std::cout << "\tn_head: " << n_head << std::endl;
+      std::cout << "\tn_head_kv: " << n_head << std::endl;
       std::cout << "\tn_layer: " << n_layer << std::endl;
       std::cout << "\tparallel_attn: " << parallel_attn << std::endl;
       std::cout << "\tvocab_size: " << vocab_size << std::endl;
@@ -74,7 +80,7 @@ public:
     }
 
     bool bias, multi_query, parallel_attn;
-    int hidden_size, n_head, n_layer, vocab_size;
+    int hidden_size, n_head, n_head_kv, n_layer, vocab_size;
     float layer_norm_epsilon;
     int max_seq_len, max_num_tokens, max_beam_width, max_beam_depth;
   };
