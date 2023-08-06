@@ -32,6 +32,7 @@ public:
       if (config_file.is_open()) {
         try {
           json model_config;
+          config_file >> model_config;
           do_layer_norm_before = model_config["do_layer_norm_before"];
           dropout = model_config["dropout"];
           enable_bias = model_config["enable_bias"];
