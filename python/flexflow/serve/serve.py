@@ -113,6 +113,9 @@ class LLM:
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
         """
+        if self.data_type == DataType.DT_HALF:
+            torch.set_default_tensor_type(torch.HalfTensor)
+
         # Use local cache, or download new version
         self.weights_path = os.path.join(
             os.path.expanduser(self.cache_path),
@@ -206,9 +209,6 @@ class LLM:
 
     def __load_hf_weights(self):
         print("Loading hf weights...")
-
-        if self.data_type == DataType.DT_HALF:
-            torch.set_default_tensor_type(torch.HalfTensor)
 
         self.download_hf_weights_if_needed()
 

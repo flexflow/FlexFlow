@@ -14,6 +14,11 @@ def parse_args():
         help="Folder to use to store the weights",
         default="",
     )
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Request the refresh of the model(s) cache",
+    )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--full-precision-only",
@@ -46,7 +51,7 @@ def main(args):
                 model_name,
                 data_type=data_type,
                 cache_path=args.cache_folder,
-                refresh_cache=True
+                refresh_cache=args.refresh_cache,
             )
             llm.download_hf_weights_if_needed()
             llm.download_hf_tokenizer_if_needed()
