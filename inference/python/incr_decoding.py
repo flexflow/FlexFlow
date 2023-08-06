@@ -59,10 +59,9 @@ def get_configs():
         }
         llm_configs = {
             # required parameters
-            #"llm_model": "tiiuae/falcon-7b",
             "llm_model": "decapoda-research/llama-7b-hf",
             # optional parameters
-            "cache_path": "/usr/FlexFlow/inference",
+            "cache_path": "",
             "refresh_cache": False,
             "full_precision": False,
             "prompt": "",
