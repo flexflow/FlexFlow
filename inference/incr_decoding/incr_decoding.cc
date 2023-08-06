@@ -18,6 +18,7 @@
 #include "models/falcon.h"
 #include "models/llama.h"
 #include "models/opt.h"
+#include <wordexp.h>
 
 #include <nlohmann/json.hpp>
 
@@ -90,6 +91,11 @@ void parse_input_args(char **argv,
   if (paths.cache_folder_path.empty()) {
     paths.cache_folder_path = "~/.cache/flexflow";
   }
+  // Expand ~ to the home directory if needed
+  wordexp_t p;
+  wordexp(paths.cache_folder_path.c_str(), &p, 0);
+  paths.cache_folder_path = p.we_wordv[0];
+  wordfree(&p);
 }
 
 void FlexFlow::top_level_task(Task const *task,

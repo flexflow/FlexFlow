@@ -19,6 +19,7 @@
 #include "models/opt.h"
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#include <wordexp.h>
 
 using namespace Legion;
 using json = nlohmann::json;
@@ -101,6 +102,11 @@ void parse_input_args(char **argv,
   if (paths.cache_folder_path.empty()) {
     paths.cache_folder_path = "~/.cache/flexflow";
   }
+  // Expand ~ to the home directory if needed
+  wordexp_t p;
+  wordexp(paths.cache_folder_path.c_str(), &p, 0);
+  paths.cache_folder_path = p.we_wordv[0];
+  wordfree(&p);
 }
 
 void get_model_meta(FilePaths &file_paths,
