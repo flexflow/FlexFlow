@@ -115,6 +115,10 @@ class LLM:
         """
         if self.data_type == DataType.DT_HALF:
             torch.set_default_tensor_type(torch.HalfTensor)
+        elif self.data_type == DataType.DT_FLOAT:
+            torch.set_default_tensor_type(torch.FloatTensor)
+        else:
+            assert False, "Data type not yet supported -- cannot download weights!"
 
         # Use local cache, or download new version
         self.weights_path = os.path.join(

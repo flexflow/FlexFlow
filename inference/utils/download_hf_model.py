@@ -11,24 +11,24 @@ def parse_args():
     parser.add_argument(
         "--cache-folder",
         type=str,
-        help="Folder to use to store the weights",
+        help="Folder to use to store the model(s) assets in FlexFlow format",
         default="",
     )
     parser.add_argument(
         "--refresh-cache",
         action="store_true",
-        help="Request the refresh of the model(s) cache",
+        help="Use this flag to force the refresh of the model(s) weights/tokenizer cache",
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--full-precision-only",
         action="store_true",
-        help="Only download the full precision version",
+        help="Only download the full precision version of the weights",
     )
     group.add_argument(
         "--half-precision-only",
         action="store_true",
-        help="Only download the half precision version",
+        help="Only download the half precision version of the weights",
     )
     args = parser.parse_args()
     return args
