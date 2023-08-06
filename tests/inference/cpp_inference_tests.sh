@@ -23,7 +23,7 @@ pip3 install --upgrade transformers sentencepiece einops
 source ../../build/set_python_envs.sh
 
 # Download the weights in both half and full precision
-python3 ../../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m"
+python3 ../../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b"
 
 # Create test prompt file
 mkdir -p ../../inference/prompt
@@ -82,6 +82,11 @@ fi
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model facebook/opt-6.7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B.txt -pipeline-parallelism-degree 4
 # OPT (big model, half precision)
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model facebook/opt-6.7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B_half.txt -pipeline-parallelism-degree 4
+
+# Falcon (full precision)
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model tiiuae/falcon-7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_falcon_7B.txt -pipeline-parallelism-degree 4
+# Falcon (half precision)
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model tiiuae/falcon-7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_falcon_7B_half.txt -pipeline-parallelism-degree 4
 
 # Tensor parallelism tests
 if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
