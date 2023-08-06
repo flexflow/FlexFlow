@@ -14,7 +14,7 @@
 
 from flexflow.core import *
 from .base import FlexFlowModel
-import random, shutil
+import random, torch
 
 
 class FalconConfig:
@@ -93,8 +93,8 @@ class FlexFlowFalcon(FlexFlowModel):
                 name=f"layers_{i}_input_layernorm_weight",
             )
 
-            if self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multihead_self_attention(
+            if self.mode == InferenceMode.BEAM_SEARCH_MODE:
+                mha = ffmodel.spec_inc_multiquery_self_attention(
                     att_norm,
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
@@ -107,7 +107,42 @@ class FlexFlowFalcon(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    name=f"layers_{i}_self_attention_dense_weight",
+                    True,  # apply_rotary_embedding
+                    name=f"layers_{i}_attention_weight",
+                )
+            elif self.mode == InferenceMode.TREE_VERIFY_MODE:
+                mha = ffmodel.inc_multiquery_self_attention_verify(
+                    att_norm,
+                    self.falcon_config.hidden_size,
+                    self.falcon_config.n_head,
+                    1,
+                    self.falcon_config.hidden_size // self.falcon_config.n_head,
+                    self.falcon_config.hidden_size // self.falcon_config.n_head,
+                    0.0,  # dropout
+                    False,  # bias
+                    False,  # add_bias_kv
+                    False,  # add_zero_attn
+                    DataType.DT_NONE,  # data_type
+                    None,  # kernel initializer
+                    True,  # apply_rotary_embedding
+                    name=f"layers_{i}_attention_weight",
+                )
+            elif self.mode == InferenceMode.INC_DECODING_MODE:
+                mha = ffmodel.inc_multiquery_self_attention(
+                    att_norm,
+                    self.falcon_config.hidden_size,
+                    self.falcon_config.n_head,
+                    1,
+                    self.falcon_config.hidden_size // self.falcon_config.n_head,
+                    self.falcon_config.hidden_size // self.falcon_config.n_head,
+                    0.0,  # dropout
+                    False,  # bias
+                    False,  # add_bias_kv
+                    False,  # add_zero_attn
+                    DataType.DT_NONE,  # data_type
+                    None,  # kernel initializer
+                    True,  # apply_rotary_embedding
+                    name=f"layers_{i}_attention_weight",
                 )
             else:
                 assert False
@@ -166,12 +201,30 @@ class FlexFlowFalcon(FlexFlowModel):
                 name.replace(".", "_")
                 .replace("transformer_h_", "layers_")
                 .replace("transformer_", "")
+                .replace("self_attention_dense", "attention_wo")
             )
-            params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
-        # copy embedding weights
-        shutil.copy(
-            os.path.join(dst_folder, "word_embeddings_weight"),
-            os.path.join(dst_folder, "lm_head_weight"),
+            # Split Q,K,V attention weights
+            if "self_attention_query_key_value" in name:
+                name_q = name.replace("self_attention_query_key_value", "attention_wq")
+                name_k = name.replace("self_attention_query_key_value", "attention_wk")
+                name_v = name.replace("self_attention_query_key_value", "attention_wv")
+                q, k, v = torch.split(
+                    params,
+                    [
+                        model.config.hidden_size,
+                        model.config.n_head // model.config.hidden_size,
+                        model.config.n_head // model.config.hidden_size,
+                    ],
+                    0,
+                )
+                q.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_q))
+                k.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_k))
+                v.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_v))
+            else:
+                params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
+        # LM head weight
+        model.lm_head.weight.detach().cpu().numpy().tofile(
+            os.path.join(dst_folder, "lm_head_weight")
         )
 
     def get_layers_with_weights(self):
@@ -184,7 +237,7 @@ class FlexFlowFalcon(FlexFlowModel):
             for i in range(self.falcon_config.n_layer)
             for expr in (
                 f"layers_{i}_input_layernorm_weight",
-                f"layers_{i}_self_attention_dense_weight",
+                f"layers_{i}_attention_weight",
                 f"layers_{i}_mlp_dense_h_to_4h_weight",
                 f"layers_{i}_mlp_dense_4h_to_h_weight",
             )
