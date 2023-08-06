@@ -19,6 +19,7 @@ cleanup
 pip3 install --upgrade transformers sentencepiece einops
 
 # Setup envs
+# shellcheck source=/dev/null
 source ../../build/set_python_envs.sh
 
 # Download the weights in both half and full precision

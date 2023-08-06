@@ -67,7 +67,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   }
 
   Layer *embedding = ff.layers.back();
-  weights_layers.emplace("tok_embeddings_weight", embedding);
+  weights_layers.emplace("word_embeddings_weight", embedding);
 
   for (int i = 0; i < falcon_config.n_layer; i++) {
     // set transformer layer id
@@ -154,14 +154,14 @@ void FALCON::create_falcon_model(FFModel &ff,
         ff.dense(att_norm, falcon_config.hidden_size * 4, AC_MODE_NONE, false);
     Layer *dense_h_to_4h_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_mlp_dense_h_to_4layers_weight",
+                               "_mlp_dense_h_to_4h_weight",
                            dense_h_to_4h_layer);
     dense_h_to_4h = ff.gelu(dense_h_to_4h);
     Tensor mlp_output =
         ff.dense(dense_h_to_4h, falcon_config.hidden_size, AC_MODE_NONE, false);
     Layer *dense_4h_to_h_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_mlp_dense_4h_to_layers_weight",
+                               "_mlp_dense_4h_to_h_weight",
                            dense_4h_to_h_layer);
 
     token = ff.add(token, mha);

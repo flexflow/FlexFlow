@@ -32,6 +32,7 @@ public:
       if (config_file.is_open()) {
         try {
           json model_config;
+          config_file >> model_config;
           bias = model_config["bias"];
           hidden_size = model_config["hidden_size"];
           layer_norm_epsilon = model_config["layer_norm_epsilon"];

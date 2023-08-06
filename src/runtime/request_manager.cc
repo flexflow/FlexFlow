@@ -100,7 +100,9 @@ void RequestManager::register_tokenizer(ModelType type,
     this->tokenizer_ =
         Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
   } else if (model_type == ModelType::FALCON) {
-    this->tokenizer_ = Tokenizer::FromBlobJSON(LoadBytesFromFile(path));
+    std::string falcon_tokenizer_path = join_path({path, "tokenizer.json"});
+    this->tokenizer_ =
+        Tokenizer::FromBlobJSON(LoadBytesFromFile(falcon_tokenizer_path));
   }
 }
 
