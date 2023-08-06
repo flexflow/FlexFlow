@@ -127,8 +127,12 @@ void get_model_meta(FilePaths &file_paths,
                  use_full_precision ? "full-precision" : "half-precision"});
 
   std::ifstream llm_config_file_handle(model_metadata.llm_model_config_path);
-  assert(llm_config_file_handle.good() &&
-         "LLM Model config file does not exist.");
+  if (!llm_config_file_handle.good()) {
+    std::cout << "LLM Model config file "
+              << model_metadata.llm_model_config_path << " not found."
+              << std::endl;
+    assert(false);
+  }
   json llm_model_config = json::parse(llm_config_file_handle,
                                       /*parser_callback_t */ nullptr,
                                       /*allow_exceptions */ true,
@@ -170,8 +174,11 @@ void get_model_meta(FilePaths &file_paths,
                    use_full_precision ? "full-precision" : "half-precision"});
 
     std::ifstream ssm_config_file_handle(ssm_config_path);
-    assert(ssm_config_file_handle.good() &&
-           "SSM Model config file does not exist.");
+    if (!ssm_config_file_handle.good()) {
+      std::cout << "SSM Model config file " << ssm_config_path << " not found."
+                << std::endl;
+      assert(false);
+    }
     json ssm_model_config = json::parse(ssm_config_file_handle,
                                         /*parser_callback_t */ nullptr,
                                         /*allow_exceptions */ true,

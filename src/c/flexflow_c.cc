@@ -1049,7 +1049,7 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
+flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -1090,7 +1090,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
+flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -1174,7 +1174,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t flexflow_model_add_inc_multiquery_attention(
+flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -1217,7 +1217,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_attention(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_attention(
+flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -2430,21 +2430,21 @@ void flexflow_inference_manager_init_operators_inference(
 
 flexflow_file_data_loader_t
     flexflow_file_data_loader_create(char const *weight_file_path,
-                                     int num_heads,
+                                     int num_q_heads,
                                      int num_kv_heads,
                                      int hidden_dim,
                                      int qkv_inner_dim,
-                                     int tensor_partition_num) {
+                                     int tensor_parallelism_degree) {
   assert(weight_file_path != nullptr &&
          "Cannot convert nullptr char * to std::string");
   std::string const weight_file_path_str(weight_file_path);
   FileDataLoader *handle = new FileDataLoader("",
                                               weight_file_path_str,
-                                              num_heads,
+                                              num_q_heads,
                                               num_kv_heads,
                                               hidden_dim,
                                               qkv_inner_dim,
-                                              tensor_partition_num);
+                                              tensor_parallelism_degree);
   DEBUG_PRINT("[FileDataLoader] new %p", handle);
   return FFCObjectWrapper::wrap(handle);
 }

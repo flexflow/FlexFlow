@@ -196,7 +196,6 @@ void LLAMA::create_llama_model(FFModel &ff,
   InferenceManager *im = InferenceManager::get_inference_manager();
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
@@ -205,7 +204,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                             llama_config.hidden_size,
                             llama_config.hidden_size /
                                 llama_config.num_attention_heads,
-                            tensor_partition_num);
+                            ff.config.tensor_parallelism_degree);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 

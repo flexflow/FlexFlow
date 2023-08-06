@@ -114,10 +114,9 @@ class FlexFlowOPT(FlexFlowModel):
                 hidden_states = residual
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
-                mha = ffmodel.spec_inc_multihead_attention(
+                mha = ffmodel.spec_inc_multihead_self_attention(
                     hidden_states,
                     self.opt_config.hidden_size,
-                    self.opt_config.num_attention_heads,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
@@ -139,7 +138,6 @@ class FlexFlowOPT(FlexFlowModel):
                     hidden_states,
                     self.opt_config.hidden_size,
                     self.opt_config.num_attention_heads,
-                    self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
@@ -156,10 +154,9 @@ class FlexFlowOPT(FlexFlowModel):
                     name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multihead_attention(
+                mha = ffmodel.inc_multihead_self_attention(
                     hidden_states,
                     self.opt_config.hidden_size,
-                    self.opt_config.num_attention_heads,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,

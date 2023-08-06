@@ -188,7 +188,6 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
@@ -197,7 +196,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                             1,
                             falcon_config.hidden_size,
                             falcon_config.hidden_size / falcon_config.n_head,
-                            tensor_partition_num);
+                            ff.config.tensor_parallelism_degree);
   std::cout << "------laod weights ----------" << std::endl;
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;

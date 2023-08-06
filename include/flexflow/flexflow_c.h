@@ -396,7 +396,7 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
     flexflow_initializer_t kernel_initializer,
     char const *name);
 
-flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
+flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -415,7 +415,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     bool qk_prod_scaling,
     char const *name);
 
-flexflow_tensor_t flexflow_model_add_spec_inc_multihead_attention(
+flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -453,7 +453,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     bool qk_prod_scaling,
     char const *name);
 
-flexflow_tensor_t flexflow_model_add_inc_multiquery_attention(
+flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -473,7 +473,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_attention(
     bool qk_prod_scaling,
     char const *name);
 
-flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_attention(
+flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,
     int embed_dim,
@@ -944,10 +944,11 @@ void flexflow_inference_manager_init_operators_inference(
 
 flexflow_file_data_loader_t
     flexflow_file_data_loader_create(char const *weight_file_path,
-                                     int num_heads,
+                                     int num_q_heads,
+                                     int num_kv_heads,
                                      int hidden_dim,
                                      int qkv_inner_dim,
-                                     int tensor_partition_num);
+                                     int tensor_parallelism_degree);
 
 void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
