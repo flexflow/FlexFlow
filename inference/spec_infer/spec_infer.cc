@@ -149,8 +149,10 @@ void get_model_meta(FilePaths &file_paths,
       break;
     } else if (str == "OPTForCausalLM") {
       model_metadata.llm_model_type = ModelType::OPT;
+      break;
     } else if (str == "RWForCausalLM") {
-      model_metadata.llm_model_type == ModelType::FALCON;
+      model_metadata.llm_model_type = ModelType::FALCON;
+      break;
     }
   }
 
@@ -190,8 +192,10 @@ void get_model_meta(FilePaths &file_paths,
         break;
       } else if (str == "OPTForCausalLM") {
         ssm_model_type = ModelType::OPT;
+        break;
       } else if (str == "RWForCausalLM") {
-        ssm_model_type == ModelType::FALCON;
+        ssm_model_type = ModelType::FALCON;
+        break;
       }
     }
     model_metadata.ssm_model_types.push_back(ssm_model_type);

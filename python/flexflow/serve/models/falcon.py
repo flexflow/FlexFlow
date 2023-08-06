@@ -212,8 +212,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     params,
                     [
                         model.config.hidden_size,
-                        model.config.n_head // model.config.hidden_size,
-                        model.config.n_head // model.config.hidden_size,
+                        model.config.hidden_size // model.config.n_head,
+                        model.config.hidden_size // model.config.n_head,
                     ],
                     0,
                 )

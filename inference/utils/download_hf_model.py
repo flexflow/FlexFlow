@@ -46,6 +46,7 @@ def main(args):
                 model_name,
                 data_type=data_type,
                 cache_path=args.cache_folder,
+                refresh_cache=True
             )
             llm.download_hf_weights_if_needed()
             llm.download_hf_tokenizer_if_needed()
