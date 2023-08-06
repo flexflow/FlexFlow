@@ -135,7 +135,11 @@ void FlexFlow::top_level_task(Task const *task,
                  llm_model_name,
                  use_full_precision ? "full-precision" : "half-precision"});
   std::ifstream config_file_handle(config_filepath);
-  assert(config_file_handle.good() && "Model config file does not exist.");
+  if (!config_file_handle.good()) {
+    std::cout << "Model config file " << config_filepath << " not found."
+              << std::endl;
+    assert(false);
+  }
   json model_config = json::parse(config_file_handle,
                                   /*parser_callback_t */ nullptr,
                                   /*allow_exceptions */ true,
