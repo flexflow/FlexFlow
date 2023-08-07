@@ -28,7 +28,7 @@ class FalconConfig:
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
         self.multi_query = hf_config.multi_query
         self.n_head = hf_config.n_head
-        self.n_head_kv = hf_config.n_head_kv if "n_head_kv" in self.hf_config.__dict__ else 1
+        self.n_head_kv = hf_config.n_head_kv if "n_head_kv" in hf_config.__dict__ else 1
         self.n_layer = hf_config.n_layer
         self.parallel_attn = hf_config.parallel_attn
         self.vocab_size = hf_config.vocab_size
