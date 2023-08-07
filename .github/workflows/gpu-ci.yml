@@ -191,6 +191,7 @@ jobs:
 
       - name: Save inference output as an artifact
         uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: output
           path: inference/output.tar.gz

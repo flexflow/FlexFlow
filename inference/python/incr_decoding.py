@@ -63,7 +63,7 @@ def get_configs():
             # optional parameters
             "cache_path": "",
             "refresh_cache": False,
-            "full_precision": False,
+            "full_precision": True,
             "prompt": "",
             "output_file": "",
         }
