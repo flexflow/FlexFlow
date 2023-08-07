@@ -185,11 +185,14 @@ jobs:
           # Inference tests
           export TENSOR_PARALLELISM_TESTS=ON
           ./tests/inference_tests.sh
+      
+      - name: Save inference output as an artifact
+        if: always()
+        run: | 
           cd inference
           tar -zcvf output.tar.gz ./output
-          cd ..
 
-      - name: Save inference output as an artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v3
         if: always()
         with:
