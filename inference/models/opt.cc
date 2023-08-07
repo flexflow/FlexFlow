@@ -28,6 +28,13 @@ void OPT::create_opt_model(FFModel &ff,
   OPTConfig opt_config(model_config_file_path);
   opt_config.print();
 
+  if (ff.config.tensor_parallelism_degree > opt_config.num_attention_heads ||
+      opt_config.num_attention_heads % ff.config.tensor_parallelism_degree !=
+          0) {
+    assert(false && "The number of attention heads is smaller, or it is not "
+                    "divisible by the tensor parallelism degree");
+  }
+
   std::unordered_map<std::string, Layer *> weights_layers;
 
   //------------------------------ build the model --------------------------

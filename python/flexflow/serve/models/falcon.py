@@ -60,6 +60,27 @@ class FlexFlowFalcon(FlexFlowModel):
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
 
+        # Sanity checks
+        if self.falcon_config.hidden_size % self.falcon_config.n_head != 0:
+            raise ValueError(
+                f"Hidden size ({self.falcon_config.hidden_size}) is not divisible by n_head ({self.falcon_config.n_head})"
+            )
+        if (
+            self.falcon_config.n_head < self.ffconfig.tensor_parallelism_degree
+            or self.falcon_config.n_head % self.ffconfig.tensor_parallelism_degree != 0
+        ):
+            raise ValueError(
+                f"Number of q attention heads ({self.falcon_config.n_head}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+            )
+        if (
+            self.falcon_config.n_head_kv < self.ffconfig.tensor_parallelism_degree
+            or self.falcon_config.n_head_kv % self.ffconfig.tensor_parallelism_degree
+            != 0
+        ):
+            raise ValueError(
+                f"Number of k/v attention heads ({self.falcon_config.n_head_kv}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+            )
+
         self.build_model()
 
     def build_model(self):

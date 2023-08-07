@@ -62,6 +62,24 @@ class FlexFlowOPT(FlexFlowModel):
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
 
+        # Sanity checks
+        if self.opt_config.hidden_size % self.opt_config.num_attention_heads != 0:
+            raise ValueError(
+                f"Hidden size ({self.opt_config.hidden_size}) is not divisible by n_head ({self.opt_config.num_attention_heads})"
+            )
+
+        # Sanity checks
+        if (
+            self.opt_config.num_attention_heads
+            < self.ffconfig.tensor_parallelism_degree
+            or self.opt_config.num_attention_heads
+            % self.ffconfig.tensor_parallelism_degree
+            != 0
+        ):
+            raise ValueError(
+                f"Number of attention heads ({self.opt_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+            )
+
         self.build_model()
 
     def build_model(self):

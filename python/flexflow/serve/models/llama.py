@@ -57,6 +57,24 @@ class FlexFlowLLAMA(FlexFlowModel):
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
 
+        # Sanity checks
+        if self.llama_config.hidden_size % self.llama_config.num_attention_heads != 0:
+            raise ValueError(
+                f"Hidden size ({self.llama_config.hidden_size}) is not divisible by number of attention heads ({self.llama_config.num_attention_heads})"
+            )
+
+        # Sanity checks
+        if (
+            self.llama_config.num_attention_heads
+            < self.ffconfig.tensor_parallelism_degree
+            or self.llama_config.num_attention_heads
+            % self.ffconfig.tensor_parallelism_degree
+            != 0
+        ):
+            raise ValueError(
+                f"Number of attention heads ({self.llama_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+            )
+
         self.build_model()
 
     def build_model(self):
