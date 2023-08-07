@@ -198,6 +198,11 @@ jobs:
         with:
           name: output
           path: inference/output.tar.gz
+      
+      # Github persists the .cache folder across different runs/containers
+      - name: Clear cache
+        if: always()
+        run: sudo rm -rf ~/.cache 
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
