@@ -1,0 +1,15 @@
+{
+    "vocab_size": 50272,
+    "word_embed_proj_dim": 7168,
+    "hidden_size": 7168,
+    "num_attention_heads": 56,
+    "max_position_embeddings": 2048,
+    "layer_norm_elementwise_affine": true,
+    "num_hidden_layers": 48,
+    "dropout": 0.1,
+    "ffn_dim": 28672,
+    "max_beam_width": 1,
+    "batchSize": 8,
+    "sentence_len": 100,
+    "max_beam_depth": 4
+}
