@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run clang-format style check for C/C++/Protobuf programs.
-        uses: lockshaw/clang-format-action@v4.11.0-flexflow
+        uses: lockshaw/clang-format-action@v4.11.0-flexflow-2
         with:
           clang-format-version: "16"
           check-path: ${{ matrix.path['check'] }}
