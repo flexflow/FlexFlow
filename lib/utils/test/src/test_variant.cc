@@ -32,3 +32,33 @@ TEST_CASE("widen and narrow functions") {
     CHECK(result == expected);
   }
 }
+
+TEST_CASE("Narrow and cast variants") {
+  variant<int, float, double> original_variant = 42;
+
+  // narrow
+  optional<variant<int, double>> narrow_result =
+      narrow<variant<int, double>>(original_variant);
+  CHECK(narrow_result.has_value()); // assert narrow has value
+
+  // cast
+  optional<variant<int>> cast_result =
+      cast<variant<int>>(narrow_result.value());
+  CHECK(cast_result.has_value()); // assert cast has value
+  CHECK(get<int>(cast_result.value()) == 42);
+}
+
+TEST_CASE("casting and widening a variant") {
+  variant<int, float> smaller_variant = 42;
+  variant<int, float, double> wider_variant;
+
+  // Perform the cast operation
+  optional<variant<int>> cast_result = cast<variant<int>>(smaller_variant);
+  REQUIRE(cast_result); // Ensure the cast was successful
+
+  // Perform the widening operation
+  wider_variant = widen<variant<int, float, double>>(cast_result.value());
+
+  // Check the result
+  CHECK(get<int>(wider_variant) == 42);
+}
