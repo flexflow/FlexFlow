@@ -19,3 +19,8 @@ dependencies:
     - torchaudio --index-url https://download.pytorch.org/whl/cpu
     - torchvision --index-url https://download.pytorch.org/whl/cpu
     - regex
+    - onnx
+    - transformers
+    - sentencepiece>=4.30.0
+    - einops
+    - protobuf==3.20.3

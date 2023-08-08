@@ -184,6 +184,7 @@ jobs:
 
           # Inference tests
           export TENSOR_PARALLELISM_TESTS=ON
+          source ./build/set_python_envs.sh
           ./tests/inference_tests.sh
       
       - name: Save inference output as an artifact

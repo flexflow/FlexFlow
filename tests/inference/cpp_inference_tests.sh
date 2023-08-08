@@ -2,35 +2,8 @@
 set -x
 set -e
 
-cleanup() {
-    rm -rf ../../inference/prompt ../../inference/output
-}
-
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
-
-# Enable model parallelism tests, if desired
-TENSOR_PARALLELISM_TESTS=${TENSOR_PARALLELISM_TESTS:-OFF}
-
-# Clean up before test (just in case)
-cleanup
-
-# Update the transformers library to support the LLAMA model
-pip3 install --upgrade transformers sentencepiece einops
-
-# Setup envs
-# shellcheck source=/dev/null
-source ../../build/set_python_envs.sh
-
-# Download the weights in both half and full precision
-python3 ../../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b" --refresh-cache
-
-# Create test prompt file
-mkdir -p ../../inference/prompt
-echo '["Give three tips for staying healthy."]' > ../../inference/prompt/test.json
-
-# Create output folder
-mkdir -p ../../inference/output
 
 ###############################################################################################
 ############################ Speculative inference tests ######################################
@@ -236,7 +209,6 @@ if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
 fi
 
 ######################### Alignment tests with HuggingFace ####################################
-pip3 install protobuf==3.20.3
 
 # LLAMA (small model, full precision)
 python3 ./huggingface_inference.py --model-name "JackFram/llama-160m" --tokenizer-model-name "JackFram/llama-160m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M.txt" --gpu
@@ -271,10 +243,3 @@ diff <(tail -n +2 "../../inference/output/huggingface_opt_125M.txt") <(tail -n +
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B.txt")
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B_half.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B_half.txt")
-
-###############################################################################################
-###################################### Cleanup ################################################
-###############################################################################################
-
-# Clean up after test
-# cleanup
