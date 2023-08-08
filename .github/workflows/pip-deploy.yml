@@ -29,7 +29,7 @@ jobs:
           python-version: "3.x"
       
       - name: Install dependencies
-        run: python3 -m pip install -r requirements.txt
+        run: pip3 install cmake-build-extension
 
       - name: Install pypa/build
         run: >-
