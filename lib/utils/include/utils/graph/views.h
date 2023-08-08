@@ -92,7 +92,7 @@ struct JoinNodeKey {
   bool operator<(JoinNodeKey const &) const;
 
   Node node;
-  LRDirection direction;
+  req<LRDirection> direction;
 };
 
 FF_VISITABLE_STRUCT(JoinNodeKey, node, direction);
@@ -345,5 +345,15 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 }
 
 } // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<FlexFlow::req<FlexFlow::LRDirection>> {
+  std::size_t operator()(
+      FlexFlow::required<FlexFlow::LRDirection> const &direction) const {
+    return std::hash<FlexFlow::LRDirection>{}(direction.value());
+  }
+};
+} // namespace std
 
 #endif

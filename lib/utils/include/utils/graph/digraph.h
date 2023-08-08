@@ -60,9 +60,6 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
   friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);
-  IDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
@@ -70,8 +67,8 @@ public:
       create(Args &&...args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
-  static DiGraphView unsafe_create(IDiGraphView const &graphView);
-
+  static DiGraphView
+      unsafe_create_without_ownership(IDiGraphView const &graphView);
   DiGraphView(std::shared_ptr<IDiGraphView const> const &ptr,
               should_only_be_used_internally_tag_t const &tag)
       : DiGraphView(ptr) {}
@@ -101,6 +98,12 @@ public:
   operator DiGraphView() const {
     return DiGraphView(this->ptr.get(), should_only_be_used_internally_tag_t{});
   }
+
+  operator Graph() const {
+    return Graph(std::static_pointer_cast<IGraph>(this->ptr.get_mutable()),
+                 should_only_be_used_internally_tag_t{});
+  } // Note(lambda):because ptr is cow_ptr_t<IDiGraph>, but ptr in Graph is
+    // cow_ptr_t<IGraph>, so we need to static_pointer_cast
 
   friend void swap(DiGraph &, DiGraph &);
 

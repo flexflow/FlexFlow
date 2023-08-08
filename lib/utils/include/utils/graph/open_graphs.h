@@ -22,10 +22,6 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
-  IOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
   template <typename T, typename... Args>
   static
       typename std::enable_if<std::is_base_of<IOpenMultiDiGraphView, T>::value,
@@ -86,10 +82,6 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
-
-  IUpwardOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<
@@ -157,10 +149,6 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
-
-  IDownwardOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<

@@ -4,6 +4,7 @@
 #include "bidict.h"
 #include "invoke.h"
 #include "optional.h"
+#include "utils/exception.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -262,6 +263,20 @@ std::unordered_set<T> intersection(std::unordered_set<T> const &l,
     if (contains(r, ll)) {
       result.insert(ll);
     }
+  }
+  return result;
+}
+
+template <typename T>
+std::unordered_set<T>
+    intersection(std::vector<std::unordered_set<T>> const &v) {
+  if (v.empty()) {
+    throw mk_runtime_error("cannot take intersection of no sets");
+  }
+
+  std::unordered_set<T> result = v[0];
+  for (int i = 1; i < v.size(); i++) {
+    result = intersection(result, v[i]);
   }
   return result;
 }
@@ -584,7 +599,7 @@ template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
   return transform(v, [](optional<T> const &t) {
     if (t == nullopt) {
-      throw std::runtime_error("value is nullopt");
+      throw mk_runtime_error("value is nullopt");
     } else {
       return t.value();
     }

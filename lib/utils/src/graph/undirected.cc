@@ -53,7 +53,8 @@ UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UndirectedGraph::operator UndirectedGraphView() const {
-  return UndirectedGraphView::unsafe_create(*this->ptr.get());
+  return UndirectedGraphView(this->ptr.get(),
+                             should_only_be_used_internally_tag_t{});
 }
 
 std::unordered_set<UndirectedEdge>
@@ -66,19 +67,16 @@ std::unordered_set<Node>
   return this->ptr->query_nodes(q);
 }
 
-/* unsafe_create:
-1 create the std::shared_ptr<IUndirectedGraphView const> ptr, and define a empty
-lambda function to delete the ptr. 2 use this ptr to create UndirectedGraphView.
-It is read-only and it is not responsible for ownership management.
-*/
-UndirectedGraphView
-    UndirectedGraphView::unsafe_create(IUndirectedGraphView const &g) {
+// Set the shared_ptr's destructor to a nop so that effectively there is no
+// ownership
+UndirectedGraphView UndirectedGraphView::unsafe_create_without_ownership(
+    IUndirectedGraphView const &g) {
   std::shared_ptr<IUndirectedGraphView const> ptr(
       (&g), [](IUndirectedGraphView const *) {});
   return UndirectedGraphView(ptr);
 }
 
-UndirectedGraphView::operator GraphView const &() const {
+UndirectedGraphView::operator GraphView() const {
   return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
 }
 
