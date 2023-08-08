@@ -1,6 +1,10 @@
 name: "pip-deploy"
-on:
+on: 
+  push:
+    tags:
+      - '*'
   workflow_dispatch:
+
 concurrency:
   group: pip-deploy-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -51,19 +55,3 @@ jobs:
       #   with:
       #     password: ${{ secrets.PYPI_API_TOKEN }}
 
-      - name: Get current date
-        id: date
-        run: echo "::set-output name=date::$(date +'%y.%m.%d')"
-
-      - name: Create git tag
-        uses: actions/github-script@v6
-        with:
-          #github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const tag = "${{ steps.date.outputs.date }}";
-            github.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `refs/tags/${tag}`,
-              sha: context.sha
-            })
