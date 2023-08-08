@@ -3,7 +3,7 @@ set -x
 set -e
 
 cleanup() {
-    rm -rf ../../inference/prompt ../../inference/output
+    rm -rf ../inference/prompt ../inference/output
 }
 
 # Cd into directory holding this script
@@ -23,14 +23,14 @@ cleanup
 pip3 install protobuf==3.20.3
 
 # Download the weights in both half and full precision
-python3 ../../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b" --refresh-cache
+python3 ../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b"
 
 # Create test prompt file
-mkdir -p ../../inference/prompt
-echo '["Give three tips for staying healthy."]' > ../../inference/prompt/test.json
+mkdir -p ../inference/prompt
+echo '["Give three tips for staying healthy."]' > ../inference/prompt/test.json
 
 # Create output folder
-mkdir -p ../../inference/output
+mkdir -p ../inference/output
 
 if [[ "$PYTHON_INFERENCE_TESTS" == "ON" ]]; then
     echo "Running Python inference tests..."
