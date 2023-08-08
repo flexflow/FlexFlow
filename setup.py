@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 from cmake_build_extension import BuildExtension, CMakeExtension
-import os
-import subprocess
+import os, subprocess, re
+from datetime import date
 
 datadir = Path(__file__).parent / "python/flexflow"
 files = [str(p.relative_to(datadir)) for p in datadir.rglob("*.py")]
@@ -19,9 +19,21 @@ cuda_path = subprocess.check_output([configs_path, "CUDA_PATH"]).decode("utf-8")
 
 os.environ["CUDA_PATH"] = cuda_path
 
+def get_version():
+    try:
+        tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"]).decode().strip()
+        # Validate tag looks like a version number 
+        if re.match(r"^v\d+(\.\d+)*$", tag): 
+            return tag
+        else:
+            raise ValueError(f"Git tag '{tag}' does not look like a valid version number")
+    except Exception:
+        today = date.today()
+        return f"{str(today.year)[-2:]}.{today.month}.{today.day}"
+
 setup(
     name="flexflow",
-    version="1.0",
+    version=get_version(),
     description="FlexFlow Python package",
     url="https://github.com/flexflow/FlexFlow",
     license="Apache",
