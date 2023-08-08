@@ -517,17 +517,17 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       tokens_previous_requests += num_new_tokens;
       tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
-    if (*m->bias && shard_id == 0) {
-      int parallelism = m->oProjSize * num_tokens;
-      int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                            m->kProjSize * m->global_num_kv_heads +
-                            m->vProjSize * m->global_num_kv_heads;
-      apply_proj_bias_w<<<GET_BLOCKS(parallelism),
-                          min(CUDA_NUM_THREADS, parallelism),
-                          0,
-                          stream>>>(
-          output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
-    }
+  }
+  if (*m->bias && shard_id == 0) {
+    int parallelism = m->oProjSize * num_tokens;
+    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
+                          m->kProjSize * m->global_num_kv_heads +
+                          m->vProjSize * m->global_num_kv_heads;
+    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>(
+        output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
 
   assert(tokens_previous_requests == num_tokens);
