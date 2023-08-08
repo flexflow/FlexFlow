@@ -25,7 +25,7 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   ParallelDim &at(ff_dim_t const &);
 
   iterator begin();
-  const_iterator begin() const;
+  const_iterator begin() const; 
   const_iterator cbegin() const;
   iterator end();
   const_iterator end() const;

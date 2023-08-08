@@ -16,6 +16,8 @@ template <Permissions PRIV> privilege_mode_to_accessor<PRIV> LocalTaskArgumentAc
     SimTensorSpec const & spec = this->tensor_shape_bindings.at(slot);
     if(slot == GATE_PREDS) {
         InputParallelTensorDesc  gate_preds = get<InputParallelTensorDesc>(this->sim_task_binding->tensor_shape_bindings.at(slot));
+        DataType shape = gate_preds.shape;
+        //use gate_preds.shape to get the ArrayShape
         //TODO, I should convert gate_pred to privilege_mode_to_accessor<PRIV>
         NOT_IMPLEMENTED();
     } else if(slot == GATE_ASSIGN) {
