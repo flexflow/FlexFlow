@@ -3,8 +3,6 @@ on:
   push:
     tags:
       - '*'
-    branches:
-      - inference # only trigger on push to inference branch for now
   workflow_dispatch:
 
 concurrency:
@@ -24,11 +22,13 @@ jobs:
 
       - name: Free additional space on runner
         run: .github/workflows/helpers/free_space_on_runner.sh
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      
+      - name: Install conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: "3.x"
+          activate-environment: flexflow
+          environment-file: conda/environment.yml
+          auto-activate-base: false
 
       - name: Install pypa/build
         run: >-
