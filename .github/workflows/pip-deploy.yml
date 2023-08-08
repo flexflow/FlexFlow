@@ -31,11 +31,7 @@ jobs:
           auto-activate-base: false
 
       - name: Install pypa/build
-        run: >-
-          python3 -m
-          pip install
-          build
-          --user
+        run: python setup.py sdist
 
       - name: Build a source tarball
         run: >-
