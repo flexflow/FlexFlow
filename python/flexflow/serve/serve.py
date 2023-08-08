@@ -246,6 +246,9 @@ class LLM:
         max_batch_size: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
+        model_specific_data_parallelism_degree: int = None,
+        model_specific_tensor_parallelism_degree: int = None,
+        model_specific_pipeline_parallelism_degree: int = None,
         ssms: list = [],
     ):
         """Compile the LLM for inference and load the weights into memory
@@ -260,6 +263,12 @@ class LLM:
         :type max_seq_length: int, optional
         :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
         :type max_tokens_per_batch: int, optional
+        :param model_specific_data_parallelism_degree: Use this parameter if you want to give the LLM a different data parallelism degree than the one used to initialize the runtime, defaults to None
+        :type model_specific_data_parallelism_degree: int, optional
+        :param model_specific_tensor_parallelism_degree: Use this parameter if you want to give the LLM a different tensor parallelism degree than the one used to initialize the runtime, defaults to None
+        :type model_specific_tensor_parallelism_degree: int, optional
+        :param model_specific_pipeline_parallelism_degree: Use this parameter if you want to give the LLM a different pipeline parallelism degree than the one used to initialize the runtime, defaults to None
+        :type model_specific_pipeline_parallelism_degree: int, optional
         :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
         :type ssms: list, optional
         """
@@ -273,6 +282,20 @@ class LLM:
             mode == InferenceMode.INC_DECODING_MODE
             or mode == InferenceMode.BEAM_SEARCH_MODE
         ) == (len(ssms) == 0)
+
+        # Apply model-specific parallelism degrees, if needed
+        if model_specific_data_parallelism_degree:
+            self.ffconfig.data_parallelism_degree = (
+                model_specific_data_parallelism_degree
+            )
+        if model_specific_tensor_parallelism_degree:
+            self.ffconfig.tensor_parallelism_degree = (
+                model_specific_tensor_parallelism_degree
+            )
+        if model_specific_pipeline_parallelism_degree:
+            self.ffconfig.pipeline_parallelism_degree = (
+                model_specific_pipeline_parallelism_degree
+            )
 
         # Instantiate the relevant model
         self.model = self.model_class(
@@ -354,4 +377,49 @@ class SSM(LLM):
             cache_path,
             refresh_cache,
             output_file,
+        )
+
+    def compile(
+        self,
+        mode: InferenceMode = InferenceMode.INC_DECODING_MODE,
+        sampling_config: SamplingConfig = SamplingConfig(),
+        max_batch_size: int = 1,
+        max_seq_length: int = 256,
+        max_tokens_per_batch: int = 64,
+        model_specific_data_parallelism_degree: int = 1,
+        model_specific_tensor_parallelism_degree: int = 1,
+        model_specific_pipeline_parallelism_degree: int = 1,
+        ssms: list = [],
+    ):
+        """Compile the SSM for inference and load the weights into memory
+
+        :param mode: The SSM inference mode (InferenceMode.INC_DECODING_MODE for incremental decoding, InferenceMode.BEAM_SEARCH_MODE for beam search, or InferenceMode.TREE_VERIFY_MODE for token tree verification), defaults to InferenceMode.INC_DECODING_MODE
+        :type mode: InferenceMode, optional
+        :param sampling_config: The SamplingConfig object with the configurations to use for sampling, defaults to SamplingConfig()
+        :type sampling_config: SamplingConfig, optional
+        :param max_batch_size: The maximum batch size to allow, defaults to 1
+        :type max_batch_size: int, optional
+        :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
+        :type max_seq_length: int, optional
+        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
+        :type max_tokens_per_batch: int, optional
+        :param model_specific_data_parallelism_degree: Use this parameter if you want to give the SSM a different data parallelism degree than the default one, defaults to 1
+        :type model_specific_data_parallelism_degree: int, optional
+        :param model_specific_tensor_parallelism_degree: Use this parameter if you want to give the SSM a different tensor parallelism degree than the default one, defaults to 1
+        :type model_specific_tensor_parallelism_degree: int, optional
+        :param model_specific_pipeline_parallelism_degree: Use this parameter if you want to give the SSM a different pipeline parallelism degree than the default one, defaults to 1
+        :type model_specific_pipeline_parallelism_degree: int, optional
+        :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
+        :type ssms: list, optional
+        """
+        super().compile(
+            mode,
+            sampling_config,
+            max_batch_size,
+            max_seq_length,
+            max_tokens_per_batch,
+            model_specific_data_parallelism_degree,
+            model_specific_tensor_parallelism_degree,
+            model_specific_pipeline_parallelism_degree,
+            ssms,
         )
