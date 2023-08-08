@@ -16,6 +16,14 @@ static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
 ParallelTensorDims::ParallelTensorDims(TensorDims const &dims)
     : data(lift_dims(dims)) {}
 
+std::vector<size_t> ParallelTensorDims::get_dims() const {
+  std::vector<size_t> dims;
+  for (ParallelDim const &d : this->data) {
+    dims.push_back(d.size);
+  }
+  return dims;
+}
+
 ParallelTensorShape::ParallelTensorShape(TensorShape const &tensor_shape)
     : dims(tensor_shape.dims), data_type(tensor_shape.data_type) {}
 

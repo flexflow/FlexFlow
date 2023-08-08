@@ -17,6 +17,10 @@ template <Permissions PRIV> privilege_mode_to_accessor<PRIV> LocalTaskArgumentAc
     if(slot == GATE_PREDS) {
         InputParallelTensorDesc  gate_preds = get<InputParallelTensorDesc>(this->sim_task_binding->tensor_shape_bindings.at(slot));
         DataType shape = gate_preds.shape;
+        ArrayShape = {gate_preds.shape.dims.get_dims()};//gate_preds.shape.dims.get_dims() return std::vector<size_t>
+        //TODO: 1)allocate memory for ptr 2)fill ptr 
+        //question: 1) how much memory should I allocate? 2) how to fill ptr?
+        
         //use gate_preds.shape to get the ArrayShape
         //TODO, I should convert gate_pred to privilege_mode_to_accessor<PRIV>
         NOT_IMPLEMENTED();
