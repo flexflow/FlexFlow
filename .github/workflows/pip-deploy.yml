@@ -39,12 +39,7 @@ jobs:
           --user
 
       - name: Build a source tarball
-        run: >-
-          python3 -m
-          build
-          --sdist
-          --outdir dist/
-          .
+        run: python3 setup.py sdist
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
