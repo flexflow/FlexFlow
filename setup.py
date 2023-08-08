@@ -25,6 +25,8 @@ def get_version():
         # Validate tag looks like a version number 
         if re.match(r"^v\d+(\.\d+)*$", tag): 
             return tag
+        elif re.match(r"^v\d+(\.\d+)*$", tag[1:]):
+            return tag[1:]
         else:
             raise ValueError(f"Git tag '{tag}' does not look like a valid version number")
     except Exception:
