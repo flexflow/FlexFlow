@@ -119,7 +119,7 @@ check_partial_token_match "../../inference/output/incr_dec-python-opt-6.7b-half_
 compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_dec-python-llama-7b-hf-full_prec-1_tp_4_pp.txt" "../../inference/output/spec_infer-python-llama-7b-hf-full_prec-1_tp_4_pp.txt"
 compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt" "../../inference/output/spec_infer-python-opt-6.7b-full_prec-1_tp_4_pp.txt"
 # Half precision
-compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-1_tp_4_pp.txt" "../../inference/spec_infer-python-llama-7b-hf-half_prec-1_tp_4_pp.txt"
+compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-1_tp_4_pp.txt" "../../inference/output/spec_infer-python-llama-7b-hf-half_prec-1_tp_4_pp.txt"
 compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt" "../../inference/output/spec_infer-python-opt-6.7b-half_prec-1_tp_4_pp.txt"
 
 ############ Alignment between tensor model parallelism and pipeline parallelism only #################
