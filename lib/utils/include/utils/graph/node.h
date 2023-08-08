@@ -4,6 +4,7 @@
 #include "cow_ptr_t.h"
 #include "query_set.h"
 #include "utils/fmt.h"
+#include "utils/internal_only_tag.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
@@ -19,10 +20,6 @@ namespace FlexFlow {
 
 struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
-  bool operator==(Node const &other) const {
-    // Replace this with your actual comparison logic
-    return this->value() == other.value();
-  }
 };
 FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
@@ -52,10 +49,6 @@ struct IGraphView {
   virtual ~IGraphView(){};
 };
 
-struct should_only_be_used_internally_tag_t {
-  explicit should_only_be_used_internally_tag_t() = default;
-};
-
 struct GraphView {
   GraphView() = delete;
 
@@ -63,11 +56,7 @@ struct GraphView {
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
-  IGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
-  static GraphView unsafe_create(IGraphView const &);
+  static GraphView unsafe_create_without_ownership(IGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
@@ -118,10 +107,13 @@ public:
     return Graph(make_unique<T>());
   }
 
-private:
-  Graph(std::unique_ptr<IGraph>);
+  Graph(cow_ptr_t<IGraph> const &ptr,
+        should_only_be_used_internally_tag_t const &tag)
+      : ptr(std::move(ptr)) {}
 
 private:
+  Graph(std::unique_ptr<IGraph> ptr) : ptr(std::move(ptr)) {}
+  //  Graph(std::shared_ptr<IGraph const> ptr): ptr(to_cow_ptr(ptr)) {}
   cow_ptr_t<IGraph> ptr;
 };
 

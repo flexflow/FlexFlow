@@ -57,12 +57,10 @@ std::unordered_set<DirectedEdge>
   return ptr->query_edges(query);
 }
 
-/* unsafe_create:
-1 create the std::shared_ptr<IDiGraphView const> ptr, and define a empty lambda
-function to delete the ptr. 2 use this ptr to create a DiGraphView. It is
-read-only and is not responsible for ownership management.
-*/
-DiGraphView DiGraphView::unsafe_create(IDiGraphView const &graphView) {
+// Set the shared_ptr's destructor to a nop so that effectively there is no
+// ownership
+DiGraphView DiGraphView::unsafe_create_without_ownership(
+    IDiGraphView const &graphView) {
   std::shared_ptr<IDiGraphView const> ptr((&graphView),
                                           [](IDiGraphView const *) {});
   return DiGraphView(ptr);
@@ -74,19 +72,27 @@ DirectedEdgeQuery DirectedEdgeQuery::all() {
 
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
                                      DirectedEdgeQuery const &rhs) {
-  assert(lhs != nullopt);
-  assert(rhs != nullopt);
-  assert(lhs.srcs.has_value() && lhs.dsts.has_value() && rhs.srcs.has_value() &&
-         rhs.dsts.has_value());
+  std::unordered_set<Node> srcs_tl;
+  if (is_matchall(lhs.srcs) && !is_matchall(rhs.srcs)) {
+    srcs_tl = allowed_values(rhs.srcs);
+  } else if (!is_matchall(lhs.srcs) && is_matchall(rhs.srcs)) {
+    srcs_tl = allowed_values(lhs.srcs);
+  } else if (!is_matchall(lhs.srcs) && !is_matchall(rhs.srcs)) {
+    srcs_tl = allowed_values(query_intersection(lhs.srcs, rhs.srcs));
+  }
 
-  std::unordered_set<Node> srcs_t1 =
-      intersection(allowed_values(lhs.srcs), allowed_values(rhs.srcs));
-  std::unordered_set<Node> dsts_t1 =
-      intersection(allowed_values(lhs.dsts), allowed_values(rhs.dsts));
+  std::unordered_set<Node> dsts_tl;
+  if (is_matchall(lhs.dsts) && !is_matchall(rhs.dsts)) {
+    dsts_tl = allowed_values(rhs.dsts);
+  } else if (!is_matchall(lhs.dsts) && is_matchall(rhs.dsts)) {
+    dsts_tl = allowed_values(lhs.dsts);
+  } else if (!is_matchall(lhs.dsts) && !is_matchall(rhs.dsts)) {
+    dsts_tl = allowed_values(query_intersection(lhs.dsts, rhs.dsts));
+  }
 
   DirectedEdgeQuery result = DirectedEdgeQuery::all();
-  result.srcs = srcs_t1;
-  result.dsts = dsts_t1;
+  result.srcs = srcs_tl;
+  result.dsts = dsts_tl;
   return result;
 }
 
