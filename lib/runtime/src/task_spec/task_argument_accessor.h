@@ -7,6 +7,7 @@
 #include "utils/exception.h"
 #include "utils/stack_map.h"
 #include "utils/strong_typedef.h"
+#include "kernels/allocation.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -164,11 +165,18 @@ public:
 virtual template <typename T> T const &get_argument(slot_id slot) const override;
 virtual template <Permissions PRIV> privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const override;
 
-LocalTaskArgumentAccessor(std::shared_ptr<SimTaskBinding const>  & sim_task_binding):sim_task_binding(sim_task_binding){}
+LocalTaskArgumentAccessor(std::shared_ptr<SimTaskBinding const>  & sim_task_binding):sim_task_binding(sim_task_binding){
+  local_allocator = Allocator::create<CudaAllocator>();
+}
+
+void * allocate(size_t size);
+
+void deallocate(void * ptr);
 
 private:
   std::shared_ptr<SimTaskBinding const> sim_task_binding;
-
+ // CudaAllocator local_allocator;
+ Allocator local_allocator;
 };
 
 struct TaskArgumentAccessor {

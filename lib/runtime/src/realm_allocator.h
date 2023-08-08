@@ -15,8 +15,7 @@ struct RealmAllocator : public IAllocator {
   ~RealmAllocator() override;
 
   void *allocate(size_t) override;
-  void deallocate(void *) override;
-
+  void deallocate(void *) override
 private:
   Legion::Memory memory;
   stack_vector<Realm::RegionInstance, MAX_INSTANCE_ALLOCATIONS> instances;
