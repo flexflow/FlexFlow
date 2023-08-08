@@ -22,6 +22,14 @@ TEST_CASE_TEMPLATE("StackStringConstruction", T, char) {
     CHECK(static_cast<std::string>(str) == "Hello");
   }
 
+  SUBCASE("ShortCStringConstruction") {
+    char const *cstr = "CMU";
+    StackString str(cstr);
+    CHECK(str.size() == 3);
+    CHECK(str.length() == 3);
+    CHECK(static_cast<std::string>(str) == "CMU");
+  }
+
   SUBCASE("StdStringConstruction") {
     std::basic_string<T> stdStr = "World";
     StackString str(stdStr);
