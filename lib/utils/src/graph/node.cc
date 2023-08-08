@@ -25,14 +25,14 @@ NodeQuery NodeQuery::all() {
 }
 
 NodeQuery query_intersection(NodeQuery const &lhs, NodeQuery const &rhs) {
-  
+
   std::unordered_set<Node> nodes;
-  
-  if(is_matchall(lhs.nodes) && !is_matchall(rhs.nodes)) {
+
+  if (is_matchall(lhs.nodes) && !is_matchall(rhs.nodes)) {
     nodes = allowed_values(rhs.nodes);
-  } else if(!is_matchall(lhs.nodes) && is_matchall(rhs.nodes)) {
+  } else if (!is_matchall(lhs.nodes) && is_matchall(rhs.nodes)) {
     nodes = allowed_values(lhs.nodes);
-  } else if(!is_matchall(lhs.nodes) && !is_matchall(rhs.nodes)) {
+  } else if (!is_matchall(lhs.nodes) && !is_matchall(rhs.nodes)) {
     nodes = allowed_values(query_intersection(lhs.nodes, rhs.nodes));
   }
 

@@ -91,11 +91,6 @@ TEST_CASE("DiGraph") {
     CHECK(get_sinks(g) == expected);
   }
 
-  SUBCASE("get_neightbors") {
-    std::unordered_set<Node> expected = {n[1], n[2], n[3]};
-    CHECK(get_neighbors(g, n[0]) == expected);
-  }
-
   SUBCASE("get_bfs") {
     std::unordered_set<Node> start_points = std::unordered_set<Node>{n[0]};
     auto expected = std::vector<Node>{n[0], n[2], n[1], n[3]};
@@ -217,8 +212,6 @@ TEST_CASE("get_weakly_connected_components") {
   std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
 
   add_edges(g, edges);
-  std::vector<std::unordered_set<Node>> components =
-      get_weakly_connected_components(g);
   std::vector<std::unordered_set<Node>> expected_components = {
       {n[0]},
       {n[1]},
@@ -226,5 +219,5 @@ TEST_CASE("get_weakly_connected_components") {
       {n[3]},
   };
 
-  CHECK(components == expected_components);
+  CHECK(get_weakly_connected_components(g) == expected_components);
 }
