@@ -1,8 +1,8 @@
 name: "pip-deploy"
 on: 
   push:
-    tags:
-      - '*'
+    #tags:
+    #  - '*'
   workflow_dispatch:
 
 concurrency:
@@ -22,16 +22,21 @@ jobs:
 
       - name: Free additional space on runner
         run: .github/workflows/helpers/free_space_on_runner.sh
-      
-      - name: Install conda and FlexFlow dependencies
-        uses: conda-incubator/setup-miniconda@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          activate-environment: flexflow
-          environment-file: conda/environment.yml
-          auto-activate-base: false
+          python-version: "3.x"
+      
+      - name: Install dependencies
+        run: python3 -m pip install -r requirements.txt
 
       - name: Install pypa/build
-        run: python setup.py sdist
+        run: >-
+          python3 -m
+          pip install
+          build
+          --user
 
       - name: Build a source tarball
         run: >-
