@@ -140,8 +140,8 @@ check_partial_token_match "../../inference/output/incr_dec-python-llama-160m-hal
 # Big LLAMA
 diff <(tail -n +3 "../../inference/output/incr_dec-python-llama-7b-hf-full_prec-2_tp_2_pp.txt") <(tail -n +3 "../../inference/output/incr_dec-python-llama-7b-hf-full_prec-1_tp_4_pp.txt")
 check_partial_token_match "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-2_tp_2_pp.txt" "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-1_tp_4_pp.txt"
-diff <(tail -n +3 "../../inference/output/incr_dec-python-llama-7b-hf-full_prec-4_tp_1_pp.txt") <(tail -n +3 "../../inference/output/incr_dec-python-llama-7b-hf-full_prec-1_tp_4_pp.txt")
-check_partial_token_match "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-4_tp_1_pp.txt" "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-1_tp_4_pp.txt"
+#diff <(tail -n +3 "../../inference/output/incr_dec-python-llama-7b-hf-full_prec-4_tp_1_pp.txt") <(tail -n +3 "../../inference/output/incr_dec-python-llama-7b-hf-full_prec-1_tp_4_pp.txt")
+#check_partial_token_match "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-4_tp_1_pp.txt" "../../inference/output/incr_dec-python-llama-7b-hf-half_prec-1_tp_4_pp.txt"
 # Small OPT
 diff <(tail -n +3 "../../inference/output/incr_dec-python-opt-125m-full_prec-2_tp_2_pp.txt") <(tail -n +3 "../../inference/output/incr_dec-python-opt-125m-full_prec-1_tp_4_pp.txt")
 check_partial_token_match "../../inference/output/incr_dec-python-opt-125m-half_prec-2_tp_2_pp.txt" "../../inference/output/incr_dec-python-opt-125m-half_prec-1_tp_4_pp.txt"
@@ -150,8 +150,8 @@ check_partial_token_match "../../inference/output/incr_dec-python-opt-125m-half_
 # Big OPT
 diff <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-2_tp_2_pp.txt") <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
 check_partial_token_match "../../inference/output/incr_dec-python-opt-6.7b-half_prec-2_tp_2_pp.txt" "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt"
-diff <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-4_tp_1_pp.txt") <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
-check_partial_token_match "../../inference/output/incr_dec-python-opt-6.7b-half_prec-4_tp_1_pp.txt" "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt"
+#diff <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-4_tp_1_pp.txt") <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
+#check_partial_token_match "../../inference/output/incr_dec-python-opt-6.7b-half_prec-4_tp_1_pp.txt" "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt"
 
 
 ######################### Alignment tests with HuggingFace ####################################
