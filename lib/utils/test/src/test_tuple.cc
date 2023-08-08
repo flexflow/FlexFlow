@@ -52,6 +52,22 @@ TEST_CASE("tuple_prepend function") {
   CHECK(result == expected);
 }
 
+TEST_CASE("Testing tuple_head_t") {
+  CHECK(std::is_same<tuple_head_t<1, std::tuple<int, float>>, std::tuple<int>>::value);
+  CHECK(std::is_same<tuple_head_t<0, std::tuple<int, float>>, std::tuple<>>::value);
+}
+
+TEST_CASE("Testing tuple_slice_t") {
+  CHECK(std::is_same<tuple_slice_t<0, 1, std::tuple<int, float, double>>, std::tuple<int>>::value);
+  CHECK(std::is_same<tuple_slice_t<-2, -1, std::tuple<int, float, double>>, std::tuple<float>>::value);
+  CHECK(std::is_same<tuple_slice_t<1, 3, std::tuple<int, float, double>>, std::tuple<float, double>>::value);
+}
+
+TEST_CASE("Testing get function with invalid index") {
+  std::tuple<int, float, double> tup(42, 3.14f, 2.71);
+  CHECK_THROWS_AS(get<int>(tup), std::exception);
+}
+
 // TEST_CASE("tuple_slice_t function") {
 //   std::tuple<int, float, double, char> t(42, 3.14f, 2.71828, 'A');
 
