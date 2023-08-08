@@ -3,8 +3,6 @@ on:
   push:
     tags:
       - '*'
-    branches:
-      - inference # only trigger on push to inference branch for now
   workflow_dispatch:
 
 concurrency:

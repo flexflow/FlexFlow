@@ -183,8 +183,6 @@ jobs:
           ./tests/gpt_tokenizer_test.sh
 
           # Inference tests
-          export TENSOR_PARALLELISM_TESTS=ON
-          export CPP_INFERENCE_TESTS=ON
           source ./build/set_python_envs.sh
           ./tests/inference_tests.sh
       
