@@ -48,8 +48,8 @@ def get_configs():
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
-            "tensor_parallelism_degree": 2,
-            "pipeline_parallelism_degree": 2,
+            "tensor_parallelism_degree": 1,
+            "pipeline_parallelism_degree": 4,
             "offload": False,
             "offload_reserve_space_size": 1024**2,
             "use_4bit_quantization": False,
@@ -59,12 +59,11 @@ def get_configs():
         }
         llm_configs = {
             # required parameters
-            "llm_model": "decapoda-research/llama-7b-hf",
+            "llm_model": "tiiuae/falcon-7b",
             # optional parameters
-            "llm_weight": "",
-            "llm_tokenizer": "",
-            "clean_model_cache": False,
-            "full_precision": False,
+            "cache_path": "",
+            "refresh_cache": False,
+            "full_precision": True,
             "prompt": "",
             "output_file": "",
         }
@@ -87,9 +86,8 @@ def main():
     llm = ff.LLM(
         configs.llm_model,
         data_type=ff_data_type,
-        tokenizer_path=configs.llm_tokenizer,
-        weights_path=configs.llm_weight,
-        clean_cache=configs.clean_model_cache,
+        cache_path=configs.cache_path,
+        refresh_cache=configs.refresh_cache,
         output_file=configs.output_file,
     )
 

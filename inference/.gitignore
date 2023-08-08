@@ -1,4 +1,5 @@
+configs
 weights
-tokenizer
+tokenizers
 prompt
 output

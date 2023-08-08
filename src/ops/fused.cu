@@ -379,6 +379,7 @@ __host__ void FusedOp::forward_task(Task const *task,
                                                    effective_batch_size);
         break;
       }
+      case OP_GELU:
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:
@@ -778,6 +779,7 @@ __host__ void
                                                    effective_batch_size);
         break;
       }
+      case OP_GELU:
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:
@@ -1323,6 +1325,7 @@ __host__ void FusedOp::backward_task(Task const *task,
             batch_size);
         break;
       }
+      case OP_GELU:
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:

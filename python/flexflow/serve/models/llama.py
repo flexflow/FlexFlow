@@ -57,6 +57,24 @@ class FlexFlowLLAMA(FlexFlowModel):
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
 
+        # Sanity checks
+        if self.llama_config.hidden_size % self.llama_config.num_attention_heads != 0:
+            raise ValueError(
+                f"Hidden size ({self.llama_config.hidden_size}) is not divisible by number of attention heads ({self.llama_config.num_attention_heads})"
+            )
+
+        # Sanity checks
+        if (
+            self.llama_config.num_attention_heads
+            < self.ffconfig.tensor_parallelism_degree
+            or self.llama_config.num_attention_heads
+            % self.ffconfig.tensor_parallelism_degree
+            != 0
+        ):
+            raise ValueError(
+                f"Number of attention heads ({self.llama_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+            )
+
         self.build_model()
 
     def build_model(self):
@@ -88,10 +106,9 @@ class FlexFlowLLAMA(FlexFlowModel):
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
-                mha = ffmodel.spec_inc_multihead_attention(
+                mha = ffmodel.spec_inc_multihead_self_attention(
                     attn_norm,
                     self.llama_config.hidden_size,
-                    self.llama_config.num_attention_heads,
                     self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
@@ -111,7 +128,6 @@ class FlexFlowLLAMA(FlexFlowModel):
                     attn_norm,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
-                    self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
@@ -126,10 +142,9 @@ class FlexFlowLLAMA(FlexFlowModel):
                     name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multihead_attention(
+                mha = ffmodel.inc_multihead_self_attention(
                     attn_norm,
                     self.llama_config.hidden_size,
-                    self.llama_config.num_attention_heads,
                     self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,

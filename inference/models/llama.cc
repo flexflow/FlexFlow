@@ -18,6 +18,7 @@
 namespace FlexFlow {
 
 using namespace Legion;
+using json = nlohmann::json;
 
 void LLAMA::create_llama_model(FFModel &ff,
                                std::string const &model_config_file_path,
@@ -26,8 +27,15 @@ void LLAMA::create_llama_model(FFModel &ff,
                                SamplingConfig samplingConfig,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
-  Config llama_config(model_config_file_path);
-  llama_config.printConfig();
+  LLAMAConfig llama_config(model_config_file_path);
+  llama_config.print();
+
+  if (ff.config.tensor_parallelism_degree > llama_config.num_attention_heads ||
+      llama_config.num_attention_heads % ff.config.tensor_parallelism_degree !=
+          0) {
+    assert(false && "The number of attention heads is smaller, or it is not "
+                    "divisible by the tensor parallelism degree");
+  }
 
   std::unordered_map<std::string, Layer *> weights_layers;
 
@@ -45,7 +53,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   if (use_full_precision) {
     token = ff.embedding(input,
                          llama_config.vocab_size,
-                         llama_config.dim,
+                         llama_config.hidden_size,
                          AGGR_MODE_NONE,
                          DT_FLOAT,
                          NULL,
@@ -53,7 +61,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   } else {
     token = ff.embedding(input,
                          llama_config.vocab_size,
-                         llama_config.dim,
+                         llama_config.hidden_size,
                          AGGR_MODE_NONE,
                          DT_HALF,
                          NULL,
@@ -63,12 +71,12 @@ void LLAMA::create_llama_model(FFModel &ff,
   Layer *embedding = ff.layers.back();
   weights_layers.emplace("tok_embeddings_weight", embedding);
 
-  for (int i = 0; i < llama_config.n_layers; i++) {
+  for (int i = 0; i < llama_config.num_hidden_layers; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
     // step 1: attention
     Tensor att_norm =
-        ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
+        ff.rms_norm(token, llama_config.rms_norm_eps, llama_config.hidden_size);
     Layer *attention_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
@@ -79,10 +87,10 @@ void LLAMA::create_llama_model(FFModel &ff,
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multihead_self_attention(
             att_norm,
-            llama_config.dim,
-            llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
+            llama_config.hidden_size,
+            llama_config.num_attention_heads,
+            llama_config.hidden_size / llama_config.num_attention_heads,
+            llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,
             false,
             false,
@@ -95,10 +103,10 @@ void LLAMA::create_llama_model(FFModel &ff,
       case TREE_VERIFY_MODE: {
         mha = ff.inc_multihead_self_attention_verify(
             att_norm,
-            llama_config.dim,
-            llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
+            llama_config.hidden_size,
+            llama_config.num_attention_heads,
+            llama_config.hidden_size / llama_config.num_attention_heads,
+            llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
             false,   /*bias*/
             false,   /*add_bias_kv*/
@@ -112,10 +120,10 @@ void LLAMA::create_llama_model(FFModel &ff,
       case INC_DECODING_MODE: {
         mha = ff.inc_multihead_self_attention(
             att_norm,
-            llama_config.dim,
-            llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
-            llama_config.dim / llama_config.n_heads,
+            llama_config.hidden_size,
+            llama_config.num_attention_heads,
+            llama_config.hidden_size / llama_config.num_attention_heads,
+            llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
             false,   /*bias*/
             false,   /*add_bias_kv*/
@@ -137,17 +145,19 @@ void LLAMA::create_llama_model(FFModel &ff,
 
     // step 2: SILU activaion
     Tensor ff_norm =
-        ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
+        ff.rms_norm(token, llama_config.rms_norm_eps, llama_config.hidden_size);
     Layer *ffn_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_ffn_norm_weight",
                            ffn_layer);
 
-    Tensor w1 = ff.dense(ff_norm, llama_config.hidden_dim, AC_MODE_NONE, false);
+    Tensor w1 =
+        ff.dense(ff_norm, llama_config.intermediate_size, AC_MODE_NONE, false);
     Layer *w1_layer = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_feed_forward_w1_weight", w1_layer);
 
-    Tensor w3 = ff.dense(ff_norm, llama_config.hidden_dim, AC_MODE_NONE, false);
+    Tensor w3 =
+        ff.dense(ff_norm, llama_config.intermediate_size, AC_MODE_NONE, false);
     Layer *w3_layer = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_feed_forward_w3_weight", w3_layer);
@@ -156,7 +166,7 @@ void LLAMA::create_llama_model(FFModel &ff,
     Tensor silu = ff.multiply(w1, sigmoid);
     Tensor multi = ff.multiply(silu, w3);
 
-    Tensor w2 = ff.dense(multi, llama_config.dim, AC_MODE_NONE, false);
+    Tensor w2 = ff.dense(multi, llama_config.hidden_size, AC_MODE_NONE, false);
     Layer *w2_layer = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_feed_forward_w2_weight", w2_layer);
@@ -164,7 +174,8 @@ void LLAMA::create_llama_model(FFModel &ff,
   }
   // final normalization and linear
   std::vector<int> axes = {2};
-  token = ff.rms_norm(token, llama_config.norm_eps, llama_config.dim);
+  token =
+      ff.rms_norm(token, llama_config.rms_norm_eps, llama_config.hidden_size);
   Layer *final_norm = ff.layers.back();
   weights_layers.emplace("norm_weight", final_norm);
 
@@ -192,15 +203,15 @@ void LLAMA::create_llama_model(FFModel &ff,
   InferenceManager *im = InferenceManager::get_inference_manager();
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
-                            llama_config.n_heads,
-                            llama_config.n_heads,
-                            llama_config.dim,
-                            llama_config.dim / llama_config.n_heads,
-                            tensor_partition_num);
+                            llama_config.num_attention_heads,
+                            llama_config.num_attention_heads,
+                            llama_config.hidden_size,
+                            llama_config.hidden_size /
+                                llama_config.num_attention_heads,
+                            ff.config.tensor_parallelism_degree);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 

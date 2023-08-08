@@ -19,103 +19,69 @@
 #include "models/opt.h"
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#include <wordexp.h>
 
 using namespace Legion;
+using json = nlohmann::json;
 
 LegionRuntime::Logger::Category log_app("llama");
 
 struct FilePaths {
-  std::string llm_weight_file_path;
-  std::string llm_config_file_path;
-  std::vector<std::string> ssm_weight_file_paths;
-  std::vector<std::string> ssm_config_file_paths;
+  std::string cache_folder_path;
   std::string prompt_file_path;
-  std::string tokenizer_file_path;
   std::string output_file_path;
 };
 
-struct ModelTypes {
+struct ModelNames {
+  std::string llm_model_name;
+  std::vector<std::string> ssm_model_names;
+};
+
+struct ModelMeta {
+  ModelNames model_names;
+
   ModelType llm_model_type;
+  std::string llm_tokenizer_path;
+  std::string llm_weights_path;
+  std::string llm_model_config_path;
+
   std::vector<ModelType> ssm_model_types;
+  std::vector<std::string> ssm_model_config_paths;
+  std::vector<std::string> ssm_model_weights_paths;
 };
 
 void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
-                      ModelTypes &model_types,
+                      ModelNames &model_names,
                       bool &use_full_precision,
                       bool &verbose) {
   for (int i = 1; i < argc; i++) {
-    // llm model type
+    // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
-      std::string model_type_str = std::string(argv[++i]);
-      std::transform(model_type_str.begin(),
-                     model_type_str.end(),
-                     model_type_str.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      if (model_type_str == "llama") {
-        model_types.llm_model_type = ModelType::LLAMA;
-      } else if (model_type_str == "llama2") {
-        model_types.llm_model_type = ModelType::LLAMA2;
-      } else if (model_type_str == "opt") {
-        model_types.llm_model_type = ModelType::OPT;
-      } else if (model_type_str == "falcon") {
-        model_types.llm_model_type = ModelType::FALCON;
-      } else {
-        model_types.llm_model_type = ModelType::UNKNOWN;
+      model_names.llm_model_name = std::string(argv[++i]);
+      for (char &c : model_names.llm_model_name) {
+        c = std::tolower(c);
       }
       continue;
     }
-    // llm model weights
-    if (!strcmp(argv[i], "-llm-weight")) {
-      paths.llm_weight_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // llm model configs
-    if (!strcmp(argv[i], "-llm-config")) {
-      paths.llm_config_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // ssm models types
+    // ssm models names
     if (!strcmp(argv[i], "-ssm-model")) {
-      std::string model_type_str = std::string(argv[++i]);
-      std::transform(model_type_str.begin(),
-                     model_type_str.end(),
-                     model_type_str.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      if (model_type_str == "llama") {
-        model_types.ssm_model_types.push_back(ModelType::LLAMA);
-      } else if (model_type_str == "llama2") {
-        model_types.ssm_model_types.push_back(ModelType::LLAMA2);
-      } else if (model_type_str == "opt") {
-        model_types.ssm_model_types.push_back(ModelType::OPT);
-      } else if (model_type_str == "falcon") {
-        model_types.ssm_model_types.push_back(ModelType::FALCON);
-      } else {
-        model_types.ssm_model_types.push_back(ModelType::UNKNOWN);
+      std::string ssm_model_name = std::string(argv[++i]);
+      for (char &c : ssm_model_name) {
+        c = std::tolower(c);
       }
+      model_names.ssm_model_names.push_back(ssm_model_name);
       continue;
     }
-    // ssm model weights
-    if (!strcmp(argv[i], "-ssm-weight")) {
-      std::string file_path = std::string(argv[++i]);
-      paths.ssm_weight_file_paths.push_back(file_path);
-      continue;
-    }
-    // ssm model configs
-    if (!strcmp(argv[i], "-ssm-config")) {
-      std::string file_path = std::string(argv[++i]);
-      paths.ssm_config_file_paths.push_back(file_path);
+    // cache folder
+    if (!strcmp(argv[i], "-cache-folder")) {
+      paths.cache_folder_path = std::string(argv[++i]);
       continue;
     }
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // tokenizer
-    if (!strcmp(argv[i], "-tokenizer")) {
-      paths.tokenizer_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -133,6 +99,131 @@ void parse_input_args(char **argv,
       continue;
     }
   }
+  if (paths.cache_folder_path.empty()) {
+    paths.cache_folder_path = "~/.cache/flexflow";
+  }
+  // Expand ~ to the home directory if needed
+  wordexp_t p;
+  wordexp(paths.cache_folder_path.c_str(), &p, 0);
+  paths.cache_folder_path = p.we_wordv[0];
+  wordfree(&p);
+}
+
+void get_model_meta(FilePaths &file_paths,
+                    ModelMeta &model_metadata,
+                    bool use_full_precision) {
+  if (model_metadata.model_names.llm_model_name.empty() ||
+      model_metadata.model_names.ssm_model_names.size() == 0) {
+    assert(false && "SpecInfer needs at least one LLM and one SSM for "
+                    "speculative inference");
+  }
+  model_metadata.llm_model_config_path =
+      join_path({file_paths.cache_folder_path,
+                 "configs",
+                 model_metadata.model_names.llm_model_name,
+                 "config.json"});
+  model_metadata.llm_tokenizer_path =
+      join_path({file_paths.cache_folder_path,
+                 "tokenizers",
+                 model_metadata.model_names.llm_model_name});
+  model_metadata.llm_weights_path =
+      join_path({file_paths.cache_folder_path,
+                 "weights",
+                 model_metadata.model_names.llm_model_name,
+                 use_full_precision ? "full-precision" : "half-precision"});
+
+  std::ifstream llm_config_file_handle(model_metadata.llm_model_config_path);
+  if (!llm_config_file_handle.good()) {
+    std::cout << "LLM Model config file "
+              << model_metadata.llm_model_config_path << " not found."
+              << std::endl;
+    assert(false);
+  }
+  json llm_model_config = json::parse(llm_config_file_handle,
+                                      /*parser_callback_t */ nullptr,
+                                      /*allow_exceptions */ true,
+                                      /*ignore_comments */ true);
+
+  model_metadata.llm_model_type = ModelType::UNKNOWN;
+  auto architectures = llm_model_config["architectures"];
+  for (auto const &str : architectures) {
+    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
+      std::string nameOrPath = llm_model_config["_name_or_path"];
+      // TODO: support LLAMA-2 models not from Meta
+      bool llama2 = nameOrPath.find("meta-llama/Llama-2") == 0;
+      if (llama2) {
+        model_metadata.llm_model_type = ModelType::LLAMA2;
+      } else {
+        model_metadata.llm_model_type = ModelType::LLAMA;
+      }
+      break;
+    } else if (str == "OPTForCausalLM") {
+      model_metadata.llm_model_type = ModelType::OPT;
+      break;
+    } else if (str == "RWForCausalLM") {
+      model_metadata.llm_model_type = ModelType::FALCON;
+      break;
+    }
+  }
+
+  for (auto ssm_model_name : model_metadata.model_names.ssm_model_names) {
+    std::string ssm_config_path = join_path({file_paths.cache_folder_path,
+                                             "configs",
+                                             ssm_model_name,
+                                             "config.json"});
+    std::string ssm_tokenizer_path =
+        join_path({file_paths.cache_folder_path, "tokenizers", ssm_model_name});
+    std::string ssm_weights_path =
+        join_path({file_paths.cache_folder_path,
+                   "weights",
+                   ssm_model_name,
+                   use_full_precision ? "full-precision" : "half-precision"});
+
+    std::ifstream ssm_config_file_handle(ssm_config_path);
+    if (!ssm_config_file_handle.good()) {
+      std::cout << "SSM Model config file " << ssm_config_path << " not found."
+                << std::endl;
+      assert(false);
+    }
+    json ssm_model_config = json::parse(ssm_config_file_handle,
+                                        /*parser_callback_t */ nullptr,
+                                        /*allow_exceptions */ true,
+                                        /*ignore_comments */ true);
+
+    ModelType ssm_model_type = ModelType::UNKNOWN;
+    auto architectures = ssm_model_config["architectures"];
+    for (auto const &str : architectures) {
+      if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
+        std::string nameOrPath = ssm_model_config["_name_or_path"];
+        // TODO: support LLAMA-2 models not from Meta
+        bool llama2 = nameOrPath.find("meta-llama/Llama-2") == 0;
+        if (llama2) {
+          ssm_model_type = ModelType::LLAMA2;
+        } else {
+          ssm_model_type = ModelType::LLAMA;
+        }
+        break;
+      } else if (str == "OPTForCausalLM") {
+        ssm_model_type = ModelType::OPT;
+        break;
+      } else if (str == "RWForCausalLM") {
+        ssm_model_type = ModelType::FALCON;
+        break;
+      }
+    }
+    model_metadata.ssm_model_types.push_back(ssm_model_type);
+    model_metadata.ssm_model_config_paths.push_back(ssm_config_path);
+    model_metadata.ssm_model_weights_paths.push_back(ssm_weights_path);
+  }
+
+  assert(model_metadata.llm_model_type != ModelType::UNKNOWN &&
+         "Invalid LLM model type passed (or no type was passed).");
+
+  for (auto mt : model_metadata.ssm_model_types) {
+    if (mt == ModelType::UNKNOWN) {
+      assert(false && "One of the SSM model types passed is invalid.");
+    }
+  }
 }
 
 void FlexFlow::top_level_task(Task const *task,
@@ -141,77 +232,54 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   FFConfig ffconfig;
   FilePaths file_paths;
-  ModelTypes model_types;
+  ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
-  size_t num_devices = ffconfig.workersPerNode * ffconfig.numNodes;
-  int data_parallelism_degree = 1, tensor_parallelism_degree = 1,
-      pipeline_parallelism_degree = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  parse_input_args(
-      argv, argc, file_paths, model_types, use_full_precision, verbose);
+  parse_input_args(argv,
+                   argc,
+                   file_paths,
+                   model_metadata.model_names,
+                   use_full_precision,
+                   verbose);
+
+  get_model_meta(file_paths, model_metadata, use_full_precision);
+
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
-
-  if (file_paths.ssm_weight_file_paths.size() == 0) {
-    assert(false &&
-           "SpecInfer needs at least one SSM for speculative inference");
-  }
-  if (file_paths.ssm_config_file_paths.size() !=
-      file_paths.ssm_weight_file_paths.size()) {
-    assert(false && "Number of SSM config files passed does not match number "
-                    "of SSM weights");
-  }
-  assert(model_types.llm_model_type != ModelType::UNKNOWN &&
-         "Invalid LLM model type passed (or no type was passed).");
-  if (model_types.ssm_model_types.size() !=
-      file_paths.ssm_weight_file_paths.size()) {
-    assert(false && "Number of valid SSM model types passed does not match "
-                    "number of SSM weights");
-  }
-  for (auto mt : model_types.ssm_model_types) {
-    if (mt == ModelType::UNKNOWN) {
-      assert(false && "One of the SSM model types passed is invalid.");
-    }
-  }
 
   // Create SentencePiece tokenizer or OPT tokenizer
   SamplingConfig samplingConfig;
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
-  rm->register_tokenizer(model_types.llm_model_type,
-                         file_paths.tokenizer_file_path);
+  rm->register_tokenizer(model_metadata.llm_model_type,
+                         model_metadata.llm_tokenizer_path);
   rm->register_output_filepath(file_paths.output_file_path);
-  // InferenceManager im(ffconfig, BatchConfig::MAX_NUM_TOKENS);
-  // RequestManager rm(model_types.llm_model_type,
-  //                   file_paths.tokenizer_file_path,
-  //                   /*verbose*/ verbose,
-  //                   file_paths.output_file_path);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
-  if (model_types.llm_model_type == ModelType::LLAMA ||
-      model_types.llm_model_type == ModelType::LLAMA2) {
+  if (model_metadata.llm_model_type == ModelType::LLAMA ||
+      model_metadata.llm_model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(tree_model,
-                              file_paths.llm_config_file_path,
-                              file_paths.llm_weight_file_path,
+                              model_metadata.llm_model_config_path,
+                              model_metadata.llm_weights_path,
                               TREE_VERIFY_MODE,
                               samplingConfig,
                               use_full_precision);
-  } else if (model_types.llm_model_type == ModelType::OPT) {
+  } else if (model_metadata.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
-                          file_paths.llm_config_file_path,
-                          file_paths.llm_weight_file_path,
+                          model_metadata.llm_model_config_path,
+                          model_metadata.llm_weights_path,
                           TREE_VERIFY_MODE,
                           use_full_precision);
-  } else if (model_types.llm_model_type == ModelType::FALCON) {
+  } else if (model_metadata.llm_model_type == ModelType::FALCON) {
     FALCON::create_falcon_model(tree_model,
-                                file_paths.llm_config_file_path,
-                                file_paths.llm_weight_file_path,
+                                model_metadata.llm_model_config_path,
+                                model_metadata.llm_weights_path,
                                 TREE_VERIFY_MODE,
                                 use_full_precision);
   } else {
@@ -219,7 +287,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Create SSM models
-  int num_ssms = model_types.ssm_model_types.size();
+  int num_ssms = model_metadata.ssm_model_types.size();
   std::vector<int> ssm_model_ids;
   std::vector<FFModel> ssm_models;
   FFConfig bm_config = ffconfig;
@@ -232,26 +300,27 @@ void FlexFlow::top_level_task(Task const *task,
 
   for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
     FFModel &beam_model = ssm_models[ssm_id];
-    if (model_types.ssm_model_types[ssm_id] == ModelType::LLAMA ||
-        model_types.ssm_model_types[ssm_id] == ModelType::LLAMA2) {
+    if (model_metadata.ssm_model_types[ssm_id] == ModelType::LLAMA ||
+        model_metadata.ssm_model_types[ssm_id] == ModelType::LLAMA2) {
       LLAMA::create_llama_model(beam_model,
-                                file_paths.ssm_config_file_paths[ssm_id],
-                                file_paths.ssm_weight_file_paths[ssm_id],
+                                model_metadata.ssm_model_config_paths[ssm_id],
+                                model_metadata.ssm_model_weights_paths[ssm_id],
                                 BEAM_SEARCH_MODE,
                                 samplingConfig,
                                 use_full_precision);
-    } else if (model_types.ssm_model_types[ssm_id] == ModelType::OPT) {
+    } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,
-                            file_paths.ssm_config_file_paths[ssm_id],
-                            file_paths.ssm_weight_file_paths[ssm_id],
+                            model_metadata.ssm_model_config_paths[ssm_id],
+                            model_metadata.ssm_model_weights_paths[ssm_id],
                             BEAM_SEARCH_MODE,
                             use_full_precision);
-    } else if (model_types.ssm_model_types[ssm_id] == ModelType::FALCON) {
-      FALCON::create_falcon_model(beam_model,
-                                  file_paths.ssm_config_file_paths[ssm_id],
-                                  file_paths.ssm_weight_file_paths[ssm_id],
-                                  BEAM_SEARCH_MODE,
-                                  use_full_precision);
+    } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::FALCON) {
+      FALCON::create_falcon_model(
+          beam_model,
+          model_metadata.ssm_model_config_paths[ssm_id],
+          model_metadata.ssm_model_weights_paths[ssm_id],
+          BEAM_SEARCH_MODE,
+          use_full_precision);
     } else {
       assert(false && "Invalid SSM model type passed.");
     }

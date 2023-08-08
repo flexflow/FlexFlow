@@ -62,6 +62,24 @@ class FlexFlowOPT(FlexFlowModel):
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
 
+        # Sanity checks
+        if self.opt_config.hidden_size % self.opt_config.num_attention_heads != 0:
+            raise ValueError(
+                f"Hidden size ({self.opt_config.hidden_size}) is not divisible by n_head ({self.opt_config.num_attention_heads})"
+            )
+
+        # Sanity checks
+        if (
+            self.opt_config.num_attention_heads
+            < self.ffconfig.tensor_parallelism_degree
+            or self.opt_config.num_attention_heads
+            % self.ffconfig.tensor_parallelism_degree
+            != 0
+        ):
+            raise ValueError(
+                f"Number of attention heads ({self.opt_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+            )
+
         self.build_model()
 
     def build_model(self):
@@ -114,10 +132,9 @@ class FlexFlowOPT(FlexFlowModel):
                 hidden_states = residual
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
-                mha = ffmodel.spec_inc_multihead_attention(
+                mha = ffmodel.spec_inc_multihead_self_attention(
                     hidden_states,
                     self.opt_config.hidden_size,
-                    self.opt_config.num_attention_heads,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
@@ -139,7 +156,6 @@ class FlexFlowOPT(FlexFlowModel):
                     hidden_states,
                     self.opt_config.hidden_size,
                     self.opt_config.num_attention_heads,
-                    self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
@@ -156,10 +172,9 @@ class FlexFlowOPT(FlexFlowModel):
                     name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multihead_attention(
+                mha = ffmodel.inc_multihead_self_attention(
                     hidden_states,
                     self.opt_config.hidden_size,
-                    self.opt_config.num_attention_heads,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,

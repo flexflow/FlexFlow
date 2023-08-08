@@ -2,61 +2,34 @@
 set -x
 set -e
 
-cleanup() {
-    rm -rf ../../inference/prompt ../../inference/weights ../../inference/tokenizer ../../inference/output
-}
-
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
-
-# Enable model parallelism tests, if desired
-TENSOR_PARALLELISM_TESTS=${TENSOR_PARALLELISM_TESTS:-OFF}
-
-# Clean up before test (just in case)
-cleanup
-
-# Update the transformers library to support the LLAMA model
-
-pip3 install --upgrade transformers sentencepiece
-
-# Download the weights in both half and full precision
-python3 ../../inference/utils/download_llama_weights.py
-python3 ../../inference/utils/download_llama_weights.py --use-full-precision
-python3 ../../inference/utils/download_opt_weights.py
-python3 ../../inference/utils/download_opt_weights.py --use-full-precision
-
-# Create test prompt file
-mkdir -p ../../inference/prompt
-echo '["Give three tips for staying healthy."]' > ../../inference/prompt/test.json
-
-# Create output folder
-mkdir -p ../../inference/output
 
 ###############################################################################################
 ############################ Speculative inference tests ######################################
 ###############################################################################################
 
 # LLAMA
-../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights/ -llm-config ../../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../../inference/weights/llama_160M_weights/ -ssm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama.txt -pipeline-parallelism-degree 4
+../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model decapoda-research/llama-7b-hf -ssm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama.txt -pipeline-parallelism-degree 4
 # LLAMA (half precision)
-../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights_half/ -llm-config ../../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../../inference/weights/llama_160M_weights_half/ -ssm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_half.txt -pipeline-parallelism-degree 4
+../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model decapoda-research/llama-7b-hf -ssm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_half.txt -pipeline-parallelism-degree 4
 
 # OPT
-../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights/ -llm-config ../../inference/models/configs/opt_6B.json -ssm-model opt -ssm-weight ../../inference/weights/opt_125M_weights/ -ssm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt.txt -pipeline-parallelism-degree 4
+../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-6.7b -ssm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt.txt -pipeline-parallelism-degree 4
 # OPT (half precision)
-../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights_half/ -llm-config ../../inference/models/configs/opt_6B.json -ssm-model opt -ssm-weight ../../inference/weights/opt_125M_weights_half/ -ssm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt_half.txt -pipeline-parallelism-degree 4
+../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model facebook/opt-6.7b -ssm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt_half.txt -pipeline-parallelism-degree 4
 
 # Tensor parallelism tests
 if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
     # LLAMA
-    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights/ -llm-config ../../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../../inference/weights/llama_160M_weights/ -ssm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model decapoda-research/llama-7b-hf -ssm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
     # LLAMA (half precision)
-    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights_half/ -llm-config ../../inference/models/configs/llama_7B.json -ssm-model llama -ssm-weight ../../inference/weights/llama_160M_weights_half/ -ssm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model decapoda-research/llama-7b-hf -ssm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
     
     # OPT
-    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights/ -llm-config ../../inference/models/configs/opt_6B.json -ssm-model opt -ssm-weight ../../inference/weights/opt_125M_weights/ -ssm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-6.7b -ssm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
     # OPT (half precision)
-    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights_half/ -llm-config ../../inference/models/configs/opt_6B.json -ssm-model opt -ssm-weight ../../inference/weights/opt_125M_weights_half/ -ssm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model facebook/opt-6.7b -ssm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_opt_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
 fi
 
 ###############################################################################################
@@ -64,50 +37,55 @@ fi
 ###############################################################################################
 
 # LLAMA (small model)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_160M_weights/ -llm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M.txt -pipeline-parallelism-degree 4
 # LLAMA (small model, half precision)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_160M_weights_half/ -llm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half.txt -pipeline-parallelism-degree 4
 
 # LLAMA (big model)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights/ -llm-config ../../inference/models/configs/llama_7B.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model decapoda-research/llama-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B.txt -pipeline-parallelism-degree 4
 # LLAMA (big model, half precision)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights_half/ -llm-config ../../inference/models/configs/llama_7B.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_half.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model decapoda-research/llama-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_half.txt -pipeline-parallelism-degree 4
 
 # OPT (small model)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../../inference/weights/opt_125M_weights/ -llm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M.txt -pipeline-parallelism-degree 4
 # OPT (small model, half precision)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../../inference/weights/opt_125M_weights_half/ -llm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_half.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_half.txt -pipeline-parallelism-degree 4
 
 # OPT (big model)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights/ -llm-config ../../inference/models/configs/opt_6B.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-6.7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B.txt -pipeline-parallelism-degree 4
 # OPT (big model, half precision)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights_half/ -llm-config ../../inference/models/configs/opt_6B.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B_half.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model facebook/opt-6.7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B_half.txt -pipeline-parallelism-degree 4
+
+# Falcon (full precision)
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model tiiuae/falcon-7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_falcon_7B.txt -pipeline-parallelism-degree 4
+# Falcon (half precision)
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model tiiuae/falcon-7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_falcon_7B_half.txt -pipeline-parallelism-degree 4
 
 # Tensor parallelism tests
 if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
     # LLAMA (small model)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_160M_weights/ -llm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_160M_weights/ -llm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_tp4.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_tp4.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
     # LLAMA (small model, half precision)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_160M_weights_half/ -llm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_160M_weights_half/ -llm-config ../../inference/models/configs/llama_160M.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half_tp4.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half_tp4.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
 
     # LLAMA (big model)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights/ -llm-config ../../inference/models/configs/llama_7B.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model decapoda-research/llama-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
     # LLAMA (big model, half precision)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight ../../inference/weights/llama_7B_weights_half/ -llm-config ../../inference/models/configs/llama_7B.json -tokenizer ../../inference/tokenizer/tokenizer.model -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model decapoda-research/llama-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
 
     # OPT (small model)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../../inference/weights/opt_125M_weights/ -llm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../../inference/weights/opt_125M_weights/ -llm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_tp4.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_tp4.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
     # OPT (small model, half precision)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../../inference/weights/opt_125M_weights_half/ -llm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../../inference/weights/opt_125M_weights_half/ -llm-config ../../inference/models/configs/opt_125M.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_half_tp.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_half_tp.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
 
     # OPT (big model)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --use-full-precision -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights/ -llm-config ../../inference/models/configs/opt_6B.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-6.7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
     # OPT (big model, half precision)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model opt -llm-weight ../../inference/weights/opt_6B_weights_half/ -llm-config ../../inference/models/configs/opt_6B.json -tokenizer ../../inference/tokenizer/ -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model facebook/opt-6.7b -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_6B_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
 fi
 
 ###############################################################################################
@@ -231,7 +209,6 @@ if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
 fi
 
 ######################### Alignment tests with HuggingFace ####################################
-pip3 install protobuf==3.20.3
 
 # LLAMA (small model, full precision)
 python3 ./huggingface_inference.py --model-name "JackFram/llama-160m" --tokenizer-model-name "JackFram/llama-160m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M.txt" --gpu
@@ -266,10 +243,3 @@ diff <(tail -n +2 "../../inference/output/huggingface_opt_125M.txt") <(tail -n +
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B.txt")
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B_half.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B_half.txt")
-
-###############################################################################################
-###################################### Cleanup ################################################
-###############################################################################################
-
-# Clean up after test
-# cleanup

@@ -28,11 +28,11 @@ FileDataLoader::FileDataLoader(std::string _input_path,
                                int _num_kv_heads,
                                size_t _hidden_dim,
                                size_t _qkv_inner_dim,
-                               int _tensor_partition_num)
+                               int _tensor_parallelism_degree)
     : input_path(_input_path), weight_file_path(_weight_file_path),
       num_heads(_num_heads), num_kv_heads(_num_kv_heads),
       hidden_dim(_hidden_dim), qkv_inner_dim(_qkv_inner_dim),
-      tensor_partition_num(_tensor_partition_num){};
+      tensor_parallelism_degree(_tensor_parallelism_degree){};
 
 BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
@@ -185,7 +185,7 @@ void load_attention_weights_v2(DT *ptr,
                                std::string layer_name,
                                std::string weight_path,
                                size_t volume,
-                               int tensor_partition_num) {
+                               int tensor_parallelism_degree) {
   // layers_0_attention_wq_weight
   // layers_0_self_attn_q_proj_weight
   std::string q_file = weight_path +
@@ -216,13 +216,13 @@ void load_attention_weights_v2(DT *ptr,
 
   // stride for q, k, v, o
   size_t stride_size =
-      (q_size + v_size + k_size + o_size) / tensor_partition_num;
+      (q_size + v_size + k_size + o_size) / tensor_parallelism_degree;
   for (auto file : weight_files) {
     int data_index = 0;
     size_t partial_size = (file_index == 0 || file_index == 3)
                               ? one_weight_file_size
                               : single_proj_size * num_kv_heads;
-    size_t one_partition_size = partial_size / tensor_partition_num;
+    size_t one_partition_size = partial_size / tensor_parallelism_degree;
 
     std::ifstream in(file, std::ios::in | std::ios::binary);
     if (!in.good()) {
@@ -242,7 +242,7 @@ void load_attention_weights_v2(DT *ptr,
       assert(false && "data size mismatch");
     }
     // wq, wk, wo
-    for (int i = 0; i < tensor_partition_num; i++) {
+    for (int i = 0; i < tensor_parallelism_degree; i++) {
       for (int j = 0; j < one_partition_size; j++) {
         ptr[base_index + i * stride_size + j] = host_array.at(data_index++);
       }
@@ -251,7 +251,7 @@ void load_attention_weights_v2(DT *ptr,
     base_index += one_partition_size;
     file_index++;
   }
-  assert(base_index == (q_size + k_size + v_size) / tensor_partition_num);
+  assert(base_index == (q_size + k_size + v_size) / tensor_parallelism_degree);
 
   {
     std::ifstream in(o_file, std::ios::in | std::ios::binary);
@@ -273,11 +273,12 @@ void load_attention_weights_v2(DT *ptr,
     assert(one_weight_file_size == host_array.size());
     int data_index = 0;
 
-    int one_partition_size = qkv_inner_dim * (num_heads / tensor_partition_num);
+    int one_partition_size =
+        qkv_inner_dim * (num_heads / tensor_parallelism_degree);
     for (int i = 0; i < one_weight_file_size; i++) {
-      int part_idx = (i / one_partition_size) % tensor_partition_num;
+      int part_idx = (i / one_partition_size) % tensor_parallelism_degree;
       int block_num = (i / one_partition_size);
-      int offset = block_num / tensor_partition_num * one_partition_size +
+      int offset = block_num / tensor_parallelism_degree * one_partition_size +
                    (i % one_partition_size);
       ptr[base_index + part_idx * stride_size + offset] =
           host_array.at(data_index++);
@@ -687,7 +688,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                                 file_path,
                                 weight_file_path,
                                 volume,
-                                tensor_partition_num);
+                                tensor_parallelism_degree);
     } else {
       load_attention_bias_v2(data,
                              num_heads,

@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow environment container"
 
 # Install basic dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release nano libhdf5-dev && \
+RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release nano gdb libhdf5-dev && \
     rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list && \
 	apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends software-properties-common && \
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential apt-utils \
@@ -57,7 +57,7 @@ ENV CUDA_DIR /usr/local/cuda
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing
 # Install CPU-only Pytorch and related dependencies
 RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
-RUN conda install -c conda-forge onnx transformers sentencepiece
+RUN conda install -c conda-forge onnx transformers sentencepiece einops
 RUN pip3 install tensorflow
 
 # Install Rust

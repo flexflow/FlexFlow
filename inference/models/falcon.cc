@@ -18,28 +18,23 @@
 namespace FlexFlow {
 
 using namespace Legion;
+using json = nlohmann::json;
 
 void FALCON::create_falcon_model(FFModel &ff,
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
                                  bool use_full_precision) {
-  Config falcon_config(model_config_file_path);
-  falcon_config.printConfig();
+  FalconConfig falcon_config(model_config_file_path);
+  falcon_config.print();
 
-  if (ff.config.tensor_parallelism_degree > falcon_config.n_heads ||
-      ff.config.tensor_parallelism_degree > falcon_config.n_kv_heads) {
-    assert(false && "The degree of tensor parallelism should be greater than "
-                    "or equal to the number of heads");
+  if (ff.config.tensor_parallelism_degree > falcon_config.n_head ||
+      falcon_config.n_head % ff.config.tensor_parallelism_degree != 0 ||
+      ff.config.tensor_parallelism_degree > falcon_config.n_head_kv ||
+      falcon_config.n_head_kv % ff.config.tensor_parallelism_degree != 0) {
+    assert(false && "The number of attention heads is smaller, or it is not "
+                    "divisible by the tensor parallelism degree");
   }
-
-  int num_devices = ff.config.workersPerNode * ff.config.numNodes;
-  int num_transformer_layers = falcon_config.n_layers;
-  assert(num_transformer_layers % ff.config.pipeline_parallelism_degree == 0);
-  int num_layers_per_pp_block =
-      num_transformer_layers / ff.config.pipeline_parallelism_degree;
-  int num_devices_per_data_parallelism_line =
-      num_devices / ff.config.data_parallelism_degree;
 
   std::unordered_map<std::string, Layer *> weights_layers;
 
@@ -58,7 +53,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   if (use_full_precision) {
     token = ff.embedding(input,
                          falcon_config.vocab_size,
-                         falcon_config.dim,
+                         falcon_config.hidden_size,
                          AGGR_MODE_NONE,
                          DT_FLOAT,
                          NULL,
@@ -66,7 +61,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   } else {
     token = ff.embedding(input,
                          falcon_config.vocab_size,
-                         falcon_config.dim,
+                         falcon_config.hidden_size,
                          AGGR_MODE_NONE,
                          DT_HALF,
                          NULL,
@@ -74,13 +69,14 @@ void FALCON::create_falcon_model(FFModel &ff,
   }
 
   Layer *embedding = ff.layers.back();
-  weights_layers.emplace("tok_embeddings_weight", embedding);
+  weights_layers.emplace("word_embeddings_weight", embedding);
 
-  for (int i = 0; i < falcon_config.n_layers; i++) {
+  for (int i = 0; i < falcon_config.n_layer; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
     // step 1: attention
-    Tensor att_norm = ff.layer_norm(token, axes, true, falcon_config.norm_eps);
+    Tensor att_norm =
+        ff.layer_norm(token, axes, true, falcon_config.layer_norm_epsilon);
     Layer *attention_norm = ff.layers.back();
 
     weights_layers.emplace("layers_" + std::to_string(i) +
@@ -91,11 +87,11 @@ void FALCON::create_falcon_model(FFModel &ff,
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multiquery_self_attention(
             att_norm,
-            falcon_config.dim,
-            falcon_config.n_heads,
-            falcon_config.n_kv_heads,
-            falcon_config.dim / falcon_config.n_heads,
-            falcon_config.dim / falcon_config.n_heads,
+            falcon_config.hidden_size,
+            falcon_config.n_head,
+            falcon_config.n_head_kv,
+            falcon_config.hidden_size / falcon_config.n_head,
+            falcon_config.hidden_size / falcon_config.n_head,
             0.0f,
             false,
             false,
@@ -109,11 +105,11 @@ void FALCON::create_falcon_model(FFModel &ff,
       case TREE_VERIFY_MODE: {
         mha = ff.inc_multiquery_self_attention_verify(
             att_norm,
-            falcon_config.dim,
-            falcon_config.n_heads,
-            falcon_config.n_kv_heads,
-            falcon_config.dim / falcon_config.n_heads,
-            falcon_config.dim / falcon_config.n_heads,
+            falcon_config.hidden_size,
+            falcon_config.n_head,
+            falcon_config.n_head_kv,
+            falcon_config.hidden_size / falcon_config.n_head,
+            falcon_config.hidden_size / falcon_config.n_head,
             0.0f,    /*dropout*/
             false,   /*bias*/
             false,   /*add_bias_kv*/
@@ -128,11 +124,11 @@ void FALCON::create_falcon_model(FFModel &ff,
       case INC_DECODING_MODE: {
         mha = ff.inc_multiquery_self_attention(
             att_norm,
-            falcon_config.dim,
-            falcon_config.n_heads,
-            falcon_config.n_kv_heads,
-            falcon_config.dim / falcon_config.n_heads,
-            falcon_config.dim / falcon_config.n_heads,
+            falcon_config.hidden_size,
+            falcon_config.n_head,
+            falcon_config.n_head_kv,
+            falcon_config.hidden_size / falcon_config.n_head,
+            falcon_config.hidden_size / falcon_config.n_head,
             0.0f,    /*dropout*/
             false,   /*bias*/
             false,   /*add_bias_kv*/
@@ -157,24 +153,25 @@ void FALCON::create_falcon_model(FFModel &ff,
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
                            attention_layer);
     Tensor dense_h_to_4h =
-        ff.dense(att_norm, falcon_config.dim * 4, AC_MODE_NONE, false);
+        ff.dense(att_norm, falcon_config.hidden_size * 4, AC_MODE_NONE, false);
     Layer *dense_h_to_4h_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_mlp_dense_h_to_4layers_weight",
+                               "_mlp_dense_h_to_4h_weight",
                            dense_h_to_4h_layer);
     dense_h_to_4h = ff.gelu(dense_h_to_4h);
     Tensor mlp_output =
-        ff.dense(dense_h_to_4h, falcon_config.dim, AC_MODE_NONE, false);
+        ff.dense(dense_h_to_4h, falcon_config.hidden_size, AC_MODE_NONE, false);
     Layer *dense_4h_to_h_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_mlp_dense_4h_to_layers_weight",
+                               "_mlp_dense_4h_to_h_weight",
                            dense_4h_to_h_layer);
 
     token = ff.add(token, mha);
     token = ff.add(token, mlp_output);
   }
   // final normalization and linear
-  Tensor ln_f = ff.layer_norm(token, axes, true, falcon_config.norm_eps);
+  Tensor ln_f =
+      ff.layer_norm(token, axes, true, falcon_config.layer_norm_epsilon);
   Layer *ln_f_layer = ff.layers.back();
   weights_layers.emplace("ln_f_weight", ln_f_layer);
 
@@ -193,16 +190,15 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
-  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
-                            falcon_config.n_heads,
-                            falcon_config.n_kv_heads,
-                            falcon_config.dim,
-                            falcon_config.dim / falcon_config.n_heads,
-                            tensor_partition_num);
+                            falcon_config.n_head,
+                            falcon_config.n_head_kv,
+                            falcon_config.hidden_size,
+                            falcon_config.hidden_size / falcon_config.n_head,
+                            ff.config.tensor_parallelism_degree);
   std::cout << "------laod weights ----------" << std::endl;
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;

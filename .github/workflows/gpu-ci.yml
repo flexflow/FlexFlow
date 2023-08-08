@@ -183,17 +183,26 @@ jobs:
           ./tests/gpt_tokenizer_test.sh
 
           # Inference tests
-          export TENSOR_PARALLELISM_TESTS=ON
+          source ./build/set_python_envs.sh
           ./tests/inference_tests.sh
+      
+      - name: Save inference output as an artifact
+        if: always()
+        run: | 
           cd inference
           tar -zcvf output.tar.gz ./output
-          cd ..
 
-      - name: Save inference output as an artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: output
           path: inference/output.tar.gz
+      
+      # Github persists the .cache folder across different runs/containers
+      - name: Clear cache
+        if: always()
+        run: sudo rm -rf ~/.cache 
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests

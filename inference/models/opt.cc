@@ -18,14 +18,22 @@
 namespace FlexFlow {
 
 using namespace Legion;
+using json = nlohmann::json;
 
 void OPT::create_opt_model(FFModel &ff,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
                            InferenceMode mode,
                            bool use_full_precision) {
-  Config opt_config(model_config_file_path);
-  opt_config.printConfig();
+  OPTConfig opt_config(model_config_file_path);
+  opt_config.print();
+
+  if (ff.config.tensor_parallelism_degree > opt_config.num_attention_heads ||
+      opt_config.num_attention_heads % ff.config.tensor_parallelism_degree !=
+          0) {
+    assert(false && "The number of attention heads is smaller, or it is not "
+                    "divisible by the tensor parallelism degree");
+  }
 
   std::unordered_map<std::string, Layer *> weights_layers;
 
@@ -223,7 +231,6 @@ void OPT::create_opt_model(FFModel &ff,
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
-  int tensor_partition_num = ff.config.tensor_parallelism_degree;
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
@@ -233,7 +240,7 @@ void OPT::create_opt_model(FFModel &ff,
                             opt_config.hidden_size,
                             opt_config.hidden_size /
                                 opt_config.num_attention_heads,
-                            tensor_partition_num);
+                            ff.config.tensor_parallelism_degree);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
   im->init_operators_inference(&ff);
