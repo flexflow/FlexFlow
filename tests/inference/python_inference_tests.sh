@@ -18,7 +18,7 @@ for file in ./python_test_configs/*.json; do
       script="../../inference/python/spec_infer.py"
     fi
     # Run script
-    python "$script" "$file" 
+    python "$script" -config-file "$file" 
 done
 
 
