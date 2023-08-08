@@ -4,7 +4,7 @@
 FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for PyTorch and TensorFlow Keras. Running existing PyTorch and Keras programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
 
 ## Install FlexFlow
-To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. You can also use `conda` to install the FlexFlow Python package (coming soon).
+To install FlexFlow from source code, please read the [instructions](https://flexflow.readthedocs.io/en/latest/installation.html). If you would like to quickly try FlexFlow, we also provide pre-built Docker packages for several versions of CUDA and for the `hip_rocm` backend, together with [Dockerfiles](./docker) if you wish to build the containers manually. More info on the Docker images can be found [here](./docker/README.md). You can also use `conda` to install the FlexFlow Python package (coming soon).
 
 ## PyTorch Support
 Users can also use FlexFlow to optimize the parallelization performance of existing PyTorch models in two steps. First, a PyTorch model can be exported to the FlexFlow model format using `flexflow.torch.fx.torch_to_flexflow`.
@@ -18,7 +18,7 @@ fx.torch_to_flexflow(model, "mymodel.ff")
 
 Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance for a given parallel machine.
 
-```
+```python
 from flexflow.pytorch.model import PyTorchModel
 
 def top_level_task():
@@ -39,7 +39,7 @@ FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Ten
 ## C++ Interface
 For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
 
-**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/c++).
+**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp).
 
 
 ## Command-Line Flags
@@ -69,11 +69,10 @@ Performance auto-tuning flags:
 For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
 
 ## Contributing
+
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
 
 We welcome all contributions to FlexFlow from bug fixes to new features and extensions.
-
-Please subscribe to the FlexFlow users mailing list for 
 
 ## Citations
 * Colin Unger, Zhihao Jia, Wei Wu, Sina Lin, Mandeep Baines, Carlos Efrain Quintero Narvaez, Vinay Ramakrishnaiah, Nirmal Prajapati, Pat McCormick, Jamaludin Mohd-Yusof, Xi Luo, Dheevatsa Mudigere, Jongsoo Park, Misha Smelyanskiy, and Alex Aiken. [Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization](https://www.usenix.org/conference/osdi22/presentation/unger). In Proceedings of the Symposium on Operating Systems Design and Implementation (OSDI), July 2022. 

@@ -68,8 +68,13 @@ Op *ElementUnary::create_operator_from_layer(
   bool inplace = (bool)value;
   float scalar;
   layer->get_float_property("scalar", scalar);
-  return new ElementUnary(
-      model, layer->op_type, inputs[0], inplace, layer->name, scalar);
+  return new ElementUnary(model,
+                          layer->layer_guid,
+                          layer->op_type,
+                          inputs[0],
+                          inplace,
+                          layer->name,
+                          scalar);
 }
 
 ElementUnaryParams ElementUnary::get_params() const {
@@ -77,6 +82,7 @@ ElementUnaryParams ElementUnary::get_params() const {
   params.op_type = this->op_type;
   params.inplace = this->inplace;
   params.scalar = this->scalar;
+  params.layer_guid = this->layer_guid;
   return params;
 }
 
@@ -168,6 +174,7 @@ bool operator==(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {
 }
 
 ElementUnary::ElementUnary(FFModel &model,
+                           LayerID const &_layer_guid,
                            OperatorType _op_type,
                            const ParallelTensor x,
                            bool _inplace,
@@ -182,6 +189,7 @@ ElementUnary::ElementUnary(FFModel &model,
          1 /*outputs*/,
          x),
       inplace(_inplace), scalar(_scalar) {
+  layer_guid = _layer_guid;
   numOutputs = 1;
   int numdim = x->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -200,8 +208,13 @@ ElementUnary::ElementUnary(FFModel &model,
                            ElementUnaryParams const &params,
                            const ParallelTensor input,
                            char const *name)
-    : ElementUnary(
-          model, params.op_type, input, params.inplace, name, params.scalar) {}
+    : ElementUnary(model,
+                   params.layer_guid,
+                   params.op_type,
+                   input,
+                   params.inplace,
+                   name,
+                   params.scalar) {}
 
 void ElementUnary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
@@ -557,6 +570,7 @@ void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->op_type);
   sez.serialize(this->inplace);
   sez.serialize(scalar);
+  sez.serialize(this->layer_guid.id);
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
@@ -667,11 +681,15 @@ Node ElementUnary::deserialize(FFModel &ff,
   dez.deserialize(op_type);
   dez.deserialize(inplace);
   dez.deserialize(scalar);
+  size_t id;
+  dez.deserialize(id);
+  LayerID layer_guid(id);
 
   ElementUnaryParams params;
   params.op_type = op_type;
   params.inplace = inplace;
   params.scalar = scalar;
+  params.layer_guid = layer_guid;
   return ff.get_or_create_node<ElementUnary>(inputs[0], params);
 }
 
@@ -679,8 +697,13 @@ Op *ElementUnary::materialize(FFModel &ff,
                               ParallelTensor inputs[],
                               int num_inputs) const {
   assert(num_inputs == 1);
-  return new ElementUnary(
-      ff, this->op_type, inputs[0], this->inplace, this->name, this->scalar);
+  return new ElementUnary(ff,
+                          this->layer_guid,
+                          this->op_type,
+                          inputs[0],
+                          this->inplace,
+                          this->name,
+                          this->scalar);
 }
 
 }; // namespace FlexFlow
@@ -692,6 +715,7 @@ size_t hash<FlexFlow::ElementUnaryParams>::operator()(
   hash_combine(key, params.op_type);
   hash_combine(key, params.scalar);
   hash_combine(key, params.inplace);
+  hash_combine(key, params.layer_guid.id);
   return key;
 }
 }; // namespace std

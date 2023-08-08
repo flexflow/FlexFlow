@@ -1,0 +1,19 @@
+model:¦
+U
+inputoutput"MaxPool*
+	dilations@@ *
+kernel_shape@@ *
+strides@@ 
+test_graphZ
+input
+
+
+
+
+b 
+output
+
+
+
+
+B

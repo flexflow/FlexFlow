@@ -1,0 +1,10 @@
+name: pytorch
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.6
+  - pip
+  - pip:
+    - numpy>=1.16.0
+    - torch>=1.13.1

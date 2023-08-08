@@ -44,10 +44,106 @@ option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if ava
 option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 
 # option for using Python
-option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
+set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
+
+if ((FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx") OR FF_LEGION_NETWORKS STREQUAL "ucx")
+    if("${FF_UCX_URL}" STREQUAL "")
+        set(UCX_URL "https://github.com/openucx/ucx/releases/download/v1.14.0-rc1/ucx-1.14.0.tar.gz")
+    else()
+        set(UCX_URL "${FF_UCX_URL}")
+    endif()
+
+    set(UCX_DIR ${CMAKE_CURRENT_BINARY_DIR}/ucx)
+    get_filename_component(UCX_COMPRESSED_FILE_NAME "${UCX_URL}" NAME)
+    # message(STATUS "UCX_URL: ${UCX_URL}")
+    # message(STATUS "UCX_COMPRESSED_FILE_NAME: ${UCX_COMPRESSED_FILE_NAME}")
+    set(UCX_COMPRESSED_FILE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${UCX_COMPRESSED_FILE_NAME}")
+    set(UCX_BUILD_NEEDED OFF)
+    set(UCX_CONFIG_FILE ${UCX_DIR}/config.txt)
+    set(UCX_BUILD_OUTPUT ${UCX_DIR}/build.log)
+
+    if(EXISTS ${UCX_CONFIG_FILE})
+        file(READ ${UCX_CONFIG_FILE} PREV_UCX_CONFIG)
+        # message(STATUS "PREV_UCX_CONFIG: ${PREV_UCX_CONFIG}")
+        if("${UCX_URL}" STREQUAL "${PREV_UCX_CONFIG}")
+            # configs match - no build needed
+            set(UCX_BUILD_NEEDED OFF)
+        else()
+	        message(STATUS "UCX configuration has changed - rebuilding...")
+            set(UCX_BUILD_NEEDED ON)
+        endif()
+    else()
+        message(STATUS "Configuring and building UCX...")
+        set(UCX_BUILD_NEEDED ON)
+    endif()
+
+    if(UCX_BUILD_NEEDED)
+        if(NOT EXISTS "${UCX_COMPRESSED_FILE_PATH}")
+            message(STATUS "Downloading openucx/ucx from: ${UCX_URL}")
+            file(
+                DOWNLOAD
+                "${UCX_URL}" "${UCX_COMPRESSED_FILE_PATH}"
+                SHOW_PROGRESS
+                STATUS status
+                LOG log
+            )
+
+            list(GET status 0 status_code)
+            list(GET status 1 status_string)
+
+            if(status_code EQUAL 0)
+                message(STATUS "Downloading... done")
+            else()
+                message(FATAL_ERROR "error: downloading '${UCX_URL}' failed
+                    status_code: ${status_code}
+                    status_string: ${status_string}
+                    log:
+                    --- LOG BEGIN ---
+                    ${log}
+                    --- LOG END ---"
+                )
+            endif()
+        else()
+            message(STATUS "${UCX_COMPRESSED_FILE_NAME} already exists")
+        endif()
+
+        execute_process(COMMAND mkdir -p ${UCX_DIR})
+        execute_process(COMMAND tar xzf ${UCX_COMPRESSED_FILE_PATH} -C ${UCX_DIR} --strip-components 1)
+        message(STATUS "Building UCX...")
+        execute_process(
+            COMMAND sh -c "cd ${UCX_DIR} && ${UCX_DIR}/contrib/configure-release --prefix=${UCX_DIR}/install --enable-mt && make -j8 && make install"
+            RESULT_VARIABLE UCX_BUILD_STATUS
+            OUTPUT_FILE ${UCX_BUILD_OUTPUT}
+            ERROR_FILE ${UCX_BUILD_OUTPUT}
+        )
+
+        if(UCX_BUILD_STATUS)
+            message(FATAL_ERROR "UCX build result = ${UCX_BUILD_STATUS} - see ${UCX_BUILD_OUTPUT} for more details")
+        endif()
+
+        # Currently, we use default build configurations for UCX and therefore only save URL as configuration settings
+        file(WRITE ${UCX_CONFIG_FILE} "${UCX_URL}")
+    endif()
+
+    if (FF_LEGION_NETWORKS STREQUAL "gasnet" AND FF_GASNET_CONDUIT STREQUAL "ucx")
+        set(ENV{UCX_HOME} "${UCX_DIR}/install")
+        install(DIRECTORY ${UCX_DIR}/install/bin/ DESTINATION bin)
+        install(DIRECTORY ${UCX_DIR}/install/include/ DESTINATION include)
+        install(DIRECTORY ${UCX_DIR}/install/lib/ DESTINATION lib)
+        install(DIRECTORY ${UCX_DIR}/install/share/ DESTINATION share)
+    endif()
+
+    if (FF_LEGION_NETWORKS STREQUAL "ucx")
+        set(ucx_DIR ${UCX_DIR}/cmake)
+        set(ENV{Legion_NETWORKS} "ucx")
+        message(STATUS "Legion_NETWORKS: $ENV{Legion_NETWORKS}")
+    endif()
+else()
+    message(STATUS "FF_GASNET_CONDUIT: ${FF_GASNET_CONDUIT}")
+endif()
 
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
 set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
@@ -146,13 +242,6 @@ include(variant)
 
 # optional
 include(optional)
-
-if(FF_USE_PYTHON)
-  list(APPEND FF_CC_FLAGS
-    -DBINDINGS_AUGMENT_PYTHONPATH)
-  list(APPEND FF_NVCC_FLAGS
-    -DBINDINGS_AUGMENT_PYTHONPATH)
-endif()
 
 if (FF_GPU_BACKEND STREQUAL "cuda")
   list(APPEND FF_CC_FLAGS
@@ -303,22 +392,63 @@ else()
   message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
 endif()
 
+if(FF_USE_NCCL)
+  add_dependencies(flexflow ${NCCL_NAME})
+endif()
+
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 # LEGION_URL is defined if we found a precompiled Legion library to download
 if(LEGION_URL)
   # Legion builds produce two library files: one for the Legion runtime and one for the Realm runtime. 
   # When linking FlexFlow to a precompiled version of Legion, we need to manually link to both library files.
-  target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+  target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
   add_dependencies(flexflow ${LEGION_NAME})
 else()
   # When building Legion from source, we do so by calling add_subdirectory(), and obtain a library with both the
   # Legion and Realm runtimes. The library's name is saved into the LEGION_LIBRARY variable. Hence, we only need
   # to link FlexFlow to ${LEGION_LIBRARY}
-  target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+  target_link_libraries(flexflow ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
 endif()
 
-if(FF_USE_NCCL)
-  add_dependencies(flexflow ${NCCL_NAME})
+#library api version, bump from time to time
+set(SOVERSION 1)
+
+set_target_properties(flexflow PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(flexflow PROPERTIES OUTPUT_NAME "flexflow${INSTALL_SUFFIX}")
+set_target_properties(flexflow PROPERTIES SOVERSION ${SOVERSION})
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set_target_properties(flexflow PROPERTIES BUILD_RPATH "\$ORIGIN")
+  set_target_properties(flexflow PROPERTIES INSTALL_RPATH "\$ORIGIN")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set_target_properties(flexflow PROPERTIES BUILD_RPATH "@loader_path")
+  set_target_properties(flexflow PROPERTIES INSTALL_RPATH "@loader_path")
+endif()
+
+# python related
+if (FF_USE_PYTHON)
+  # create flexflow_cffi_header.py
+  add_custom_command(TARGET flexflow
+    PRE_BUILD	
+    COMMAND ${FLEXFLOW_ROOT}/python/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${FLEXFLOW_ROOT}/python/flexflow/core
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Creating flexflow_cffi_header.py..."
+  )
+  # generate the Legion Python bindings library
+  add_custom_command(TARGET flexflow
+    POST_BUILD	
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
+  )
+  # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
+  if (NOT FF_BUILD_FROM_PYPI)
+    add_custom_command(TARGET flexflow
+      PRE_BUILD	
+      COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      COMMENT "Creating flexflow_python interpreter..."
+    )
+    install(PROGRAMS ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
+  endif()
 endif()
 
 # build binary
@@ -352,12 +482,6 @@ endif()
 
 if(FF_BUILD_VISUALIZATION_TOOL)
   add_subdirectory(tools/substitutions_to_dot)
-endif()
-
-# Python
-if(FF_USE_PYTHON)
-  add_subdirectory(deps/pybind11)
-  add_subdirectory(python)
 endif()
 
 if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
@@ -420,3 +544,12 @@ set(INCLUDE_DEST "include")
 set(LIB_DEST "lib")
 install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
 install(TARGETS flexflow DESTINATION ${LIB_DEST})
+# install python
+if (FF_USE_PYTHON)
+  execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+  install(
+    DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
+    DESTINATION ${PY_DEST}/flexflow
+    FILES_MATCHING 
+    PATTERN "*.py")
+endif()

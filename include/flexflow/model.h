@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"
@@ -492,6 +493,8 @@ public:
                Layer const *shared_op = NULL,
                Initializer *kernel_initializer = NULL,
                Initializer *bias_initializer = NULL,
+               RegularizerMode regularizer_type = REG_MODE_NONE,
+               float regularizer_lambda = 0.0,
                char const *name = NULL);
   // Add a cast layer
   Tensor cast(const Tensor input, DataType dtype, char const *name = nullptr);
@@ -788,6 +791,13 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
                       std::unordered_map<PCG::Node, MachineView> &optimal_view);
+  void graph_optimize(size_t budget,
+                      bool only_data_parallel,
+                      std::unique_ptr<PCG::Graph> &best_graph,
+                      std::unordered_map<PCG::Node, MachineView> &optimal_view,
+                      bool perform_memory_search,
+                      MemoryOptimConfig new_config,
+                      MemorySearchResult &search_result);
   void mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
                      size_t budget,
                      float alpha,
@@ -824,6 +834,11 @@ public:
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
+
+  /**
+   * @brief Clear the cache of the GraphSearchHelper and SearchHelper.
+   */
+  void clear_graph_search_cache();
 
 public:
   size_t op_global_guid, layer_global_guid;
@@ -989,7 +1004,9 @@ void data_load_task(Legion::Task const *task,
                     Legion::Context ctx,
                     Legion::Runtime *runtime);
 
-void register_flexflow_internal_tasks();
+void register_flexflow_internal_tasks(Legion::Runtime *runtime = NULL,
+                                      bool pre_register = true,
+                                      bool enable_control_replication = true);
 
 void register_custom_tasks();
 

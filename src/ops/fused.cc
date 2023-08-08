@@ -52,10 +52,31 @@ FusedOp::FusedOp(FFModel &model, Op *op)
          0 /*weights*/,
          0 /*weights*/,
          0 /*outputs*/) {
-  numInputs = op->numInputs;
-  for (int i = 0; i < numInputs; i++) {
-    inputs[i] = op->inputs[i];
-    input_data_types[i] = op->inputs[i]->data_type;
+  numInputs = 0;
+  for (int i = 0; i < op->numInputs; i++) {
+    bool found = false;
+    // we also need to check region duplicate for the first op in a fused op
+    // (e.g., MHA)
+    for (int j = 0; j < numInputs; j++) {
+      if (inputs[j]->region == op->inputs[i]->region) {
+        // This input is one of my inputs
+        assert(!found);
+        assert(inputs[j]->region != LogicalRegion::NO_REGION);
+        op_input_source[i] = SOURCE_INPUT;
+        op_input_idx[i] = j;
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      // do nothing
+    } else {
+      inputs[numInputs] = op->inputs[i];
+      input_data_types[numInputs] = op->inputs[i]->data_type;
+      op_input_source[i] = SOURCE_INPUT;
+      op_input_idx[i] = numInputs;
+      numInputs++;
+    }
     // input_lps[i] = op->input_lps[i];
     // input_grad_lps[i] = op->input_grad_lps[i];
   }
@@ -74,15 +95,15 @@ FusedOp::FusedOp(FFModel &model, Op *op)
     output_data_types[i] = op->outputs[i]->data_type;
   }
   numOperators = 1;
-  op_num_inputs[0] = numInputs;
-  op_num_weights[0] = numWeights;
-  op_num_outputs[0] = numOutputs;
+  op_num_inputs[0] = op->numInputs;
+  op_num_weights[0] = op->numWeights;
+  op_num_outputs[0] = op->numOutputs;
   op_op_type[0] = op->op_type;
   operators[0] = op;
-  for (int i = 0; i < numInputs; i++) {
-    op_input_source[i] = SOURCE_INPUT;
-    op_input_idx[i] = i;
-  }
+  // for (int i = 0; i < numInputs; i++) {
+  //   op_input_source[i] = SOURCE_INPUT;
+  //   op_input_idx[i] = i;
+  // }
   for (int i = 0; i < numWeights; i++) {
     op_weight_source[i] = SOURCE_WEIGHT;
     op_weight_idx[i] = i;

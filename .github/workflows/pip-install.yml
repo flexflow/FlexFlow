@@ -4,6 +4,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - ".github/workflows/helpers/install_dependencies.sh"
@@ -14,6 +15,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - ".github/workflows/helpers/install_dependencies.sh"
@@ -40,10 +42,10 @@ jobs:
         run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.8
+        uses: Jimver/cuda-toolkit@v0.2.11
         id: cuda-toolkit
         with:
-          cuda: "11.1.1"
+          cuda: "11.8.0"
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
           use-github-cache: "false"
 
@@ -54,7 +56,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: flexflow
-          environment-file: environment.yml
+          environment-file: conda/environment.yml
           auto-activate-base: false
 
       - name: Build and Install FlexFlow
@@ -65,4 +67,7 @@ jobs:
 
       - name: Check availability of Python flexflow.core module
         run: |
+          export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
+          sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
+          export CPU_ONLY_TEST=1
           python -c "import flexflow.core; exit()"

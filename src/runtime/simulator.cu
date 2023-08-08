@@ -72,12 +72,10 @@ Simulator::Simulator(FFModel const *model,
   capacity = model->config.simulator_work_space_size;
 
   // Set cublas/cudnn streams to allow Realm catch the events
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(handler.blas, stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
-#endif
 
   size_t max_num_tasks = 1024 * 1024;
 
