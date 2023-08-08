@@ -82,11 +82,9 @@ namespace std {
 template <
     ::FlexFlow::test_types::
         capability... CAPABILITIES> //, typename = typename
-                                    //std::enable_if<::FlexFlow::test_types::has_capability<::FlexFlow::test_types::HASHABLE>::value,
-                                    //bool>::type>
-                                    struct hash<
-                                        ::FlexFlow::test_types::test_type_t<
-                                            CAPABILITIES...>> {
+                                    // std::enable_if<::FlexFlow::test_types::has_capability<::FlexFlow::test_types::HASHABLE>::value,
+                                    // bool>::type>
+struct hash<::FlexFlow::test_types::test_type_t<CAPABILITIES...>> {
   typename std::enable_if<
       ::FlexFlow::test_types::has_capability<::FlexFlow::test_types::HASHABLE,
                                              CAPABILITIES...>::value,
