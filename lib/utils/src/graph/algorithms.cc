@@ -115,9 +115,7 @@ bool contains_edge(DiGraphView const &g, DirectedEdge const &e) {
 }
 
 bool contains_edge(UndirectedGraphView const &g, UndirectedEdge const &e) {
-  UndirectedEdgeQuery q = {
-    {e.bigger, e.smaller}
-  };
+  UndirectedEdgeQuery q = {{e.bigger, e.smaller}};
   return contains(g.query_edges(q), e);
 }
 
@@ -475,10 +473,18 @@ std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g,
   return keys(get_edge_splits(g, s));
 }
 
-Node get_src_node(MultiDiEdge const &) { NOT_IMPLEMENTED(); }
-Node get_dst_node(MultiDiEdge const &) { NOT_IMPLEMENTED(); }
-Node get_src_node(InputMultiDiEdge const &) { NOT_IMPLEMENTED(); }
-Node get_dst_node(OutputMultiDiEdge const &) { NOT_IMPLEMENTED(); }
+Node get_src_node(MultiDiEdge const &) {
+  NOT_IMPLEMENTED();
+}
+Node get_dst_node(MultiDiEdge const &) {
+  NOT_IMPLEMENTED();
+}
+Node get_src_node(InputMultiDiEdge const &) {
+  NOT_IMPLEMENTED();
+}
+Node get_dst_node(OutputMultiDiEdge const &) {
+  NOT_IMPLEMENTED();
+}
 
 UndirectedGraphView get_subgraph(UndirectedGraphView const &g,
                                  std::unordered_set<Node> const &nodes) {
