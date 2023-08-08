@@ -1,0 +1,69 @@
+name: "pip-deploy"
+on:
+  workflow_dispatch:
+concurrency:
+  group: pip-deploy-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-n-publish:
+    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+    runs-on: ubuntu-20.04
+    
+    steps:
+      - name: Checkout Git Repository
+          uses: actions/checkout@v3
+          with:
+            submodules: recursive
+      
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      
+      - name: Install pypa/build
+        run: >-
+          python3 -m
+          pip install
+          build
+          --user
+      
+      - name: Build a source tarball
+        run: >-
+          python3 -m
+          build
+          --sdist
+          --outdir dist/
+          .
+      
+      - name: Publish distribution 📦 to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
+      
+      # - name: Publish distribution 📦 to PyPI
+      #   if: startsWith(github.ref, 'refs/tags')
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%y.%m.%d')"
+        
+      - name: Create git tag
+        uses: actions/github-script@v6
+        with:
+          #github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = "${{ steps.date.outputs.date }}";
+            github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tag}`,
+              sha: context.sha
+            })
