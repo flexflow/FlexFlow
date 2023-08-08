@@ -348,15 +348,15 @@ TEST_CASE("Testing subvec function") {
 }
 
 auto get_factors = [](int x) -> std::vector<int> {
-    // Returns a vector of factors of x
-    std::vector<int> factors;
-    for (int i = 1; i <= x; i++) {
-      if (x % i == 0) {
-        factors.push_back(i);
-      }
+  // Returns a vector of factors of x
+  std::vector<int> factors;
+  for (int i = 1; i <= x; i++) {
+    if (x % i == 0) {
+      factors.push_back(i);
     }
-    return factors;
-  };
+  }
+  return factors;
+};
 
 // Example for vector
 TEST_CASE("Test for flatmap function on vectors") {
@@ -364,4 +364,3 @@ TEST_CASE("Test for flatmap function on vectors") {
   auto result = flatmap(v, get_factors);
   CHECK(result == std::vector<int>({1, 2, 1, 3, 1, 2, 4, 1, 5}));
 }
-

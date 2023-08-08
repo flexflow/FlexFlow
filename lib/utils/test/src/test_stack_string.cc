@@ -69,5 +69,5 @@ TEST_CASE_TEMPLATE("StackStringConversion", T, char) {
 
   StackString str{"Hello"};
   std::string stdStr = static_cast<std::string>(str);
-  CHECK(stdStr== "Hello");
+  CHECK(stdStr == "Hello");
 }

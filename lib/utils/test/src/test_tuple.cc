@@ -36,13 +36,6 @@ TEST_CASE("get function") {
   }
 }
 
-struct Visitor {
-  template <typename T>
-  void operator()(int idx, T const &value) {
-    std::cout << "Value at index " << idx << ": " << value << std::endl;
-  }
-};
-
 TEST_CASE("tuple_prepend function") {
   std::tuple<float, double> t1(3.14f, 2.71828);
   int value = 42;
@@ -53,60 +46,34 @@ TEST_CASE("tuple_prepend function") {
 }
 
 TEST_CASE("Testing tuple_head_t") {
-  CHECK(std::is_same<tuple_head_t<1, std::tuple<int, float>>, std::tuple<int>>::value);
-  CHECK(std::is_same<tuple_head_t<0, std::tuple<int, float>>, std::tuple<>>::value);
+  CHECK(std::is_same<tuple_head_t<1, std::tuple<int, float>>,
+                     std::tuple<int>>::value);
+  CHECK(std::is_same<tuple_head_t<0, std::tuple<int, float>>,
+                     std::tuple<>>::value);
 }
 
 TEST_CASE("Testing tuple_slice_t") {
-  CHECK(std::is_same<tuple_slice_t<0, 1, std::tuple<int, float, double>>, std::tuple<int>>::value);
-  CHECK(std::is_same<tuple_slice_t<-2, -1, std::tuple<int, float, double>>, std::tuple<float>>::value);
-  CHECK(std::is_same<tuple_slice_t<1, 3, std::tuple<int, float, double>>, std::tuple<float, double>>::value);
+  CHECK(std::is_same<tuple_slice_t<0, 1, std::tuple<int, float, double>>,
+                     std::tuple<int>>::value);
+  CHECK(std::is_same<tuple_slice_t<-2, -1, std::tuple<int, float, double>>,
+                     std::tuple<float>>::value);
+  CHECK(std::is_same<tuple_slice_t<1, 3, std::tuple<int, float, double>>,
+                     std::tuple<float, double>>::value);
 }
 
-TEST_CASE("Testing get function with invalid index") {
-  std::tuple<int, float, double> tup(42, 3.14f, 2.71);
-  CHECK_THROWS_AS(get<int>(tup), std::exception);
+TEST_CASE("Testing tuple_compare function") {
+  std::tuple<int, double, char> tup1{1, 3.14, 'a'};
+  std::tuple<int, double, char> tup2{1, 3.14, 'a'};
+  std::tuple<int, double, char> tup3{2, 3.14, 'b'};
+
+  CHECK(tuple_compare(tup1, tup2));
+  CHECK(!tuple_compare(tup1, tup3));
 }
 
-// TEST_CASE("tuple_slice_t function") {
-//   std::tuple<int, float, double, char> t(42, 3.14f, 2.71828, 'A');
+TEST_CASE("Testing get function with valid index") {
+  std::tuple<int, double, char> tup{1, 3.14, 'a'};
 
-//   SUBCASE("tuple_head_t") {
-//     using ResultType = tuple_head_t<2, decltype(t)>;
-//     std::tuple<int, float> expected(42, 3.14f);
-//     CHECK(std::is_same<ResultType, decltype(expected)>::value);
-//     auto result =  tuple_head_t<2, decltype(t)>();
-//     std::cout << "res:"<<std::get<0>(result) << ", " << std::get<1>(result)
-//     << std::endl;
-
-//     CHECK(tuple_head_t<2, decltype(t)>() == expected);
-
-//     CHECK(tuple_compare(tuple_head_t<2, decltype(t)>(), expected));
-//   }
-
-//   SUBCASE("tuple_tail_t") {
-//     using ResultType = tuple_tail_t<2, decltype(t)>;
-//     std::tuple<double, char> expected(2.71828, 'A');
-//     CHECK(std::is_same<ResultType, decltype(expected)>::value);
-//     CHECK(tuple_compare(tuple_tail_t<2, decltype(t)>(), expected));
-//   }
-
-//   SUBCASE("tuple_slice_t") {
-//     using ResultType = tuple_slice_t<1, 3, decltype(t)>;
-//     std::tuple<float, double> expected(3.14f, 2.71828);
-//     CHECK(std::is_same<ResultType, decltype(expected)>::value);
-//     CHECK(tuple_slice_t<1, 3,decltype(t)>() == expected);
-//   }
-// }
-
-// TEST_CASE("get function with invalid index") {
-//   std::tuple<int, float, double> t(42, 3.14f, 2.71828);
-
-//   SUBCASE("negative index") {
-//     CHECK_THROWS_AS(get<int>(t, -1), std::runtime_error);
-//   }
-
-//   SUBCASE("index out of bounds") {
-//     CHECK_THROWS_AS(get<int>(t, 3), std::runtime_error);
-//   }
-// }
+  CHECK(get<int>(tup) == 1);
+  CHECK(get<double>(tup) == 3.14);
+  CHECK(get<char>(tup) == 'a');
+}

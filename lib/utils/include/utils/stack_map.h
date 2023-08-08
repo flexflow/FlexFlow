@@ -7,12 +7,12 @@
 namespace std {
 
 template <typename T1, typename T2>
-ostream& operator<<(ostream& os, const pair<T1, T2>& p) {
-    os << "{" << p.first << ", " << p.second << "}";
-    return os;
+ostream &operator<<(ostream &os, pair<T1, T2> const &p) {
+  os << "{" << p.first << ", " << p.second << "}";
+  return os;
 }
 
-}// to support << std::pair<int, int> 
+} // namespace std
 
 namespace FlexFlow {
 
