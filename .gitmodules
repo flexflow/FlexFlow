@@ -19,3 +19,27 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
+[submodule "deps/spdlog"]
+	path = deps/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "deps/rapidcheck"]
+	path = deps/rapidcheck
+	url = https://github.com/emil-e/rapidcheck.git
+[submodule "deps/doctest"]
+	path = deps/doctest
+	url = https://github.com/doctest/doctest.git
+[submodule "deps/visit_struct"]
+	path = deps/visit_struct
+	url = https://github.com/cbeck88/visit_struct.git
+[submodule "deps/expected"]
+	path = deps/expected
+	url = https://github.com/TartanLlama/expected.git
+[submodule "deps/fmt"]
+	path = deps/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "deps/invoke"]
+	path = deps/invoke
+	url = https://github.com/BlackMATov/invoke.hpp.git
+[submodule "deps/any"]
+	path = deps/any
+	url = https://github.com/thelink2012/any.git

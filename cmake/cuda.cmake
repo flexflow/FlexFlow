@@ -4,6 +4,7 @@ set(CUDA_ROOT ${CUDA_PATH})
 set(CUDA_TOOLKIT_ROOT_DIR ${CUDA_PATH})
 list(APPEND CMAKE_PREFIX_PATH ${CUDA_ROOT})
 find_package(CUDA REQUIRED)
+message("cuda-libraries ${CUDA_LIBRARIES}")
 
 if(CUDA_FOUND)
   # strip the cudart lib
@@ -79,6 +80,9 @@ if(CUDA_FOUND)
 
   list(APPEND FLEXFLOW_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS})
+
+  add_library(cuda INTERFACE)
+  target_include_directories(cuda SYSTEM INTERFACE "${CUDA_INCLUDE_DIRS}")
 
 else()
   message( FATAL_ERROR "CUDA package not found -> specify search path via CUDA_ROOT variable")

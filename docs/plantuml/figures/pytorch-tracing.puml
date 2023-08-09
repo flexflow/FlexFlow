@@ -1,0 +1,637 @@
+@startuml pytorch-tracing
+
+title __**Potential PyTorch Tracing Interface**__
+
+!$user = "User"
+!$python = "./bindings/python"
+!$torch = "torch"
+!$ffi = "./lib/ffi"
+!$pcg = "./lib/pcg"
+!$runtime = "./lib/runtime"
+!$compiler = "./lib/compiler"
+!$runtimeBacking = "RuntimeBacking"
+!$legion = "legion"
+!$participantBGColor = "#FFFFFF"
+!$codeColor = "#F0F6FF"
+
+skinparam defaultFontName Courier
+skinparam defaultFontStyle bold
+skinparam arrowFontStyle bold
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign left
+skinparam sequenceReferenceAlign left
+skinparam sequenceReferenceFontStyle bold
+skinparam participantBackgroundColor #F0F0F0
+
+participant U as "$user"
+participant P as "$python"
+participant T as "$torch"
+participant F as "$ffi"
+participant G as "$pcg"
+participant R as "$runtime"
+participant C as "$compiler"
+participant B as "$runtimeBacking"
+participant L as "$legion"
+
+!function $get_idx($participant)
+  !if ($participant == "$user")
+    !return 0
+  !elseif ($participant == "$python")
+    !return 1
+  !elseif ($participant == "$torch")
+    !return 2
+  !elseif ($participant == "$ffi")
+    !return 3
+  !elseif ($participant == "$pcg")
+    !return 4
+  !elseif ($participant == "$runtime")
+    !return 5
+  !elseif ($participant == "$compiler")
+    !return 6
+  !elseif ($participant == "$runtimeBacking")
+    !return 7
+  !elseif ($participant == "$legion")
+    !return 8
+  !endif
+!endfunction
+
+!procedure $remind_participants($start="$user", $end="$legion")
+  |||
+  !$start_idx = $get_idx($start)
+  !$end_idx = $get_idx($end) + 1
+  !if ($start_idx <= 0 && $end_idx > 0)
+    rnote over U $participantBGColor: $user
+  !endif
+  !if ($start_idx <= 1 && $end_idx > 1)
+    /rnote over P $participantBGColor: $python
+  !endif
+  !if ($start_idx <= 2 && $end_idx > 2)
+    /rnote over T $participantBGColor: $torch
+  !endif
+  !if ($start_idx <= 3 && $end_idx > 3)
+    /rnote over F $participantBGColor: $ffi
+  !endif
+  !if ($start_idx <= 4 && $end_idx > 4)
+    /rnote over G $participantBGColor: $pcg
+  !endif
+  !if ($start_idx <= 5 && $end_idx > 5)
+    /rnote over R $participantBGColor: $runtime
+  !endif
+  !if ($start_idx <= 6 && $end_idx > 6)
+    /rnote over C $participantBGColor: $compiler
+  !endif
+  !if ($start_idx <= 7 && $end_idx > 7)
+    /rnote over B $participantBGColor: $runtimeBacking
+  !endif
+  !if ($start_idx <= 8 && $end_idx > 8)
+    /rnote over L $participantBGColor: $legion
+  !endif
+  |||
+!endprocedure
+
+
+
+rnote across $codeColor
+
+Example source code (adapted from [[https://pytorch.org/tutorials/beginner/basics/optimization_tutorial.html the pytorch tutorial]])
+
+ 1 import flexflow.torch as torch
+ 2 import flexflow.torch.nn as nn
+ 3 
+ 4 class NeuralNetwork(nn.Module):
+ 5   def ~__init__(self):
+ 6     super(NeuralNetwork, self).~__init__()
+ 7     self.flatten = nn.Flatten()
+ 8     self.linear_relu_stack = nn.Sequential(
+ 9       nn.Linear(28*28, 512),
+10       nn.ReLU(),
+11       nn.Linear(512, 512),
+12       nn.ReLU(),
+13       nn.Linear(512, 10),
+14     )
+15     
+16     def forward(self, x):
+17       x = self.flatten(x)
+18       logits = self.linear_relu_stack(x)
+19       return logits
+20 
+21 def top_level_task():
+22   model = NeuralNetwork()
+23 
+24   dataloader = ...
+25
+26   if tracing_mechanism == 'symbolic_trace':
+27     compiled_model = model.compile(
+28       algorithm=...,
+29       optimizer=...
+30     )
+31   elif tracing_mechanism == 'dynamo':
+32     compiled_model = torch.compile(
+33       model,
+34       backend='flexflow',
+35       options=dict(
+36         algorithm=...,
+37         optimizer=...,
+38       )
+39     )
+40 
+41   for batch_id, (X, y) in enumerate(dataloader):
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+44     loss.backward()
+45     optimizer.step()
+46     optimizer.zero_grad()
+47     
+48     if batch_id % 100 == 0:
+49       loss, current = loss.item(), (batch_num + 1) * len(X)
+50       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+
+end note
+
+
+U->>P:\
+import flexflow.torch as torch\l\
+import flexflow.torch.nn as nn\l\
+\l\
+~# borrowed from [[https://pytorch.org/tutorials/beginner/basics/optimization_tutorial.html the pytorch tutorial]]\l\
+class NeuralNetwork(nn.Module):\l\
+  def ~__init__(self):\l\
+    super(NeuralNetwork, self).~__init__()\l\
+    self.flatten = nn.Flatten()\l\
+    self.linear_relu_stack = nn.Sequential(\l\
+      nn.Linear(28*28, 512),\l\
+      nn.ReLU(),\l\
+      nn.Linear(512, 512),\l\
+      nn.ReLU(),\l\
+      nn.Linear(512, 10),\l\
+    )\l\
+    \l\
+    def forward(self, x):\l\
+      x = self.flatten(x)\l\
+      logits = self.linear_relu_stack(x)\l\
+      return logits\l\
+\l\
+def top_level_task():\l\
+  model = NeuralNetwork()
+
+$remind_participants()
+
+alt fx
+U->>P:\l\
+  compiled_model = model.compile(\l\
+    algorithm=...,\l\
+    optimizer=...\l\
+  )
+
+  P->>T:\
+from torch.fx import symbolic_trace\l\
+\l\
+symbolic_traced  = symbolic_trace(model)\l\
+
+  T->>T:\
+  model.forward(<tracing tensor>)
+
+  T->>P:\
+symbolic_traced : torch.fx.GraphModule
+
+  ref over P 
+    compiled_model = compilation(symbolic_traced) # see below 
+  end
+
+  P->>U:\
+    compiled_model: CompiledModel
+else dynamo
+  U->>T:\l\
+  compiled_model = torch.compile(\l\
+    model,\l\
+    backend='flexflow',\l\
+    options=dict(\l\
+      algorithm=...,\l\
+      optimizer=...\l\
+    )\l\
+  )
+
+  T->>P:\
+def flexflow_compiler(\l\
+  gm: torch.fx.GraphModule,\l\
+  example_inputs: List[torch.Tensor])\l\
+    -> CompiledModel
+
+  ref over P 
+    compiled_model = compilation(gm) # see below 
+  end
+
+  P->>T: compiled_model: CompiledModel
+
+  T->>U:\
+  compiled_model: CompiledModel
+
+end
+
+$remind_participants()
+
+group compilation [def compilation(g: torch.fx.GraphModule) -> CompiledModel]
+
+    ?-->P: g: torch.fx.GraphModule
+
+    P->>P:\
+  ff_model = flexflow.torch.from_fx(symbolic_traced)
+
+    group flexflow.torch.from_fx [def from_fx(g: torch.fx.GraphModule) -> ComputationGraph]
+      $remind_participants("$python", "$pcg")
+
+      ?-->P: g: torch.fx.GraphModule
+
+      P->>F: flexflow_computation_graph_create(...)
+    
+      |||
+
+      F->>P:\
+    typedef struct {\l\
+      ComputationGraphBuilder *ptr;\l\
+    } flexflow_computation_graph_builder_t;
+
+      |||
+
+      P->>F: flexflow_computation_graph_add_op_flat(...)
+
+      F->>G:\
+    ComputationGraphBuilder::flat(...);
+
+      |||
+
+      G->>F:\
+    struct Tensor { ... };
+
+      F->>P:\
+    typedef struct {\l\
+      Tensor *ptr;\l\
+    } flexflow_tensor_t;
+
+
+      P->>F: flexflow_computation_graph_add_op_dense(...)
+
+      F->>G:\
+    ComputationGraphBuilder::dense(...);
+
+      |||
+
+      G->>F: Tensor
+
+      F->>P: flexflow_tensor_t
+
+      |||
+
+      P->>F: flexflow_computation_graph_add_op_relu(...)
+
+      F->>G:\
+    ComputationGraphbuilder::relu(...);
+
+      |||
+
+      G->>F: Tensor
+
+      F->>P: flexflow_tensor_t
+
+      rnote over P, G
+        ..., etc.
+      end note
+
+      ?<--P: comp_graph\l : ComputationGraph
+    end
+
+    |||
+
+  group optimization [def optimization(comp_graph: ComputationGraph) -> CompiledModel]
+
+  $remind_participants("$python", "$compiler")
+
+  ?-->P: comp_graph\l : ComputationGraph
+
+  P->>F:\l\
+  flexflow_error_t\l\
+  flexflow_computation_graph_compile(\l\
+    flexflow_computation_graph_t,\l\
+    flexflow_optimizer_t,\l\
+    flexflow_compilation_algorithm_t,\l\
+    flexflow_model_compilation_result *out\l\
+  );
+
+  F->>R:\
+  ModelCompilationResult optimize(\l\
+    ComputationGraph const &,\l\
+    AlgorithmConfig const &\l\
+  );
+
+  R->>C:\
+  SearchResult optimize(\l\
+    ComputationGraph const &,\l\
+    MachineSpecification const &,\l\
+    CostEstimator const &,\l\
+    AlgorithmConfig const &\l\
+  );
+
+  |||
+
+  C->>R:\
+  struct SearchResult {\l\
+    ParallelComputationGraph pcg;\l\
+    TensorMapping tensor_mapping;\l\
+    SearchSolution solution;\l\
+    CostValues cost_values;\l\
+  };
+
+  R->>F:\
+  struct ModelCompilationResult {\l\
+    ComputationGraph computation_graph;\l\
+    ParallelComputationGraph pcg;\l\
+    TensorMapping tensor_mapping;\l\
+  };
+
+  F->>P:\
+  typedef struct {\l\
+    ModelCompilationResult *ptr;\l\
+  } model_compilation_result_t;
+
+  |||
+
+  ?<--P: compiled_model\l : CompiledModel
+end
+
+?<--P: compiled_model : CompiledModel
+
+end
+
+
+$remind_participants()
+
+group serialization
+  U->>P:\
+  model_json = compiled_model.as_json()
+
+  U->>P:\
+with open('compiled.json', 'w') as f:\l\
+  compiled_model.dump(f)
+
+  P->>F:\
+end
+
+group deserialization
+
+end
+
+$remind_participants()
+
+== Training Starts ==
+
+rnote across $codeColor
+
+...
+41   for batch_id, (X, y) in enumerate(dataloader):
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+44     loss.backward()
+45     optimizer.step()
+46     optimizer.zero_grad()
+47     
+48     if batch_id % 100 == 0:
+49       loss, current = loss.item(), (batch_num + 1) * len(X)
+50       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+...
+
+end note
+
+loop training loop
+
+  $remind_participants()
+
+  opt reading tensor elements
+      U->>P: get_tensor
+      P->>F:
+      F->>R:
+      R->>B:
+      R->>F:
+      F->>P:
+      P->>U:
+  end
+
+  $remind_participants()
+
+  opt writing to tensor elements
+      U->>P: set_tensor
+      P->>F:
+      F->>R: 
+      R->>B:
+      B->>R:
+      R->>F:
+      F->>P:
+      P->>U:
+  end
+
+  $remind_participants()
+
+  group fwd
+
+rnote across $codeColor
+
+...
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+...
+
+end note
+
+    U->>P:\
+pred = compiled_model(batch)
+
+    opt if first iteration
+      P->>F:\
+flexflow_error_t\l\
+flexflow_start_training(\l\
+  flexflow_model_compilation_result_t,\l\
+  flexflow_model_compilation_result_t *out\l\
+);
+
+      |||
+
+      F->>P:\
+typedef struct {\l\
+  ModelTrainingInstance *ptr;\l\
+} flexflow_model_training_instance_t;
+
+      |||
+
+      P->>P: model.training_instance = ...
+    end
+
+    P->>U:\
+pred: TensorFuture
+
+    |||
+
+    U->>P:\
+loss = loss_fn(pred, label)
+
+    P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_forward(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+    F->>R:\
+forward(ModelTrainingInstance const &);
+
+    loop
+      R->>B:\
+    execute(OpTaskInvocation const &);
+
+      B->>L:\
+IndexLauncher launcher;\l\
+...\l\
+runtime->execute_index_space(ctx, launcher);\l\
+
+      L->>R:\
+TaskReturnAccessor
+    end
+  end
+
+    R->>R:\
+TaskReturnAcessor ret_acc = ...;\l\
+ret_acc.wait();
+
+    F->>P:\
+flexflow_tensor_t
+
+    P->>U:\
+loss: LossTensor
+
+  end
+
+  $remind_participants()
+
+  ref over U, L
+    [optional] reading tensor elements
+  end
+
+  ref over U, L
+    [optional] writing to tensor elements
+  end
+
+  $remind_participants()
+
+  group bwd
+
+rnote across $codeColor
+
+...
+44     loss.backward()
+...
+
+end note
+
+  U->>P:\
+loss.backward()
+
+  P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_backward(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+  F->>R:\
+backward(ModelTrainingInstance const &);
+
+  loop
+    R->>B:\
+  execute(OpTaskInvocation const &);
+
+    B->>L:\
+IndexLauncher launcher;\l\
+...\l\
+runtime->execute_index_space(ctx, launcher);\l\
+
+    L->>R:\
+TaskReturnAccessor
+  end
+
+  R->>R:\
+TaskReturnAcessor ret_acc = ...;\l\
+ret_acc.wait();
+
+  end
+
+  $remind_participants()
+
+  ref over U, L
+    [optional] reading tensor elements
+  end
+
+  ref over U, L
+    [optional] writing to tensor elements
+  end
+
+  $remind_participants()
+
+  group update
+
+rnote across $codeColor
+
+...
+45     optimizer.step()
+46     optimizer.zero_grad()
+...
+
+end note
+
+  $remind_participants()
+
+  U->>P:\
+optimizer.step()
+
+  U->>P:\
+optimizer.zero_grad()
+
+  P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_update(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+  F->>R:\
+update(ModelTrainingInstance const &);
+
+  loop
+    R->>B:\
+execute(IndexTaskInvocation const &);
+
+    B->>L:\
+IndexLauncher launcher;\l\
+...\l\
+runtime->execute_index_space(ctx, launcher);\l\
+
+    L->>R:\
+TaskReturnAccessor
+  end
+
+  R->>R:\
+TaskReturnAcessor ret_acc = ...;\l\
+ret_acc.wait();
+  end
+end
+
+$remind_participants()
+
+== Training Stops ==
+
+U->>P:\
+<compiled_model goes out of scope>
+
+P->>F:\
+flexflow_error_t\l\
+flexflow_stop_training(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+
+
+@enduml
