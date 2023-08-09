@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-void * Allocator::allocate(size_t size) {
+void *Allocator::allocate(size_t size) {
   return i_allocator->allocate(size);
 }
 

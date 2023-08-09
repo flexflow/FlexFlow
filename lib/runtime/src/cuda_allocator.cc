@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-void * CudaAllocator::allocate(size_t size) {
+void *CudaAllocator::allocate(size_t size) {
   void *ptr;
   check_CUDA(cudaMalloc(&ptr, size));
   return ptr;
@@ -13,5 +13,3 @@ void CudaAllocator::deallocate(void *ptr) {
 }
 
 } // namespace FlexFlow
-
-

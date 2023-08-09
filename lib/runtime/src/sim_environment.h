@@ -26,7 +26,9 @@ public:
 };
 
 using SimArg = variant<ProfilingSettings, AggregateAttrs>;
-using SimTensorSpec = variant<ParallelTensorShape, InputParallelTensorDesc, InputVariadicParallelTensorDesc>;
+using SimTensorSpec = variant<ParallelTensorShape,
+                              InputParallelTensorDesc,
+                              InputVariadicParallelTensorDesc>;
 
 struct SimTaskBinding {
   void bind(slot_id, ParallelTensorShape const &);
@@ -38,8 +40,9 @@ struct SimTaskBinding {
   void bind_untrainable(slot_id, std::vector<ParallelTensorShape> const &);
   void bind(slot_id, std::vector<ParallelTensorShape> const &, IsTrainable);
   void bind(slot_id, InputVariadicParallelTensorDesc const &);
-  
-  template <typename T> void bind_arg(slot_id id, T const & name);
+
+  template <typename T>
+  void bind_arg(slot_id id, T const &name);
 
   std::unordered_map<slot_id, SimArg> arg_bindings;
   std::unordered_map<slot_id, SimTensorSpec> tensor_shape_bindings;

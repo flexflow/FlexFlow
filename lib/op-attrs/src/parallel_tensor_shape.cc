@@ -25,9 +25,13 @@ std::vector<size_t> ParallelTensorDims::get_dims() const {
 }
 
 size_t ParallelTensorDims::get_volume() const {
-  return product(transform(this->data, [](ParallelDim const &d) -> size_t {
-    return d.size;
-  }));
+
+  // this function can use contains.h to optimize the code
+  size_t volume = 1;
+  for (ParallelDim const &d : this->data) {
+    volume *= d.size;
+  }
+  return volume;
 }
 
 ParallelTensorShape::ParallelTensorShape(TensorShape const &tensor_shape)
@@ -37,7 +41,7 @@ int get_num_replica_dims(ParallelTensorShape const &shape) {
   return count(shape.dims, is_replica_dim);
 }
 
-TensorShape get_piece_shape(ParallelTensorShape const & parall_tensor_shape) {
+TensorShape get_piece_shape(ParallelTensorShape const &parall_tensor_shape) {
   return TensorShape(parall_tensor_shape.dims, parall_tensor_shape.data_type);
 }
 

@@ -11,7 +11,6 @@ struct CudaAllocator : public IAllocator {
 
   void *allocate(size_t) override;
   void deallocate(void *) override;
-
 };
 
 } // namespace FlexFlow

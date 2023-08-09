@@ -11,7 +11,7 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
 
   size_t get_volume() const;
   size_t num_dims() const;
-  std::vector<size_t> get_dims() const; 
+  std::vector<size_t> get_dims() const;
 
   using iterator = typename FFOrdered<ParallelDim>::iterator;
   using const_iterator = typename FFOrdered<ParallelDim>::const_iterator;
@@ -26,7 +26,7 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   ParallelDim &at(ff_dim_t const &);
 
   iterator begin();
-  const_iterator begin() const; 
+  const_iterator begin() const;
   const_iterator cbegin() const;
   iterator end();
   const_iterator end() const;

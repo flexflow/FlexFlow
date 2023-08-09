@@ -10,7 +10,6 @@ std::size_t ArrayShape::get_volume() const {
   return product(this->dims);
 }
 
-ArrayShape::ArrayShape(std::vector<std::size_t> const &_dims)
-    : dims(_dims) {}
+ArrayShape::ArrayShape(std::vector<std::size_t> const &_dims) : dims(_dims) {}
 
 } // namespace FlexFlow
