@@ -45,7 +45,7 @@ def rerun_if_needed():
     # re-running with os.execv only works with 'python -c' for python >= 3.10
     # (see https://bugs.python.org/issue23427)
     if not run_from_python_c:
-      os.execv(sys.executable, ["python"] + sys.argv)
+      os.execv(sys.executable, [sys.executable] + sys.argv[1:])
     else:
       if hasattr(sys, 'orig_argv'):
         assert(len(sys.orig_argv) >= 3)
