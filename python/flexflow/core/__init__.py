@@ -48,7 +48,7 @@ def rerun_if_needed():
         # re-running with os.execv only works with 'python -c' for python >= 3.10
         # (see https://bugs.python.org/issue23427)
         if not run_from_python_c:
-            os.execv(sys.executable, ["python"] + sys.argv)
+            os.execv(sys.executable, [sys.executable] + sys.argv[1:])
         else:
             if hasattr(sys, "orig_argv"):
                 assert len(sys.orig_argv) >= 3
@@ -71,9 +71,12 @@ if flexflow_init_import():
             os.environ.get("READTHEDOCS") or os.environ.get("FF_BUILD_DOCS")
         )
         _CPU_ONLY = bool(os.environ.get("CPU_ONLY_TEST"))
-        if not _CPU_ONLY:
+        FLEXFLOW_SERVE_ARGS = os.environ.get("FLEXFLOW_SERVE_ARGS") or [""]
+        if not _CPU_ONLY and not "-ll:gpu" in sys.argv and not "-ll:gpu" in FLEXFLOW_SERVE_ARGS:
             os.environ["REALM_DEFAULT_ARGS"] = "-ll:gpu 1"
         rerun_if_needed()
+        if "-ll:gpu" in FLEXFLOW_SERVE_ARGS:
+            sys.argv += FLEXFLOW_SERVE_ARGS.split()
         print("Using Default Python")
         if not _FF_BUILD_DOCS and not _CPU_ONLY:
             from legion_top import (

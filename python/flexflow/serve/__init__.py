@@ -16,6 +16,7 @@ import json, sys, os
 from typing import Union
 from ..type import *
 
+_sys_argv=[]
 
 def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None):
     if variable is not None:
@@ -28,9 +29,9 @@ def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None
                 f"The following configs take positive integers only: {name}"
             )
         if not ff_cli_name:
-            sys.argv += ["-{name}", str(variable)]
+            _sys_argv += ["-{name}", str(variable)]
         else:
-            sys.argv += [f"{ff_cli_name}", str(variable)]
+            _sys_argv += [f"{ff_cli_name}", str(variable)]
 
 
 def init(configs: Union[str, dict]):
@@ -120,7 +121,7 @@ def init(configs: Union[str, dict]):
 
     offload = configs_dict.get("offload", False)
     if offload:
-        sys.argv += ["-offload"]
+        _sys_argv += ["-offload"]
     offload_reserve_space_size = configs_dict.get("offload_reserve_space_size")
     _parse_positive_int_config(
         "offload_reserve_space_size",
@@ -129,17 +130,19 @@ def init(configs: Union[str, dict]):
     )
     use_4bit_quantization = configs_dict.get("use_4bit_quantization", False)
     if use_4bit_quantization:
-        sys.argv += ["--4bit-quantization"]
+        _sys_argv += ["--4bit-quantization"]
     use_8bit_quantization = configs_dict.get("use_8bit_quantization", False)
     if use_8bit_quantization:
-        sys.argv += ["--8bit-quantization"]
+        _sys_argv += ["--8bit-quantization"]
 
     profiling = configs_dict.get("profiling", False)
     if profiling:
-        sys.argv += ["--profiling"]
+        _sys_argv += ["--profiling"]
     fusion = configs_dict.get("fusion", True)
     if fusion:
-        sys.argv += ["--fusion"]
+        _sys_argv += ["--fusion"]
+
+    os.environ["FLEXFLOW_SERVE_ARGS"] = " ".join(_sys_argv)
 
     global LLM, SSM, SamplingConfig
     from .serve import LLM, SSM, SamplingConfig
