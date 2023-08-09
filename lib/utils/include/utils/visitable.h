@@ -111,7 +111,7 @@ struct use_visitable_hash {
 };
 
 struct fmt_visitor {
-  ostringstream &oss;
+  std::ostringstream &oss;
 
   template <typename T>
   void operator()(char const *field_name, T const &field_value) {
@@ -172,6 +172,16 @@ struct visitable_formatter : formatter<std::string> {
 };
 
 }
+
+#define FF_VISIT_FMTABLE(TYPENAME) \
+  static_assert(is_visitable(TYPENAME)::value, #TYPENAME " must be visitable to use FF_VISIT_FMTABLE"); \
+  static_assert(elements_satisfy<is_visitable, TYPENAME>::value, #TYPENAME "'s elements must use be fmtable"); \
+  } \
+  namespace fmt { \
+    template <> struct formatter<::FlexFlow::TYPENAME> : ::FlexFlow::visitable_formatter<T> { }; \
+  } \
+  namespace FlexFlow { \
+  static_assert(is_fmtable<TYPENAME>::value, #TYPENAME " failed sanity check on is_fmtable and FF_VISIT_FMTABLE");
 
 #define MAKE_VISIT_HASHABLE(TYPENAME) \
   namespace std { \
