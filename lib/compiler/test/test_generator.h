@@ -7,82 +7,93 @@
 
 using namespace FlexFlow;
 
-enum class CompnType { SERIAL, PARALLEL };
-
-struct Compn {
-  CompnType type;
-  int component1, component2;
-};
-
-int pop_component(std::set<int> const &components, int value) {
-  value = value % components.size();
-  auto it = components.begin();
-  while (value--) {
-    it++;
+std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
+                                               MultiDiGraph const &ext) {
+  std::unordered_map<Node, Node> node_map;
+  std::unordered_map<NodePort, NodePort> node_port_map;
+  for (Node const &node : get_nodes(ext)) {
+    node_map[node] = g.add_node();
   }
-  int component = *it;
-  components.erase(it);
-  return component;
+  for (NodePort const &node_port : get_node_ports(ext)) {
+    node_port_map[node_port] = g.add_node_port();
+  }
+  for (MultiDiEdge const &edge : get_edges(ext)) {
+    g.add_edge(MultiDiEdge{node_map[edge.src],
+                           node_map[edge.dst],
+                           node_map[edge.srcIdx],
+                           node_map[edge.dstIdx]});
+  }
+  return node_map;
 }
 
-/*
-  Generates a series-parallel graph according to the composition sequence
-  described by `composition`. A series-parallel graph can be generated as
-  follows: 1) Initially, we have E (E is the length of `composition`+1)
-  components, each containing a single edge; 2) In iteration `i`, we compose two
-  components (`composition[i].component1` and `composition[i].component2`): 2.1)
-  If `composition[i].type == SERIAL`, we merge the sink node of component1 and
-  the source node of component2; 2.2) If `composition[i].type == PARALLEL`, we
-  merge the source nodes and the sink nodes of two components.
-*/
-MultiDiGraph generate_sp_graph(std::vector<Compn> const &composition) {
-  std::set<int> components;
-  disjoint_set<Node> node_id; // initially we have 2E nodes, and we will merge
-                              // them during the iteration
-  std::vector<Node> src,
-      dst; // src and dst nodes for each edge before merging
-  std::vector<NodePort> srcIdx,
-      dstIdx; // src and dst node ports for each edge (I assume it is sufficient
-              // to make different edges have different NodePort. Correct me if
-              // I am wrong. @lockshaw)
-  AdjacencyMultiDiGraph g(0, 0, {});
-  for (int i = 0; i <= composition.size(); ++i) {
-    components.insert(i);
-    src.push_back(g.add_node());
-    dst.push_back(g.add_node());
-    srcIdx.push_back(g.add_node_port());
-    dstIdx.push_back(g.add_node_port());
-  }
-  std::vector<Node> source_node = src,
-                    sink_node =
-                        dst; // initially each component has a single edge
-
-  // We compute the src and dst nodes after merging for each edge before
-  // actually inserting the edges.
-
-  for (Compn const &compn : composition) {
-    int c1 = pop_component(components, compn.component1);
-    int c2 = pop_component(components, compn.component2);
-    components.insert(c1);
-    if (compn.type == CompnType::SERIAL) {
-      node_id.m_union(sink_node[c1], source_node[c2]);
-      sink_node[c1] = sink_node[c2];
-    } else {
-      node_id.m_union(source_node[c1], source_node[c2]);
-      node_id.m_union(sink_node[c1], sink_node[c2]);
+std::unordered_map<Node, Node> serial_extend(MultiDiGraph &g,
+                                             MultiDiGraph const &ext) {
+  std::unordered_set<Node> original_sinks = get_sinks(g);
+  std::unordered_map<Node, Node> node_map = parallel_extend(g, ext);
+  for (Node const &node1 : original_sinks) {
+    for (Node const &node2 : get_sources(ext)) {
+      g.add_edge(MultiDiEdge{
+          node1, node_map[node2], g.add_node_port(), g.add_node_port()});
     }
   }
+  return node_map;
+}
 
-  for (Node node : get_nodes(g)) {
-    if (node_id.find(node) != node) {
-      g.remove_node_unsafe(node);
-    }
+MultiDiGraph serial_composition(MultiDiGraph const &g1,
+                                MultiDiGraph const &g2) {
+  MultiDiGraph g = g1;
+  serial_extend(g, g2);
+  return g;
+}
+
+MultiDiGraph parallel_composition(MultiDiGraph const &g1,
+                                  MultiDiGraph const &g2) {
+  MultiDiGraph g = g1;
+  parallel_extend(g, g2);
+  return g;
+}
+
+struct MultiDiGraphFromSPDecomposition {
+  template <typename T>
+  MultiDiGraph operator()(T const &t) {
+    return multidigraph_from_sp_decomposition(t);
   }
+};
 
-  for (int i = 0; i < src.size(); ++i) {
-    g.add_edge(MultiDiEdge{src[i], dst[i], srcIdx[i], dstIdx[i]});
+MultiDiGraph multidigraph_from_sp_decomposition(
+    SerialParallelDecomposition const &sp_decomposition) {
+  return visit(MultiDiGraphFromSPDecomposition{}, sp_decomposition);
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(
+    variant<Parallel, Node> const &sp_decomposition) {
+  return visit(MultiDiGraphFromSPDecomposition{}, sp_decomposition);
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(
+    variant<Serial, Node> const &sp_decomposition) {
+  return visit(MultiDiGraphFromSPDecomposition{}, sp_decomposition);
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(Serial const &serial) {
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+  for (auto child : serial.children) {
+    serial_extend(g, multidigraph_from_sp_decomposition(child));
   }
+  return g;
+}
 
+MultiDiGraph multidigraph_from_sp_decomposition(Parallel const &parallel) {
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+  for (auto child : parallel.children) {
+    parallel_extend(g, multidigraph_from_sp_decomposition(child));
+  }
+  return g;
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(Node const &Node) {
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+  g.add_node();
   return g;
 }
 
@@ -100,19 +111,67 @@ rc::Gen<int> small_integer_generator() {
 
 namespace rc {
 
-template <typename Tag, typename T>
-struct Arbtrary<Tag> {
-  static Gen<
-      std::enable_if<std::is_base_of<strong_typedef<Tag, T>, Tag>::value>::type>
-      arbitrary() {
-    return gen::construct<Tag>(gen::arbitrary<T>());
+Gen<MultiDiGraph> serialParallelMultiDiGraph() {
+  return gen::map(gen::arbitrary<SerialParallelDecomposition>(),
+                  multidigraph_from_sp_decomposition);
+}
+
+template <>
+struct Arbitrary<variant<Serial, Node>> {
+  static Gen<variant<Serial, Node>> arbitrary() {
+    return gen::mapcat(gen::arbitrary<bool>(), [](bool is_node) {
+      return is_node ? gen::arbitrary<Node>() : gen::arbitrary<Serial>();
+    });
   }
 };
 
 template <>
-struct Arbitrary<Node> {
-  static Gen<Node> arbitrary() {
-    return gen::construct<Node>(gen::arbitrary<size_t>());
+struct Arbitrary<variant<Parallel, Node>> {
+  static Gen<variant<Parallel, Node>> arbitrary() {
+    return gen::mapcat(gen::arbitrary<bool>(), [](bool is_node) {
+      return is_node ? gen::arbitrary<Node>() : gen::arbitrary<Parallel>();
+    });
+  }
+};
+
+template <>
+struct Arbitrary<Serial> {
+  static Gen<Serial> arbitrary() {
+    return gen::build<Serial>(
+        gen::set(&Serial::children,
+                 gen::container<std::vector<variant<Parallel, Node>>>(
+                     gen::arbitrary<variant<Parallel, Node>>())));
+  }
+};
+
+template <>
+struct Arbitrary<Parallel> {
+  static Gen<Parallel> arbitrary() {
+    return gen::build<Parallel>(
+        gen::set(&Parallel::children,
+                 gen::container<std::vector<variant<Serial, Node>>>(
+                     gen::arbitrary<variant<Serial, Node>>())));
+  }
+};
+
+template <>
+struct Arbitrary<SerialParallelDecomposition> {
+  static Gen<SerialParallelDecomposition> arbitrary() {
+    return gen::mapcat(gen::arbitrary<bool>(), [](bool is_serial) {
+      return is_serial ? gen::construct<SerialParallelDecomposition>(
+                             gen::arbitrary<Serial>())
+                       : gen::construct<SerialParallelDecomposition>(
+                             gen::arbitrary<Parallel>());
+    });
+  }
+};
+
+template <typename Tag, typename T>
+struct Arbitrary<Tag> {
+  static Gen<
+      std::enable_if<std::is_base_of<strong_typedef<Tag, T>, Tag>::value>::type>
+      arbitrary() {
+    return gen::construct<Tag>(gen::arbitrary<T>());
   }
 };
 
