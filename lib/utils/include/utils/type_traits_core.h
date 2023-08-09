@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 
 #include <type_traits>
+#include <iterator>
 
 namespace FlexFlow {
 template <bool B, typename T = void>

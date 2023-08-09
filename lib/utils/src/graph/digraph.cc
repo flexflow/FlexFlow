@@ -3,29 +3,6 @@
 
 namespace FlexFlow {
 
-DirectedEdge::DirectedEdge(Node src, Node dst) 
-  : src(src), dst(dst)
-{ }
-
-std::ostream &operator<<(std::ostream &s, DirectedEdge const &e) {
-  return (
-    s << "DirectedEdge{" << e.src.value() << " -> " << e.dst.value() << "}"
-  );
-}
-
-DirectedEdgeQuery::DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs, tl::optional<std::unordered_set<Node>> const &dsts) 
-  : srcs(srcs), dsts(dsts)
-{ }
-
-DiGraph::DiGraph(DiGraph const &other)
-  : ptr(other.ptr->clone())
-{ }
-
-DiGraph &DiGraph::operator=(DiGraph other) {
-  swap(*this, other);
-  return *this;
-}
-
 void swap(DiGraph &lhs, DiGraph &rhs) {
   using std::swap;
 
