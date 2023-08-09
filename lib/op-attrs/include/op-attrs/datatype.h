@@ -5,14 +5,7 @@
 
 namespace FlexFlow {
 
-enum class DataType {
-  BOOL,
-  INT32,
-  INT64,
-  HALF,
-  FLOAT,
-  DOUBLE
-};
+enum class DataType { BOOL, INT32, INT64, HALF, FLOAT, DOUBLE };
 
 }
 
@@ -20,15 +13,16 @@ namespace fmt {
 template <>
 struct formatter<::FlexFlow::DataType> : formatter<string_view> {
   template <typename FormatContext>
-  auto format(::FlexFlow::DataType dt, FormatContext &ctx) -> decltype(ctx.out()) {
+  auto format(::FlexFlow::DataType dt, FormatContext &ctx)
+      -> decltype(ctx.out()) {
     using namespace FlexFlow;
 
     string_view name = "unknown";
     switch (dt) {
-      case DataType::BOOL: 
-        name = "BOOL"; 
+      case DataType::BOOL:
+        name = "BOOL";
         break;
-      case DataType::INT32: 
+      case DataType::INT32:
         name = "INT32";
         break;
       case DataType::INT64:
@@ -48,7 +42,6 @@ struct formatter<::FlexFlow::DataType> : formatter<string_view> {
   }
 };
 
-
-}
+} // namespace fmt
 
 #endif

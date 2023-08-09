@@ -2,13 +2,13 @@
 #define _FLEXFLOW_DEVICE_H_
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <cudnn.h>
-#include <cublas_v2.h>
 #elif defined(FF_USE_HIP_ROCM)
 #include <hip/hip_runtime.h>
-#include <miopen/miopen.h>
 #include <hipblas.h>
+#include <miopen/miopen.h>
 #else
 #error "Unknown device"
 #endif
@@ -21,9 +21,9 @@
 #include <hip/hip_fp16.h>
 #endif
 
+#include <cassert>
 #include <iostream>
 #include <sstream>
-#include <cassert>
 
 namespace FlexFlow {
 
@@ -48,7 +48,7 @@ typedef cudnnHandle_t ffHandle_t;
 typedef cudaEvent_t ffEvent_t;
 typedef cublasHandle_t ffblasHandle_t;
 typedef cudnnStatus_t ffStatus_t;
-typedef cudaDataType_t ffDataType_t ;
+typedef cudaDataType_t ffDataType_t;
 typedef cudnnDataType_t ffCudnnDataType_t;
 typedef cudaError_t ffError_t;
 #elif defined(FF_USE_HIP_ROCM)
@@ -72,7 +72,7 @@ typedef miopenHandle_t ffHandle_t;
 typedef hipEvent_t ffEvent_t;
 typedef hipblasHandle_t ffblasHandle_t;
 typedef miopenStatus_t ffStatus_t;
-typedef hipblasDataType_t ffDataType_t ;
+typedef hipblasDataType_t ffDataType_t;
 typedef miopenDataType_t ffCudnnDataType_t;
 typedef hipError_t ffError_t;
 #else
@@ -104,6 +104,6 @@ ffError_t ffEventRecord(ffEvent_t &, ffStream_t);
 ffError_t ffEventSynchronize(ffEvent_t &);
 ffError_t ffEventElapsedTime(float *elapsed, ffEvent_t &start, ffEvent_t &stop);
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

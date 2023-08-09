@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/embedding_kernels.h"
-#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -23,7 +23,7 @@ namespace Embedding {
 
 template <DataType TI, DataType TD>
 struct ForwardKernel {
-  void operator() (cudaStream_t stream,
+  void operator()(cudaStream_t stream,
                   EmbeddingPerDeviceState const *m,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
@@ -31,98 +31,126 @@ struct ForwardKernel {
                   int in_dim,
                   int out_dim,
                   int batch_size) {
-    assert (input.data_type == DT_INT32 || input.data_type == DT_INT64);
-    assert (weight.data_type == DT_HALF 
-      || weight.data_type == DT_FLOAT 
-      || weight.data_type == DT_DOUBLE);
-    
+    assert(input.data_type == DT_INT32 || input.data_type == DT_INT64);
+    assert(weight.data_type == DT_HALF || weight.data_type == DT_FLOAT ||
+           weight.data_type == DT_DOUBLE);
+
     if (m->aggr == AGGR_MODE_NONE) {
-      embed_forward_no_aggr<TI, TD>
-        <<<GET_BLOCKS(output.domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
-            input.get<TI>(), output.get<TD>(), weight.get<TD>(), out_dim, batch_size);
+      embed_forward_no_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+                                      CUDA_NUM_THREADS,
+                                      0,
+                                      stream>>>(input.get<TI>(),
+                                                output.get<TD>(),
+                                                weight.get<TD>(),
+                                                out_dim,
+                                                batch_size);
     } else {
       assert(m->aggr == AGGR_MODE_AVG || m->aggr == AGGR_MODE_SUM);
-      embed_forward_with_aggr<TI, TD>
-          <<<GET_BLOCKS(output.domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(input.get<TI>(),
-                                                                    output.get<TD>(),
-                                                                    weight.get<TD>(),
-                                                                    out_dim,
-                                                                    in_dim,
-                                                                    batch_size,
-                                                                    m->aggr);
+      embed_forward_with_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+                                        CUDA_NUM_THREADS,
+                                        0,
+                                        stream>>>(input.get<TI>(),
+                                                  output.get<TD>(),
+                                                  weight.get<TD>(),
+                                                  out_dim,
+                                                  in_dim,
+                                                  batch_size,
+                                                  m->aggr);
     }
   }
 }
 
 template <DataType TI, DataType TD>
 struct BackwardKernel {
-  void operator() (cudaStream_t stream, 
-                    EmbeddingPerDeviceState const *m,
-                    GenericTensorAccessorR const &input,
-                    GenericTensorAccessorR const &output,
-                    GenericTensorAccessorW const &weight_grad,
-                    int in_dim,
-                    int out_dim,
-                    int batch_size) {
-    assert (input.data_type == DT_INT32 
-      || input.data_type == DT_INT64);
-    assert (output.data_type == DT_HALF 
-      || output.data_type == DT_FLOAT,
-      || output.data_type == DT_DOUBLE);
+  void operator()(cudaStream_t stream,
+                  EmbeddingPerDeviceState const *m,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorR const &output,
+                  GenericTensorAccessorW const &weight_grad,
+                  int in_dim,
+                  int out_dim,
+                  int batch_size) {
+    assert(input.data_type == DT_INT32 || input.data_type == DT_INT64);
+    assert(output.data_type == DT_HALF || output.data_type == DT_FLOAT,
+           || output.data_type == DT_DOUBLE);
     if (m->aggr == AGGR_MODE_NONE) {
-      embed_backward_no_aggr<TI, TD>
-          <<<GET_BLOCKS(output.domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
-              input.get<TI>(), output.get<TD>(), weight_grad.get<TD>(), out_dim, batch_size);
+      embed_backward_no_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+                                       CUDA_NUM_THREADS,
+                                       0,
+                                       stream>>>(input.get<TI>(),
+                                                 output.get<TD>(),
+                                                 weight_grad.get<TD>(),
+                                                 out_dim,
+                                                 batch_size);
     } else {
-      embed_backward_with_aggr<TI, TD>
-          <<<GET_BLOCKS(output.domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
-              input.get<TI>(), output.get<TD>(), weight_grad.get<TD>(),
-              out_dim,
-              in_dim,
-              batch_size,
-              m->aggr);
+      embed_backward_with_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+                                         CUDA_NUM_THREADS,
+                                         0,
+                                         stream>>>(input.get<TI>(),
+                                                   output.get<TD>(),
+                                                   weight_grad.get<TD>(),
+                                                   out_dim,
+                                                   in_dim,
+                                                   batch_size,
+                                                   m->aggr);
     }
   }
 }
 
 void forward_kernel(cudaStream_t stream,
-                            EmbeddingPerDeviceState const *m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &output,
-                            GenericTensorAccessorR const &weight,
-                            int in_dim,
-                            int out_dim,
-                            int batch_size) {
-  DataTypeDispatch2<ForwardKernel>{}(m->input_data_type, m->output_data_type, 
-    stream, m, input, output, weight, in_dim, out_dim, batch_size);
+                    EmbeddingPerDeviceState const *m,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output,
+                    GenericTensorAccessorR const &weight,
+                    int in_dim,
+                    int out_dim,
+                    int batch_size) {
+  DataTypeDispatch2<ForwardKernel>{}(m->input_data_type,
+                                     m->output_data_type,
+                                     stream,
+                                     m,
+                                     input,
+                                     output,
+                                     weight,
+                                     in_dim,
+                                     out_dim,
+                                     batch_size);
 }
 
-void backward_kernel(cudaStream_t stream, 
-                             EmbeddingPerDeviceState const *m,
-                             GenericTensorAccessorR const &input,
-                             GenericTensorAccessorR const &output,
-                             GenericTensorAccessorW const &weight_grad,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size) {
-  DataTypeDispatch2<BackwardKernel>{}(m->input_data_type, m->output_data_type, 
-    stream, m, input, output, weight, in_dim, out_dim, batch_size);
+void backward_kernel(cudaStream_t stream,
+                     EmbeddingPerDeviceState const *m,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorW const &weight_grad,
+                     int in_dim,
+                     int out_dim,
+                     int batch_size) {
+  DataTypeDispatch2<BackwardKernel>{}(m->input_data_type,
+                                      m->output_data_type,
+                                      stream,
+                                      m,
+                                      input,
+                                      output,
+                                      weight,
+                                      in_dim,
+                                      out_dim,
+                                      batch_size);
 }
 
 void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) {
   cudaStream_t stream;
-  
+
   // Randomly initialize the intput tensor to avoid out of index range issues
   rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
-    ptr, size, p);
+      ptr, size, p);
 }
 
 void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) {
   cudaStream_t stream;
-  
+
   // Randomly initialize the intput tensor to avoid out of index range issues
   rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
-    ptr, size, p);
+      ptr, size, p);
 }
 
 template <typename TI, typename TD>

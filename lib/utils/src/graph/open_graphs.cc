@@ -3,8 +3,7 @@
 namespace FlexFlow {
 
 OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)
-  : ptr(other.ptr->clone())
-{ }
+    : ptr(other.ptr->clone()) {}
 
 OpenMultiDiGraph &OpenMultiDiGraph::operator=(OpenMultiDiGraph other) {
   swap(*this, other);
@@ -37,19 +36,20 @@ void OpenMultiDiGraph::remove_edge(OpenMultiDiEdge const &e) {
   return this->ptr->remove_edge(e);
 }
 
-std::unordered_set<OpenMultiDiEdge> OpenMultiDiGraph::query_edges(OpenMultiDiEdgeQuery const &q) const {
+std::unordered_set<OpenMultiDiEdge>
+    OpenMultiDiGraph::query_edges(OpenMultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
-OpenMultiDiGraph::OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> _ptr) 
-  : ptr(std::move(_ptr))
-{ }
+OpenMultiDiGraph::OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> _ptr)
+    : ptr(std::move(_ptr)) {}
 
-UpwardOpenMultiDiGraph::UpwardOpenMultiDiGraph(UpwardOpenMultiDiGraph const &other)
-  : ptr(other.ptr->clone())
-{ }
+UpwardOpenMultiDiGraph::UpwardOpenMultiDiGraph(
+    UpwardOpenMultiDiGraph const &other)
+    : ptr(other.ptr->clone()) {}
 
-UpwardOpenMultiDiGraph &UpwardOpenMultiDiGraph::operator=(UpwardOpenMultiDiGraph other) {
+UpwardOpenMultiDiGraph &
+    UpwardOpenMultiDiGraph::operator=(UpwardOpenMultiDiGraph other) {
   swap(*this, other);
   return *this;
 }
@@ -80,19 +80,21 @@ void UpwardOpenMultiDiGraph::remove_edge(UpwardOpenMultiDiEdge const &e) {
   return this->ptr->remove_edge(e);
 }
 
-std::unordered_set<UpwardOpenMultiDiEdge> UpwardOpenMultiDiGraph::query_edges(UpwardOpenMultiDiEdgeQuery const &q) const {
+std::unordered_set<UpwardOpenMultiDiEdge> UpwardOpenMultiDiGraph::query_edges(
+    UpwardOpenMultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
-UpwardOpenMultiDiGraph::UpwardOpenMultiDiGraph(std::unique_ptr<IUpwardOpenMultiDiGraph> _ptr) 
-  : ptr(std::move(_ptr))
-{ }
+UpwardOpenMultiDiGraph::UpwardOpenMultiDiGraph(
+    std::unique_ptr<IUpwardOpenMultiDiGraph> _ptr)
+    : ptr(std::move(_ptr)) {}
 
-DownwardOpenMultiDiGraph::DownwardOpenMultiDiGraph(DownwardOpenMultiDiGraph const &other)
-  : ptr(other.ptr->clone())
-{ }
+DownwardOpenMultiDiGraph::DownwardOpenMultiDiGraph(
+    DownwardOpenMultiDiGraph const &other)
+    : ptr(other.ptr->clone()) {}
 
-DownwardOpenMultiDiGraph &DownwardOpenMultiDiGraph::operator=(DownwardOpenMultiDiGraph other) {
+DownwardOpenMultiDiGraph &
+    DownwardOpenMultiDiGraph::operator=(DownwardOpenMultiDiGraph other) {
   swap(*this, other);
   return *this;
 }
@@ -123,12 +125,14 @@ void DownwardOpenMultiDiGraph::remove_edge(DownwardOpenMultiDiEdge const &e) {
   return this->ptr->remove_edge(e);
 }
 
-std::unordered_set<DownwardOpenMultiDiEdge> DownwardOpenMultiDiGraph::query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
+std::unordered_set<DownwardOpenMultiDiEdge>
+    DownwardOpenMultiDiGraph::query_edges(
+        DownwardOpenMultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
 }
 
-DownwardOpenMultiDiGraph::DownwardOpenMultiDiGraph(std::unique_ptr<IDownwardOpenMultiDiGraph> _ptr) 
-  : ptr(std::move(_ptr))
-{ }
+DownwardOpenMultiDiGraph::DownwardOpenMultiDiGraph(
+    std::unique_ptr<IDownwardOpenMultiDiGraph> _ptr)
+    : ptr(std::move(_ptr)) {}
 
-}
+} // namespace FlexFlow

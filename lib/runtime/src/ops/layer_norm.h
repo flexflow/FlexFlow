@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_OPS_LAYER_NORM_H
 #define _FLEXFLOW_RUNTIME_SRC_OPS_LAYER_NORM_H
 
+#include "op-attrs/ops/layer_norm.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/layer_norm.h"
 
 namespace FlexFlow {
 
-template <> void register_task<LAYERNORM_INIT_TASK_ID>();
-template <> void register_task<LAYERNORM_FWD_TASK_ID>();
-template <> void register_task<LAYERNORM_BWD_TASK_ID>();
+template <>
+void register_task<LAYERNORM_INIT_TASK_ID>();
+template <>
+void register_task<LAYERNORM_FWD_TASK_ID>();
+template <>
+void register_task<LAYERNORM_BWD_TASK_ID>();
 
 OpTaskInvocation init(LayerNormAttrs const &);
 OpTaskInvocation forward(LayerNormAttrs const &);
@@ -44,7 +47,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 /*   /1* void serialize(Legion::Serializer &) const override; *1/ */
 /*   /1* static PCG::Node deserialize(FFModel &ff, *1/ */
 /*   /1*                              Legion::Deserializer &d, *1/ */
@@ -55,15 +59,18 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*                   int num_inputs) const override; */
 
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -77,6 +84,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   std::vector<int> axes; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

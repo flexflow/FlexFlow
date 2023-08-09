@@ -1,6 +1,6 @@
 #include "utils/graph/adjacency_multidigraph.h"
-#include <iostream>
 #include "utils/containers.h"
+#include <iostream>
 
 namespace FlexFlow {
 
@@ -13,7 +13,7 @@ Node AdjacencyMultiDiGraph::add_node() {
 
 void AdjacencyMultiDiGraph::add_node_unsafe(Node const &node) {
   adjacency[node];
-  this->next_node_idx = std::max(this->next_node_idx, node.value()+1);
+  this->next_node_idx = std::max(this->next_node_idx, node.value() + 1);
 }
 
 void AdjacencyMultiDiGraph::remove_node_unsafe(Node const &n) {
@@ -29,7 +29,8 @@ void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
   this->adjacency.at(e.src)[e.dst][e.srcIdx].erase(e.dstIdx);
 }
 
-std::unordered_set<MultiDiEdge> AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+std::unordered_set<MultiDiEdge>
+    AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   std::unordered_set<MultiDiEdge> result;
   for (auto const &kv : this->adjacency) {
     Node src = kv.first;
@@ -42,7 +43,8 @@ std::unordered_set<MultiDiEdge> AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQu
             if (!q.srcIdxs.has_value() || contains(*q.srcIdxs, srcIdx)) {
               for (std::size_t dstIdx : kv3.second) {
                 if (!q.dstIdxs.has_value() || contains(*q.dstIdxs, dstIdx)) {
-                  std::cout << src << " " << dst << " " << srcIdx << " " << dstIdx << std::endl;
+                  std::cout << src << " " << dst << " " << srcIdx << " "
+                            << dstIdx << std::endl;
                   result.insert({src, dst, srcIdx, dstIdx});
                 }
               }
@@ -56,14 +58,16 @@ std::unordered_set<MultiDiEdge> AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQu
   return result;
 }
 
-std::unordered_set<Node> AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
+std::unordered_set<Node>
+    AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
   std::unordered_set<Node> result;
   for (auto const &kv : this->adjacency) {
-    if (!query.nodes.has_value() || query.nodes->find(kv.first) != query.nodes->end()) {
+    if (!query.nodes.has_value() ||
+        query.nodes->find(kv.first) != query.nodes->end()) {
       result.insert(kv.first);
     }
   }
   return result;
 }
 
-}
+} // namespace FlexFlow

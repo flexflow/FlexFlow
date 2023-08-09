@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_RUNTIME_SERIALIZATION_H
 #define _FLEXFLOW_RUNTIME_SERIALIZATION_H
 
+#include "kernels/device.h"
+#include "kernels/nccl.h"
 #include "legion.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/dim_ordered.h"
 #include "utils/optional.h"
-#include <type_traits>
-#include "utils/visitable.h"
-#include "kernels/device.h"
 #include "utils/variant.h"
-#include "kernels/nccl.h"
+#include "utils/visitable.h"
+#include <type_traits>
 
 namespace FlexFlow {
 
@@ -18,14 +18,14 @@ struct InternalTestType {
   float y;
 };
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::InternalTestType, x, y);
 
 namespace FlexFlow {
 
 template <typename T>
-struct needs_serialization { };
+struct needs_serialization {};
 
 /* template <typename T> */
 /* class Serializer { */
@@ -35,56 +35,81 @@ struct needs_serialization { };
 
 /* template <typename T, class Enable = void> struct trivially_serializable; */
 
-/* template <typename T, int i, class Enable = void> struct visit_trivially_serializable; */
+/* template <typename T, int i, class Enable = void> struct
+ * visit_trivially_serializable; */
 
-/* template <typename T, */ 
-/*           int i, */ 
-/*           typename std::enable_if<(needs_serialization<visit_struct::type_at<i, T>>::value && visit_serializable<T, (i+1)>::value)>::type> */
+/* template <typename T, */
+/*           int i, */
+/*           typename
+ * std::enable_if<(needs_serialization<visit_struct::type_at<i, T>>::value &&
+ * visit_serializable<T, (i+1)>::value)>::type> */
 
+template <typename... Args>
+struct visit_trivially_serializable;
 
-template <typename ...Args> struct visit_trivially_serializable;
+template <typename T, typename Enable = void>
+struct is_trivially_serializable_t : std::false_type {};
 
-template <typename T, typename Enable = void> struct is_trivially_serializable_t : std::false_type { };
-
-template <typename T, typename ...Args> 
+template <typename T, typename... Args>
 struct visit_trivially_serializable<T, Args...> {
-  static constexpr bool value = is_trivially_serializable_t<T>::value && visit_trivially_serializable<Args...>::value;
+  static constexpr bool value = is_trivially_serializable_t<T>::value &&
+                                visit_trivially_serializable<Args...>::value;
 };
 
-template <typename ...Args> struct visit_trivially_serializable<std::tuple<Args...>> {
+template <typename... Args>
+struct visit_trivially_serializable<std::tuple<Args...>> {
   static constexpr bool value = visit_trivially_serializable<Args...>::value;
 };
 
 template <>
-struct visit_trivially_serializable<> : std::true_type { };
+struct visit_trivially_serializable<> : std::true_type {};
 
 template <typename T>
-struct is_trivially_serializable_t<T, typename std::enable_if<visit_trivially_serializable<visit_as_tuple<T>>::value>::type> : std::true_type { };
+struct is_trivially_serializable_t<
+    T,
+    typename std::enable_if<
+        visit_trivially_serializable<visit_as_tuple<T>>::value>::type>
+    : std::true_type {};
 
 template <typename T>
-struct is_trivially_serializable_t<T, typename std::enable_if<std::is_integral<T>::value>::type> : std::true_type { };
+struct is_trivially_serializable_t<
+    T,
+    typename std::enable_if<std::is_integral<T>::value>::type>
+    : std::true_type {};
 
-template <> struct is_trivially_serializable_t<half> : std::true_type { };
-template <> struct is_trivially_serializable_t<ncclUniqueId> : std::true_type { };
+template <>
+struct is_trivially_serializable_t<half> : std::true_type {};
+template <>
+struct is_trivially_serializable_t<ncclUniqueId> : std::true_type {};
 
 template <typename T>
-struct is_trivially_serializable_t<T, typename std::enable_if<std::is_enum<T>::value>::type> : std::true_type { };
+struct is_trivially_serializable_t<
+    T,
+    typename std::enable_if<std::is_enum<T>::value>::type> : std::true_type {};
 
 template <typename T>
-struct is_trivially_serializable_t<T, typename std::enable_if<std::is_floating_point<T>::value>::type> : std::true_type { };
+struct is_trivially_serializable_t<
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type>
+    : std::true_type {};
 
 template <typename Idx, typename T>
-struct is_trivially_serializable_t<DimOrdered<Idx, T>> : is_trivially_serializable_t<T>{ };
+struct is_trivially_serializable_t<DimOrdered<Idx, T>>
+    : is_trivially_serializable_t<T> {};
 
-template <typename ...Ts>
-struct is_trivially_serializable_t<variant<Ts...>> : elements_satisfy<is_trivially_serializable_t, variant<Ts...>> { };
+template <typename... Ts>
+struct is_trivially_serializable_t<variant<Ts...>>
+    : elements_satisfy<is_trivially_serializable_t, variant<Ts...>> {};
 
 template <typename T>
-struct is_trivially_serializable_t<optional<T>> : is_trivially_serializable_t<T> { };
+struct is_trivially_serializable_t<optional<T>>
+    : is_trivially_serializable_t<T> {};
 
-template <typename T> struct std_array_size_helper;
+template <typename T>
+struct std_array_size_helper;
 
-template <typename T, std::size_t N> struct std_array_size_helper<std::array<T, N>> {
+template <typename T, std::size_t N>
+struct std_array_size_helper<std::array<T, N>> {
   static const std::size_t value = N;
 };
 
@@ -92,18 +117,28 @@ template <typename T>
 using std_array_size = std_array_size_helper<T>;
 
 template <typename T>
-struct is_trivially_serializable_t<T, std::enable_if<std::is_same<T, std::array<typename T::value_type, std_array_size<T>::value>>::value>> : std::true_type { };
+struct is_trivially_serializable_t<
+    T,
+    std::enable_if<std::is_same<
+        T,
+        std::array<typename T::value_type, std_array_size<T>::value>>::value>>
+    : std::true_type {};
 
-template <typename T, typename Enable = void> struct is_serializable_t : std::false_type { };
+template <typename T, typename Enable = void>
+struct is_serializable_t : std::false_type {};
 
 template <typename T>
-struct is_serializable_t<T, typename std::enable_if<is_trivially_serializable_t<T>::value>::type> : std::true_type { };
+struct is_serializable_t<
+    T,
+    typename std::enable_if<is_trivially_serializable_t<T>::value>::type>
+    : std::true_type {};
 
 template <typename T>
 constexpr bool is_serializable = is_serializable_t<T>::value;
 
 template <typename T>
-constexpr bool is_trivially_serializable = is_trivially_serializable_t<T>::value;
+constexpr bool is_trivially_serializable =
+    is_trivially_serializable_t<T>::value;
 
 static_assert(is_trivially_serializable<float>, "");
 static_assert(is_trivially_serializable<double>, "");
@@ -112,18 +147,22 @@ static_assert(is_trivially_serializable<int64_t>, "");
 static_assert(is_trivially_serializable<half>, "");
 static_assert(is_trivially_serializable<bool>, "");
 static_assert(is_trivially_serializable<variant<float, double>>, "");
-static_assert(std::is_same<visit_as_tuple<InternalTestType>, std::tuple<int, float>>::value, "");
+static_assert(std::is_same<visit_as_tuple<InternalTestType>,
+                           std::tuple<int, float>>::value,
+              "");
 static_assert(visit_trivially_serializable<InternalTestType>::value, "");
 static_assert(is_trivially_serializable<InternalTestType>, "");
 
-template <typename T, typename Enable = void> 
+template <typename T, typename Enable = void>
 struct Serialization {
   void serialize(Legion::Serializer &, T const &) const;
   void deserialize(Legion::Deserializer &, T &) const;
 };
 
 template <typename T>
-struct Serialization<T, typename std::enable_if<is_trivially_serializable_t<T>::value>::type> {
+struct Serialization<
+    T,
+    typename std::enable_if<is_trivially_serializable_t<T>::value>::type> {
   static void serialize(Legion::Serializer &sez, T const &t) {
     sez.serialize(&t, sizeof(T));
   }
@@ -153,9 +192,7 @@ bool visit_needs_serialize(T const &t) {
 
 struct serialize_visitor {
   serialize_visitor() = delete;
-  explicit serialize_visitor(Legion::Serializer &sez)
-    : sez(sez) 
-  { }
+  explicit serialize_visitor(Legion::Serializer &sez) : sez(sez) {}
 
   Legion::Serializer &sez;
 
@@ -173,9 +210,7 @@ void visit_serialize(Legion::Serializer &sez, T const &t) {
 
 struct deserialize_visitor {
   deserialize_visitor() = delete;
-  explicit deserialize_visitor(Legion::Deserializer &dez)
-    : dez(dez)
-  { }
+  explicit deserialize_visitor(Legion::Deserializer &dez) : dez(dez) {}
 
   Legion::Deserializer &dez;
 
@@ -204,7 +239,7 @@ class VisitSerialize {
 
 template <typename T>
 size_t ff_task_serialize(Legion::Serializer &sez, T const &t) {
-  static_assert(is_serializable<T>, "Type must be serializable"); 
+  static_assert(is_serializable<T>, "Type must be serializable");
 
   size_t pre_size = sez.get_used_bytes();
   Serialization<T>::serialize(sez, t);
@@ -220,6 +255,6 @@ T const &ff_task_deserialize(Legion::Deserializer &dez) {
   return Serialization<T>::deserialize(dez);
 }
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/dropout_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/dropout_kernels.h"
 
 namespace FlexFlow {
 
@@ -24,12 +24,11 @@ using Legion::Domain;
 using Legion::Memory;
 
 DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
-                         float rate,
-                         unsigned long long seed,
-                         bool profiling,
-                         Domain const &output_domain)
-    : PerDeviceOpState(handler, profiling)
-{
+                                             float rate,
+                                             unsigned long long seed,
+                                             bool profiling,
+                                             Domain const &output_domain)
+    : PerDeviceOpState(handler, profiling) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
@@ -57,12 +56,8 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
   }
   // checkCUDA(cudaMalloc(&dropoutStates, dropoutStateSize));
   // checkCUDA(cudaMalloc(&reserveSpace, reserveSpaceSize));
-  checkCUDNN(cudnnSetDropoutDescriptor(dropoutDesc,
-                                       handle.dnn,
-                                       rate,
-                                       dropoutStates,
-                                       dropoutStateSize,
-                                       seed));
+  checkCUDNN(cudnnSetDropoutDescriptor(
+      dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed));
 }
 
 DropoutPerDeviceState::~DropoutPerDeviceState(void) {

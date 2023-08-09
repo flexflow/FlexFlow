@@ -6,9 +6,12 @@
 
 namespace FlexFlow {
 
-template <> void register_task<FUSEDOP_INIT_TASK_ID>();
-template <> void register_task<FUSEDOP_FWD_TASK_ID>();
-template <> void register_task<FUSEDOP_BWD_TASK_ID>();
+template <>
+void register_task<FUSEDOP_INIT_TASK_ID>();
+template <>
+void register_task<FUSEDOP_FWD_TASK_ID>();
+template <>
+void register_task<FUSEDOP_BWD_TASK_ID>();
 
 OpTaskInvocation init(FusedOpAttrs const &);
 OpTaskInvocation forward(FusedOpAttrs const &);
@@ -36,22 +39,25 @@ OpTaskInvocation backward(FusedOpAttrs const &);
 /*   void forward(FFModel const &) override; */
 /*   void backward(FFModel const &) override; */
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
 /*                              MachineView const &pc, */
 /*                              CostMetrics &cost_metrics) const override; */
 
-/*   OpTaskBinding get_init_task_binding() const override; */ 
+/*   OpTaskBinding get_init_task_binding() const override; */
 /*   TaskID get_init_task_id() const override; */
 /*   OpTaskBinding get_fwd_task_binding() const override; */
 /*   TaskID get_fwd_task_id() const override; */
@@ -78,6 +84,6 @@ OpTaskInvocation backward(FusedOpAttrs const &);
 /*   int numOperators; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

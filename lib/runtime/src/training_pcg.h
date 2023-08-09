@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TRAINING_PCG_H
 #define _FLEXFLOW_RUNTIME_SRC_TRAINING_PCG_H
 
-#include "parallel_computation_graph.h"
-#include "op-attrs/ops/loss_functions.h"
 #include "metrics_functions.h"
+#include "op-attrs/ops/loss_functions.h"
+#include "parallel_computation_graph.h"
 
 namespace FlexFlow {
 
@@ -21,6 +21,6 @@ std::vector<TaskInvocation> forward(TrainingPCG const &);
 std::vector<TaskInvocation> backward(TrainingPCG const &);
 TaskInvocation compute_metrics(TrainingPCG const &, PerfMetrics const &);
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include "kernels/linear_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/linear_kernels.h"
 
 namespace FlexFlow {
 
-LinearPerDeviceState::LinearPerDeviceState(FFHandler handler, int batch_size) : PerDeviceOpState(handler) {
+LinearPerDeviceState::LinearPerDeviceState(FFHandler handler, int batch_size)
+    : PerDeviceOpState(handler) {
   // Allocate an all-one's vector
   float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++) {
@@ -80,15 +81,16 @@ void init_kernel(LinearPerDeviceState *m, int batch_size, int channel) {
   }
 }
 
-void forward_kernel(cudaStream_t stream, LinearPerDeviceState const *m,
-                            void const *input_ptr,
-                            void *output_ptr,
-                            void const *weight_ptr,
-                            void const *bias_ptr,
-                            int in_dim,
-                            int out_dim,
-                            int batch_size) {
-  
+void forward_kernel(cudaStream_t stream,
+                    LinearPerDeviceState const *m,
+                    void const *input_ptr,
+                    void *output_ptr,
+                    void const *weight_ptr,
+                    void const *bias_ptr,
+                    int in_dim,
+                    int out_dim,
+                    int batch_size) {
+
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
@@ -164,18 +166,19 @@ void forward_kernel(cudaStream_t stream, LinearPerDeviceState const *m,
   }
 }
 
-void backward_kernel(cudaStream_t stream, LinearPerDeviceState const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void *output_grad_ptr,
-                             void const *kernel_ptr,
-                             void *kernel_grad_ptr,
-                             void *bias_grad_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size) {
-  
+void backward_kernel(cudaStream_t stream,
+                     LinearPerDeviceState const *m,
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void *output_grad_ptr,
+                     void const *kernel_ptr,
+                     void *kernel_grad_ptr,
+                     void *bias_grad_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int batch_size) {
+
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -268,7 +271,6 @@ void backward_kernel(cudaStream_t stream, LinearPerDeviceState const *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
-  
 }
 
 } // namespace Linear

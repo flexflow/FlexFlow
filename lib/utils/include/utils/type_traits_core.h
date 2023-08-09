@@ -9,33 +9,38 @@ template <bool b>
 using bool_constant = std::integral_constant<bool, b>;
 
 // from https://en.cppreference.com/w/cpp/types/conjunction
-template<class...> struct conjunction : std::true_type { };
-template<class B1> struct conjunction<B1> : B1 { };
-template<class B1, class... Bn>
+template <class...>
+struct conjunction : std::true_type {};
+template <class B1>
+struct conjunction<B1> : B1 {};
+template <class B1, class... Bn>
 struct conjunction<B1, Bn...>
     : std::conditional<bool(B1::value), conjunction<Bn...>, B1>::type {};
 
 // from https://en.cppreference.com/w/cpp/types/negation
-template<class B>
-struct negation : bool_constant<!bool(B::value)> { };
+template <class B>
+struct negation : bool_constant<!bool(B::value)> {};
 
 // from https://en.cppreference.com/w/cpp/types/disjunction
-template<class...> struct disjunction : std::false_type { };
-template<class B1> struct disjunction<B1> : B1 { };
-template<class B1, class... Bn>
+template <class...>
+struct disjunction : std::false_type {};
+template <class B1>
+struct disjunction<B1> : B1 {};
+template <class B1, class... Bn>
 struct disjunction<B1, Bn...>
-    : std::conditional<bool(B1::value), B1, disjunction<Bn...>>::type  { };
+    : std::conditional<bool(B1::value), B1, disjunction<Bn...>>::type {};
 
 template <typename LHS, typename RHS>
-struct implies
-    : disjunction<RHS, negation<LHS>> { };
+struct implies : disjunction<RHS, negation<LHS>> {};
 
-template< typename... Ts >
-struct make_void { typedef void type; };
- 
-template< typename... Ts >
+template <typename... Ts>
+struct make_void {
+  typedef void type;
+};
+
+template <typename... Ts>
 using void_t = typename make_void<Ts...>::type;
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

@@ -1,14 +1,14 @@
 #include "element_binary.h"
 #include "kernels/element_binary_kernels.h"
-#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 #include "task_spec.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
 enum Tensors {
   LHS_INPUT,
-  RHS_INPUT, 
+  RHS_INPUT,
   OUTPUT,
   LHS_INPUT_GRAD,
   RHS_INPUT_GRAD,
@@ -330,10 +330,11 @@ void ElementBinary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-PerDeviceOpState *ElementBinary::init_task(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
+PerDeviceOpState *
+    ElementBinary::init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementBinaryMeta *m = new ElementBinaryMeta(handle);
@@ -402,11 +403,9 @@ OpTaskBinding ElementBinary::get_binding() {
   auto input1 = input_tensor(this, 1);
   auto output = output_tensor(this, 0);
 
-  binding.bind({
-    { LHS_INPUT, input0 },
-    { RHS_INPUT, this->has_same_operands ? input0 : input1},
-    { OUTPUT, this->inplace_a ? input0 : output }
-  });
+  binding.bind({{LHS_INPUT, input0},
+                {RHS_INPUT, this->has_same_operands ? input0 : input1},
+                {OUTPUT, this->inplace_a ? input0 : output}});
 
   return binding;
 }
@@ -491,11 +490,10 @@ void ElementBinary::backward(FFModel const &ff) {
   regions[1](I): in2
   regions[2](O): output
 */
-void
-    ElementBinary::forward_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {
+void ElementBinary::forward_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
 
@@ -545,7 +543,6 @@ void ElementBinary::backward_task(Task const *task,
 
   /* Domain out_grad_domain = runtime->get_index_space_domain( */
   /*     ctx, task->regions[0].region.get_index_space()); */
-
 
   /* if (m->inplace_a) { */
   /*   in0_grad_ptr = helperGetTensorPointerRW<float>( */

@@ -35,13 +35,13 @@ using Legion::Task;
 namespace Kernels {
 namespace BatchNorm {
 
-void forward_kernel(hipStream_t stream, BatchNormPerDeviceState *m,
-                               float const *input_ptr,
-                               float *output_ptr,
-                               float const *scale_ptr,
-                               float const *bias_ptr)
-{
-  
+void forward_kernel(hipStream_t stream,
+                    BatchNormPerDeviceState *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    float const *scale_ptr,
+                    float const *bias_ptr) {
+
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -66,17 +66,17 @@ void forward_kernel(hipStream_t stream, BatchNormPerDeviceState *m,
       m->saveVar));
 }
 
-void backward_kernel(hipStream_t stream, BatchNormPerDeviceState *m,
-                                float const *input_ptr,
-                                float *output_grad_ptr,
-                                float const *output_ptr,
-                                float *input_grad_ptr,
-                                float const *scale_ptr,
-                                float *scale_grad_ptr,
-                                float *bias_grad_ptr,
-                                size_t numElements)
-{
-  
+void backward_kernel(hipStream_t stream,
+                     BatchNormPerDeviceState *m,
+                     float const *input_ptr,
+                     float *output_grad_ptr,
+                     float const *output_ptr,
+                     float *input_grad_ptr,
+                     float const *scale_ptr,
+                     float *scale_grad_ptr,
+                     float *bias_grad_ptr,
+                     size_t numElements) {
+
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -115,12 +115,12 @@ void backward_kernel(hipStream_t stream, BatchNormPerDeviceState *m,
 } // namespace Kernels
 
 BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
-                             BatchNorm const *bn,
-                             Memory gpu_mem,
-                             int output_n,
-                             int output_c,
-                             int output_h,
-                             int output_w)
+                                                 BatchNorm const *bn,
+                                                 Memory gpu_mem,
+                                                 int output_n,
+                                                 int output_c,
+                                                 int output_h,
+                                                 int output_w)
     : PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
@@ -158,7 +158,7 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
     saveMean = (float *)runningVar + output_c;
     saveVar = (float *)saveMean + output_c;
     hipStream_t stream;
-    
+
     hipLaunchKernelGGL(assign_kernel,
                        GET_BLOCKS(output_c),
                        CUDA_NUM_THREADS,
@@ -182,7 +182,6 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
         actiDesc, miopenActivationRELU, 0.0, 0.0, 0.0));
   }
 }
-
 
 BatchNormPerDeviceState::~BatchNormPerDeviceState(void) {
   reserveInst.destroy();

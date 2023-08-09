@@ -8,19 +8,19 @@
 /* #include <type_traits> */
 
 // namespace FlexFlow {
-// 
+//
 // class PerDeviceOpState {
 // public:
 //   PerDeviceOpState(PerDeviceFFHandle const &handle);
 // public:
 //   PerDeviceFFHandle handle;
-// 
+//
 //   /* stack_vector<bool, MAX_NUM_INPUTS> trainableInputs; */
 //   /* stack_vector<DataType, MAX_NUM_INPUTS> input_type; */
 //   /* stack_vector<DataType, MAX_NUM_WEIGHTS> weight_type; */
 //   /* stack_vector<DataType, MAX_NUM_OUTPUTS> output_type; */
 // };
-// 
-// }; 
+//
+// };
 
-#endif 
+#endif

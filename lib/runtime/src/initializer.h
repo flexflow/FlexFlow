@@ -16,28 +16,34 @@
 #ifndef _FLEXFLOW_INITIALIZER_H_
 #define _FLEXFLOW_INITIALIZER_H_
 
+#include "kernels/accessor.h"
 #include "legion.h"
 #include "op-attrs/tensor_shape.h"
 #include "runtime/config.h"
-#include "kernels/accessor.h"
-#include "task_signature.h"
 #include "task_invocation.h"
+#include "task_signature.h"
 
 namespace FlexFlow {
 
 struct ParallelTensor;
 struct parallel_tensor_guid_t;
 
-template <> void register_task<GLOROT_INIT_TASK_ID>();
-template <> void register_task<ZERO_INIT_TASK_ID>();
-template <> void register_task<UNIFORM_INIT_TASK_ID>();
-template <> void register_task<NORMAL_INIT_TASK_ID>();
-template <> void register_task<CONSTANT_INIT_TASK_ID>();
+template <>
+void register_task<GLOROT_INIT_TASK_ID>();
+template <>
+void register_task<ZERO_INIT_TASK_ID>();
+template <>
+void register_task<UNIFORM_INIT_TASK_ID>();
+template <>
+void register_task<NORMAL_INIT_TASK_ID>();
+template <>
+void register_task<CONSTANT_INIT_TASK_ID>();
 
 class GlorotUniform : public use_visitable_cmp<GlorotUniform> {
 public:
   GlorotUniform() = delete;
   GlorotUniform(int seed);
+
 public:
   int seed;
   /* float scale; */
@@ -52,6 +58,7 @@ public:
 class UniformInitializer : public use_visitable_cmp<UniformInitializer> {
 public:
   UniformInitializer(int seed, float min, float max);
+
 public:
   int seed;
   float min_val, max_val;
@@ -60,6 +67,7 @@ public:
 class NormInitializer : public use_visitable_cmp<NormInitializer> {
 public:
   NormInitializer(int seed, float mean, float stddev);
+
 public:
   int seed;
   float mean, stddev;
@@ -73,32 +81,30 @@ public:
   DataTypeValue value;
 };
 
-using Initializer = variant<
-  GlorotUniform,
-  ZeroInitializer,
-  UniformInitializer,
-  NormInitializer,
-  ConstantInitializer
->;
+using Initializer = variant<GlorotUniform,
+                            ZeroInitializer,
+                            UniformInitializer,
+                            NormInitializer,
+                            ConstantInitializer>;
 
-TaskInvocation apply_initializer(GlorotUniform const &, 
+TaskInvocation apply_initializer(GlorotUniform const &,
                                  parallel_tensor_guid_t const &,
-                                 ParallelTensor const &, 
-                                 TensorShape const &); 
-TaskInvocation apply_initializer(ZeroInitializer const &, 
-                                 parallel_tensor_guid_t const &,
-                                 ParallelTensor const &);
-TaskInvocation apply_initializer(UniformInitializer const &, 
+                                 ParallelTensor const &,
+                                 TensorShape const &);
+TaskInvocation apply_initializer(ZeroInitializer const &,
                                  parallel_tensor_guid_t const &,
                                  ParallelTensor const &);
-TaskInvocation apply_initializer(NormInitializer const &, 
+TaskInvocation apply_initializer(UniformInitializer const &,
                                  parallel_tensor_guid_t const &,
                                  ParallelTensor const &);
-TaskInvocation apply_initializer(ConstantInitializer const &, 
+TaskInvocation apply_initializer(NormInitializer const &,
+                                 parallel_tensor_guid_t const &,
+                                 ParallelTensor const &);
+TaskInvocation apply_initializer(ConstantInitializer const &,
                                  parallel_tensor_guid_t const &,
                                  ParallelTensor const &);
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::GlorotUniform, seed);
 VISITABLE_STRUCT_EMPTY(::FlexFlow::ZeroInitializer);

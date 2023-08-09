@@ -16,19 +16,19 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TENSOR_H
 #define _FLEXFLOW_RUNTIME_SRC_TENSOR_H
 
+#include "create_grad.h"
+#include "initializer.h"
+#include "kernels/array_shape.h"
 #include "legion.h"
-#include <unordered_map>
-#include <memory>
+#include "legion_tensor_shape.h"
 #include "op-attrs/datatype.h"
 #include "op-attrs/param_sync.h"
-#include "utils/stack_vector.h"
-#include "kernels/array_shape.h"
 #include "op-attrs/tensor_shape.h"
-#include "legion_tensor_shape.h"
-#include <type_traits>
-#include "initializer.h"
-#include "create_grad.h"
 #include "utils/optional.h"
+#include "utils/stack_vector.h"
+#include <memory>
+#include <type_traits>
+#include <unordered_map>
 
 namespace FlexFlow {
 
@@ -37,8 +37,8 @@ struct FFModel;
 struct Tensor : public use_visitable_cmp<Tensor> {
   Tensor() = delete;
   Tensor(TensorShape const &,
-         CreateGrad create_gradients, 
-         optional<Initializer const &> initializer = nullopt, 
+         CreateGrad create_gradients,
+         optional<Initializer const &> initializer = nullopt,
          optional<ParamSync> sync_type = nullopt);
 
   size_t get_volume() const;
@@ -49,6 +49,7 @@ struct Tensor : public use_visitable_cmp<Tensor> {
   operator TensorShape const &() const;
 
   friend void swap(Tensor &, Tensor &);
+
 public:
   TensorDims dims;
   DataType data_type;
@@ -64,17 +65,23 @@ bool set_tensor(Tensor const &,
                 T const *data);
 template <typename T>
 bool get_tensor(Tensor const &,
-                FFModel const *model, 
-                T *data, 
+                FFModel const *model,
+                T *data,
                 bool get_gradients);
 
-static_assert(std::is_copy_constructible<Tensor>::value, "Tensor must be copy constructible");
+static_assert(std::is_copy_constructible<Tensor>::value,
+              "Tensor must be copy constructible");
 
 using Parameter = Tensor;
 
-}
+} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::Tensor, dims, data_type, initializer, create_gradients, sync_type);
+VISITABLE_STRUCT(::FlexFlow::Tensor,
+                 dims,
+                 data_type,
+                 initializer,
+                 create_gradients,
+                 sync_type);
 MAKE_VISIT_HASHABLE(::FlexFlow::Tensor);
 
 #endif

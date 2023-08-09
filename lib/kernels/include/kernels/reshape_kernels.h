@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_RESHAPE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_RESHAPE_KERNELS_H
 
-#include "kernels/device.h"
 #include "kernels/accessor.h"
+#include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
@@ -25,7 +25,6 @@ void backward_kernel(ffStream_t stream,
                      ReshapePerDeviceState const *m,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output);
-
 
 } // namespace Reshape
 } // namespace Kernels

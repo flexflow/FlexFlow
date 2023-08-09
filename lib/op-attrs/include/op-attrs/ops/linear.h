@@ -10,7 +10,11 @@ namespace FlexFlow {
 
 struct LinearAttrs : public use_visitable_cmp<LinearAttrs> {
 public:
-  LinearAttrs(int out_channels, bool use_bias, DataType data_type, Activation activation);
+  LinearAttrs(int out_channels,
+              bool use_bias,
+              DataType data_type,
+              Activation activation);
+
 public:
   int out_channels;
   bool use_bias;
@@ -18,9 +22,10 @@ public:
   Activation activation;
 };
 
-}
+} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::LinearAttrs, out_channels, use_bias, data_type, activation);
+VISITABLE_STRUCT(
+    ::FlexFlow::LinearAttrs, out_channels, use_bias, data_type, activation);
 MAKE_VISIT_HASHABLE(::FlexFlow::LinearAttrs);
 
-#endif 
+#endif

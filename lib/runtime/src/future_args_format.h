@@ -2,9 +2,9 @@
 #define _FLEXFLOW_RUNTIME_SRC_FUTURE_ARGS_FORMAT_H
 
 #include "legion.h"
-#include "utils/stack_map.h"
-#include "tensorless_task_invocation.h"
 #include "task_argument_accessor.h"
+#include "tensorless_task_invocation.h"
+#include "utils/stack_map.h"
 
 namespace FlexFlow {
 
@@ -14,8 +14,9 @@ struct FutureArgsFormat {
 };
 
 FutureArgsFormat process_future_args(TensorlessTaskBinding const &);
-CheckedTypedFuture resolve_future_map_arg(CheckedTypedFuture const &, Legion::Domain const &);
+CheckedTypedFuture resolve_future_map_arg(CheckedTypedFuture const &,
+                                          Legion::Domain const &);
 
-}
+} // namespace FlexFlow
 
 #endif

@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-#include "kernels/pool_2d_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/pool_2d_kernels.h"
 
 namespace FlexFlow {
 
-Pool2DPerDeviceState::Pool2DPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {
+Pool2DPerDeviceState::Pool2DPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));
@@ -79,9 +80,10 @@ void init_kernel(Pool2DPerDeviceState *m,
       m->outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
 }
 
-void forward_kernel(cudaStream_t stream, Pool2DPerDeviceState const *m,
-                            void const *input_ptr,
-                            void *output_ptr) {
+void forward_kernel(cudaStream_t stream,
+                    Pool2DPerDeviceState const *m,
+                    void const *input_ptr,
+                    void *output_ptr) {
 
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -96,12 +98,13 @@ void forward_kernel(cudaStream_t stream, Pool2DPerDeviceState const *m,
                                  output_ptr));
 }
 
-void backward_kernel(cudaStream_t stream, Pool2DPerDeviceState const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void const *output_grad_ptr) {
-  
+void backward_kernel(cudaStream_t stream,
+                     Pool2DPerDeviceState const *m,
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void const *output_grad_ptr) {
+
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;

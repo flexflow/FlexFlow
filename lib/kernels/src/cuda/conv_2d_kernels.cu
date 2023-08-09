@@ -3,7 +3,8 @@
 
 namespace FlexFlow {
 
-Conv2DPerDeviceState::Conv2DPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {
+Conv2DPerDeviceState::Conv2DPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -97,35 +98,34 @@ void init_kernel(Conv2DPerDeviceState *m,
 
   float time;
   // select forward algorithm
-  m->fwdAlgo =
-      selectConvolutionForwardAlgorithm(m->handle.dnn,
-                                                  m->inputTensor,
-                                                  input_ptr,
-                                                  m->filterDesc,
-                                                  kernel_ptr,
-                                                  m->convDesc,
-                                                  m->handle.workSpace,
-                                                  m->handle.workSpaceSize,
-                                                  m->outputTensor,
-                                                  output_ptr,
-                                                  &time);
+  m->fwdAlgo = selectConvolutionForwardAlgorithm(m->handle.dnn,
+                                                 m->inputTensor,
+                                                 input_ptr,
+                                                 m->filterDesc,
+                                                 kernel_ptr,
+                                                 m->convDesc,
+                                                 m->handle.workSpace,
+                                                 m->handle.workSpaceSize,
+                                                 m->outputTensor,
+                                                 output_ptr,
+                                                 &time);
   if (forward_time != nullptr) {
     *forward_time += time;
   }
 
   // select backward filter algorithm
-  m->bwdFilterAlgo = selectConvolutionBackwardFilterAlgorithm(
-      m->handle.dnn,
-      m->inputTensor,
-      input_ptr,
-      m->outputTensor,
-      output_ptr,
-      m->convDesc,
-      m->handle.workSpace,
-      m->handle.workSpaceSize,
-      m->filterDesc,
-      kernel_grad_ptr,
-      &time);
+  m->bwdFilterAlgo =
+      selectConvolutionBackwardFilterAlgorithm(m->handle.dnn,
+                                               m->inputTensor,
+                                               input_ptr,
+                                               m->outputTensor,
+                                               output_ptr,
+                                               m->convDesc,
+                                               m->handle.workSpace,
+                                               m->handle.workSpaceSize,
+                                               m->filterDesc,
+                                               kernel_grad_ptr,
+                                               &time);
   if (backward_time != nullptr) {
     *backward_time += time;
   }
@@ -133,16 +133,16 @@ void init_kernel(Conv2DPerDeviceState *m,
   // select backward data algorithm
   m->bwdDataAlgo =
       selectConvolutionBackwardDataAlgorithm(m->handle.dnn,
-                                                       m->filterDesc,
-                                                       kernel_ptr,
-                                                       m->outputTensor,
-                                                       output_ptr,
-                                                       m->convDesc,
-                                                       m->handle.workSpace,
-                                                       m->handle.workSpaceSize,
-                                                       m->inputTensor,
-                                                       (float *)input_ptr,
-                                                       &time);
+                                             m->filterDesc,
+                                             kernel_ptr,
+                                             m->outputTensor,
+                                             output_ptr,
+                                             m->convDesc,
+                                             m->handle.workSpace,
+                                             m->handle.workSpaceSize,
+                                             m->inputTensor,
+                                             (float *)input_ptr,
+                                             &time);
   if (backward_time != nullptr) {
     *backward_time += time;
   }
@@ -388,7 +388,6 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
   }
   return perfResults[0].algo;
 }
-
 
 } // namespace Conv2D
 } // namespace Kernels

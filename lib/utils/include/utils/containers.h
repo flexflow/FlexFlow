@@ -1,26 +1,29 @@
 #ifndef _FLEXFLOW_UTILS_CONTAINERS_H
 #define _FLEXFLOW_UTILS_CONTAINERS_H
 
-#include <type_traits>
-#include <string>
-#include <sstream>
-#include <functional>
-#include <iostream>
-#include "tl/optional.hpp"
-#include <algorithm>
-#include <unordered_set>
-#include <unordered_map>
-#include <vector>
-#include <cassert>
 #include "bidict.h"
 #include "stack_map.h"
+#include "tl/optional.hpp"
+#include <algorithm>
+#include <cassert>
+#include <functional>
+#include <iostream>
 #include <map>
 #include <numeric>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace FlexFlow {
 
 template <typename InputIt, typename F>
-std::string join_strings(InputIt first, InputIt last, std::string const &delimiter, F const &f) {
+std::string join_strings(InputIt first,
+                         InputIt last,
+                         std::string const &delimiter,
+                         F const &f) {
   std::ostringstream oss;
   bool first_iter = true;
   /* int i = 0; */
@@ -37,9 +40,10 @@ std::string join_strings(InputIt first, InputIt last, std::string const &delimit
 }
 
 template <typename InputIt>
-std::string join_strings(InputIt first, InputIt last, std::string const &delimiter) {
+std::string
+    join_strings(InputIt first, InputIt last, std::string const &delimiter) {
   using Ref = typename InputIt::reference;
-  return join_strings<InputIt>(first, last, delimiter, [](Ref r){ return r; });
+  return join_strings<InputIt>(first, last, delimiter, [](Ref r) { return r; });
 }
 
 template <typename Container>
@@ -48,7 +52,8 @@ std::string join_strings(Container const &c, std::string const &delimiter) {
 }
 
 template <typename Container>
-typename Container::const_iterator find(Container const &c, typename Container::value_type const &e) {
+typename Container::const_iterator
+    find(Container const &c, typename Container::value_type const &e) {
   return std::find(c.cbegin(), c.cend(), e);
 }
 
@@ -61,7 +66,9 @@ Element sum(Container const &container) {
   return result;
 }
 
-template <typename Container, typename ConditionF, typename Element = typename Container::value_type>
+template <typename Container,
+          typename ConditionF,
+          typename Element = typename Container::value_type>
 Element sum(Container const &container, ConditionF const &condition) {
   Element result = 0;
   for (Element const &element : container) {
@@ -72,7 +79,6 @@ Element sum(Container const &container, ConditionF const &condition) {
   return result;
 }
 
-
 template <typename Container, typename Element = typename Container::value_type>
 Element product(Container const &container) {
   Element result = 1;
@@ -82,7 +88,9 @@ Element product(Container const &container) {
   return result;
 }
 
-template <typename Container, typename ConditionF, typename Element = typename Container::value_type>
+template <typename Container,
+          typename ConditionF,
+          typename Element = typename Container::value_type>
 Element product_where(Container const &container, ConditionF const &condition) {
   Element result = 1;
   for (Element const &element : container) {
@@ -96,7 +104,10 @@ Element product_where(Container const &container, ConditionF const &condition) {
 template <typename It>
 typename It::value_type product(It begin, It end) {
   using Element = typename It::value_type;
-  return std::accumulate(begin, end, 1, [](Element const &lhs, Element const &rhs) { return lhs * rhs; });
+  return std::accumulate(
+      begin, end, 1, [](Element const &lhs, Element const &rhs) {
+        return lhs * rhs;
+      });
 }
 
 template <typename Container>
@@ -129,8 +140,12 @@ bool contains_r(bidict<K, V> const &m, V const &v) {
   return m.find(v) != m.end();
 }
 
-template <typename K, typename V, typename F, typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
-std::unordered_map<K2, V> map_values(std::unordered_map<K, V> const &m, F const &f) {
+template <typename K,
+          typename V,
+          typename F,
+          typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
+std::unordered_map<K2, V> map_values(std::unordered_map<K, V> const &m,
+                                     F const &f) {
   std::unordered_map<K2, V> result;
   for (auto const &kv : f) {
     result.insert({f(kv.first), kv.second});
@@ -139,7 +154,8 @@ std::unordered_map<K2, V> map_values(std::unordered_map<K, V> const &m, F const 
 }
 
 template <typename K, typename V, typename F>
-std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m, F const &f) {
+std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
+                                     F const &f) {
   std::unordered_map<K, V> result;
   for (auto const &kv : f) {
     if (f(kv.first)) {
@@ -149,8 +165,12 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m, F const 
   return result;
 }
 
-template <typename K, typename V, typename F, typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
-std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m, F const &f) {
+template <typename K,
+          typename V,
+          typename F,
+          typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
+std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
+                                     F const &f) {
   std::unordered_map<K, V2> result;
   for (auto const &kv : m) {
     result.insert({kv.first, f(kv.second)});
@@ -158,8 +178,9 @@ std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m, F const 
   return result;
 }
 
-template <typename K, typename V, typename F> 
-std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m, F const &f) {
+template <typename K, typename V, typename F>
+std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
+                                       F const &f) {
   std::unordered_map<K, V> result;
   for (auto const &kv : m) {
     if (f(kv.second)) {
@@ -168,7 +189,6 @@ std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m, F cons
   }
   return result;
 }
-
 
 template <typename C>
 std::vector<typename C::key_type> keys(C const &c) {
@@ -204,7 +224,8 @@ tl::optional<std::size_t> index_of(Container const &c, Element const &e) {
 }
 
 template <typename T>
-std::unordered_set<T> intersection(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+std::unordered_set<T> intersection(std::unordered_set<T> const &l,
+                                   std::unordered_set<T> const &r) {
   std::unordered_set<T> result;
   for (T const &ll : l) {
     if (contains(r, ll)) {
@@ -215,12 +236,14 @@ std::unordered_set<T> intersection(std::unordered_set<T> const &l, std::unordere
 }
 
 template <typename T>
-bool are_disjoint(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+bool are_disjoint(std::unordered_set<T> const &l,
+                  std::unordered_set<T> const &r) {
   return intersection<T>(l, r).empty();
 }
 
 template <typename K, typename V>
-std::unordered_map<K, V> restrict_keys(std::unordered_map<K, V> const &m, std::unordered_set<K> const &mask) {
+std::unordered_map<K, V> restrict_keys(std::unordered_map<K, V> const &m,
+                                       std::unordered_set<K> const &mask) {
   std::unordered_map<K, V> result;
   for (auto const &kv : m) {
     if (contains(mask, kv.first)) {
@@ -230,9 +253,10 @@ std::unordered_map<K, V> restrict_keys(std::unordered_map<K, V> const &m, std::u
   return result;
 }
 
-template <typename K, typename V> 
-std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs, std::unordered_map<K, V> const &rhs) {
-  assert (are_disjoint(keys(lhs), keys(rhs)));
+template <typename K, typename V>
+std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
+                                    std::unordered_map<K, V> const &rhs) {
+  assert(are_disjoint(keys(lhs), keys(rhs)));
 
   std::unordered_map<K, V> result;
   for (auto const &kv : lhs) {
@@ -247,7 +271,7 @@ std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs, std::un
 
 template <typename K, typename V>
 bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
-  assert (are_disjoint(keys(lhs), keys(rhs)));
+  assert(are_disjoint(keys(lhs), keys(rhs)));
 
   bidict<K, V> result;
   for (auto const &kv : lhs) {
@@ -275,8 +299,9 @@ std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
   return [&m](R const &r) -> R { return m.at_r(r); };
 }
 
-template <typename T> 
-std::unordered_set<T> set_union(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+template <typename T>
+std::unordered_set<T> set_union(std::unordered_set<T> const &l,
+                                std::unordered_set<T> const &r) {
   std::unordered_set<T> result = l;
   result.insert(r.cbegin(), r.cend());
   return result;
@@ -294,7 +319,8 @@ std::unordered_set<T> set_union(C const &sets) {
 }
 
 template <typename T>
-bool is_subseteq_of(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+bool is_subseteq_of(std::unordered_set<T> const &l,
+                    std::unordered_set<T> const &r) {
   if (l.size() > r.size()) {
     return false;
   }
@@ -307,22 +333,26 @@ bool is_subseteq_of(std::unordered_set<T> const &l, std::unordered_set<T> const 
   return true;
 }
 
-template <typename T> 
-bool is_supserseteq_of(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+template <typename T>
+bool is_supserseteq_of(std::unordered_set<T> const &l,
+                       std::unordered_set<T> const &r) {
   return is_subseteq_of<T>(r, l);
 }
 
 template <typename S, typename D>
-std::unordered_set<D> map_over_unordered_set(std::function<D(S const &)> const &f, std::unordered_set<S> const &input) {
+std::unordered_set<D>
+    map_over_unordered_set(std::function<D(S const &)> const &f,
+                           std::unordered_set<S> const &input) {
   std::unordered_set<D> result;
-  std::transform(input.cbegin(), input.cend(), std::inserter(result, result.begin()), f);
+  std::transform(
+      input.cbegin(), input.cend(), std::inserter(result, result.begin()), f);
   return result;
 }
 
 template <typename C>
 typename C::value_type get_only(C const &c) {
-  assert (c.size() == 1);
-  return *c.cbegin(); 
+  assert(c.size() == 1);
+  return *c.cbegin();
 }
 
 template <typename T>
@@ -368,7 +398,9 @@ bool are_all_same(C const &c) {
   return true;
 }
 
-template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+template <typename F,
+          typename In,
+          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
 std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
@@ -381,7 +413,9 @@ std::vector<E> as_vector(C const &c) {
   return result;
 }
 
-template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+template <typename F,
+          typename In,
+          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
 std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
@@ -395,7 +429,10 @@ std::string transform(std::string const &s, F const &f) {
   return result;
 }
 
-template <typename In, typename F, typename Out = typename decltype(std::declval<F>()(std::declval<In>()))::value_type>
+template <typename In,
+          typename F,
+          typename Out = typename decltype(std::declval<F>()(
+              std::declval<In>()))::value_type>
 std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   for (auto const &elem : v) {
@@ -417,14 +454,14 @@ void inplace_filter(C &v, F const &f) {
 }
 
 template <typename T>
-std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v, std::size_t idx) {
-  assert (v.size() > idx);
+std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
+                                                       std::size_t idx) {
+  assert(v.size() > idx);
 
   std::vector<T> prefix(v.begin(), v.begin() + idx);
   std::vector<T> postfix(v.begin() + idx, v.end());
-  return { prefix, postfix };
+  return {prefix, postfix};
 }
-
 
 template <typename T>
 T maximum(std::vector<T> const &v) {
@@ -447,8 +484,8 @@ T reversed(T const &t) {
 
 template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
-  std::vector<T> result; 
-  
+  std::vector<T> result;
+
   for (auto const &element : v) {
     result.push_back(element.value());
   }
@@ -457,17 +494,20 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
 }
 
 template <typename T>
-std::vector<T> subvec(std::vector<T> const &v, optional<int> const &maybe_start, optional<int> const &maybe_end) {
+std::vector<T> subvec(std::vector<T> const &v,
+                      optional<int> const &maybe_start,
+                      optional<int> const &maybe_end) {
   auto begin_iter = v.cbegin();
   auto end_iter = v.cend();
 
-  auto resolve_loc = [&](int idx) -> typename std::vector<T>::iterator::difference_type {
-    if (idx < 0) { 
-      return v.size() - idx;
-    } else {
-      return idx;
-    }
-  };
+  auto resolve_loc = [&](int idx) ->
+      typename std::vector<T>::iterator::difference_type {
+        if (idx < 0) {
+          return v.size() - idx;
+        } else {
+          return idx;
+        }
+      };
 
   if (maybe_start.has_value()) {
     begin_iter += resolve_loc(maybe_start.value());
@@ -483,9 +523,7 @@ std::vector<T> subvec(std::vector<T> const &v, optional<int> const &maybe_start,
 template <typename C>
 struct reversed_container_t {
   reversed_container_t() = delete;
-  reversed_container_t(C const &c)
-    : container(c)
-  { }
+  reversed_container_t(C const &c) : container(c) {}
 
   reversed_container_t(reversed_container_t const &) = delete;
   reversed_container_t(reversed_container_t &&) = delete;
@@ -549,6 +587,7 @@ struct reversed_container_t {
   const_reverse_iterator rend() const {
     return this->crend();
   }
+
 private:
   C const &container;
 };
@@ -558,7 +597,6 @@ reversed_container_t<C> reversed_container(C const &c) {
   return reversed_container_t<C>(c);
 }
 
-
-}
+} // namespace FlexFlow
 
 #endif

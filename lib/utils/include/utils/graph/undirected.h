@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 #define _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 
-#include "tl/optional.hpp"
-#include <unordered_set>
 #include "node.h"
-#include "utils/unique.h"
+#include "tl/optional.hpp"
 #include "utils/maybe_owned_ref.h"
+#include "utils/unique.h"
+#include <unordered_set>
 
 namespace FlexFlow {
 
@@ -13,11 +13,12 @@ struct UndirectedEdge : use_visitable_cmp<UndirectedEdge> {
 public:
   UndirectedEdge() = delete;
   UndirectedEdge(Node src, Node dst);
+
 public:
   Node smaller, bigger;
 };
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::UndirectedEdge, smaller, bigger);
 MAKE_VISIT_HASHABLE(::FlexFlow::UndirectedEdge);
@@ -31,7 +32,8 @@ struct UndirectedEdgeQuery {
   optional<std::unordered_set<Node>> nodes = nullopt;
 };
 
-UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &, UndirectedEdgeQuery const &);
+UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
+                                       UndirectedEdgeQuery const &);
 
 struct IUndirectedGraphView : public IGraphView {
   using Edge = UndirectedEdge;
@@ -40,13 +42,16 @@ struct IUndirectedGraphView : public IGraphView {
   IUndirectedGraphView(IUndirectedGraphView const &) = delete;
   IUndirectedGraphView &operator=(IUndirectedGraphView const &) = delete;
 
-  virtual std::unordered_set<Edge> query_edges(UndirectedEdgeQuery const &) const = 0;
-  virtual ~IUndirectedGraphView()=default;//TODO, this may have some question
+  virtual std::unordered_set<Edge>
+      query_edges(UndirectedEdgeQuery const &) const = 0;
+  virtual ~IUndirectedGraphView() = default; // TODO, this may have some
+                                             // question
 protected:
   IUndirectedGraphView() = default;
 };
 
-static_assert(is_rc_copy_virtual_compliant<IUndirectedGraphView>::value, RC_COPY_VIRTUAL_MSG);
+static_assert(is_rc_copy_virtual_compliant<IUndirectedGraphView>::value,
+              RC_COPY_VIRTUAL_MSG);
 
 struct UndirectedGraphView {
 public:
@@ -61,29 +66,34 @@ public:
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-  std::unordered_set<Edge> query_edges(EdgeQuery const & query) const {
+  std::unordered_set<Edge> query_edges(EdgeQuery const &query) const {
     return ptr->query_edges(query);
   }
 
-  //TODO
+  // TODO
   operator maybe_owned_ref<IUndirectedGraphView const>() const {
     return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
   }
 
   IUndirectedGraphView const *unsafe() const {
-    return this->ptr.get(); 
+    return this->ptr.get();
   }
 
-  template <typename T, typename ...Args>
+  template <typename T, typename... Args>
   static
-  typename std::enable_if<std::is_base_of<IUndirectedGraphView, T>::value, UndirectedGraphView>::type
-  create(Args &&... args) {
-    return UndirectedGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+      typename std::enable_if<std::is_base_of<IUndirectedGraphView, T>::value,
+                              UndirectedGraphView>::type
+      create(Args &&...args) {
+    return UndirectedGraphView(
+        std::make_shared<T>(std::forward<Args>(args)...));
   }
+
 private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr):ptr(ptr){}
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
+      : ptr(ptr) {}
 
   friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
+
 private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
@@ -121,14 +131,15 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
-  static 
-  typename std::enable_if<std::is_base_of<IUndirectedGraph, T>::value, UndirectedGraph>::type 
-  create() { 
+  static typename std::enable_if<std::is_base_of<IUndirectedGraph, T>::value,
+                                 UndirectedGraph>::type
+      create() {
     return UndirectedGraph(make_unique<T>());
   }
 
 private:
   UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
+
 private:
   std::unique_ptr<IUndirectedGraph> ptr;
 };
@@ -138,7 +149,6 @@ static_assert(std::is_move_constructible<UndirectedGraph>::value, "");
 static_assert(std::is_copy_assignable<UndirectedGraph>::value, "");
 static_assert(std::is_move_assignable<UndirectedGraph>::value, "");
 
-}
-
+} // namespace FlexFlow
 
 #endif

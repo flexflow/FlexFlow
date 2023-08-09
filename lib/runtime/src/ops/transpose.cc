@@ -173,10 +173,11 @@ void Transpose::init_meta(TransposeMeta *m,
   }
 }
 
-PerDeviceOpState *Transpose::init_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+PerDeviceOpState *
+    Transpose::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Transpose const *transpose = (Transpose const *)task->args;

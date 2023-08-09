@@ -1,5 +1,5 @@
 #ifndef _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H
-#define _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H 
+#define _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H
 
 #include "multidigraph.h"
 #include <unordered_map>
@@ -17,30 +17,33 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
-  AdjacencyMultiDiGraph *clone() const override { 
+  AdjacencyMultiDiGraph *clone() const override {
     return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
   }
 
-  AdjacencyMultiDiGraph()=default;
+  AdjacencyMultiDiGraph() = default;
 
-  ~AdjacencyMultiDiGraph()=default;
+  ~AdjacencyMultiDiGraph() = default;
 
 private:
-  using ContentsType = 
-    std::unordered_map<Node, 
-      std::unordered_map<Node,
-        std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>>;
+  using ContentsType = std::unordered_map<
+      Node,
+      std::unordered_map<
+          Node,
+          std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>>;
 
-  AdjacencyMultiDiGraph(std::size_t next_node_idx, ContentsType const & adjacency)
-  : next_node_idx(next_node_idx), adjacency(adjacency){}
-  
+  AdjacencyMultiDiGraph(std::size_t next_node_idx,
+                        ContentsType const &adjacency)
+      : next_node_idx(next_node_idx), adjacency(adjacency) {}
+
 private:
   std::size_t next_node_idx = 0;
   ContentsType adjacency;
 };
 
-static_assert(is_rc_copy_virtual_compliant<AdjacencyMultiDiGraph>::value, RC_COPY_VIRTUAL_MSG);
+static_assert(is_rc_copy_virtual_compliant<AdjacencyMultiDiGraph>::value,
+              RC_COPY_VIRTUAL_MSG);
 
-}
+} // namespace FlexFlow
 
 #endif

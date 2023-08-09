@@ -5,7 +5,10 @@ using namespace Legion;
 namespace FlexFlow {
 
 template <int NDIM, int TDIM>
-void map_linear_weight(ParallelTensor weight, Op const *op, LegionConfig const &config, CompMode computationMode) {
+void map_linear_weight(ParallelTensor weight,
+                       Op const *op,
+                       LegionConfig const &config,
+                       CompMode computationMode) {
   using namespace Legion;
 
   assert(op->op_type == OP_LINEAR);
@@ -100,8 +103,7 @@ void map_linear_weight(ParallelTensor weight, Op const *op, LegionConfig const &
     weight->initializer->init(config, weight);
   }
   // Step 3: backward region
-  if (weight->create_gradients &&
-      computationMode == COMP_MODE_TRAINING) {
+  if (weight->create_gradients && computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
@@ -136,7 +138,10 @@ void map_linear_weight(ParallelTensor weight, Op const *op, LegionConfig const &
 }
 
 template <int NDIM>
-void map_conv_weight(ParallelTensor weight, Op const *op, LegionConfig const &config, CompMode computationMode) {
+void map_conv_weight(ParallelTensor weight,
+                     Op const *op,
+                     LegionConfig const &config,
+                     CompMode computationMode) {
   using namespace Legion;
 
   Context ctx = config.lg_ctx;
@@ -223,8 +228,7 @@ void map_conv_weight(ParallelTensor weight, Op const *op, LegionConfig const &co
     weight->initializer->init(config, weight);
   }
   // Step 3: backward regin and partition
-  if (weight->create_gradients &&
-      computationMode == COMP_MODE_TRAINING) {
+  if (weight->create_gradients && computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
@@ -256,9 +260,9 @@ void map_conv_weight(ParallelTensor weight, Op const *op, LegionConfig const &co
 
 template <int NDIM>
 void map_weight_with_dim(ParallelTensor &weight,
-                                  Op const *parallel_op,
-                                  LegionConfig const &config,
-                                  CompMode computationMode) {
+                         Op const *parallel_op,
+                         LegionConfig const &config,
+                         CompMode computationMode) {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if (weight->owner_op == NULL) {
@@ -274,10 +278,11 @@ void map_weight_with_dim(ParallelTensor &weight,
     case OP_EMBEDDING:
     case OP_MULTIHEAD_ATTENTION: {
       switch (tdim) {
-#define DIMFUNC(TDIM)                                                            \
-  case TDIM: {                                                                   \
-    map_linear_weight<NDIM, TDIM>(weight, parallel_op, config, computationMode); \
-    break;                                                                       \
+#define DIMFUNC(TDIM)                                                          \
+  case TDIM: {                                                                 \
+    map_linear_weight<NDIM, TDIM>(                                             \
+        weight, parallel_op, config, computationMode);                         \
+    break;                                                                     \
   }
         LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -302,7 +307,10 @@ void map_weight_with_dim(ParallelTensor &weight,
   }
 }
 
-void map_weight(ParallelTensor &weight, Op const *op, LegionConfig const &config, CompMode computationMode) {
+void map_weight(ParallelTensor &weight,
+                Op const *op,
+                LegionConfig const &config,
+                CompMode computationMode) {
   switch (weight->num_dims) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
@@ -377,10 +385,10 @@ void create_data_parallel_partition_with_diff_dims(
 
 template <int NDIM>
 void create_disjoint_partition(ParallelTensor const &tensor,
-                                        Legion::IndexSpaceT<NDIM> const &part_is,
-                                        Legion::LogicalPartition &part_fwd,
-                                        Legion::LogicalPartition &part_bwd,
-                                        LegionConfig const &config) {
+                               Legion::IndexSpaceT<NDIM> const &part_is,
+                               Legion::LogicalPartition &part_fwd,
+                               Legion::LogicalPartition &part_bwd,
+                               LegionConfig const &config) {
   using namespace Legion;
 
   Context ctx = config.lg_ctx;
@@ -467,12 +475,12 @@ void create_aliased_partition_with_dim2(
 }
 
 void create_aliased_partition(int num_dims,
-                                       const ParallelDim dims[],
-                                       int aliased_dim,
-                                       Legion::IndexSpace const &part_is,
-                                       Legion::LogicalRegion const &region,
-                                       Legion::LogicalPartition &part,
-                                       LegionConfig const &config) {
+                              const ParallelDim dims[],
+                              int aliased_dim,
+                              Legion::IndexSpace const &part_is,
+                              Legion::LogicalRegion const &region,
+                              Legion::LogicalPartition &part,
+                              LegionConfig const &config) {
   using namespace Legion;
 
   Context ctx = config.lg_ctx;
@@ -497,7 +505,7 @@ void create_disjoint_partition_with_dim2(
     const ParallelDim dims[],
     Legion::IndexSpaceT<TDIM> const &part_is,
     Legion::LogicalRegion const &region,
-    Legion::LogicalPartition &part, 
+    Legion::LogicalPartition &part,
     LegionConfig const &config) {
   using namespace Legion;
 
@@ -556,10 +564,10 @@ void create_disjoint_partition(int num_dims,
 
 template <int NDIM, int TDIM>
 void map_tensor_with_dim2(ParallelTensor &tensor,
-                                   Op const *parallel_op,
-                                   LegionConfig const &config, 
-                                   IndexSpaceManager &is_mgr,
-                                   CompMode computationMode) {
+                          Op const *parallel_op,
+                          LegionConfig const &config,
+                          IndexSpaceManager &is_mgr,
+                          CompMode computationMode) {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if (tensor->owner_op == NULL) {
@@ -603,8 +611,7 @@ void map_tensor_with_dim2(ParallelTensor &tensor,
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor->region = runtime->create_logical_region(ctx, is, fs);
-  if (tensor->create_gradients &&
-      computationMode == COMP_MODE_TRAINING) {
+  if (tensor->create_gradients && computationMode == COMP_MODE_TRAINING) {
     tensor->region_grad = runtime->create_logical_region(ctx, is, fs);
   }
 
@@ -634,8 +641,7 @@ void map_tensor_with_dim2(ParallelTensor &tensor,
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     assert(runtime->is_index_partition_complete(ctx, ip));
     tensor->part = runtime->get_logical_partition(ctx, tensor->region, ip);
-    if (tensor->create_gradients &&
-        computationMode == COMP_MODE_TRAINING) {
+    if (tensor->create_gradients && computationMode == COMP_MODE_TRAINING) {
       tensor->part_grad =
           runtime->get_logical_partition(ctx, tensor->region_grad, ip);
     }
@@ -649,7 +655,10 @@ void map_tensor_with_dim2(ParallelTensor &tensor,
 // Map tensor using parallelization strategies described in parallel_op
 template <int NDIM>
 void map_tensor_with_dim(ParallelTensor &tensor,
-                                  Op const *parallel_op, LegionConfig const &config, IndexSpaceManager &is_mgr, CompMode computationMode) {
+                         Op const *parallel_op,
+                         LegionConfig const &config,
+                         IndexSpaceManager &is_mgr,
+                         CompMode computationMode) {
   tensor->parallel_is = is_mgr.get_or_create_task_is(tensor->get_shape());
   assert(tensor->owner_op != NULL);
   Context ctx = config.lg_ctx;
@@ -657,10 +666,11 @@ void map_tensor_with_dim(ParallelTensor &tensor,
   Domain task_domain =
       runtime->get_index_space_domain(ctx, tensor->parallel_is);
   switch (task_domain.get_dim()) {
-#define DIMFUNC(TDIM)                                                                           \
-  case TDIM: {                                                                                  \
-    map_tensor_with_dim2<NDIM, TDIM>(tensor, parallel_op, config, is_mgr, computationMode);     \
-    break;                                                                                      \
+#define DIMFUNC(TDIM)                                                          \
+  case TDIM: {                                                                 \
+    map_tensor_with_dim2<NDIM, TDIM>(                                          \
+        tensor, parallel_op, config, is_mgr, computationMode);                 \
+    break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -670,8 +680,11 @@ void map_tensor_with_dim(ParallelTensor &tensor,
   }
 }
 
-
-void map_tensor(ParallelTensor &tensor, Op const *op, LegionConfig const &config, IndexSpaceManager &is_mgr, CompMode computationMode) {
+void map_tensor(ParallelTensor &tensor,
+                Op const *op,
+                LegionConfig const &config,
+                IndexSpaceManager &is_mgr,
+                CompMode computationMode) {
   switch (tensor->num_dims) {
 #define DIMFUNC(NDIM)                                                          \
   case NDIM: {                                                                 \
@@ -687,4 +700,4 @@ void map_tensor(ParallelTensor &tensor, Op const *op, LegionConfig const &config
   }
 }
 
-}
+} // namespace FlexFlow

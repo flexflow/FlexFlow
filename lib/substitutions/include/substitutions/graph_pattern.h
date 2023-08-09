@@ -18,21 +18,22 @@ struct MatchSplit {
 
 GraphSplit split_pattern(IOpenMultiDiGraph const &pattern);
 
-bool pattern_matches(IOpenMultiDiGraphView const &, 
-                     IMultiDiGraph const &, 
+bool pattern_matches(IOpenMultiDiGraphView const &,
+                     IMultiDiGraph const &,
                      DiGraphPatternMatch const &);
 bool is_singleton_pattern(IOpenMultiDiGraphView const &);
 
-}
-}
+} // namespace substitutions
+} // namespace FlexFlow
 
 namespace std {
 
 template <>
 struct hash<::FlexFlow::substitutions::DiGraphPatternMatch> {
-  size_t operator()(::FlexFlow::substitutions::DiGraphPatternMatch const &) const;
+  size_t
+      operator()(::FlexFlow::substitutions::DiGraphPatternMatch const &) const;
 };
 
-}
+} // namespace std
 
 #endif

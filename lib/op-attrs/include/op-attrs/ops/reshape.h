@@ -10,13 +10,14 @@ struct ReshapeAttrs : public use_visitable_cmp<ReshapeAttrs> {
 public:
   ReshapeAttrs() = delete;
   explicit ReshapeAttrs(TensorShape const &shape);
+
 public:
   TensorShape shape;
 };
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::ReshapeAttrs, shape);
 MAKE_VISIT_HASHABLE(::FlexFlow::ReshapeAttrs);
 
-#endif 
+#endif

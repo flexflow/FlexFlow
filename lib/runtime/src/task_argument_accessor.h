@@ -3,9 +3,9 @@
 
 #include "accessor.h"
 #include "runtime/config.h"
+#include "task_invocation.h"
 #include "utils/strong_typedef.h"
 #include <vector>
-#include "task_invocation.h"
 
 namespace FlexFlow {
 
@@ -13,7 +13,7 @@ struct region_idx_t : strong_typedef<region_idx_t, int> {
   using strong_typedef::strong_typedef;
 };
 
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::region_idx_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::region_idx_t, "region_idx");
@@ -31,9 +31,8 @@ NonvariadicFormat get_nonvariadic_format(TensorArgumentFormat const &);
 
 struct TaskArgumentFormat : public use_visitable_cmp<TaskArgumentFormat> {
   TaskArgumentFormat() = delete;
-  TaskArgumentFormat(std::type_index type, size_t start, size_t end) 
-    : type(type), start(start), end(end)
-  { }
+  TaskArgumentFormat(std::type_index type, size_t start, size_t end)
+      : type(type), start(start), end(end) {}
 
   std::type_index type;
   size_t start;
@@ -44,9 +43,8 @@ struct TaskArgumentFormat : public use_visitable_cmp<TaskArgumentFormat> {
 
 struct FutureArgumentFormat : public use_visitable_cmp<FutureArgumentFormat> {
   FutureArgumentFormat() = delete;
-  FutureArgumentFormat(std::type_index type, size_t future_idx) 
-    : type(type), future_idx(future_idx)
-  { }
+  FutureArgumentFormat(std::type_index type, size_t future_idx)
+      : type(type), future_idx(future_idx) {}
 
   std::type_index type;
   size_t future_idx;
@@ -67,17 +65,21 @@ struct TaskArgumentsFormat : public use_visitable_eq<TaskArgumentsFormat> {
   void insert(slot_id, std::vector<region_idx_t> const &);
 };
 
-Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, region_idx_t const &);
-Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &, parallel_tensor_guid_t const &);
+Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &,
+                                     region_idx_t const &);
+Legion::PrivilegeMode get_privileges(TaskArgumentsFormat const &,
+                                     parallel_tensor_guid_t const &);
 Permissions get_permissions(TaskArgumentsFormat const &, region_idx_t const &);
-Permissions get_permissions(TaskArgumentsFormat const &, parallel_tensor_guid_t const &);
-region_idx_t get_region_idx(TaskArgumentsFormat const &, parallel_tensor_guid_t const &);
+Permissions get_permissions(TaskArgumentsFormat const &,
+                            parallel_tensor_guid_t const &);
+region_idx_t get_region_idx(TaskArgumentsFormat const &,
+                            parallel_tensor_guid_t const &);
 DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 
 struct TaskArgumentAccessor {
-  TaskArgumentAccessor(Legion::Task const *task, 
+  TaskArgumentAccessor(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx, 
+                       Legion::Context ctx,
                        Legion::Runtime *runtime);
 
   template <typename T>
@@ -87,10 +89,13 @@ struct TaskArgumentAccessor {
     std::type_index requested_type = {typeid(T)};
 
     if (actual_type != requested_type) {
-      throw mk_runtime_error("Type mismatch in argument access (\"{}\" != \"{}\")", actual_type.name(), requested_type.name());
+      throw mk_runtime_error(
+          "Type mismatch in argument access (\"{}\" != \"{}\")",
+          actual_type.name(),
+          requested_type.name());
     }
 
-    void *start_ptr = &((std::uint8_t*)this->task->args)[arg_fmt.start];
+    void *start_ptr = &((std::uint8_t *)this->task->args)[arg_fmt.start];
     Legion::Deserializer dez(start_ptr, arg_fmt.size());
 
     return ff_task_deserialize<T>(dez);
@@ -103,18 +108,29 @@ struct TaskArgumentAccessor {
   std::vector<T> get_variadic_argument(slot_id) const;
 
   template <Permissions PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(region_idx_t const &idx) const {
+  privilege_mode_to_accessor<PRIV>
+      get_generic_accessor(region_idx_t const &idx) const {
     auto tensor_privs = get_permissions(this->args_fmt, idx);
     if (tensor_privs != PRIV) {
-      throw mk_runtime_error("Privilege mismatch while accessing tensor: {} != {}", tensor_privs, PRIV);
+      throw mk_runtime_error(
+          "Privilege mismatch while accessing tensor: {} != {}",
+          tensor_privs,
+          PRIV);
     }
 
-    return helperGetGenericTensorAccessor<PRIV>(get_datatype(this->args_fmt, idx), regions[idx.value()], task->regions[idx.value()], FID_DATA, ctx, runtime);
+    return helperGetGenericTensorAccessor<PRIV>(
+        get_datatype(this->args_fmt, idx),
+        regions[idx.value()],
+        task->regions[idx.value()],
+        FID_DATA,
+        ctx,
+        runtime);
   }
 
   template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const {
-    auto argument_format = get<NonvariadicFormat>(this->args_fmt.region_idxs.at(slot));
+    auto argument_format =
+        get<NonvariadicFormat>(this->args_fmt.region_idxs.at(slot));
 
     return this->get_generic_accessor<PRIV>(argument_format);
   }
@@ -125,10 +141,12 @@ struct TaskArgumentAccessor {
   }
 
   template <Permissions PRIV>
-  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot) const {
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor(slot_id slot) const {
     std::vector<privilege_mode_to_accessor<PRIV>> result;
 
-    auto argument_format = get<VariadicFormat>(this->args_fmt.region_idxs.at(slot));
+    auto argument_format =
+        get<VariadicFormat>(this->args_fmt.region_idxs.at(slot));
     for (NonvariadicFormat const &argument : argument_format) {
       result.push_back(this->get_generic_accessor<PRIV>(argument));
     }
@@ -137,11 +155,13 @@ struct TaskArgumentAccessor {
   }
 
   template <Permissions PRIV>
-  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor_grad(slot_id slot) const {
-    return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES); 
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor_grad(slot_id slot) const {
+    return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES);
   }
 
   size_t get_device_idx() const;
+
 private:
   Legion::Task const *task;
   std::vector<Legion::PhysicalRegion> const &regions;
@@ -150,6 +170,6 @@ private:
   TaskArgumentsFormat const &args_fmt;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

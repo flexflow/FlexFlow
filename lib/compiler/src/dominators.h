@@ -3,13 +3,13 @@
 
 #include "basic_graph.h"
 #include "graph_structures.h"
+#include "tl/optional.hpp"
 #include "utils/dot_file.h"
 #include "utils/record_formatter.h"
-#include "tl/optional.hpp"
 #include <algorithm>
 #include <functional>
-#include <queue>
 #include <limits>
+#include <queue>
 
 namespace FlexFlow {
 namespace PCG {
@@ -487,8 +487,8 @@ void export_as_dot(
   dotfile.close();
 }
 
-} 
-}
-}
+} // namespace Utils
+} // namespace PCG
+} // namespace FlexFlow
 
 #endif // _DOMINATORS_H

@@ -170,9 +170,9 @@ void Split::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *Split::init_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
+                                   std::vector<PhysicalRegion> const &regions,
+                                   Context ctx,
+                                   Runtime *runtime) {
   return NULL;
 }
 

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/groupby_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/groupby_kernels.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -25,7 +25,6 @@
 namespace FlexFlow {
 namespace Kernels {
 namespace GroupBy {
-  
 
 __global__ void
     gb_forward_kernel(float const *input,
@@ -108,19 +107,18 @@ __global__ void
   }
 }
 
-void forward_kernel(
-    cudaStream_t stream,
-    GroupByPerDeviceState const *m,
-    float const *input,
-    int const *exp_assign,
-    float **outputs,
-    int n,       // num experts
-    int k,       // chosen experts
-    float alpha, // factor additional memory assigned
-    int batch_size,
-    int data_dim) {
+void forward_kernel(cudaStream_t stream,
+                    GroupByPerDeviceState const *m,
+                    float const *input,
+                    int const *exp_assign,
+                    float **outputs,
+                    int n,       // num experts
+                    int k,       // chosen experts
+                    float alpha, // factor additional memory assigned
+                    int batch_size,
+                    int data_dim) {
   // TODO: why cublas/cudnn stream is needed here?
-  
+
   // call forward kernel
   cudaMemcpyAsync(m->dev_region_ptrs,
                   outputs,
@@ -135,17 +133,16 @@ void forward_kernel(
       input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
 }
 
-void backward_kernel(
-    cudaStream_t stream,
-    GroupByPerDeviceState const *m,
-    float *input_grad,
-    int const *exp_assign,
-    float **output_grads,
-    int n,       // num experts
-    int k,       // chosen experts
-    float alpha, // factor additional memory assigned
-    int batch_size,
-    int data_dim) {
+void backward_kernel(cudaStream_t stream,
+                     GroupByPerDeviceState const *m,
+                     float *input_grad,
+                     int const *exp_assign,
+                     float **output_grads,
+                     int n,       // num experts
+                     int k,       // chosen experts
+                     float alpha, // factor additional memory assigned
+                     int batch_size,
+                     int data_dim) {
 
   // call forward kernel
   cudaMemcpyAsync(m->dev_region_ptrs,
@@ -164,13 +161,13 @@ void backward_kernel(
                                  alpha,
                                  batch_size,
                                  data_dim);
-  
 }
 
-}
-}
+} // namespace GroupBy
+} // namespace Kernels
 
-GroupByPerDeviceState::GroupByPerDeviceState(FFHandler handler, int n) : OpPerDeviceState(handler) {
+GroupByPerDeviceState::GroupByPerDeviceState(FFHandler handler, int n)
+    : OpPerDeviceState(handler) {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
 GroupByPerDeviceState::~GroupByPerDeviceState(void) {

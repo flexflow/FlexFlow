@@ -24,14 +24,14 @@ using Legion::coord_t;
 namespace Kernels {
 namespace Split {
 
-void forward_kernel(hipStream_t stream, float **out_ptrs,
-                            float const *in_ptr,
-                            coord_t const *out_blk_sizes,
-                            coord_t in_blk_size,
-                            coord_t num_blks,
-                            int numOutputs) {
-  
-  
+void forward_kernel(hipStream_t stream,
+                    float **out_ptrs,
+                    float const *in_ptr,
+                    coord_t const *out_blk_sizes,
+                    coord_t in_blk_size,
+                    coord_t num_blks,
+                    int numOutputs) {
+
   for (int i = 0; i < numOutputs; i++) {
     hipLaunchKernelGGL(copy_with_stride,
                        GET_BLOCKS(out_blk_sizes[i] * num_blks),
@@ -47,14 +47,14 @@ void forward_kernel(hipStream_t stream, float **out_ptrs,
   }
 }
 
-void backward_kernel(hipStream_t stream, float *in_grad_ptr,
-                             float const **out_grad_ptr,
-                             coord_t const *out_blk_sizes,
-                             coord_t in_blk_size,
-                             coord_t num_blks,
-                             int numOutputs) {
-  
-  
+void backward_kernel(hipStream_t stream,
+                     float *in_grad_ptr,
+                     float const **out_grad_ptr,
+                     coord_t const *out_blk_sizes,
+                     coord_t in_blk_size,
+                     coord_t num_blks,
+                     int numOutputs) {
+
   for (int i = 0; i < numOutputs; i++) {
     hipLaunchKernelGGL(add_with_stride,
                        GET_BLOCKS(out_blk_sizes[i] * num_blks),
@@ -70,7 +70,6 @@ void backward_kernel(hipStream_t stream, float *in_grad_ptr,
   }
   // checkCUDA(cudaDeviceSynchronize());
 }
-
 
 } // namespace Split
 } // namespace Kernels

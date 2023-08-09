@@ -14,19 +14,20 @@
  */
 
 #include "mapper.h"
+#include "default_mapper.h"
+#include "loggers.h"
 #include "pcg/machine_view.h"
 #include "tasks.h"
-#include "default_mapper.h"
 #include "utils/exception.h"
-#include "loggers.h"
 
 namespace FlexFlow {
 
 using namespace Legion;
 using namespace Mapping;
 
-static FFOrdered<num_points_t> from_domain_point(Legion::DomainPoint const &point,
-                                                 Legion::Domain const &domain) {
+static FFOrdered<num_points_t>
+    from_domain_point(Legion::DomainPoint const &point,
+                      Legion::Domain const &domain) {
   assert(point.get_dim() == domain.get_dim());
   std::vector<num_points_t> idxs;
   for (int i = point.get_dim(); i > 0; i--) {
@@ -36,13 +37,16 @@ static FFOrdered<num_points_t> from_domain_point(Legion::DomainPoint const &poin
   return FFOrdered<num_points_t>(idxs);
 }
 
-device_id_t get_device_index(MachineView const &machine_view, DomainPoint const &point, Domain const &domain, DeviceType device_type) {
+device_id_t get_device_index(MachineView const &machine_view,
+                             DomainPoint const &point,
+                             Domain const &domain,
+                             DeviceType device_type) {
   return machine_view.at(from_domain_point(point, domain));
 }
 
 ShardID FFShardingFunctor::get_shard_id(device_id_t device_id) const {
   DeviceType device_type = get_device_type(device_id);
-  switch (device_type)  {
+  switch (device_type) {
     case DeviceType::GPU:
       return unwrap_gpu(device_id).value() / this->gpus_per_node;
     case DeviceType::CPU:
@@ -63,7 +67,8 @@ ShardID FFShardingFunctor::shard(DomainPoint const &point,
                                  Domain const &full_space,
                                  const size_t total_shards) {
   assert(point.get_dim() == full_space.get_dim());
-  device_id_t device_id = get_device_index(this->machine_view, point, full_space);
+  device_id_t device_id =
+      get_device_index(this->machine_view, point, full_space);
 
   ShardID shard_id = this->get_shard_id(device_id);
   assert(shard_id < (size_t)num_nodes);
@@ -132,14 +137,19 @@ FFMapper::FFMapper(MapperRuntime *rt,
   if (enable_control_replication) {
     log_mapper.print("Enabled Control Replication Optimizations.");
   }
-  this->register_machine_view(FFConfig::DataParallelism_GPU, make_1d_machine_view(gpu_id_t(0), all_gpus.size()));
-  this->register_machine_view(FFConfig::DataParallelism_CPU, make_1d_machine_view(cpu_id_t(0), all_cpus.size()));
+  this->register_machine_view(
+      FFConfig::DataParallelism_GPU,
+      make_1d_machine_view(gpu_id_t(0), all_gpus.size()));
+  this->register_machine_view(
+      FFConfig::DataParallelism_CPU,
+      make_1d_machine_view(cpu_id_t(0), all_cpus.size()));
 
   assert(all_gpus.size() % total_nodes == 0);
   assert(all_cpus.size() % total_nodes == 0);
 
-  std::vector<MachineView> all_valid_views = get_all_machine_views(total_nodes, this->get_gpus_per_node(), this->get_cpus_per_node());
-  
+  std::vector<MachineView> all_valid_views = get_all_machine_views(
+      total_nodes, this->get_gpus_per_node(), this->get_cpus_per_node());
+
   // Registering views with different start_device_id;
   for (MachineView const &machine_view : all_valid_views) {
     this->register_machine_views(this->starting_at_all_devices(machine_view));
@@ -165,16 +175,25 @@ void FFMapper::register_sharding_functors(Runtime *runtime,
   }
   NodesConfig nodes(num_nodes, gpus_per_node, cpus_per_node);
 
-  runtime->register_sharding_functor(FFConfig::DataParallelism_GPU, nodes.make_sharding_functor(make_1d_machine_view(gpu_id_t(0), nodes.get_total_num_gpus())));
-  runtime->register_sharding_functor(FFConfig::DataParallelism_CPU, nodes.make_sharding_functor(make_1d_machine_view(cpu_id_t(0), nodes.get_total_num_cpus())));
+  runtime->register_sharding_functor(
+      FFConfig::DataParallelism_GPU,
+      nodes.make_sharding_functor(
+          make_1d_machine_view(gpu_id_t(0), nodes.get_total_num_gpus())));
+  runtime->register_sharding_functor(
+      FFConfig::DataParallelism_CPU,
+      nodes.make_sharding_functor(
+          make_1d_machine_view(cpu_id_t(0), nodes.get_total_num_cpus())));
 
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
-  std::vector<MachineView> all_valid_views = get_all_machine_views(num_nodes, gpus_per_node, cpus_per_node);
+  std::vector<MachineView> all_valid_views =
+      get_all_machine_views(num_nodes, gpus_per_node, cpus_per_node);
 
   for (MachineView const &machine_view : all_valid_views) {
-    for (MachineView const &transplanted : nodes.starting_at_all_devices(machine_view)) {
-        register_sharding_functor(runtime, nodes.make_sharding_functor(transplanted));
+    for (MachineView const &transplanted :
+         nodes.starting_at_all_devices(machine_view)) {
+      register_sharding_functor(runtime,
+                                nodes.make_sharding_functor(transplanted));
     }
   }
 }
@@ -306,8 +325,10 @@ void FFMapper::select_task_options(const MapperContext ctx,
   // Assert that all single tasks should be handled and returned before
   // So task must be an indextask
   if (!task.is_index_space) {
-    throw mk_runtime_error("The following task is currently not captured by the FlexFlow mapper: {}\nReport the issue to the FlexFlow developers",
-                           task.get_task_name());
+    throw mk_runtime_error(
+        "The following task is currently not captured by the FlexFlow mapper: "
+        "{}\nReport the issue to the FlexFlow developers",
+        task.get_task_name());
   }
 }
 
@@ -378,18 +399,21 @@ void FFMapper::slice_task(MapperContext const ctx,
     }
   }
   switch (input.domain.get_dim()) {
-#define DIMFUNC(DIM)                                                             \
-  case DIM: {                                                                    \
-    Rect<DIM> rect = input.domain;                                               \
-    int cnt = 0;                                                                 \
-    for (PointInRectIterator<DIM> pir(rect); pir(); pir++) {                     \
-      device_id_t idx = get_device_index(view.value(), *pir, task.index_domain); \
-      assert(this->has_device(idx));                                             \
-      Rect<DIM> slice(*pir, *pir);                                               \
-      output.slices[cnt++] = TaskSlice(                                          \
-          slice, this->get_processor(idx), false /*recurse*/, false /*stealable*/);       \
-    }                                                                            \
-    break;                                                                       \
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = input.domain;                                             \
+    int cnt = 0;                                                               \
+    for (PointInRectIterator<DIM> pir(rect); pir(); pir++) {                   \
+      device_id_t idx =                                                        \
+          get_device_index(view.value(), *pir, task.index_domain);             \
+      assert(this->has_device(idx));                                           \
+      Rect<DIM> slice(*pir, *pir);                                             \
+      output.slices[cnt++] = TaskSlice(slice,                                  \
+                                       this->get_processor(idx),               \
+                                       false /*recurse*/,                      \
+                                       false /*stealable*/);                   \
+    }                                                                          \
+    break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -552,12 +576,12 @@ void FFMapper::map_task(const MapperContext ctx,
       if (log_instance_creation) {
         for (size_t idx = 0; idx < created_instances.size(); idx++) {
           log_mapper.print("Instance[%zu]: memory:" IDFMT "	proc:" IDFMT
-                              "	size:%zu	task:%s",
-                              idx,
-                              created_instances[idx].memory.id,
-                              created_instances[idx].processor.id,
-                              created_instances[idx].size,
-                              created_instances[idx].task_name.c_str());
+                           "	size:%zu	task:%s",
+                           idx,
+                           created_instances[idx].memory.id,
+                           created_instances[idx].processor.id,
+                           created_instances[idx].size,
+                           created_instances[idx].task_name.c_str());
         }
       }
       // Report failed to creation
@@ -791,12 +815,12 @@ void FFMapper::map_inline(const MapperContext ctx,
       valid_mems.only_kind(creation_constraints.memory_constraint.get_kind());
       if (valid_mems.count() == 0) {
         log_mapper.error("FlexFlow mapper error. Mapper %s could find no "
-                            "valid memories for the constraints requested by "
-                            "inline mapping %lld in parent task %s (ID %lld).",
-                            get_mapper_name(),
-                            inline_op.get_unique_id(),
-                            inline_op.parent_task->get_task_name(),
-                            inline_op.parent_task->get_unique_id());
+                         "valid memories for the constraints requested by "
+                         "inline mapping %lld in parent task %s (ID %lld).",
+                         get_mapper_name(),
+                         inline_op.get_unique_id(),
+                         inline_op.parent_task->get_task_name(),
+                         inline_op.parent_task->get_unique_id());
         assert(false);
       }
       target_memory = valid_mems.first(); // just take the first one
@@ -1431,4 +1455,4 @@ void FFMapper::update_mappers(Machine machine,
 
 FFMapper::~FFMapper(void) {}
 
-}
+} // namespace FlexFlow

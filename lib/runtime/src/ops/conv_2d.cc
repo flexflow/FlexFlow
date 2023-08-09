@@ -1,10 +1,10 @@
 #include "conv_2d.h"
-#include "layer.h"
 #include "kernels/conv_2d_kernels.h"
-#include "utils/hash-utils.h"
-#include "task_spec.h"
+#include "layer.h"
 #include "legion/legion_utilities.h"
 #include "mpark/variant.hpp"
+#include "task_spec.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -57,18 +57,16 @@ Tensor FFModel::conv2d(Tensor const &input,
                        char const *name) {
   assert(input->num_dims() == 4); /*NCHW*/
 
-  Conv2DAttrs attrs = {
-    outChannels,
-    kernelH,
-    kernelW,
-    strideH,
-    strideW,
-    paddingH,
-    paddingW,
-    groups,
-    activation,
-    use_bias
-  };
+  Conv2DAttrs attrs = {outChannels,
+                       kernelH,
+                       kernelW,
+                       strideH,
+                       strideW,
+                       paddingH,
+                       paddingW,
+                       groups,
+                       activation,
+                       use_bias};
 
   TensorShape output_shape = get_output_shape(attrs, input->get_shape());
   Tensor output = this->tensor_mgr.create(output_shape, CreateGrad::YES, conv);
@@ -76,14 +74,17 @@ Tensor FFModel::conv2d(Tensor const &input,
   std::vector<Tensor> weights;
 
   TensorShape kernel_shape = get_kernel_shape(attrs, input->get_shape());
-  weights.push_back(this->tensor_mgr.create(kernel_shape, CreateGrad::YES, kernel_initializer, CHOSEN_SYNC_TYPE));
+  weights.push_back(this->tensor_mgr.create(
+      kernel_shape, CreateGrad::YES, kernel_initializer, CHOSEN_SYNC_TYPE));
 
   if (use_bias) {
-    TensorShape bias_shape = get_bias_shape(attrs,input->get_shape());
-    weights.push_back(this->tensor_mgr.create(bias_shape, CreateGrad::YES, bias_initializer, CHOSEN_SYNC_TYPE));
+    TensorShape bias_shape = get_bias_shape(attrs, input->get_shape());
+    weights.push_back(this->tensor_mgr.create(
+        bias_shape, CreateGrad::YES, bias_initializer, CHOSEN_SYNC_TYPE));
   }
 
-  Layer *conv = this->layer_mgr.create(attrs, DT_FLOAT, name, {input}, weights, {output});
+  Layer *conv =
+      this->layer_mgr.create(attrs, DT_FLOAT, name, {input}, weights, {output});
 
   //{
   //  int numdims = 4;
@@ -105,7 +106,7 @@ Tensor FFModel::conv2d(Tensor const &input,
   //                                                   kernel_initializer,
   //                                                   CHOSEN_SYNC_TYPE);
   //}
-  //if (use_bias) {
+  // if (use_bias) {
   //  int dims[1] = {outChannels};
   //  conv->weights[1] = create_weight_legion_ordering(1,
   //                                                   dims,
@@ -125,12 +126,12 @@ Op *Conv2D::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  return new Conv2D(model, 
-                    get<Conv2DAttrs>(layer->attrs), 
+  return new Conv2D(model,
+                    get<Conv2DAttrs>(layer->attrs),
                     inputs,
-                    layer->name, 
+                    layer->name,
                     false /*allocate_weights*/
-                    );
+  );
 }
 
 /* void Conv2DParams::mark_replica_dims( */
@@ -153,11 +154,13 @@ Op *Conv2D::create_operator_from_layer(
 /* } */
 
 /* int Conv2DParams::output_size(ParallelTensorShape const &input, */
-/*                               ParallelDim output_dims[MAX_TENSOR_DIM]) const { */
+/*                               ParallelDim output_dims[MAX_TENSOR_DIM]) const
+ * { */
 /*   int input_w = input.dims[Conv2DInput::WIDTH].size; */
 /*   int input_h = input.dims[Conv2DInput::HEIGHT].size; */
 
-/*   output_dims[Conv2DOutput::SAMPLE].size = input.dims[Conv2DInput::SAMPLE].size; */
+/*   output_dims[Conv2DOutput::SAMPLE].size =
+ * input.dims[Conv2DInput::SAMPLE].size; */
 /*   output_dims[Conv2DOutput::CHANNEL].size = out_channels; */
 /*   output_dims[Conv2DOutput::HEIGHT].size = */
 /*       1 + (input_h + 2 * padding_h - kernel_h) / stride_h; */
@@ -168,7 +171,8 @@ Op *Conv2D::create_operator_from_layer(
 /* }; */
 
 /* int Conv2DParams::kernel_size(ParallelTensorShape const &input, */
-/*                               ParallelDim kernel_dims[MAX_TENSOR_DIM]) const { */
+/*                               ParallelDim kernel_dims[MAX_TENSOR_DIM]) const
+ * { */
 /*   kernel_dims[Conv2DKernel::CHANNEL_OUT].size = this->out_channels; */
 /*   kernel_dims[Conv2DKernel::CHANNEL_IN].size = */
 /*       input.dims[Conv2DInput::CHANNEL].size / this->groups; */
@@ -231,7 +235,8 @@ Op *Conv2D::create_operator_from_layer(
 /* } */
 
 /*static*/
-/* void Conv2D::construct_mappings(std::vector<ParallelDimMappingRecord> &out, */
+/* void Conv2D::construct_mappings(std::vector<ParallelDimMappingRecord> &out,
+ */
 /*                                 bool use_bias) { */
 /*   Conv2D::construct_output_mappings(out); */
 /*   Conv2D::construct_weight_mappings(out, use_bias); */
@@ -245,12 +250,15 @@ Op *Conv2D::create_operator_from_layer(
 /*       {{Conv2DInput::CHANNEL, */
 /*         MappingOperation::REPLICATE, */
 /*         Conv2DOutput::REPLICA}, */
-/*        {Conv2DInput::SAMPLE, MappingOperation::PARTITION, Conv2DOutput::SAMPLE}, */
+/*        {Conv2DInput::SAMPLE, MappingOperation::PARTITION,
+ * Conv2DOutput::SAMPLE}, */
 /*        {Conv2DInput::REPLICA, */
 /*         MappingOperation::PARTITION, */
 /*         Conv2DOutput::CHANNEL}, */
-/*        {Conv2DInput::HEIGHT, MappingOperation::PARTITION, Conv2DOutput::HEIGHT}, */
-/*        {Conv2DInput::WIDTH, MappingOperation::PARTITION, Conv2DOutput::WIDTH}}); */
+/*        {Conv2DInput::HEIGHT, MappingOperation::PARTITION,
+ * Conv2DOutput::HEIGHT}, */
+/*        {Conv2DInput::WIDTH, MappingOperation::PARTITION,
+ * Conv2DOutput::WIDTH}}); */
 /* } */
 
 /*static*/
@@ -270,7 +278,8 @@ Op *Conv2D::create_operator_from_layer(
 /*            Conv2DKernel::CHANNEL_IN}, */
 /*           {Conv2DInput::HEIGHT, */
 /*            MappingOperation::REPLICATE, */
-/*            Conv2DKernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work */
+/*            Conv2DKernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work
+ */
 /*                                   // here */
 /*           {Conv2DInput::WIDTH, */
 /*            MappingOperation::REPLICATE, */
@@ -350,7 +359,8 @@ Conv2D::Conv2D(FFModel &model,
 /*     is_valid &= bias_shape.is_valid(); */
 /*   } */
 
-/*   // TODO FIXME: Currently disable parallelizing the height and width dimension */
+/*   // TODO FIXME: Currently disable parallelizing the height and width
+ * dimension */
 /*   if (input.dims[0].degree > 1 || input.dims[1].degree > 1) { */
 /*     return false; */
 /*   } */
@@ -591,9 +601,9 @@ void Conv2D::init(FFModel const &ff) {
   regions[5](O): input_grad
 */
 PerDeviceOpState *Conv2D::init_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // Conv2D const *conv = (Conv2D *)task->args;
@@ -608,7 +618,8 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
   //                                                         FID_DATA,
   //                                                         ctx,
   //                                                         runtime,
-  //                                                         false /*readOutput*/);
+  //                                                         false
+  //                                                         /*readOutput*/);
   // TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
   //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   // TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
@@ -629,7 +640,6 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
   auto bias = acc.get_tensor<READ_ONLY>(BIAS);
   auto filter_grad = acc.get_tensor<READ_WRITE>(FILTER_GRAD);
   auto input_grad = acc.get_tensor<READ_WRITE>(INPUT_GRAD);
-
 
   Conv2DPerDeviceState *m = new Conv2DPerDeviceState(handle);
   m->relu = attrs.activation == AC_MODE_RELU;
@@ -744,7 +754,7 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
 
 /* TaskSpec Conv2D::get_backward_task_spec() const { */
 /*   TaskSpec spec = { CONV2D_BWD_TASK_ID, Pass::BWD }; */
-  
+
 /*   auto input = spec.add_tensor(TensorRole::INPUT, 0); */
 /*   auto kernel = spec.add_tensor(TensorRole::PARAM, 0); */
 /*   auto bias = spec.add_tensor(TensorRole::BIAS, 1); */
@@ -800,7 +810,8 @@ void Conv2D::forward_task(Task const *task,
   //                                                         FID_DATA,
   //                                                         ctx,
   //                                                         runtime,
-  //                                                         false /*readOutput*/);
+  //                                                         false
+  //                                                         /*readOutput*/);
   // TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
   //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   // float const *acc_bias_ptr = NULL;
@@ -810,16 +821,14 @@ void Conv2D::forward_task(Task const *task,
   //   acc_bias_ptr = acc_bias.ptr;
   // }
 
-  profile(
-    forward_kernel, 
-    m->profiling, 
-    "[Conv2d] forward_time = %.2lfms\n",
-    m, 
-    input.get_float_ptr(), 
-    output.get_float_ptr(), 
-    filter.get_float_ptr(), 
-    bias.get_float_ptr()
-  );
+  profile(forward_kernel,
+          m->profiling,
+          "[Conv2d] forward_time = %.2lfms\n",
+          m,
+          input.get_float_ptr(),
+          output.get_float_ptr(),
+          filter.get_float_ptr(),
+          bias.get_float_ptr());
 }
 
 /*
@@ -1039,4 +1048,4 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-}
+} // namespace FlexFlow

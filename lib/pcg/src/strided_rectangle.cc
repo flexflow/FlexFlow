@@ -4,7 +4,7 @@
 namespace FlexFlow {
 
 size_t StridedRectangle::at(FFOrdered<num_points_t> const &coord) const {
-  assert (coord.size() == this->num_dims());
+  assert(coord.size() == this->num_dims());
 
   size_t _1d_stride = 1;
   size_t idx = 0;
@@ -15,4 +15,4 @@ size_t StridedRectangle::at(FFOrdered<num_points_t> const &coord) const {
   return idx;
 }
 
-}
+} // namespace FlexFlow

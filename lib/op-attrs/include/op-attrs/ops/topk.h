@@ -10,12 +10,13 @@ struct TopKAttrs : public use_visitable_cmp<TopKAttrs> {
 public:
   TopKAttrs() = delete;
   TopKAttrs(int k, bool sorted);
+
 public:
   int k;
   bool sorted;
 };
 
-}
+} // namespace FlexFlow
 
 VISITABLE_STRUCT(::FlexFlow::TopKAttrs, k, sorted);
 MAKE_VISIT_HASHABLE(::FlexFlow::TopKAttrs);

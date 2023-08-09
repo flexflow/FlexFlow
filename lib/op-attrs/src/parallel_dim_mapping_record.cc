@@ -7,7 +7,6 @@ ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
     : type(type), output_dim(-1), input_dim(-1), weight_dim(-1), output_idx(-1),
       input_idx(-1), weight_idx(-1) {}
 
-
 /*static*/
 ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
     int input_idx,
@@ -58,4 +57,4 @@ MappingRecordType ParallelDimMappingRecord::get_type() const {
   return this->type;
 }
 
-}
+} // namespace FlexFlow

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "embedding.h"
 #include "gather.h"
+#include "embedding.h"
 #include "kernels/gather_kernels.h"
 #include "legion/legion_utilities.h"
 
@@ -194,9 +194,9 @@ void Gather::init(FFModel const &ff) {
 }
 
 PerDeviceOpState *Gather::init_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   Gather const *gather = (Gather const *)task->args;

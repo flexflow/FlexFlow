@@ -203,16 +203,17 @@ __global__ void agg_backward_kernel(float **exp_preds,
 }
 
 /*static*/
-void Aggregate::forward_kernel(hipStream_t stream, AggregatePerDeviceState const *m,
-                                       float **exp_preds,
-                                       int const *acc_gate_assign_ptr,
-                                       float const *acc_gate_pred_ptr,
-                                       float *acc_output_ptr,
-                                       int n,
-                                       int const k,
-                                       int rows,
-                                       int const batch_size,
-                                       int out_dim) {
+void Aggregate::forward_kernel(hipStream_t stream,
+                               AggregatePerDeviceState const *m,
+                               float **exp_preds,
+                               int const *acc_gate_assign_ptr,
+                               float const *acc_gate_pred_ptr,
+                               float *acc_output_ptr,
+                               int n,
+                               int const k,
+                               int rows,
+                               int const batch_size,
+                               int out_dim) {
 
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
@@ -238,21 +239,22 @@ void Aggregate::forward_kernel(hipStream_t stream, AggregatePerDeviceState const
 }
 
 /*static*/
-void Aggregate::backward_kernel(hipStream_t stream, AggregatePerDeviceState const *m,
-                                        float **exp_preds,
-                                        float **exp_grads,
-                                        int const *acc_gate_assign_ptr,
-                                        int const *acc_true_gate_assign_ptr,
-                                        float const *acc_gate_pred_ptr,
-                                        float *full_acc_gate_grad_ptr,
-                                        float const *acc_output_grad_ptr,
-                                        int n,
-                                        int const k,
-                                        int rows,
-                                        float lambda_bal,
-                                        int const batch_size,
-                                        int out_dim) {
-  
+void Aggregate::backward_kernel(hipStream_t stream,
+                                AggregatePerDeviceState const *m,
+                                float **exp_preds,
+                                float **exp_grads,
+                                int const *acc_gate_assign_ptr,
+                                int const *acc_true_gate_assign_ptr,
+                                float const *acc_gate_pred_ptr,
+                                float *full_acc_gate_grad_ptr,
+                                float const *acc_output_grad_ptr,
+                                int n,
+                                int const k,
+                                int rows,
+                                float lambda_bal,
+                                int const batch_size,
+                                int out_dim) {
+
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -282,7 +284,8 @@ void Aggregate::backward_kernel(hipStream_t stream, AggregatePerDeviceState cons
                      out_dim);
 }
 
-AggregatePerDeviceState::AggregatePerDeviceState(FFHandler handler, int n) : PerDeviceOpState(handler) {
+AggregatePerDeviceState::AggregatePerDeviceState(FFHandler handler, int n)
+    : PerDeviceOpState(handler) {
   checkCUDA(hipMalloc(&dev_exp_preds, n * sizeof(float *)));
   checkCUDA(hipMalloc(&dev_exp_grads, n * sizeof(float *)));
 }

@@ -7,12 +7,16 @@ namespace FlexFlow {
 struct OptimizeUnnecessaryGradientCalculations {
   OptimizeUnnecessaryGradientCalculations() = default;
 
-  Operator operator()(LabelledOpenMultiDiGraph<Operator, ParallelTensorAttrs> const &g, 
-                      Node const &n, 
-                      Operator const &op) { return op; }
-  ParallelTensorAttrs operator()(LabelledOpenMultiDiGraph<Operator, ParallelTensorAttrs> const &g,
-                                 MultiDiEdge const &e, 
-                                 ParallelTensorAttrs const &pt) {
+  Operator operator()(
+      LabelledOpenMultiDiGraph<Operator, ParallelTensorAttrs> const &g,
+      Node const &n,
+      Operator const &op) {
+    return op;
+  }
+  ParallelTensorAttrs operator()(
+      LabelledOpenMultiDiGraph<Operator, ParallelTensorAttrs> const &g,
+      MultiDiEdge const &e,
+      ParallelTensorAttrs const &pt) {
     ParallelTensorAttrs result = pt;
     if (get_op_type(g.at(e.src).attrs) == OperatorType::INPUT) {
       result.create_gradients = CreateGrad::NO;
@@ -21,17 +25,18 @@ struct OptimizeUnnecessaryGradientCalculations {
   }
 };
 
-ParallelComputationGraph optimize_unnecessary_gradient_calculations(ParallelComputationGraph const &pcg) {
+ParallelComputationGraph optimize_unnecessary_gradient_calculations(
+    ParallelComputationGraph const &pcg) {
   // If an operator's input is training data
   // No need to compute its gradients
-  return pcg.on_underlying([](LabelledOpenMultiDiGraph<Operator, ParallelTensor> const &g) {
-    return rewrite(OptimizeUnnecessaryGradientCalculations{}, g);
-  });
+  return pcg.on_underlying(
+      [](LabelledOpenMultiDiGraph<Operator, ParallelTensor> const &g) {
+        return rewrite(OptimizeUnnecessaryGradientCalculations{}, g);
+      });
 }
 
-ParallelComputationGraph enable_inplace_operators(ParallelComputationGraph const &pcg) {
-  
-}
+ParallelComputationGraph
+    enable_inplace_operators(ParallelComputationGraph const &pcg) {}
 
 void FFModel::perform_fusion_optimizations() {
   fprintf(stderr, "Applying fusion optimizations during compilation...\n");
@@ -60,12 +65,10 @@ void FFModel::perform_fusion_optimizations() {
         for (int i = 0; i < fused->op_num_inputs[op]; i++) {
           int my_off = fused->op_input_idx[i + ioff];
           if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
-            assert(fused->inputs[my_off]->region ==
-                   old_op->inputs[i]->region);
+            assert(fused->inputs[my_off]->region == old_op->inputs[i]->region);
           } else if (fused->op_input_source[i + ioff] ==
                      FusedOp::SOURCE_OUTPUT) {
-            assert(fused->outputs[my_off]->region ==
-                   old_op->inputs[i]->region);
+            assert(fused->outputs[my_off]->region == old_op->inputs[i]->region);
           } else {
             assert(false);
           }
@@ -73,14 +76,12 @@ void FFModel::perform_fusion_optimizations() {
         for (int i = 0; i < fused->op_num_weights[op]; i++) {
           int my_off = fused->op_weight_idx[i + woff];
           assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
-          assert(fused->weights[my_off]->region ==
-                 old_op->weights[i]->region);
+          assert(fused->weights[my_off]->region == old_op->weights[i]->region);
         }
         for (int i = 0; i < fused->op_num_outputs[op]; i++) {
           int my_off = fused->op_output_idx[i + ooff];
           assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT);
-          assert(fused->outputs[my_off]->region ==
-                 old_op->outputs[i]->region);
+          assert(fused->outputs[my_off]->region == old_op->outputs[i]->region);
         }
         ioff += fused->op_num_inputs[op];
         woff += fused->op_num_weights[op];
@@ -130,7 +131,6 @@ void FFModel::perform_fusion_optimizations() {
     }
   }
 }
-
 
 void FFModel::perform_inplace_optimizations() {
   for (size_t l = 1; l < operators.size(); l++) {
@@ -277,4 +277,4 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
   return false;
 }
 
-}
+} // namespace FlexFlow

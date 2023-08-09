@@ -2,9 +2,10 @@
 
 namespace FlexFlow {
 
-GatherAttrs::GatherAttrs(ff_dim_t _dim) : dim(_dim) { }
+GatherAttrs::GatherAttrs(ff_dim_t _dim) : dim(_dim) {}
 
-/* bool GatherAttrs::is_valid(ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const { */
+/* bool GatherAttrs::is_valid(ParallelTensorShape const &lhs,
+ * ParallelTensorShape const &rhs) const { */
 /*   if (lhs.num_dims() != rhs.num_dims()) { */
 /*     return false; */
 /*   } */
@@ -17,4 +18,4 @@ GatherAttrs::GatherAttrs(ff_dim_t _dim) : dim(_dim) { }
 /*   return true; */
 /* } */
 
-}
+} // namespace FlexFlow

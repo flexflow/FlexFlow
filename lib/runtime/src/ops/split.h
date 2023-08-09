@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_SPLIT_H
 #define _FLEXFLOW_SPLIT_H
 
+#include "op-attrs/ops/split.h"
 #include "op_task_invocation.h"
 #include "sim_environment.h"
-#include "op-attrs/ops/split.h"
 
 namespace FlexFlow {
 
-template <> void register_task<SPLIT_INIT_TASK_ID>();
-template <> void register_task<SPLIT_FWD_TASK_ID>();
-template <> void register_task<SPLIT_BWD_TASK_ID>();
+template <>
+void register_task<SPLIT_INIT_TASK_ID>();
+template <>
+void register_task<SPLIT_FWD_TASK_ID>();
+template <>
+void register_task<SPLIT_BWD_TASK_ID>();
 
 OpTaskInvocation init(SplitAttrs const &);
 OpTaskInvocation forward(SplitAttrs const &);
@@ -34,18 +37,22 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -57,6 +64,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   std::vector<int> splits; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

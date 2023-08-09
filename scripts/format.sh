@@ -6,8 +6,8 @@ GIT_ROOT="$(git rev-parse --show-toplevel)"
 cd "$GIT_ROOT"
 
 TOOLS_PATH="$GIT_ROOT/.tools"
-RELEASE="master-1d7ec53d"
-CLANG_FORMAT_VERSION="15"
+RELEASE="master-f4f85437"
+CLANG_FORMAT_VERSION="16"
 CLANG_FORMAT_PATH="$TOOLS_PATH/clang-format-$CLANG_FORMAT_VERSION-$RELEASE"
 
 mkdir -p "$TOOLS_PATH"
@@ -52,11 +52,12 @@ download_clang_tool() {
       error "Unknown return value from get_os: $OS. Exiting..."
   esac
   URL="$BASE_URL/clang-${TOOL}-${VERSION}_${URL_OS}-amd64"
+  echo "Downloading from $URL..."
 
   if command -v wget &> /dev/null; then
     wget "$URL" -O "$TARGET_PATH"
   elif command -v curl &> /dev/null; then
-    curl "$URL" -o "$TARGET_PATH"
+    curl -L "$URL" -o "$TARGET_PATH"
   else
     error "Could not find either wget or curl. Exiting..."
   fi
@@ -67,5 +68,10 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
   chmod u+x "$CLANG_FORMAT_PATH"
 fi
 
-mapfile -t FILES < <(git ls-files | grep -E '\.(h|cc|cpp|cu)$')
-"$CLANG_FORMAT_PATH" -i "${FILES[@]}"
+CLANG_FORMAT_CONFIG="$GIT_ROOT/.clang-format-for-format-sh"
+mapfile -t FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
+if [[ -f $CLANG_FORMAT_CONFIG ]]; then 
+  "$CLANG_FORMAT_PATH" --style=file:"$CLANG_FORMAT_CONFIG" -i "${FILES[@]}"
+else 
+  echo "error"
+fi

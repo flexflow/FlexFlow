@@ -1,15 +1,18 @@
 #ifndef _FLEXFLOW_POOL_2D_H
 #define _FLEXFLOW_POOL_2D_H
 
-#include "sim_environment.h"
-#include "op_task_invocation.h"
 #include "op-attrs/ops/pool_2d.h"
+#include "op_task_invocation.h"
+#include "sim_environment.h"
 
 namespace FlexFlow {
 
-template <> void register_task<POOL2D_INIT_TASK_ID>();
-template <> void register_task<POOL2D_FWD_TASK_ID>();
-template <> void register_task<POOL2D_BWD_TASK_ID>();
+template <>
+void register_task<POOL2D_INIT_TASK_ID>();
+template <>
+void register_task<POOL2D_FWD_TASK_ID>();
+template <>
+void register_task<POOL2D_BWD_TASK_ID>();
 
 OpTaskInvocation init(Pool2DAttrs const &);
 OpTaskInvocation forward(Pool2DAttrs const &);
@@ -46,18 +49,22 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   static Op * */
 /*       create_operator_from_layer(FFModel &model, */
 /*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs); */
+/*                                  std::vector<ParallelTensor> const &inputs);
+ */
 
 /*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const &regions, */
+/*                            std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                            Legion::Context ctx, */
 /*                            Legion::Runtime *runtime); */
 /*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const &regions, */
+/*                             std::vector<Legion::PhysicalRegion> const
+ * &regions, */
 /*                             Legion::Context ctx, */
 /*                             Legion::Runtime *runtime); */
 /*   bool measure_operator_cost(Simulator *sim, */
@@ -71,7 +78,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   /1*                              int num_inputs); *1/ */
 
 /*   /1* static void *1/ */
-/*   /1*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &); *1/ */
+/*   /1*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+ * *1/ */
 
 /* private: */
 /*   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); */
@@ -85,6 +93,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   ActiMode activation; */
 /* }; */
 
-}
+} // namespace FlexFlow
 
 #endif

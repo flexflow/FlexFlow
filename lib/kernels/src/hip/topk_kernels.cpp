@@ -21,7 +21,8 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 
-TopKPerDeviceState::TopKPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
+TopKPerDeviceState::TopKPerDeviceState(FFHandler handler)
+    : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace TopK {
@@ -370,14 +371,14 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
 }
 
 void forward_kernel(hipStream_t stream,
-                          TopKPerDeviceState const *m,
-                          float const *input_ptr,
-                          float *output_ptr,
-                          int *indices_ptr,
-                          size_t batch_size,
-                          int length,
-                          int k,
-                          bool sorted) {
+                    TopKPerDeviceState const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    int *indices_ptr,
+                    size_t batch_size,
+                    int length,
+                    int k,
+                    bool sorted) {
   // Adopted from TensorFlow's TopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
@@ -427,13 +428,13 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
 }
 
 void backward_kernel(hipStream_t stream,
-                           TopKPerDeviceState const *m,
-                           float const *value_grad_ptr,
-                           int const *indices_ptr,
-                           float *in_grad_ptr,
-                           size_t batch_size,
-                           int length,
-                           int k) {
+                     TopKPerDeviceState const *m,
+                     float const *value_grad_ptr,
+                     int const *indices_ptr,
+                     float *in_grad_ptr,
+                     size_t batch_size,
+                     int length,
+                     int k) {
   hipLaunchKernelGGL(topk_backward_kernel,
                      GET_BLOCKS(batch_size * k),
                      CUDA_NUM_THREADS,
@@ -447,7 +448,6 @@ void backward_kernel(hipStream_t stream,
                      k);
 }
 
-
-} // namespace TopK  
+} // namespace TopK
 } // namespace Kernels
 } // namespace FlexFlow

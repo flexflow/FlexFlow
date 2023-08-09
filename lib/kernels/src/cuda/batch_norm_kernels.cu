@@ -93,10 +93,10 @@ namespace BatchNorm {
 
 void forward_kernel(cudaStream_t stream,
                     BatchNormPerDeviceState const *m,
-                               float const *input_ptr,
-                               float *output_ptr,
-                               float const *scale_ptr,
-                               float const *bias_ptr) {
+                    float const *input_ptr,
+                    float *output_ptr,
+                    float const *scale_ptr,
+                    float const *bias_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -118,7 +118,6 @@ void forward_kernel(cudaStream_t stream,
                                                     m->saveMean,
                                                     m->saveVar));
 }
-
 
 void backward_kernel(cudaStream_t stream,
                      BatchNormPerDeviceState *m,
@@ -158,18 +157,20 @@ void backward_kernel(cudaStream_t stream,
                                              m->saveVar));
 }
 
-}
-}
+} // namespace BatchNorm
+} // namespace Kernels
 
-BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
-                             std::unique_ptr<IAllocator> allocator,
-                             int output_n,
-                             int output_c,
-                             int output_h,
-                             int output_w,
-                             bool relu,
-                             bool profiling)
-    : PerDeviceOpState(handler), relu(relu), profiling(profiling), allocator(std::move(allocator)) {
+BatchNormPerDeviceState::BatchNormPerDeviceState(
+    FFHandler handler,
+    std::unique_ptr<IAllocator> allocator,
+    int output_n,
+    int output_c,
+    int output_h,
+    int output_w,
+    bool relu,
+    bool profiling)
+    : PerDeviceOpState(handler), relu(relu), profiling(profiling),
+      allocator(std::move(allocator)) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -203,7 +204,7 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
     saveMean = (float *)runningVar + output_c;
     saveVar = (float *)saveMean + output_c;
     cudaStream_t stream;
-    
+
     assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
         runningMean, output_c, 0.0f);
     assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
@@ -225,4 +226,4 @@ BatchNormPerDeviceState::~BatchNormPerDeviceState() {
   }
 }
 
-}
+} // namespace FlexFlow

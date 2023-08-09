@@ -7,13 +7,13 @@
 
 namespace FlexFlow {
 
-template <typename T, typename Enable = void> 
-struct is_fmtable : std::false_type { };
+template <typename T, typename Enable = void>
+struct is_fmtable : std::false_type {};
 
 template <typename T>
 struct is_fmtable<T, void_t<decltype(fmt::to_string(std::declval<T>()))>>
-  : std::true_type { };
+    : std::true_type {};
 
-}
+} // namespace FlexFlow
 
 #endif

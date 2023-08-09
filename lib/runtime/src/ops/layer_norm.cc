@@ -15,8 +15,8 @@
 
 #include "layer_norm.h"
 #include "kernels/layer_norm_kernels.h"
-#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -219,10 +219,11 @@ void LayerNorm::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-PerDeviceOpState *LayerNorm::init_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+PerDeviceOpState *
+    LayerNorm::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   LayerNorm *ln = (LayerNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   LayerNormMeta *meta = new LayerNormMeta(handle, ln);
@@ -312,8 +313,7 @@ void LayerNorm::forward_task(Task const *task,
     assert(regions.size() == 2);
   }
 
-  forward_kernel_wrapper<float>(
-      m, in_ptr, out_ptr, gamma_ptr, beta_ptr);
+  forward_kernel_wrapper<float>(m, in_ptr, out_ptr, gamma_ptr, beta_ptr);
 }
 
 void LayerNorm::backward(FFModel const &ff) {
@@ -429,12 +429,12 @@ void LayerNorm::backward_task(Task const *task,
   }
 
   backward_kernel_wrapper<float>(m,
-                                            out_grad_ptr,
-                                            in_ptr,
-                                            in_grad_ptr,
-                                            gamma_ptr,
-                                            gamma_grad_ptr,
-                                            beta_grad_ptr);
+                                 out_grad_ptr,
+                                 in_ptr,
+                                 in_grad_ptr,
+                                 gamma_ptr,
+                                 gamma_grad_ptr,
+                                 beta_grad_ptr);
 }
 
 bool LayerNorm::measure_operator_cost(Simulator *sim,

@@ -21,16 +21,16 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_H
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_H
 
-#include "op-attrs/parallel_tensor_shape.h"
-#include "pcg/machine_view.h"
-#include "utils/record_formatter.h"
-#include <ostream>
-#include <unordered_map>
-#include "utils/strong_typedef.h"
 #include "create_grad.h"
 #include "initializer.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "parallel_tensor_guid_t.h"
+#include "pcg/machine_view.h"
 #include "utils/optional.h"
+#include "utils/record_formatter.h"
+#include "utils/strong_typedef.h"
+#include <ostream>
+#include <unordered_map>
 
 namespace FlexFlow {
 
@@ -44,14 +44,14 @@ struct ParallelTensorAttrs : public use_visitable_cmp<ParallelTensorAttrs> {
   ParallelTensorAttrs() = delete;
 
   ParallelTensorAttrs(ParallelTensorShape const &,
-                 CreateGrad create_gradients,
-                 optional<ParamSync> sync_type = nullopt,
-                 optional<Initializer> initializer = nullopt);
+                      CreateGrad create_gradients,
+                      optional<ParamSync> sync_type = nullopt,
+                      optional<Initializer> initializer = nullopt);
   ParallelTensorAttrs(ParallelTensorDims const &,
                       DataType,
-                 CreateGrad create_gradients,
-                 optional<ParamSync> sync_type = nullopt,
-                 optional<Initializer> initializer = nullopt);
+                      CreateGrad create_gradients,
+                      optional<ParamSync> sync_type = nullopt,
+                      optional<Initializer> initializer = nullopt);
 
   /* void inline_map(FFConfig &config); */
   /* void inline_unmap(FFConfig &config); */
@@ -79,7 +79,7 @@ struct ParallelTensorAttrs : public use_visitable_cmp<ParallelTensorAttrs> {
   /* static bool update_parallel_ids(int numdim, ParallelDim *dims); */
   /* ParallelTensorShape get_shape() const; */
 
-/* private: */
+  /* private: */
   /* template <typename T> */
   /* bool get_input_sub_tensor_via_mappings(MachineView const &, */
   /*                                        ParallelTensor &tensor) const; */
@@ -94,9 +94,14 @@ public:
 
 using ParallelParameter = ParallelTensor;
 
-}
+} // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::ParallelTensorAttrs, dims, data_type, sync_type, initializer, create_gradients);
+VISITABLE_STRUCT(::FlexFlow::ParallelTensorAttrs,
+                 dims,
+                 data_type,
+                 sync_type,
+                 initializer,
+                 create_gradients);
 
 namespace FlexFlow {
 static_assert(is_well_behaved_value_type<ParallelTensorAttrs>::value, "");

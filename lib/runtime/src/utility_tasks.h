@@ -40,6 +40,6 @@ public:
                             Legion::Runtime *runtime);
 };
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

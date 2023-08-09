@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_OPEN_GRAPHS_H
 #define _FLEXFLOW_UTILS_GRAPH_OPEN_GRAPHS_H
 
-#include "node.h"
 #include "multidigraph.h"
-#include "utils/variant.h"
-#include "tl/optional.hpp"
-#include "utils/visitable.h"
+#include "node.h"
 #include "open_graph_interfaces.h"
+#include "tl/optional.hpp"
+#include "utils/variant.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -22,7 +22,7 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
 
-  //TODO
+  // TODO
   operator maybe_owned_ref<IOpenMultiDiGraphView const>() const {
     return maybe_owned_ref<IOpenMultiDiGraphView const>(this->ptr);
   }
@@ -31,14 +31,18 @@ public:
     return this->ptr.get();
   }
 
-  template <typename T, typename ...Args>
+  template <typename T, typename... Args>
   static
-  typename std::enable_if<std::is_base_of<IOpenMultiDiGraphView, T>::value, OpenMultiDiGraphView>::type
-  create(Args &&... args) {
-    return OpenMultiDiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+      typename std::enable_if<std::is_base_of<IOpenMultiDiGraphView, T>::value,
+                              OpenMultiDiGraphView>::type
+      create(Args &&...args) {
+    return OpenMultiDiGraphView(
+        std::make_shared<T>(std::forward<Args>(args)...));
   }
+
 private:
   OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const>);
+
 private:
   std::shared_ptr<IOpenMultiDiGraphView const> ptr;
 };
@@ -65,14 +69,15 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
-  static 
-  typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value, OpenMultiDiGraph>::type 
-  create() { 
+  static typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value,
+                                 OpenMultiDiGraph>::type
+      create() {
     return OpenMultiDiGraph(make_unique<T>());
   }
 
 private:
   OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph>);
+
 private:
   std::unique_ptr<IOpenMultiDiGraph> ptr;
 };
@@ -94,7 +99,7 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
 
-  //TODO
+  // TODO
   operator maybe_owned_ref<IUpwardOpenMultiDiGraphView const>() const {
     return maybe_owned_ref<IUpwardOpenMultiDiGraphView const>(this->ptr);
   }
@@ -103,14 +108,19 @@ public:
     return this->ptr.get();
   }
 
-  template <typename T, typename ...Args>
-  static
-  typename std::enable_if<std::is_base_of<IUpwardOpenMultiDiGraphView, T>::value, UpwardOpenMultiDiGraphView>::type
-  create(Args &&... args) {
-    return UpwardOpenMultiDiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+  template <typename T, typename... Args>
+  static typename std::enable_if<
+      std::is_base_of<IUpwardOpenMultiDiGraphView, T>::value,
+      UpwardOpenMultiDiGraphView>::type
+      create(Args &&...args) {
+    return UpwardOpenMultiDiGraphView(
+        std::make_shared<T>(std::forward<Args>(args)...));
   }
+
 private:
-  UpwardOpenMultiDiGraphView(std::shared_ptr<IUpwardOpenMultiDiGraphView const>);
+  UpwardOpenMultiDiGraphView(
+      std::shared_ptr<IUpwardOpenMultiDiGraphView const>);
+
 private:
   std::shared_ptr<IUpwardOpenMultiDiGraphView const> ptr;
 };
@@ -137,16 +147,18 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
-  static 
-  typename std::enable_if<std::is_base_of<IUpwardOpenMultiDiGraph, T>::value, UpwardOpenMultiDiGraph>::type 
-  create() { 
+  static typename std::enable_if<
+      std::is_base_of<IUpwardOpenMultiDiGraph, T>::value,
+      UpwardOpenMultiDiGraph>::type
+      create() {
     return UpwardOpenMultiDiGraph(make_unique<T>());
   }
 
 private:
   UpwardOpenMultiDiGraph(std::unique_ptr<IUpwardOpenMultiDiGraph>);
+
 private:
-  std::unique_ptr<IUpwardOpenMultiDiGraph> ptr; 
+  std::unique_ptr<IUpwardOpenMultiDiGraph> ptr;
 };
 
 static_assert(std::is_copy_constructible<UpwardOpenMultiDiGraph>::value, "");
@@ -166,7 +178,7 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
 
-  //TODO
+  // TODO
   operator maybe_owned_ref<IDownwardOpenMultiDiGraphView const>() const {
     return maybe_owned_ref<IDownwardOpenMultiDiGraphView const>(this->ptr);
   }
@@ -175,14 +187,19 @@ public:
     return this->ptr.get();
   }
 
-  template <typename T, typename ...Args>
-  static
-  typename std::enable_if<std::is_base_of<IDownwardOpenMultiDiGraphView, T>::value, DownwardOpenMultiDiGraphView>::type
-  create(Args &&... args) {
-    return DownwardOpenMultiDiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+  template <typename T, typename... Args>
+  static typename std::enable_if<
+      std::is_base_of<IDownwardOpenMultiDiGraphView, T>::value,
+      DownwardOpenMultiDiGraphView>::type
+      create(Args &&...args) {
+    return DownwardOpenMultiDiGraphView(
+        std::make_shared<T>(std::forward<Args>(args)...));
   }
+
 private:
-  DownwardOpenMultiDiGraphView(std::shared_ptr<IDownwardOpenMultiDiGraphView const>);
+  DownwardOpenMultiDiGraphView(
+      std::shared_ptr<IDownwardOpenMultiDiGraphView const>);
+
 private:
   std::shared_ptr<IDownwardOpenMultiDiGraphView const> ptr;
 };
@@ -209,16 +226,18 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
-  static 
-  typename std::enable_if<std::is_base_of<IDownwardOpenMultiDiGraph, T>::value, DownwardOpenMultiDiGraph>::type 
-  create() { 
+  static typename std::enable_if<
+      std::is_base_of<IDownwardOpenMultiDiGraph, T>::value,
+      DownwardOpenMultiDiGraph>::type
+      create() {
     return DownwardOpenMultiDiGraph(make_unique<T>());
   }
 
 private:
   DownwardOpenMultiDiGraph(std::unique_ptr<IDownwardOpenMultiDiGraph>);
+
 private:
-  std::unique_ptr<IDownwardOpenMultiDiGraph> ptr; 
+  std::unique_ptr<IDownwardOpenMultiDiGraph> ptr;
 };
 
 static_assert(std::is_copy_constructible<DownwardOpenMultiDiGraph>::value, "");
@@ -226,6 +245,6 @@ static_assert(std::is_move_constructible<DownwardOpenMultiDiGraph>::value, "");
 static_assert(std::is_copy_assignable<DownwardOpenMultiDiGraph>::value, "");
 static_assert(std::is_copy_constructible<DownwardOpenMultiDiGraph>::value, "");
 
-}
+} // namespace FlexFlow
 
-#endif 
+#endif

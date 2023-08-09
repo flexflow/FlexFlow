@@ -1,8 +1,8 @@
 #include "utils/graph/serialparallel.h"
-#include "utils/graph/conversions.h"
+#include "serialparallel_internal.h"
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
-#include "serialparallel_internal.h"
+#include "utils/graph/conversions.h"
 #include "utils/graph/digraph.h"
 
 namespace FlexFlow {
@@ -27,32 +27,35 @@ optional<Node> find_bottleneck_node(DiGraphView const &g) {
 
   optional<Node> maybe_bottleneck = get_imm_post_dominator(g, sources);
   if (maybe_bottleneck.has_value()) {
-    assert (contains(get_dominators(g, sinks), maybe_bottleneck.value()));
+    assert(contains(get_dominators(g, sinks), maybe_bottleneck.value()));
   }
   return maybe_bottleneck;
 }
 
-enum class SourceSettings {
-  INCLUDE_SOURCE_NODES, EXCLUDE_SOURCE_NODES
-};
+enum class SourceSettings { INCLUDE_SOURCE_NODES, EXCLUDE_SOURCE_NODES };
 
-enum class SinkSettings {
-  INCLUDE_SINK_NODES, EXCLUDE_SINK_NODES
-};
+enum class SinkSettings { INCLUDE_SINK_NODES, EXCLUDE_SINK_NODES };
 
-std::unordered_set<Node> from_source_to_sink(DiGraphView const &g, Node const &src, Node const &sink) {
-  assert (contains(get_dominators(g, sink), src));
+std::unordered_set<Node> from_source_to_sink(DiGraphView const &g,
+                                             Node const &src,
+                                             Node const &sink) {
+  assert(contains(get_dominators(g, sink), src));
 
   std::vector<Node> bfs = get_bfs_ordering(g, {src});
   auto end = find(bfs, sink);
-  assert (end != bfs.end());
+  assert(end != bfs.end());
 
   std::unordered_set<Node> result(bfs.cbegin(), ++end);
   return result;
 }
 
-std::unordered_set<Node> from_source_to_sink(DiGraphView const &g, std::unordered_set<Node> const &srcs, std::unordered_set<Node> const &sinks, SourceSettings include_src, SinkSettings include_sink) {
-  assert (is_acyclic(g));
+std::unordered_set<Node>
+    from_source_to_sink(DiGraphView const &g,
+                        std::unordered_set<Node> const &srcs,
+                        std::unordered_set<Node> const &sinks,
+                        SourceSettings include_src,
+                        SinkSettings include_sink) {
+  assert(is_acyclic(g));
 
   Node contracted_src = get_first(srcs);
   Node contracted_sink = get_first(sinks);
@@ -64,8 +67,9 @@ std::unordered_set<Node> from_source_to_sink(DiGraphView const &g, std::unordere
     contraction.insert({sink, contracted_sink});
   }
   auto contracted_view = unsafe_view_as_contracted(g, contraction);
-  
-  std::unordered_set<Node> result = from_source_to_sink(contracted_view, contracted_src, contracted_sink);
+
+  std::unordered_set<Node> result =
+      from_source_to_sink(contracted_view, contracted_src, contracted_sink);
   result.erase(contracted_src);
   result.erase(contracted_sink);
 
@@ -78,12 +82,14 @@ std::unordered_set<Node> from_source_to_sink(DiGraphView const &g, std::unordere
   return result;
 }
 
-DiGraphView unsafe_source_to_sink_subgraph(DiGraphView const &g, 
-                                              std::unordered_set<Node> const &srcs, 
-                                              std::unordered_set<Node> const &sinks, 
-                                              SourceSettings include_src, 
-                                              SinkSettings include_sink) {
-  return unsafe_view_subgraph(g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
+DiGraphView
+    unsafe_source_to_sink_subgraph(DiGraphView const &g,
+                                   std::unordered_set<Node> const &srcs,
+                                   std::unordered_set<Node> const &sinks,
+                                   SourceSettings include_src,
+                                   SinkSettings include_sink) {
+  return unsafe_view_subgraph(
+      g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
 }
 
 SplitAST sp_decomposition(DiGraphView const &g) {
@@ -96,38 +102,41 @@ SplitAST sp_decomposition(DiGraphView const &g) {
 
   optional<Node> bottleneck = find_bottleneck_node(g);
   if (bottleneck.has_value()) {
-    return SplitASTNode(
-      SplitType::SERIAL,
-      sp_decomposition(unsafe_source_to_sink_subgraph(g, 
-                                                       sources, 
-                                                       {bottleneck.value()}, 
-                                                       SourceSettings::INCLUDE_SOURCE_NODES, 
-                                                       SinkSettings::INCLUDE_SINK_NODES)),
-      sp_decomposition(unsafe_source_to_sink_subgraph(g, 
-                                                       {bottleneck.value()}, 
-                                                       sinks, 
-                                                       SourceSettings::EXCLUDE_SOURCE_NODES, 
-                                                       SinkSettings::INCLUDE_SINK_NODES))
-    );
+    return SplitASTNode(SplitType::SERIAL,
+                        sp_decomposition(unsafe_source_to_sink_subgraph(
+                            g,
+                            sources,
+                            {bottleneck.value()},
+                            SourceSettings::INCLUDE_SOURCE_NODES,
+                            SinkSettings::INCLUDE_SINK_NODES)),
+                        sp_decomposition(unsafe_source_to_sink_subgraph(
+                            g,
+                            {bottleneck.value()},
+                            sinks,
+                            SourceSettings::EXCLUDE_SOURCE_NODES,
+                            SinkSettings::INCLUDE_SINK_NODES)));
   } else {
     return parallel_decomposition(g);
   }
 }
 
 SplitAST parallel_decomposition(DiGraphView const &g) {
-  std::vector<std::unordered_set<Node>> weakly_connected_components = get_weakly_connected_components(g);
-  assert (weakly_connected_components.size() > 1);
+  std::vector<std::unordered_set<Node>> weakly_connected_components =
+      get_weakly_connected_components(g);
+  assert(weakly_connected_components.size() > 1);
 
   SplitASTNode split(SplitType::PARALLEL);
   for (auto const &component : weakly_connected_components) {
-    split.children.push_back(sp_decomposition(unsafe_view_subgraph(g, component)));
+    split.children.push_back(
+        sp_decomposition(unsafe_view_subgraph(g, component)));
   }
 
   return split;
 }
 
 struct FlattenAST {
-  void add_flattened_child_to_parent(SplitASTNode &parent, SplitAST const &child) {
+  void add_flattened_child_to_parent(SplitASTNode &parent,
+                                     SplitAST const &child) {
     if (holds_alternative<Node>(child)) {
       parent.children.push_back(child);
       return;
@@ -138,7 +147,7 @@ struct FlattenAST {
     if (parent.type == child_node.type) {
       extend(parent.children, child_node.children);
     } else {
-      parent.children.push_back(child); 
+      parent.children.push_back(child);
     }
   }
 
@@ -152,7 +161,7 @@ struct FlattenAST {
   }
 
   SplitAST operator()(Node const &ast_node) {
-    return ast_node; 
+    return ast_node;
   }
 };
 
@@ -164,7 +173,8 @@ struct ToFinalAST {
   variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
     if (node.type == SplitType::SERIAL) {
       Serial result;
-      for (variant<Serial, Parallel, Node> const &child : vector_transform(to_final_ast, node.children)) {
+      for (variant<Serial, Parallel, Node> const &child :
+           vector_transform(to_final_ast, node.children)) {
         if (holds_alternative<Parallel>(child)) {
           result.children.push_back(get<Parallel>(child));
         } else {
@@ -174,7 +184,8 @@ struct ToFinalAST {
       return result;
     } else {
       Parallel result;
-      for (variant<Serial, Parallel, Node> const &child : vector_transform(to_final_ast, node.children)) {
+      for (variant<Serial, Parallel, Node> const &child :
+           vector_transform(to_final_ast, node.children)) {
         if (holds_alternative<Serial>(child)) {
           result.children.push_back(get<Serial>(child));
         } else {
@@ -194,4 +205,4 @@ variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {
   return visit(ToFinalAST{}, ast);
 }
 
-}
+} // namespace FlexFlow

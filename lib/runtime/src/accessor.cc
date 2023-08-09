@@ -1,7 +1,7 @@
 #include "accessor.h"
 #include "kernels/accessor.h"
-#include "legion.h"
 #include "kernels/datatype_dispatch.h"
+#include "legion.h"
 
 namespace FlexFlow {
 
@@ -124,22 +124,37 @@ DT *helperGetTensorPointerWO(PhysicalRegion region,
 
 template <DataType DT>
 struct GetTensorPointerWOFunctor {
-  void *operator()(PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime *runtime) const {
-    return (void*)helperGetTensorPointerWO<real_type<DT>>(region, req, fid, ctx, runtime);
+  void *operator()(PhysicalRegion region,
+                   RegionRequirement req,
+                   FieldID fid,
+                   Context ctx,
+                   Runtime *runtime) const {
+    return (void *)helperGetTensorPointerWO<real_type<DT>>(
+        region, req, fid, ctx, runtime);
   }
 };
 
 template <DataType DT>
 struct GetTensorPointerROFunctor {
-  void const *operator()(PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime *runtime) const {
-    return (void const *)helperGetTensorPointerRO<real_type<DT>>(region, req, fid, ctx, runtime);
+  void const *operator()(PhysicalRegion region,
+                         RegionRequirement req,
+                         FieldID fid,
+                         Context ctx,
+                         Runtime *runtime) const {
+    return (void const *)helperGetTensorPointerRO<real_type<DT>>(
+        region, req, fid, ctx, runtime);
   }
 };
 
 template <DataType DT>
 struct GetTensorPointerRWFUnctor {
-  void *operator()(PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime *runtime) const {
-    return (void *)helperGetTensorPointerRW<real_type<DT>>(region, req, fid, ctx, runtime);
+  void *operator()(PhysicalRegion region,
+                   RegionRequirement req,
+                   FieldID fid,
+                   Context ctx,
+                   Runtime *runtime) const {
+    return (void *)helperGetTensorPointerRW<real_type<DT>>(
+        region, req, fid, ctx, runtime);
   }
 };
 
@@ -154,19 +169,19 @@ static ArrayShape to_array_shape(Legion::Domain const &domain) {
     dimension_sizes.push_back(domain.lo()[i] - domain.hi()[i]);
   }
 
-  return { dimension_sizes };
+  return {dimension_sizes};
 }
 
-GenericTensorAccessorR
-    getGenericTensorAccessorRO(DataType datatype,
-                               Legion::PhysicalRegion region,
-                               Legion::RegionRequirement req,
-                               Legion::FieldID fid,
-                               Legion::Context ctx,
-                               Legion::Runtime *runtime) {
+GenericTensorAccessorR getGenericTensorAccessorRO(DataType datatype,
+                                                  Legion::PhysicalRegion region,
+                                                  Legion::RegionRequirement req,
+                                                  Legion::FieldID fid,
+                                                  Legion::Context ctx,
+                                                  Legion::Runtime *runtime) {
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
-  void const *ptr = DataTypeDispatch1<GetTensorPointerROFunctor>{}(datatype, region, req, fid, ctx, runtime);
+  void const *ptr = DataTypeDispatch1<GetTensorPointerROFunctor>{}(
+      datatype, region, req, fid, ctx, runtime);
   return GenericTensorAccessorR(datatype, to_array_shape(domain), ptr);
 }
 
@@ -178,10 +193,10 @@ GenericTensorAccessorW
                                      Legion::Context ctx,
                                      Legion::Runtime *runtime) {
 
-  
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
-  void *ptr = DataTypeDispatch1<GetTensorPointerWOFunctor>{}(datatype, region, req, fid, ctx, runtime);
+  void *ptr = DataTypeDispatch1<GetTensorPointerWOFunctor>{}(
+      datatype, region, req, fid, ctx, runtime);
   return GenericTensorAccessorW(datatype, to_array_shape(domain), ptr);
 }
 
@@ -194,8 +209,9 @@ GenericTensorAccessorW
                                      Legion::Runtime *runtime) {
   Domain domain =
       runtime->get_index_space_domain(ctx, req.region.get_index_space());
-  void *ptr = DataTypeDispatch1<GetTensorPointerRWFUnctor>{}(datatype, region, req, fid, ctx, runtime);
+  void *ptr = DataTypeDispatch1<GetTensorPointerRWFUnctor>{}(
+      datatype, region, req, fid, ctx, runtime);
   return GenericTensorAccessorW(datatype, to_array_shape(domain), ptr);
 }
 
-}
+} // namespace FlexFlow

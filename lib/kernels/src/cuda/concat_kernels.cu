@@ -26,7 +26,6 @@ void init_meta(ConcatPerDeviceState *m, int legion_axis) {
   m->legion_axis = legion_axis;
 }
 
-
 void calc_blk_size(size_t &num_blocks,
                    size_t &blk_size,
                    ArrayShape const &shape,
@@ -52,8 +51,9 @@ void forward_kernel(cudaStream_t stream,
   calc_blk_size(num_blocks, output_blk_size, output.shape, m->legion_axis);
   for (int i = 0; i < num_input; i++) {
     size_t input_num_blocks = 1;
-    calc_blk_size(input_num_blocks, input_blk_sizes[i], inputs[i].shape, m->legion_axis);
-    assert (input_num_blocks == num_blocks);
+    calc_blk_size(
+        input_num_blocks, input_blk_sizes[i], inputs[i].shape, m->legion_axis);
+    assert(input_num_blocks == num_blocks);
   }
 
   off_t offset = 0;
@@ -84,11 +84,12 @@ void backward_kernel(cudaStream_t stream,
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     Rect<DIM> rect = output_grad.domain;                                       \
-    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, m->legion_axis);               \
+    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, m->legion_axis);     \
     for (int i = 0; i < num_inputs; i++) {                                     \
       rect = input_grads[i].domain;                                            \
       coord_t input_num_blocks = 1;                                            \
-      calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, m->legion_axis);    \
+      calc_blk_size<DIM>(                                                      \
+          input_num_blocks, input_blk_sizes[i], rect, m->legion_axis);         \
       assert(input_num_blocks == num_blocks);                                  \
     }                                                                          \
     break;                                                                     \

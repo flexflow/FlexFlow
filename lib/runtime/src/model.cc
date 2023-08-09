@@ -19,24 +19,23 @@
 /* #else */
 /* #include "utils/hip_helper.h" */
 /* #endif */
+#include "legion/legion_utilities.h"
 #include "legion_parallel_tensor_shape.h"
 #include "mapper.h"
+#include "op-attrs/ops/noop.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "parallel_tensor_mapping.h"
 #include "task_argument_accessor.h"
-#include "utils/random_utils.h"
 #include "test_utils.h"
-#include "legion/legion_utilities.h"
+#include "utils/containers.h"
+#include "utils/random_utils.h"
 #include <dirent.h>
 #include <queue>
 #include <unordered_set>
-#include "utils/containers.h"
-#include "parallel_tensor_mapping.h"
-#include "op-attrs/ops/noop.h"
 
 using namespace Legion;
 
 namespace FlexFlow {
-
 
 /* std::unordered_map<int, int> output_to_input_mapping( */
 /*     std::vector<ParallelDimMappingRecord> const &mapping) { */
@@ -63,31 +62,28 @@ namespace FlexFlow {
 /* } */
 
 FFModel::FFModel(FFConfig const &_config,
-                 ComputationGraph const &cg, 
+                 ComputationGraph const &cg,
                  TrainingPCG const &training_pcg,
                  Optimizer const &_optimizer,
                  RuntimeBacking const &_runtime_backing,
                  EnableProfiling const &_enable_profiling,
                  SimEnvFactory const &_sim_factory,
                  TensorMapping const &_tensor_map)
-    : config(_config),
-      computation_graph(cg),
-      training_pcg(training_pcg),
-      optimizer(_optimizer),
-      runtime_backing(_runtime_backing),
-      enable_profiling(_enable_profiling),
-      sim_factory(_sim_factory),
-      tensor_map(_tensor_map)
-  {
+    : config(_config), computation_graph(cg), training_pcg(training_pcg),
+      optimizer(_optimizer), runtime_backing(_runtime_backing),
+      enable_profiling(_enable_profiling), sim_factory(_sim_factory),
+      tensor_map(_tensor_map) {
   /* ArgumentMap argmap; */
   /* Rect<1> task_rect(Point<1>(0), */
-  /*                   Point<1>(config.workersPerNode * config.numNodes - 1)); */
+  /*                   Point<1>(config.workersPerNode * config.numNodes - 1));
+   */
   /* IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect); */
 
   /* for (PointInRectIterator<1> it(task_rect); it(); it++) { */
   /*   FFInitInfo info; */
   /*   info.workSpaceSize = config.workSpaceSize; */
-  /*   info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion; */
+  /*   info.allowTensorOpMathConversion =
+   * config.allow_tensor_op_math_conversion; */
   /*   argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo))); */
   /* } */
 
@@ -108,7 +104,8 @@ FFModel::FFModel(FFConfig const &_config,
   // }
 }
 
-/* using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>; */
+/* using FullyExecutableArgSpec = variant<ConcreteArgSpec, CheckedTypedFuture>;
+ */
 
 /* struct ArgumentsConstructionState { */
 /*   variant<Legion::TaskLauncher, Legion::IndexLauncher> launcher; */
@@ -118,69 +115,83 @@ FFModel::FFModel(FFConfig const &_config,
 /* }; */
 
 /* struct AddArgumentToTaskFunctor { */
-/*   AddArgumentToTaskFunctor(ArgumentsConstructionState &state, slot_id slot) : state(state), slot(slot) { } */
+/*   AddArgumentToTaskFunctor(ArgumentsConstructionState &state, slot_id slot) :
+ * state(state), slot(slot) { } */
 
 /*   ArgumentsConstructionState &state; */
 /*   slot_id slot; */
 
-/*   void operator()(ConcreteArgSpec const &a) { */ 
+/*   void operator()(ConcreteArgSpec const &a) { */
 /*     size_t start = state.sez.get_used_bytes(); */
 /*     a.serialize(state.sez); */
 /*     size_t end = state.sez.get_used_bytes(); */
-/*     state.args_fmt.insert({slot, TaskArgumentFormat(a.get_type_tag().get_type_idx(), start, end)}); */
+/*     state.args_fmt.insert({slot,
+ * TaskArgumentFormat(a.get_type_tag().get_type_idx(), start, end)}); */
 /*   } */
 
-/*   void operator()(CheckedTypedFuture const &a) { */ 
+/*   void operator()(CheckedTypedFuture const &a) { */
 /*     if (holds_alternative<Legion::TaskLauncher>(state.launcher)) { */
-/*       get<Legion::TaskLauncher>(state.launcher).add_future(a.get_unsafe()); */
+/*       get<Legion::TaskLauncher>(state.launcher).add_future(a.get_unsafe());
+ */
 /*     } else { */
-/*       get<Legion::IndexLauncher>(state.launcher).add_future(a.get_unsafe()); */
+/*       get<Legion::IndexLauncher>(state.launcher).add_future(a.get_unsafe());
+ */
 /*     } */
-/*     state.args_fmt.insert({slot, FutureArgumentFormat(a.get_type_tag().get_type_idx(), state.num_futures)}); */
+/*     state.args_fmt.insert({slot,
+ * FutureArgumentFormat(a.get_type_tag().get_type_idx(), state.num_futures)});
+ */
 /*     state.num_futures++; */
 /*   } */
 /* }; */
 
-/* static TaskArgumentFormat add_argument_to_task_arg(ArgumentsConstructionState &state, */
-/*                                                    slot_id slot, */ 
-/*                                                    FullyExecutableArgSpec const &arg_spec) { */
+/* static TaskArgumentFormat add_argument_to_task_arg(ArgumentsConstructionState
+ * &state, */
+/*                                                    slot_id slot, */
+/*                                                    FullyExecutableArgSpec
+ * const &arg_spec) { */
 /*   visit(AddArgumentToTaskFunctor{state, slot}, arg_spec); */
 /* } */
 
-
-//TaskArgumentsFormat create_serializable_format(TensorArgsFormat const &tensor_args_format,
-//                                               ConcreteArgsFormat const &concrete_args_format,
-//                                               FutureArgsFormat const &future_args_format,
-//                                               optional<IndexArgsFormat> const &index_args_format = nullopt);
-  /* TaskArgumentsFormat result; */
-  /* for (auto const &kv : concrete_args_format.fmts) { */
-  /*   result.insert(kv); */
-  /* } */
-  /* for (auto const &kv : future_args_format.fmts) { */
-  /*   result.insert(kv); */
-  /* } */
-  /* assert (!index_args_format.has_value()); */
-  /* for (parallel_tensor_guid_t const &guid : keys(tensor_args_format.region_idxs)) { */
-  /*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
-  /*   Legion::PrivilegeMode privs = to_legion(tensor_args_format.privs_map.at(guid)); */
-  /*   DataType datatype = tensor_args_format.datatypes.at(guid); */
-  /*   result.insert(region_idx, privs, datatype); */
-  /* } */
-  /* for (auto const &kv : tensor_args_format.nonvariadic_slot_to_tensor) { */
-  /*   slot_id slot = kv.first; */
-  /*   parallel_tensor_guid_t guid = kv.second; */
-  /*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
-  /*   result.insert(slot, region_idx); */
-  /* } */
-  /* for (auto const &kv : tensor_args_format.variadic_slot_to_tensor) { */
-  /*   slot_id slot = kv.first; */
-  /*   std::vector<parallel_tensor_guid_t> guids = kv.second; */
-  /*   std::vector<region_idx_t> region_idxs = transform(guids, lookup_in_l(tensor_args_format.region_idxs)); */
-  /*   result.insert(slot, region_idxs); */
-  /* } */
-  /* return result; */
+// TaskArgumentsFormat create_serializable_format(TensorArgsFormat const
+// &tensor_args_format,
+//                                                ConcreteArgsFormat const
+//                                                &concrete_args_format,
+//                                                FutureArgsFormat const
+//                                                &future_args_format,
+//                                                optional<IndexArgsFormat>
+//                                                const &index_args_format =
+//                                                nullopt);
+/* TaskArgumentsFormat result; */
+/* for (auto const &kv : concrete_args_format.fmts) { */
+/*   result.insert(kv); */
 /* } */
-
+/* for (auto const &kv : future_args_format.fmts) { */
+/*   result.insert(kv); */
+/* } */
+/* assert (!index_args_format.has_value()); */
+/* for (parallel_tensor_guid_t const &guid :
+ * keys(tensor_args_format.region_idxs)) { */
+/*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
+/*   Legion::PrivilegeMode privs =
+ * to_legion(tensor_args_format.privs_map.at(guid)); */
+/*   DataType datatype = tensor_args_format.datatypes.at(guid); */
+/*   result.insert(region_idx, privs, datatype); */
+/* } */
+/* for (auto const &kv : tensor_args_format.nonvariadic_slot_to_tensor) { */
+/*   slot_id slot = kv.first; */
+/*   parallel_tensor_guid_t guid = kv.second; */
+/*   region_idx_t region_idx = tensor_args_format.region_idxs.at_l(guid); */
+/*   result.insert(slot, region_idx); */
+/* } */
+/* for (auto const &kv : tensor_args_format.variadic_slot_to_tensor) { */
+/*   slot_id slot = kv.first; */
+/*   std::vector<parallel_tensor_guid_t> guids = kv.second; */
+/*   std::vector<region_idx_t> region_idxs = transform(guids,
+ * lookup_in_l(tensor_args_format.region_idxs)); */
+/*   result.insert(slot, region_idxs); */
+/* } */
+/* return result; */
+/* } */
 
 // TaskReturnAccessor execute(TensorlessTaskInvocation const &invocation,
 //                            /* TensorArgsFormat const &tensor_args_format, */
@@ -189,12 +200,15 @@ FFModel::FFModel(FFConfig const &_config,
 //                            EnableProfiling enable_profiling) {
 //   TaskSignature sig = get_signature(invocation.task_id);
 //   TensorlessTaskBinding binding = invocation.binding;
-//   /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg, binding); */
-//   ConcreteArgsFormat concrete_args_format = process_concrete_args(binding);
-//   FutureArgsFormat future_args_format = process_future_args(binding);
-//   TaskInvocationArgsFormat task_invocation_args_format = process_task_invocation_args(binding, enable_profiling, backing);
-//   assert (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we don't handle these as I don't think they're used anywhere
-//   if (binding.invocation_type == InvocationType::STANDARD) {
+//   /* TensorArgsFormat tensor_args_format = process_tensor_args(sig, pcg,
+//   binding); */ ConcreteArgsFormat concrete_args_format =
+//   process_concrete_args(binding); FutureArgsFormat future_args_format =
+//   process_future_args(binding); TaskInvocationArgsFormat
+//   task_invocation_args_format = process_task_invocation_args(binding,
+//   enable_profiling, backing); assert
+//   (get_args_of_type<CheckedTypedFutureMap>(binding).empty()); // currently we
+//   don't handle these as I don't think they're used anywhere if
+//   (binding.invocation_type == InvocationType::STANDARD) {
 //     assert (get_args_of_type<IndexArgSpec>(binding).empty());
 //     Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
 //                                                      future_args_format,
@@ -204,9 +218,10 @@ FFModel::FFModel(FFConfig const &_config,
 //     Future returned_future = backing.execute_task(launcher);
 //     return TaskReturnAccessor(sig.get_return_type(), returned_future);
 //   } else if (binding.invocation_type == InvocationType::INDEX) {
-//     parallel_tensor_guid_t index_space_determiner = binding.domain_spec.value();
-//     ParallelTensorBacking pt_backing = backing.at(index_space_determiner);
-//     IndexArgsFormat index_args_format = process_index_args(binding, 
+//     parallel_tensor_guid_t index_space_determiner =
+//     binding.domain_spec.value(); ParallelTensorBacking pt_backing =
+//     backing.at(index_space_determiner); IndexArgsFormat index_args_format =
+//     process_index_args(binding,
 //                                                            backing.get_domain(pt_backing.parallel_is));
 //     Legion::TaskArgument task_arg = as_task_argument(concrete_args_format,
 //                                                      future_args_format,
@@ -236,8 +251,10 @@ void forward(FFModel const &ff, int seq_length) {
   ff.execute(forwad(ff.training_pcg));
 }
 
-TypedFuture<PerfMetrics> compute_metrics(FFModel const &ff, PerfMetrics const &metrics) {
-  TaskReturnAccessor acc = ff.execute(compute_metrics(ff.training_pcg, metrics));
+TypedFuture<PerfMetrics> compute_metrics(FFModel const &ff,
+                                         PerfMetrics const &metrics) {
+  TaskReturnAccessor acc =
+      ff.execute(compute_metrics(ff.training_pcg, metrics));
   return acc.get_returned_future<PerfMetrics>().get();
 }
 
@@ -245,12 +262,14 @@ void backward(FFModel const &ff, int seq_length, PerfMetrics const &metrics) {
   iter_config.seq_length = seq_length;
   assert(ff.config.computationMode == ComputationMode::TRAINING);
   // Compute metrics
-  compute_metrics(ff, metrics).get(); // TODO FIXME @lockshaw actually do something with the computed metrics
+  compute_metrics(ff, metrics).get(); // TODO FIXME @lockshaw actually do
+                                      // something with the computed metrics
   // Compute the gradients of the final operator wrt loss
   ff.execute(backward(ff.training_pcg));
   /* Op const *final_operator = get_final_operator(); */
   /* assert(final_operator->numOutputs == 1); */
-  /* loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor.value()); */
+  /* loss_op->backward(this, final_operator->outputs[0],
+   * parallel_label_tensor.value()); */
   /* // Perform backpropagation */
   /* // std::set<LogicalRegion> resetedInputGrads; */
   /* for (int l = operators.size() - 1; l >= 0; l--) { */
@@ -269,7 +288,7 @@ operator_guid_t get_final_operator(FFModel const &ff) {
   operator_guid_t final_op_id = get_only(get_sinks(ff.pcg.graph));
   // assert that the final operator has exactly one output
   Operator op = ff.pcg.at(final_op_id);
-  assert (get_num_outputs(op) == 1);
+  assert(get_num_outputs(op) == 1);
   return final_op_id;
 }
 
@@ -281,8 +300,8 @@ void FFModel::compile(Optimizer *_optimizer,
   compile(loss_type, metrics, comp_mode);
 }
 
-
-MachineView get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
+MachineView
+    get_basic_data_parallel_machine_view(MachineSpecification const &spec) {
   gpu_id_t start = gpu_id_t(0);
   gpu_id_t stop = gpu_id_t(spec.num_nodes * spec.workersPerNode);
   return make_1d_machine_view(start, stop, 1);
@@ -301,7 +320,7 @@ static ParallelTensorShape get_parallel_tensor_shape(Tensor const &tensor) {
     dims.emplace_back(tensor->dims[j], 1, -1, false);
   }
   dims.emplace_back(1, 1, -1, true);
-  ParallelTensorShape shape = { dims, tensor->data_type };
+  ParallelTensorShape shape = {dims, tensor->data_type};
   return shape;
 }
 
@@ -331,7 +350,8 @@ void FFModel::print_operator_regions() const {
 void FFModel::create_label_tensor(LossType loss_type) {
   Op const *final_operator = get_final_operator();
 
-  std::vector<ParallelDim> p_dims = final_operator->outputs[0]->get_shape().dims;
+  std::vector<ParallelDim> p_dims =
+      final_operator->outputs[0]->get_shape().dims;
 
   std::vector<size_t> dims;
   // FIXME: Currently assume 1st input for 1st operator = batch_size
@@ -350,16 +370,17 @@ void FFModel::create_label_tensor(LossType loss_type) {
     label_type = DT_INT32;
   }
 
-  LegionParallelTensorShape label_p_shape = { p_dims, label_type };
-  LegionTensorShape label_shape = { dims, label_type };
+  LegionParallelTensorShape label_p_shape = {p_dims, label_type};
+  LegionTensorShape label_shape = {dims, label_type};
 
   // create label tensor
-  label_tensor = create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);   
-  parallel_label_tensor = create_parallel_tensor(label_p_shape);                                       
-  label_tensor.value()->parallel_tensor = parallel_label_tensor;                     
-  parallel_label_tensor.value()->machine_view =                                      
-      final_operator->outputs[0]->machine_view;                              
-  map_tensor(parallel_label_tensor.value(), 
+  label_tensor =
+      create_tensor(label_shape, NULL, 0 /*idx*/, false /*create_grad*/);
+  parallel_label_tensor = create_parallel_tensor(label_p_shape);
+  label_tensor.value()->parallel_tensor = parallel_label_tensor;
+  parallel_label_tensor.value()->machine_view =
+      final_operator->outputs[0]->machine_view;
+  map_tensor(parallel_label_tensor.value(),
              parallel_label_tensor.value()->owner_op,
              this->config.legion_config,
              this->index_space_mgr);
@@ -408,7 +429,7 @@ void FFModel::compile(LossType loss_type,
             "data-parallel PCG.\n");
   }
   this->create_operators_from_layers();
-  
+
   // Launch the graph optimize task
   this->execute_graph_optimize();
 
@@ -430,7 +451,7 @@ void FFModel::compile(LossType loss_type,
       assert(input->owner_op != NULL);
     }
 
-    for(ParallelTensor const &weight : op->weights) {
+    for (ParallelTensor const &weight : op->weights) {
       assert(weight->owner_op != NULL);
       assert(weight->region != LogicalRegion::NO_REGION);
       parameters.push_back(weight);
@@ -465,7 +486,7 @@ void FFModel::compile(LossType loss_type,
   this->print_operator_regions();
 
   this->create_label_tensor(loss_type);
-  
+
   // init optimizer
   assert(optimizer != NULL);
   optimizer->init();
@@ -494,4 +515,4 @@ void FFIterationConfig::reset() {
   seq_length = -1;
 }
 
-};
+}; // namespace FlexFlow

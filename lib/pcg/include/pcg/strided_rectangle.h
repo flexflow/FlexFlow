@@ -3,9 +3,9 @@
 
 #include "op-attrs/dim_ordered.h"
 #include "op-attrs/ff_dim.h"
-#include "utils/visitable.h"
-#include "utils/strong_typedef.h"
 #include "utils/stack_vector.h"
+#include "utils/strong_typedef.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -43,10 +43,11 @@ public:
   size_t at(FFOrdered<num_points_t> const &) const;
   StridedRectangleSide at(ff_dim_t const &) const;
   size_t num_dims() const;
+
 public:
   FFOrdered<StridedRectangleSide> sides;
 };
-}
+} // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::num_points_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::num_points_t, "num_points");

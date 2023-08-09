@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
 #define _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
 
-#include "utils/visitable.h"
-#include "task_signature.h"
 #include "task_invocation.h"
+#include "task_signature.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -13,11 +13,7 @@ enum class TensorRole {
   OUTPUT,
 };
 
-enum class OpTaskType {
-  INIT,
-  FWD,
-  BWD
-};
+enum class OpTaskType { INIT, FWD, BWD };
 
 enum class OpSlotOptions {
   OPTIONAL,
@@ -47,16 +43,19 @@ struct OpTaskSignature {
 
   void add_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_optional_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-  void add_untrainable_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-  void add_optional_untrainable_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_untrainable_input_slot(slot_id,
+                                  SlotType slot_type = SlotType::TENSOR);
+  void add_optional_untrainable_input_slot(
+      slot_id, SlotType slot_type = SlotType::TENSOR);
 
   void add_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-  void add_bwd_necessary_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_bwd_necessary_output_slot(slot_id,
+                                     SlotType slot_type = SlotType::TENSOR);
 
   void add_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_optional_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
 
-  void add_from_slot_spec(OpTensorSlotSpec const & spec);
+  void add_from_slot_spec(OpTensorSlotSpec const &spec);
 
   /* void add_input_slot(slot_id, Legion::PrivilegeMode); */
   /* void add_input_slot(slot_id, SlotType, Legion::PrivilegeMode); */
@@ -78,14 +77,22 @@ private:
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
 
-template <task_id_t> OpTaskSignature get_signature();
+template <task_id_t>
+OpTaskSignature get_signature();
 
 template <typename F>
-void register_task(task_id_t, std::string const &name, OpTaskSignature const &, F const &func);
+void register_task(task_id_t,
+                   std::string const &name,
+                   OpTaskSignature const &,
+                   F const &func);
 
 template <typename F>
-void register_task(task_id_t, std::string const &name, OpTaskSignature const &, F const &func, F const &cpu_func);
+void register_task(task_id_t,
+                   std::string const &name,
+                   OpTaskSignature const &,
+                   F const &func,
+                   F const &cpu_func);
 
-}
+} // namespace FlexFlow
 
 #endif

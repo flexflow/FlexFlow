@@ -23,7 +23,6 @@ void backward_kernel(ffStream_t stream,
                      float const *output_grad_ptr,
                      size_t num_elements);
 
-
 } // namespace Flat
 } // namespace Kernels
 } // namespace FlexFlow

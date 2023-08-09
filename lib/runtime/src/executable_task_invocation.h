@@ -8,7 +8,8 @@ namespace FlexFlow {
 
 using NonvariadicExecutableTensorSpec = parallel_tensor_guid_t;
 using VariadicExecutableTensorSpec = std::vector<parallel_tensor_guid_t>;
-using ExecutableTensorSpec = variant<NonvariadicExecutableTensorSpec, VariadicExecutableTensorSpec>;
+using ExecutableTensorSpec =
+    variant<NonvariadicExecutableTensorSpec, VariadicExecutableTensorSpec>;
 
 bool is_variadic(ExecutableTensorSpec const &);
 bool is_nonvariadic(ExecutableTensorSpec const &);
@@ -25,16 +26,18 @@ public:
 bool is_variadic(ExecutableTaskBinding const &, slot_id);
 bool is_nonvariadic(ExecutableTaskBinding const &, slot_id);
 
-struct ExecutableTaskInvocation : public use_visitable_cmp<ExecutableTaskInvocation> {
+struct ExecutableTaskInvocation
+    : public use_visitable_cmp<ExecutableTaskInvocation> {
 public:
   ExecutableTaskInvocation() = delete;
-  ExecutableTaskInvocation(task_id_t const &task_id, ExecutableTaskInvocation const &binding);
+  ExecutableTaskInvocation(task_id_t const &task_id,
+                           ExecutableTaskInvocation const &binding);
 
 public:
   task_id_t task_id;
   ExecutableTaskBinding binding;
 };
 
-}
+} // namespace FlexFlow
 
 #endif
