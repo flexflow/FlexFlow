@@ -3,7 +3,7 @@
 
 #include "fmt/core.h"
 #include "fmt/format.h"
-#include "utils/type_traits.h"
+#include "utils/type_traits_core.h"
 
 namespace FlexFlow {
 

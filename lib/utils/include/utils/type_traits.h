@@ -23,12 +23,6 @@ struct is_rc_copy_virtual_compliant
     > 
 { };
 
-template< typename... Ts >
-struct make_void { typedef void type; };
- 
-template< typename... Ts >
-using void_t = typename make_void<Ts...>::type;
-
 template <typename T, typename Enable = void>
 struct is_streamable : std::false_type { };
 

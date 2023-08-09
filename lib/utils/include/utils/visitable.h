@@ -1,9 +1,11 @@
 #ifndef _FLEXFLOW_INCLUDE_UTILS_VISITABLE_H
 #define _FLEXFLOW_INCLUDE_UTILS_VISITABLE_H
 
+#include "utils/fmt.h"
 #include "utils/hash-utils.h"
 #include "utils/type_traits.h"
 #include "rapidcheck.h"
+#include "utils/visitable_core.h"
 
 namespace FlexFlow {
 
@@ -107,6 +109,29 @@ struct use_visitable_hash {
     return visit_hash(t);
   }
 };
+
+struct fmt_visitor {
+  ostringstream &oss;
+
+  template <typename T>
+  void operator()(char const *field_name, T const &field_value) {
+    oss << " " << field_name << "=" << field_value;
+  }
+};
+
+template <typename T>
+std::string visit_format(T const &t) {
+  static_assert(is_visitable<T>::value, "visit_format can only be applied to visitable types");
+  static_assert(elements_satisfy<is_fmtable, T>::value, "Visitable fields must be fmtable");
+
+  std::ostringstream oss;
+  oss << "<" << ::visit_struct::get_name<T>();
+  visit_struct::for_each(fmt_visitor{oss}, t);
+  oss << ">";
+  
+  return oss.str();
+}
+
 }
 
 namespace rc {
@@ -130,6 +155,19 @@ template <typename T>
 struct Arbitrary<T, typename std::enable_if<::FlexFlow::is_visitable<T>::value>::type> {
   static Gen<T> arbitrary() {
     return build_visitable<T>();
+  }
+};
+
+}
+
+namespace fmt {
+
+template <typename T>
+struct visitable_formatter : formatter<std::string> {
+  template <typename FormatContext>
+  auto format(T const &t, FormatContext &ctx) const -> decltype(ctx.out()) {
+    std::string fmted = ::FlexFlow::visit_format(t);
+    return formatter<std::string>::format(fmted, ctx);
   }
 };
 
