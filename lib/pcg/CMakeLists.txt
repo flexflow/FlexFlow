@@ -22,18 +22,13 @@ target_include_directories(
 target_link_libraries(
   ${project_target}
   utils
-  nlohmann_json::nlohmann_json
+  json
   optional
   visit_struct
   op-attrs
 )
 
 define_ff_vars(${project_target})
+ff_set_cxx_properties(${project_target})
 
-set_target_properties(
-  ${project_target} 
-  PROPERTIES 
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
-)
+add_subdirectory(ffi)

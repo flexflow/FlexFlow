@@ -16,6 +16,16 @@ set(FF_MAX_NUM_TASK_REGIONS "20" CACHE STRING
 set(FF_MAX_NUM_TASK_ARGUMENTS "5" CACHE STRING
   "Maximum number of arguments that can be declared in a TaskSignature")
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
+option(FF_USE_PREBUILT_NCCL "Enable use of NCCL pre-compiled library, if available" ON)
+option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if available" ON)
+option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
+option(FF_USE_PYTHON "Enable Python" ON)
+option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
+
+set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
+set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
+set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
+set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
 
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
 set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
@@ -44,6 +54,15 @@ function(define_ff_vars target)
   endif()
 endfunction()
 
+function(ff_set_cxx_properties target)
+  set_target_properties(${target}
+    PROPERTIES
+      CXX_STANDARD 11
+      CXX_STANDARD_REQUIRED YES
+      CXX_EXTENSIONS NO
+  )
+endfunction()
+
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)
@@ -68,6 +87,10 @@ if (FF_CUDA_ARCH STREQUAL "")
   message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(LIBEXT ".so")
+endif()
+
 include(cuda)
 include(cudnn)
 include(nccl)
@@ -84,12 +107,10 @@ include(CTest)
 include(fmt)
 include(legion)
 include(rapidcheck)
+include(invoke)
+include(any)
 #include(gtest)
 #include(fmt)
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(LIBEXT ".so")
-endif()
 
 # TODO @lockshaw remove me
 # https://discourse.nixos.org/t/get-clangd-to-find-standard-headers-in-nix-shell/11268/6

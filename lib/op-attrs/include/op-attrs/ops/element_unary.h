@@ -8,31 +8,20 @@
 
 namespace FlexFlow {
 
-struct ElementScalarUnaryAttrs
-    : public use_visitable_cmp<ElementScalarUnaryAttrs> {
-public:
-  ElementScalarUnaryAttrs(Op, float);
-
-public:
-  Op op;
+struct ElementScalarUnaryAttrs {
+  req<Op> op;
   /* bool inplace; */
-  float scalar;
+  req<float> scalar;
 };
+FF_VISITABLE_STRUCT(ElementScalarUnaryAttrs, op, scalar);
+CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
 
-struct ElementUnaryAttrs : public use_visitable_cmp<ElementUnaryAttrs> {
-public:
-  ElementUnaryAttrs(OperatorType);
-
-public:
-  Op op;
+struct ElementUnaryAttrs {
+  req<Op> op;
 };
+FF_VISITABLE_STRUCT(ElementUnaryAttrs, op);
+CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ElementScalarUnaryAttrs, op, scalar);
-MAKE_VISIT_HASHABLE(::FlexFlow::ElementScalarUnaryAttrs);
-
-VISITABLE_STRUCT(::FlexFlow::ElementUnaryAttrs, op);
-MAKE_VISIT_HASHABLE(::FlexFlow::ElementUnaryAttrs);
 
 #endif

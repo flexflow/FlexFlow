@@ -1,8 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_NODE_H
 #define _FLEXFLOW_UTILS_GRAPH_NODE_H
 
+#include "cow_ptr_t.h"
+#include "query_set.h"
 #include "utils/fmt.h"
-#include "utils/maybe_owned_ref.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
@@ -19,23 +20,19 @@ namespace FlexFlow {
 struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
 };
-
-std::ostream &operator<<(std::ostream &, Node const &);
-
-} // namespace FlexFlow
-
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::Node);
-MAKE_TYPEDEF_PRINTABLE(::FlexFlow::Node, "Node");
-
-namespace FlexFlow {
+FF_TYPEDEF_HASHABLE(Node);
+FF_TYPEDEF_PRINTABLE(Node, "Node");
 
 struct NodeQuery {
-  NodeQuery() = default;
-  NodeQuery(std::unordered_set<Node> const &nodes);
-  NodeQuery(tl::optional<std::unordered_set<Node>> const &nodes);
+  NodeQuery(query_set<Node> const &nodes) : nodes(nodes) {}
 
-  tl::optional<std::unordered_set<Node>> nodes = tl::nullopt;
+  query_set<Node> nodes;
+
+  static NodeQuery all() {
+    NOT_IMPLEMENTED();
+  }
 };
+FF_VISITABLE_STRUCT(NodeQuery, nodes);
 
 NodeQuery query_intersection(NodeQuery const &, NodeQuery const &);
 NodeQuery query_union(NodeQuery const &, NodeQuery const &);
@@ -54,18 +51,13 @@ struct GraphView {
 
   friend void swap(GraphView &, GraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &query);
-
-  // TODO
-  operator maybe_owned_ref<IGraphView const>() const {
-    return maybe_owned_ref<IGraphView const>(this->ptr);
-  }
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
   IGraphView const *unsafe() const {
     return this->ptr.get();
   }
 
-  static GraphView unsafe(IGraphView const &);
+  static GraphView unsafe_create_without_ownership(IGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
@@ -74,18 +66,16 @@ struct GraphView {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {} //
-
 private:
+  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
+
   std::shared_ptr<IGraphView const> ptr;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
 
 struct IGraph : IGraphView {
+  IGraph() = default;
   IGraph(IGraph const &) = delete;
-  IGraph() = default; // add a default construct method
   IGraph &operator=(IGraph const &) = delete;
 
   virtual Node add_node() = 0;
@@ -93,8 +83,7 @@ struct IGraph : IGraphView {
   virtual void remove_node_unsafe(Node const &) = 0;
   virtual IGraph *clone() const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IGraph>::value, RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraph);
 
 struct Graph {
 public:
@@ -121,7 +110,7 @@ private:
   Graph(std::unique_ptr<IGraph>);
 
 private:
-  std::unique_ptr<IGraph> ptr;
+  cow_ptr_t<IGraph> ptr;
 };
 
 } // namespace FlexFlow

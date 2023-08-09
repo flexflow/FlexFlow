@@ -5,10 +5,13 @@
 #include "multidigraph.h"
 #include "node.h"
 #include "open_graphs.h"
-#include "tl/optional.hpp"
 #include "undirected.h"
 #include "utils/containers.h"
 #include "utils/dot_file.h"
+#include "utils/exception.h"
+#include "utils/graph/multidiedge.h"
+#include "utils/graph/open_graph_interfaces.h"
+#include "utils/optional.h"
 #include "views.h"
 #include <unordered_map>
 #include <vector>
@@ -17,6 +20,7 @@ namespace FlexFlow {
 
 std::vector<Node> add_nodes(Graph &, int);
 std::unordered_set<Node> get_nodes(GraphView const &);
+std::unordered_set<NodePort> get_node_ports(MultiDiGraphView const &);
 
 std::unordered_set<Node> query_nodes(GraphView const &,
                                      std::unordered_set<Node> const &);
@@ -29,20 +33,48 @@ void remove_node_if_unused(MultiDiGraph &, Node const &);
 void remove_node_if_unused(DiGraph &, Node const &);
 void remove_node_if_unused(UndirectedGraph &, Node const &);
 
-void contract_node(MultiDiGraph &, Node const &);
-void contract_node(DiGraph &, Node const &);
-void contract_node(UndirectedGraph &, Node const &);
+void contract_node_inplace(MultiDiGraph &, Node const &from, Node const &into);
+void contract_node_inplace(DiGraph &, Node const &from, Node const &into);
+void contract_node_inplace(UndirectedGraph &,
+                           Node const &from,
+                           Node const &into);
 
-std::size_t num_nodes(GraphView const &); // TODO
+void contract_out_node_inplace(MultiDiGraph &, Node const &);
+void contract_out_node_inplace(DiGraph &, Node const &);
+void contract_out_node_inplace(UndirectedGraph &, Node const &);
+
+MultiDiGraphView contract_out_node(MultiDiGraphView const &, Node const &);
+DiGraphView contract_out_node(DiGraphView const &, Node const &);
+UndirectedGraphView contract_out_node(UndirectedGraphView const &,
+                                      Node const &);
+
+MultiDiGraphView
+    contract_node(MultiDiGraphView const &, Node const &from, Node const &into);
+DiGraphView
+    contract_node(DiGraphView const &, Node const &from, Node const &into);
+UndirectedGraphView contract_node(UndirectedGraphView const &,
+                                  Node const &from,
+                                  Node const &into);
+
+MultiDiGraphView apply_contraction(MultiDiGraphView const &,
+                                   std::unordered_map<Node, Node> const &);
+DiGraphView apply_contraction(DiGraphView const &,
+                              std::unordered_map<Node, Node> const &);
+UndirectedGraphView apply_contraction(UndirectedGraphView const &,
+                                      std::unordered_map<Node, Node> const &);
+
+std::size_t num_nodes(GraphView const &);
 bool empty(GraphView const &);
 
 void add_edges(MultiDiGraph &, std::vector<MultiDiEdge> const &);
 void add_edges(DiGraph &, std::vector<DirectedEdge> const &);
 void add_edges(UndirectedGraph &, std::vector<UndirectedEdge> const &);
 
-bool contains_edge(MultiDiGraph const &, MultiDiEdge const &);
-bool contains_edge(DiGraph const &, DirectedEdge const &);
-bool contains_edge(UndirectedGraph const &, UndirectedEdge const &);
+bool contains_node(GraphView const &, Node const &);
+
+bool contains_edge(MultiDiGraphView const &, MultiDiEdge const &);
+bool contains_edge(DiGraphView const &, DirectedEdge const &);
+bool contains_edge(UndirectedGraphView const &, UndirectedEdge const &);
 
 void remove_edges(MultiDiGraph &, std::unordered_set<MultiDiEdge> const &);
 void remove_edges(DiGraph &, std::unordered_set<DirectedEdge> const &);
@@ -59,6 +91,9 @@ std::unordered_set<OpenMultiDiEdge> get_edges(OpenMultiDiGraphView const &);
 
 std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
                                                   Node const &);
+
+std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &);
+std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &);
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    Node const &);
@@ -113,6 +148,35 @@ std::unordered_map<Node, std::unordered_set<Node>>
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
+struct GetSrcNodeFunctor {
+  template <typename T>
+  Node operator()(T const &t) const {
+    return get_src_node(t);
+  }
+};
+
+struct GetDstNodeFunctor {
+  template <typename T>
+  Node operator()(T const &t) const {
+    return get_dst_node(t);
+  }
+};
+
+template <typename ...Args>
+Node get_src_node(variant<Args...> const &t) {
+  return visit(GetSrcNodeFunctor{}, t);
+}
+
+template <typename ...Args>
+Node get_dst_node(variant<Args...> const &t) {
+  return visit(GetDstNodeFunctor{}, t);
+}
+
+Node get_src_node(MultiDiEdge const &);
+Node get_dst_node(MultiDiEdge const &);
+Node get_src_node(InputMultiDiEdge const &);
+Node get_dst_node(OutputMultiDiEdge const &);
+
 // return the set of nodes without incoming edges
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sources(MultiDiGraphView const &);
@@ -120,6 +184,11 @@ std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 // return the set of nodes without outgoing edges
 std::unordered_set<Node> get_sinks(DiGraphView const &);
 std::unordered_set<Node> get_sinks(MultiDiGraphView const &);
+
+std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
 
 bool is_acyclic(MultiDiGraphView const &, std::unordered_set<Node> const &);
 tl::optional<bool> is_acyclic(DiGraphView const &);
@@ -151,8 +220,6 @@ tl::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
 tl::optional<Node> get_imm_post_dominator(DiGraphView const &,
                                           std::unordered_set<Node> const &);
 
-/* std::vector<Node> boundary_dfs_ordering(DiGraphView const &,
- * std::unordered_set<Node> const &starting_points); */
 std::vector<Node>
     get_dfs_ordering(DiGraphView const &,
                      std::unordered_set<Node> const &starting_points);
@@ -174,7 +241,7 @@ std::vector<MultiDiEdge>
 std::vector<std::unordered_set<Node>>
     get_weakly_connected_components(MultiDiGraphView const &);
 std::vector<std::unordered_set<Node>>
-    get_weakly_connected_components(DiGraphView const &); // TODO
+    get_weakly_connected_components(DiGraphView const &);
 std::vector<std::unordered_set<Node>>
     get_connected_components(UndirectedGraphView const &);
 
@@ -187,16 +254,34 @@ using GraphSplit =
 std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
 MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 
-UndirectedGraphView get_subgraph(UndirectedGraphView const &g,
-                                 std::unordered_set<Node> const &nodes);
-DiGraphView get_subgraph(DiGraphView const &g,
-                         std::unordered_set<Node> const &nodes);
-MultiDiGraphView get_subgraph(MultiDiGraphView const &g,
-                              std::unordered_set<Node> const &nodes);
+bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
+    get_edge_splits(OpenMultiDiGraphView const &, GraphSplit const &);
+
+std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &,
+                                        GraphSplit const &);
+
+UndirectedGraphView get_subgraph(UndirectedGraphView const &,
+                                 std::unordered_set<Node> const &);
+DiGraphView get_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
+MultiDiGraphView get_subgraph(MultiDiGraphView const &,
+                              std::unordered_set<Node> const &);
+OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &,
+                                  std::unordered_set<Node> const &);
+
 MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);
 UndirectedGraphView join(UndirectedGraphView const &lhs,
                          UndirectedGraphView const &rhs);
+
+DiGraphView flipped(DiGraphView const &);
+
+DiGraphView with_added_edges(DiGraphView const &,
+                             std::unordered_set<DirectedEdge> const &);
+
+UndirectedGraphView as_undirected(DiGraphView const &);
+MultiDiGraphView as_multidigraph(DiGraphView const &);
+DiGraphView as_digraph(MultiDiGraphView const &);
+MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &);
 
 void export_as_dot(
     DotFile<Node> &,

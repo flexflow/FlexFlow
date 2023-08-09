@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct ParallelTensorDims : use_visitable_cmp<ParallelTensorDims> {
+struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   explicit ParallelTensorDims(TensorDims const &);
 
   size_t get_volume() const;

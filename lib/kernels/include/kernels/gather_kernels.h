@@ -22,16 +22,18 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &index,
                     GenericTensorAccessorW const &output,
                     size_t stride,
-                    size_t dim_size);
+                    size_t input_dim_size,
+                    size_t output_dim_size);
 void backward_kernel(ffStream_t stream,
                      GatherPerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &index,
                      GenericTensorAccessorW const &input_grad,
                      size_t stride,
-                     size_t dim_size);
+                     size_t input_dim_size,
+                     size_t output_dim_size);
 } // namespace Gather
 } // namespace Kernels
 } // namespace FlexFlow
 
-#endif // _FLEXFLOW_OPS_KERNELS_GATHER_KERNELS_H
+#endif

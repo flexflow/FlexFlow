@@ -15,8 +15,10 @@
 
 #include "metrics_functions.h"
 #include "kernels/metrics_kernels.h"
-#include "profiling.h"
-#include "task_argument_accessor.h"
+#include "runtime/profiling.h"
+#include "runtime/task_spec/typed_task_invocation.h"
+#include "task_spec/index_task_invocation.h"
+#include "task_spec/task_argument_accessor.h"
 #include "tasks.h"
 
 namespace FlexFlow {
@@ -69,20 +71,20 @@ TypedIndexTaskInvocation<PerfMetrics>
     compute_metrics(MetricsAttrs const &metrics,
                     parallel_tensor_guid_t const &logit,
                     parallel_tensor_guid_t const &label) {
-  auto binding = TaskBinding::index_launch(LOGIT);
-  binding.bind(LOGIT, {logit});
-  binding.bind(LABEL, {label});
+  IndexTaskBinding binding(LOGIT);
+  binding.bind(LOGIT, logit);
+  binding.bind(LABEL, label);
   binding.bind_arg(METRICS_STRUCT, metrics);
   binding.bind_arg(PROFILING_SETTINGS, profiling_settings());
 
-  return ensure_index_return_type<PerfMetrics>({METRICS_COMP_TASK_ID, binding});
+  return ensure_return_type<PerfMetrics>({METRICS_COMP_TASK_ID, binding});
 }
 
-TypedTaskInvocation<PerfMetrics>
+TypedStandardTaskInvocation<PerfMetrics>
     update_metrics(MetricsAttrs const &metrics,
                    StandardTypedTaskArg<PerfMetrics> const &all_metrics,
                    TypedIndexTaskInvocation<PerfMetrics> const &one_metrics) {
-  auto binding = TaskBinding::standard_launch();
+  StandardTaskBinding binding;
   binding.bind_arg(METRICS_STRUCT, metrics);
   binding.bind_arg(ALL_METRICS, all_metrics);
   binding.bind_arg(ONE_METRICS, one_metrics);
@@ -91,7 +93,7 @@ TypedTaskInvocation<PerfMetrics>
   return ensure_return_type<PerfMetrics>({UPDATE_METRICS_TASK_ID, binding});
 }
 
-TypedTaskInvocation<PerfMetrics> compute_and_update_metrics(
+TypedStandardTaskInvocation<PerfMetrics> compute_and_update_metrics(
     MetricsAttrs const &metrics,
     StandardTypedTaskArg<PerfMetrics> const &all_metrics,
     parallel_tensor_guid_t const &logit,
@@ -101,7 +103,7 @@ TypedTaskInvocation<PerfMetrics> compute_and_update_metrics(
 }
 
 TaskInvocation reset_metrics(MetricsAttrs const &metrics) {
-  auto binding = TaskBinding::standard_launch();
+  StandardTaskBinding binding;
 
   binding.bind_arg(METRICS_STRUCT, metrics);
 

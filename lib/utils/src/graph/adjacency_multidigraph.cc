@@ -1,6 +1,5 @@
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/containers.h"
-#include <iostream>
 
 namespace FlexFlow {
 
@@ -32,42 +31,21 @@ void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
 std::unordered_set<MultiDiEdge>
     AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   std::unordered_set<MultiDiEdge> result;
-  for (auto const &kv : this->adjacency) {
-    Node src = kv.first;
-    if (!q.srcs.has_value() || contains(*q.srcs, src)) {
-      for (auto const &kv2 : kv.second) {
-        Node dst = kv2.first;
-        if (!q.dsts.has_value() || contains(*q.dsts, dst)) {
-          for (auto const &kv3 : kv2.second) {
-            std::size_t srcIdx = kv3.first;
-            if (!q.srcIdxs.has_value() || contains(*q.srcIdxs, srcIdx)) {
-              for (std::size_t dstIdx : kv3.second) {
-                if (!q.dstIdxs.has_value() || contains(*q.dstIdxs, dstIdx)) {
-                  std::cout << src << " " << dst << " " << srcIdx << " "
-                            << dstIdx << std::endl;
-                  result.insert({src, dst, srcIdx, dstIdx});
-                }
-              }
-            }
-          }
+  for (auto const &src_kv : query_keys(q.srcs, this->adjacency)) {
+    for (auto const &dst_kv : query_keys(q.dsts, src_kv.second)) {
+      for (auto const &srcIdx_kv : query_keys(q.srcIdxs, dst_kv.second)) {
+        for (auto const &dstIdx : apply_query(q.dstIdxs, srcIdx_kv.second)) {
+          result.insert({src_kv.first, dst_kv.first, srcIdx_kv.first, dstIdx});
         }
       }
     }
   }
-  std::cout << "DONE " << result.size() << std::endl;
   return result;
 }
 
 std::unordered_set<Node>
     AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
-  std::unordered_set<Node> result;
-  for (auto const &kv : this->adjacency) {
-    if (!query.nodes.has_value() ||
-        query.nodes->find(kv.first) != query.nodes->end()) {
-      result.insert(kv.first);
-    }
-  }
-  return result;
+  return apply_query(query.nodes, keys(this->adjacency));
 }
 
 } // namespace FlexFlow

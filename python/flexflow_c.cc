@@ -596,17 +596,19 @@ flexflow_tensor_t flexflow_model_add_batch_matmul(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t
-    flexflow_model_add_dense(flexflow_model_t handle_,
-                             const flexflow_tensor_t input_,
-                             int out_dim,
-                             enum ActiMode activation /* AC_MODE_NONE */,
-                             bool use_bias /* true */,
-                             enum DataType data_type /*DT_FLOAT*/,
-                             flexflow_op_t shared_op_,
-                             flexflow_initializer_t kernel_initializer_,
-                             flexflow_initializer_t bias_initializer_,
-                             char const *name) {
+flexflow_tensor_t flexflow_model_add_dense(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int out_dim,
+    enum ActiMode activation /* AC_MODE_NONE */,
+    bool use_bias /* true */,
+    enum DataType data_type /*DT_FLOAT*/,
+    flexflow_op_t shared_op_,
+    flexflow_initializer_t kernel_initializer_,
+    flexflow_initializer_t bias_initializer_,
+    enum RegularizerMode kernel_reg_type /* REG_MODE_NONE */,
+    float kernel_reg_lambda,
+    char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap_const(input_);
   Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
@@ -621,6 +623,8 @@ flexflow_tensor_t
                                 shared_op,
                                 kernel_initializer,
                                 bias_initializer,
+                                kernel_reg_type,
+                                kernel_reg_lambda,
                                 name);
   DEBUG_PRINT("[Dense] new Tensor 2D %p (%d, %d, %d, %d), input %p, out_dim "
               "%d, activation %d, use_bias %d, shared_op %p, kernel_init %p, "

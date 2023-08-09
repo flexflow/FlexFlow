@@ -152,7 +152,8 @@ TEST(imm_post_dominators, basic) {
       {8, 11},
       {9, 11},
       {10, 11},
-      {11, 11} // no immediate post dominator
+      {11, 11} // no immediate post
+               // dominator
   };
 
   EXPECT_EQ(imm_post_dominators(g), answer);

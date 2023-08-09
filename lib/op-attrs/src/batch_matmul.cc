@@ -2,10 +2,6 @@
 
 namespace FlexFlow {
 
-BatchMatmulAttrs::BatchMatmulAttrs(int _a_seq_length_dim, int _b_seq_length_dim)
-    : a_seq_length_dim(_a_seq_length_dim), b_seq_length_dim(_b_seq_length_dim) {
-}
-
 /* bool BatchMatmulAttrs::is_valid( */
 /*     ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const {
  */

@@ -21,10 +21,11 @@ from .base_layer import Layer
 from .input_layer import Input
 from flexflow.keras.models.tensor import Tensor
 from flexflow.keras.initializers import Zeros, GlorotUniform, RandomUniform, RandomNormal, DefaultInitializer, Initializer
+from flexflow.keras.regularizers import Regularizer
 
 class Dense(Layer):
   __slots__ = ['in_channels', 'out_channels', 'activation', 'use_bias', \
-               'kernel_initializer', 'bias_initializer']
+               'kernel_initializer', 'bias_initializer', 'kernel_regularizer']
   def __init__(self, units, input_shape=None, 
                activation=None, use_bias=True,
                kernel_initializer="glorot_uniform",
@@ -35,8 +36,8 @@ class Dense(Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    if kernel_regularizer != None:
-      assert 0, "kernel_regularizer is not supported"
+    # if kernel_regularizer != None:
+    #   assert 0, "kernel_regularizer is not supported"
     if bias_regularizer != None:
       assert 0, "bias_regularizer is not supported"
     if activity_regularizer != None:
@@ -61,7 +62,14 @@ class Dense(Layer):
       self.bias_initializer = bias_initializer
     else:
       assert 0, "[Dense]: unknown bias_initializer"
-    
+
+    if kernel_regularizer is None:
+      self.kernel_regularizer = None
+    elif isinstance(kernel_regularizer, Regularizer):
+      self.kernel_regularizer = kernel_regularizer
+    else:
+      assert 0, "[Dense]: unknown kernel_regularizer"
+
     self.in_channels = 0
     self.out_channels = units
     self.use_bias = use_bias
@@ -271,6 +279,7 @@ class Dropout(Layer):
 class Reshape(Layer):
   def __init__(self, target_shape, input_shape=None, **kwargs):
     #TODO: target shape does not support -1
+    # self.target_shape = (0,) + target_shape
     self.target_shape = (0,) + target_shape
     # TODO: input shape should not contain batch size for now
     if input_shape != None:

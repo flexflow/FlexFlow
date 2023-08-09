@@ -1,39 +1,30 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
 #include "tl/optional.hpp"
-#include "utils/maybe_owned_ref.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
-#include <memory>
 #include <unordered_set>
 
 namespace FlexFlow {
 
-struct DirectedEdge : use_visitable_cmp<DirectedEdge> {
-public:
-  DirectedEdge() = delete;
-  DirectedEdge(Node src, Node dst);
-
-public:
-  Node src, dst;
+struct DirectedEdge {
+  Node src;
+  Node dst;
 };
-std::ostream &operator<<(std::ostream &, DirectedEdge const &);
-
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::DirectedEdge, src, dst);
-MAKE_VISIT_HASHABLE(::FlexFlow::DirectedEdge);
-
-namespace FlexFlow {
+FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
 
 struct DirectedEdgeQuery {
-  DirectedEdgeQuery() = default;
-  DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs,
-                    tl::optional<std::unordered_set<Node>> const &dsts);
-  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
+  query_set<Node> srcs;
+  query_set<Node> dsts;
+
+  static DirectedEdgeQuery all() {
+    NOT_IMPLEMENTED();
+  }
 };
+FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
 
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
                                      DirectedEdgeQuery const &);
@@ -52,9 +43,7 @@ public:
 protected:
   IDiGraphView() = default;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IDiGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraphView);
 
 struct DiGraphView {
 public:
@@ -63,7 +52,7 @@ public:
 
   DiGraphView() = delete;
 
-  operator GraphView() const; // TODO
+  operator GraphView() const;
 
   friend void swap(DiGraphView &, DiGraphView &);
 
@@ -71,13 +60,7 @@ public:
   bool operator!=(DiGraphView const &) const;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-
-  std::unordered_set<Edge> query_edges(EdgeQuery const &query) const;
-
-  // TODO
-  operator maybe_owned_ref<IDiGraphView const>() const {
-    return maybe_owned_ref<IDiGraphView const>(this->ptr);
-  }
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   IDiGraphView const *unsafe() const {
     return this->ptr.get();
@@ -98,6 +81,7 @@ private:
 private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
 DiGraphView unsafe(IDiGraphView const &);
 
@@ -106,9 +90,7 @@ struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void remove_edge(Edge const &) = 0;
   virtual IDiGraph *clone() const = 0;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IDiGraph>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraph);
 
 struct DiGraph {
 public:
@@ -116,11 +98,10 @@ public:
   using EdgeQuery = DirectedEdgeQuery;
 
   DiGraph() = delete;
-  DiGraph(DiGraph const &);
+  DiGraph(DiGraph const &) = default;
+  DiGraph &operator=(DiGraph const &) = default;
 
-  DiGraph &operator=(DiGraph);
-
-  operator DiGraphView() const; // TODO
+  operator DiGraphView() const;
 
   friend void swap(DiGraph &, DiGraph &);
 
@@ -145,13 +126,9 @@ private:
   DiGraph(std::unique_ptr<IDiGraph>);
 
 private:
-  std::unique_ptr<IDiGraph> ptr;
+  cow_ptr_t<IDiGraph> ptr;
 };
-
-static_assert(std::is_copy_constructible<DiGraph>::value, "");
-static_assert(std::is_move_constructible<DiGraph>::value, "");
-static_assert(std::is_copy_assignable<DiGraph>::value, "");
-static_assert(std::is_move_assignable<DiGraph>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);
 
 } // namespace FlexFlow
 

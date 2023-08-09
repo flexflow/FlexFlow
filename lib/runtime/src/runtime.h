@@ -7,9 +7,9 @@
 
 namespace FlexFlow {
 
-struct ModelInstance {
+struct ModelTrainingInstance {
 public:
-  ModelInstance() = delete;
+  ModelTrainingInstance() = delete;
 
   void execute(TaskInvocation const &) const;
   void execute(OpTaskInvocation const &) const;
@@ -21,9 +21,6 @@ public:
 
 void forward(ModelInstance const &);
 void backward(ModelInstance const &);
-
-TaskInvocation forward(ParallelComputationGraph const &, operator_guid_t);
-TaskInvocation backward(ParallelComputationGraph const &, operator_guid_t);
 
 } // namespace FlexFlow
 

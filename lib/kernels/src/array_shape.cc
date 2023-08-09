@@ -3,11 +3,11 @@
 
 namespace FlexFlow {
 
-ArrayShape::ArrayShape(size_t *dims, size_t num_dims)
-    : LegionTensorDims(dims, dims + num_dims) {}
+ArrayShape::ArrayShape(size_t *_dims, size_t num_dims)
+    : dims(_dims, _dims + num_dims) {}
 
 std::size_t ArrayShape::get_volume() const {
-  return product(*this);
+  return product(this->dims);
 }
 
 } // namespace FlexFlow

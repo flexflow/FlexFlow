@@ -18,17 +18,24 @@ optional<Node> find_bottleneck_node(DiGraphView const &);
 struct Parallel;
 
 struct Serial {
-  std::vector<variant<Parallel, Node>> children;
+  req<std::vector<variant<Parallel, Node>>> children;
 };
 
 struct Parallel {
-  std::vector<variant<Serial, Node>> children;
+  req<std::vector<variant<Serial, Node>>> children;
 };
+static_assert(sizeof(Serial) ==
+                  sizeof(req<std::vector<variant<Parallel, Node>>>),
+              "");
+FF_VISITABLE_STRUCT(Serial, children);
+FF_VISITABLE_STRUCT(Parallel, children);
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 
 SerialParallelDecomposition
     get_serial_parallel_decomposition(DiGraphView const &);
+
+std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp);
 
 } // namespace FlexFlow
 

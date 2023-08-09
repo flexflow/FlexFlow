@@ -16,9 +16,10 @@
 
 #include "aggregate.h"
 #include "get_data_dependencies.h"
+#include "kernels/accessor.h"
 #include "kernels/aggregate_kernels.h"
 #include "kernels/profiling.h"
-#include "task_argument_accessor.h"
+#include "task_spec/task_argument_accessor.h"
 #include "tasks.h"
 
 namespace FlexFlow {
@@ -32,22 +33,21 @@ enum Slots {
   OUTPUT,
   ATTRS,
   PROFILING,
-  PER_DEVICE_STATE,
 };
 
 using namespace FlexFlow::Kernels::Aggregate;
 
-DataDependencies get_data_dependencies(AggregateAttrs const &attrs,
-                                       TaskSignature const &sig) {
-  DataDependencies deps;
-  return pointwise_data_dependence({GATE_PREDS,
-                                    GATE_ASSIGN,
-                                    TRUE_GATE_ASSIGN,
-                                    FULL_GATE_GRADIENTS,
-                                    EXP_PREDS},
-                                   {},
-                                   {OUTPUT});
-}
+/* DataDependencies get_data_dependencies(AggregateAttrs const &attrs, */
+/*                                        TaskSignature const &sig) { */
+/*   DataDependencies deps; */
+/*   return pointwise_data_dependence({GATE_PREDS, */
+/*                                     GATE_ASSIGN, */
+/*                                     TRUE_GATE_ASSIGN, */
+/*                                     FULL_GATE_GRADIENTS, */
+/*                                     EXP_PREDS}, */
+/*                                    {}, */
+/*                                    {OUTPUT}); */
+/* } */
 
 // OpTaskInvocation init(AggregateAttrs const &attrs) {
 //   OpTaskBinding binding;
@@ -57,7 +57,7 @@ DataDependencies get_data_dependencies(AggregateAttrs const &attrs,
 //   return { AGGREGATE_INIT_TASK_ID, binding };
 // }
 
-OpTaskInvocation foward(AggregateAttrs const &attrs) {
+OpTaskInvocation forward(AggregateAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(GATE_PREDS, input_tensor(0));
@@ -69,9 +69,8 @@ OpTaskInvocation foward(AggregateAttrs const &attrs) {
 
   binding.bind(OUTPUT, output_tensor(0));
 
-  binding.bind_arg(PROFILING, enable_profiling());
+  binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
   return {AGGREGATE_FWD_TASK_ID, binding};
 }
@@ -82,18 +81,17 @@ OpTaskInvocation backward(AggregateAttrs const &attrs) {
   binding.bind(GATE_PREDS, input_tensor(0));
   binding.bind(GATE_ASSIGN, input_tensor(1));
   binding.bind(TRUE_GATE_ASSIGN, input_tensor(2));
-  binding.bind_grad(FULL_GATE_GRADIENTS, input_tensor(3).grad());
+  binding.bind_grad(FULL_GATE_GRADIENTS, input_tensor(3));
 
   for (int i = 0; i < attrs.n; i++) {
     binding.bind(EXP_PREDS, input_tensor(i + 4));
-    binding.bind_grad(EXP_PREDS, input_tensor(i + 4).grad());
+    binding.bind_grad(EXP_PREDS, input_tensor(i + 4));
   }
 
-  binding.bind_grad(OUTPUT, output_tensor(0).grad());
+  binding.bind_grad(OUTPUT, output_tensor(0));
 
-  binding.bind_arg(PROFILING, enable_profiling());
+  binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state());
 
   return {AGGREGATE_BWD_TASK_ID, binding};
 }
@@ -112,31 +110,30 @@ OpTaskInvocation backward(AggregateAttrs const &attrs) {
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
-  auto per_device_state =
-      acc.get_argument<AggregatePerDeviceState>(PER_DEVICE_STATE);
-  auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
+  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   int n = attrs.n;
 
   // get gate_pred, gate_assign, output
-  auto gate_pred = acc.get_tensor<READ_WRITE>(GATE_PREDS);
-  auto gate_assign = acc.get_tensor<READ_WRITE>(GATE_ASSIGN);
-  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
+  auto gate_pred = acc.get_tensor<Permissions::RW>(GATE_PREDS);
+  auto gate_assign = acc.get_tensor<Permissions::RW>(GATE_ASSIGN);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
-  size_t batch_size = gate_pred.shape[1];
-  assert(batch_size == gate_assign.shape[1]);
-  assert(gate_pred.shape[0] == gate_assign.shape[0]);
-  assert(batch_size == output.shape[1]);
-  size_t out_dim = output.shape[0];
+  size_t batch_size = gate_pred.shape[legion_dim_t(1)];
+  assert(batch_size == gate_assign.shape[legion_dim_t(1)]);
+  assert(gate_pred.shape[legion_dim_t(0)] ==
+         gate_assign.shape[legion_dim_t(0)]);
+  assert(batch_size == output.shape[legion_dim_t(1)]);
+  size_t out_dim = output.shape[legion_dim_t(0)];
 
   // get exp_preds
-  auto acc_exp_preds = acc.get_variadic_tensor<READ_WRITE>(EXP_PREDS);
-  size_t rows = acc_exp_preds[0].shape[1];
+  auto acc_exp_preds = acc.get_variadic_tensor<Permissions::RW>(EXP_PREDS);
+  size_t rows = acc_exp_preds[0].shape[legion_dim_t(1)];
   assert(all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) {
-    return a.shape[1] == rows;
+    return a.shape[legion_dim_t(1)] == rows;
   }));
   assert(all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) {
-    return a.shape[0] == out_dim;
+    return a.shape[legion_dim_t(0)] == out_dim;
   }));
 
   std::vector<float *> exp_preds = vector_transform(
@@ -144,16 +141,15 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
       acc_exp_preds);
   assert(exp_preds.size() == n);
 
-  int k = (int)(gate_assign.shape[0]);
+  int k = (int)(gate_assign.shape[legion_dim_t(0)]);
 
   return profile(forward_kernel,
-                 enable_profiling,
+                 profiling_settings,
                  "[Aggregate] forward_time = %.2lfms\n",
-                 per_device_state,
                  exp_preds.data(),
-                 gate_assign.get_float_ptr(),
-                 gate_pred.get_float_ptr(),
-                 output.get_float_ptr(),
+                 get_int32_ptr(gate_assign),
+                 get_float_ptr(gate_pred),
+                 get_float_ptr(output),
                  n,
                  k,
                  rows,
@@ -171,38 +167,37 @@ static void forward_task(Legion::Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<AggregateAttrs>(ATTRS);
-  auto per_device_state =
-      acc.get_argument<AggregatePerDeviceState>(PER_DEVICE_STATE);
-  auto enable_profiling = acc.get_argument<EnableProfiling>(PROFILING);
+  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   int n = attrs.n;
   float lambda_bal = attrs.lambda_bal;
 
   // get gate_pred, gate_grad, gate_assign, output_grad
-  auto gate_pred = acc.get_tensor<READ_ONLY>(GATE_PREDS);
-  auto gate_assign = acc.get_tensor<READ_ONLY>(GATE_ASSIGN);
-  auto true_gate_assign = acc.get_tensor<READ_ONLY>(TRUE_GATE_ASSIGN);
-  auto full_gate_grad = acc.get_tensor_grad<READ_WRITE>(GATE_GRADIENTS_FULL);
-  auto output_grad = acc.get_tensor_grad<READ_ONLY>(OUTPUT);
+  auto gate_pred = acc.get_tensor<Permissions::RO>(GATE_PREDS);
+  auto gate_assign = acc.get_tensor<Permissions::RO>(GATE_ASSIGN);
+  auto true_gate_assign = acc.get_tensor<Permissions::RO>(TRUE_GATE_ASSIGN);
+  auto full_gate_grad =
+      acc.get_tensor_grad<Permissions::RW>(FULL_GATE_GRADIENTS);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  coord_t batch_size = gate_pred.shape[1];
-  assert(batch_size == gate_assign.shape[1]);
+  size_t batch_size = gate_pred.shape[legion_dim_t(1)];
+  assert(batch_size == gate_assign.shape[legion_dim_t(1)]);
   assert(gate_assign.shape == true_gate_assign.shape);
-  assert(batch_size == full_gate_grad.shape[1]);
-  coord_t k = gate_assign.shape[0];
-  assert(k * batch_size == output_grad.shape[1]);
-  assert(gate_pred.shape[0] == k);
-  coord_t out_dim = output_grad.shape[0];
-  assert(n == full_gate_grad.shape[0]);
+  assert(batch_size == full_gate_grad.shape[legion_dim_t(1)]);
+  size_t k = gate_assign.shape[legion_dim_t(0)];
+  assert(k * batch_size == output_grad.shape[legion_dim_t(1)]);
+  assert(gate_pred.shape[legion_dim_t(0)] == k);
+  size_t out_dim = output_grad.shape[legion_dim_t(0)];
+  assert(n == full_gate_grad.shape[legion_dim_t(0)]);
 
   // get exp_preds
-  auto acc_exp_preds = acc.get_variadic_tensor<READ_WRITE>(EXP_PREDS);
-  coord_t rows = acc_exp_preds[0].shape[1];
+  auto acc_exp_preds = acc.get_variadic_tensor<Permissions::RW>(EXP_PREDS);
+  size_t rows = acc_exp_preds[0].shape[legion_dim_t(1)];
   assert(all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) {
-    return a.shape[1] == rows;
+    return a.shape[legion_dim_t(1)] == rows;
   }));
   assert(all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) {
-    return a.shape[0] == out_dim;
+    return a.shape[legion_dim_t(0)] == out_dim;
   }));
 
   std::vector<float *> exp_preds = vector_transform(
@@ -211,14 +206,13 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(exp_preds.size() == n);
 
   // get chosen_exp_grads
-  auto acc_exp_grads = acc.get_variadic_tensor_grad<READ_WRITE>(EXP_PREDS);
+  auto acc_exp_grads = acc.get_variadic_tensor_grad<Permissions::RW>(EXP_PREDS);
 
-  size_t rows = acc_exp_grads[0].shape[1];
   assert(all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) {
-    return a.shape[1] == rows;
+    return a.shape[legion_dim_t(1)] == rows;
   }));
   assert(all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) {
-    return a.shape[0] == out_dim;
+    return a.shape[legion_dim_t(0)] == out_dim;
   }));
 
   std::vector<float *> exp_grads = vector_transform(
@@ -227,13 +221,12 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(exp_grads.size() == n);
 
   return profile(backward_kernel,
-                 enable_profiling,
+                 profiling_settings,
                  "[Aggregate] backward_time = %.2lfms\n",
-                 &per_device_state,
                  exp_preds.data(),
                  exp_grads.data(),
-                 gate_assign.get_float_ptr(),
-                 true_gate_assign.get_float_ptr(),
+                 get_int32_ptr(gate_assign),
+                 get_int32_ptr(true_gate_assign),
                  gate_pred.get_float_ptr(),
                  full_gate_grad.get_float_ptr(),
                  output_grad.get_float_ptr(),
@@ -436,8 +429,8 @@ template <>
 void register_task<AGGREGATE_BWD_TASK_ID>() {
   OpTaskSignature bwd(OpTaskType::BWD);
 
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_signature(AGGREGATE_FWD_TASK_ID));
+  /* OpTaskSignature bwd = */
+  /*     infer_bwd_signature(get_signature(AGGREGATE_FWD_TASK_ID)); */
   bwd.add_input_slot(TRUE_GATE_ASSIGN);
   bwd.add_input_slot(FULL_GATE_GRADIENTS);
 
@@ -474,13 +467,13 @@ CostMetrics
 
   fwd_binding.bind_arg(PROFILING, settings);
 
-  auto fwd_accessor = get_fwd_accessor(AGGREGATE_FWD_TASK_ID, fwd_binding);
+  auto fwd_accessor = env.get_fwd_accessor(AGGREGATE_FWD_TASK_ID, fwd_binding);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
   bwd_binding.bind(FULL_GATE_GRADIENTS, full_gate_gradients);
-  bwd_binding.bind(TRUE_GATE_ASSIGN, true_gate_gradients);
+  bwd_binding.bind(TRUE_GATE_ASSIGN, true_gate_assign);
 
-  auto bwd_accessor = get_bwd_accessor(AGGREGATE_BWD_TASK_ID, bwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(AGGREGATE_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();

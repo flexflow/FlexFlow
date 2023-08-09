@@ -28,6 +28,22 @@ public:
     return value_;
   }
 
+  template <typename TT,
+            typename std::enable_if<(is_static_castable<T, TT>::value &&
+                                     !std::is_same<T, TT>::value),
+                                    bool>::type = true>
+  explicit operator TT() const {
+    return static_cast<TT>(this->value_);
+  }
+
+  template <typename TT,
+            typename std::enable_if<(std::is_convertible<T, TT>::value &&
+                                     !std::is_same<T, TT>::value),
+                                    bool>::type = true>
+  operator TT() const {
+    return (this->value_);
+  }
+
   friend void swap(strong_typedef &a, strong_typedef &b) noexcept {
     using std::swap;
     swap(static_cast<T &>(a), static_cast<T &>(b));
@@ -47,6 +63,16 @@ public:
 
   T const &value() const noexcept {
     return value_;
+  }
+
+  template <typename F>
+  strong_typedef fmap(F const &f) {
+    static_assert(
+        std::is_same<decltype(std::declval<F>()(std::declval<T const &>())),
+                     T>::value,
+        "Function must return an value of the underlying type");
+
+    return strong_typedef(f(this->value_));
   }
 
 private:
@@ -190,5 +216,17 @@ struct numerical_typedef : strong_typedef<StrongTypedef, T> {
   };                                                                           \
   }                                                                            \
   static_assert(true, "")
+
+#define FF_TYPEDEF_HASHABLE(TYPEDEF_NAME)                                      \
+  }                                                                            \
+  MAKE_TYPEDEF_HASHABLE(::FlexFlow::TYPEDEF_NAME);                             \
+  namespace FlexFlow {                                                         \
+  static_assert(true, "");
+
+#define FF_TYPEDEF_PRINTABLE(TYPEDEF_NAME, TYPEDEF_SHORTNAME)                  \
+  }                                                                            \
+  MAKE_TYPEDEF_PRINTABLE(::FlexFlow::TYPEDEF_NAME, TYPEDEF_SHORTNAME);         \
+  namespace FlexFlow {                                                         \
+  static_assert(true, "");
 
 #endif

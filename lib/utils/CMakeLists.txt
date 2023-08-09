@@ -22,17 +22,17 @@ target_link_libraries(
   ${project_target}
   optional
   expected
-  mpark_variant
+  variant
   visit_struct
-  fmt::fmt
+  fmt
   rapidcheck
+  invoke
+  json
+  any
+  cuda
 )
-set_target_properties(
-  ${project_target} 
-  PROPERTIES 
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
-)
+define_ff_vars(${project_target})
+ff_set_cxx_properties(${project_target})
 
+add_subdirectory(ffi)
 add_subdirectory(test)

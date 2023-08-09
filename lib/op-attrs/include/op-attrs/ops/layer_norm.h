@@ -1,27 +1,21 @@
 #ifndef _FLEXFLOW_OP_META_OPS_LAYER_NORM_ATTRS_H
 #define _FLEXFLOW_OP_META_OPS_LAYER_NORM_ATTRS_H
 
+#include "core.h"
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct LayerNormAttrs : use_visitable_cmp<LayerNormAttrs> {
-public:
-  LayerNormAttrs(stack_vector<ff_dim_t, MAX_TENSOR_DIM> const &axes,
-                 bool elementwise_affine,
-                 float eps);
-
-public:
+struct LayerNormAttrs {
   stack_vector<ff_dim_t, MAX_TENSOR_DIM> axes;
-  bool elementwise_affine;
-  float eps;
+  req<bool> elementwise_affine;
+  req<float> eps;
 };
+FF_VISITABLE_STRUCT(LayerNormAttrs, axes, elementwise_affine, eps);
+CHECK_VALID_OP_ATTR(LayerNormAttrs);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::LayerNormAttrs, axes, elementwise_affine, eps);
-MAKE_VISIT_HASHABLE(::FlexFlow::LayerNormAttrs);
 
 #endif

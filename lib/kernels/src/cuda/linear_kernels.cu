@@ -224,6 +224,26 @@ void backward_kernel(cudaStream_t stream,
                          in_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  if (m->kernel_reg_type == REG_MODE_NONE) {
+    // do nothing
+  } else if (m->kernel_reg_type == REG_MODE_L2) {
+    checkCUDA(cublasSgeam(m->handle.blas,
+                          CUBLAS_OP_N,
+                          CUBLAS_OP_N,
+                          in_dim,
+                          out_dim,
+                          &alpha,
+                          (float *)kernel_grad_ptr,
+                          in_dim,
+                          &(m->kernel_reg_lambda),
+                          (float *)kernel_ptr,
+                          in_dim,
+                          (float *)kernel_grad_ptr,
+                          in_dim));
+  } else {
+    assert(false && "Only L2 regularization is supported");
+  }
+
   // Compute bias gradiant
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True

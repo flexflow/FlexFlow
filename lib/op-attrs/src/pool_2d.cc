@@ -4,18 +4,6 @@
 
 namespace FlexFlow {
 
-Pool2DAttrs::Pool2DAttrs(int _kernel_h,
-                         int _kernel_w,
-                         int _stride_h,
-                         int _stride_w,
-                         int _padding_h,
-                         int _padding_w,
-                         PoolOp _pool_type,
-                         Activation _activation)
-    : kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
-      stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w),
-      pool_type(_pool_type), activation(_activation) {}
-
 namespace Input {
 constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
               REPLICA = 4;

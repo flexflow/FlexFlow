@@ -2,49 +2,17 @@
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_COMPUTATION_GRAPH_H
 
 #include "legion_parallel_tensor_shape.h"
-#include "op_task_invocation.h"
-#include "operator.h"
-#include "operator_guid_t.h"
-#include "optimizer.h"
-#include "parallel_tensor.h"
+#include "op-attrs/operator_attrs.h"
+#include "pcg/operator_guid_t.h"
+#include "pcg/optimizer.h"
+#include "pcg/parallel_computation_graph.h"
+#include "pcg/parallel_tensor.h"
+#include "task_spec/op_task_invocation.h"
 #include "utils/graph.h"
 #include "utils/strong_typedef.h"
 #include <type_traits>
 
 namespace FlexFlow {
-
-class ParallelComputationGraph {
-public:
-  ParallelComputationGraph() = delete;
-  ParallelComputationGraph(
-      LabelledOpenMultiDiGraph<Operator, ParallelTensor> const &);
-
-  Operator const &at(operator_guid_t const &) const;
-  Operator &at(operator_guid_t);
-
-  Operator const &operator[](operator_guid_t const &) const;
-  Operator &operator[](operator_guid_t);
-
-  ParallelTensor const &at(parallel_tensor_guid_t const &) const;
-  ParallelTensor &at(parallel_tensor_guid_t);
-
-  ParallelTensor const &operator[](parallel_tensor_guid_t const &) const;
-  ParallelTensor &operator[](parallel_tensor_guid_t);
-
-  template <typename F>
-  ParallelComputationGraph on_underlying(F const &f) {
-    using Underlying = LabelledOpenMultiDiGraph<Operator, ParallelTensor>;
-    static_assert(std::is_same<decltype(std::declval<F>()(
-                                   std::declval<Underlying const &>())),
-                               Underlying>::value,
-                  "Function must return an value of the type underlying PCG");
-  }
-
-  friend void swap(ParallelComputationGraph &, ParallelComputationGraph &);
-
-public:
-  LabelledOpenMultiDiGraph<Operator, ParallelTensor> graph;
-};
 
 OpTaskInvocation forward(PCGOperatorAttrs const &);
 OpTaskInvocation backward(PCGOperatorAttrs const &);
@@ -63,12 +31,12 @@ std::unordered_map<operator_guid_t, OpTaskInvocation>
 std::unordered_map<operator_guid_t, OpTaskInvocation>
     update(ParallelComputationGraph const &, Optimizer const &);
 
-ArgSpec resolve(ParallelComputationGraph const &,
-                operator_guid_t const &,
-                OpArgRefSpec const &);
-ArgSpec resolve(ParallelComputationGraph const &,
-                operator_guid_t const &,
-                OpArgSpec const &);
+IndexTaskArgSpec resolve(ParallelComputationGraph const &,
+                         operator_guid_t const &,
+                         OpArgRefSpec const &);
+IndexTaskArgSpec resolve(ParallelComputationGraph const &,
+                         operator_guid_t const &,
+                         OpArgSpec const &);
 parallel_tensor_guid_t resolve(ParallelComputationGraph const &,
                                operator_guid_t const &,
                                OpTensorSpec const &,

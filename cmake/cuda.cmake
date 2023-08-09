@@ -81,6 +81,9 @@ if(CUDA_FOUND)
   list(APPEND FLEXFLOW_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS})
 
+  add_library(cuda INTERFACE)
+  target_include_directories(cuda SYSTEM INTERFACE "${CUDA_INCLUDE_DIRS}")
+
 else()
   message( FATAL_ERROR "CUDA package not found -> specify search path via CUDA_ROOT variable")
 endif()

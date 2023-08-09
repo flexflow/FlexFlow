@@ -1,36 +1,28 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 #define _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 
+#include "cow_ptr_t.h"
 #include "node.h"
-#include "tl/optional.hpp"
-#include "utils/maybe_owned_ref.h"
+#include "utils/optional.h"
 #include "utils/unique.h"
 #include <unordered_set>
 
 namespace FlexFlow {
 
-struct UndirectedEdge : use_visitable_cmp<UndirectedEdge> {
-public:
-  UndirectedEdge() = delete;
-  UndirectedEdge(Node src, Node dst);
-
-public:
-  Node smaller, bigger;
+struct UndirectedEdge {
+  Node smaller;
+  Node bigger;
 };
-
-} // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::UndirectedEdge, smaller, bigger);
-MAKE_VISIT_HASHABLE(::FlexFlow::UndirectedEdge);
-
-namespace FlexFlow {
+FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
 
 struct UndirectedEdgeQuery {
-  UndirectedEdgeQuery() = delete;
-  UndirectedEdgeQuery(optional<std::unordered_set<Node>> const &);
+  query_set<Node> nodes;
 
-  optional<std::unordered_set<Node>> nodes = nullopt;
+  static UndirectedEdgeQuery all() {
+    NOT_IMPLEMENTED();
+  }
 };
+FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
 
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
                                        UndirectedEdgeQuery const &);
@@ -44,8 +36,8 @@ struct IUndirectedGraphView : public IGraphView {
 
   virtual std::unordered_set<Edge>
       query_edges(UndirectedEdgeQuery const &) const = 0;
-  virtual ~IUndirectedGraphView() = default; // TODO, this may have some
-                                             // question
+  virtual ~IUndirectedGraphView() = default;
+
 protected:
   IUndirectedGraphView() = default;
 };
@@ -70,11 +62,6 @@ public:
     return ptr->query_edges(query);
   }
 
-  // TODO
-  operator maybe_owned_ref<IUndirectedGraphView const>() const {
-    return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
-  }
-
   IUndirectedGraphView const *unsafe() const {
     return this->ptr.get();
   }
@@ -97,8 +84,7 @@ private:
 private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
-
-UndirectedGraphView unsafe(IUndirectedGraphView const &);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
@@ -141,13 +127,9 @@ private:
   UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
 
 private:
-  std::unique_ptr<IUndirectedGraph> ptr;
+  cow_ptr_t<IUndirectedGraph> ptr;
 };
-
-static_assert(std::is_copy_constructible<UndirectedGraph>::value, "");
-static_assert(std::is_move_constructible<UndirectedGraph>::value, "");
-static_assert(std::is_copy_assignable<UndirectedGraph>::value, "");
-static_assert(std::is_move_assignable<UndirectedGraph>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraph);
 
 } // namespace FlexFlow
 

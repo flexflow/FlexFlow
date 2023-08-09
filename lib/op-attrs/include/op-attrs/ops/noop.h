@@ -6,18 +6,10 @@
 
 namespace FlexFlow {
 
-struct NoopAttrs : public use_visitable_cmp<NoopAttrs> {
-public:
-  NoopAttrs() = default;
-};
+struct NoopAttrs {};
+FF_VISITABLE_STRUCT(NoopAttrs);
+CHECK_VALID_OP_ATTR(NoopAttrs);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT_EMPTY(::FlexFlow::NoopAttrs);
-MAKE_VISIT_HASHABLE(::FlexFlow::NoopAttrs);
-
-namespace FlexFlow {
-static_assert(is_valid_opattr<NoopAttrs>::value, "");
-}
 
 #endif
