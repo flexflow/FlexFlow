@@ -172,8 +172,12 @@ public:
 
   LocalTaskArgumentAccessor(
       std::shared_ptr<SimTaskBinding const> &sim_task_binding)
-      : sim_task_binding(sim_task_binding) {
+      : sim_task_binding(sim_task_binding), memory_usage(0) {
     local_allocator = Allocator::create<CudaAllocator>();
+  }
+
+  size_t get_memory_usage() const {
+    return memory_usage;
   }
 
   void *allocate(size_t size);
@@ -182,6 +186,7 @@ public:
 private:
   std::shared_ptr<SimTaskBinding const> sim_task_binding;
   Allocator local_allocator;
+  size_t memory_usage;
 };
 
 struct TaskArgumentAccessor {

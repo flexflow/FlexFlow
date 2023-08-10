@@ -17,12 +17,13 @@ using namespace FlexFlow {
   }
 
   void *LocalTaskArgumentAccessor::allocate(size_t size) {
-    void *ptr = local_allocator.allocate(
-        memory_size); // Note: how(when) to free this memory?
-    void *cpu_ptr = malloc(memory_size);
-    memset(cpu_ptr, 0, memory_size);
-    checkCUDA(cudaMemcpy(
-        ptr, cpu_ptr, memory_size, cudaMemcpyHostToDevice)); // fill ptr
+    void *ptr =
+        local_allocator.allocate(size); // Note: how(when) to free this memory?
+    void *cpu_ptr = malloc(size);
+    memory_usage += size; // update the usage of memory
+    memset(cpu_ptr, 0, size);
+    checkCUDA(
+        cudaMemcpy(ptr, cpu_ptr, size, cudaMemcpyHostToDevice)); // fill ptr
     free(cpu_ptr);
     return ptr;
   }
@@ -40,7 +41,7 @@ using namespace FlexFlow {
                                              // return std::vector<size_t>
       size_t shape_size = gate_preds.shape.dims.get_volume() * size_of(shape);
       void *ptr = allocate(shape_size);
-      return gate_preds_accessor{shape, array_shape, ptr};
+      return gate_preds_accessor{data_type, array_shape, ptr};
     } else if (slot == OUTPUT) {
       ParallelTensorShape output_shape = get<ParallelTensorShape>(
           this->sim_task_binding->tensor_shape_bindings.at(slot));
@@ -50,7 +51,7 @@ using namespace FlexFlow {
                                          // std::vector<size_t>
       size_t shape_size = output_shape.dims.get_volume() * size_of(data_type);
       void *ptr = allocate(shape_size);
-      return {shape, array_shape, ptr};
+      return {data_type, array_shape, ptr};
     } else {
       throw mk_runtime_error(
           "Unknown Slot ID in LocalTaskArgumentAccessor::get_tensor");
@@ -70,7 +71,8 @@ using namespace FlexFlow {
               .get_dims()}; // shape.dims.get_dims() return std::vector<size_t>
       size_t shape_size = shape.dims.get_volume() * size_of(shape.data_type);
       void *ptr = allocate(shape_size);
-      result.push_back({shape, array_shape, ptr});
+      DataType data_type = shape.data_type;
+      result.push_back({data_type, array_shape, ptr});
     }
     return result;
   }
