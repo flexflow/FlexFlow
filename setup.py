@@ -34,7 +34,10 @@ def compute_version():
     # Version is YY.mm.<incremental>
     # TODO: replace testpypi repo with pypi repo
     # pip_version = requests.get("https://pypi.org/pypi/flexflow/json").json()['info']['version']
-    pip_version = requests.get("https://test.pypi.org/pypi/flexflow/json").json()['info']['version']
+    try:
+        pip_version = requests.get("https://test.pypi.org/pypi/flexflow/json").json()['info']['version']
+    except KeyError:
+        pip_version = "0.0.0"
 
     pip_year, pip_month, pip_incremental = [int(x) for x in pip_version.split(".")]
 
