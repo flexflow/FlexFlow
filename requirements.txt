@@ -6,3 +6,5 @@ keras_preprocessing>=1.1.2
 Pillow
 pybind11
 cmake-build-extension
+ninja
+requests
