@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 from cmake_build_extension import BuildExtension, CMakeExtension
-import os, subprocess, requests
+import os, subprocess, requests, re
 from datetime import date
 
 datadir = Path(__file__).parent / "python/flexflow"
@@ -19,6 +19,18 @@ cuda_path = subprocess.check_output([configs_path, "CUDA_PATH"]).decode("utf-8")
 os.environ["CUDA_PATH"] = cuda_path
 
 def compute_version():
+    # Check if the version has already been determined before, in which case we don't recompute it
+    version_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "python", "flexflow", "version.txt"
+    )
+    if os.path.isfile(version_file):
+        with open(version_file) as f:
+            version = f.read()
+            match = re.fullmatch(r'\d+\.\d+\.\d+', version)
+            if not match:
+                raise ValueError("Version is not in the right format!")
+            return version
+
     # Version is YY.mm.<incremental>
     # TODO: replace testpypi repo with pypi repo
     # pip_version = requests.get("https://pypi.org/pypi/flexflow/json").json()['info']['version']
@@ -38,6 +50,10 @@ def compute_version():
         subversion = pip_incremental + 1
 
     version = f"{year_two_digits}.{today.month}.{subversion}"
+    # Add version to file
+    with open(version_file, 'w+') as f:
+        f.write(version)
+
     return version
 
 setup(
