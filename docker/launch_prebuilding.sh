@@ -13,4 +13,4 @@ docker cp ./test.sh local-test:/tmp/prebuilding.sh
 # Call the Bash script in Docker Container
 docker exec -it local-test bash -c ". /tmp/prebuilding.sh ${python_version} ${cuda_version} ${gpu_backend}"
 # Extract the legion binary files of tar.gz file from Docker container
-docker cp local-test:/tmp/build/export/legion_ubuntu-20.04_${gpu_backend}.tar.gz ~/Desktop/
+docker cp "local-test:/tmp/build/export/legion_ubuntu-20.04_${gpu_backend}.tar.gz ~/Desktop/"
