@@ -547,9 +547,17 @@ install(TARGETS flexflow DESTINATION ${LIB_DEST})
 # install python
 if (FF_USE_PYTHON)
   execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
-  install(
-    DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
-    DESTINATION ${PY_DEST}/flexflow
-    FILES_MATCHING 
-    PATTERN "*.py")
+  if (NOT FF_BUILD_FROM_PYPI)
+    install(
+      DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
+      DESTINATION ${PY_DEST}/flexflow
+      FILES_MATCHING 
+      PATTERN "*.py")
+  else()
+    # pip automatically installs all *.py files in the python/flexflow folder, but because flexflow_cffi_header.py is generated at build time, we have to install it manually.
+    install(
+      PROGRAMS ${FLEXFLOW_ROOT}/python/flexflow/core/flexflow_cffi_header.py
+      DESTINATION ${PY_DEST}/flexflow/core
+    )
+  endif()
 endif()
