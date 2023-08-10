@@ -80,7 +80,7 @@ struct IGraph : IGraphView {
 
   virtual Node add_node() = 0;
   virtual void add_node_unsafe(Node const &) = 0;
-  virtual void remove_node_unsafe(Node const &) = 0;
+  virtual void remove_node(Node const &) = 0;
   virtual IGraph *clone() const = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraph);
@@ -96,7 +96,7 @@ public:
 
   Node add_node();
   void add_node_unsafe(Node const &);
-  void remove_node_unsafe(Node const &);
+  void remove_node(Node const &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 

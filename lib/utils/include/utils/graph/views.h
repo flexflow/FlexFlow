@@ -3,7 +3,9 @@
 
 #include "adjacency_digraph.h"
 #include "digraph.h"
+#include "multidiedge.h"
 #include "multidigraph.h"
+#include "node.h"
 #include "open_graphs.h"
 #include "tl/optional.hpp"
 #include "undirected.h"
@@ -81,46 +83,9 @@ private:
   std::size_t next_node_idx = 0;
 };
 
-enum class LRDirection { LEFT, RIGHT };
-
-struct JoinNodeKey {
-  JoinNodeKey() = delete;
-  JoinNodeKey(Node const &, LRDirection);
-
-  bool operator==(JoinNodeKey const &) const;
-  bool operator<(JoinNodeKey const &) const;
-
-  Node node;
-  LRDirection direction;
-};
-
 } // namespace FlexFlow
 
-namespace std {
-template <>
-struct hash<::FlexFlow::JoinNodeKey> {
-  std::size_t operator()(::FlexFlow::JoinNodeKey const &) const;
-};
-} // namespace std
-
 namespace FlexFlow {
-
-struct JoinedNodeView {
-public:
-  JoinedNodeView() = delete;
-  explicit JoinedNodeView(GraphView const &lhs, GraphView const &rhs);
-
-  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-  std::pair<std::unordered_set<Node>, std::unordered_set<Node>>
-      trace_nodes(std::unordered_set<Node> const &) const;
-
-  Node at_join_key(JoinNodeKey const &) const;
-  JoinNodeKey at_node(Node const &) const;
-
-private:
-  bidict<JoinNodeKey, Node> mapping;
-  NodeSource node_source;
-};
 
 struct JoinedUndirectedGraphView : public IUndirectedGraphView {
 public:
@@ -139,7 +104,7 @@ private:
 private:
   UndirectedGraphView lhs;
   UndirectedGraphView rhs;
-  JoinedNodeView joined_nodes;
+  DuplicatedGraphView node_view;
 };
 
 struct JoinedDigraphView : public IDiGraphView {
@@ -160,7 +125,7 @@ private:
 private:
   DiGraphView lhs;
   DiGraphView rhs;
-  JoinedNodeView joined_nodes;
+  DuplicatedGraphView node_view;
 };
 
 struct JoinedMultiDigraphView : public IMultiDiGraphView {
@@ -182,7 +147,7 @@ private:
 private:
   MultiDiGraphView lhs;
   MultiDiGraphView rhs;
-  JoinedNodeView joined_nodes;
+  DuplicatedGraphView node_view;
 };
 
 struct AddDirectedEdgesView : public IDiGraphView {

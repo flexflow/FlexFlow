@@ -3,47 +3,14 @@
 
 #include "cow_ptr_t.h"
 #include "node.h"
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
+#include "utils/digraph_interfaces.h"
+#include "utils/directed_edge.h"
 
 namespace FlexFlow {
-
-struct DirectedEdge {
-  Node src;
-  Node dst;
-};
-FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
-
-struct DirectedEdgeQuery {
-  query_set<Node> srcs;
-  query_set<Node> dsts;
-
-  static DirectedEdgeQuery all() {
-    NOT_IMPLEMENTED();
-  }
-};
-FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
-
-DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
-                                     DirectedEdgeQuery const &);
-
-struct IDiGraphView : public IGraphView {
-public:
-  using Edge = DirectedEdge;
-  using EdgeQuery = DirectedEdgeQuery;
-
-  IDiGraphView(IDiGraphView const &) = delete;
-  IDiGraphView &operator=(IDiGraphView const &) = delete;
-
-  virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IDiGraphView();
-
-protected:
-  IDiGraphView() = default;
-};
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraphView);
 
 struct DiGraphView {
 public:
@@ -84,13 +51,6 @@ private:
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
 DiGraphView unsafe(IDiGraphView const &);
-
-struct IDiGraph : public IDiGraphView, public IGraph {
-  virtual void add_edge(Edge const &) = 0;
-  virtual void remove_edge(Edge const &) = 0;
-  virtual IDiGraph *clone() const = 0;
-};
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraph);
 
 struct DiGraph {
 public:

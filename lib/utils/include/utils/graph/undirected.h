@@ -6,14 +6,10 @@
 #include "utils/optional.h"
 #include "utils/unique.h"
 #include <unordered_set>
+#include "undirected_edge.h"
+#include "undirected_interfaces.h"
 
 namespace FlexFlow {
-
-struct UndirectedEdge {
-  Node smaller;
-  Node bigger;
-};
-FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
 
 struct UndirectedEdgeQuery {
   query_set<Node> nodes;
