@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Parse input params
-python_version=${1:-empty}
-cuda_version=${2:-empty}
-gpu_backend=${3:-empty}
+python_version=${1:-lastest}
+cuda_version=${2:-11.8}
+gpu_backend=${3:-cuda}
 
 # Running in Docker Container
 docker run -it --name local-test "nvidia/cuda:${cuda_version}-cudnn8-devel-ubuntu20.04"
