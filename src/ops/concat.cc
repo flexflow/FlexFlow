@@ -426,7 +426,7 @@ bool Concat::measure_operator_cost(Simulator *sim,
       cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
       return true;
     }
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(
           m, output_grad_acc, input_grad_accs, numInputs, legion_axis);
     };

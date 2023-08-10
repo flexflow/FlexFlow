@@ -357,7 +357,7 @@ bool Flat::measure_operator_cost(Simulator *sim,
 
     assert(output_grad_ptr != NULL);
     assert(input_grad_ptr != NULL);
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(input_grad_ptr, output_grad_ptr, num_elements);
     };
   }
