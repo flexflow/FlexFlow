@@ -13,8 +13,13 @@
 #include "utils/visitable.h"
 #include <memory>
 #include <vector>
+#include "digraph_interfaces.h"
 
 namespace FlexFlow {
+
+struct DuplicatedGraphView : public IGraphView {
+
+};
 
 struct FlippedView : public IDiGraphView {
 public:
@@ -119,13 +124,8 @@ public:
   JoinedNodeView const &joined_nodes_view() const;
 
 private:
-  DirectedEdge fix_lhs_edge(DirectedEdge const &) const;
-  DirectedEdge fix_rhs_edge(DirectedEdge const &) const;
-
-private:
   DiGraphView lhs;
   DiGraphView rhs;
-  DuplicatedGraphView node_view;
 };
 
 struct JoinedMultiDigraphView : public IMultiDiGraphView {

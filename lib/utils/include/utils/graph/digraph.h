@@ -7,8 +7,8 @@
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
-#include "utils/digraph_interfaces.h"
-#include "utils/directed_edge.h"
+#include "digraph_interfaces.h"
+#include "directed_edge.h"
 
 namespace FlexFlow {
 
@@ -65,9 +65,14 @@ public:
 
   friend void swap(DiGraph &, DiGraph &);
 
-  Node add_node();
-  void add_node_unsafe(Node const &);
-  void remove_node_unsafe(Node const &);
+  Node add_node() {
+    Node n = Node::generate_new();
+    this->ptr.get_mutable()->add_node(n);
+    return n;
+  }
+  void remove_node(Node const &n) {
+    this->ptr.get_mutable()->remove_node(n);
+  }
 
   void add_edge(Edge const &);
   void remove_edge(Edge const &);

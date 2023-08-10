@@ -19,6 +19,12 @@ namespace FlexFlow {
 
 struct Node : public strong_typedef<Node, size_t> {
   using strong_typedef::strong_typedef;
+
+  static Node generate_new() {
+    return Node(Node::ctr++);
+  }
+private:
+  static size_t ctr;
 };
 FF_TYPEDEF_HASHABLE(Node);
 FF_TYPEDEF_PRINTABLE(Node, "Node");
@@ -78,8 +84,7 @@ struct IGraph : IGraphView {
   IGraph(IGraph const &) = delete;
   IGraph &operator=(IGraph const &) = delete;
 
-  virtual Node add_node() = 0;
-  virtual void add_node_unsafe(Node const &) = 0;
+  virtual void add_node(Node const &) = 0;
   virtual void remove_node(Node const &) = 0;
   virtual IGraph *clone() const = 0;
 };
@@ -94,9 +99,15 @@ public:
 
   friend void swap(Graph &, Graph &);
 
-  Node add_node();
-  void add_node_unsafe(Node const &);
-  void remove_node(Node const &);
+  Node add_node() { 
+    Node n = Node::generate_new();
+    this->ptr.get_mutable()->add_node(n);
+    return n;
+  }
+
+  void remove_node(Node const &n) {
+    this->ptr.get_mutable()->remove_node(n);
+  }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
