@@ -78,6 +78,7 @@ setup(
         "cmake-build-extension",
         "pybind11",
         "ninja",
+        "requests",
     ],
     scripts=['python/flexflow/flexflow_python'],
     ext_modules=[
