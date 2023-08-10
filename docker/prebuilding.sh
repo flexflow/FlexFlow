@@ -11,6 +11,24 @@ echo "$cuda_version"
 echo "$gpu_backend"
 
 # Install Conda and FlexFlow Dependencies
+apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release nano libhdf5-dev && \
+    rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list && \
+	apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends software-properties-common && \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential apt-utils \
+    ca-certificates libssl-dev curl unzip htop && DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y software-properties-common && \
+        add-apt-repository ppa:ubuntu-toolchain-r/test && \
+        apt-get update -y && \
+        apt-get upgrade -y libstdc++6
+
+wget -c -q https://repo.continuum.io/miniconda/Miniconda3-"$python_version"-Linux-x86_64.sh && \
+    mv Miniconda3-"$python_version"-Linux-x86_64.sh ~/Miniconda3-"$python_version"-Linux-x86_64.sh && \
+    chmod +x ~/Miniconda3-"$python_version"-Linux-x86_64.sh && \
+    bash ~/Miniconda3-"$python_version"-Linux-x86_64.sh -b -p /opt/conda && \
+    rm ~/Miniconda3-"$python_version"-Linux-x86_64.sh && \
+    /opt/conda/bin/conda upgrade --all && \
+    /opt/conda/bin/conda install conda-build conda-verify && \
+    /opt/conda/bin/conda clean -ya
 
 # Build Legion
 export PATH=/opt/conda/bin:$PATH
