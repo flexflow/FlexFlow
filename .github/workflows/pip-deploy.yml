@@ -51,22 +51,19 @@ jobs:
       #     password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Get package version
-        id: get_version
         run: |
           version=$(python setup.py --version)
-          echo ::set-output name=version::${version}
-      
+          echo "PY_VERSION=${version}" >> $GITHUB_ENV
+            
       - name: Create Git tag
         uses: actions/github-script@v3
         with:
-          #github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const {REPO_FULL_NAME} = process.env
-            const tag = `${process.env.version}`
+            const {PY_VERSION} = process.env
             await github.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: `refs/tags/${tag}`,
+              ref: `refs/tags/${PY_VERSION}`,
               sha: context.sha
             })
 
