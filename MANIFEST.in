@@ -1,4 +1,3 @@
 graft deps
 recursive-exclude . .git
 prune triton
-graft python/flexflow/version.txt
