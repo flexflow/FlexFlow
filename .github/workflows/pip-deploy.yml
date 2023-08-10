@@ -1,8 +1,5 @@
 name: "pip-deploy"
 on: 
-  push:
-    #tags:
-    #  - '*'
   workflow_dispatch:
 
 concurrency:
@@ -52,4 +49,24 @@ jobs:
       #   uses: pypa/gh-action-pypi-publish@release/v1
       #   with:
       #     password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Get package version
+        id: get_version
+        run: |
+          version=$(python setup.py --version)
+          echo ::set-output name=version::${version}
+      
+      - name: Create Git tag
+        uses: actions/github-script@v3
+        with:
+          #github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const {REPO_FULL_NAME} = process.env
+            const tag = `${process.env.version}`
+            await github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tag}`,
+              sha: context.sha
+            })
 

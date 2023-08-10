@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 from cmake_build_extension import BuildExtension, CMakeExtension
-import os, subprocess, re
+import os, subprocess, requests
 from datetime import date
 
 datadir = Path(__file__).parent / "python/flexflow"
@@ -11,31 +11,38 @@ files = [str(p.relative_to(datadir)) for p in datadir.rglob("*.py")]
 configs_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "config", "config.linux"
 )
-
 cmake_configure_options = subprocess.check_output([configs_path, "CMAKE_FLAGS"]).decode(
     "utf-8"
 ).strip().split() + ["-DFF_BUILD_FROM_PYPI=ON"]
 cuda_path = subprocess.check_output([configs_path, "CUDA_PATH"]).decode("utf-8").strip()
-
+# CUDA PATH should be passed to CMAKE via an environment variable
 os.environ["CUDA_PATH"] = cuda_path
 
-def get_version():
-    try:
-        tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"]).decode().strip()
-        # Validate tag looks like a version number 
-        if re.match(r"^v\d+(\.\d+)*$", tag): 
-            return tag
-        elif re.match(r"^v\d+(\.\d+)*$", tag[1:]):
-            return tag[1:]
-        else:
-            raise ValueError(f"Git tag '{tag}' does not look like a valid version number")
-    except Exception:
-        today = date.today()
-        return f"{str(today.year)[-2:]}.{today.month}.{today.day}"
+def compute_version():
+    # Version is YY.mm.<incremental>
+    # TODO: replace testpypi repo with pypi repo
+    # pip_version = requests.get("https://pypi.org/pypi/flexflow/json").json()['info']['version']
+    pip_version = requests.get("https://test.pypi.org/pypi/flexflow/json").json()['info']['version']
+
+    pip_year, pip_month, pip_incremental = [int(x) for x in pip_version.split(".")]
+
+    today = date.today()
+    year_two_digits = int(str(today.year)[-2:])
+    
+    # Ensure no version from the distant past or the future :)
+    if pip_year > year_two_digits or (pip_year == year_two_digits and pip_month > today.month):
+        raise ValueError(f"A version from the distant past or future (year '{pip_year}, month {pip_month}) already exists!")
+    
+    subversion = 0
+    if pip_year == year_two_digits and pip_month == today.month:
+        subversion = pip_incremental + 1
+
+    version = f"{year_two_digits}.{today.month}.{subversion}"
+    return version
 
 setup(
     name="flexflow",
-    version=get_version(),
+    version=compute_version(),
     description="FlexFlow Python package",
     url="https://github.com/flexflow/FlexFlow",
     license="Apache",
@@ -64,9 +71,13 @@ setup(
     cmdclass={"build_ext": BuildExtension},
     classifiers=[
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: POSIX :: Linux",
-        "Topic :: Software Development :: Libraries",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     python_requires=">=3.6",
 )
