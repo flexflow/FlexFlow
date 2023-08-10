@@ -59,26 +59,7 @@ if flexflow_init_import():
   else:
     print("Using Legion Python")
 
-<<<<<<< HEAD
   flexflow_library.initialize()
-=======
-    # Default python mode
-    if is_legion_python == False:
-        _FF_BUILD_DOCS = bool(
-            os.environ.get("READTHEDOCS") or os.environ.get("FF_BUILD_DOCS")
-        )
-        _CPU_ONLY = bool(os.environ.get("CPU_ONLY_TEST"))
-        if not _CPU_ONLY and not "-ll:gpu" in sys.argv:
-            os.environ["REALM_DEFAULT_ARGS"] = "-ll:gpu 1"
-
-        print("Using Default Python")
-        if not _FF_BUILD_DOCS and not _CPU_ONLY:
-            from legion_top import (
-                legion_canonical_python_main,
-                legion_canonical_python_cleanup,
-            )
-            import atexit, sys, os
->>>>>>> e70ad509 (fixes)
 
   # check which python binding to use
   if flexflow_python_binding() == 'pybind11':
