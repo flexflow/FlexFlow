@@ -26,7 +26,7 @@ jobs:
           python-version: "3.x"
       
       - name: Install dependencies
-        run: pip3 install cmake-build-extension
+        run: pip3 install cmake-build-extension requests
 
       - name: Install pypa/build
         run: >-
