@@ -6,6 +6,10 @@ python_version=${1:-empty}
 cuda_version=${2:-empty}
 gpu_backend=${3:-empty}
 
+echo "$python_version"
+echo "$cuda_version"
+echo "$gpu_backend"
+
 # Install Conda and FlexFlow Dependencies
 
 # Build Legion
