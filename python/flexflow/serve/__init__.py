@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import json, sys, os
-from typing import Union
+from typing import Union, List
 from ..type import *
 
-_sys_argv=[]
 
-def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None):
+def _parse_positive_int_config(sys_argv: List[str], name: str, variable: str, ff_cli_name: str = None):
     if variable is not None:
         if type(variable) is not int:
             raise ValueError(
@@ -29,9 +28,9 @@ def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None
                 f"The following configs take positive integers only: {name}"
             )
         if not ff_cli_name:
-            _sys_argv += ["-{name}", str(variable)]
+            sys_argv += ["-{name}", str(variable)]
         else:
-            _sys_argv += [f"{ff_cli_name}", str(variable)]
+            sys_argv += [f"{ff_cli_name}", str(variable)]
 
 
 def init(configs: Union[str, dict]):
@@ -77,6 +76,8 @@ def init(configs: Union[str, dict]):
             "configs should be a dictionary or the path to a valid JSON file"
         )
 
+    sys_argv = []
+
     # Remove the arguments to avoid interferences
     sys.argv = [sys.argv[0]]
 
@@ -88,32 +89,32 @@ def init(configs: Union[str, dict]):
         raise ValueError(
             "Missing one of the following configs: num_gpus, memory_per_gpu, zero_copy_memory_per_gpu"
         )
-    _parse_positive_int_config("num_gpus", num_gpus, "-ll:gpu")
-    _parse_positive_int_config("memory_per_gpu", memory_per_gpu, "-ll:fsize")
-    _parse_positive_int_config(
+    _parse_positive_int_config(sys_argv, "num_gpus", num_gpus, "-ll:gpu")
+    _parse_positive_int_config(sys_argv, "memory_per_gpu", memory_per_gpu, "-ll:fsize")
+    _parse_positive_int_config(sys_argv, 
         "zero_copy_memory_per_gpu", zero_copy_memory_per_gpu, "-ll:zsize"
     )
 
     # parse optional arguments
     num_cpus = configs_dict.get("num_cpus")
-    _parse_positive_int_config("num_cpus", num_cpus, "-ll:cpu")
+    _parse_positive_int_config(sys_argv, "num_cpus", num_cpus, "-ll:cpu")
     legion_utility_processors = configs_dict.get("legion_utility_processors")
-    _parse_positive_int_config(
+    _parse_positive_int_config(sys_argv, 
         "legion_utility_processors", legion_utility_processors, "-ll:util"
     )
 
     data_parallelism_degree = configs_dict.get("data_parallelism_degree")
     tensor_parallelism_degree = configs_dict.get("tensor_parallelism_degree")
     pipeline_parallelism_degree = configs_dict.get("pipeline_parallelism_degree")
-    _parse_positive_int_config(
+    _parse_positive_int_config(sys_argv, 
         "data_parallelism_degree", data_parallelism_degree, "-data-parallelism-degree"
     )
-    _parse_positive_int_config(
+    _parse_positive_int_config(sys_argv, 
         "tensor_parallelism_degree",
         tensor_parallelism_degree,
         "-tensor-parallelism-degree",
     )
-    _parse_positive_int_config(
+    _parse_positive_int_config(sys_argv, 
         "pipeline_parallelism_degree",
         pipeline_parallelism_degree,
         "-pipeline-parallelism-degree",
@@ -121,28 +122,28 @@ def init(configs: Union[str, dict]):
 
     offload = configs_dict.get("offload", False)
     if offload:
-        _sys_argv += ["-offload"]
+        sys_argv += ["-offload"]
     offload_reserve_space_size = configs_dict.get("offload_reserve_space_size")
-    _parse_positive_int_config(
+    _parse_positive_int_config(sys_argv, 
         "offload_reserve_space_size",
         offload_reserve_space_size,
         "-offload-reserve-space-size",
     )
     use_4bit_quantization = configs_dict.get("use_4bit_quantization", False)
     if use_4bit_quantization:
-        _sys_argv += ["--4bit-quantization"]
+        sys_argv += ["--4bit-quantization"]
     use_8bit_quantization = configs_dict.get("use_8bit_quantization", False)
     if use_8bit_quantization:
-        _sys_argv += ["--8bit-quantization"]
+        sys_argv += ["--8bit-quantization"]
 
     profiling = configs_dict.get("profiling", False)
     if profiling:
-        _sys_argv += ["--profiling"]
+        sys_argv += ["--profiling"]
     fusion = configs_dict.get("fusion", True)
     if fusion:
-        _sys_argv += ["--fusion"]
+        sys_argv += ["--fusion"]
 
-    os.environ["FLEXFLOW_SERVE_ARGS"] = " ".join(_sys_argv)
+    os.environ["FLEXFLOW_SERVE_ARGS"] = " ".join(sys_argv)
 
     global LLM, SSM, SamplingConfig
     from .serve import LLM, SSM, SamplingConfig

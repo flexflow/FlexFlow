@@ -74,7 +74,6 @@ if flexflow_init_import():
         FLEXFLOW_SERVE_ARGS = os.environ.get("FLEXFLOW_SERVE_ARGS") or [""]
         if not _CPU_ONLY and not "-ll:gpu" in sys.argv and not "-ll:gpu" in FLEXFLOW_SERVE_ARGS:
             os.environ["REALM_DEFAULT_ARGS"] = "-ll:gpu 1"
-        rerun_if_needed()
         if "-ll:gpu" in FLEXFLOW_SERVE_ARGS:
             sys.argv += FLEXFLOW_SERVE_ARGS.split()
         print("Using Default Python")
