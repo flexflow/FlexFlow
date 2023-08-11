@@ -189,7 +189,6 @@ template <>
 struct Arbitrary<MachineMapping> {
   static Gen<MachineMapping> arbitrary() {
     return gen::build<MachineMapping>(
-        gen::set(&MachineMapping::runtime, gen::nonZero<float>());
         gen::set(&MachineMapping::machine_views,
                  gen::container<std::unordered_map<Node, MachineView>>(
                      gen::arbitrary<Node>(), gen::arbitrary<MachineView>())));
@@ -199,7 +198,7 @@ struct Arbitrary<MachineMapping> {
 template <>
 struct Arbitrary<MachineSpecification> {
   static Gen<MachineSpecification> arbitrary() {
-    return gen::build<MachineMapping>(
+    return gen::build<MachineSpecification>(
         gen::set(&MachineSpecification::num_nodes, gen::inRange(1, 64)),
         gen::set(&MachineSpecification::num_cpus_per_node, gen::inRange(1, 64)),
         gen::set(&MachineSpecification::num_gpus_per_node, gen::inRange(1, 16)),
