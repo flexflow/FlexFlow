@@ -2,7 +2,7 @@
 #define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
 #include "fused_parallel_op_attrs.h"
-#include "op_task_invocation.h"
+#include "../task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

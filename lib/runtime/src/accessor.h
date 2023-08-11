@@ -1,8 +1,8 @@
 #ifndef _FF_ACCESSOR_H_
 #define _FF_ACCESSOR_H_
 
-#include "kernels/accessor.h"
-#include "kernels/ff_handle.h"
+#include "../../kernels/include/kernels/accessor.h" 
+#include "../../kernels/include/kernels/ff_handle.h"
 #include "legion.h"
 #include "mappers/mapping_utilities.h"
 #include "permissions.h"

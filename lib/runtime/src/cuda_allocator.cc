@@ -1,5 +1,4 @@
 #include "cuda_allocator.h"
-#include "kernels/device.h"
 
 namespace FlexFlow {
 

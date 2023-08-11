@@ -2,7 +2,7 @@
 #define _FLEXFLOW_POOL_2D_H
 
 #include "op-attrs/ops/pool_2d.h"
-#include "op_task_invocation.h"
+#include "../task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_BATCH_MATMUL_H
 #define _FLEXFLOW_BATCH_MATMUL_H
 
-#include "op-attrs/ops/batch_matmul.h"
-#include "op_task_invocation.h"
-#include "op_task_signature.h"
+#include "../../op-attrs/include/op-attrs/ops/batch_matmul.h"
+#include "../task_spec/op_task_invocation.h"
+#include "../task_spec/op_task_signature.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

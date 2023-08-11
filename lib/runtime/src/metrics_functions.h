@@ -16,9 +16,9 @@
 #ifndef _FF_METRICS_FUNCTIONS_H_
 #define _FF_METRICS_FUNCTIONS_H_
 
-#include "kernels/perf_metrics.h"
+#include "../../kernels/include/kernels/perf_metrics.h"
 #include "legion.h"
-#include "op-attrs/ops/loss_functions.h"
+#include "../../op-attrs/include/op-attrs/ops/loss_functions.h"
 #include "task_spec/task_invocation.h"
 #include "utils/fmt.h"
 

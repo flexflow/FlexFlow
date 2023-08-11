@@ -16,7 +16,7 @@
 #ifndef _FF_LOSS_FUNCTIONS_H_
 #define _FF_LOSS_FUNCTIONS_H_
 
-#include "op-attrs/ops/loss_functions.h"
+#include "../../op-attrs/include/op-attrs/ops/loss_functions.h"
 #include "../../pcg/include/pcg/operator.h" ///home/ubuntu/repo-refactor/lib/pcg/include/pcg/operator.h
 #include "../../pcg/include/pcg/parallel_tensor.h"
 #include "../../pcg/include/pcg/parallel_tensor_guid_t.h"

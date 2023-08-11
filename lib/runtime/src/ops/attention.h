@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
-#include "op-attrs/ops/attention.h"
-#include "op_task_signature.h"
+#include "../../op-attrs/include/op-attrs/ops/attention.h"
+#include "../task_spec/op_task_signature.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

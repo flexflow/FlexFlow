@@ -16,11 +16,11 @@
 #ifndef _FLEXFLOW_INITIALIZER_H_
 #define _FLEXFLOW_INITIALIZER_H_
 
-#include "kernels/accessor.h"
+#include "../../kernels/include/kernels/accessor.h" ///home/ubuntu/repo-refactor/lib/kernels/include/kernels/accessor.hs
 #include "legion.h"
 #include "op-attrs/tensor_shape.h"
-#include "pcg/initializer.h"
-#include "pcg/parallel_tensor.h"
+#include "../../pcg/include/pcg/initializer.h"
+#include "../../pcg/include/pcg/parallel_tensor.h"
 #include "runtime/config.h"
 #include "task_spec/task_invocation.h"
 #include "task_spec/task_signature.h"

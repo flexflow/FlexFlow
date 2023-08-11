@@ -2,7 +2,7 @@
 #define _FLEXFLOW_COMBINE_H
 
 #include "op-attrs/ops/combine.h"
-#include "op_task_invocation.h"
+#include "../task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

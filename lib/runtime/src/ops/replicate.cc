@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "parallel_ops/replicate.h"
+#include "ops/replicate.h"
 #include "kernels/replicate_kernels.h"
 #include "utils/hash-utils.h"
 

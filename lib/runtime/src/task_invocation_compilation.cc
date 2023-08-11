@@ -1,4 +1,4 @@
-#include "task_invocation_compilation.h"
+#include "task_spec/task_invocation_compilation.h"
 #include "utils/containers.h"
 
 namespace FlexFlow {

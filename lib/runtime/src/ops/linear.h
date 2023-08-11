@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LINEAR_H
 #define _FLEXFLOW_LINEAR_H
 
-#include "op-attrs/ops/linear.h"
-#include "task_spec/op_task_invocation.h"
+#include "../../../op-attrs/include/op-attrs/ops/linear.h"
+#include "../task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

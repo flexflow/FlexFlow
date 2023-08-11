@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_SPEC_H
 #define _FLEXFLOW_RUNTIME_SRC_PARALLEL_TENSOR_SPEC_H
 
-#include "pcg/parallel_tensor_guid_t.h"
+#include "../../pcg/include/pcg/parallel_tensor_guid_t.h"
 
 namespace FlexFlow {
 

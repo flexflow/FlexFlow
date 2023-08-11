@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_GET_DATA_DEPENDENCIES_H
 #define _FLEXFLOW_RUNTIME_SRC_GET_DATA_DEPENDENCIES_H
 
-#include "op-attrs/operator_attrs.h"
+
+#include "../../op-attrs/include/op-attrs/operator_attrs.h" 
 #include "task_spec/task_signature.h"
 
 namespace FlexFlow {

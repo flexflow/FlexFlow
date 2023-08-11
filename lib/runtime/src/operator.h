@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
 #define _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
 
-#include "kernels/per_device_op_state.h"
-#include "kernels/profiling.h"
+#include "../../kernels/include/kernels/per_device_op_state.h"
+#include "../../kernels/include/kernels/profiling.h"
 #include "layer_id.h"
-#include "op-attrs/operator_attrs.h"
+#include "../../op-attrs/include/op-attrs/operator_attrs.h"
 #include "parallel_tensor.h"
-#include "pcg/machine_view.h"
+#include "../../pcg/include/pcg/machine_view.h"
 #include "profiling.h"
 #include "runtime/config.h"
 #include "tasks.h"

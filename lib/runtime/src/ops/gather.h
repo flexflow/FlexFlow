@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_GATHER_H
 #define _FLEXFLOW_OPS_GATHER_H
 
-#include "op-attrs/ops/gather.h"
-#include "op_task_invocation.h"
+#include "../../../op-attrs/include/op-attrs/ops/gather.h"
+#include "../task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_KERNELS_PROFILING_H
 #define _FLEXFLOW_KERNELS_PROFILING_H
 
-#include "kernels/device.h"
+#include "device.h"
 #include "utils/optional.h"
 #include "utils/visitable.h"
 

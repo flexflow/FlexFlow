@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_LAYER_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_LAYER_H
 
-#include "op-attrs/operator_attrs.h"
+#include "../../op-attrs/include/op-attrs/operator_attrs.h" 
 #include "utils/stack_string.h"
 #include "utils/visitable.h"
 

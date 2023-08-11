@@ -2,7 +2,7 @@
 #define _FLEXFLOW_RESHAPE_H
 
 #include "op-attrs/ops/reshape.h"
-#include "op_task_invocation.h"
+#include "../task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

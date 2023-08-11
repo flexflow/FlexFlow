@@ -2,9 +2,9 @@
 #define _FLEXFLOW_ELEMENT_BINARY_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/datatype.h"
-#include "op-attrs/op.h"
-#include "op-attrs/parallel_tensor_shape.h"
+#include "../datatype.h"
+#include "../op.h"
+#include "../parallel_tensor_shape.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {

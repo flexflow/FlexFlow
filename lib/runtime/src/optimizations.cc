@@ -1,4 +1,4 @@
-#include "optimizations.h"
+#include "../../compiler/src/optimizations.h"
 #include "op-attrs/get_op_type.h"
 #include "utils/graph/rewriting.h"
 

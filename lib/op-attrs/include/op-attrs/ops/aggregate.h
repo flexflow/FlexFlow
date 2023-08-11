@@ -2,7 +2,7 @@
 #define _FLEXFLOW_AGGREGATE_PARAMS_H
 
 #include "core.h"
-#include "op-attrs/parallel_tensor_shape.h"
+#include "../parallel_tensor_shape.h"
 #include "utils/visitable.h"
 
 #define AGGREGATE_MAX_K 4

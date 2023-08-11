@@ -1,8 +1,8 @@
 #ifndef _ELEMENT_UNARY_H
 #define _ELEMENT_UNARY_H
 
-#include "op-attrs/ops/element_unary.h"
-#include "op_task_invocation.h"
+#include "../../../op-attrs/include/op-attrs/ops/element_unary.h"
+#include "../task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

@@ -3,8 +3,8 @@
 
 #include "kernels/ff_handle.h"
 #include "parallel_tensor_spec.h"
-#include "pcg/machine_view.h"
-#include "pcg/parallel_tensor_guid_t.h"
+#include "../../pcg/include/pcg/machine_view.h"
+#include "../../pcg/include/pcg/parallel_tensor_guid_t.h"
 #include "runtime/profiling.h"
 #include "runtime/task_spec/concrete_arg.h"
 #include "runtime/task_spec/index_arg.h"

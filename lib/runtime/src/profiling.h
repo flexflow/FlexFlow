@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_PROFILING_H
 #define _FLEXFLOW_RUNTIME_SRC_PROFILING_H
 
-#include "kernels/profiling.h"
+#include "../../kernels/include/kernels/profiling.h"
 #include "legion.h"
 #include "loggers.h"
 

@@ -3,7 +3,7 @@
 
 #include "op-attrs/ops/input.h"
 #include "op-attrs/ops/noop.h"
-#include "op_task_invocation.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 

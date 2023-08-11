@@ -1,7 +1,7 @@
 #ifndef _OPERATOR_PARAMS_H
 #define _OPERATOR_PARAMS_H
 
-#include "op-attrs/ops/core.h"
+#include "ops/core.h"
 #include "ops/aggregate.h"
 #include "ops/aggregate_spec.h"
 #include "ops/attention.h"

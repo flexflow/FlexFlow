@@ -16,7 +16,7 @@
 #include "concat.h"
 #include "kernels/concat_kernels.h"
 #include "legion/legion_utilities.h"
-#include "task_spec.h"
+//#include "task_spec.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
