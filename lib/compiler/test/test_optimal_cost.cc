@@ -12,13 +12,13 @@ TEST_CASE("optimal_cost") {
   };
   rc::check([](ParallelComputationGraph const &g,
                MachineSpecification const &machine_spec) {
-    std::unordered_map<size_t, MachineMapping> cached_subgraph_costs;
-    MachineMapping machine_mapping = optimal_cost(g,
-                                                  test_allowed_machine_views,
-                                                  TestCostEstimator{},
-                                                  machine_spec,
-                                                  cached_subgraph_costs);
-    RC_ASSERT(machine_mapping.runtime > 0);
-    RC_ASSERT(keys(machine_mapping.machine_views) == get_nodes(g));
+    OptimalCostCache cached_subgraph_costs;
+    OptimalCostResult result = optimal_cost(g,
+                                            test_allowed_machine_views,
+                                            TestCostEstimator{},
+                                            machine_spec,
+                                            cached_subgraph_costs);
+    RC_ASSERT(result.runtime > 0);
+    RC_ASSERT(keys(result.machine_mapping.machine_views) == get_nodes(g));
   });
 }

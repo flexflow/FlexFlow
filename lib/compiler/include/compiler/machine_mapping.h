@@ -21,7 +21,11 @@ struct OptimalCostState {
   MachineSpecification resource;
   req<optional<MachineView>> source_machine_view, sink_machine_view;
 };
-FF_VISITABLE_STRUCT(OptimalCostState, subgraph, resource, source_machine_view, sink_machine_view);
+FF_VISITABLE_STRUCT(OptimalCostState,
+                    subgraph,
+                    resource,
+                    source_machine_view,
+                    sink_machine_view);
 
 struct OptimalCostResult {
   static OptimalCostResult sequential_combine(OptimalCostResult const &s1,
@@ -45,18 +49,19 @@ public:
 
   optional<OptimalCostResult> load(OptimalCostState const &) const;
   void save(OptimalCostState const &, OptimalCostResult const &);
+
 private:
   std::unordered_map<OptimalCostState, OptimalCostResult> cache;
 };
 
-OptimalCostResult optimal_cost(
-    ParallelComputationGraph const &g,
-    std::function<std::unordered_set<MachineView>(
-        Operator const &, MachineSpecification const &)> const
-        &allowed_machine_views,
-    CostEstimator const &cost_estimator,
-    MachineSpecification const &resources,
-    OptimalCostCache &cached_subgraph_costs);
+OptimalCostResult
+    optimal_cost(ParallelComputationGraph const &g,
+                 std::function<std::unordered_set<MachineView>(
+                     Operator const &, MachineSpecification const &)> const
+                     &allowed_machine_views,
+                 CostEstimator const &cost_estimator,
+                 MachineSpecification const &resources,
+                 OptimalCostCache &cached_subgraph_costs);
 
 } // namespace FlexFlow
 

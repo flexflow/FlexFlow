@@ -29,7 +29,8 @@ OptimalCostResult
 }
 
 OptimalCostResult OptimalCostResult::infinity() {
-  return {std::numeric_limits<float>::infinity(), MachineMapping{std::unordered_map<Node, MachineView>{}}};
+  return {std::numeric_limits<float>::infinity(),
+          MachineMapping{std::unordered_map<Node, MachineView>{}}};
 }
 
 bool OptimalCostRuntimeCmp::operator()(OptimalCostResult const &lhs,
@@ -104,10 +105,9 @@ std::pair<SubParallelComputationGraph, SubParallelComputationGraph>
   }
 }
 
-float estimate_cost(
-    SubParallelComputationGraph const &g,
-    CostEstimator const &estimator,
-    MachineMapping const &device_mapping) {
+float estimate_cost(SubParallelComputationGraph const &g,
+                    CostEstimator const &estimator,
+                    MachineMapping const &device_mapping) {
   NOT_IMPLEMENTED();
 }
 
@@ -284,14 +284,14 @@ struct OptimalCost {
   }
 };
 
-OptimalCostResult optimal_cost(
-    ParallelComputationGraph const &g,
-    std::function<std::unordered_set<MachineView>(
-        Operator const &, MachineSpecification const &)> const
-        &allowed_machine_views,
-    CostEstimator const &cost_estimator,
-    MachineSpecification const &resources,
-    OptimalCostCache &cached_subgraph_costs) {
+OptimalCostResult
+    optimal_cost(ParallelComputationGraph const &g,
+                 std::function<std::unordered_set<MachineView>(
+                     Operator const &, MachineSpecification const &)> const
+                     &allowed_machine_views,
+                 CostEstimator const &cost_estimator,
+                 MachineSpecification const &resources,
+                 OptimalCostCache &cached_subgraph_costs) {
   return visit(OptimalCost(pcg_to_subpcg(g),
                            cost_estimator,
                            resources,

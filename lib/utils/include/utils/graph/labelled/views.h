@@ -32,11 +32,13 @@ public:
       std::function<OutputLabel(MultiDiOutput const &)> const &output_label)
       : g(g), node_label(node_label), output_label(output_label) {}
 
-  virtual std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+  virtual std::unordered_set<Node>
+      query_nodes(NodeQuery const &q) const override {
     return g.query_nodes(q);
   }
 
-  virtual std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const override {
+  virtual std::unordered_set<MultiDiEdge>
+      query_edges(MultiDiEdgeQuery const &q) const override {
     return g.query_edges(q);
   }
 
@@ -54,7 +56,8 @@ private:
   std::function<OutputLabel(MultiDiOutput const &)> output_label;
 };
 
-CHECK_NOT_ABSTRACT(ViewMultiDiGraphAsOutputLabelled<test_types::hash_cmp, test_types::hash_cmp>);
+CHECK_NOT_ABSTRACT(ViewMultiDiGraphAsOutputLabelled<test_types::hash_cmp,
+                                                    test_types::hash_cmp>);
 
 } // namespace FlexFlow
 
