@@ -414,7 +414,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        assert(my_input_accessor[0].data_type == my_output_accessor[0].data_type);
+        assert(my_input_accessor[0].data_type ==
+               my_output_accessor[0].data_type);
         if (my_input_accessor[0].data_type == DT_INT64) {
           Kernels::Reshape::forward_kernel_wrapper(
               my_input_accessor[0].get_int64_ptr(),
@@ -442,7 +443,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        assert(my_input_accessor[0].data_type == my_output_accessor[0].data_type);
+        assert(my_input_accessor[0].data_type ==
+               my_output_accessor[0].data_type);
         Kernels::Transpose::forward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),

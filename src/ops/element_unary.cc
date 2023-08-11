@@ -131,7 +131,7 @@ Tensor FFModel::tanh(const Tensor x, char const *name) {
 }
 
 Tensor FFModel::identity(const Tensor x, char const *name) {
-  //return this->unary(OP_IDENTITY, x, false /*inplace*/, name);
+  // return this->unary(OP_IDENTITY, x, false /*inplace*/, name);
   return x;
 }
 

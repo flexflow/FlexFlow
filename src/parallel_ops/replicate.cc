@@ -230,15 +230,14 @@ bool Replicate::append_parallel_op_info(
 
 void Replicate::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
-                          Context ctx, 
-                          Runtime *runtime) {
-}
+                          Context ctx,
+                          Runtime *runtime) {}
 
 /*static*/
 void Replicate::forward_task(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   DataType data_type = *((DataType *)task->args);
@@ -256,10 +255,11 @@ void Replicate::forward_task(Task const *task,
 }
 
 template <typename T>
-void Replicate::forward_task_with_type(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+void Replicate::forward_task_with_type(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Domain input_domain = runtime->get_index_space_domain(
@@ -281,9 +281,9 @@ void Replicate::forward_task_with_type(Task const *task,
 }
 
 void Replicate::backward_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   DataType data_type = *((DataType *)task->args);
@@ -301,10 +301,11 @@ void Replicate::backward_task(Task const *task,
 }
 
 template <typename T>
-void Replicate::backward_task_with_type(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+void Replicate::backward_task_with_type(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Domain output_grad_domain = runtime->get_index_space_domain(

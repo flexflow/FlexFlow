@@ -2635,11 +2635,12 @@ Op *FFModel::create_operator_from_layer(
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel && config.numNodes * config.workersPerNode > 1) {
-        if (pt->dims[num_dims-1].size == 1) {
+      if (config.only_data_parallel &&
+          config.numNodes * config.workersPerNode > 1) {
+        if (pt->dims[num_dims - 1].size == 1) {
           Replicate *repl = new Replicate(
               *this, pt, num_dims, config.numNodes * config.workersPerNode);
-          repl->outputs[0]->dims[num_dims].is_replica_dim = true; 
+          repl->outputs[0]->dims[num_dims].is_replica_dim = true;
           operators.push_back(repl);
         } else {
           Repartition *part = new Repartition(
@@ -5137,8 +5138,15 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Replicate::init_task>(
-        registrar, "Replicate Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Replicate::init_task>(
+          registrar, "Replicate Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Replicate::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REPLICATE_FWD_TASK_ID, "Replicate Forward");

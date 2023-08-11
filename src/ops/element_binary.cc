@@ -448,7 +448,7 @@ __host__ void
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
-  const ElementBinary* ele = (const ElementBinary*) task->args;
+  ElementBinary const *ele = (ElementBinary const *)task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());

@@ -146,7 +146,6 @@ size_t ParallelTensorShape::get_piece_num_elements() const {
   return piece_num_elements;
 }
 
-
 RecordFormatter ParallelTensorShape::as_dot() const {
   RecordFormatter r;
   for (int i = 0; i < this->num_dims; i++) {
