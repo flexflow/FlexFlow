@@ -433,14 +433,14 @@ if (FF_USE_PYTHON)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Creating flexflow_cffi_header.py..."
   )
-  # generate the Legion Python bindings library
-  add_custom_command(TARGET flexflow
-    POST_BUILD	
-    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
-  )
-  # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
   if (NOT FF_BUILD_FROM_PYPI)
+    # generate the Legion Python bindings library. When building from pip, we need to do this post-install to prevent Legion from overwriting the path to the Legion shared library
+    add_custom_command(TARGET flexflow
+      POST_BUILD	
+      COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
+    )
+    # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
     add_custom_command(TARGET flexflow
       PRE_BUILD	
       COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
@@ -559,5 +559,9 @@ if (FF_USE_PYTHON)
       PROGRAMS ${FLEXFLOW_ROOT}/python/flexflow/core/flexflow_cffi_header.py
       DESTINATION ${PY_DEST}/flexflow/core
     )
+    # Use setup.py script to re-install the Python bindings library with the right library paths. 
+    # Need to put the instructions in a subfolder because of issue below:
+    # https://stackoverflow.com/questions/43875499/do-post-processing-after-make-install-in-cmake
+    add_subdirectory(cmake/pip_install)
   endif()
 endif()
