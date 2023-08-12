@@ -26,8 +26,9 @@ def compute_version() -> str:
     1. If the python/flexflow/version.txt file exists, return the version from the file.
     2. If the version.txt file does not exist, the version will be YY.MM.<index>, 
         where the YY are the last two digits of the year, MM is the month number, 
-        and <index> is a counter that is incremented every time we publish a new version 
-        on pypi (or test.pypi, if the DEPLOY_TO_TEST_PYPI env is defined and set to true). 
+        and <index> is a counter that is reset at the beginning of every month, 
+        and it is incremented every time we publish a new version on pypi (or test.pypi, 
+        if the DEPLOY_TO_TEST_PYPI env is defined and set to true). 
         Using this index (instead of the day of  the month) for the sub-subversion, allows 
         us to release more than once per day when needed.
     
