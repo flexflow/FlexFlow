@@ -53,6 +53,7 @@ jobs:
 
       - name: Get package version
         run: |
+          pip install setuptools requests cmake-build-extension
           version=$(python setup.py --version)
           echo "PY_VERSION=${version}" >> $GITHUB_ENV
             
