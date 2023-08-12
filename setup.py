@@ -18,6 +18,9 @@ cuda_path = subprocess.check_output([configs_path, "CUDA_PATH"]).decode("utf-8")
 # CUDA PATH should be passed to CMAKE via an environment variable
 os.environ["CUDA_PATH"] = cuda_path
 
+# set up make flags
+os.environ["MAKE_FLAGS"] = (os.environ.get("MAKE_FLAGS", "")) + f" -j{min(os.cpu_count()-1,1)}" 
+
 def compute_version():
     # Check if the version has already been determined before, in which case we don't recompute it
     version_file = os.path.join(
