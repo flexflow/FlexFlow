@@ -65,8 +65,9 @@ jobs:
       - name: Create Git tag
         if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'true' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.FLEXFLOW_TOKEN }}
         run: |
+          echo ${{ env.PY_VERSION }}
           git tag ${{ env.PY_VERSION }}
           git push --tags
 
