@@ -20,40 +20,40 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Free additional space on runner
-        run: .github/workflows/helpers/free_space_on_runner.sh
+      # - name: Free additional space on runner
+      #   run: .github/workflows/helpers/free_space_on_runner.sh
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
+      # - name: Set up Python
+      #   uses: actions/setup-python@v4
+      #   with:
+      #     python-version: "3.x"
 
-      - name: Install pypa/build
-        run: >-
-          python3 -m
-          pip install
-          build
-          --user
+      # - name: Install pypa/build
+      #   run: >-
+      #     python3 -m
+      #     pip install
+      #     build
+      #     --user
 
-      - name: Build a source tarball
-        env:
-          DEPLOY_TO_TEST_PYPI: ${{ vars.DEPLOY_TO_TEST_PYPI }}
-        run: >-
-          python3 -m
-          build
-          --sdist
-          --outdir dist/
-          .
+      # - name: Build a source tarball
+      #   env:
+      #     DEPLOY_TO_TEST_PYPI: ${{ vars.DEPLOY_TO_TEST_PYPI }}
+      #   run: >-
+      #     python3 -m
+      #     build
+      #     --sdist
+      #     --outdir dist/
+      #     .
 
-      - name: Publish distribution 📦 to Test PyPI
-        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'true' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
+      # - name: Publish distribution 📦 to Test PyPI
+      #   if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'true' }}
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     repository-url: https://test.pypi.org/legacy/
 
-      - name: Publish distribution 📦 to PyPI
-        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
+      # - name: Publish distribution 📦 to PyPI
+      #   if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
+      #   uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Get package version
         run: |
@@ -65,8 +65,8 @@ jobs:
       - name: Create Git tag
         if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'true' }}
         env:
-          GH_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
         run: |
-          gh tag create ${{ env.PY_VERSION }}
-          gh push --tags
+          git tag ${{ env.PY_VERSION }}
+          git push --tags
 
