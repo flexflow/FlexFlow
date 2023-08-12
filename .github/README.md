@@ -1,11 +1,11 @@
-# FlexFlow Serve: A Compiler and Distributed Runtime for High-Performance, Low-Latency LLM Serving
+# FlexFlow Serve: Low-Latency, High-Performance LLM Serving
 ![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) ![gpu tests](https://github.com/flexflow/flexflow/workflows/gpu-ci/badge.svg?branch=master) ![multinode gpu tests](https://github.com/flexflow/flexflow/workflows/multinode-test/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=master) ![pip](https://github.com/flexflow/flexflow/workflows/pip-install/badge.svg?branch=master) ![shell-check](https://github.com/flexflow/flexflow/workflows/Shell%20Check/badge.svg?branch=master) ![clang-format](https://github.com/flexflow/flexflow/workflows/clang-format%20Check/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
 
 <p align="center">
 <img src="../img/spec_infer_demo.gif" alt="A SpecInfer Demo" width="630"/>
 </p>
 
-## What is SpecInfer
+## What is FlexFlow Serve
 
 <p align="center">
 <img src="../img/overview.png" alt="An overview of SpecInfer" width="620"/>
@@ -13,7 +13,12 @@
   
 The high computational and memory requirements of generative large language
 models (LLMs) make it challenging to serve them quickly and cheaply. 
-SpecInfer is an open-source distributed multi-GPU system that accelerates generative LLM
+FlexFlow Serve is an open-source compiler and distributed system for 
+__low latency__, __high performance__ LLM serving. FlexFlow Serve outperforms 
+existing systems by 1.3-2.0x for single-node, multi-GPU inference and by 
+1.4-2.4x for multi-node, multi-GPU inference.
+
+that accelerates generative LLM
 inference with __speculative inference__ and __token tree verification__. A key insight
 behind SpecInfer is to combine various collectively boost-tuned small speculative
 models (SSMs) to jointly predict the LLM’s outputs; the predictions are organized as a
