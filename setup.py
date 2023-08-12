@@ -7,7 +7,7 @@ from datetime import date
 datadir = Path(__file__).parent / "python/flexflow"
 files = [str(p.relative_to(datadir)) for p in datadir.rglob("*.py")]
 
-# Load CMake configs from config/config.linux file
+# Load CMake configs from config/config.linux file, parsing any custom settings from environment variables
 configs_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "config", "config.linux"
 )
@@ -18,7 +18,7 @@ cuda_path = subprocess.check_output([configs_path, "CUDA_PATH"]).decode("utf-8")
 # CUDA PATH should be passed to CMAKE via an environment variable
 os.environ["CUDA_PATH"] = cuda_path
 
-# set up make flags
+# set up make flags to parallelize build of subcomponents that do not use ninja
 os.environ["MAKEFLAGS"] = (os.environ.get("MAKEFLAGS", "")) + f" -j{max(os.cpu_count()-1, 1)}" 
 
 def compute_version():
@@ -62,27 +62,30 @@ def compute_version():
 
     return version
 
+# Create description from README
+long_description = (Path(__file__).parent / "README.md").read_text()
+
+# Create requirements list from requirements.txt
+with open(Path(__file__).parent / "requirements.txt", "r") as reqs_file:
+    requirements = reqs_file.read().strip().split("\n")
+
 setup(
     name="flexflow",
     version=compute_version(),
-    description="FlexFlow Python package",
+    description="A distributed deep learning framework that supports flexible parallelization strategies.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/flexflow/FlexFlow",
+    project_urls={
+        "Homepage": "https://flexflow.ai/",
+        "Documentation": "https://flexflow.readthedocs.io/en/latest/",
+    },
     license="Apache",
     packages=find_packages("python"),
     package_dir={"": "python"},
     package_data={"flexflow": files},
     zip_safe=False,
-    install_requires=[
-        "numpy>=1.16",
-        "cffi>=1.11",
-        "qualname>=0.1",
-        "keras_preprocessing",
-        "Pillow",
-        "cmake-build-extension",
-        "pybind11",
-        "ninja",
-        "requests",
-    ],
+    install_requires=requirements,
     scripts=['python/flexflow/flexflow_python'],
     ext_modules=[
         CMakeExtension(
