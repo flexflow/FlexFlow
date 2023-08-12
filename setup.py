@@ -21,7 +21,28 @@ os.environ["CUDA_PATH"] = cuda_path
 # set up make flags to parallelize build of subcomponents that do not use ninja
 os.environ["MAKEFLAGS"] = (os.environ.get("MAKEFLAGS", "")) + f" -j{max(os.cpu_count()-1, 1)}" 
 
-def compute_version():
+def compute_version() -> str:
+    """This function generates the flexflow package version according to the following rules:
+    1. If the python/flexflow/version.txt file exists, return the version from the file.
+    2. If the version.txt file does not exist, the version will be YY.MM.<index>, 
+        where the YY are the last two digits of the year, MM is the month number, 
+        and <index> is a counter that is incremented every time we publish a new version 
+        on pypi (or test.pypi, if the DEPLOY_TO_TEST_PYPI env is defined and set to true). 
+        Using this index (instead of the day of  the month) for the sub-subversion, allows 
+        us to release more than once per day when needed.
+    
+    Warning! If the latest flexflow package version in test.pypi goes out of sync with pypi, this
+    script will publish the wrong version if it is used to deploy to both test.pypi and pypi without
+    deleting the version.txt file in-between the two uploads.
+
+    :raises ValueError: if the python/flexflow/version.txt file exists, but contains a version in the wrong format
+    :raises ValueError: if the DEPLOY_TO_TEST_PYPI env is set to a value that cannot be converted to a Python boolean
+    :raises ValueError: if a flexflow release exists on pypi (or test.pypi) whose last two digits of the year are 
+                        larger than the last two digits of the current year (e.g., if it's year '23, 
+                        and we find a release from year '24)
+    :return: The version in YY.MM.<incremental> format, as a string
+    :rtype: str
+    """    
     # Check if the version has already been determined before, in which case we don't recompute it
     version_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "python", "flexflow", "version.txt"
@@ -29,19 +50,26 @@ def compute_version():
     if os.path.isfile(version_file):
         with open(version_file) as f:
             version = f.read()
+            # Version is YY.mm.<index>
             match = re.fullmatch(r'\d+\.\d+\.\d+', version)
             if not match:
                 raise ValueError("Version is not in the right format!")
             return version
 
-    # Version is YY.mm.<incremental>
-    # TODO: replace testpypi repo with pypi repo
-    # pip_version = requests.get("https://pypi.org/pypi/flexflow/json").json()['info']['version']
+    # Get latest version of FlexFlow on pypi (default) or test.pypi (if the DEPLOY_TO_TEST_PYPI env is set to true)
+    deploy_to_test_pypi = os.environ.get('DEPLOY_TO_TEST_PYPI', 'false')
+    if deploy_to_test_pypi.lower() in ['true', 'yes', '1']:
+        deploy_to_test_pypi = True
+        pypi_url = "https://test.pypi.org/pypi/flexflow/json"
+    elif deploy_to_test_pypi.lower() in ['false', 'no', '0']:
+        deploy_to_test_pypi = False
+        pypi_url = "https://pypi.org/pypi/flexflow/json"
+    else:
+        raise ValueError(f'Invalid boolean value: {deploy_to_test_pypi}')
     try:
-        pip_version = requests.get("https://test.pypi.org/pypi/flexflow/json").json()['info']['version']
+        pip_version = requests.get(pypi_url).json()['info']['version']
     except KeyError:
         pip_version = "0.0.0"
-
     pip_year, pip_month, pip_incremental = [int(x) for x in pip_version.split(".")]
 
     today = date.today()
