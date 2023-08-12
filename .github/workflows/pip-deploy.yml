@@ -24,9 +24,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
-      
-      - name: Install dependencies
-        run: pip3 install cmake-build-extension requests
 
       - name: Install pypa/build
         run: >-
@@ -36,7 +33,11 @@ jobs:
           --user
 
       - name: Build a source tarball
-        run: python3 setup.py sdist
+        run: >-
+          python3 -m
+          build
+          --sdist
+          --outdir dist/
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
