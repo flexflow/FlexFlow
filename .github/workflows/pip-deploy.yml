@@ -63,14 +63,17 @@ jobs:
           echo "PY_VERSION=${version}" >> $GITHUB_ENV
             
       - name: Create Git tag
-        uses: actions/github-script@v3
-        with:
-          script: |
-            const {PY_VERSION} = process.env
-            await github.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `refs/tags/${PY_VERSION}`,
-              sha: context.sha
-            })
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'true' }}
+        run: git tag ${{ env.PY_VERSION }}
+      # - name: Create Git tag
+      #   uses: actions/github-script@v3
+      #   with:
+      #     script: |
+      #       const {PY_VERSION} = process.env
+      #       await github.git.createRef({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         ref: `refs/tags/${PY_VERSION}`,
+      #         sha: context.sha
+      #       })
 
