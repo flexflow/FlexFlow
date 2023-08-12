@@ -546,7 +546,7 @@ install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
 install(TARGETS flexflow DESTINATION ${LIB_DEST})
 # install python
 if (FF_USE_PYTHON)
-  execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
   if (NOT FF_BUILD_FROM_PYPI)
     install(
       DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
