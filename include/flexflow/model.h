@@ -383,7 +383,8 @@ public:
   static constexpr float PROPAGATION_SIZE_WEIGHT = 1.0;
 
   bool cpu_offload;
-  int position_offset = 2;
+  // positional embedding start offset
+  int position_offset;
   // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor x, char const *name = NULL);

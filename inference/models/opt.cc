@@ -40,6 +40,7 @@ void OPT::create_opt_model(FFModel &ff,
   //------------------------------ build the model --------------------------
   Tensor input;
   Tensor position_input;
+  ff.position_offset = 2;
   {
     int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
