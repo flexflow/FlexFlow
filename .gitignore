@@ -185,3 +185,6 @@ train-labels-idx1-ubyte
 # Logs
 logs/
 gpt_tokenizer
+
+# pip version
+python/flexflow/version.txt
