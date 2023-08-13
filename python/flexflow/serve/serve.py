@@ -223,7 +223,10 @@ class LLM:
         self.download_hf_weights_if_needed()
 
         # Create file data loader, load weights into tensors
-        if self.model_type == ModelType.FALCON:
+        if (
+            self.model_type == ModelType.FALCON
+            or self.model_type == ModelType.STARCODER
+        ):
             n_q_heads = self.hf_config.num_attention_heads
             if "n_head_kv" in self.hf_config.__dict__:
                 n_kv_heads = self.hf_config.n_head_kv
