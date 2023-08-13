@@ -131,8 +131,9 @@ We currently implement CI testing using Github Workflows. Each workflow is defin
 4. `gpu-ci.yml`: runs all the tests that require a GPU to run.
 5. `gpu-ci-daemon.yml`: an helper workflow that turns on/off the GPU instance used by the test above
 6. `multinode-test.yml`: runs the same GPU tests from the `gpu-ci.yml` workflow, but using multiple (simulated) nodes. The test currently simulates two nodes, each with 2 GPUs. To run FlexFlow on multiple nodes, we compile Legion with GASNET enabled, and choose MPI as the GASNET conduit. Compared to the single-node version, this test is much more time-consuming (about 4h instead 40mins at the time of writing), so we only run the test on the FlexFlow `master` branch every other day.
-7. `pip-install.yml`: checks the build & installation of FlexFlow using `pip`
-8. `shell-check.yml`: runs shellcheck on all bash scripts in the repo
+7. `pip-deploy.yml`: builds the `flexflow` pip package and publishes it on `TestPyPI` (if the repository environment variable `DEPLOY_TO_TEST_PYPI` is unset, or set to `false`) or `PyPI` (if `DEPLOY_TO_TEST_PYPI` is set to `true`). When deploying to `PyPI`, a new git tag (with the pip package version) will also be created,  and associated with the commit hash that triggered the workflow. The `pip-deploy.yml` can only be launched manually via workflow dispatch. More on the pip packaging in the [section below](#pip-packages). 
+8. `pip-install.yml`: checks the build & installation of FlexFlow using `pip`
+9. `shell-check.yml`: runs shellcheck on all bash scripts in the repo
 
 We also have three placeholder workflows: `build-skip.yml`, `docker-build-skip.yml`, `gpu-ci-skip` and `pip-install-skip.yml`. These always pass and are used only in the case of skipped workflows whose status is required to merge a PR; we implement the "hack" officially recommended by Github ([see here](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks)).
 
@@ -207,6 +208,72 @@ Next, the `concurrency` section allows you to control how many copies of the sam
 Finally, we define the jobs that will run when the workflow is triggered. Each job is specified by adding an indented entry to the `jobs:` section, and will run in parallel in a isolated container. Multiple jobs in the same workflow do not directly share files. The `runs-on` option allows you to control what type of runner to use for the job. In the example, we use `runs-on: ubuntu-20.04` to run the job on a VM with Ubuntu 20.04. You can also set up the workflow to run on a self-hosted machine by using the option `runs-on: self-hosted` and following the instructions at [this link](https://docs.github.com/en/actions/hosting-your-own-runners/adding-self-hosted-runners) to connect the self hosted machine to the repository. 
 
 Each step in a job will be executed sequentially, and if it fails, the remaining steps will be cancelled and the job will be marked as `failed`. Each step is specified by either reusing a Github action or running a shell command (or a script file). For instance, in the example above, the first step uses the Github Action `actions/checkout@v3` to check out the repository, the second step uses the `Jimver/cuda-toolkit@v0.2.11` action to install CUDA, whereas the third step runs a bash script stored in the repo at the path `.github/workflows/helpers/install_dependencies.sh`.
+
+## Pip packages
+This section illustrates how we support the automatic deployment of FlexFlow to the `PyPI` and `Test PyPI` repositories. Publishing FlexFlow on `PyPI` makes it possible for users to install FlexFlow on their machine by simply running:
+
+```bash
+pip install flexflow
+```
+
+To install from `Test PyPI`, on the other hand, one can use:
+
+```bash
+pip install flexflow --extra-index-url https://test.pypi.org/simple/
+```
+
+The installation process currently takes approximately the same time as installing from source by running the command `pip install .` from `FF_HOME` after having cloned the repo. However, installing directly from PyPI allows the user to automatically install the Python dependencies, and removes the step of having to manually clone the repo with all its submodules.
+
+Below, we discuss some important properties of PyPI.
+
+### Packaging
+When building a `pip` package from a repository, we can decide what files from the repository will be included in the package, and which ones will be left out. To do that, we write a [MANIFEST.in](https://github.com/flexflow/FlexFlow/blob/master/MANIFEST.in) file, according to the syntax from the [official instructions](https://packaging.python.org/en/latest/guides/using-manifest-in/). In particular, we manually include the submodules (which would otherwise be left out by default), we remove the `.git` folders, which are not needed to build FlexFlow, as well as the `triton` folder, whose contents are not currently in use. Finally, we request that the version.txt file, whose role is described in the section below, is included in the package distribution. Because this file is generated at build time, it would be left out by default if we didn't manually include it.
+
+### Source VS Wheel distribution
+PyPI allows you to upload a source distribution, together with one (or more) binary distributions of your package. A `pip` package's pre-compiled binary is called a Wheel (formerly, Egg). The advantage of publishing Wheel distributions instead of just the source code is that the installation of the package will be much faster for the user, who will just need to download the binary, and extract its files in the proper locations (all of this is handled automatically when running `pip install <package name>`). If only the source code is available, on the other hand, `pip install <package name>` will first need to compile the package, and then install it.
+
+`PyPI` allows you to upload multiple Wheels to support different Python versions (the Wheel compatible with version of Python installed on the user's machine is downloaded automatically when the user runs `pip install <package name>`), but unfortunately does not yet support uploading a Wheel for each CUDA version, and automatically downloading the relevant one depending on the user's machine configuration. Instead, one needs to upload a Wheel with a distinct name for each CUDA version, and the user will need to specify the name manually at dowload time. For this reason, to keep things simple, we only publish the source distribution at this moment, and plan to upload Wheels that are specific to each Python version and CUDA version at a later time.
+
+### Versioning
+
+PyPI imposes some strict versioning requirements. Among other things, versions need to follow a specific format, and once a given version of a package is published, it can never be replaced. In addition, even if the publisher deletes a version, nobody can never upload a source distribution / Wheel with that same version number again. Finally, when multiple versions of the same package are published, the one with the highest version number (not the one that was uploaded last) will be installed by default.
+
+When publishing a package on PyPI, the version attached to the upload is determined by the `setup.py` script. You can check which version string will be used by running `python setup.py --version`.
+
+The simplest way to version a `pip`package is to hard-code the version number in the `setup.py` script, and committing a change to the repository every time the `pip` package is to be updated. This approach, however, is incompatible with having a script or workflow to automatically update the `pip` package.
+
+If we intend to deploy the latest code to PyPI automatically, we need a way to automatically assign a properly-formatted version string to the code we want to upload. Further, we need to ensure that the assigned version is (1) different from any version (of the same package) already published on PyPI and (2) larger than any previous version. Finally, a trickier requirement is that: (3) at any point in time, the `setup.py` script included in a given version of our package should output a version string that exactly matches the version string recorded in the metadata attached to the package's version at publication time. More about this below.
+
+We follow a simple approach to automatically version the latest code: use the publication's date to generate the version string. For example, on Aug 12, 2023, we can use version string 23.08.12. Assuming that we publish at most one version per day, and that we always publish from the same timezone, we will be able to meet requirements (1) and (2). An additional enhancement to be able to support the update of the package more than once per day (which may be needed in development phase, or if a mistake is made), instead of using the day of the month (12 for August 12, 2023) for the sub-sub-version, we use an index that starts at 0 every month, and is incremented by +1 every time we upload a new version of the package within the same calendar month. So if on Aug 12, 2023 we are updating the package for the first time in the month, we will use version string 23.08.0; if later the same day (or any time before Sept 1, 2023) we wish to upload a new version, we will use string 23.08.1, and so forth.
+
+Having illustrated the general versioning policy, we will need to implement it carefully in `setup.py` to ensure that we meet requirement (3). You can take a look at the `compute_version()` function to see how this is done in practice. The key realization is that we cannot simply compute today's date (using any of the Python libraries that let us do that) and transform it into a string, nor simply get from PyPI the latest available version of our package, and, if it was published on the same calendar month, increment the sub-subversion by +1 to generate the version string of the new upload. We can best illustrate why we cannot do that with an example:
+- Today, Aug 12, 2023, we wish to upload a new version to PyPI. As we said above, the version string is computed by `setup.py`. A naive way to do so in `setup.py` would be to compute the date using `date.today()`, and transform the year and month into digit form to generate the version (23) and sub-version (08) parts of the version string. We could then check on PyPI what was the latest published version of the package as of today, and if we found that it was, say, 23.08.05, we would use 5+1=6 as the sub-sub-version for the new upload (so the final version string would be 23.08.06).
+- Over the next few days, we upload 3 more versions
+- A week later, on Aug 18, 2023, a user trying to install our package, runs `pip install <package name>`. To determine which version it should install, the `pip install` script downloads the most recent X versions of `<package name>` on the user's machine, and, for each version, re-computes the version string by running `python setup.py --version`. When the script attempts to recompute the version string on the package 23.08.06 (which we uploaded on Aug 12, 2023), it will reconstruct the version string by replaying the same instructions that were run on Aug. 12, and obtain a different version string, as follows. Using the current date, the user will obtain: version=23, sub-version=08, which match the metadata. Checking the latest version of the package available on PyPI, the script finds version 23.08.09 (there were three more submissions since Aug 12). This will translate to sub-sub-version=9+1=10. Noticing that the version included in the Aug 12 package's metadata (23.08.06) does not match the recomputed version (23.08.10), the script will generate unexpected and undesired behavior. 
+
+To prevent accidentally breaking requirement (3) as illustrated in the scenario from the example above, we employ a simple hack: when computing our package's version string for the first time by running `setup.py`, we save the string to a file, `python/flexflow/version.txt`, which is added to the `.gitignore` and as such, never committed to the repo. As long as the `version.txt` exists, any subsequent run of `setup.py` will simply read the file, and output the same version string, no matter on which day and/or how many new versions of the package have been uploaded to PyPI since then. When packaging our code to upload it on PyPI, we ensure to delete the `version.txt` file, compute the version string, and then include the `version.txt` in the source distribution that we upload to `PyPI`. In this way, when the user attempts to install the package, `pip install` will download the most recent available versions, run `setup.py` from each distribution, and for each distribution, `setup.py` will always output the correct version string, because it will just read the string recorded in that distribution's `version.txt`.
+
+### Test PyPI
+Given all the complexities and restrictions of PyPI, Test PyPI was created as a "copy" of PyPI to be used for testing and for being able to make mistakes without affecting the user, or forever losing the opportunity to use a given package name and/or version. We take advantage of Test PyPI as follows. If we intend to deploy to PyPI, we can first deploy to Test PyPI, check the results, fix any issue, and only later deploy to PyPI. All our `pip` related scripts in the repo have been designed to support both Test PyPI and PyPI. In order to let `setup.py` know that it should package a distribution for Test PyPI, one can simply export the following environment variable:
+
+```bash
+export DEPLOY_TO_TEST_PYPI=true
+```
+
+Conversely, to upload to PyPI, one can either leave `DEPLOY_TO_TEST_PYPI` unset, or export
+
+```bash
+export DEPLOY_TO_TEST_PYPI=false
+```
+
+WARNING!!! More likely than not, the latest version of the `flexflow` package on Test PyPI and PyPI will be out of sync. This is to be expected, because one may need to upload a few drafts on Test PyPI to detect and correct some bugs, before publishing the definitive version on PyPI. Having different latest versions on the two repositories should not cause any issue. However, after uploading to Test PyPI and before uploading to PyPI (or viceversa), **it is EXTREMELY IMPORTANT** to delete the `python/flexflow/version.txt` file.
+
+An easy way to avoid forgetting this, is to only deploy on Test PyPI/PyPI using the `pip-deploy.yml`, which is designed to only upload to one of the two repositories at a given time.
+
+### Build vs install dependencies
+
+FlexFlow requires some other Python packages in order to run. In addition, even building FlexFlow requires some packages, and you cannot run `setup.py` without those build requirements. There is a way for us to specify these _install_ and _build_ requirements in such a way that `pip` will detect if they are missing, and install them. We record the build requirements in the `pyproject.toml` file, whereas we specify the installation requirements by passing a list with each package's name to the `install_requires` key of the `setup()` function in `setup.py`. The installation requirements are automatically read from the `requirements.txt` file.
+
 
 ## Contributing to FlexFlow
 We want to make contributing to this project as easy and transparent as possible.
