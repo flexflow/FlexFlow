@@ -184,7 +184,8 @@ enum ModelType {
   LLAMA = 3002,
   LLAMA2 = 3003,
   OPT = 3004,
-  FALCON = 3005
+  FALCON = 3005,
+  STARCODER = 3006
 };
 
 enum PMParameter {

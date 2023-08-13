@@ -315,7 +315,7 @@ FutureMap InferenceManager::inference(FFModel *model,
         // input.
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-        load_positions(bc, pt);
+        load_positions(bc, pt, model->position_offset);
       } else {
         found_input_operator = true;
         assert(op->numOutputs == 1);
@@ -371,14 +371,15 @@ void InferenceManager::load_input_tokens_from_batch_config(
 }
 
 void InferenceManager::load_positions(BatchConfigFuture const &bc,
-                                      ParallelTensor position_input) {
+                                      ParallelTensor position_input,
+                                      int offset) {
   Context ctx = ff_config.lg_ctx;
   Runtime *runtime = ff_config.lg_hlr;
   size_t machine_view_hash = position_input->machine_view.hash();
   ArgumentMap argmap;
   IndexLauncher launcher(RM_LOAD_POSITION_TASK_ID,
                          position_input->parallel_is,
-                         TaskArgument(nullptr, 0),
+                         TaskArgument(&offset, sizeof(int)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,

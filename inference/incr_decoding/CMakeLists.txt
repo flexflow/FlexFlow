@@ -10,7 +10,8 @@ set(CPU_SRC
   ../file_loader.cc
   ../models/llama.cc
   ../models/opt.cc
-  ../models/falcon.cc)
+  ../models/falcon.cc
+  ../models/starcoder.cc)
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
