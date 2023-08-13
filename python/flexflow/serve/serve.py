@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from flexflow.serve.models import FlexFlowLLAMA, FlexFlowOPT, FlexFlowFalcon
+from flexflow.serve.models import (
+    FlexFlowLLAMA,
+    FlexFlowOPT,
+    FlexFlowFalcon,
+    FlexFlowSTARCODER,
+)
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
@@ -76,6 +81,7 @@ class LLM:
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
             "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
+            "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path

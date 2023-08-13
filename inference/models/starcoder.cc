@@ -107,7 +107,8 @@ void STARCODER::create_starcoder_model(
     // set transformer layer id
     ff.set_transformer_layer_id(i);
     // step 1: attention
-    Tensor ln_1 = ff.layer_norm(hidden_states, axes, true, 1e-05);
+    Tensor ln_1 = ff.layer_norm(
+        hidden_states, axes, true, startcoder_config.layer_norm_epsilon);
     Layer *layer_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_ln_1_weight",
                            layer_norm);
@@ -143,7 +144,8 @@ void STARCODER::create_starcoder_model(
                            attention_layer);
     Tensor residual = ff.add(hidden_states, mha);
 
-    Tensor l2_norm = ff.layer_norm(residual, axes, true, 1e-5);
+    Tensor l2_norm = ff.layer_norm(
+        residual, axes, true, startcoder_config.layer_norm_epsilon);
     Layer *l2_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_ln_2_weight",
                            l2_layer);
@@ -167,7 +169,8 @@ void STARCODER::create_starcoder_model(
     hidden_states = ff.add(residual, c_proj);
   }
   // final normalization and linear
-  Tensor ln_f = ff.layer_norm(hidden_states, axes, true, 1e-5);
+  Tensor ln_f = ff.layer_norm(
+      hidden_states, axes, true, startcoder_config.layer_norm_epsilon);
   Layer *final_norm = ff.layers.back();
   weights_layers.emplace("transformer_ln_f_weight", final_norm);
 
