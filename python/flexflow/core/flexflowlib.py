@@ -18,6 +18,7 @@ from typing import Any, Union
 from .flexflow_cffi_header import flexflow_header
 
 from legion_cffi import ffi
+from distutils import sysconfig
 
 class FlexFlowLib(object):
     __slots__ = ['_lib', '_header']
@@ -44,7 +45,16 @@ class FlexFlowLib(object):
 
     def get_shared_library(self) -> str:
         libname = "libflexflow" + self.get_library_extension()
-        return os.path.join(libname)
+        
+        # If we installed with pip, use the full path instead of just the library name, because the library will not be in the LD_LIBRARY_PATH
+        packages_dir = sysconfig.get_python_lib(plat_specific=False, standard_lib=False)
+        ff_lib_path = os.path.join(packages_dir, "flexflow", "lib", libname)
+        installed_with_pip = os.path.exists(ff_lib_path)
+
+        if installed_with_pip:
+            return ff_lib_path
+        else:
+            return libname
 
     def get_c_header(self) -> str:
         return self._header
