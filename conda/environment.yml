@@ -14,3 +14,4 @@ dependencies:
     - qualname>=0.1.0
     - keras_preprocessing>=1.1.2
     - numpy>=1.16.0
+    - requests
