@@ -121,20 +121,12 @@ We have evaluated SpecInfer on the following prompts datasets: [Chatbot instruct
 
 ## TODOs
 
-SpecInfer is under active development. We currently focus on the following tasks and strongly welcome all contributions to SpecInfer from bug fixes to new features and extensions.
+FlexFlow Serve and FlexFlow are under active development. We currently focus on the following tasks and strongly welcome all contributions from bug fixes to new features and extensions.
 
-* Low-precision and mixed-precision support. The current version uses single-precision floating points for computing tree attention. We are actively working on support half-precision floating points, and int4 and int8 quantizations.
-* Offloading-based generative LLM inference. Another promising avenue for future work is using speculative inference and token tree verification to reduce the end-to-end inference for offloading-based generative LLM inference. A potential application of this technique is enabling a single commodity GPU to serve LLMs for latency critical tasks. 
+* AMD support. We are actively working on supporting FlexFlow Serve on AMD GPUs and welcome any contributions to this effort. 
 
 ## Acknowledgements
-This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting FlexFlow Serve. The following paper describes design, implementation, and key optimizations of SpecInfer.
-
-* Xupeng Miao*, Gabriele Oliaro*, Zhihao Zhang*, Xinhao Cheng*, Zeyu Wang, Rae Ying Yee Wong, Zhuoming Chen, Daiyaan Arfeen, Reyna Abhyankar, and Zhihao Jia. [SpecInfer: Accelerating Generative LLM Serving with Speculative Inference and Token Tree Verification](https://arxiv.org/abs/2305.09781).
-
-\* Denotes equal contribution
-
-### Citation
-Please cite as:
+This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting FlexFlow Serve. Please cite FlexFlow Serve as:
 
 ``` bibtex
 @misc{miao2023specinfer,
