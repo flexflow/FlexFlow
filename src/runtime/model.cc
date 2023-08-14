@@ -2831,12 +2831,16 @@ void FFModel::compile(LossType loss_type,
   // Launch the graph optimize task
   {
     FFModel *model = this;
-    TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID,
-                          TaskArgument(&model, sizeof(FFModel *)));
-    Future future = runtime->execute_task(ctx, launcher);
-
-    PCG::GraphOptimalViewSerialized ret =
-        future.get_result<PCG::GraphOptimalViewSerialized>();
+    PCG::GraphOptimalViewSerialized ret;
+    if (false) {
+      TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID,
+                            TaskArgument(&model, sizeof(FFModel *)));
+      Future future = runtime->execute_task(ctx, launcher);
+      ret =
+          future.get_result<PCG::GraphOptimalViewSerialized>();
+    } else {
+      ret = PCG::Graph::graph_optimize_wrapper(this);
+    }
     Deserializer dez(ret.data, ret.total_bytes);
     // Reconstruct operators
     PCG::Graph *best_graph = new PCG::Graph(this);

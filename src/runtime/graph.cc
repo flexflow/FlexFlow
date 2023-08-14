@@ -1882,11 +1882,11 @@ namespace {
  */
 std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
     try_one_lambda(std::pair<float, MemorySearchResult> &lambda,
-                   Task const *task,
+                   FFModel *model,
                    std::shared_ptr<Simulator> &cached_simulator,
                    bool perform_memory_search) {
   // Create a new fresh model
-  FFModel *model = *((FFModel **)task->args);
+  //FFModel *model = *((FFModel **)task->args);
   model->clear_graph_search_cache();
 
   if (model->config.search_num_nodes.has_value()) {
@@ -1900,6 +1900,9 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
                                     model->config.workersPerNode,
                                     model->config.cpusPerNode,
                                     model->all_valid_views);
+  Runtime *runtime = model->config.lg_hlr;
+  Context ctx = model->config.lg_ctx;
+  const Task* task = runtime->get_current_task(ctx);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
@@ -2045,12 +2048,20 @@ bool is_valid_strategy(
  * @param runtime Not used
  * @return GraphOptimalViewSerialized Serialized optimal PCG
  */
+
 GraphOptimalViewSerialized
     Graph::graph_optimize_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
-  auto model_config = (*((FFModel **)task->args))->config;
+  FFModel* model = *((FFModel **)task->args);
+  return Graph::graph_optimize_wrapper(model);
+}
+
+/*static*/
+GraphOptimalViewSerialized
+    Graph::graph_optimize_wrapper(FFModel *model) {
+  auto model_config = model->config;
   bool perform_memory_search = model_config.perform_memory_search;
   float memory_threshold = model_config.device_mem;
   bool only_data_parallel = model_config.only_data_parallel;
@@ -2066,7 +2077,7 @@ GraphOptimalViewSerialized
   // Be optimistic
   lambdas.emplace_back(std::make_pair(1.0, MemorySearchResult{}));
   auto try_result = try_one_lambda(
-      lambdas.back(), task, cached_simulator, perform_memory_search);
+      lambdas.back(), model, cached_simulator, perform_memory_search);
   best_graph = std::move(try_result.first);
   optimal_views = try_result.second;
 
@@ -2082,7 +2093,7 @@ GraphOptimalViewSerialized
     // Not found the strategy; need to do binary search
     lambdas.emplace_back(std::make_pair(0.0, MemorySearchResult{}));
     try_result = try_one_lambda(
-        lambdas.back(), task, cached_simulator, perform_memory_search);
+        lambdas.back(), model, cached_simulator, perform_memory_search);
     best_graph = std::move(try_result.first);
     optimal_views = try_result.second;
 
@@ -2109,7 +2120,7 @@ GraphOptimalViewSerialized
 
         lambdas.emplace_back(std::make_pair(mid, MemorySearchResult{}));
         try_result = try_one_lambda(
-            lambdas.back(), task, cached_simulator, perform_memory_search);
+            lambdas.back(), model, cached_simulator, perform_memory_search);
 
         if (!is_valid_strategy(lambdas,
                                try_result.first.get(),
