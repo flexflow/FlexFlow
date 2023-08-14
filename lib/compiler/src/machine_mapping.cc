@@ -12,6 +12,10 @@ MachineMapping MachineMapping::combine(MachineMapping const &s1,
   return MachineMapping{merge_maps(s1.machine_views, s2.machine_views)};
 }
 
+bool MachineMapping::nodes_are_disjoint(MachineMapping const &m1, MachineMapping const &m2) {
+  return are_disjoint(keys(m1.machine_views), keys(m2.machine_views));
+}
+
 OptimalCostResult
     OptimalCostResult::sequential_combine(OptimalCostResult const &s1,
                                           OptimalCostResult const &s2) {

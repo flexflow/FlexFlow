@@ -1,13 +1,9 @@
 #include "doctest.h"
 #include "test_generator.h"
 
-bool nodes_are_disjoint(MachineMapping const &m1, MachineMapping const &m2) {
-  return are_disjoint(keys(m1.machine_views), keys(m2.machine_views));
-}
-
 TEST_CASE("MachineMapping::combine") {
   rc::check([](MachineMapping const &m0, MachineMapping const &m1) {
-    RC_PRE(nodes_are_disjoint(m0, m1));
+    RC_PRE(MachineMapping::nodes_are_disjoint(m0, m1));
 
     MachineMapping comb = MachineMapping::combine(m0, m1);
 
