@@ -6,11 +6,16 @@ namespace FlexFlow {
 ArrayShape::ArrayShape(size_t *_dims, size_t num_dims)
     : dims(_dims, _dims + num_dims) {}
 
-ArrayShape::ArrayShape(const std::vector<std::size_t> &vec) : dims(vec.begin(), vec.end()) {}
+ArrayShape::ArrayShape(std::vector<std::size_t> const &vec)
+    : dims(vec.begin(), vec.end()) {}
 
-std::size_t ArrayShape::get_volume() const { return num_elements(); }
+std::size_t ArrayShape::get_volume() const {
+  return num_elements();
+}
 
-std::size_t ArrayShape::get_dim() const { return num_dims(); }
+std::size_t ArrayShape::get_dim() const {
+  return num_dims();
+}
 
 std::size_t ArrayShape::num_elements() const {
   return product(this->dims);
@@ -20,9 +25,13 @@ std::size_t ArrayShape::num_dims() const {
   return this->dims.size();
 }
 
-std::size_t ArrayShape::operator[](legion_dim_t idx) const { return dims[idx]; }
+std::size_t ArrayShape::operator[](legion_dim_t idx) const {
+  return dims[idx];
+}
 
-std::size_t ArrayShape::at(legion_dim_t idx) const { return dims.at(idx); }
+std::size_t ArrayShape::at(legion_dim_t idx) const {
+  return dims.at(idx);
+}
 
 legion_dim_t ArrayShape::last_idx() const {
   return dims.size() - 1;
@@ -54,6 +63,14 @@ ArrayShape ArrayShape::sub_shape(optional<legion_dim_t> start,
 
 std::size_t ArrayShape::get_volume() const {
   return product(this->dims);
+}
+
+bool ArrayShape::operator==(ArrayShape const &other) const {
+  if (this->dims.size() != other.dims.size()) {
+    return false;
+  }
+
+  return this->dims == other.dims;
 }
 
 } // namespace FlexFlow
