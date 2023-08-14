@@ -1,5 +1,5 @@
 #include "doctest.h"
-#include "ArrayShape.h"  // Assuming this is where your ArrayShape is located
+#include "kernels/array_shape.h"  // Assuming this is where your ArrayShape is located
 
 TEST_CASE("ArrayShape Initialization and Basic Functions") {
     using namespace FlexFlow;
