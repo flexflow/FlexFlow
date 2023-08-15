@@ -23,6 +23,7 @@ existing systems by 1.3-2.0x for single-node, multi-GPU inference and by
 
 ## Install FlexFlow Serve
 
+
 ### Requirements
 * OS: Linux
 * GPU backend: Hip-ROCm or CUDA
@@ -38,7 +39,6 @@ conda env create -f https://github.com/flexflow/FlexFlow/blob/master/conda/flexf
 conda activate flexflow
 ```
 
-
 ### Install with pip
 You can install FlexFlow Serve using pip:
 
@@ -53,15 +53,15 @@ If you run into any issue during the install, or if you would like to use the C+
 docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-11.8:latest
 ```
 
-To download a Docker container for a backend other than CUDA v11.8, you can replace the `cuda-11.8` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm`).
-
-More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](../docker/README.md).
+To download a Docker container for a backend other than CUDA v11.8, you can replace the `cuda-11.8` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm`). More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](../docker/README.md).
 
 ### Build from source
 
-SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](https://flexflow.readthedocs.io/en/latest/installation.html) for building/installing FlexFlow from source code.
+You can install FlexFlow Serve from source code by building the inference branch of FlexFlow. Please follow these [instructions](https://flexflow.readthedocs.io/en/latest/installation.html).
 
 ## Quickstart
+The following example shows how to deploy an LLM in FlexFlow Serve and accelerate LLM serving using [speculative inference]({#specinfer}).  
+
 You can get started with the example SpecInfer code. If you prefer to start running FlexFlow Serve in incremental mode only, you can check out the code in the [section below](#incremental-decoding-example). For more complete examples, check out the [`inference/python/incr_decoding.py`](https://github.com/flexflow/FlexFlow/blob/python_inference/inference/python/incr_decoding.py) and [`inference/python/spec_infer.py`](https://github.com/flexflow/FlexFlow/blob/python_inference/inference/python/spec_infer.py) scripts.
 
 ```python
@@ -80,20 +80,20 @@ ff.init(
 # Create the FlexFlow LLM
 llm = ff.LLM(
     "decapoda-research/llama-7b-hf",
-    data_type=ff.DataType.DT_HALF,
+    data_type = ff.DataType.DT_HALF,
 )
 
 ssms=[]
 # Create the SSMs (just one in this case)
 ssm = ff.SSM(
-	"JackFram/llama-160m",
+	"JackFram/llama-68m",
 	data_type = ff.DataType.DT_HALF
 )
 ssms.append(ssm)
 
 # Create the sampling configs
-sampling_config = ff.SamplingConfig(
-    do_sample=True, temperature=0.9, topp=0.8, topk=1
+sampling_config = ff.GenerationConfig(
+    do_sample=False, temperature=0.9, topp=0.8, topk=1
 )
 
 # Compile the SSMs for inference and load the weights into memory
@@ -114,7 +114,7 @@ llm.compile(
 result = llm.generate("Here are some travel tips for Tokyo:\n")
 ```
 
-### Incremental decoding example
+### Incremental decoding
 <details>
 <summary>Expand here</summary>
 <br>
@@ -139,7 +139,7 @@ llm = ff.LLM(
 )
 
 # Create the sampling configs
-sampling_config = ff.SamplingConfig(
+sampling_config = ff.GenerationConfig(
     do_sample=True, temperature=0.9, topp=0.8, topk=1
 )
 
@@ -154,8 +154,6 @@ result = llm.generate("Here are some travel tips for Tokyo:\n")
 ```
 
 </details>
-
-
 
 ### C++ interface
 If you'd like to use the C++ interface (mostly used for development and benchmarking purposes), you should install from source, and follow the instructions below. 
@@ -194,7 +192,7 @@ For example, you can use the following command line to serve a LLaMA-7B or LLaMA
 
 
 
-## Speculative Inference
+## Speculative Inference {#specinfer}
 A key technique that enables FlexFlow Serve to accelerate LLM serving is speculative
 inference, which combines various collectively boost-tuned small speculative
 models (SSMs) to jointly predict the LLM’s outputs; the predictions are organized as a
@@ -211,13 +209,13 @@ FlexFlow Serve supports a variety of HuggingFace models:
 
 | Model | Model id on HuggingFace | Boost-tuned SSMs |
 | :---- | :---- | :---- |
-| LLaMA-7B | decapoda-research/llama-7b-hf | [LLaMA-65M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
-| LLaMA-13B | decapoda-research/llama-13b-hf | [LLaMA-65M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
-| LLaMA-30B | decapoda-research/llama-30b-hf | [LLaMA-65M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
-| LLaMA-65B | decapoda-research/llama-65b-hf | [LLaMA-65M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
-| LLaMA-2-7B | meta-llama/Llama-2-7b-hf | [LLaMA-65M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
-| LLaMA-2-13B | meta-llama/Llama-2-13b-hf | [LLaMA-65M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
-| LLaMA-2-70B | meta-llama/Llama-2-70b-hf | [LLaMA-65M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-7B | decapoda-research/llama-7b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-13B | decapoda-research/llama-13b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-30B | decapoda-research/llama-30b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-65B | decapoda-research/llama-65b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-2-7B | meta-llama/Llama-2-7b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-2-13B | meta-llama/Llama-2-13b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-2-70B | meta-llama/Llama-2-70b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
 | OPT-6.7B | facebook/opt-6.7b | [OPT-125M](https://huggingface.co/facebook/opt-125m) |
 | OPT-13B | facebook/opt-13b | [OPT-125M](https://huggingface.co/facebook/opt-125m) |
 | OPT-30B | facebook/opt-30b | [OPT-125M](https://huggingface.co/facebook/opt-125m) |
