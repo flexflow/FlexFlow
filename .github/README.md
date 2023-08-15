@@ -82,7 +82,7 @@ If you'd like to use the C++ interface (mostly used for development and benchmar
 
 <details>
 <summary>Expand here</summary>
-<br>
+	
 #### Downloading models
 Before running SpecInfer, you should manually download the LLM and SSM(s) model of interest using the [inference/utils/download_hf_model.py](https://github.com/flexflow/FlexFlow/blob/inference/inference/utils/download_hf_model.py) script (see example below). By default, the script will download all of a model's assets (weights, configs, tokenizer files, etc...) into the cache folder `~/.cache/flexflow`. If you would like to use a different folder, you can request that via the parameter `--cache-folder`.
 
