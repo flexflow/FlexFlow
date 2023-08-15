@@ -1,5 +1,5 @@
 # FlexFlow Serve: Low-Latency, High-Performance LLM Serving
-![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) ![gpu tests](https://github.com/flexflow/flexflow/workflows/gpu-ci/badge.svg?branch=master) ![multinode gpu tests](https://github.com/flexflow/flexflow/workflows/multinode-test/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=master) ![pip](https://github.com/flexflow/flexflow/workflows/pip-install/badge.svg?branch=master) ![shell-check](https://github.com/flexflow/flexflow/workflows/Shell%20Check/badge.svg?branch=master) ![clang-format](https://github.com/flexflow/flexflow/workflows/clang-format%20Check/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
+![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=inference) ![gpu tests](https://github.com/flexflow/flexflow/workflows/gpu-ci/badge.svg?branch=inference) ![multinode gpu tests](https://github.com/flexflow/flexflow/workflows/multinode-test/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=inference) ![pip](https://github.com/flexflow/flexflow/workflows/pip-install/badge.svg?branch=inference) ![shell-check](https://github.com/flexflow/flexflow/workflows/Shell%20Check/badge.svg?branch=inference) ![clang-format](https://github.com/flexflow/flexflow/workflows/clang-format%20Check/badge.svg?branch=inference) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
 
 
 ---
@@ -34,18 +34,45 @@ for serving generative LLMs while provably preserving model quality.
 
 ## Install FlexFlow Serve
 
-The quickest way to try FlexFlow Serve is to use our pre-built Docker package for different CUDA versions and the `hip_rocm` backend. More info on the Docker images can be found [here](../docker/README.md). To download and run our pre-built Docker container:
+### Requirements
+* OS: Linux
+* GPU backend: Hip-ROCm or CUDA
+	* CUDA version: 10.2 – 12.0
+	* NVIDIA compute capability: 6.0 or higher
+* Python: 3.6 or higher
+* Package dependencies: [see here](https://github.com/flexflow/FlexFlow/blob/master/conda/flexflow-cpu.yml)
+
+The easiest way to install all the package dependencies is by creating a new conda environment, as follows:
+
 ```bash
-./docker/pull.sh flexflow
-./docker/run.sh flexflow
+conda env create -f https://github.com/flexflow/FlexFlow/blob/master/conda/flexflow-cpu.yml
+conda activate flexflow
 ```
 
-You can also install FlexFlow Serve using pip or [from source code](https://flexflow.readthedocs.io/en/latest/installation.html):
+
+### Install with pip
+You can install FlexFlow Serve using pip:
+
 ```bash
 pip install flexflow
 ```
 
-SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](../INSTALL.md) for building/installing FlexFlow from source code. If you would like to quickly try SpecInfer, we also provide pre-built Docker packages ([specinfer-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/specinfer-cuda) with a CUDA backend, [specinfer-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/specinfer-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. 
+
+
+### Try it in Docker
+If you run into any issue during the install, or if you would like to use the C++ API without needing to install from source, you can also use our pre-built Docker package for different CUDA versions and the `hip_rocm` backend. To download and run our pre-built Docker container:
+
+```bash
+docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-11.8:latest
+```
+
+To download a Docker container for a backend other than CUDA v11.8, you can replace the `cuda-11.8` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm`).
+
+More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](../docker/README.md).
+
+### Build from source
+
+SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](https://flexflow.readthedocs.io/en/latest/installation.html) for building/installing FlexFlow from source code.
 
 ## Run FlexFlow Serve
 [TODO: update instructions to run FlexFlow Serve.]
