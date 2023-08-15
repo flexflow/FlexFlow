@@ -35,13 +35,13 @@ void constant_init_kernel_cpu(GenericTensorAccessorW const &tensor,
   DataTypeDispatch1<ConstantInitKernel>{}(tensor.data_type, tensor, value);
 }
 
-void zero_init_kernel(TaskLocation const &loc,
-                      GenericTensorAccessorW const &tensor) {
-  if (loc == TaskLocation::CPU) {
-    return zero_init_kernel_cpu(tensor);
-  } else if (loc == TaskLocation::GPU) {
-    return zero_init_kernel_gpu(tensor);
-  }
-}
+// void zero_init_kernel(TaskLocation const &loc,
+//                       GenericTensorAccessorW const &tensor) {
+//   if (loc == TaskLocation::CPU) {
+//     return zero_init_kernel_cpu(tensor);
+//   } else if (loc == TaskLocation::GPU) {
+//     return zero_init_kernel_gpu(tensor);
+//   }
+// }
 
 } // namespace FlexFlow

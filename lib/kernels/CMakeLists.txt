@@ -13,13 +13,14 @@ add_library(
   SHARED
   ${SRC}
 )
+
+
 target_include_directories(
   ${project_target}
-  PRIVATE
-    src/cuda/
   PUBLIC
     include/
 )
+
 target_link_libraries(
   ${project_target}
   op-attrs
@@ -35,3 +36,4 @@ set_target_properties(
   PROPERTIES 
   CUDA_STANDARD 11
 )
+add_subdirectory(test)
