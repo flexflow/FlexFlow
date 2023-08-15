@@ -74,35 +74,44 @@ More info on the Docker images, with instructions to build a new image from sour
 
 SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](https://flexflow.readthedocs.io/en/latest/installation.html) for building/installing FlexFlow from source code.
 
-## Run FlexFlow Serve
+## Quickstart
 [TODO: update instructions to run FlexFlow Serve.]
+
+### C++ interface
+If you'd like to use the C++ interface (mostly used for development and benchmarking purposes), you should install from source, and follow the instructions below. 
+
+<details>
+<summary>Expand here</summary>
+<br>
+#### Downloading models
+Before running SpecInfer, you should manually download the LLM and SSM(s) model of interest using the [inference/utils/download_hf_model.py](https://github.com/flexflow/FlexFlow/blob/inference/inference/utils/download_hf_model.py) script (see example below). By default, the script will download all of a model's assets (weights, configs, tokenizer files, etc...) into the cache folder `~/.cache/flexflow`. If you would like to use a different folder, you can request that via the parameter `--cache-folder`.
+
+```bash
+python3 ./inference/utils/download_hf_model.py <HF model 1> <HF model 2> ...
+```
+
+#### Running the C++ examples
 The source code of the SpecInfer pipeline is available at [this folder](../inference/spec_infer/). The SpecInfer executable will be available at `/build_dir/inference/spec_infer/spec_infer` at compilation. You can use the following command-line arguments to run SpecInfer:
 
 * `-ll:gpu`: number of GPU processors to use on each node for serving an LLM (default: 0)
 * `-ll:fsize`: size of device memory on each GPU in MB
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) in MB. SpecInfer keeps a replica of the LLM parameters on zero-copy memory, and therefore requires that the zero-copy memory is sufficient for storing the LLM parameters.
-* `-llm-model`: the LLM model type as a case-insensitive string (e.g. "opt" or "llama")
-* `-llm-weight`: path to the folder that stores the LLM weights
-* `-llm-config`: path to the json file that stores the LLM model configs
-* `-ssm-model`: the LLM model type as a case-insensitive string (e.g. "opt" or "llama"). You can use multiple `-ssm-model`s in the command line to launch multiple SSMs.
-* `-ssm-weight`: path to the folder that stores the small speculative models' weights. The number of `-ssm-weight`s must match the number of `-ssm-model`s and `-ssm-config`s.
-* `-ssm-config`: path to the json file that stores the SSM model configs. The number of `-ssm-config`s must match the number of `-ssm-model`s and `-ssm-weight`s.
-* `-tokenizer`: path to the tokenizer file (see [Tokenizers](#tokenizers) for preparing a tokenizer for SpecInfer).
+* `-llm-model`: the LLM model ID from HuggingFace (e.g. "decapoda-research/llama-7b-hf")
+* `-ssm-model`: the SSM model ID from HuggingFace (e.g. "JackFram/llama-160m"). You can use multiple `-ssm-model`s in the command line to launch multiple SSMs.
+* `-cache-folder`: the folder
 * `-data-parallelism-degree`, `-tensor-parallelism-degree` and `-pipeline-parallelism-degree`: parallelization degrees in the data, tensor, and pipeline dimensions. Their product must equal the number of GPUs available on the machine. When any of the three parallelism degree arguments is omitted, a default value of 1 will be used. 
 * `-prompt`: (optional) path to the prompt file. SpecInfer expects a json format file for prompts, all of which will be served by SpecInfer. In addition, users can also use the following API for registering requests:
 * `-output-file`: (optional) filepath to use to save the output of the model, together with the generation latency
 
 
-```c++
-class RequestManager {
-  RequestGuid register_new_request(std::string const &prompt, int max_sequence_length);
-}
-```
-For example, you can use the following command line to serve a LLaMA-7B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-190M models for speculative inference.
+For example, you can use the following command line to serve a LLaMA-7B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-160M models for speculative inference.
 
 ```bash
-./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model llama -llm-weight /path/to/llm/weights -llm-config /path/to/llm/config.json -ssm-model llama -ssm-weight /path/to/ssm1/weights -ssm-config /path/to/ssm/config.json -ssm-model llama -smm-weight /path/to/ssm2/weights -ssm-config /path/to/ssm2/config.json -tokenizer /path/to/tokenizer.model -prompt /path/to/prompt.json --use-full-precision -tensor-parallelism-degree 2 -pipeline-parallelism-degree 2
+./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model decapoda-research/llama-7b-hf -ssm-model JackFram/llama-160m -ssm-model JackFram/llama-68m -prompt /path/to/prompt.json --use-full-precision -tensor-parallelism-degree 2 -pipeline-parallelism-degree 2
 ```
+</details>
+
+
 
 ## Speculative Inference
 A key technique that enables FlexFlow Serve to accelerate LLM serving is speculative
