@@ -30,14 +30,7 @@ existing systems by 1.3-2.0x for single-node, multi-GPU inference and by
 	* CUDA version: 10.2 – 12.0
 	* NVIDIA compute capability: 6.0 or higher
 * Python: 3.6 or higher
-* Package dependencies: [see here](https://github.com/flexflow/FlexFlow/blob/master/conda/flexflow-cpu.yml)
-
-The easiest way to install all the package dependencies is by creating a new conda environment, as follows:
-
-```bash
-conda env create -f https://github.com/flexflow/FlexFlow/blob/master/conda/flexflow-cpu.yml
-conda activate flexflow
-```
+* Package dependencies: [see here](https://github.com/flexflow/FlexFlow/blob/inference/requirements.txt)
 
 ### Install with pip
 You can install FlexFlow Serve using pip:
