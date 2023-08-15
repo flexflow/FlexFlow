@@ -7,6 +7,13 @@ file(GLOB_RECURSE SRC
      LIST_DIRECTORIES False
      src/*.cc)
 
+include(FetchContent)
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+)
+FetchContent_MakeAvailable(argparse)
+
 add_library(
   ${project_target}
   SHARED
@@ -31,6 +38,7 @@ target_link_libraries(
   json
   any
   cuda
+  argparse
 )
 define_ff_vars(${project_target})
 ff_set_cxx_properties(${project_target})
