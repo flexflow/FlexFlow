@@ -11,6 +11,7 @@ cd "${BASH_SOURCE[0]%/*}/.."
 image=${1:-flexflow}
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 cuda_version=${cuda_version:-"empty"}
+python_version=${python_version:-"latest"}
 
 # Check docker image name
 if [[ "$image" != @(flexflow-environment|flexflow) ]]; then
@@ -56,7 +57,7 @@ else
   cuda_version_input="11.8.0"
 fi
 
-docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" -t "flexflow-environment-${FF_GPU_BACKEND}${cuda_version}" -f docker/flexflow-environment/Dockerfile .
+docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" --build-arg "python_version=${python_version}" -t "flexflow-environment-${FF_GPU_BACKEND}${cuda_version}" -f docker/flexflow-environment/Dockerfile .
 
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "flexflow-environment" ]]; then
