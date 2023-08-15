@@ -137,6 +137,10 @@ miopenStatus_t
     cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
                                        Legion::Domain domain);
 
+miopenStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
+                                               Legion::Domain domain);
+
 hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 
 miopenDataType_t ff_to_cudnn_datatype(DataType type);

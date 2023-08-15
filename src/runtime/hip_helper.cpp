@@ -298,6 +298,57 @@ miopenStatus_t
   return miopenStatusBadParm;
 }
 
+miopenStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
+                                               Domain domain) {
+  int dims[MAX_TENSOR_DIM];
+  switch (domain.get_dim()) {
+    case 1: {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return miopenSet4dTensorDescriptor(tensor, miopenFloat, dims[0], 1, 1, 1);
+    }
+    case 2: {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[1], dims[0], 1, 1);
+    }
+    case 3: {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[2] * dims[1], dims[0], 1, 1);
+    }
+    case 4: {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[3] * dims[2] * dims[1], dims[0], 1, 1);
+    }
+    case 5: {
+      Rect<5> rect = domain;
+      int leading_dim_size = rect.hi[4] - rect.lo[4] + 1;
+      assert(leading_dim_size == 1);
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+    }
+    default:
+      assert(false && "Unsupported dim number");
+  }
+  return miopenStatusBadParm;
+}
+
 miopenDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
     case DT_FLOAT:

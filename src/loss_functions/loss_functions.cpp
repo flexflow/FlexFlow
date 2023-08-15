@@ -20,6 +20,7 @@
 namespace FlexFlow {
 
 using namespace Legion;
+int const MASK_TOKEN = -100;
 
 __global__ void
     sparse_categorical_crossentropy_loss_backward(float *logit_grad,
@@ -30,6 +31,25 @@ __global__ void
   CUDA_KERNEL_LOOP(i, num_samples) {
     int label_idx = label[i / k];
     logit_grad[i * num_classes + label_idx] -= 1.0f;
+  }
+}
+
+__global__ void
+    sparse_categorical_crossentropy_loss_backward_with_mask(float *logit_grad,
+                                                            int const *label,
+                                                            coord_t num_samples,
+                                                            coord_t num_classes,
+                                                            int const k,
+                                                            float *num) {
+  CUDA_KERNEL_LOOP(i, num_samples * num_classes) {
+    int sample_id = i / num_classes;
+    int label_idx = label[i / (k * num_classes)];
+    if (label_idx != MASK_TOKEN && (i == sample_id * num_classes + label_idx)) {
+      logit_grad[i] -= 1.0f;
+      atomicAdd(&num[0], 1.0f);
+    } else if (label_idx == MASK_TOKEN) {
+      logit_grad[i] = 0.0f;
+    }
   }
 }
 
@@ -75,8 +95,14 @@ void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
                       logit_ptr,
                       logit_volume * sizeof(float),
                       hipMemcpyDeviceToDevice));
-  hipLaunchKernelGGL(sparse_categorical_crossentropy_loss_backward,
-                     GET_BLOCKS(num_samples),
+
+  assert(scale_factor == 1.0f);
+  float *num;
+  checkCUDA(hipMalloc(&num, sizeof(float)));
+  float effective_tokens;
+  int parallelism = num_samples * num_classes;
+  hipLaunchKernelGGL(sparse_categorical_crossentropy_loss_backward_with_mask,
+                     GET_BLOCKS(parallelism),
                      CUDA_NUM_THREADS,
                      0,
                      stream,
@@ -84,7 +110,10 @@ void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
                      label_ptr,
                      num_samples,
                      num_classes,
-                     k);
+                     k,
+                     num);
+
+  hipMemcpy(&effective_tokens, num, sizeof(float), hipMemcpyDeviceToHost);
   // Scale logit gradients by op->scale_factor
   hipLaunchKernelGGL(scale_kernel,
                      GET_BLOCKS(logit_grad_volume),
@@ -94,7 +123,7 @@ void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
                      logit_grad_ptr,
                      logit_grad_volume,
                      0,
-                     scale_factor * k);
+                     1.0f / effective_tokens);
 }
 
 void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
