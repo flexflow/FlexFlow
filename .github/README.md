@@ -78,35 +78,26 @@ ff.init(
 )
 
 # Create the FlexFlow LLM
-llm = ff.LLM(
-    "decapoda-research/llama-7b-hf",
-    data_type = ff.DataType.DT_HALF,
-)
+llm = ff.LLM("decapoda-research/llama-7b-hf")
 
 ssms=[]
 # Create the SSMs (just one in this case)
-ssm = ff.SSM(
-	"JackFram/llama-68m",
-	data_type = ff.DataType.DT_HALF
-)
+ssm = ff.SSM("JackFram/llama-68m")
 ssms.append(ssm)
 
 # Create the sampling configs
-sampling_config = ff.GenerationConfig(
+generation_config = ff.GenerationConfig(
     do_sample=False, temperature=0.9, topp=0.8, topk=1
 )
 
 # Compile the SSMs for inference and load the weights into memory
 for ssm in ssms:
-    ssm.compile(
-        ff.InferenceMode.BEAM_SEARCH_MODE,
-        sampling_config,
-    )
+    ssm.compile(ff.InferenceMode.BEAM_SEARCH_MODE, generation_config)
 
 # Compile the LLM for inference and load the weights into memory
 llm.compile(
     ff.InferenceMode.TREE_VERIFY_MODE,
-    sampling_config,
+    generation_config,
     ssms=ssms,
 )
 
@@ -139,14 +130,14 @@ llm = ff.LLM(
 )
 
 # Create the sampling configs
-sampling_config = ff.GenerationConfig(
+generation_config = ff.GenerationConfig(
     do_sample=True, temperature=0.9, topp=0.8, topk=1
 )
 
 # Compile the LLM for inference and load the weights into memory
 llm.compile(
     ff.InferenceMode.INC_DECODING_MODE,
-    sampling_config
+    generation_config
 )
 
 # Generation begins!
