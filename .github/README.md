@@ -57,8 +57,6 @@ You can install FlexFlow Serve using pip:
 pip install flexflow
 ```
 
-
-
 ### Try it in Docker
 If you run into any issue during the install, or if you would like to use the C++ API without needing to install from source, you can also use our pre-built Docker package for different CUDA versions and the `hip_rocm` backend. To download and run our pre-built Docker container:
 
@@ -75,14 +73,107 @@ More info on the Docker images, with instructions to build a new image from sour
 SpecInfer is built on top of FlexFlow. You can build/install SpecInfer by building the inference branch of FlexFlow. Please read the [instructions](https://flexflow.readthedocs.io/en/latest/installation.html) for building/installing FlexFlow from source code.
 
 ## Quickstart
-[TODO: update instructions to run FlexFlow Serve.]
+You can get started with the example SpecInfer code. If you prefer to start running FlexFlow Serve in incremental mode only, you can check out the code in the [section below](#incremental-decoding-example). For more complete examples, check out the [`inference/python/incr_decoding.py`](https://github.com/flexflow/FlexFlow/blob/python_inference/inference/python/incr_decoding.py) and [`inference/python/spec_infer.py`](https://github.com/flexflow/FlexFlow/blob/python_inference/inference/python/spec_infer.py) scripts.
+
+```python
+import flexflow.serve as ff
+
+# Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
+ff.init(
+    {
+        "num_gpus": 4,
+        "memory_per_gpu": 14000,
+        "zero_copy_memory_per_gpu": 30000,
+        "pipeline_parallelism_degree": 4,
+    }
+)
+
+# Create the FlexFlow LLM
+llm = ff.LLM(
+    "decapoda-research/llama-7b-hf",
+    data_type=ff.DataType.DT_HALF,
+)
+
+ssms=[]
+# Create the SSMs (just one in this case)
+ssm = ff.SSM(
+	"JackFram/llama-160m",
+	data_type = ff.DataType.DT_HALF
+)
+ssms.append(ssm)
+
+# Create the sampling configs
+sampling_config = ff.SamplingConfig(
+    do_sample=True, temperature=0.9, topp=0.8, topk=1
+)
+
+# Compile the SSMs for inference and load the weights into memory
+for ssm in ssms:
+    ssm.compile(
+        ff.InferenceMode.BEAM_SEARCH_MODE,
+        sampling_config,
+    )
+
+# Compile the LLM for inference and load the weights into memory
+llm.compile(
+    ff.InferenceMode.TREE_VERIFY_MODE,
+    sampling_config,
+    ssms=ssms,
+)
+
+# Generation begins!
+result = llm.generate("Here are some travel tips for Tokyo:\n")
+```
+
+### Incremental decoding example
+<details>
+<summary>Expand here</summary>
+<br>
+
+```python
+import flexflow.serve as ff
+
+# Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
+ff.init(
+    {
+        "num_gpus": 4,
+        "memory_per_gpu": 14000,
+        "zero_copy_memory_per_gpu": 30000,
+        "pipeline_parallelism_degree": 4,
+    }
+)
+
+# Create the FlexFlow LLM
+llm = ff.LLM(
+    "decapoda-research/llama-7b-hf",
+    data_type=ff.DataType.DT_HALF,
+)
+
+# Create the sampling configs
+sampling_config = ff.SamplingConfig(
+    do_sample=True, temperature=0.9, topp=0.8, topk=1
+)
+
+# Compile the LLM for inference and load the weights into memory
+llm.compile(
+    ff.InferenceMode.INC_DECODING_MODE,
+    sampling_config
+)
+
+# Generation begins!
+result = llm.generate("Here are some travel tips for Tokyo:\n")
+```
+
+</details>
+
+
 
 ### C++ interface
 If you'd like to use the C++ interface (mostly used for development and benchmarking purposes), you should install from source, and follow the instructions below. 
 
 <details>
 <summary>Expand here</summary>
-	
+<br>
 #### Downloading models
 Before running SpecInfer, you should manually download the LLM and SSM(s) model of interest using the [inference/utils/download_hf_model.py](https://github.com/flexflow/FlexFlow/blob/inference/inference/utils/download_hf_model.py) script (see example below). By default, the script will download all of a model's assets (weights, configs, tokenizer files, etc...) into the cache folder `~/.cache/flexflow`. If you would like to use a different folder, you can request that via the parameter `--cache-folder`.
 
