@@ -1,8 +1,5 @@
 name: "pip-deploy"
-on: 
-  push:
-    tags:
-      - '*'
+on:
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +10,9 @@ jobs:
   build-n-publish:
     name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
     runs-on: ubuntu-20.04
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
 
     steps:
       - name: Checkout Git Repository
@@ -36,6 +36,8 @@ jobs:
           --user
 
       - name: Build a source tarball
+        env:
+          DEPLOY_TO_TEST_PYPI: ${{ vars.DEPLOY_TO_TEST_PYPI }}
         run: >-
           python3 -m
           build
@@ -44,14 +46,27 @@ jobs:
           .
 
       - name: Publish distribution 📦 to Test PyPI
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
 
-      # - name: Publish distribution 📦 to PyPI
-      #   if: startsWith(github.ref, 'refs/tags')
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish distribution 📦 to PyPI
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Get package version
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
+        run: |
+          # when running setup.py outside of pip install, we need to manually install the modules that are imported in the script
+          pip install setuptools requests cmake-build-extension
+          version=$(python setup.py --version)
+          echo "PY_VERSION=${version}" >> $GITHUB_ENV
+            
+      - name: Create Git tag
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.FLEXFLOW_TOKEN }}
+          custom_tag: ${{ env.PY_VERSION }}
 
