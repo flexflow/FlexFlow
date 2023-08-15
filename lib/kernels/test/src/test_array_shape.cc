@@ -1,13 +1,11 @@
 #include "doctest.h"
 #include "kernels/array_shape.h"  // Assuming this is where your ArrayShape is located
 
+using namespace FlexFlow;
+
 TEST_CASE("ArrayShape Initialization and Basic Functions") {
-    using namespace FlexFlow;
-    
     std::vector<std::size_t> dims = {2, 3, 4};
-
     ArrayShape shape(dims);
-
     CHECK(shape.get_dim() == 3);
     CHECK(shape.get_volume() == 24);
     CHECK(shape.num_elements() == 24);
@@ -17,8 +15,6 @@ TEST_CASE("ArrayShape Initialization and Basic Functions") {
 }
 
 TEST_CASE("Negative Indices and Optional Indexing") {
-    using namespace FlexFlow;
-
     std::vector<std::size_t> dims = {2, 3, 4};
     ArrayShape shape(dims);
 
