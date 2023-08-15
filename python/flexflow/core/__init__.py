@@ -59,15 +59,15 @@ if flexflow_init_import():
   else:
     print("Using Legion Python")
 
-    flexflow_library.initialize()
+  flexflow_library.initialize()
 
-    # check which python binding to use
-    if flexflow_python_binding() == "pybind11":
-        print("Using pybind11 flexflow bindings.")
-        from .flexflow_pybind11 import *
-    else:
-        print("Using cffi flexflow bindings.")
-        from .flexflow_cffi import *
+  # check which python binding to use
+  if flexflow_python_binding() == "pybind11":
+      print("Using pybind11 flexflow bindings.")
+      from .flexflow_pybind11 import *
+  else:
+      print("Using cffi flexflow bindings.")
+      from .flexflow_cffi import *
 
 else:
-    pass
+  pass

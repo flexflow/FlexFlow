@@ -310,8 +310,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       // This is a decoding token
       log_req_mgr.print("Output token is: %d", result.token_ids[i]);
       request.tokens.push_back(result.token_ids[i]);
-      std::string output = this->tokenizer_->Decode(request.tokens);
-      log_req_mgr.print("Output: %s", output.c_str());
+      // std::string output = this->tokenizer_->Decode(request.tokens);
+      // log_req_mgr.print("Output: %s", output.c_str());
     }
   }
   // Step 2: prepare the next batch for existing requests
@@ -333,9 +333,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                         request.tokens.size());
       std::string output = this->tokenizer_->Decode(request.tokens);
 
-      for (int i = 0; i < request.tokens.size(); i++) {
-        std::cout << request.tokens.at(i) << "\n";
-      }
+      // for (int i = 0; i < request.tokens.size(); i++) {
+      //   std::cout << request.tokens.at(i) << "\n";
+      // }
       {
         // update generation result and trigger future
         GenerationResult &gr = request_generation_results[request.guid];

@@ -327,7 +327,7 @@ class LLM:
         for ssm in self.ssms:
             self.rm.register_ssm_model(ssm.model.ffmodel)
 
-    def generate(self, prompts: Union[str, List[str]]):
+    def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
         """Generate tokens based on the input prompt(s)
 
         :param prompts: The generation prompt(s) in the form of a string, or list of strings
@@ -338,11 +338,11 @@ class LLM:
         if type(prompts) == str:
             if len(prompts) == 0:
                 return None
-            return self.model.ffmodel.generate(prompts, 128)
+            return self.model.ffmodel.generate(prompts, max_length)
         elif type(prompts) == list:
             if len(prompts) == 0:
                 return []
-            return [self.model.ffmodel.generate(prompt, 128) for prompt in prompts]
+            return [self.model.ffmodel.generate(prompt, max_length) for prompt in prompts]
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
