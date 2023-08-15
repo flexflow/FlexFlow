@@ -17,17 +17,6 @@ __low latency__, __high performance__ LLM serving. FlexFlow Serve outperforms
 existing systems by 1.3-2.0x for single-node, multi-GPU inference and by 
 1.4-2.4x for multi-node, multi-GPU inference.
 
-that accelerates generative LLM
-inference with __speculative inference__ and __token tree verification__. A key insight
-behind SpecInfer is to combine various collectively boost-tuned small speculative
-models (SSMs) to jointly predict the LLM’s outputs; the predictions are organized as a
-token tree, whose nodes each represent a candidate token sequence. The correctness
-of all candidate token sequences represented by a token tree is verified against the
-LLM’s output in parallel using a novel tree-based parallel decoding mechanism.
-SpecInfer uses an LLM as a token tree verifier instead of an incremental decoder,
-which largely reduces the end-to-end inference latency and computational requirement
-for serving generative LLMs while provably preserving model quality.
-
 <p align="center">
 <img src="../img/performance.png" alt="Performance comparison" height="320"/>
 </p>
