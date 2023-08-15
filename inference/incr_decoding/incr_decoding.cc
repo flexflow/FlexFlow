@@ -176,7 +176,7 @@ void FlexFlow::top_level_task(Task const *task,
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
-  SamplingConfig samplingConfig(do_sample, temperature, topp);
+  GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
   rm->register_tokenizer(model_type, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
@@ -187,7 +187,7 @@ void FlexFlow::top_level_task(Task const *task,
                               config_filepath,
                               weights_filepath,
                               INC_DECODING_MODE,
-                              samplingConfig,
+                              generationConfig,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,

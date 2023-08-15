@@ -17,7 +17,7 @@ class FlexFlowModel:
     def __init__(
         self,
         mode,
-        sampling_config,
+        generation_config,
         ffconfig,
         hf_config,
         data_type,
