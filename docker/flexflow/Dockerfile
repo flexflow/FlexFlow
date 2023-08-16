@@ -16,11 +16,17 @@ ARG BUILD_CONFIGS
 ARG N_BUILD_CORES
 
 # Build and install C++ and Python versions of FlexFlow
-RUN mkdir -p build && cd build && \
-    eval "$BUILD_CONFIGS" ../config/config.linux && \
-    make -j $N_BUILD_CORES && \
-    eval "$BUILD_CONFIGS" ../config/config.linux && \
-    make install && \
-    ldconfig
+# RUN mkdir -p build && cd build && \
+#     eval "$BUILD_CONFIGS" ../config/config.linux && \
+#     make -j $N_BUILD_CORES && \
+#     eval "$BUILD_CONFIGS" ../config/config.linux && \
+#     make install && \
+#     ldconfig
+RUN mkdir -p build && cd build
+RUN eval "$BUILD_CONFIGS" ../config/config.linux
+RUN make -j $N_BUILD_CORES
+RUN eval "$BUILD_CONFIGS" ../config/config.linux
+RUN make install
+RUN ldconfig
 
 ENTRYPOINT ["/bin/bash"]
