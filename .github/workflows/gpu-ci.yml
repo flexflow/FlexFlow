@@ -83,7 +83,7 @@ jobs:
         with:
           miniconda-version: "latest"
           activate-environment: flexflow
-          environment-file: conda/flexflow-cpu.yml
+          environment-file: conda/flexflow.yml
           auto-activate-base: false
           auto-update-conda: false
 
@@ -157,7 +157,7 @@ jobs:
         with:
           miniconda-version: "latest"
           activate-environment: flexflow
-          environment-file: conda/flexflow-cpu.yml
+          environment-file: conda/flexflow.yml
           auto-activate-base: false
 
       - name: Build FlexFlow
@@ -232,7 +232,7 @@ jobs:
         with:
           miniconda-version: "latest"
           activate-environment: flexflow
-          environment-file: conda/flexflow-cpu.yml
+          environment-file: conda/flexflow.yml
           auto-activate-base: false
 
       - name: Build and Install FlexFlow
