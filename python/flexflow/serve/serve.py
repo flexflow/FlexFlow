@@ -278,17 +278,14 @@ class LLM:
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
         if len(ssms) > 0:
-            assert isinstance(LLM, self)
+            assert type(self) == LLM
             mode = InferenceMode.TREE_VERIFY_MODE
-        elif isinstance(LLM, self):
-            mode = InferenceMode.INC_DECODING_MODE
-        else:
-            assert isinstance(SSM, self)
+        elif type(self) == SSM:
             mode = InferenceMode.BEAM_SEARCH_MODE
+        else:
+            assert type(self) == LLM
+            mode = InferenceMode.INC_DECODING_MODE
 
-        print(mode)
-        print(isinstance(LLM, self))
-        print(isinstance(SSM, self))
         # Apply model-specific parallelism degrees, if needed
         if model_specific_data_parallelism_degree:
             self.ffconfig.data_parallelism_degree = (
