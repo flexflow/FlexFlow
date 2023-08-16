@@ -63,7 +63,7 @@ ff.init(
         "memory_per_gpu": 14000,
         "zero_copy_memory_per_node": 30000,
         "tensor_parallelism_degree": 4,
-	"pipeline_parallelism_degree": 1,
+        "pipeline_parallelism_degree": 1,
     }
 )
 ```
@@ -93,7 +93,6 @@ llm.compile(generation_config, ssms=ssms)
 ```
 Finally, we call `llm.generate` to generate the output, which is organized as a list of `GenerationResult`, which include the output tokens and text.
 ```python
-# Generation begins!
 result = llm.generate("Here are some travel tips for Tokyo:\n")
 ```
 
@@ -112,7 +111,7 @@ ff.init(
         "memory_per_gpu": 14000,
         "zero_copy_memory_per_gpu": 30000,
         "tensor_parallelism_degree": 4,
-	"pipeline_parallelism_degree": 1,
+        "pipeline_parallelism_degree": 1,
     }
 )
 
