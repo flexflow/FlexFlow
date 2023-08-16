@@ -233,6 +233,8 @@ tl::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
                                           Node const &);
 tl::optional<Node> get_imm_post_dominator(DiGraphView const &,
                                           std::unordered_set<Node> const &);
+tl::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
+                                          std::unordered_set<Node> const &);
 
 std::vector<Node>
     get_dfs_ordering(DiGraphView const &,

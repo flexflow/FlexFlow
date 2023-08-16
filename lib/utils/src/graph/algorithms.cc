@@ -506,6 +506,23 @@ std::unordered_map<Node, std::unordered_set<Node>>
 
 std::unordered_map<Node, optional<Node>>
     get_imm_dominators(DiGraphView const &g) {
+  std::unordered_map<Node, int> topo_rank = [&g]() {
+    std::vector<Node> topo_ordering = get_topological_ordering(g);
+    std::unordered_map<Node, int> topo_rank;
+    for (int i = 0; i < topo_ordering.size(); i++) {
+      topo_rank[topo_ordering[i]] = i;
+    }
+    return topo_rank;
+  }();
+
+  auto with_greatest_topo_rank =
+      [&topo_rank](std::unordered_set<Node> const &nodes) -> Node {
+    return *std::max_element(nodes.cbegin(),
+                             nodes.cend(),
+                             [&topo_rank](Node const &lhs, Node const &rhs) {
+                               return topo_rank.at(lhs) < topo_rank.at(rhs);
+                             });
+  };
 
   std::unordered_map<Node, optional<Node>> result;
   for (auto const &kv : get_dominators(g)) {

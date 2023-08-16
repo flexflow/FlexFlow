@@ -2,6 +2,7 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_INITIALIZER_H
 
 #include "data_type.h"
+#include "pcg/initializer.h"
 #include "utils/json.h"
 #include "utils/required.h"
 #include "utils/variant.h"
@@ -42,6 +43,8 @@ using V1Initializer = variant<V1GlorotInitializer,
                               V1UniformInitializer,
                               V1NormInitializer,
                               V1ConstantInitializer>;
+
+V1Initializer to_v1(Initializer const &);
 
 } // namespace FlexFlow
 

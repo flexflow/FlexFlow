@@ -16,7 +16,7 @@ namespace FlexFlow {
 /**
  * @brief Represent the shape of a ParallelTensor.
  */
-struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
+struct ParallelTensorShape {
   ParallelTensorShape() = delete;
 
   template <typename Dims>
@@ -36,6 +36,7 @@ public:
   ParallelTensorDims dims;
   DataType data_type;
 };
+FF_VISITABLE_STRUCT(ParallelTensorShape, dims, data_type);
 
 TensorShape get_piece_shape(ParallelTensorShape const &);
 int get_num_replica_dims(ParallelTensorShape const &);
@@ -48,8 +49,5 @@ std::vector<TensorShape>
     get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ParallelTensorShape, data_type, dims);
-MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensorShape);
 
 #endif

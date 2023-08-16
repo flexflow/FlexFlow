@@ -17,18 +17,20 @@ struct V1TensorShape {
 };
 FF_VISITABLE_STRUCT(V1TensorShape, dims, data_type);
 CHECK_IS_JSONABLE(V1TensorShape);
+
 V1TensorShape to_v1(TensorShape const &);
 
 struct V1Tensor {
   V1TensorShape shape;
-  req<optional<V1Initializer>> initializer;
   req<bool> create_gradients;
+  req<optional<V1Initializer>> initializer;
   req<optional<V1ParamSync>> sync_type;
   req<optional<std::string>> name;
 };
 FF_VISITABLE_STRUCT(
-    V1Tensor, shape, initializer, create_gradients, sync_type, name);
+    V1Tensor, shape, create_gradients, initializer, sync_type, name);
 CHECK_IS_JSONABLE(V1Tensor);
+
 V1Tensor to_v1(Tensor const &);
 
 } // namespace FlexFlow
