@@ -151,8 +151,6 @@ void STARCODER::create_starcoder_model(
                            l2_layer);
 
     // mlp
-    std::cout << "intermediate_size: " << startcoder_config.intermediate_size
-              << "\n";
     Tensor c_fc = ff.dense(
         l2_norm, startcoder_config.intermediate_size, AC_MODE_NONE, true);
     Layer *c_fc_layer = ff.layers.back();

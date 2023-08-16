@@ -667,6 +667,10 @@ class FFConfig(object):
   @property
   def python_data_loader_type(self):
     return ffc.flexflow_config_get_python_data_loader_type(self.handle)
+  
+  @property
+  def cpu_offload(self):
+    return ffc.flexflow_config_get_offload(self.handle)
 
   def get_current_time(self):
     return ffc.flexflow_get_current_time(self.handle)
@@ -1020,7 +1024,7 @@ class FFModel(object):
 
     :returns:  FFModel -- the model.
     """
-    self.handle = ffc.flexflow_model_create(ffconfig.handle)
+    self.handle = ffc.flexflow_model_create(ffconfig.handle, ffconfig.cpu_offload)
     self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
     self._layers = dict()
     self._nb_layers = 0

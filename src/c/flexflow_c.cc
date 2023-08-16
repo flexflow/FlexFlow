@@ -170,14 +170,19 @@ int flexflow_config_get_python_data_loader_type(flexflow_config_t handle_) {
   FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
   return handle->python_data_loader_type;
 }
+bool flexflow_config_get_offload(flexflow_config_t handle_) {
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->cpu_offload;
+}
 
 // -----------------------------------------------------------------------
 // FFModel
 // -----------------------------------------------------------------------
 
-flexflow_model_t flexflow_model_create(flexflow_config_t config_) {
+flexflow_model_t flexflow_model_create(flexflow_config_t config_,
+                                       bool cpu_offload) {
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
-  FFModel *model = new FFModel(*config);
+  FFModel *model = new FFModel(*config, cpu_offload);
   DEBUG_PRINT("[FFModel] new %p", model);
   return FFCObjectWrapper::wrap(model);
 }
