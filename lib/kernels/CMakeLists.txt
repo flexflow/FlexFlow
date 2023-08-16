@@ -17,6 +17,8 @@ add_library(
 
 target_include_directories(
   ${project_target}
+  PRIVATE
+    src/cuda/
   PUBLIC
     include/
 )
