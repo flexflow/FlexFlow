@@ -89,6 +89,8 @@ class FlexFlowOPT(FlexFlowModel):
         input_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
         position_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
+        # OPT model positional embedding start offset is 2
+        ffmodel.set_position_offset(2)
         embed_init = UniformInitializer(random.randint(0, self.maxint), 0, 0)
         token = ffmodel.embedding(
             input_tensor,

@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from flexflow.serve.models import FlexFlowLLAMA, FlexFlowOPT, FlexFlowFalcon
+from flexflow.serve.models import (
+    FlexFlowLLAMA,
+    FlexFlowOPT,
+    FlexFlowFalcon,
+    FlexFlowSTARCODER,
+)
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
@@ -76,6 +81,7 @@ class LLM:
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
             "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
+            "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
@@ -217,7 +223,10 @@ class LLM:
         self.download_hf_weights_if_needed()
 
         # Create file data loader, load weights into tensors
-        if self.model_type == ModelType.FALCON:
+        if (
+            self.model_type == ModelType.FALCON
+            or self.model_type == ModelType.STARCODER
+        ):
             n_q_heads = self.hf_config.num_attention_heads
             if "n_head_kv" in self.hf_config.__dict__:
                 n_kv_heads = self.hf_config.n_head_kv

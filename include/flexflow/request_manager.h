@@ -40,7 +40,8 @@ public:
   void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
                                            ParallelTensor const input);
   void load_positions(BatchConfigFuture const &bc,
-                      ParallelTensor position_input);
+                      ParallelTensor position_input,
+                      int offset);
 
 public:
   FFConfig ff_config;

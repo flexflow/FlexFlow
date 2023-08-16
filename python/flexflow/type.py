@@ -78,6 +78,7 @@ class ModelType(Enum):
     LLAMA2 = 3003
     OPT = 3004
     FALCON = 3005
+    STARCODER = 3006
 
 
 class OpType(Enum):
