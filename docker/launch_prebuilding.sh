@@ -3,21 +3,27 @@ set -euo pipefail
 
 # Parse input params
 python_version=${1:-lastest}
-cuda_version=${2:-11.8.0}
+cuda_version=${2:-11.8}
 gpu_backend=${3:-cuda}
 
-# Running in Docker Container
-echo "running docker"
-docker run -it --name local-test "nvidia/cuda:${cuda_version}-cudnn8-devel-ubuntu20.04"
+export FF_CUDA_ARCH=all
+export BUILD_LEGION_ONLY=ON
 
-# Copy to Docker Container
-echo "copying docker file"
-docker cp ./prebuilding.sh local-test:/tmp/prebuilding.sh
+# Build Docker Flexflow Container
+echo "building docker"
+./docker/build.sh flexflow
 
-# Call the Bash script in Docker Container
-echo "execute bash file in docker container"
-docker exec -it local-test bash -c "./tmp/prebuilding.sh ${python_version} ${cuda_version} ${gpu_backend}"
+# Copy legion libraries to host
+docker cp "flexflow-${FF_GPU_BACKEND}${cuda_version}":/usr/FlexFlow/build/deps ~/buildlegion
 
-# Extract the legion binary files of tar.gz file from Docker container
-echo "download the tarball file to local"
-docker cp "local-test:/tmp/build/export/legion_ubuntu-20.04_${gpu_backend}.tar.gz ~/Desktop/"
+# Create the tarball file
+cd ~/buildlegion
+export LEGION_TARBALL="legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz"
+echo "Creating archive $LEGION_TARBALL"
+touch "$LEGION_TARBALL"
+tar --exclude="$LEGION_TARBALL" -zcvf $LEGION_TARBALL .
+echo "Checking the size of the Legion tarball..."
+du -h $LEGION_TARBALL
+
+# Stop the Docker Container
+docker stop "flexflow-${FF_GPU_BACKEND}${cuda_version}"

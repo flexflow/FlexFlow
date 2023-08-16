@@ -11,7 +11,6 @@ cd "${BASH_SOURCE[0]%/*}/.."
 image=${1:-flexflow}
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 cuda_version=${cuda_version:-"empty"}
-python_version=${python_version:-"latest"}
 
 # Check docker image name
 if [[ "$image" != @(flexflow-environment|flexflow) ]]; then
