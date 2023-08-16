@@ -43,7 +43,7 @@ def get_configs():
             # required parameters
             "num_gpus": 4,
             "memory_per_gpu": 14000,
-            "zero_copy_memory_per_gpu": 30000,
+            "zero_copy_memory_per_node": 30000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
@@ -96,7 +96,6 @@ def main():
         do_sample=False, temperature=0.9, topp=0.8, topk=1
     )
     llm.compile(
-        ff.InferenceMode.INC_DECODING_MODE,
         generation_config,
         max_batch_size=1,
         max_seq_length=256,

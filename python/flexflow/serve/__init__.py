@@ -41,7 +41,7 @@ def init(configs: Union[str, dict]):
     The init function takes three mandatory parameters, which cannot be changed after starting the runtime. These are:
     - num_gpus: the number of GPUs to reserve for the runtime
     - memory_per_gpu: the amount of memory (in MB) to pre-allocate on each GPU
-    - zero_copy_memory_per_gpu: the amount of zero-copy memory (in MB) to pre-allocate for each GPU
+    - zero_copy_memory_per_node: the amount of zero-copy memory (in MB) to pre-allocate for each node
 
     In addition, the following optional parameters can be passed:
     - num_cpus: the number of CPU processors to reserve for the runtime, defaults to 4
@@ -59,7 +59,7 @@ def init(configs: Union[str, dict]):
     :param configs: The runtime configs, in the form of a dictionary or the path to a JSON file
     :type configs: Union[str, dict]
     :raises ValueError: This function will raise an exception if the JSON file pointed to by the input string is not in the right format
-    :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_gpu
+    :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
     """
     configs_dict = {}
     if type(configs) == str:
@@ -82,15 +82,15 @@ def init(configs: Union[str, dict]):
     # configs should contain the following mandatory keys with non-zero integer values:
     num_gpus = configs_dict.get("num_gpus")
     memory_per_gpu = configs_dict.get("memory_per_gpu")
-    zero_copy_memory_per_gpu = configs_dict.get("zero_copy_memory_per_gpu")
-    if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_gpu:
+    zero_copy_memory_per_node = configs_dict.get("zero_copy_memory_per_node")
+    if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
         raise ValueError(
-            "Missing one of the following configs: num_gpus, memory_per_gpu, zero_copy_memory_per_gpu"
+            "Missing one of the following configs: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
         )
     _parse_positive_int_config("num_gpus", num_gpus, "-ll:gpu")
     _parse_positive_int_config("memory_per_gpu", memory_per_gpu, "-ll:fsize")
     _parse_positive_int_config(
-        "zero_copy_memory_per_gpu", zero_copy_memory_per_gpu, "-ll:zsize"
+        "zero_copy_memory_per_node", zero_copy_memory_per_node, "-ll:zsize"
     )
 
     # parse optional arguments

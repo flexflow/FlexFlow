@@ -241,7 +241,6 @@ class LLM:
 
     def compile(
         self,
-        mode: InferenceMode = InferenceMode.INC_DECODING_MODE,
         generation_config: GenerationConfig = GenerationConfig(),
         max_batch_size: int = 1,
         max_seq_length: int = 256,
@@ -278,10 +277,10 @@ class LLM:
         self.ssms = ssms
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
-        assert (
-            mode == InferenceMode.INC_DECODING_MODE
-            or mode == InferenceMode.BEAM_SEARCH_MODE
-        ) == (len(ssms) == 0)
+        if len(ssms) == 0:
+            mode = InferenceMode.INC_DECODING_MODE
+        else:
+            mode = InferenceMode.BEAM_SEARCH_MODE
 
         # Apply model-specific parallelism degrees, if needed
         if model_specific_data_parallelism_degree:
@@ -381,7 +380,6 @@ class SSM(LLM):
 
     def compile(
         self,
-        mode: InferenceMode = InferenceMode.INC_DECODING_MODE,
         generation_config: GenerationConfig = GenerationConfig(),
         max_batch_size: int = 1,
         max_seq_length: int = 256,
@@ -413,7 +411,7 @@ class SSM(LLM):
         :type ssms: list, optional
         """
         super().compile(
-            mode,
+            InferenceMode.BEAM_SEARCH_MODE,
             generation_config,
             max_batch_size,
             max_seq_length,

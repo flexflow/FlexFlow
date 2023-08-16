@@ -6,7 +6,7 @@ ff_init_configs = {
     # required parameters
     "num_gpus": 4,
     "memory_per_gpu": 14000,
-    "zero_copy_memory_per_gpu": 30000,
+    "zero_copy_memory_per_node": 30000,
     # optional parameters
     "num_cpus": 4,
     "legion_utility_processors": 4,
