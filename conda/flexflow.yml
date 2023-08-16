@@ -15,12 +15,12 @@ dependencies:
     - qualname>=0.1.0
     - keras_preprocessing>=1.1.2
     - numpy>=1.16.0
-    - torch --index-url https://download.pytorch.org/whl/cpu
-    - torchaudio --index-url https://download.pytorch.org/whl/cpu
-    - torchvision --index-url https://download.pytorch.org/whl/cpu
+    - torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
+    - torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu
+    - torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cpu
     - regex
     - onnx
-    - transformers
+    - transformers>=4.31.0
     - sentencepiece
     - einops
     - requests
