@@ -86,17 +86,10 @@ generation_config = ff.GenerationConfig(
 
 # Compile the SSMs for inference and load the weights into memory
 for ssm in ssms:
-    ssm.compile(
-	ff.InferenceMode.BEAM_SEARCH_MODE,
-	generation_config
-)
+    ssm.compile(generation_config)
 
 # Compile the LLM for inference and load the weights into memory
-llm.compile(
-    ff.InferenceMode.TREE_VERIFY_MODE,
-    generation_config,
-    ssms=ssms,
-)
+llm.compile(generation_config, ssms=ssms)
 ```
 Finally, we call `llm.generate` to generate the output, which is organized as a list of `GenerationResult`, which include the output tokens and text.
 ```python
@@ -118,15 +111,13 @@ ff.init(
         "num_gpus": 4,
         "memory_per_gpu": 14000,
         "zero_copy_memory_per_gpu": 30000,
-        "pipeline_parallelism_degree": 4,
+        "tensor_parallelism_degree": 4,
+	"pipeline_parallelism_degree": 1,
     }
 )
 
 # Create the FlexFlow LLM
-llm = ff.LLM(
-    "decapoda-research/llama-7b-hf",
-    data_type=ff.DataType.DT_HALF,
-)
+llm = ff.LLM("decapoda-research/llama-7b-hf")
 
 # Create the sampling configs
 generation_config = ff.GenerationConfig(
@@ -134,10 +125,7 @@ generation_config = ff.GenerationConfig(
 )
 
 # Compile the LLM for inference and load the weights into memory
-llm.compile(
-    ff.InferenceMode.INC_DECODING_MODE,
-    generation_config
-)
+llm.compile(generation_config)
 
 # Generation begins!
 result = llm.generate("Here are some travel tips for Tokyo:\n")
