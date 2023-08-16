@@ -311,8 +311,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       // This is a decoding token
       log_req_mgr.print("Output token is: %d", result.token_ids[i]);
       request.tokens.push_back(result.token_ids[i]);
-      std::string output = this->tokenizer_->Decode(request.tokens);
-      log_req_mgr.print("Output: %s", output.c_str());
+      // std::string output = this->tokenizer_->Decode(request.tokens);
+      // log_req_mgr.print("Output: %s", output.c_str());
     }
   }
   // Step 2: prepare the next batch for existing requests
@@ -334,9 +334,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                         request.tokens.size());
       std::string output = this->tokenizer_->Decode(request.tokens);
 
-      for (int i = 0; i < request.tokens.size(); i++) {
-        std::cout << request.tokens.at(i) << "\n";
-      }
+      // for (int i = 0; i < request.tokens.size(); i++) {
+      //   std::cout << request.tokens.at(i) << "\n";
+      // }
       {
         // update generation result and trigger future
         GenerationResult &gr = request_generation_results[request.guid];
@@ -560,7 +560,7 @@ BeamSearchBatchConfig
           old_bc.beamRequestsInfo[i].max_depth;
 
       // do the slot exchange to minimize the cache exchange in kernel.
-      std::cout << "update metadata" << std::endl;
+      // std::cout << "update metadata" << std::endl;
       update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id), i);
 
       if (new_bc.requestsInfo[i].token_start_offset + 1 >=
@@ -1368,26 +1368,39 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   std::vector<std::pair<int, int>> new_committed_tokens =
       std::vector<std::pair<int, int>>();
 
-  log_req_mgr.print("Input size (%zu) Output size (%zu)",
+  log_req_mgr.print("Input tree size (%zu) Output tree size (%zu)",
                     inputSerializedTree.size(),
                     outputSerializedTree.size());
-
-  log_req_mgr.print("========Input============");
-  // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token id,
-  // depth) pairs
-  for (auto const &pair : inputSerializedTree) {
-    log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+  { // Input tree
+    std::ostringstream oss;
+    // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token id,
+    // depth) pairs
+    for (auto const &pair : inputSerializedTree) {
+      oss << " " << pair.second << ":" << pair.first;
+      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+    }
+    log_req_mgr.print("Input tree:%s", oss.str().c_str());
   }
-  log_req_mgr.print("========Output============");
-  // outputSerializedTree is an array of (token id, depth + 1) pairs
-  for (auto const &pair : outputSerializedTree) {
-    log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+  { // Output tree
+    // log_req_mgr.print("========Output============");
+    // outputSerializedTree is an array of (token id, depth + 1) pairs
+    std::ostringstream oss;
+    for (auto const &pair : outputSerializedTree) {
+      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+      oss << " " << pair.second << ":" << pair.first;
+    }
+    log_req_mgr.print("Output tree:%s", oss.str().c_str());
   }
-  log_req_mgr.print("========Committed============");
-  // committed_tokens[guid] is an array of (depth, result_index) pairs for the
-  // given request
-  for (auto const &pair : committed_tokens.at(guid)) {
-    log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+  {
+    // log_req_mgr.print("========Committed============");
+    //  committed_tokens[guid] is an array of (depth, result_index) pairs for
+    //  the given request
+    std::ostringstream oss;
+    for (auto const &pair : committed_tokens.at(guid)) {
+      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+      oss << " " << pair.second << ":" << pair.first;
+    }
+    log_req_mgr.print("Committed tokens:%s", oss.str().c_str());
   }
 
   // It's safe to have inputSerializedTree.size() > outputSerializedTree.size()
@@ -1423,14 +1436,23 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
     }
   }
   committed_tokens[guid] = new_committed_tokens;
-  log_req_mgr.print("========Verified============");
-  for (auto const &pair : verifiedTree) {
-    log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+  {
+    // log_req_mgr.print("========Verified============");
+    std::ostringstream oss;
+    for (auto const &pair : verifiedTree) {
+      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+      oss << " " << pair.second << ":" << pair.first;
+    }
+    log_req_mgr.print("Verified:%s", oss.str().c_str());
   }
-
-  log_req_mgr.print("========New Committed============");
-  for (auto const &pair : committed_tokens.at(guid)) {
-    log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+  {
+    // log_req_mgr.print("========New Committed============");
+    std::ostringstream oss;
+    for (auto const &pair : committed_tokens.at(guid)) {
+      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
+      oss << " " << pair.second << ":" << pair.first;
+    }
+    log_req_mgr.print("New committed:%s", oss.str().c_str());
   }
 
   return verifiedTree;
@@ -1453,10 +1475,10 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 
   auto guid = old_bc.requestsInfo[request_index].request_guid;
   Request &request = all_requests[guid];
-  std::cout << "request.beam_trees.size(): " << request.beam_trees.size()
-            << std::endl;
+  // std::cout << "request.beam_trees.size(): " << request.beam_trees.size()
+  //           << std::endl;
   BeamTree tree = request.beam_trees.at(old_bc.model_id);
-  std::cout << "\n\n";
+  // std::cout << "\n\n";
 
   // token, index
   // todo make this one global for different stages

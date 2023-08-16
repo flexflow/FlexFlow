@@ -253,7 +253,7 @@ void FlexFlow::top_level_task(Task const *task,
          ffconfig.numNodes * ffconfig.workersPerNode);
 
   // Create SentencePiece tokenizer or OPT tokenizer
-  SamplingConfig samplingConfig;
+  GenerationConfig generationConfig;
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
   rm->register_tokenizer(model_metadata.llm_model_type,
@@ -268,7 +268,7 @@ void FlexFlow::top_level_task(Task const *task,
                               model_metadata.llm_model_config_path,
                               model_metadata.llm_weights_path,
                               TREE_VERIFY_MODE,
-                              samplingConfig,
+                              generationConfig,
                               use_full_precision);
   } else if (model_metadata.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
@@ -306,7 +306,7 @@ void FlexFlow::top_level_task(Task const *task,
                                 model_metadata.ssm_model_config_paths[ssm_id],
                                 model_metadata.ssm_model_weights_paths[ssm_id],
                                 BEAM_SEARCH_MODE,
-                                samplingConfig,
+                                generationConfig,
                                 use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,

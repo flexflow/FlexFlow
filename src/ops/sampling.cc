@@ -256,12 +256,13 @@ FutureMap Sampling::inference(FFModel const &ff,
             << std::endl; */
   IndexLauncher launcher(SAMPLING_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(&bc, sizeof(BatchConfig)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
@@ -284,8 +285,14 @@ InferenceResult
                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  BatchConfig const *bc = (BatchConfig *)task->args;
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  // BatchConfig const *bc = (BatchConfig *)task->args;
   SamplingMeta const *m = *((SamplingMeta **)task->local_args);
+  if (bc->num_tokens == 0) {
+    // Directly return for empty batch config
+    InferenceResult ir;
+    return ir;
+  }
 
   GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
