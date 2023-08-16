@@ -23,9 +23,9 @@ ARG N_BUILD_CORES
 #     make install && \
 #     ldconfig
 RUN mkdir -p build && cd build
-RUN eval $BUILD_CONFIGS ../config/config.linux
+RUN eval "$BUILD_CONFIGS" ../config/config.linux
 RUN make -j $N_BUILD_CORES
-RUN eval $BUILD_CONFIGS ../config/config.linux
+RUN eval "$BUILD_CONFIGS" ../config/config.linux
 RUN make install
 RUN ldconfig
 
