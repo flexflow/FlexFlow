@@ -7,3 +7,13 @@ pybind11
 cmake-build-extension
 ninja
 requests
+qualname
+regex
+requests
+--index-url https://download.pytorch.org/whl/cpu torch
+--index-url https://download.pytorch.org/whl/cpu torchaudio
+--index-url https://download.pytorch.org/whl/cpu torchvision
+onnx
+transformers
+sentencepiece
+einops
