@@ -277,11 +277,18 @@ class LLM:
         self.ssms = ssms
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
-        if len(ssms) == 0:
+        if len(ssms) > 0:
+            assert isinstance(LLM, self)
+            mode = InferenceMode.TREE_VERIFY_MODE
+        elif isinstance(LLM, self):
             mode = InferenceMode.INC_DECODING_MODE
         else:
+            assert isinstance(SSM, self)
             mode = InferenceMode.BEAM_SEARCH_MODE
 
+        print(mode)
+        print(isinstance(LLM, self))
+        print(isinstance(SSM, self))
         # Apply model-specific parallelism degrees, if needed
         if model_specific_data_parallelism_degree:
             self.ffconfig.data_parallelism_degree = (
@@ -411,7 +418,6 @@ class SSM(LLM):
         :type ssms: list, optional
         """
         super().compile(
-            InferenceMode.BEAM_SEARCH_MODE,
             generation_config,
             max_batch_size,
             max_seq_length,
