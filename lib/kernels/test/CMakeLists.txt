@@ -1,5 +1,5 @@
 set(project_target kernel-test)
-project(${project_target})
+project(${project_target} LANGUAGES CUDA)
 
 file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
@@ -15,12 +15,12 @@ target_link_libraries(
   kernels
   cuda
   doctest::doctest)
-  
+
 set_target_properties(
   ${project_target} 
   PROPERTIES 
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
+  CUDA_STANDARD 11
 )
+
+define_ff_vars(${project_target})
 doctest_discover_tests(${project_target})

@@ -1,0 +1,5 @@
+if(EXISTS "/home/ubuntu/repo-refactor/build2/lib/kernels/test/kernel-test_tests-b858cb2.cmake")
+  include("/home/ubuntu/repo-refactor/build2/lib/kernels/test/kernel-test_tests-b858cb2.cmake")
+else()
+  add_test(kernel-test_NOT_BUILT-b858cb2 kernel-test_NOT_BUILT-b858cb2)
+endif()

@@ -8,8 +8,8 @@ message("cuda-libraries ${CUDA_LIBRARIES}")
 
 if(CUDA_FOUND)
   # strip the cudart lib
-  string(REGEX REPLACE "[^\;]*cudart[^\;]*(\;?)" "" CUDA_LIBRARIES "${CUDA_LIBRARIES}")
-  set(CUDA_LIBRARIES ${CUDA_LIBRARIES})
+  #string(REGEX REPLACE "[^\;]*cudart[^\;]*(\;?)" "" CUDA_LIBRARIES "${CUDA_LIBRARIES}")
+  #set(CUDA_LIBRARIES ${CUDA_LIBRARIES})
 
   # set cuda runtime and driver lib
   # override cublas and curand because the FindCUDA module may not find the correct libs  
@@ -83,6 +83,11 @@ if(CUDA_FOUND)
 
   add_library(cuda INTERFACE)
   target_include_directories(cuda SYSTEM INTERFACE "${CUDA_INCLUDE_DIRS}")
+  target_link_libraries(cuda INTERFACE
+    ${CUDADRV_LIBRARIES}
+    ${CUDA_LIBRARIES}
+    ${CUDA_CUBLAS_LIBRARIES}
+    ${CUDA_curand_LIBRARY})
 
 else()
   message( FATAL_ERROR "CUDA package not found -> specify search path via CUDA_ROOT variable")
