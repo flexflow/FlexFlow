@@ -10,12 +10,9 @@ requests
 qualname
 regex
 requests
--f https://download.pytorch.org/whl/torch_stable.html 
-torch==2.0.1+cpu
--f https://download.pytorch.org/whl/torch_stable.html 
-torchaudio==2.0.2+cpu
--f https://download.pytorch.org/whl/torch_stable.html 
-torchvision==0.15.2+cpu
+torch==2.0.1
+torchaudio==2.0.2
+torchvision==0.15.2
 onnx
 transformers>=4.31.0
 sentencepiece
