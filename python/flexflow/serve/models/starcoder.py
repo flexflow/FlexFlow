@@ -37,7 +37,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
     def __init__(
         self,
         mode,
-        sampling_config,
+        generation_config,
         ffconfig,
         hf_config,
         data_type,
@@ -48,7 +48,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
         tokenizer_filepath="",
     ):
         self.mode = mode
-        self.sampling_config = sampling_config
+        self.generation_config = generation_config
         self.ffconfig = ffconfig
         self.max_batch_size = max_batch_size
         self.data_type = data_type
@@ -193,12 +193,12 @@ class FlexFlowSTARCODER(FlexFlowModel):
             name="lm_head_weight",
         )
 
-        if self.sampling_config.do_sample:
+        if self.generation_config.do_sample:
             dense = ffmodel.scalar_true_divide(
-                lm_head, self.sampling_config.temperature, False
+                lm_head, self.generation_config.temperature, False
             )
             softmax = ffmodel.softmax(dense, -1)
-            output = ffmodel.sampling(softmax, self.sampling_config.topp)
+            output = ffmodel.sampling(softmax, self.generation_config.topp)
         else:
             output = ffmodel.argmax(lm_head, False)
 

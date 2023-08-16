@@ -210,7 +210,7 @@ void FlexFlow::top_level_task(Task const *task,
                                       config_filepath,
                                       weights_filepath,
                                       INC_DECODING_MODE,
-                                      samplingConfig,
+                                      generationConfig,
                                       use_full_precision);
   } else {
     assert(false && "unknow model type");

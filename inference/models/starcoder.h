@@ -69,7 +69,7 @@ public:
                                      std::string const &model_config_file_path,
                                      std::string const &weight_file_path,
                                      InferenceMode mode,
-                                     SamplingConfig samplingConfig,
+                                     GenerationConfig generationConfig,
                                      bool use_full_precision = false);
 };
 
