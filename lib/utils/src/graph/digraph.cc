@@ -2,6 +2,11 @@
 
 namespace FlexFlow {
 
+DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
+                                     DirectedEdgeQuery const &rhs) {
+  NOT_IMPLEMENTED();
+}
+
 void swap(DiGraph &lhs, DiGraph &rhs) {
   using std::swap;
 
@@ -34,5 +39,17 @@ std::unordered_set<DirectedEdge>
 }
 
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
+
+DiGraph::operator DiGraphView() const {
+  return DiGraphView(this->ptr.get());
+}
+
+DiGraphView::DiGraphView(std::shared_ptr<IDiGraphView const>) {
+  NOT_IMPLEMENTED();
+}
+
+DiGraphView::operator GraphView() const {
+  NOT_IMPLEMENTED();
+}
 
 } // namespace FlexFlow

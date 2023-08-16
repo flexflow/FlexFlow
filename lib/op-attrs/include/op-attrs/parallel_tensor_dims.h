@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
+struct ParallelTensorDims {
   explicit ParallelTensorDims(TensorDims const &);
 
   size_t get_volume() const;
@@ -38,16 +38,15 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   const_reverse_iterator crend() const;
 
 public:
-  FFOrdered<ParallelDim> data;
+  req<FFOrdered<ParallelDim>> data;
 };
+
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ParallelTensorDims, data);
 
 bool is_valid(ParallelTensorDims const &);
 TensorDims get_piece_dims(ParallelTensorDims const &);
 TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ParallelTensorDims, data);
-MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensorDims);
 
 #endif

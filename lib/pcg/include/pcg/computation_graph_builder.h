@@ -5,11 +5,8 @@
 
 namespace FlexFlow {
 
-struct ComputationGraphBuilder
-    : public use_visitable_cmp<ComputationGraphBuilder> {
+struct ComputationGraphBuilder {
 public:
-  ComputationGraphBuilder();
-
   // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(Tensor const &, optional<std::string> const &name = nullopt);
@@ -280,16 +277,11 @@ private:
                     optional<std::string> const &name = nullopt);
 
 public:
-  ComputationGraph computation_graph;
+  req<ComputationGraph> computation_graph;
 };
 
+FF_VISITABLE_STRUCT(ComputationGraphBuilder, computation_graph);
+
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ComputationGraphBuilder, computation_graph);
-
-namespace FlexFlow {
-static_assert(
-    is_well_behaved_value_type_no_hash<ComputationGraphBuilder>::value, "");
-}
 
 #endif

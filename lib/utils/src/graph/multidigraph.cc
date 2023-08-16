@@ -98,4 +98,12 @@ std::unordered_set<MultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
+MultiDiGraphView::MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>) {
+  NOT_IMPLEMENTED();
+}
+
+MultiDiGraphView::operator GraphView() const {
+  NOT_IMPLEMENTED();
+}
+
 } // namespace FlexFlow

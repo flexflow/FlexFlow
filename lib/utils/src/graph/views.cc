@@ -69,6 +69,11 @@ std::unordered_set<MultiDiEdge>
   return this->g.query_edges(query_intersection(query, subgraph_query));
 }
 
+std::unordered_set<Node>
+    MultiDiSubgraphView::query_nodes(NodeQuery const &query) const {
+  NOT_IMPLEMENTED();
+}
+
 UndirectedGraphView
     view_subgraph(UndirectedGraphView const &g,
                   std::unordered_set<Node> const &subgraph_nodes) {
@@ -85,10 +90,23 @@ MultiDiGraphView view_subgraph(MultiDiGraphView const &g,
   return MultiDiGraphView::create<MultiDiSubgraphView>(g, subgraph_nodes);
 }
 
+std::unordered_set<Node>
+    MultiDiGraphView::query_nodes(NodeQuery const &query) const {
+  NOT_IMPLEMENTED();
+}
+
 Node NodeSource::fresh_node() {
   Node result(this->next_node_idx);
   this->next_node_idx++;
   return result;
+}
+
+bool JoinNodeKey::operator==(JoinNodeKey const &) const {
+  NOT_IMPLEMENTED();
+}
+
+bool JoinNodeKey::operator<(JoinNodeKey const &) const {
+  NOT_IMPLEMENTED();
 }
 
 JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {

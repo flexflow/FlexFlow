@@ -45,4 +45,9 @@ std::unordered_set<UndirectedEdge>
 UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
+UndirectedGraphView::UndirectedGraphView(
+    std::shared_ptr<IUndirectedGraphView const>) {
+  NOT_IMPLEMENTED();
+}
+
 } // namespace FlexFlow

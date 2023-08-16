@@ -54,4 +54,8 @@ V1ComputationGraph to_v1(ComputationGraph const &g) {
   return to_v1<Layer, Tensor>(g.value());
 }
 
+V1ParallelComputationGraph to_v1(ParallelComputationGraph const &g) {
+  return to_v1<Operator, ParallelTensor>(g.value());
+}
+
 } // namespace FlexFlow

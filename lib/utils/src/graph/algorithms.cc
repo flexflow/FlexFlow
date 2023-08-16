@@ -192,10 +192,20 @@ std::unordered_set<DirectedEdge>
   return to_directed_edges(get_incoming_edges(multidigraph_view, dsts));
 }
 
+std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g,
+                                                   Node const &n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
+}
+
 std::unordered_set<MultiDiEdge>
     get_outgoing_edges(MultiDiGraphView const &g,
                        std::unordered_set<Node> const &srcs) {
   return g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(srcs));
+}
+
+std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g,
+                                                    Node const &n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
 
 std::unordered_set<DirectedEdge>
@@ -251,6 +261,36 @@ std::vector<Node>
                      std::unordered_set<Node> const &starting_points) {
   BFSView bfs_view = bfs(g, starting_points);
   return {bfs_view.begin(), bfs_view.end()};
+}
+
+MultiDiGraphView apply_contraction(MultiDiGraphView const &,
+                                   std::unordered_map<Node, Node> const &) {
+  NOT_IMPLEMENTED();
+}
+
+DiGraphView apply_contraction(DiGraphView const &,
+                              std::unordered_map<Node, Node> const &) {
+  NOT_IMPLEMENTED();
+}
+
+UndirectedGraphView apply_contraction(UndirectedGraphView const &,
+                                      std::unordered_map<Node, Node> const &) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<std::unordered_set<Node>>
+    get_weakly_connected_components(MultiDiGraphView const &) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<std::unordered_set<Node>>
+    get_weakly_connected_components(DiGraphView const &) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<std::unordered_set<Node>>
+    get_connected_components(UndirectedGraphView const &) {
+  NOT_IMPLEMENTED();
 }
 
 std::unordered_set<Node> get_sources(DiGraphView const &g) {
@@ -444,12 +484,23 @@ std::unordered_map<Node, optional<Node>>
   return get_imm_post_dominators(as_digraph(g));
 }
 
-optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
+optional<Node> get_imm_post_dominator(DiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
 }
 
-optional<Node> imm_post_dominator(MultiDiGraphView const &g, Node const &n) {
+optional<Node> get_imm_post_dominator(MultiDiGraphView const &g,
+                                      Node const &n) {
   return get_imm_post_dominators(g).at(n);
+}
+
+optional<Node> get_imm_post_dominator(DiGraphView const &,
+                                      std::unordered_set<Node> const &) {
+  NOT_IMPLEMENTED();
+}
+
+optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
+                                      std::unordered_set<Node> const &) {
+  NOT_IMPLEMENTED();
 }
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge>
@@ -473,6 +524,14 @@ std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g,
   return keys(get_edge_splits(g, s));
 }
 
+std::unordered_set<Node> get_sinks(DiGraphView const &) {
+  NOT_IMPLEMENTED();
+}
+
+std::unordered_set<Node> get_sinks(MultiDiGraphView const &) {
+  NOT_IMPLEMENTED();
+}
+
 Node get_src_node(MultiDiEdge const &) {
   NOT_IMPLEMENTED();
 }
@@ -483,6 +542,10 @@ Node get_src_node(InputMultiDiEdge const &) {
   NOT_IMPLEMENTED();
 }
 Node get_dst_node(OutputMultiDiEdge const &) {
+  NOT_IMPLEMENTED();
+}
+
+DiGraphView flipped(DiGraphView const &) {
   NOT_IMPLEMENTED();
 }
 

@@ -3,6 +3,10 @@
 
 namespace FlexFlow {
 
+AdjacencyDiGraph::AdjacencyDiGraph(std::size_t, ContentsType const&) {
+  NOT_IMPLEMENTED();
+}
+
 Node AdjacencyDiGraph::add_node() {
   Node node{this->next_node_idx};
   adjacency[node];

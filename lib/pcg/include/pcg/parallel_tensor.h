@@ -50,9 +50,10 @@ struct ParallelTensor : public use_visitable_cmp<ParallelTensor> {
 public:
   ParallelTensorDims dims;
   DataType data_type;
+  CreateGrad create_gradients;
   optional<ParamSync> sync_type = nullopt;
   optional<Initializer> initializer = nullopt;
-  CreateGrad create_gradients;
+  optional<std::string> name = nullopt;
 };
 
 using ParallelParameter = ParallelTensor;
@@ -64,11 +65,8 @@ VISITABLE_STRUCT(::FlexFlow::ParallelTensor,
                  data_type,
                  sync_type,
                  initializer,
-                 create_gradients);
+                 create_gradients,
+                 name);
 MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensor);
-
-namespace FlexFlow {
-static_assert(is_well_behaved_value_type<ParallelTensor>::value, "");
-}
 
 #endif

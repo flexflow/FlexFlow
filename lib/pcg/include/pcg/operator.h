@@ -8,24 +8,17 @@
 
 namespace FlexFlow {
 
-struct Operator : public use_visitable_cmp<Operator> {
+struct Operator {
 public:
-  Operator() = delete;
-  Operator(PCGOperatorAttrs const &attrs, optional<std::string> const &name);
-
   operator PCGOperatorAttrs() const;
 
 public:
-  PCGOperatorAttrs attrs;
+  req<PCGOperatorAttrs> attrs;
+  req<optional<stack_string<MAX_OPNAME>>> name;
 };
 
+FF_VISITABLE_STRUCT(Operator, attrs, name);
+
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::Operator, attrs);
-MAKE_VISIT_HASHABLE(::FlexFlow::Operator);
-
-namespace FlexFlow {
-static_assert(is_well_behaved_value_type<Operator>::value, "");
-}
 
 #endif

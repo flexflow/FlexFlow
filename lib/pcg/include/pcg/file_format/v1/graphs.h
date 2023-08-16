@@ -16,6 +16,7 @@ struct V1GraphOutput {
   req<size_t> srcNode;
   req<size_t> srcIdx;
 };
+
 FF_VISITABLE_STRUCT(V1GraphOutput, srcNode, srcIdx);
 CHECK_IS_JSONABLE(V1GraphOutput);
 
@@ -25,6 +26,7 @@ struct V1GraphEdge {
   req<size_t> dstNode;
   req<size_t> dstIdx;
 };
+
 FF_VISITABLE_STRUCT(V1GraphEdge, srcNode, srcIdx, dstNode, dstIdx);
 CHECK_IS_JSONABLE(V1GraphEdge);
 
@@ -33,6 +35,7 @@ struct V1MultiDiGraph {
   req<std::vector<size_t>> ports;
   req<std::unordered_set<V1GraphEdge>> edges;
 };
+
 FF_VISITABLE_STRUCT(V1MultiDiGraph, nodes, ports, edges);
 CHECK_IS_JSONABLE(V1MultiDiGraph);
 V1MultiDiGraph to_v1(MultiDiGraphView const &);
@@ -55,6 +58,7 @@ struct V1Layer {
   V1CompGraphOperatorAttrs attrs;
   req<optional<std::string>> name;
 };
+
 FF_VISITABLE_STRUCT(V1Layer, attrs, name);
 V1Layer to_v1(Layer const &);
 
@@ -64,8 +68,17 @@ FF_VISITABLE_STRUCT(
 CHECK_IS_JSONABLE(V1ComputationGraph);
 V1ComputationGraph to_v1(ComputationGraph const &);
 
+struct V1Operator {
+  V1PCGOperatorAttrs attrs;
+  req<optional<std::string>> name;
+};
+
+FF_VISITABLE_STRUCT(V1Operator, attrs, name);
+V1Operator to_v1(Operator const &);
+
 using V1ParallelComputationGraph =
-    V1JsonableGraph<V1PCGOperatorAttrs, V1ParallelTensor>;
+    V1JsonableGraph<V1Operator, V1ParallelTensor>;
+
 FF_VISITABLE_STRUCT(
     V1ParallelComputationGraph, node_labels, outputs, output_labels, graph);
 CHECK_IS_JSONABLE(V1ParallelComputationGraph);

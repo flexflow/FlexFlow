@@ -36,13 +36,17 @@ struct IMultiDiGraphView : public IGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual ~IMultiDiGraphView();
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
-  virtual NodePort add_node_port();
-  virtual void add_node_port_unsafe(NodePort const &);
+  virtual NodePort add_node_port() {
+    // FIXME: Obviously this wrong.
+    return NodePort(42);
+  }
+  virtual void add_node_port_unsafe(NodePort const &) {
+    // FIXME: Don't do nothing.
+  }
   virtual void add_edge(Edge const &) = 0;
   virtual void remove_edge(Edge const &) = 0;
 
@@ -52,6 +56,7 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   }
 
   virtual IMultiDiGraph *clone() const override = 0;
+  virtual ~IMultiDiGraph() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraph);
 
