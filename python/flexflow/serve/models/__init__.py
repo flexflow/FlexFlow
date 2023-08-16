@@ -15,3 +15,4 @@
 from .llama import FlexFlowLLAMA
 from .opt import FlexFlowOPT
 from .falcon import FlexFlowFalcon
+from .starcoder import FlexFlowSTARCODER

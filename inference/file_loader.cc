@@ -137,7 +137,8 @@ void load_attention_bias_v2(DT *ptr,
   int file_index = 0;
 
   // now only opt use this.
-  assert(num_heads == num_kv_heads);
+  // assert(num_heads == num_kv_heads);
+  int idx = 0;
 
   for (auto file : bias_files) {
     int n_heads = file_index == 0 ? num_heads : num_kv_heads;
@@ -166,11 +167,12 @@ void load_attention_bias_v2(DT *ptr,
     size_t data_index = 0;
 
     for (int i = 0; i < partial_size; i++) {
-      ptr[file_index * qkv_partial_size + i] = host_array.at(data_index);
+      ptr[idx + i] = host_array.at(data_index);
       data_index++;
     }
 
     file_index++;
+    idx += qkv_partial_size;
 
     in.close();
   }
@@ -238,7 +240,8 @@ void load_attention_weights_v2(DT *ptr,
 
     if (in_get_size != loaded_data_size) {
       std::cout << "load attention data error " << in_get_size << ", "
-                << loaded_data_size;
+                << loaded_data_size << ", " << file_index << ", " << file
+                << "\n";
       assert(false && "data size mismatch");
     }
     // wq, wk, wo

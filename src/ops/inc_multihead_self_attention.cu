@@ -630,7 +630,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       }
     }
-
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
     assert(num_new_tokens <= total_tokens);
@@ -792,7 +791,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            ldc,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
     tokens_previous_requests += num_new_tokens;
   }
 
@@ -970,10 +968,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   global_num_kv_heads = _global_num_kv_heads;
   num_q_heads = _num_q_heads;
   num_kv_heads = _num_kv_heads;
-  // weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize
-  // +
-  //                   oProjSize * (vProjSize > 0 ? vProjSize : vSize));
-  // weightSize = weights_params * num_q_heads * size_of_dt;
 
   weightSize =
       ((qSize * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : vSize)) *

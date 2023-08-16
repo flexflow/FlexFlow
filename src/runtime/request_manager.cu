@@ -68,8 +68,8 @@ void RequestManager::load_positions_task(
 
   // BatchConfig const batch_config = *((BatchConfig *)task->args);
   BatchConfig const *batch_config = BatchConfig::from_future(task->futures[0]);
-
-  int offset = 2;
+  
+  const int offset = *((const int*)task->args);
   int *pos_ptr = helperGetTensorPointerWO<int>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain domain = runtime->get_index_space_domain(

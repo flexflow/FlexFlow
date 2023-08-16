@@ -18,6 +18,7 @@
 #include "models/falcon.h"
 #include "models/llama.h"
 #include "models/opt.h"
+#include "models/starcoder.h"
 #include <wordexp.h>
 
 #include <nlohmann/json.hpp>
@@ -170,6 +171,9 @@ void FlexFlow::top_level_task(Task const *task,
     } else if (str == "RWForCausalLM") {
       model_type = ModelType::FALCON;
       break;
+    } else if (str == "GPTBigCodeForCausalLM") {
+      model_type = ModelType::STARCODER;
+      break;
     }
   }
 
@@ -201,6 +205,13 @@ void FlexFlow::top_level_task(Task const *task,
                                 weights_filepath,
                                 INC_DECODING_MODE,
                                 use_full_precision);
+  } else if (model_type == ModelType::STARCODER) {
+    STARCODER::create_starcoder_model(model,
+                                      config_filepath,
+                                      weights_filepath,
+                                      INC_DECODING_MODE,
+                                      samplingConfig,
+                                      use_full_precision);
   } else {
     assert(false && "unknow model type");
   }

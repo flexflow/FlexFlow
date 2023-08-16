@@ -986,6 +986,7 @@ public:
                CompMode comp_mode = COMP_MODE_TRAINING);
   void compile_inference();
   void set_transformer_layer_id(int id);
+  void set_position_offset(int offset);
   void graph_optimize(size_t budget,
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
@@ -1043,6 +1044,8 @@ public:
   size_t op_global_guid, layer_global_guid;
   size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
   size_t current_transformer_layer_id;
+  // positional embedding start offset
+  int position_offset;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;
