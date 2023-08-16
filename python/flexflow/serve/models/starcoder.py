@@ -91,6 +91,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
         position_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
         embed_init = UniformInitializer(random.randint(0, self.maxint), 0, 0)
+        ffmodel.set_position_offset(2)
         token = ffmodel.embedding(
             input_tensor,
             self.starcoder_config.vocab_size,

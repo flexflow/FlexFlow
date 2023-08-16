@@ -173,6 +173,7 @@ void FlexFlow::top_level_task(Task const *task,
       break;
     } else if (str == "GPTBigCodeForCausalLM") {
       model_type = ModelType::STARCODER;
+      break;
     }
   }
 

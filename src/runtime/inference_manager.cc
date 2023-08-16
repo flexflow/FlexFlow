@@ -404,6 +404,11 @@ void FFModel::set_transformer_layer_id(int id) {
   assert(id < MAX_NUM_TRANSFORMER_LAYERS);
 }
 
+void FFModel::set_position_offset(int offset) {
+  assert(offset == 0 || offset == 2);
+  position_offset = offset;
+}
+
 void FFModel::compile_inference() {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;

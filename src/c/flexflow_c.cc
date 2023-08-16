@@ -1421,6 +1421,12 @@ flexflow_generation_result_t flexflow_model_generate(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(&result);
 }
 
+void flexflow_model_set_position_offset(flexflow_model_t handle_,
+                                        int const offset) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_position_offset(offset);
+}
+
 // -----------------------------------------------------------------------
 // Tensor
 // -----------------------------------------------------------------------

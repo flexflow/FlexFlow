@@ -2961,6 +2961,9 @@ class FFModel(object):
   def generate(self, text, max_sequence_length):
     c_text = get_c_name(text)
     return ffc.flexflow_model_generate(self.handle, c_text, max_sequence_length)
+  
+  def set_position_offset(self, offset):
+    ffc.flexflow_model_set_position_offset(self.handle, offset)
 
 # -----------------------------------------------------------------------
 # SGDOptimizer
