@@ -1,6 +1,6 @@
-*************
-Keras Support
-*************
+****************
+Keras Interface
+****************
 
 FlexFlow provides a drop-in replacement for TensorFlow Keras. Running an existing Keras program on the FlexFlow backend only requires a few lines of changes to the program. The detailed instructions are as follows:
 
