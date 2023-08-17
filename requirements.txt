@@ -10,10 +10,10 @@ requests
 qualname
 regex
 requests
---index-url https://download.pytorch.org/whl/cpu torch
---index-url https://download.pytorch.org/whl/cpu torchaudio
---index-url https://download.pytorch.org/whl/cpu torchvision
+torch==2.0.1
+torchaudio==2.0.2
+torchvision==0.15.2
 onnx
-transformers
+transformers>=4.31.0
 sentencepiece
 einops
