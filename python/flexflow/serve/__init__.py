@@ -122,7 +122,7 @@ def init(configs_dict: dict = None,
                 "Missing one of the following configs in config dict: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
             )
         num_cpus = configs_dict.get("num_cpus")
-        legion_utility_processors = configs_dict.get("legion_utility_processors")
+        legion_utility_processors = configs_dict.get("legion_utility_processors", 8)
         data_parallelism_degree = configs_dict.get("data_parallelism_degree")
         tensor_parallelism_degree = configs_dict.get("tensor_parallelism_degree")
         pipeline_parallelism_degree = configs_dict.get("pipeline_parallelism_degree")
