@@ -14,6 +14,11 @@ import os
 import sys
 import subprocess
 import shutil
+import sphinx # only needed for the manual post processing
+from pathlib import Path
+from m2r2 import convert
+from docutils.core import publish_string
+import re
 
 def get_parent_dir_path(path):
     return os.path.abspath(os.path.join(path, ".."))
@@ -94,3 +99,39 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
 
+
+def manual_post_processing(app, exception):
+    if exception is None and app.builder.name == 'html':  # build succeeded
+        print(f'Post-processing HTML docs at path {app.outdir}')
+        build_dir = Path(app.outdir)
+
+        # Only get HTML files in build dir, not subfolders
+        html_files = build_dir.glob('*.html') 
+
+        
+
+        for html_file in html_files:
+            content = html_file.read_text()
+
+            # Find Markdown code blocks 
+            pattern = r'<details>\n<summary>Expand here</summary>\n<br>(.*?)</details>'
+            blocks = re.findall(pattern, content, re.DOTALL)
+
+            for block in blocks:
+                # Convert Markdown to HTML
+                rst = convert(block, github_markdown=True)
+                html = publish_string(rst, writer_name='html')
+                html_str = html.decode('utf-8') 
+
+                # Replace block with converted HTML
+                content = content.replace(block, html_str)
+
+            # Add space after <details> block
+            content = content.replace('</details></section>', 
+                              '</details></section>\n<p></p>')
+
+            html_file.write_text(content)
+
+
+def setup(app):
+   app.connect('build-finished', manual_post_processing)
