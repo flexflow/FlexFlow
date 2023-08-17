@@ -11,6 +11,7 @@ on:
       - "inference/**"
       - "src/**"
       - "tests/inference/**"
+      - "conda/flexflow.yml"
       - ".github/workflows/gpu-ci.yml"
       - "tests/cpp_gpu_tests.sh"
       - "tests/inference_tests.sh"
