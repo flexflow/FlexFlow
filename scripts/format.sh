@@ -68,7 +68,6 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
   chmod u+x "$CLANG_FORMAT_PATH"
 fi
 
-
 CLANG_FORMAT_CONFIG="$GIT_ROOT/.clang-format-for-format-sh"
 mapfile -t ALL_MODIFIED_FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
 mapfile -t DELETED_FILES < <(git ls-files -d)
@@ -78,7 +77,7 @@ mapfile -t DELETED_FILES < <(git ls-files -d)
 FILES=($(comm -3 <(printf "%s\n" "${ALL_MODIFIED_FILES[@]}" | sort) <(printf "%s\n" "${DELETED_FILES[@]}" | sort) | sort -n))
 
 if [[ -f $CLANG_FORMAT_CONFIG ]]; then 
-  "$CLANG_FORMAT_PATH" -style=file:"$CLANG_FORMAT_CONFIG" -i "${FILES[@]}"
+  "$CLANG_FORMAT_PATH" --style=file:"$CLANG_FORMAT_CONFIG" -i "${FILES[@]}"
 else 
   echo "error"
 fi

@@ -1,4 +1,4 @@
-#include "internal/error_handling.h" 
+#include "internal/error_handling.h"
 
 flexflow_error_t handle_errors(std::function<void()> const &f) {
   try {
@@ -9,5 +9,3 @@ flexflow_error_t handle_errors(std::function<void()> const &f) {
 
   return status_ok();
 }
-
-

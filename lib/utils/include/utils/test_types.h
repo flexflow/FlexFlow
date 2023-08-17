@@ -38,21 +38,9 @@ template <capability NEEDLE>
 struct has_capability<NEEDLE> : std::false_type {};
 
 template <capability... CAPABILITIES>
-struct test_type_t;
-
-/* template <capability NEEDLE, capability ...CAPABILITIES> */
-/* struct has_capability<NEEDLE, test_type_t<CAPABILITIES...>> : std::true_type
- * { }; */
-
-static_assert(has_capability<EQ, CMP>::value, "");
-
-template <capability... CAPABILITIES>
 struct test_type_t {
   template <capability... C>
   using supports = conjunction<has_capability<C, CAPABILITIES...>...>;
-
-  /* template <capability C> */
-  /* using supports = conjunction<has_capability<C, CAPABILITIES>>; */
 
   template <capability C = DEFAULT_CONSTRUCTIBLE,
             typename std::enable_if<supports<C>::value, bool>::type = true>
