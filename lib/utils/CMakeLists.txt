@@ -7,12 +7,8 @@ file(GLOB_RECURSE SRC
      LIST_DIRECTORIES False
      src/*.cc)
 
-include(FetchContent)
-FetchContent_Declare(
-    argparse
-    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
-)
-FetchContent_MakeAvailable(argparse)
+find_package(Boost REQUIRED COMPONENTS program_options)
+
 
 add_library(
   ${project_target}
@@ -38,7 +34,7 @@ target_link_libraries(
   json
   any
   cuda
-  argparse
+  Boost::program_options
 )
 define_ff_vars(${project_target})
 ff_set_cxx_properties(${project_target})
