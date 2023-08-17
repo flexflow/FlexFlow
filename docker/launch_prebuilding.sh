@@ -12,9 +12,12 @@ export BUILD_LEGION_ONLY=ON
 # Build Docker Flexflow Container
 echo "building docker"
 ./docker/build.sh flexflow
+./docker/run.sh flexflow
+exit
 
 # Copy legion libraries to host
-docker cp "flexflow-${gpu_backend}-${cuda_version}:${python_version}":/usr/FlexFlow/build/deps ~/buildlegion
+container_id=$(docker ps | grep your-image-name | awk '{print $1}')
+docker cp "$container_id":/usr/FlexFlow/build/deps ~/buildlegion
 
 # Create the tarball file
 cd ~/buildlegion
@@ -24,6 +27,3 @@ touch "$LEGION_TARBALL"
 tar --exclude="$LEGION_TARBALL" -zcvf "$LEGION_TARBALL" .
 echo "Checking the size of the Legion tarball..."
 du -h "$LEGION_TARBALL"
-
-# Stop the Docker Container
-docker stop "flexflow-${FF_GPU_BACKEND}${cuda_version}"
