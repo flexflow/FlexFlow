@@ -480,10 +480,10 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   // int in_dim = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
-  printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
-         in_dim,
-         out_dim,
-         batch_size);
+  // printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
+  //        in_dim,
+  //        out_dim,
+  //        batch_size);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)

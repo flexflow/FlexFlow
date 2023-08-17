@@ -97,11 +97,14 @@ void flexflow_config_set_pipeline_parallelism_degree(flexflow_config_t handle_,
 
 int flexflow_config_get_python_data_loader_type(flexflow_config_t handle);
 
+bool flexflow_config_get_offload(flexflow_config_t handle);
+
 // -----------------------------------------------------------------------
 // FFModel
 // -----------------------------------------------------------------------
 
-flexflow_model_t flexflow_model_create(flexflow_config_t config);
+flexflow_model_t flexflow_model_create(flexflow_config_t config,
+                                       bool cpu_offload);
 
 void flexflow_model_destroy(flexflow_model_t handle);
 

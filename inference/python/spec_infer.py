@@ -43,7 +43,7 @@ def get_configs():
             # required parameters
             "num_gpus": 4,
             "memory_per_gpu": 14000,
-            "zero_copy_memory_per_gpu": 30000,
+            "zero_copy_memory_per_node": 30000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
@@ -126,15 +126,14 @@ def main():
         ssms.append(ssm)
 
     # Create the sampling configs
-    sampling_config = ff.SamplingConfig(
+    generation_config = ff.GenerationConfig(
         do_sample=False, temperature=0.9, topp=0.8, topk=1
     )
 
     # Compile the SSMs for inference and load the weights into memory
     for ssm in ssms:
         ssm.compile(
-            ff.InferenceMode.BEAM_SEARCH_MODE,
-            sampling_config,
+            generation_config,
             max_batch_size=1,
             max_seq_length=256,
             max_tokens_per_batch=64,
@@ -142,8 +141,7 @@ def main():
 
     # Compile the LLM for inference and load the weights into memory
     llm.compile(
-        ff.InferenceMode.TREE_VERIFY_MODE,
-        sampling_config,
+        generation_config,
         max_batch_size=1,
         max_seq_length=256,
         max_tokens_per_batch=64,

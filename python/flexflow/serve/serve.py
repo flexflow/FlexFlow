@@ -25,7 +25,7 @@ import sys, torch, shutil
 from typing import Union, List
 
 
-class SamplingConfig:
+class GenerationConfig:
     """A class to store the sampling configs."""
 
     def __init__(
@@ -250,8 +250,7 @@ class LLM:
 
     def compile(
         self,
-        mode: InferenceMode = InferenceMode.INC_DECODING_MODE,
-        sampling_config: SamplingConfig = SamplingConfig(),
+        generation_config: GenerationConfig = GenerationConfig(),
         max_batch_size: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
@@ -264,8 +263,8 @@ class LLM:
 
         :param mode: The LLM inference mode (InferenceMode.INC_DECODING_MODE for incremental decoding, InferenceMode.BEAM_SEARCH_MODE for beam search, or InferenceMode.TREE_VERIFY_MODE for token tree verification), defaults to InferenceMode.INC_DECODING_MODE
         :type mode: InferenceMode, optional
-        :param sampling_config: The SamplingConfig object with the configurations to use for sampling, defaults to SamplingConfig()
-        :type sampling_config: SamplingConfig, optional
+        :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
+        :type generation_config: GenerationConfig, optional
         :param max_batch_size: The maximum batch size to allow, defaults to 1
         :type max_batch_size: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
@@ -285,12 +284,16 @@ class LLM:
         self.max_seq_length = max_seq_length
         self.max_tokens_per_batch = max_tokens_per_batch
         self.ssms = ssms
-        self.sampling_config = SamplingConfig()
+        self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
-        assert (
-            mode == InferenceMode.INC_DECODING_MODE
-            or mode == InferenceMode.BEAM_SEARCH_MODE
-        ) == (len(ssms) == 0)
+        if len(ssms) > 0:
+            assert type(self) == LLM
+            mode = InferenceMode.TREE_VERIFY_MODE
+        elif type(self) == SSM:
+            mode = InferenceMode.BEAM_SEARCH_MODE
+        else:
+            assert type(self) == LLM
+            mode = InferenceMode.INC_DECODING_MODE
 
         # Apply model-specific parallelism degrees, if needed
         if model_specific_data_parallelism_degree:
@@ -309,7 +312,7 @@ class LLM:
         # Instantiate the relevant model
         self.model = self.model_class(
             mode,
-            sampling_config,
+            generation_config,
             self.ffconfig,
             self.hf_config,
             self.data_type,
@@ -336,7 +339,7 @@ class LLM:
         for ssm in self.ssms:
             self.rm.register_ssm_model(ssm.model.ffmodel)
 
-    def generate(self, prompts: Union[str, List[str]]):
+    def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
         """Generate tokens based on the input prompt(s)
 
         :param prompts: The generation prompt(s) in the form of a string, or list of strings
@@ -347,11 +350,11 @@ class LLM:
         if type(prompts) == str:
             if len(prompts) == 0:
                 return None
-            return self.model.ffmodel.generate(prompts, 128)
+            return self.model.ffmodel.generate(prompts, max_length)
         elif type(prompts) == list:
             if len(prompts) == 0:
                 return []
-            return [self.model.ffmodel.generate(prompt, 128) for prompt in prompts]
+            return [self.model.ffmodel.generate(prompt, max_length) for prompt in prompts]
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
@@ -390,8 +393,7 @@ class SSM(LLM):
 
     def compile(
         self,
-        mode: InferenceMode = InferenceMode.INC_DECODING_MODE,
-        sampling_config: SamplingConfig = SamplingConfig(),
+        generation_config: GenerationConfig = GenerationConfig(),
         max_batch_size: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
@@ -404,8 +406,8 @@ class SSM(LLM):
 
         :param mode: The SSM inference mode (InferenceMode.INC_DECODING_MODE for incremental decoding, InferenceMode.BEAM_SEARCH_MODE for beam search, or InferenceMode.TREE_VERIFY_MODE for token tree verification), defaults to InferenceMode.INC_DECODING_MODE
         :type mode: InferenceMode, optional
-        :param sampling_config: The SamplingConfig object with the configurations to use for sampling, defaults to SamplingConfig()
-        :type sampling_config: SamplingConfig, optional
+        :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
+        :type generation_config: GenerationConfig, optional
         :param max_batch_size: The maximum batch size to allow, defaults to 1
         :type max_batch_size: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
@@ -422,8 +424,7 @@ class SSM(LLM):
         :type ssms: list, optional
         """
         super().compile(
-            mode,
-            sampling_config,
+            generation_config,
             max_batch_size,
             max_seq_length,
             max_tokens_per_batch,

@@ -25,7 +25,7 @@ void STARCODER::create_starcoder_model(
     std::string const &model_config_file_path,
     std::string const &weight_file_path,
     InferenceMode mode,
-    SamplingConfig samplingConfig,
+    GenerationConfig generationConfig,
     bool use_full_precision) {
   // do not apply cpu offload in beam search model.
   STARCODERConfig startcoder_config(model_config_file_path);
@@ -151,8 +151,6 @@ void STARCODER::create_starcoder_model(
                            l2_layer);
 
     // mlp
-    std::cout << "intermediate_size: " << startcoder_config.intermediate_size
-              << "\n";
     Tensor c_fc = ff.dense(
         l2_norm, startcoder_config.intermediate_size, AC_MODE_NONE, true);
     Layer *c_fc_layer = ff.layers.back();
@@ -185,10 +183,10 @@ void STARCODER::create_starcoder_model(
     output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
-    if (samplingConfig.do_sample) {
-      lm_head = ff.scalar_truediv(lm_head, samplingConfig.temperature, false);
+    if (generationConfig.do_sample) {
+      lm_head = ff.scalar_truediv(lm_head, generationConfig.temperature, false);
       Tensor softmax = ff.softmax(lm_head, -1);
-      output = ff.sampling(softmax, samplingConfig.topp);
+      output = ff.sampling(softmax, generationConfig.topp);
     } else {
       output = ff.argmax(lm_head, /*beam_Search*/ false);
     }

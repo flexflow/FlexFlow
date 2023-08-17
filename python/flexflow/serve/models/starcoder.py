@@ -23,21 +23,21 @@ class STARCODERConfig:
         self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
-        self.dropout_p = hf_config.dropout_p
-        self.hidden_size = hf_config.hidden_size
+        self.dropout_p = hf_config.attn_pdrop
+        self.hidden_size = hf_config.n_embd
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
-        self.max_position_embeddings = hf_config.max_position_embeddings
-        self.num_attention_heads = hf_config.num_attention_heads
-        self.num_hidden_layers = hf_config.num_hidden_layers
+        self.max_position_embeddings = hf_config.n_positions
+        self.num_attention_heads = hf_config.n_head
+        self.num_hidden_layers = hf_config.n_layer
         self.vocab_size = hf_config.vocab_size
-        self.intermediate_size = hf_config.intermediate_size
+        self.intermediate_size = hf_config.n_inner
 
 
 class FlexFlowSTARCODER(FlexFlowModel):
     def __init__(
         self,
         mode,
-        sampling_config,
+        generation_config,
         ffconfig,
         hf_config,
         data_type,
@@ -48,7 +48,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
         tokenizer_filepath="",
     ):
         self.mode = mode
-        self.sampling_config = sampling_config
+        self.generation_config = generation_config
         self.ffconfig = ffconfig
         self.max_batch_size = max_batch_size
         self.data_type = data_type
@@ -91,7 +91,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
         position_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
         embed_init = UniformInitializer(random.randint(0, self.maxint), 0, 0)
-        ffmodel.set_position_offset(2)
+        ffmodel.set_position_offset(0)
         token = ffmodel.embedding(
             input_tensor,
             self.starcoder_config.vocab_size,
@@ -193,12 +193,12 @@ class FlexFlowSTARCODER(FlexFlowModel):
             name="lm_head_weight",
         )
 
-        if self.sampling_config.do_sample:
+        if self.generation_config.do_sample:
             dense = ffmodel.scalar_true_divide(
-                lm_head, self.sampling_config.temperature, False
+                lm_head, self.generation_config.temperature, False
             )
             softmax = ffmodel.softmax(dense, -1)
-            output = ffmodel.sampling(softmax, self.sampling_config.topp)
+            output = ffmodel.sampling(softmax, self.generation_config.topp)
         else:
             output = ffmodel.argmax(lm_head, False)
 
