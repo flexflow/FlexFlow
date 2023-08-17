@@ -6,7 +6,7 @@
 
 ## News🔥:
 
-* [08/16/2023] Adding Starchoder support
+* [08/16/2023] Adding Starcoder model support
 * [08/14/2023] Released Dockerfile for different CUDA versions
 
 ## What is FlexFlow Serve
@@ -185,7 +185,13 @@ for serving generative LLMs while provably preserving model quality.
 
 ### Supported LLMs and SSMs
 
-FlexFlow Serve supports a variety of HuggingFace models as follows. Note that this list is incomplete --- other LLMs using similar model architectures may also be supported.
+FlexFlow Serve currently supports all HuggingFace models with the following architectures:
+* `LlamaForCausalLM` / `LLaMAForCausalLM` (e.g. LLaMA/LLaMA-2, Guanaco, Vicuna, Alpaca, ...)
+* `OPTForCausalLM` (models from the OPT family)
+* `RWForCausalLM` (models from the Falcon family)
+* `GPTBigCodeForCausalLM` (models from the Starcoder family)
+
+Below is a list of models that we have explicitly tested and for which a SSM may be available:
 
 | Model | Model id on HuggingFace | Boost-tuned SSMs |
 | :---- | :---- | :---- |
