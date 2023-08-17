@@ -76,19 +76,6 @@ def init(configs_dict: dict = None,
     :raises ValueError: This function will raise an exception if the JSON file pointed to by the input string is not in the right format
     :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
     """
-    
-    # if configs is not None:
-    #   if type(configs) == str:
-    #     try:
-    #         with open(configs) as f:
-    #             configs_dict = json.load(f)
-    #     except json.JSONDecodeError as e:
-    #         print("JSON format error:")
-    #         print(e)
-    #   else:
-    #     raise ValueError(
-    #         "configs should be a valid JSON file"
-    #     )
 
     # Check that either configs_dict or any of individual, non-positional arguments (after the *) is passed, but not both
     if configs_dict is not None and any([
@@ -109,8 +96,8 @@ def init(configs_dict: dict = None,
     ]):
         raise ValueError("Cannot pass both configs_dict and individual args")
 
-    # If configs_dict is passed, check that the type is dictionary and that the mandatory key-value pairs are present (num_gpus, memory_per_gpu, zero_copy_memory_per_node)
     if configs_dict is not None:
+        # If configs_dict is passed, check that the type is dictionary and that the mandatory key-value pairs are present (num_gpus, memory_per_gpu, zero_copy_memory_per_node)
         if type(configs_dict) != dict:
             raise TypeError("configs_dict is not a dictionary")
         # configs should contain the following mandatory keys with non-zero integer values:
@@ -133,6 +120,7 @@ def init(configs_dict: dict = None,
         profiling = configs_dict.get("profiling", False)
         fusion = configs_dict.get("fusion", True)
     else:
+        # If configs_dict is not passed, check that the mandatory parameters are passed directly as arguments
         if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
             raise ValueError(
             "Missing one of the following configs in input params: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
