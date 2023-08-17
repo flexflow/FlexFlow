@@ -1,7 +1,7 @@
 :tocdepth: 1
 *************
-Overview
+FlexFlow Train Overview
 *************
 
-.. mdinclude:: ../../.github/README.md
+.. mdinclude:: ../../README.md
    :start-line: 3

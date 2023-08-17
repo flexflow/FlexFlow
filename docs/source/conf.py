@@ -32,8 +32,8 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'FlexFlow'
-copyright = '2020, Stanford, LANL, CMU, Facebook'
-author = 'Stanford, LANL, CMU, Facebook'
+copyright = '2023, CMU, Facebook, LANL, MIT, NVIDIA, and Stanford'
+author = 'CMU, Facebook, LANL, MIT, NVIDIA, and Stanford'
 
 
 # -- General configuration ---------------------------------------------------
@@ -45,8 +45,8 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'm2r2',
-    'breathe',
-    'exhale',
+    #'breathe',
+    #'exhale',
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -89,24 +89,24 @@ html_theme = 'sphinx_rtd_theme'
 # Breathe + Exhale configuration
 
 # Setup the breathe extension
-breathe_projects = {
-    "FlexFlow": "./_doxygen/xml"
-}
-breathe_default_project = "FlexFlow"
+# breathe_projects = {
+#     "FlexFlow": "./_doxygen/xml"
+# }
+# breathe_default_project = "FlexFlow"
 
-c_plus_plus_src_dirs = " ".join([f"\"{os.path.join(FF_HOME, 'src', dirname)}\"" for dirname in ("loss_functions", "mapper", "metrics_functions", "ops", "parallel_ops", "recompile", "runtime", "utils")])
-# Setup the exhale extension
-exhale_args = {
-    # These arguments are required
-    "containmentFolder":     "./c++_api",
-    "rootFileName":          "c++_api_root.rst",
-    "doxygenStripFromPath":  "..",
-    # Heavily encouraged optional argument (see docs)
-    #"rootFileTitle":         "Library API",
-    # Suggested optional arguments
-    "createTreeView":        True,
-    # TIP: if using the sphinx-bootstrap-theme, you need
-    # "treeViewIsBootstrap": True,
-    "exhaleExecutesDoxygen": True,
-    "exhaleDoxygenStdin":    f'INPUT = {c_plus_plus_src_dirs}'
-}
+# c_plus_plus_src_dirs = " ".join([f"\"{os.path.join(FF_HOME, 'src', dirname)}\"" for dirname in ("loss_functions", "mapper", "metrics_functions", "ops", "parallel_ops", "recompile", "runtime", "utils")])
+# # Setup the exhale extension
+# exhale_args = {
+#     # These arguments are required
+#     "containmentFolder":     "./c++_api",
+#     "rootFileName":          "c++_api_root.rst",
+#     "doxygenStripFromPath":  "..",
+#     # Heavily encouraged optional argument (see docs)
+#     #"rootFileTitle":         "Library API",
+#     # Suggested optional arguments
+#     "createTreeView":        True,
+#     # TIP: if using the sphinx-bootstrap-theme, you need
+#     # "treeViewIsBootstrap": True,
+#     "exhaleExecutesDoxygen": True,
+#     "exhaleDoxygenStdin":    f'INPUT = {c_plus_plus_src_dirs}'
+# }
