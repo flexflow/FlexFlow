@@ -60,14 +60,12 @@ The following example shows how to deploy an LLM using FlexFlow Serve and accele
 import flexflow.serve as ff
 
 ff.init(
-    {
-        "num_gpus": 4,
-        "memory_per_gpu": 14000,
-        "zero_copy_memory_per_node": 30000,
-        "tensor_parallelism_degree": 4,
-        "pipeline_parallelism_degree": 1,
-    }
-)
+        num_gpus=4,
+        memory_per_gpu=14000,
+        zero_copy_memory_per_node=30000,
+        tensor_parallelism_degree=4,
+        pipeline_parallelism_degree=1
+    )
 ```
 Second, we specify the LLM to serve and the SSM(s) used to accelerate LLM serving. The list of supported LLMs and SSMs is available at [supported models](#supported-llms-and-ssms).
 ```python
@@ -108,14 +106,12 @@ import flexflow.serve as ff
 
 # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
 ff.init(
-    {
-        "num_gpus": 4,
-        "memory_per_gpu": 14000,
-        "zero_copy_memory_per_gpu": 30000,
-        "tensor_parallelism_degree": 4,
-        "pipeline_parallelism_degree": 1,
-    }
-)
+        num_gpus=4,
+        memory_per_gpu=14000,
+        zero_copy_memory_per_node=30000,
+        tensor_parallelism_degree=4,
+        pipeline_parallelism_degree=1
+    )
 
 # Create the FlexFlow LLM
 llm = ff.LLM("decapoda-research/llama-7b-hf")
