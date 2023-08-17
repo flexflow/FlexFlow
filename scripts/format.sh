@@ -6,8 +6,8 @@ GIT_ROOT="$(git rev-parse --show-toplevel)"
 cd "$GIT_ROOT"
 
 TOOLS_PATH="$GIT_ROOT/.tools"
-RELEASE="master-1d7ec53d"
-CLANG_FORMAT_VERSION="15"
+RELEASE="master-f4f85437"
+CLANG_FORMAT_VERSION="16"
 CLANG_FORMAT_PATH="$TOOLS_PATH/clang-format-$CLANG_FORMAT_VERSION-$RELEASE"
 
 mkdir -p "$TOOLS_PATH"
@@ -68,5 +68,17 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
   chmod u+x "$CLANG_FORMAT_PATH"
 fi
 
-mapfile -t FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
-"$CLANG_FORMAT_PATH" -i "${FILES[@]}"
+
+CLANG_FORMAT_CONFIG="$GIT_ROOT/.clang-format-for-format-sh"
+mapfile -t ALL_MODIFIED_FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
+mapfile -t DELETED_FILES < <(git ls-files -d)
+
+# set difference -- see https://unix.stackexchange.com/questions/443575/how-to-subtract-two-list-fast
+# used to avoid trying to format deleted files
+FILES=($(comm -3 <(printf "%s\n" "${ALL_MODIFIED_FILES[@]}" | sort) <(printf "%s\n" "${DELETED_FILES[@]}" | sort) | sort -n))
+
+if [[ -f $CLANG_FORMAT_CONFIG ]]; then 
+  "$CLANG_FORMAT_PATH" -style=file:"$CLANG_FORMAT_CONFIG" -i "${FILES[@]}"
+else 
+  echo "error"
+fi

@@ -27,7 +27,7 @@ typedef enum {
 } flexflow_error_source_t;
 
 typedef enum {
-  FLEXFLOW_UTILS_STATUS_OK, 
+  FLEXFLOW_UTILS_STATUS_OK,
   FLEXFLOW_UTILS_DEALLOCATION_FAILED,
   FLEXFLOW_UTILS_ALLOCATION_FAILED,
   FLEXFLOW_UTILS_CAST_FAILED,
@@ -48,7 +48,8 @@ typedef struct {
 
 flexflow_error_t flexflow_utils_error_is_ok(flexflow_utils_error_t, bool *);
 flexflow_error_t flexflow_utils_error_create(flexflow_utils_error_code_t);
-flexflow_error_t flexflow_utils_error_unwrap(flexflow_error_t, flexflow_utils_error_t *);
+flexflow_error_t flexflow_utils_error_unwrap(flexflow_error_t,
+                                             flexflow_utils_error_t *);
 
 flexflow_error_t flexflow_status_is_ok(flexflow_error_t, bool *);
 

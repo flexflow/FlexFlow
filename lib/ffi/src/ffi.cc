@@ -6,32 +6,27 @@
 
 flexflow_error_t flexflow_status_is_ok(flexflow_error_t e, bool *result) {
   switch (e.error_source) {
-    case FLEXFLOW_ERROR_SOURCE_RUNTIME:
-    {
+    case FLEXFLOW_ERROR_SOURCE_RUNTIME: {
       flexflow_runtime_error_t err;
       CHECK_FLEXFLOW(flexflow_runtime_error_unwrap(e, &err));
       CHECK_FLEXFLOW(flexflow_runtime_error_is_ok(err, result));
     }
-    case FLEXFLOW_ERROR_SOURCE_PCG:
-    {
+    case FLEXFLOW_ERROR_SOURCE_PCG: {
       flexflow_pcg_error_t err;
       CHECK_FLEXFLOW(flexflow_pcg_error_unwrap(e, &err));
       CHECK_FLEXFLOW(flexflow_pcg_error_is_ok(err, result));
     }
-    case FLEXFLOW_ERROR_SOURCE_COMPILER:
-    {
+    case FLEXFLOW_ERROR_SOURCE_COMPILER: {
       flexflow_compiler_error_t err;
       CHECK_FLEXFLOW(flexflow_compiler_error_unwrap(e, &err));
       CHECK_FLEXFLOW(flexflow_compiler_error_is_ok(err, result));
     }
-    case FLEXFLOW_ERROR_SOURCE_OPATTRS:
-    {
+    case FLEXFLOW_ERROR_SOURCE_OPATTRS: {
       flexflow_opattrs_error_t err;
       CHECK_FLEXFLOW(flexflow_opattrs_error_unwrap(e, &err));
       CHECK_FLEXFLOW(flexflow_opattrs_error_is_ok(err, result));
     }
-    case FLEXFLOW_ERROR_SOURCE_UTILS:
-    {
+    case FLEXFLOW_ERROR_SOURCE_UTILS: {
       flexflow_utils_error_t err;
       CHECK_FLEXFLOW(flexflow_utils_error_unwrap(e, &err));
       CHECK_FLEXFLOW(flexflow_utils_error_is_ok(err, result));

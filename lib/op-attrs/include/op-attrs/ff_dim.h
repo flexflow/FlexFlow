@@ -2,6 +2,7 @@
 #define _FLEXFLOW_OPATTRS_INCLUDE_FF_DIM_H
 
 #include "utils/strong_typedef.h"
+#include "utils/type_traits.h"
 #include <ostream>
 
 namespace FlexFlow {
@@ -14,5 +15,6 @@ struct ff_dim_t : public numerical_typedef<ff_dim_t, int> {
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::ff_dim_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::ff_dim_t, "ff_dim");
+static_assert(FlexFlow::is_neq_comparable<::FlexFlow::ff_dim_t>::value);
 
 #endif

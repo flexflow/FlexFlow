@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_BIDICT_H
 #define _FLEXFLOW_UTILS_BIDICT_H
 
-#include <unordered_map>
 #include "optional.h"
+#include <unordered_map>
 
 namespace FlexFlow {
 
@@ -18,8 +18,7 @@ struct bidict {
   bidict() : fwd_map{}, bwd_map{} {}
 
   bidict(std::initializer_list<value_type> init)
-    : bidict(init.begin(), init.end())
-  { }
+      : bidict(init.begin(), init.end()) {}
 
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {

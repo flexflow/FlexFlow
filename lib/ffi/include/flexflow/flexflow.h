@@ -13,11 +13,12 @@ FLEXFLOW_FFI_BEGIN();
 
 #define CHECK_FLEXFLOW(status)                                                 \
   do {                                                                         \
-    bool is_ok; \
-    flexflow_status_is_ok(status, &is_ok);                                       \
-    if (is_ok) { \
-      char *error_msg; \
-      assert(flexflow_status_is_ok(flexflow_get_error_string(status, &err_msg), &is_ok)); \
+    bool is_ok;                                                                \
+    flexflow_status_is_ok(status, &is_ok);                                     \
+    if (is_ok) {                                                               \
+      char *error_msg;                                                         \
+      assert(flexflow_status_is_ok(                                            \
+          flexflow_get_error_string(status, &err_msg), &is_ok));               \
       fprintf(stderr,                                                          \
               "FlexFlow encountered an error at %s:%d : %s\n",                 \
               __FILE__,                                                        \

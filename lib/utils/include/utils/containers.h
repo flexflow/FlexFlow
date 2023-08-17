@@ -372,7 +372,9 @@ std::unordered_set<D>
 
 template <typename C>
 typename C::value_type get_only(C const &c) {
-  assert(c.size() == 1);
+  if (c.size() != 1) {
+    throw mk_runtime_error("get_only called on container of size {}", c.size());
+  }
   return *c.cbegin();
 }
 

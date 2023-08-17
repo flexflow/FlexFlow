@@ -13,16 +13,17 @@ struct Tensor {
   TensorShape get_shape() const;
   int num_dims() const;
 
+  DataType get_data_type() const;
+
   operator TensorShape() const;
+
 public:
-  TensorDims dims;
-  DataType data_type;
+  TensorShape shape;
+  CreateGrad create_gradients;
   optional<Initializer> initializer;
-  bool create_gradients;
   req<optional<ParamSync>> sync_type;
 };
-FF_VISITABLE_STRUCT(
-    Tensor, dims, data_type, initializer, create_gradients, sync_type);
+FF_VISITABLE_STRUCT(Tensor, shape, create_gradients, initializer, sync_type);
 
 using Parameter = Tensor;
 

@@ -18,10 +18,11 @@ typedef enum {
 
 FF_NEW_OPAQUE_TYPE(flexflow_opattrs_error_t);
 flexflow_error_t flexflow_opattrs_error_wrap(flexflow_opattrs_error_t);
-flexflow_error_t flexflow_opattrs_error_unwrap(flexflow_error_t, 
-                                                flexflow_opattrs_error_t *);
+flexflow_error_t flexflow_opattrs_error_unwrap(flexflow_error_t,
+                                               flexflow_opattrs_error_t *);
 flexflow_error_t flexflow_opattrs_error_is_ok(flexflow_opattrs_error_t, bool *);
-flexflow_error_t flexflow_opattrs_error_get_string(flexflow_opattrs_error_t, char **);
+flexflow_error_t flexflow_opattrs_error_get_string(flexflow_opattrs_error_t,
+                                                   char **);
 flexflow_error_t flexflow_opattrs_error_destroy(flexflow_opattrs_error_t);
 
 //

@@ -2,15 +2,14 @@
 #define _FLEXFLOW_OPATTRS_FFI_INTERNAL_INTERNAL_OPATTRS_H
 
 #include "flexflow/op-attrs.h"
-#include "op-attrs/ops/linear.h"
-#include "op-attrs/param_sync.h"
-#include "op-attrs/datatype.h"
-#include "op-attrs/ops/pool_2d.h"
+#include "internal/opaque.h"
 #include "op-attrs/activation.h"
 #include "op-attrs/datatype.h"
-#include "op-attrs/ops/embedding.h"
-#include "internal/opaque.h"
 #include "op-attrs/op.h"
+#include "op-attrs/ops/embedding.h"
+#include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/pool_2d.h"
+#include "op-attrs/param_sync.h"
 
 using namespace FlexFlow;
 
@@ -34,4 +33,4 @@ flexflow_aggregate_op_t to_external(AggregateOp i);
 OperatorType to_internal(flexflow_op_type_t e);
 flexflow_op_type_t to_external(OperatorType i);
 
-#endif 
+#endif

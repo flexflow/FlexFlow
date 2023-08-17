@@ -2,6 +2,8 @@
 #define _FLEXFLOW_UTILS_INCLUDE_STRONG_TYPEDEF_H
 
 #include "utils/fmt.h"
+#include "utils/test_types.h"
+#include "utils/type_traits.h"
 #include <functional>
 #include <string>
 #include <type_traits>
@@ -24,7 +26,7 @@ public:
     return value_;
   }
 
-  explicit operator T const &() const noexcept {
+  operator T() const noexcept {
     return value_;
   }
 
@@ -66,13 +68,18 @@ public:
   }
 
   template <typename F>
-  strong_typedef fmap(F const &f) {
+  strong_typedef fmap(F const &f) const {
     static_assert(
         std::is_same<decltype(std::declval<F>()(std::declval<T const &>())),
                      T>::value,
         "Function must return an value of the underlying type");
 
     return strong_typedef(f(this->value_));
+  }
+
+  template <typename F>
+  decltype(std::declval<F>()(std::declval<T &>())) fmap(F const &f) {
+    f(this->value_);
   }
 
 private:
@@ -102,97 +109,98 @@ template <typename StrongTypedef, typename T>
 struct numerical_typedef : strong_typedef<StrongTypedef, T> {
   using strong_typedef<StrongTypedef, T>::strong_typedef;
 
-  friend StrongTypedef &operator+=(StrongTypedef &lhs, T const &rhs) {
-    static_cast<T &>(lhs) += static_cast<T const &>(rhs);
-    return lhs;
+  friend numerical_typedef operator+=(numerical_typedef lhs, T const &rhs) {
+    return numerical_typedef{lhs.value() += rhs};
   }
 
-  friend StrongTypedef &operator++(StrongTypedef &lhs) {
-    static_cast<T &>(lhs) += static_cast<T>(1);
-    return lhs;
+  friend numerical_typedef &operator++(numerical_typedef &lhs) {
+    return numerical_typedef{lhs.value()++};
   }
 
-  friend StrongTypedef operator++(StrongTypedef &lhs, int) {
-    StrongTypedef tmp = lhs;
-    ++lhs;
-    return tmp;
+  friend numerical_typedef operator++(numerical_typedef &lhs, int) {
+    return numerical_typedef{++lhs.value()};
   }
 
-  friend StrongTypedef operator+(StrongTypedef const &lhs, T const &rhs) {
-    return StrongTypedef(lhs.value() + rhs);
+  friend numerical_typedef operator+(numerical_typedef const &lhs,
+                                     T const &rhs) {
+    return numerical_typedef{lhs.value() + rhs};
   }
 
-  friend StrongTypedef operator+(T const &lhs, StrongTypedef const &rhs) {
-    return (rhs + lhs);
-  }
+  /* friend numerical_typedef operator+(T const &lhs, numerical_typedef const
+   * &rhs) { */
+  /*   return (rhs + lhs); */
+  /* } */
 
-  friend StrongTypedef operator-=(StrongTypedef &lhs, T const &rhs) {
+  friend numerical_typedef operator-=(numerical_typedef &lhs, T const &rhs) {
     static_cast<T &>(lhs) -= static_cast<T const &>(rhs);
   }
 
-  friend StrongTypedef &operator--(StrongTypedef &lhs) {
+  friend numerical_typedef &operator--(numerical_typedef &lhs) {
     static_cast<T &>(lhs) -= static_cast<T>(1);
     return lhs;
   }
 
-  friend StrongTypedef operator--(StrongTypedef &lhs, int) {
-    StrongTypedef tmp = lhs;
+  friend numerical_typedef operator--(numerical_typedef &lhs, int) {
+    numerical_typedef tmp = lhs;
     --lhs;
     return tmp;
   }
 
-  friend StrongTypedef operator-(StrongTypedef const &lhs, T const &rhs) {
-    return StrongTypedef(lhs.value() + rhs);
+  friend numerical_typedef operator-(numerical_typedef const &lhs,
+                                     T const &rhs) {
+    return numerical_typedef(lhs.value() + rhs);
   }
 
-  friend bool operator<(StrongTypedef const &lhs, T const &rhs) {
-    return lhs.value() < rhs;
-  }
+  /* friend bool operator<(numerical_typedef const &lhs, numerical_typedef const
+   * &rhs) { */
+  /*   return lhs.value() < rhs; */
+  /* } */
 
-  friend bool operator==(StrongTypedef const &lhs, T const &rhs) {
-    return lhs.value() == rhs;
-  }
+  /* friend bool operator==(numerical_typedef const &lhs, numerical_typedef
+   * const &rhs) { */
+  /*   return lhs.value() == rhs; */
+  /* } */
 
-  friend bool operator>(StrongTypedef const &lhs, T const &rhs) {
-    return lhs.value() > rhs;
-  }
+  /* friend bool operator>(numerical_typedef const &lhs, numerical_typedef const
+   * &rhs) { */
+  /*   return lhs.value() > rhs; */
+  /* } */
 
-  friend bool operator>=(StrongTypedef const &lhs, T const &rhs) {
-    return lhs.value() >= rhs;
-  }
+  /* friend bool operator>=(numerical_typedef const &lhs, numerical_typedef
+   * const &rhs) { */
+  /*   return lhs.value() >= rhs; */
+  /* } */
 
-  friend bool operator!=(StrongTypedef const &lhs, T const &rhs) {
-    return lhs.value() != rhs;
-  }
+  /* friend bool operator!=(numerical_typedef const &lhs, numerical_typedef
+   * const &rhs) { */
+  /*   return lhs.value() != rhs; */
+  /* } */
 
-  friend bool operator<=(StrongTypedef const &lhs, T const &rhs) {
-    return lhs.value() <= rhs;
-  }
-
-  friend bool operator<(T const &lhs, StrongTypedef const &rhs) {
-    return lhs < rhs.value();
-  }
-
-  friend bool operator==(T const &lhs, StrongTypedef const &rhs) {
-    return lhs == rhs.value();
-  }
-
-  friend bool operator>(T const &lhs, StrongTypedef const &rhs) {
-    return lhs > rhs.value();
-  }
-
-  friend bool operator<=(T const &lhs, StrongTypedef const &rhs) {
-    return lhs <= rhs.value();
-  }
-
-  friend bool operator!=(T const &lhs, StrongTypedef const &rhs) {
-    return lhs != rhs.value();
-  }
-
-  friend bool operator>=(T const &lhs, StrongTypedef const &rhs) {
-    return lhs >= rhs.value();
-  }
+  /* friend bool operator<=(T const &lhs, T const &rhs) { */
+  /*   return lhs.value() <= rhs; */
+  /* } */
 };
+
+template <typename LHS, typename RHS = LHS, typename Result = LHS>
+struct is_addable
+    : conjunction<
+          std::is_same<Result,
+                       decltype(std::declval<LHS>() + std::declval<RHS>())>,
+          implies<std::is_same<Result, LHS>,
+                  std::is_same<LHS,
+                               decltype(std::declval<LHS>() +=
+                                        std::declval<RHS>())>>> {};
+
+static_assert(is_neq_comparable<strong_typedef<void, test_types::eq>>::value,
+              "");
+static_assert(is_neq_comparable<numerical_typedef<void, test_types::eq>>::value,
+              "");
+static_assert(is_lt_comparable<numerical_typedef<void, test_types::eq>>::value,
+              "");
+static_assert(is_lt_comparable<numerical_typedef<void, test_types::eq>>::value,
+              "");
+static_assert(is_addable<numerical_typedef<void, test_types::plusable>>::value,
+              "");
 
 } // namespace FlexFlow
 

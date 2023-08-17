@@ -43,15 +43,19 @@ extern flexflow_initializer_t NO_INITIALIZER;
 extern flexflow_regularizer_attrs_t NO_REGULARIZER;
 
 flexflow_error_t flexflow_pcg_error_wrap(flexflow_pcg_error_t);
-flexflow_error_t flexflow_pcg_error_unwrap(flexflow_error_t, 
+flexflow_error_t flexflow_pcg_error_unwrap(flexflow_error_t,
                                            flexflow_pcg_error_t *);
 flexflow_error_t flexflow_pcg_error_is_ok(flexflow_pcg_error_t, bool *);
 flexflow_error_t flexflow_pcg_error_get_string(flexflow_pcg_error_t, char **);
-flexflow_error_t flexflow_pcg_error_get_error_code(flexflow_pcg_error_t, flexflow_pcg_error_code_t *);
+flexflow_error_t flexflow_pcg_error_get_error_code(flexflow_pcg_error_t,
+                                                   flexflow_pcg_error_code_t *);
 flexflow_error_t flexflow_pcg_error_destroy(flexflow_pcg_error_t);
 
-flexflow_error_t flexflow_tensor_list_get_num_elements(flexflow_tensor_list_t, size_t *out);
-flexflow_error_t flexflow_tensor_list_get_element(flexflow_tensor_list_t, size_t, flexflow_tensor_t *out);
+flexflow_error_t flexflow_tensor_list_get_num_elements(flexflow_tensor_list_t,
+                                                       size_t *out);
+flexflow_error_t flexflow_tensor_list_get_element(flexflow_tensor_list_t,
+                                                  size_t,
+                                                  flexflow_tensor_t *out);
 flexflow_error_t flexflow_tensor_list_destroy(flexflow_tensor_list_t);
 
 flexflow_error_t
@@ -59,8 +63,9 @@ flexflow_error_t
 flexflow_error_t
     flexflow_computation_graph_destroy(flexflow_computation_graph_t);
 
-flexflow_error_t flexflow_computation_graph_serialize_to_buffer(
-    flexflow_computation_graph_t, char **out);
+flexflow_error_t
+    flexflow_computation_graph_serialize_to_buffer(flexflow_computation_graph_t,
+                                                   char **out);
 flexflow_error_t flexflow_computation_graph_deserialize_from_buffer(
     char *buf, flexflow_computation_graph_t *out);
 
@@ -84,7 +89,8 @@ flexflow_error_t flexflow_tensor_get_sync_type(flexflow_tensor_t,
 flexflow_error_t flexflow_tensor_get_datatype(flexflow_tensor_t,
                                               flexflow_datatype_t *out);
 flexflow_error_t flexflow_tensor_get_num_dims(flexflow_tensor_t, int *out);
-flexflow_error_t flexflow_tensor_get_dims(flexflow_tensor_t, flexflow_int_list_t *out);
+flexflow_error_t flexflow_tensor_get_dims(flexflow_tensor_t,
+                                          flexflow_int_list_t *out);
 flexflow_error_t flexflow_tensor_destroy(flexflow_tensor_t);
 
 flexflow_error_t

@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_FFI_OPAQUE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_FFI_OPAQUE_H
 
+#include "error.h"
+#include "flexflow/utils.h"
+#include "utils/containers.h"
 #include "utils/expected.h"
 #include <algorithm>
 #include <new>
-#include "flexflow/utils.h"
-#include "error.h"
 #include <vector>
-#include "utils/containers.h" 
 
 template <typename T>
 struct opaque_to_underlying;
@@ -24,7 +24,8 @@ using underlying_to_opaque_t = typename underlying_to_opaque<T>::type;
 template <typename Opaque>
 opaque_to_underlying_t<Opaque> *unwrap_opaque(Opaque const &opaque) {
   if (opaque.impl == nullptr) {
-    throw make_utils_exception(FLEXFLOW_UTILS_UNEXPECTED_NULLPTR_IN_OPAQUE_HANDLE);
+    throw make_utils_exception(
+        FLEXFLOW_UTILS_UNEXPECTED_NULLPTR_IN_OPAQUE_HANDLE);
   }
 
   return static_cast<opaque_to_underlying_t<Opaque> *>(opaque.impl);
@@ -46,23 +47,26 @@ opaque_to_underlying_t<Opaque> &deref_opaque(Opaque const &opaque) {
 }
 
 template <typename Opaque>
-std::vector<opaque_to_underlying_t<Opaque>> c_deref_opaque_list(Opaque const *start, size_t num_elements) {
-  std::vector<Opaque> exp_preds_vector = transform(start, start+num_elements,
-                                                   [](Opaque const &t) { return c_deref_opaque(t); });
+std::vector<opaque_to_underlying_t<Opaque>>
+    c_deref_opaque_list(Opaque const *start, size_t num_elements) {
+  std::vector<Opaque> exp_preds_vector =
+      transform(start, start + num_elements, [](Opaque const &t) {
+        return c_deref_opaque(t);
+      });
 }
 
-#define REGISTER_OPAQUE(OPAQUE, UNDERLYING) \
-  template <> \
-  struct opaque_to_underlying<OPAQUE> { \
-    using type = UNDERLYING; \
-  }; \
-  template <> \
-  struct underlying_to_opaque<UNDERLYING> { \
-    using type = OPAQUE; \
-  }; 
+#define REGISTER_OPAQUE(OPAQUE, UNDERLYING)                                    \
+  template <>                                                                  \
+  struct opaque_to_underlying<OPAQUE> {                                        \
+    using type = UNDERLYING;                                                   \
+  };                                                                           \
+  template <>                                                                  \
+  struct underlying_to_opaque<UNDERLYING> {                                    \
+    using type = OPAQUE;                                                       \
+  };
 
 template <typename Opaque, typename... Args>
-Opaque new_opaque(Args &&... args) {
+Opaque new_opaque(Args &&...args) {
   using Underlying = opaque_to_underlying_t<Opaque>;
 
   Underlying *ptr = new (std::nothrow) Underlying(std::forward<Args>(args)...);
@@ -83,7 +87,8 @@ void delete_opaque(Opaque const &opaque) {
 
   Underlying *underlying = unwrap_opaque(opaque);
   if (underlying == nullptr) {
-    throw make_utils_exception(FLEXFLOW_UTILS_UNEXPECTED_NULLPTR_IN_OPAQUE_HANDLE);
+    throw make_utils_exception(
+        FLEXFLOW_UTILS_UNEXPECTED_NULLPTR_IN_OPAQUE_HANDLE);
   }
 
   delete underlying;

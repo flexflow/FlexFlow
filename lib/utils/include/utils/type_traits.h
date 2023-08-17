@@ -57,7 +57,6 @@ template <typename T>
 struct is_clonable<T, void_t<decltype(std::declval<T>().clone())>>
     : std::true_type {};
 
-
 template <typename T, typename Enable = void>
 struct is_streamable : std::false_type {};
 

@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 
-#include <type_traits>
 #include <cstddef>
 #include <iterator>
+#include <type_traits>
 
 namespace FlexFlow {
 template <bool B, typename T = void>
@@ -95,11 +95,11 @@ struct pack_contains_type<T> : std::false_type {};
 
 template <int i, typename... Args>
 struct pack_get {
-  using type = typename pack_get<(i-1), Args...>::type;
+  using type = typename pack_get<(i - 1), Args...>::type;
 };
 
 template <typename Head, typename... Tail>
-struct pack_get<0, Head, Tail...> { 
+struct pack_get<0, Head, Tail...> {
   using type = Head;
 };
 
@@ -111,11 +111,12 @@ struct pack_get<i, Head> {
 template <typename... Args>
 struct pack_size;
 
-template <typename Head, typename... Tail> 
-struct pack_size<Head, Tail...> : std::integral_constant<size_t, (pack_size<Tail...>::value + 1)> { };
+template <typename Head, typename... Tail>
+struct pack_size<Head, Tail...>
+    : std::integral_constant<size_t, (pack_size<Tail...>::value + 1)> {};
 
 template <>
-struct pack_size<> : std::integral_constant<size_t, 0> { };
+struct pack_size<> : std::integral_constant<size_t, 0> {};
 
 static_assert(pack_contains_type<int, float, double, int, char>::value, "");
 static_assert(!pack_contains_type<int, float, double, char>::value, "");

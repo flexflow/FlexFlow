@@ -337,10 +337,13 @@ struct Arbitrary<
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
   namespace FlexFlow {                                                         \
   CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME);                                     \
-  static_assert(is_only_visit_list_initializable<TYPENAME>::value,             \
-                #TYPENAME                                                      \
-                " should not be list-initialializable from any sub-tuples "    \
-                "(you probably need to insert req<...>s)");                    \
+  static_assert(                                                               \
+      is_only_visit_list_initializable<TYPENAME>::value,                       \
+      #TYPENAME                                                                \
+      " should not be list-initialializable from any sub-tuples "              \
+      "(you probably need to insert req<...>s, or make sure your "             \
+      "field ordering in FF_VISITABLE_STRUCT matches the order in the"         \
+      "struct, or use FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION");          \
   static_assert(!std::is_default_constructible<TYPENAME>::value,               \
                 #TYPENAME " should not be default-constructible (you "         \
                           "probably need to insert req<...>s)")

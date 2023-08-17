@@ -93,7 +93,11 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
                                                   Node const &);
 
 std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &);
+std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &,
+                                              Node const &);
 std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &);
+std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &,
+                                            Node const &);
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    Node const &);
