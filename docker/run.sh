@@ -70,7 +70,7 @@ if [[ "$(docker images -q "$image"-"$FF_GPU_BACKEND""$cuda_version_hyphen":lates
   exit 1
 fi
 
-if [[ "$detached"!="ON" ]]; then
+if [[ "$detached" != "ON" ]]; then
   eval docker run -d -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
 else
   eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"

@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Parse input params
-# python_version=${1:-lastest}
-# cuda_version=${2:-11.8}
-# gpu_backend=${3:-cuda}
+python_version=${1:-lastest}
+cuda_version=${2:-11.8}
+gpu_backend=${3:-cuda}
 
 export FF_CUDA_ARCH=all
 export BUILD_LEGION_ONLY=ON
@@ -17,7 +17,7 @@ export detached=ON
 
 # Copy legion libraries to host
 echo "copy legion libaries"
-# echo "flexflow-${gpu_backend}-${cuda_version}:${python_version}"
+echo "flexflow-${gpu_backend}-${cuda_version}:${python_version}"
 container_id=$(docker ps | grep flexflow-cuda-11.8:latest | awk '{print $1}')
 echo "$container_id"
 docker cp "$container_id":/usr/FlexFlow/build/deps ~/buildlegion
