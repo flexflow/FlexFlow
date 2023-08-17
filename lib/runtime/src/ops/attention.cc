@@ -14,6 +14,7 @@
  */
 
 #include "attention.h"
+#include "op-attrs/ops/attention.h"
 #include "kernels/attention_kernels.h"
 #include "legion.h"
 
@@ -27,23 +28,22 @@ using Legion::Runtime;
 using Legion::Task;
 
 enum Slots {
-  ATTRS,
-  PROFILING,
-  KVSEQLENGTH,
-  QSIZE,
-  KSIZE,
-  VSIZE,
+  QUERY_PARALLEL_TENSOR_SHAPE,
+  KEY_PARALLEL_TENSOR_SHAPE,
+  VALUE_PARALLEL_TENSOR_SHAPE,
   QPROJSIZE,
   KPROJSIZE,
   VPROJSIZE,
   OPROJSIZE,
+  ATTRS,
+  PROFILING,
   QUERY,
   KEY,
   VALUE,
   WEIGHTS,
   OUTPUT,
-  PER_DEVICE_STATE,
-  HANDLE
+  HANDLE,
+  PER_DEVICE_STATE
 };
 
 OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
@@ -57,7 +57,16 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
 
   b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
-  b.bind_arg(PER_DEVICE_STATE, per_device_op_state<MHAPerDeviceState>());
+
+  //get 3 parallel tensor shapes to construct MultiHeadAttentionInputs (in init_task_impl)
+  b.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(0));
+  b.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(1));
+  b.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(2));
+
+  b.bind_arg(QPROJSIZE, get_qProjSize(attrs));
+  b.bind_arg(KPROJSIZE, get_kProjSize(attrs));
+  b.bind_arg(VPROJSIZE, get_vProjSize(attrs));
+  b.bind_arg(OPROJSIZE, get_oProjSize(attrs));
 
   return {ATTENTION_INIT_TASK_ID, b};
 }
@@ -70,6 +79,8 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
   b.bind(VALUE, input_tensor(2));
   b.bind(WEIGHTS, weight_tensor(0));
   b.bind(OUTPUT, output_tensor(0));
+
+  b.bind_arg(PROFILING, profiling_settings());
   b.bind_arg(PER_DEVICE_STATE, per_device_op_state<MHAPerDeviceState>());
 
   return {ATTENTION_FWD_TASK_ID, b};
@@ -81,93 +92,30 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   return {ATTENTION_BWD_TASK_ID, b};
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  MultiHeadAttentionAttrs const &attrs,
-                                  ParallelTensorShape const &query_shape,
-                                  ParallelTensorShape const &key_shape,
-                                  ParallelTensorShape const &value_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  auto query = allocate_input(env, query_shape);
-  auto key = allocate_input(env, key_shape);
-  auto value = allocate_input(env, value_shape);
-
-  auto query_grad = allocate_input_grad(env, query_shape);
-  auto key_grad = allocate_input_grad(env, key_shape);
-  auto value_grad = allocate_input_grad(env, value_shape);
-
-  MultiHeadAttentionInputs<ParallelTensorShape> input_shapes = {
-      query_shape, key_shape, value_shape};
-
-  ParallelTensorShape weight_shape = get_weights_shape(attrs, input_shapes);
-  auto weights = allocate_weight(env, weight_shape);
-  auto weights_grad = allocate_weight_grad(env, weight_shape);
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shapes);
-  auto output = allocate_output(env, output_shape);
-  auto output_grad = allocate_output_grad(env, output_shape);
-
-  MHAPerDeviceState per_device_state =
-      init_kernel(get_ff_handle(env),
-                  create_allocator(env),
-                  get_num_samples(input_shapes),
-                  attrs.num_heads,
-                  get_qSize(input_shapes),
-                  get_kSize(input_shapes),
-                  get_vSize(input_shapes),
-                  get_qProjSize(attrs),
-                  get_kProjSize(attrs),
-                  get_vProjSize(attrs),
-                  get_oProjSize(attrs),
-                  get_qoSeqLength(input_shapes),
-                  get_kvSeqLength(input_shapes),
-                  attrs.add_bias_kv);
-
-  float forward_time = profiling_wrapper(forward_kernel,
-                                         settings,
-                                         per_device_state,
-                                         get_float_ptr(query),
-                                         get_float_ptr(key),
-                                         get_float_ptr(value),
-                                         get_float_ptr(weights),
-                                         get_float_ptr(output))
-                           .value();
-
-  float backward_time = profiling_wrapper(backward_kernel,
-                                          settings,
-                                          per_device_state,
-                                          get_float_ptr(query),
-                                          get_float_ptr(query_grad),
-                                          get_float_ptr(key),
-                                          get_float_ptr(key_grad),
-                                          get_float_ptr(value),
-                                          get_float_ptr(value_grad),
-                                          get_float_ptr(weights),
-                                          get_float_ptr(weights_grad),
-                                          get_float_ptr(output_grad))
-                            .value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
 static DeviceSpecificArg<MHAPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
-  bool profiling = acc.get_argument<bool>(PROFILING);
-  int kvSeqLength = acc.get_argument<int>(KVSEQLENGTH);
-  int qSize = acc.get_argument<int>(QSIZE);
-  int kSize = acc.get_argument<int>(KSIZE);
-  int vSize = acc.get_argument<int>(VSIZE);
+
+  //get ParallelTensorShapes from acc
+  ParallelTensorShape query_parallel_tensor_shape = acc.get_argument<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
+  ParallelTensorShape key_parallel_tensor_shape = acc.get_argument<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
+  ParallelTensorShape value_parallel_tensor_shape = acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
+
+  //create MultiHeadAttentionInputs from ParallelTensorShapes
+  MultiHeadAttentionInputs<ParallelTensorShape> inputs = MultiHeadAttentionInputs<ParallelTensorShape>(query_parallel_tensor_shape, key_parallel_tensor_shape, value_parallel_tensor_shape);
+
+  int kvSeqLength = get_kvSeqLength(inputs);
+  int qSize = get_qSize(inputs);
+  int kSize = get_kSize(inputs);
+  int vSize = get_vSize(inputs);
+
   int qProjSize = acc.get_argument<int>(QPROJSIZE);
   int kProjSize = acc.get_argument<int>(KPROJSIZE);
   int vProjSize = acc.get_argument<int>(VPROJSIZE);
   int oProjSize = acc.get_argument<int>(OPROJSIZE);
-  Allocator allocator = acc.get_allocator();
-
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+
+  Allocator allocator = acc.get_allocator();
 
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
@@ -178,6 +126,7 @@ static DeviceSpecificArg<MHAPerDeviceState>
   int qoSeqLength = query.shape[legion_dim_t(1)];
 
   int num_samples = query.shape[legion_dim_t(2)];
+  int num_heads = weight.shape[legion_dim_t(1)];
   assert(qoSeqLength == query.shape[legion_dim_t(1)]);
   assert(qSize == query.shape[legion_dim_t(0)]);
   assert(num_samples == key.shape[legion_dim_t(2)]);
@@ -186,10 +135,9 @@ static DeviceSpecificArg<MHAPerDeviceState>
   assert(num_samples == value.shape[legion_dim_t(2)]);
   assert(kvSeqLength == value.shape[legion_dim_t(1)]);
   assert(vSize == value.shape[legion_dim_t(0)]);
-  int num_heads = weight.shape[legion_dim_t(1)];
   assert(num_samples == output.shape[legion_dim_t(2)]);
   assert(qoSeqLength == output.shape[legion_dim_t(1)]);
-  assert(oProjSize(attrs) == output.shape[legion_dim_t(0)]);
+  assert(oProjSize == output.shape[legion_dim_t(0)]);
 
   DeviceSpecificArg<MHAPerDeviceState> per_device_state =
       acc.create_device_specific<MHAPerDeviceState>(
@@ -228,11 +176,12 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto value = acc.get_tensor<Permissions::RO>(VALUE);
   auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
-  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
 
   return profile(forward_kernel,
-                 profiling_settings,
+                 profiling,
                  "[MultiHeadAttention] forward_time = %.2lfms\n",
                  per_device_state,
                  query.get_float_ptr(),
@@ -251,18 +200,22 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  // tensors
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
   auto value = acc.get_tensor<Permissions::RO>(VALUE);
   auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
-  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
 
+  // tensor gradients
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHTS);
   auto query_grad = acc.get_tensor_grad<Permissions::RW>(QUERY);
   auto key_grad = acc.get_tensor_grad<Permissions::RW>(KEY);
   auto value_grad = acc.get_tensor_grad<Permissions::RW>(VALUE);
-  auto profiling_settings = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  // arguments
+  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   float *key_grad_ptr =
       (key_grad == query_grad) ? nullptr : key_grad.get_float_ptr();
@@ -277,7 +230,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(weight_grad.shape.get_volume() == weight.shape.get_volume());
 
   return profile(backward_kernel,
-                 profiling_settings,
+                 profiling,
                  "[MultiHeadAttention] backward_time = %.2lfms\n",
                  per_device_state,
                  query.get_float_ptr(),
@@ -299,24 +252,75 @@ static void backward_task(Task const *task,
   backward_task_impl(acc);
 }
 
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
+                                  MultiHeadAttentionAttrs const &attrs,
+                                  InputParallelTensorDesc const &query_shape,
+                                  InputParallelTensorDesc const &key_shape,
+                                  InputParallelTensorDesc const &value_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &mv) {
+  auto env = sim.new_environment();
+
+  MultiHeadAttentionInputs<ParallelTensorShape> inputs = MultiHeadAttentionInputs<ParallelTensorShape>(query_shape.shape, key_shape.shape, value_shape.shape);
+  ParallelTensorShape output_shape = get_output_shape(attrs, inputs);
+  ParallelTensorShape weight_shape = get_weights_shape(attrs, inputs);
+
+  SimTaskBinding init_binding;
+  init_binding.bind(QUERY, query_shape);
+  init_binding.bind(KEY, key_shape);
+  init_binding.bind(VALUE, value_shape);
+  init_binding.bind(WEIGHTS, weight_shape);
+  init_binding.bind(OUTPUT, output_shape);
+  init_binding.bind_arg(HANDLE, ff_handle());
+  init_binding.bind_arg(ATTRS, attrs);
+  init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(0));
+  init_binding.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(1));
+  init_binding.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(2));
+  init_binding.bind_arg(QPROJSIZE, get_qProjSize(attrs));
+  init_binding.bind_arg(KPROJSIZE, get_kProjSize(attrs));
+  init_binding.bind_arg(VPROJSIZE, get_vProjSize(attrs));
+  init_binding.bind_arg(OPROJSIZE, get_oProjSize(attrs));
+
+  SimTaskBinding fwd_binding;
+  init_binding.bind(QUERY, query_shape);
+  init_binding.bind(KEY, key_shape);
+  init_binding.bind(VALUE, value_shape);
+  init_binding.bind(WEIGHTS, weight_shape);
+  init_binding.bind(OUTPUT, output_shape);
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto init_accessor = env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
+  auto fwd_accessor = env.get_fwd_accessor(ATTENTION_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(ATTENTION_BWD_TASK_ID, bwd_binding);
+
+  init_task_impl(init_accessor);
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
+}
+
 template <>
 void register_task<ATTENTION_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<MultiHeadAttentionAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
-  init.add_arg_slot<int>(KVSEQLENGTH);
-  init.add_arg_slot<int>(KSIZE);
-  init.add_arg_slot<int>(VSIZE);
+  init.add_arg_slot<int>(QUERY_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<int>(KEY_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<int>(VALUE_PARALLEL_TENSOR_SHAPE);
   init.add_arg_slot<int>(QPROJSIZE);
-
+  init.add_arg_slot<int>(KPROJSIZE);
+  init.add_arg_slot<int>(VPROJSIZE);
+  init.add_arg_slot<int>(OPROJSIZE);
+  init.add_arg_slot<MultiHeadAttentionAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-
   init.add_input_slot(QUERY);
   init.add_input_slot(KEY);
   init.add_input_slot(VALUE);
   init.add_weight_slot(WEIGHTS);
   init.add_output_slot(OUTPUT);
+
+  init.add_return_value<DeviceSpecificArg<MHAPerDeviceState>>();
 
   register_task(
       ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init, init_task);
@@ -331,6 +335,8 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   fwd.add_input_slot(VALUE);
   fwd.add_weight_slot(WEIGHTS);
   fwd.add_output_slot(OUTPUT);
+
+  fwd.add_arg_slot<DeviceSpecificArg<MHAPerDeviceState>>(PER_DEVICE_STATE);
 
   register_task(
       ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, forward_task);

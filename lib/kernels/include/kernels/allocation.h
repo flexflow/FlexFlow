@@ -14,6 +14,8 @@ struct IAllocator {
 };
 
 struct Allocator {
+  Allocator() = delete;
+
   void *allocate(size_t);
   void deallocate(void *);
 

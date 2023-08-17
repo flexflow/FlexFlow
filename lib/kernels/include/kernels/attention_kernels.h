@@ -27,7 +27,7 @@ struct MHAPerDeviceState {
   Allocator allocator;
 };
 
-FF_VISITABLE_STRUCT(MHAPerDeviceState, 
+FF_VISITABLE_STRUCT_NONEMPTY_NO_EQ(MHAPerDeviceState, 
                     handle,
                     weightSize,
                     reserveSpaceSize,
@@ -40,7 +40,7 @@ FF_VISITABLE_STRUCT(MHAPerDeviceState,
                     devKvSeqArray,
                     loWinIdx,
                     hiWinIdx,
-                    reserveSpace
+                    reserveSpace,
                     allocator);
 
 namespace Kernels {
