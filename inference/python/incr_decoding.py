@@ -77,7 +77,22 @@ def main():
     configs = SimpleNamespace(**configs_dict)
 
     # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
-    ff.init(configs_dict)
+    ff.init(
+        num_gpus=configs_dict.get("num_gpus"),
+        memory_per_gpu=configs_dict.get("memory_per_gpu"),
+        zero_copy_memory_per_node=configs_dict.get("zero_copy_memory_per_node"),
+        num_cpus=configs_dict.get("num_cpus"),
+        legion_utility_processors=configs_dict.get("legion_utility_processors"),
+        data_parallelism_degree=configs_dict.get("data_parallelism_degree"),
+        tensor_parallelism_degree=configs_dict.get("tensor_parallelism_degree"),
+        pipeline_parallelism_degree=configs_dict.get("pipeline_parallelism_degree"),
+        offload=configs_dict.get("offload"),
+        offload_reserve_space_size=configs_dict.get("offload_reserve_space_size"),
+        use_4bit_quantization=configs_dict.get("use_4bit_quantization"),
+        use_8bit_quantization=configs_dict.get("use_8bit_quantization"),
+        profiling=configs_dict.get("profiling"),
+        fusion=configs_dict.get("fusion"),
+    )
 
     # Create the FlexFlow LLM
     ff_data_type = (

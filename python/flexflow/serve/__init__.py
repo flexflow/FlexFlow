@@ -33,7 +33,7 @@ def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None
             sys.argv += [f"{ff_cli_name}", str(variable)]
 
 
-def init(configs: Optional[dict] = None,
+def init(configs: Optional[str] = None,
         num_gpus: Optional[int] = None,
         memory_per_gpu: Optional[int] = None,
         zero_copy_memory_per_node: Optional[int] = None,
@@ -70,14 +70,14 @@ def init(configs: Optional[dict] = None,
     - profiling: whether to enable the FlexFlow profiling mode, defaults to False
     - fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
 
-    :param configs: The runtime configs, in the form of a dictionary or the path to a JSON file
+    :param configs: The runtime configs, in the form of the path to a JSON file
     :type configs: Union[str, dict]
     :raises ValueError: This function will raise an exception if the JSON file pointed to by the input string is not in the right format
     :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
     """
     configs_dict = {}
     
-    if configs:
+    if configs is not None:
       if type(configs) == str:
         try:
             with open(configs) as f:
@@ -85,7 +85,6 @@ def init(configs: Optional[dict] = None,
         except json.JSONDecodeError as e:
             print("JSON format error:")
             print(e)
-        
       else:
         raise ValueError(
             "configs should be a valid JSON file"
@@ -94,14 +93,14 @@ def init(configs: Optional[dict] = None,
     # Remove the arguments to avoid interferences
     sys.argv = [sys.argv[0]]
     
-    if configs:
+    if configs is not None:
         # configs should contain the following mandatory keys with non-zero integer values:
         num_gpus = configs_dict.get("num_gpus")
         memory_per_gpu = configs_dict.get("memory_per_gpu")
         zero_copy_memory_per_node = configs_dict.get("zero_copy_memory_per_node")
         if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
             raise ValueError(
-                "Missing one of the following configs in config JSON file: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
+                "Missing one of the following configs in config dict: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
             )
         num_cpus = configs_dict.get("num_cpus")
         legion_utility_processors = configs_dict.get("legion_utility_processors")
