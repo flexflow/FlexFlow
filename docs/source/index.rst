@@ -18,7 +18,7 @@ Welcome to FlexFlow's documentation!
    
    train_overview
    train_interface
-   mt5
+   train_examples
    
    train_python_api
 
@@ -32,7 +32,7 @@ Welcome to FlexFlow's documentation!
    :caption: Developers Guide
 
    developers_guide/developers_guide.rst
-   developers_guide/ff_internals.rst
+..   developers_guide/ff_internals.rst
 
 
 .. Indices and tables

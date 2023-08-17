@@ -1,5 +1,5 @@
 ************************
-HuggingFace mT5 example
+mT5 Model
 ************************
 
 .. mdinclude:: ../../examples/python/pytorch/mt5/README.md

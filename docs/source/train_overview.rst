@@ -1,6 +1,6 @@
 :tocdepth: 1
 *************
-FlexFlow Train Overview
+Training Overview
 *************
 
 .. mdinclude:: ../../README.md
