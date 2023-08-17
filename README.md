@@ -6,6 +6,7 @@
 
 ## News 🔥:
 
+* [08/16/2023] Adding Starcoder model support
 * [08/14/2023] Released Dockerfile for different CUDA versions
 
 ## Install FlexFlow
