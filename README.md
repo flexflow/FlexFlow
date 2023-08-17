@@ -1,41 +1,8 @@
 # FlexFlow
 ![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) ![gpu tests](https://github.com/flexflow/flexflow/workflows/gpu-ci/badge.svg?branch=master) ![multinode gpu tests](https://github.com/flexflow/flexflow/workflows/multinode-test/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=master) ![pip](https://github.com/flexflow/flexflow/workflows/pip-install/badge.svg?branch=master) ![shell-check](https://github.com/flexflow/flexflow/workflows/Shell%20Check/badge.svg?branch=master) ![clang-format](https://github.com/flexflow/flexflow/workflows/clang-format%20Check/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
 
-FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for TensorFlow Keras and PyTorch. Running existing Keras and PyTorch programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
+FlexFlow Train is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow Train provides a drop-in replacement for PyTorch and TensorFlow Keras. Running existing PyTorch and Keras programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
 
-## Install FlexFlow
-To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide pre-built Docker packages ([flexflow-cuda](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-cuda) with a CUDA backend, [flexflow-hip_rocm](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm) with a HIP-ROCM backend) with all dependencies pre-installed (N.B.: currently, the CUDA pre-built containers are only fully compatible with host machines that have CUDA 11.7 installed), together with [Dockerfiles](./docker) if you wish to build the containers manually. You can also use `conda` to install the FlexFlow Python package (coming soon).
-
-## TensorFlow Keras Support
-Users can use FlexFlow to accelerate the training procedure of existing TensorFlow Keras models by just changing the following import header lines.
-```python
-from flexflow.keras.models import Model, Sequential
-from flexflow.keras.layers import Input, Dense, Conv2D, ...
-from flexflow.keras.callbacks import Callback, ...
-```
-
-FlexFlow uses a Python function called `top_level_task()` as the entry point of a program and automatically parallelize DNN training across all GPUs on all compute nodes. For example, the following code snippet shows parallelizing AlexNet training on the CIFAR10 dataset in FlexFlow. 
-```python
-def top_level_task():
-  model = Sequential()
-  model.add(Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2), activation="relu"))
-  model.add(MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid"))
-  model.add(Conv2D(filters=192, kernel_size=(5,5), strides=(1,1), padding=(2,2), activation="relu"))
-  ## More lines for model construction
-  model.add(Activation("softmax"))
-  ## Model compilation
-  model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-  ## Model training
-  (x_train, y_train) = cifar10.load_data()
-  model.fit(x_train, y_train, epochs=30)
-
-if __name__ == "__main__":
-  top_level_task()
-```
-
-During model compilation (i.e., `model.compile` in Keras), FlexFlow can [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance by searching for efficient strategies on the given parallel machine. Next, `model.fit` performs DNN training on all available GPUs (potentially across multiple nodes) using the best discovered strategy. As a result, users don't need to manually design and optimize the device assignments.
-
-**More FlexFlow Keras examples**: see the [keras examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
 
 ## PyTorch Support
 Users can also use FlexFlow to optimize the parallelization performance of existing PyTorch models in two steps. First, a PyTorch model can be exported to the FlexFlow model format using `flexflow.torch.fx.torch_to_flexflow`.
@@ -49,7 +16,7 @@ fx.torch_to_flexflow(model, "mymodel.ff")
 
 Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance for a given parallel machine.
 
-```
+```python
 from flexflow.pytorch.model import PyTorchModel
 
 def top_level_task():
@@ -64,15 +31,13 @@ def top_level_task():
 
 **More FlexFlow PyTorch examples**: see the [pytorch examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/pytorch).
 
-## ONNX Support
-Similar to the PyTorch front-end, FlexFlow also supports training existing ONNX models by loading the models using `flexflow.onnx.model.ONNXModel`.
-
-**More FlexFlow ONNX examples**: see the [ONNX examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
+## TensorFlow Keras and ONNX Support
+FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Tensorflow Keras](./docs/source/keras.rst) and [ONNX](./docs/source/onnx.rst) models.
 
 ## C++ Interface
 For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
 
-**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/c++).
+**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp).
 
 
 ## Command-Line Flags
@@ -102,11 +67,10 @@ Performance auto-tuning flags:
 For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
 
 ## Contributing
+
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
 
 We welcome all contributions to FlexFlow from bug fixes to new features and extensions.
-
-Please subscribe to the FlexFlow users mailing list for 
 
 ## Citations
 * Colin Unger, Zhihao Jia, Wei Wu, Sina Lin, Mandeep Baines, Carlos Efrain Quintero Narvaez, Vinay Ramakrishnaiah, Nirmal Prajapati, Pat McCormick, Jamaludin Mohd-Yusof, Xi Luo, Dheevatsa Mudigere, Jongsoo Park, Misha Smelyanskiy, and Alex Aiken. [Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization](https://www.usenix.org/conference/osdi22/presentation/unger). In Proceedings of the Symposium on Operating Systems Design and Implementation (OSDI), July 2022. 

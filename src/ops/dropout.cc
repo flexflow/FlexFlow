@@ -1,5 +1,6 @@
 #include "flexflow/ops/dropout.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/dropout_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -24,6 +25,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::Dropout;
 
 Tensor FFModel::dropout(const Tensor input,
                         float rate,

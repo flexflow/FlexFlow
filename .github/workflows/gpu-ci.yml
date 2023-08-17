@@ -4,24 +4,36 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - "include/**"
+      - "inference/**"
       - "src/**"
+      - "tests/inference/**"
       - ".github/workflows/gpu-ci.yml"
+      - "tests/cpp_gpu_tests.sh"
+      - "tests/inference_tests.sh"
       - "tests/multi_gpu_tests.sh"
+      - "tests/python_interface_test.sh"
   push:
     branches:
       - "master"
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - "include/**"
+      - "inference/**"
       - "src/**"
+      - "tests/inference/**"
       - ".github/workflows/gpu-ci.yml"
+      - "tests/cpp_gpu_tests.sh"
+      - "tests/inference_tests.sh"
       - "tests/multi_gpu_tests.sh"
+      - "tests/python_interface_test.sh"
   workflow_dispatch:
 
 concurrency:
@@ -40,28 +52,50 @@ jobs:
 
       - name: Wait for daemon to be done
         run: |
-          pip install pygithub
+          pip3 install pip --upgrade
+          pip3 install pyopenssl --upgrade
+          pip3 install pygithub
           python3 .github/workflows/helpers/gpu_ci_helper.py
 
   python-interface-check:
     name: Check Python Interface
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
+    env: 
+      CONDA: "3"    
     needs: gpu-ci-concierge
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
         run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
           submodules: recursive
+          
+      - name: Install conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: flexflow
+          environment-file: conda/flexflow.yml
+          auto-activate-base: false
+          auto-update-conda: false
+
+      - name: Install conda and Pytorch dependencies for pytorch alignment test
+        run: |
+          conda env create -f conda/pytorch-gpu.yml
 
       - name: Build FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
+          export FF_USE_PREBUILT_LEGION=OFF #remove this after fixing python path issue in Legion
           mkdir build
           cd build
           ../config/config.linux
@@ -69,14 +103,16 @@ jobs:
 
       - name: Check FlexFlow Python interface (before installation)
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           ./tests/python_interface_test.sh before-installation
 
       - name: Install FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
+          export FF_USE_PREBUILT_LEGION=OFF #remove this after fixing python path issue in Legion
           cd build
           ../config/config.linux
           make install
@@ -84,36 +120,135 @@ jobs:
 
       - name: Check FlexFlow Python interface (after installation)
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           ./tests/python_interface_test.sh after-installation
+
+      - name: Run flexflow alignment with pytorch
+        run: |
+          # run alingment tests
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+          ./tests/align/test_all_operators.sh
+
+  inference-tests:
+    name: Inference Tests
+    runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
+    env: 
+      CONDA: "3"    
+    needs: gpu-ci-concierge
+    container:
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
+      options: --gpus all --shm-size=8192m
+    steps:
+      - name: Install updated git version
+        run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          
+      - name: Install conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: flexflow
+          environment-file: conda/flexflow.yml
+          auto-activate-base: false
+
+      - name: Build FlexFlow
+        run: |
+          export PATH=$CONDA_PREFIX/bin:$PATH
+          export FF_HOME=$(pwd)
+          export FF_USE_PREBUILT_LEGION=OFF #remove this after fixing python path issue in Legion
+          export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          mkdir build
+          cd build
+          ../config/config.linux
+          make -j
+
+      - name: Run inference tests
+        run: |
+          export PATH=$CONDA_PREFIX/bin:$PATH
+          export FF_HOME=$(pwd)
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+          
+          # GPT tokenizer test
+          ./tests/gpt_tokenizer_test.sh
+
+          # Inference tests
+          source ./build/set_python_envs.sh
+          ./tests/inference_tests.sh
+      
+      - name: Save inference output as an artifact
+        if: always()
+        run: | 
+          cd inference
+          tar -zcvf output.tar.gz ./output
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: output
+          path: inference/output.tar.gz
+      
+      # Github persists the .cache folder across different runs/containers
+      - name: Clear cache
+        if: always()
+        run: sudo rm -rf ~/.cache 
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
-    needs: gpu-ci-concierge
+    # skip this time-consuming test for PRs to the inference branch
+    # if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
+    env: 
+      CONDA: "3"
+    needs: inference-tests
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
         run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+      
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
           submodules: recursive
+      
+      - name: Install conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: flexflow
+          environment-file: conda/flexflow.yml
+          auto-activate-base: false
 
       - name: Build and Install FlexFlow
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
           export FF_BUILD_ALL_EXAMPLES=ON
+          export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          export FF_USE_PREBUILT_LEGION=OFF #remove this after fixing python path issue in Legion
           pip install . --verbose
 
       - name: Check FlexFlow Python interface (pip)
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -122,7 +257,9 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           # C++ tests
           ./tests/cpp_gpu_tests.sh 4
           # Python tests
           ./tests/multi_gpu_tests.sh 4
+

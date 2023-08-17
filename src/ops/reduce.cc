@@ -40,6 +40,7 @@ ReduceParams Reduce::get_params() const {
     params.axes.push_back(this->axes[i]);
   }
   params.keepdims = keepdims;
+  params.layer_guid = this->layer_guid;
   return params;
 }
 
@@ -101,16 +102,20 @@ Op *Reduce::create_operator_from_layer(
   layer->get_int_vector_property("legion_axes", axes);
   layer->get_int_property("keepdims", value);
   bool keepdims = value;
-  return new Reduce(model, inputs[0], axes, keepdims, layer->name);
+  return new Reduce(
+      model, layer->layer_guid, inputs[0], axes, keepdims, layer->name);
 }
 
 Reduce::Reduce(FFModel &model,
                ReduceParams const &params,
                const ParallelTensor input,
                char const *name)
-    : Reduce(model, input, params.axes, params.keepdims, name) {}
+    : Reduce(
+          model, params.layer_guid, input, params.axes, params.keepdims, name) {
+}
 
 Reduce::Reduce(FFModel &model,
+               LayerID const &_layer_guid,
                const ParallelTensor input,
                std::vector<int> const &_axes,
                bool _keepdims,
@@ -124,6 +129,7 @@ Reduce::Reduce(FFModel &model,
          1 /*outputs*/,
          input),
       num_axes(_axes.size()), keepdims(_keepdims) {
+  layer_guid = _layer_guid;
   for (size_t i = 0; i < num_axes; i++) {
     axes[i] = _axes[i];
   }
@@ -367,6 +373,8 @@ void Reduce::serialize(Legion::Serializer &sez) const {
     sez.serialize(params.axes[i]);
   }
   sez.serialize(params.keepdims);
+  sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
 }
 
 using PCG::Node;
@@ -385,7 +393,12 @@ Node Reduce::deserialize(FFModel &ff,
     axes.push_back(dim_idx);
   }
   dez.deserialize(keepdims);
-  return ff.get_or_create_node<Reduce>(inputs[0], {axes, keepdims});
+  size_t id, transformer_layer_id;
+  dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
+
+  return ff.get_or_create_node<Reduce>(inputs[0], {axes, keepdims, layer_guid});
 }
 
 Op *Reduce::materialize(FFModel &ff,
@@ -406,6 +419,7 @@ size_t hash<FlexFlow::ReduceParams>::operator()(
     hash_combine(key, n);
   }
   hash_combine(key, params.keepdims);
+  hash_combine(key, params.layer_guid.id);
   return key;
 }
 }; // namespace std

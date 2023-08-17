@@ -3,8 +3,16 @@
 
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/parallel_ops/replicate.h"
 
 namespace FlexFlow {
+
+class ReplicateMeta : public OpMeta {
+public:
+  ReplicateMeta(FFHandler handle, Replicate const *repl);
+};
+
 namespace Kernels {
 namespace Replicate {
 

@@ -1,9 +1,11 @@
 #ifndef _FLEXFLOW_LINEAR_H
 #define _FLEXFLOW_LINEAR_H
 
+#include "flexflow/inference.h"
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/linear_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -20,8 +22,12 @@ public:
          const ParallelTensor input,
          int out_dim,
          ActiMode activation,
+         RegularizerMode kernel_reg_type,
+         float kernel_reg_lambda,
          bool _use_bias,
          DataType _data_type,
+         DataType _quantization_type,
+         bool offload,
          bool allocate_weights,
          char const *name);
   Linear(FFModel &model,
@@ -35,8 +41,17 @@ public:
          bool allocate_weights = false);
 
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override;
   bool get_int_parameter(PMParameter, int *) const override;
   static Op *
@@ -47,6 +62,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -84,19 +103,19 @@ private:
          bool allocate_weights,
          char const *name);
 
-  template <int NDIM>
+  template <typename DT, typename WT, int NDIM>
   static OpMeta *
       init_task_with_dim(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
-  template <int NDIM>
+  template <typename DT, typename WT, int NDIM>
   static void
       forward_task_with_dim(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  template <int NDIM>
+  template <typename DT, int NDIM>
   static void
       backward_task_with_dim(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
@@ -110,8 +129,12 @@ private:
 public:
   int in_channels, out_channels;
   ActiMode activation;
+  RegularizerMode kernel_reg_type;
+  float kernel_reg_lambda;
   bool use_bias;
   ParallelTensor replica;
+  DataType quantization_type;
+  bool offload;
 };
 
 }; // namespace FlexFlow

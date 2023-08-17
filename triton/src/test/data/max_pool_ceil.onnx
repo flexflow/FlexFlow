@@ -1,0 +1,19 @@
+model:¤
+S
+inputoutput"MaxPool*
+	ceil_mode *
+kernel_shape@@ *
+strides@@ 
+test_graphZ
+input
+
+
+
+
+b 
+output
+
+
+
+
+B

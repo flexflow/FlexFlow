@@ -45,8 +45,11 @@ Tensor FFModel::binary(OperatorType op,
   assert(broadcastable(in1, in2));
   if (in1->data_type < in2->data_type) {
     dtype = in2->data_type;
-    std::string str(name);
-    Tensor new_in1 = cast(in1, dtype, (str + "input1_pre_cast").c_str());
+    std::string str;
+    if (name != nullptr) {
+      str = std::string(name) + "input1_pre_cast";
+    }
+    Tensor new_in1 = cast(in1, dtype, str.c_str());
     ele = new Layer(this,
                     op,
                     dtype,
@@ -58,8 +61,11 @@ Tensor FFModel::binary(OperatorType op,
                     in2);
   } else if (in1->data_type > in2->data_type) {
     dtype = in1->data_type;
-    std::string str(name);
-    Tensor new_in2 = cast(in2, dtype, (str + "input2_pre_cast").c_str());
+    std::string str;
+    if (name != nullptr) {
+      str = std::string(name) + "input2_pre_cast";
+    }
+    Tensor new_in2 = cast(in2, dtype, str.c_str());
     ele = new Layer(this,
                     op,
                     dtype,
@@ -97,8 +103,13 @@ Op *ElementBinary::create_operator_from_layer(
   long long value;
   layer->get_int_property("inplace_a", value);
   bool inplace_a = (bool)value;
-  return new ElementBinary(
-      model, layer->op_type, inputs[0], inputs[1], inplace_a, layer->name);
+  return new ElementBinary(model,
+                           layer->layer_guid,
+                           layer->op_type,
+                           inputs[0],
+                           inputs[1],
+                           inplace_a,
+                           layer->name);
 }
 
 Tensor FFModel::add(const Tensor in1,
@@ -129,6 +140,20 @@ Tensor FFModel::divide(const Tensor in1,
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
+Tensor FFModel::max(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MAX, in1, in2, inplace_a, name);
+}
+
+Tensor FFModel::min(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MIN, in1, in2, inplace_a, name);
+}
+
 bool ElementBinaryParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
   bool is_valid = true;
@@ -152,10 +177,12 @@ bool ElementBinaryParams::is_valid(
 
 bool operator==(ElementBinaryParams const &lhs,
                 ElementBinaryParams const &rhs) {
-  return lhs.type == rhs.type;
+  return lhs.type == rhs.type && lhs.layer_guid == rhs.layer_guid &&
+         lhs.inplace_a == rhs.inplace_a;
 }
 
 ElementBinary::ElementBinary(FFModel &model,
+                             LayerID const &_layer_guid,
                              OperatorType _op_type,
                              const ParallelTensor in1,
                              const ParallelTensor in2,
@@ -171,6 +198,8 @@ ElementBinary::ElementBinary(FFModel &model,
          in1,
          in2),
       inplace_a(_inplace_a) {
+  // overwrite layer_guid
+  layer_guid = _layer_guid;
   numOutputs = 1;
   numWeights = 0;
   assert(in1->data_type == in2->data_type);
@@ -203,10 +232,14 @@ ElementBinary::ElementBinary(
     FFModel &model,
     ElementBinaryParams const &params,
     std::pair<ParallelTensor, ParallelTensor> const &inputs,
-    char const *name,
-    bool inplace_a)
-    : ElementBinary(
-          model, params.type, inputs.first, inputs.second, inplace_a, name) {}
+    char const *name)
+    : ElementBinary(model,
+                    params.layer_guid,
+                    params.type,
+                    inputs.first,
+                    inputs.second,
+                    params.inplace_a,
+                    name) {}
 
 void ElementBinary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
@@ -244,6 +277,74 @@ bool ElementBinary::has_inplace_output(void) {
 
 void ElementBinary::do_inplace_output(void) {
   inplace_a = true;
+}
+
+void ElementBinary::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  // Check if we have the same oprands
+  has_same_operands = (batch_inputs[0]->region == batch_inputs[1]->region);
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(ElementBinary)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  int rid = 0;
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(rid++, FID_DATA);
+  if (!has_same_operands) {
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[1]->region));
+    launcher.add_field(rid++, FID_DATA);
+  } else {
+    assert(batch_inputs[0]->part == batch_inputs[1]->part);
+  }
+  if (!inplace_a) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    launcher.add_field(rid++, FID_DATA);
+  } else {
+    assert(batch_outputs[0]->part == batch_inputs[0]->part);
+    assert(batch_outputs[0]->region == batch_inputs[0]->region);
+  }
+  // launcher.add_region_requirement(
+  //   RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+  //     WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
+  // launcher.add_field(3, FID_DATA);
+  // if (inputs[0]->region_grad != inputs[1]->region_grad) {
+  //  regions[4](I/O): input1_grad
+  //  launcher.add_region_requirement(
+  //    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+  //                      WRITE_ONLY, EXCLUSIVE, inputs[1]->region_grad));
+  //  launcher.add_field(4, FID_DATA);
+  //}
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
 void ElementBinary::init(FFModel const &ff) {
@@ -313,7 +414,7 @@ OpMeta *ElementBinary::init_task(Task const *task,
                                  Runtime *runtime) {
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  ElementBinaryMeta *m = new ElementBinaryMeta(handle);
+  ElementBinaryMeta *m = new ElementBinaryMeta(handle, eb);
   for (int i = 0; i < eb->numInputs; i++) {
     m->trainableInputs[i] = eb->trainableInputs[i];
   }
@@ -424,6 +525,84 @@ void ElementBinary::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+FutureMap
+    ElementBinary::inference(FFModel const &ff,
+                             BatchConfigFuture const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "ElementBinary op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  if (inplace_a) {
+    assert(batch_outputs[0]->part == batch_inputs[0]->part);
+    assert(batch_outputs[0]->region == batch_inputs[0]->region);
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    if (has_same_operands) {
+      // do nothing else
+    } else {
+      launcher.add_region_requirement(
+          RegionRequirement(batch_inputs[1]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            batch_inputs[1]->region));
+      launcher.add_field(1, FID_DATA);
+    }
+  } else {
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    if (has_same_operands) {
+      launcher.add_region_requirement(
+          RegionRequirement(batch_outputs[0]->part,
+                            0 /*projection id*/,
+                            WRITE_ONLY,
+                            EXCLUSIVE,
+                            batch_outputs[0]->region));
+      launcher.add_field(1, FID_DATA);
+    } else {
+      launcher.add_region_requirement(
+          RegionRequirement(batch_inputs[1]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            batch_inputs[1]->region));
+      launcher.add_field(1, FID_DATA);
+      launcher.add_region_requirement(
+          RegionRequirement(batch_outputs[0]->part,
+                            0 /*projection id*/,
+                            WRITE_ONLY,
+                            EXCLUSIVE,
+                            batch_outputs[0]->region));
+      launcher.add_field(2, FID_DATA);
+    }
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
 /*
   regions[0](I): in1
   regions[1](I): in2
@@ -436,63 +615,92 @@ __host__ void
                                 Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
+  GenericTensorAccessorR in1, in2;
+  GenericTensorAccessorW out;
   Domain in1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
+
   if (!m->has_same_operands) {
     Domain in2_domain = runtime->get_index_space_domain(
         ctx, task->regions[1].region.get_index_space());
     // Currently only support broadcast for add and sub
     if (in1_domain != in2_domain) {
-      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
+      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
+             m->op_type == OP_EW_MUL);
     }
   }
-  float const *in1_ptr = NULL, *in2_ptr = NULL;
-  float *out_ptr = NULL;
+
   if (m->inplace_a) {
     if (m->has_same_operands) {
       assert(regions.size() == 1);
       assert(task->regions.size() == 1);
-      out_ptr = helperGetTensorPointerRW<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = out_ptr;
-      in1_ptr = out_ptr;
+      out = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = out;
+      in1 = out;
     } else {
       assert(regions.size() == 2);
       assert(task->regions.size() == 2);
-      out_ptr = helperGetTensorPointerRW<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      in1_ptr = out_ptr;
+      out = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = helperGetGenericTensorAccessorRO(m->input_type[1],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in1 = out;
     }
   } else {
     if (m->has_same_operands) {
       assert(regions.size() == 2);
       assert(task->regions.size() == 2);
-      Domain out_domain = runtime->get_index_space_domain(
-          ctx, task->regions[1].region.get_index_space());
-      // assert(out_domain == in1_domain);
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = in1_ptr;
-      out_ptr = helperGetTensorPointerWO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      in1 = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = in1;
+      out = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
     } else {
       assert(regions.size() == 3);
       assert(task->regions.size() == 3);
-      Domain out_domain = runtime->get_index_space_domain(
-          ctx, task->regions[2].region.get_index_space());
-      // assert(out_domain == in1_domain);
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      out_ptr = helperGetTensorPointerWO<float>(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      in1 = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = helperGetGenericTensorAccessorRO(m->input_type[1],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      out = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                             regions[2],
+                                             task->regions[2],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
     }
   }
 
-  forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
+  forward_kernel_wrapper(m, in1, in2, out);
 }
 
 void ElementBinary::backward(FFModel const &ff) {
@@ -694,7 +902,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
   if (!inputs[1]->get_sub_tensor(mv, sub_input2)) {
     return false;
   }
-  ElementBinaryMeta *m = sim->ele_binary_meta;
+  ElementBinaryMeta *m = new ElementBinaryMeta(sim->handler, this);
   m->op_type = op_type;
   m->profiling = this->profiling;
   m->inplace_a = this->inplace_a;
@@ -710,8 +918,12 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input1_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
   assert(input1_ptr != NULL);
+  GenericTensorAccessorR input1_acc(
+      inputs[0]->data_type, input1_domain, input1_ptr);
   float *input2_ptr = (float *)sim->allocate(sub_input2.get_volume(), DT_FLOAT);
   assert(input2_ptr != NULL);
+  GenericTensorAccessorR input2_acc(
+      inputs[1]->data_type, input2_domain, input2_ptr);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptr = NULL;
@@ -721,13 +933,15 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
     output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   }
   assert(output_ptr != NULL);
+  GenericTensorAccessorW output_acc(
+      outputs[0]->data_type, output_domain, output_ptr);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   assert(m->profiling == false);
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m, input1_ptr, input2_ptr, output_ptr);
+    forward_kernel_wrapper(m, input1_acc, input2_acc, output_acc);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input1_grad_ptr =
@@ -776,12 +990,45 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
                       cost_metrics.forward_time);
   }
 
+  delete m;
   return true;
+}
+
+void ElementBinary::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->op_type);
+  sez.serialize(this->inplace_a);
+}
+
+using PCG::Node;
+/*static*/
+Node ElementBinary::deserialize(FFModel &ff,
+                                Legion::Deserializer &dez,
+                                ParallelTensor inputs[],
+                                int num_inputs) {
+  assert(num_inputs == 2);
+  OperatorType op_type;
+  size_t id, transformer_layer_id;
+  bool inplace_a;
+  dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(op_type);
+  dez.deserialize(inplace_a);
+
+  ElementBinaryParams params;
+  params.layer_guid = layer_guid;
+  params.type = op_type;
+  params.inplace_a = inplace_a;
+  return ff.get_or_create_node<ElementBinary>({inputs[0], inputs[1]}, params);
 }
 
 ElementBinaryParams ElementBinary::get_params() const {
   ElementBinaryParams params;
+  params.layer_guid = this->layer_guid;
   params.type = this->op_type;
+  params.inplace_a = this->inplace_a;
   return params;
 }
 
@@ -791,7 +1038,9 @@ namespace std {
 size_t hash<FlexFlow::ElementBinaryParams>::operator()(
     FlexFlow::ElementBinaryParams const &params) const {
   size_t key = 0;
+  hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.type);
+  hash_combine(key, params.inplace_a);
   return key;
 }
 }; // namespace std

@@ -59,8 +59,11 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     bool bias,
                                     bool add_bias_kv,
                                     bool add_zero_attn,
+                                    DataType data_type,
                                     Initializer *kernel_initializer,
                                     char const *name) {
+  // Currently only support float for the original attention operator
+  assert(data_type == DT_NONE || data_type == DT_FLOAT);
   Layer *li = new Layer(this,
                         OP_MULTIHEAD_ATTENTION,
                         DT_FLOAT,
@@ -217,17 +220,12 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
     dims[2].parallel_idx = -1;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
     weights[0] = model.create_parallel_weight<3>(dims,
                                                  DT_FLOAT,
                                                  NULL /*owner_op*/,
                                                  true /*create_grad*/,
                                                  initializer,
-                                                 comm_type);
+                                                 CHOSEN_SYNC_TYPE);
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -304,17 +302,12 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
     dims[2].size = qParas + kParas + vParas + oParas;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
     weights[0] = model.create_parallel_weight<3>(dims,
                                                  DT_FLOAT,
                                                  NULL /*owner_op*/,
                                                  true /*create_grad*/,
                                                  initializer,
-                                                 comm_type);
+                                                 CHOSEN_SYNC_TYPE);
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _query->num_dims, dims, DT_FLOAT, this);
@@ -371,6 +364,62 @@ MultiHeadAttention::MultiHeadAttention(
                          params.add_zero_attn,
                          allocate_weights,
                          name) {}
+
+void MultiHeadAttention::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(ATTENTION_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(MultiHeadAttention)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[2]->region));
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(3, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(4, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
 
 void MultiHeadAttention::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -521,6 +570,64 @@ void MultiHeadAttention::forward(FFModel const &ff) {
                                                     outputs[0]->region));
   launcher.add_field(4, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+FutureMap MultiHeadAttention::inference(
+    FFModel const &ff,
+    BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "MultiHeadAttention op machine_view: " << *(MachineView const
+     *)mv
+            << std::endl; */
+  int idx = 0;
+  IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[2]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(4, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 /*

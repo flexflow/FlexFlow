@@ -22,10 +22,11 @@ import logging
 import warnings
 import numpy as np
 from .flexflow_logger import fflogger
-from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
+from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, InferenceMode, ModelType, OpType, ParameterSyncType, enum_to_int, int_to_enum
 _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
 if not _FF_BUILD_DOCS:
-  from .flexflow_cffi_header import ffc, ffi
+  from .flexflowlib import ffi, flexflow_library
+  ffc = flexflow_library.lib
 
 ff_tracing_id = 200
 
@@ -38,6 +39,8 @@ def get_c_name(name):
     return ffi.new("char[]", name.encode('ascii'))
 
 def get_datatype_size(datatype):
+  if (datatype == DataType.DT_HALF):
+    return 2
   if (datatype == DataType.DT_FLOAT):
     return 4
   elif (datatype == DataType.DT_DOUBLE):
@@ -143,6 +146,27 @@ class Multiply(Op):
 class Divide(Op):
   def __init__(self, handle, idx=None, name=None):
     super(Divide, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Max
+# -----------------------------------------------------------------------
+class Max(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Max, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Min
+# -----------------------------------------------------------------------
+class Min(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Min, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ReduceSum
+# -----------------------------------------------------------------------
+class ReduceSum(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ReduceSum, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Conv2D
@@ -372,6 +396,13 @@ class Reshape(Op):
     super(Reshape, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Gather
+# -----------------------------------------------------------------------
+class Gather(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Gather, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Identity
 # -----------------------------------------------------------------------
 class Identity(Op):
@@ -398,6 +429,62 @@ class Reverse(Op):
 class MultiHeadAttention(Op):
   def __init__(self, handle, idx=None, name=None):
     super(MultiHeadAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Incremental MultiHeadAttention
+# -----------------------------------------------------------------------
+class IncMultiHeadAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(IncMultiHeadAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Speculative Incremental MultiHeadAttention
+# -----------------------------------------------------------------------
+class SpecIncMultiHeadSelfAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(SpecIncMultiHeadSelfAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# TreeVerify Incremental MultiHeadAttention
+# -----------------------------------------------------------------------
+class TreeIncMultiHeadSelfAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(TreeIncMultiHeadSelfAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# RMS Norm
+# -----------------------------------------------------------------------
+class RMSNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(RMSNorm, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ArgTopK
+# -----------------------------------------------------------------------
+class ArgTopK(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ArgTopK, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# BeamTopK
+# -----------------------------------------------------------------------
+class BeamTopK(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(BeamTopK, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Sampling
+# -----------------------------------------------------------------------
+class Sampling(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Sampling, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ArgMax
+# -----------------------------------------------------------------------
+class ArgMax(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ArgMax, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
@@ -431,6 +518,12 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Multiply(handle, idx, name)
   elif op_type == OpType.DIVIDE:
     return Divide(handle, idx, name)
+  elif op_type == OpType.MAX:
+    return Max(handle, idx, name)
+  elif op_type == OpType.MIN:
+    return Min(handle, idx, name)
+  elif op_type == OpType.REDUCE_SUM:
+    return ReduceSum(handle, idx, name)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle, idx, name)
   elif op_type == OpType.SCALAR_MULTIPLY:
@@ -472,13 +565,31 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   elif op_type == OpType.REVERSE:
     return Reverse(handle, idx, name)
   elif op_type == OpType.MULTIHEAD_ATTENTION:
-    return Reverse(handle, idx, name)
+    return MultiHeadAttention(handle, idx, name)
+  elif op_type == OpType.INC_MULTIHEAD_ATTENTION:
+    return IncMultiHeadAttention(handle, idx, name)
+  elif op_type == OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION:
+    return SpecIncMultiHeadSelfAttention(handle, idx, name)
+  elif op_type == OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION:
+    return TreeIncMultiHeadSelfAttention(handle, idx, name)
+  elif op_type == OpType.RMS_NORM:
+    return RMSNorm(handle, idx, name)
+  elif op_type == OpType.ARG_TOPK:
+    return ArgTopK(handle, idx, name)
+  elif op_type == OpType.BEAM_TOPK:
+    return BeamTopK(handle, idx, name)
+  elif op_type == OpType.SAMPLING:
+    return Sampling(handle, idx, name)
+  elif op_type == OpType.ARGMAX:
+    return ArgMax(handle, idx, name)
   elif op_type == OpType.RSQRT:
     return Rsqrt(handle, idx, name)
   elif op_type == OpType.POW:
     return Pow(handle, idx, name)
   elif op_type == OpType.MEAN:
     return Mean(handle, idx, name)
+  elif op_type == OpType.GATHER:
+    return Gather(handle, idx, name)
   else:
     assert 0, "unknown layer type {}".format(op_type)
     return None
@@ -488,10 +599,11 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
 # -----------------------------------------------------------------------
 
 class FFConfig(object):
-  __slots__ = ['handle', '_handle']
+  __slots__ = ['handle', '_handle', 'enable_tracing']
   def __init__(self):
     self.handle = ffc.flexflow_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_config_destroy)
+    self.enable_tracing = False
 
   def parse_args(self):
     ffc.flexflow_config_parse_args_default(self.handle)
@@ -515,19 +627,61 @@ class FFConfig(object):
   @property
   def enable_control_replication(self):
     return ffc.flexflow_config_get_enable_control_replication(self.handle)
+  
+  @property
+  def data_parallelism_degree(self):
+    return ffc.flexflow_config_get_data_parallelism_degree(self.handle)
+  
+  @data_parallelism_degree.setter
+  def data_parallelism_degree(self, value):
+    if type(value) is not int: 
+      raise ValueError("The data parallelism degree must be specified as an integer number")
+    elif value < 1:
+      raise ValueError("The data parallelism degree cannot be lower than 1")
+    ffc.flexflow_config_set_data_parallelism_degree(self.handle, value)
+  
+  @property
+  def tensor_parallelism_degree(self):
+    return ffc.flexflow_config_get_tensor_parallelism_degree(self.handle)
+  
+  @tensor_parallelism_degree.setter
+  def tensor_parallelism_degree(self, value):
+    if type(value) is not int: 
+      raise ValueError("The tensor parallelism degree must be specified as an integer number")
+    elif value < 1:
+      raise ValueError("The tensor parallelism degree cannot be lower than 1")
+    ffc.flexflow_config_set_tensor_parallelism_degree(self.handle, value)
+  
+  @property
+  def pipeline_parallelism_degree(self):
+    return ffc.flexflow_config_get_pipeline_parallelism_degree(self.handle)
+  
+  @pipeline_parallelism_degree.setter
+  def pipeline_parallelism_degree(self, value):
+    if type(value) is not int: 
+      raise ValueError("The pipeline parallelism degree must be specified as an integer number")
+    elif value < 1:
+      raise ValueError("The pipeline parallelism degree cannot be lower than 1")
+    ffc.flexflow_config_set_pipeline_parallelism_degree(self.handle, value)
     
   @property
   def python_data_loader_type(self):
     return ffc.flexflow_config_get_python_data_loader_type(self.handle)
+  
+  @property
+  def cpu_offload(self):
+    return ffc.flexflow_config_get_offload(self.handle)
 
   def get_current_time(self):
     return ffc.flexflow_get_current_time(self.handle)
 
   def begin_trace(self, trace_id):
-    ffc.flexflow_begin_trace(self.handle, trace_id)
+    if self.enable_tracing:
+      ffc.flexflow_begin_trace(self.handle, trace_id)
 
   def end_trace(self, trace_id):
-    ffc.flexflow_end_trace(self.handle, trace_id)
+    if self.enable_tracing:
+      ffc.flexflow_end_trace(self.handle, trace_id)
 
 # -----------------------------------------------------------------------
 # Tensor
@@ -603,7 +757,7 @@ class Tensor(object):
     array = np.asarray(initializer)
     return array
 
-  def attach_numpy_array(self, ffconfig, np_array):
+  def attach_numpy_array(self, ffmodel, ffconfig, np_array):
     assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
     np_shape = np_array.shape
     num_dims = len(np_shape)
@@ -613,7 +767,7 @@ class Tensor(object):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("void*", np_raw_ptr[0])
     fflogger.debug("attach numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
-    self.__attach_raw_ptr(ffconfig, raw_ptr)
+    self.__attach_raw_ptr(ffmodel, ffconfig, raw_ptr)
 
   def detach_numpy_array(self, ffconfig):
     self.__detach_raw_ptr(ffconfig)
@@ -630,7 +784,11 @@ class Tensor(object):
       assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     c_dims = ffi.new("int[]", self.dims)
     np_raw_ptr = np_array.__array_interface__['data']
-    if np_array.dtype == np.float32:
+    if np_array.dtype == np.float16:
+      assert self.data_type == DataType.DT_HALF, "Wrong datatype"
+      raw_ptr = ffi.cast("half*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
+    elif np_array.dtype == np.float32:
       assert self.data_type == DataType.DT_FLOAT, "Wrong datatype"
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
       ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
@@ -645,7 +803,9 @@ class Tensor(object):
     
   def get_tensor(self, ffmodel):
     shape = self.dims
-    if self.data_type == DataType.DT_FLOAT:
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
@@ -669,7 +829,9 @@ class Tensor(object):
 
   def get_gradients(self, ffmodel, comm_type):
     shape = self.dims
-    if self.data_type == DataType.DT_FLOAT:
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
@@ -691,10 +853,57 @@ class Tensor(object):
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
+  
+  def get_model_output_gradients(self, ffmodel, comm_type):
+    shape = self.dims
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    c_comm_type = enum_to_int(ParameterSyncType, comm_type)
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, True)
+    else:
+      assert 0, "unknown data type"
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
+  
+  def get_model_output_tensor(self, ffmodel):
+    shape = self.dims
+    if self.data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, False)
+    else:
+      assert 0, "unknown data type"
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
 
   def __get_raw_ptr(self, ffmodel, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"
-    if (data_type == DataType.DT_FLOAT):
+    if (data_type == DataType.DT_HALF):
+      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
+    elif (data_type == DataType.DT_FLOAT):
       return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
     elif (data_type == DataType.DT_INT32):
       return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, ffmodel.handle, ffconfig.handle)
@@ -753,9 +962,9 @@ class Tensor(object):
     else:
       self.owner_op = convert_op_handle_to_op(op_type, op_handle)
 
-  def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
+  def __attach_raw_ptr(self, ffmodel, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
+    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffmodel.handle, ffconfig.handle, raw_ptr, column_major)
     self.mapped = True
 
   def __detach_raw_ptr(self, ffconfig):
@@ -815,7 +1024,7 @@ class FFModel(object):
 
     :returns:  FFModel -- the model.
     """
-    self.handle = ffc.flexflow_model_create(ffconfig.handle)
+    self.handle = ffc.flexflow_model_create(ffconfig.handle, ffconfig.cpu_offload)
     self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
     self._layers = dict()
     self._nb_layers = 0
@@ -993,6 +1202,64 @@ class FFModel(object):
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
+  def max(self, x, y, inplace_a=False, name=None):
+    """Layer that computes the max (element-wise) two input Tensors, :attr:`output = max(x,y)`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_max(self.handle, x.handle, y.handle, inplace_a, c_name)
+    self.add_layer(OpType.MAX, name)
+    return Tensor(handle, owner_op_type=OpType.MAX)
+
+  def min(self, x, y, inplace_a=False, name=None):
+    """Layer that computes the min (element-wise) two input Tensors, :attr:`output = min(x,y)`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_min(self.handle, x.handle, y.handle, inplace_a, c_name)
+    self.add_layer(OpType.MIN, name)
+    return Tensor(handle, owner_op_type=OpType.MIN)
+
+  def reduce_sum(self, input, axes, keepdims=False, name=None):
+    """Layer that computes the sum of the input Tensor along given axes.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param axes: the axes along which reduction is applied
+    :type axes: List[int]
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    handle = ffc.flexflow_model_add_reduce_sum(self.handle, input.handle, c_axes, len(axes), keepdims, c_name)
+    self.add_layer(OpType.REDUCE_SUM, name)
+    return Tensor(handle, owner_op_type=OpType.REDUCE_SUM)
+
   def rsqrt(self, input, name=None):
     """Layer that computes the element-wise reciprocal square-root.
              
@@ -1151,7 +1418,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
   def embedding(self, input, num_embeddings, embedding_dim, 
-                aggr, shared_op=None, kernel_initializer=None, name=None):
+                aggr, dtype=DataType.DT_FLOAT, shared_op=None, kernel_initializer=None, name=None):
     """Layer that turns positive integers into dense vectors of fixed size
              
     :param input: the input Tensor.
@@ -1165,6 +1432,9 @@ class FFModel(object):
                 
     :param aggr: aggregation mode. Options are AGGR_MODE_NONE, AGGR_MODE_SUM and AGGR_MODE_AVG.
     :type aggr: AggrMode
+
+    :param dtype: the tensor data type. Options are DT_BOOLEAN, DT_INT32, DT_INT64, DT_HALF, DT_FLOAT, DT_DOUBLE, DT_INT4, DT_INT8, DT_NONE
+    :type dtype: DataType
                 
     :param shared_op: the layer whose parameters are shared with. Default is None.
     :type shared_op: Op  
@@ -1180,6 +1450,7 @@ class FFModel(object):
     c_name = get_c_name(name)
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
+    c_dtype = enum_to_int(DataType, dtype)
     if kernel_initializer is None:
       kernel_initializer = GlorotUniformInitializer(42)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or \
@@ -1188,7 +1459,7 @@ class FFModel(object):
       (type(kernel_initializer) is NormInitializer), \
       f"Unknown initializer type: {kernel_initializer}"
     handle = ffc.flexflow_model_add_embedding(
-      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr,
+      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr, c_dtype,
       shared_op_handle, kernel_initializer.handle, c_name,
     )
     # NOTE: We must keep a reference to the initializer or else it will be
@@ -1332,9 +1603,10 @@ class FFModel(object):
   def dense(self, input, out_dim, 
             activation=ActiMode.AC_MODE_NONE, 
             use_bias=True, 
-            datatype=DataType.DT_FLOAT, 
+            datatype=DataType.DT_NONE, 
             shared_op=None,
-            kernel_initializer=None, bias_initializer=None, name=None):
+            kernel_initializer=None, bias_initializer=None, 
+            kernel_regularizer=None, name=None):
     """Dense implements the operation: :attr:`output = activation(dot(input, kernel) + bias)` where 
     :attr:`activation` is the element-wise activation function passed as the activation argument, 
     :attr:`kernel` is a weights matrix created by the layer, and 
@@ -1363,6 +1635,9 @@ class FFModel(object):
 
     :param bias_initializer: Initializer for the bias vector. If it is set to None, the ZeroInitializer is applied.
     :type bias_initializer: Initializer
+
+    :param kernel_regularizer: Regularizer for the kernel weights matrix
+    :type bias_initializer: Regularizer
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -1375,7 +1650,17 @@ class FFModel(object):
     c_datatype = enum_to_int(DataType, datatype)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, c_datatype, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
+    if kernel_regularizer:
+      c_kernel_reg_type = enum_to_int(RegularizerMode, kernel_regularizer.type)
+      kernel_reg_lambda = kernel_regularizer._lambda
+    else:
+      c_kernel_reg_type = enum_to_int(
+        RegularizerMode, RegularizerMode.REG_MODE_NONE)
+      kernel_reg_lambda = 0.0
+    handle = ffc.flexflow_model_add_dense(
+      self.handle, input.handle, out_dim, c_activation, use_bias, c_datatype,
+      shared_op_handle, kernel_init_handle, bias_init_handle,
+      c_kernel_reg_type, kernel_reg_lambda, c_name)
     self.add_layer(OpType.LINEAR, name)
     return Tensor(handle, owner_op_type=OpType.LINEAR)
 
@@ -1498,6 +1783,28 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape, c_name)
     self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
+
+  def gather(self, input, index, dim, name=None):
+    """Layer that gathers values along the dim axis.
+    
+    :param input: the input tensor
+    :type input: Tensor
+
+    :param index: the index tensor, which specifies the indices of elements to gather
+    :type index: Tensor
+
+    :param dim: the axis along which to index
+    :type dim: int
+
+    :param name: the name of the layer. Default is None
+    :type name: string
+
+    :returns: Tensor -- the output tensor
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_gather(self.handle, input.handle, index.handle, dim, c_name)
+    self.add_layer(OpType.GATHER, name)
+    return Tensor(handle, owner_op_type=OpType.GATHER)
 
   def transpose(self, input, perm, name=None):
     """Transposes the :attr:`input` tensor. Permutes the dimensions according to perm
@@ -1793,6 +2100,527 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
     self.add_layer(OpType.MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.MULTIHEAD_ATTENTION)
+  
+  def inc_multihead_self_attention(self, input, 
+                              embed_dim, num_heads,
+                              kdim=0, vdim=0, dropout=0.0, 
+                              bias=True, add_bias_kv=False, add_zero_attn=False, 
+                              data_type=DataType.DT_NONE, kernel_initializer=None, 
+                              apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                              qk_prod_scaling=True, name=None):
+    """Defines the MultiHead Attention operation as described in Attention Is All You Need 
+    which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
+    In inference mode, the attention is computed using incremental decoding.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
+  
+  def spec_inc_multihead_self_attention(self, input, 
+                                   embed_dim, num_heads,
+                                   kdim=0, vdim=0, dropout=0.0, 
+                                   bias=True, add_bias_kv=False, add_zero_attn=False, 
+                                   data_type=DataType.DT_NONE, kernel_initializer=None, 
+                                   apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                                   qk_prod_scaling=True, name=None):
+    """Defines the MultiHead Attention operation as described in Attention Is All You Need 
+    which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
+    This operator only supports computing the attention in inference (beam search) mode.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_spec_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
+  
+  def inc_multihead_self_attention_verify(self, input, 
+                                          embed_dim, num_heads,
+                                          kdim=0, vdim=0, dropout=0.0, 
+                                          bias=True, add_bias_kv=False, add_zero_attn=False, 
+                                          data_type=DataType.DT_NONE, kernel_initializer=None, 
+                                          apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                                          qk_prod_scaling=True, name=None):
+    """Defines the MultiHead Attention operation as described in Attention Is All You Need 
+    which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
+    This operator only supports computing the attention in inference (tree verify) mode.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
+  
+  def inc_multiquery_self_attention(self, input, 
+                              embed_dim, num_q_heads, num_kv_heads,
+                              kdim=0, vdim=0, dropout=0.0, 
+                              bias=True, add_bias_kv=False, add_zero_attn=False, 
+                              data_type=DataType.DT_NONE, kernel_initializer=None, 
+                              apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                              qk_prod_scaling=True, name=None):
+    """Defines the multi-query head attention, which allows a different number of Q and KV heads,
+    and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
+    In inference mode, the attention is computed using incremental decoding.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_q_heads: Number of query attention heads.
+    :type num_q_heads: int
+
+    :param num_kv_heads: Number of key/value attention heads.
+    :type num_kv_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
+  
+  def spec_inc_multiquery_self_attention(self, input, 
+                                   embed_dim, num_q_heads, num_kv_heads,
+                                   kdim=0, vdim=0, dropout=0.0, 
+                                   bias=True, add_bias_kv=False, add_zero_attn=False, 
+                                   data_type=DataType.DT_NONE, kernel_initializer=None, 
+                                   apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                                   qk_prod_scaling=True, name=None):
+    """Defines the multi-query head attention, which allows a different number of Q and KV heads,
+    and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
+    This operator only supports computing the attention in inference (beam search) mode.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_q_heads: Number of query attention heads.
+    :type num_q_heads: int
+
+    :param num_kv_heads: Number of key/value attention heads.
+    :type num_kv_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_spec_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
+  
+  def inc_multiquery_self_attention_verify(self, input, 
+                                          embed_dim, num_q_heads, num_kv_heads,
+                                          kdim=0, vdim=0, dropout=0.0, 
+                                          bias=True, add_bias_kv=False, add_zero_attn=False, 
+                                          data_type=DataType.DT_NONE, kernel_initializer=None, 
+                                          apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
+                                          qk_prod_scaling=True, name=None):
+    """Defines the multi-query head attention, which allows a different number of Q and KV heads,
+    and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
+    This operator only supports computing the attention in inference (tree verify) mode.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_q_heads: Number of query attention heads.
+    :type num_q_heads: int
+
+    :param num_kv_heads: Number of key/value attention heads.
+    :type num_kv_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+
+    :param data_type: the data type of the tensors. Default is DataType.DT_NONE, which means using the data type of the input tensors.
+    :type data_type: DataType
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
+    :type apply_rotary_embedding: bool
+
+    :param scaling_query: Whether to apply scaling query. Default is False.
+    :type scaling_query: bool
+
+    :param scaling_factor: The scaling factor to use for scaling. Default is 1.0.
+    :type scaling_factor: float
+
+    :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
+    :type qk_prod_scaling: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_model_add_inc_multiquery_self_attention_verify(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
+  
+  def rms_norm(self, input, eps, dim, name=None):
+    """Defines the RMS Norm layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param eps: a value added to the denominator for numerical stability
+    :type eps: float
+                          
+    :param dim: The dimension with respect to which to take the norm
+    :type dim: int
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_rms_norm(self.handle, input.handle, eps, dim, c_name)
+    self.add_layer(OpType.RMS_NORM, name)
+    return Tensor(handle, owner_op_type=OpType.RMS_NORM)
+  
+  def arg_top_k(self, input, k, sorted, name=None):
+    """Defines the Arg TopK layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param k: the top k indices to select
+    :type k: int
+                          
+    :param sorted: Whether the entries should be sorted
+    :type sorted: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_arg_top_k(self.handle, input.handle, k, sorted, c_name)
+    self.add_layer(OpType.ARG_TOPK, name)
+    return Tensor(handle, owner_op_type=OpType.ARG_TOPK)
+
+  def beam_top_k(self, input, max_beam_size, sorted, name=None):
+    """Defines the Beam TopK layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param max_beam_size: the top max_beam_size indices to select
+    :type max_beam_size: int
+                          
+    :param sorted: Whether the entries should be sorted
+    :type sorted: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_beam_top_k(self.handle, input.handle, max_beam_size, sorted, c_name)
+    self.add_layer(OpType.BEAM_TOPK, name)
+    return Tensor(handle, owner_op_type=OpType.BEAM_TOPK)
+  
+  def sampling(self, input, top_p, name=None):
+    """Defines the Sampling layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param top_p: The top_p parameter of the sampling
+    :type top_p: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_sampling(self.handle, input.handle, top_p, c_name)
+    self.add_layer(OpType.SAMPLING, name)
+    return Tensor(handle, owner_op_type=OpType.SAMPLING)
+  
+  def argmax(self, input, beam_search, name=None):
+    """Defines the Sampling layer.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param beam_search: Whether you need to perform beam search
+    :type beam_search: bool
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_argmax(self.handle, input.handle, beam_search, c_name)
+    self.add_layer(OpType.ARGMAX, name)
+    return Tensor(handle, owner_op_type=OpType.ARGMAX)
 
   def reset_metrics(self):
     """Reset performance metrics.
@@ -2017,6 +2845,9 @@ class FFModel(object):
   def get_perf_metrics(self):
     handle = ffc.flexflow_model_get_perf_metrics(self.handle)
     return PerfMetrics(handle)
+  
+  def set_transformer_layer_id(self, id):
+    ffc.flexflow_model_set_transformer_layer_id(self.handle, id)
     
   def create_data_loader(self, batch_tensor, full_array):
     """Create a SingleDataloader instance. 
@@ -2043,7 +2874,9 @@ class FFModel(object):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     num_dim = len(full_array_shape)
-    if (full_array.dtype == "float32"):
+    if (full_array.dtype == "float16"):
+      datatype = DataType.DT_HALF
+    elif (full_array.dtype == "float32"):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
@@ -2070,7 +2903,9 @@ class FFModel(object):
   def __create_data_loader_ptr(self, batch_tensor, full_array):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
-    if (full_array.dtype == "float32"):
+    if (full_array.dtype == "float16"):
+      datatype = DataType.DT_HALF
+    elif (full_array.dtype == "float32"):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
@@ -2100,6 +2935,39 @@ class FFModel(object):
     else:
       op = shared_op
     return op.handle
+  
+  def get_output_tensor(self, ffmodel, data_type):
+    shape = self.dims
+    if data_type == DataType.DT_HALF:
+      np_array = np.empty(shape, dtype=np.float16)
+    elif data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int32:
+      raw_ptr = ffi.cast("int*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int64:
+      raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array   
+  
+  def generate(self, text, max_sequence_length):
+    c_text = get_c_name(text)
+    return ffc.flexflow_model_generate(self.handle, c_text, max_sequence_length)
+  
+  def set_position_offset(self, offset):
+    ffc.flexflow_model_set_position_offset(self.handle, offset)
 
 # -----------------------------------------------------------------------
 # SGDOptimizer
@@ -2296,7 +3164,9 @@ class RegionNdarray(object):
   __slots__ = ['__array_interface__']
   def __init__(self, shape, data_type, base_ptr, strides, read_only):
     # See: https://docs.scipy.org/doc/numpy/reference/arrays.interface.html
-    if (data_type == DataType.DT_FLOAT):
+    if (data_type == DataType.DT_HALF):
+      field_type = "<f2" 
+    elif (data_type == DataType.DT_FLOAT):
       field_type = "<f4"
     elif (data_type == DataType.DT_INT32):
       field_type = "<i4"
@@ -2310,3 +3180,101 @@ class RegionNdarray(object):
       'data': (base_ptr, read_only),
       'strides': strides,
     }
+
+# -----------------------------------------------------------------------
+# BatchConfig
+# -----------------------------------------------------------------------
+
+class BatchConfig(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_batch_config_destroy)
+
+# -----------------------------------------------------------------------
+# TreeVerifyBatchConfig
+# -----------------------------------------------------------------------
+
+class TreeVerifyBatchConfig(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_tree_verify_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_tree_verify_batch_config_destroy)
+
+# -----------------------------------------------------------------------
+# BeamSearchBatchConfig
+# -----------------------------------------------------------------------
+
+class BatchConfig(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_beam_search_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_beam_search_batch_config_destroy)
+
+# -----------------------------------------------------------------------
+# RequestManager
+# -----------------------------------------------------------------------
+
+class RequestManager(object):
+  __slots__ = ['handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_request_manager_get_request_manager()
+    #self._handle = ffi.gc(self.handle, ffc.flexflow_request_manager_destroy)
+
+  def register_tokenizer(self, model_type, tokenizer_filepath):
+    c_model_type = enum_to_int(ModelType, model_type)
+    c_tokenizer_filepath = get_c_name(tokenizer_filepath)
+    return ffc.flexflow_request_manager_register_tokenizer(self.handle, c_model_type, c_tokenizer_filepath)
+  
+  def register_output_filepath(self, output_filepath):
+    c_output_filepath = get_c_name(output_filepath)
+    return ffc.flexflow_request_manager_register_output_filepath(self.handle, c_output_filepath)
+
+  def register_ssm_model(self, model):
+    return ffc.flexflow_request_manager_register_ssm_model(self.handle, model.handle)
+  
+# -----------------------------------------------------------------------
+# InferenceManager
+# -----------------------------------------------------------------------
+
+class InferenceManager(object):
+  __slots__ = ['handle']
+  def __init__(self):
+    self.handle = ffc.flexflow_inference_manager_get_inference_manager()
+    #self._handle = ffi.gc(self.handle, ffc.flexflow_inference_manager_destroy)
+
+  def compile_model_and_allocate_buffer(self, model):
+    ffc.flexflow_inference_manager_compile_model_and_allocate_buffer(self.handle, model.handle)
+
+  def init_operators_inference(self, model):
+    ffc.flexflow_inference_manager_init_operators_inference(self.handle, model.handle)
+
+# -----------------------------------------------------------------------
+# FileDataLoader
+# -----------------------------------------------------------------------
+
+class FileDataLoader(object):
+  __slots__ = ['handle', '_handle']
+  def __init__(self, weight_file_path, num_q_heads, num_kv_heads, hidden_dim, qkv_inner_dim, tensor_parallelism_degree):
+    c_weight_file_path = get_c_name(weight_file_path)
+    self.handle = ffc.flexflow_file_data_loader_create(c_weight_file_path, num_q_heads, num_kv_heads, hidden_dim, qkv_inner_dim, tensor_parallelism_degree)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_file_data_loader_destroy)
+  
+  def load_weights(self, model, model_layers_with_weights, data_type):
+    # Extract keys and values into arrays
+    layer_names = list(model_layers_with_weights.keys()) 
+    layers = list(model_layers_with_weights.values())
+    
+    # Convert to char** and flexflow_op_t* for CFFI
+    layer_names_c = [ffi.new("char[]", x.encode('ascii')) for x in layer_names]
+    layer_handles_list = [layer.handle for layer in layers]
+    layer_handles_c = ffi.new("flexflow_op_t[]", layer_handles_list)
+    
+    # Compute number of layers (key-value pairs)
+    num_layers = len(layer_names)
+    assert(len(layer_names) == len(layers))
+
+    # Check data type and create use_full_precision boolean
+    assert(data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF)
+    use_full_precision = data_type == DataType.DT_FLOAT
+    ffc.flexflow_file_data_loader_load_weights(self.handle, model.handle, num_layers, layer_names_c, layer_handles_c, use_full_precision)

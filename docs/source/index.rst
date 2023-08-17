@@ -7,35 +7,20 @@ Welcome to FlexFlow's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 2
    :caption: Getting Started
    
    welcome
    installation
    docker
-   jupyter
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Interoperability
+   :caption: FlexFlow Train
    
-   keras
-   pytorch
-   onnx
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Examples
-
+   train_overview
+   train_interface
    mt5
    
-.. toctree::
-   :maxdepth: 3
-   :caption: Python API
-   
-   python/models
-   python/layers
-   python/dataloader
+   train_python_api
 
 .. toctree::
    :maxdepth: 3

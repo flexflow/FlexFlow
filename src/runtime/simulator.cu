@@ -16,11 +16,11 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
-#include "flexflow/ops/embedding.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
+#include "flexflow/ops/kernels/embedding_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
@@ -72,22 +72,20 @@ Simulator::Simulator(FFModel const *model,
   capacity = model->config.simulator_work_space_size;
 
   // Set cublas/cudnn streams to allow Realm catch the events
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(handler.blas, stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
-#endif
 
   size_t max_num_tasks = 1024 * 1024;
 
   cudaEventCreate(&start_event);
   cudaEventCreate(&end_event);
   conv2d_meta = new Conv2DMeta(handler);
-  linear_meta = new LinearMeta(handler, 4096);
+  // linear_meta = new LinearMeta(handler, 4096);
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
-  ele_binary_meta = new ElementBinaryMeta(handler);
+  // ele_binary_meta = new ElementBinaryMeta(handler);
   // embedding_meta = new EmbeddingMeta(handler);
   // softmax_meta = new SoftmaxMeta(handler);
   batch_matmul_meta = new BatchMatmulMeta(handler);
@@ -108,7 +106,6 @@ Simulator::~Simulator(void) {
   delete conv2d_meta;
   delete pool2d_meta;
   delete ele_unary_meta;
-  delete ele_binary_meta;
   delete batch_matmul_meta;
   delete concat_meta;
   delete transpose_meta;

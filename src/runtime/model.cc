@@ -24,9 +24,12 @@
 #include "flexflow/mapper.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
+#include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
@@ -35,9 +38,12 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -45,15 +51,21 @@
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
+#include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sampling.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/substitution.h"
 #include "flexflow/utils/random_utils.h"
 #include "flexflow/utils/test_utils.h"
@@ -1200,6 +1212,50 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
   }
 }
 
+void Op::set_argumentmap_for_init_inference(FFModel const &ff,
+                                            ArgumentMap &argmap,
+                                            ParallelTensor const output0) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
+  MachineView const view = output0->machine_view;
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  switch (domain.get_dim()) {
+#ifdef FF_USE_NCCL
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
+      if (op_type == OP_ALLREDUCE) {                                           \
+        ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
+        handle.ncclComm = nccl_comms[idx++];                                   \
+      }                                                                        \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#else
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#endif
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -1221,6 +1277,29 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
 }
 
+void Op::set_opmeta_from_futuremap_inference(FFModel const &ff,
+                                             FutureMap const &fm,
+                                             ParallelTensor const output) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      inference_meta[output][idx++] = fm.get_result<OpMeta *>(*it);            \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -1232,6 +1311,30 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       OpMeta *mp = meta[idx++];                                                \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_argumentmap_for_inference(FFModel const &ff,
+                                       ArgumentMap &argmap,
+                                       ParallelTensor const output) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = inference_meta[output][idx++];                              \
       argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
     }                                                                          \
     break;                                                                     \
@@ -1382,37 +1485,9 @@ OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
   }
 }
 
-FFModel::FFModel(FFConfig &_config)
-    : op_global_guid(OP_GUID_FIRST_VALID),
-      layer_global_guid(LAYER_GUID_FIRST_VALID),
-      tensor_global_guid(TENSOR_GUID_FIRST_VALID),
-      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
-      node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
-      loss_op(NULL), metrics_op(NULL), simulator(NULL) {
-  this->search = new PCG::SearchHelper(this);
-  this->graph_search = new PCG::GraphSearchHelper(this);
-
+FFRuntime::FFRuntime(FFConfig &config) {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
-  // Register machine views
-  register_all_machine_views(config.numNodes,
-                             config.workersPerNode,
-                             config.cpusPerNode,
-                             all_valid_views);
-  metrics_input = -1;
-  // Load strategy file
-  // Create field space
-  {
-    FieldAllocator allocator =
-        runtime->create_field_allocator(ctx, config.field_space);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
-  // Build training dataset
-  // if (config.datasetPath.length() == 0) {
-  //  dataLoader = NULL;
-  //} else {
-  //  dataLoader = new DataLoader(config.datasetPath);
-  //}
 
   ArgumentMap argmap;
   Rect<1> task_rect(Point<1>(0),
@@ -1425,6 +1500,9 @@ FFModel::FFModel(FFConfig &_config)
     // info.myRank = rank++;
     // info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
+    info.offload_reserve_space_size =
+        config.cpu_offload ? config.offload_reserve_space_size : 0;
+    info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
@@ -1446,12 +1524,61 @@ FFModel::FFModel(FFConfig &_config)
   }
 }
 
+FFRuntime *ffruntime_singleton = nullptr;
+
+FFModel::FFModel(FFConfig &_config, bool cpu_offload)
+    : op_global_guid(OP_GUID_FIRST_VALID),
+      layer_global_guid(LAYER_GUID_FIRST_VALID),
+      tensor_global_guid(TENSOR_GUID_FIRST_VALID),
+      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
+      node_global_guid(NODE_GUID_FIRST_VALID), current_transformer_layer_id(0),
+      config(_config), optimizer(NULL), loss_op(NULL), metrics_op(NULL),
+      simulator(NULL) {
+  this->search = new PCG::SearchHelper(this);
+  this->graph_search = new PCG::GraphSearchHelper(this);
+  this->cpu_offload = cpu_offload;
+
+  if (ffruntime_singleton == nullptr) {
+    ffruntime_singleton = new FFRuntime(_config);
+  }
+
+  Runtime *runtime = config.lg_hlr;
+  Context ctx = config.lg_ctx;
+  // Register machine views
+  register_all_machine_views(config.numNodes,
+                             config.workersPerNode,
+                             config.cpusPerNode,
+                             all_valid_views);
+  metrics_input = -1;
+  // Load strategy file
+  // Create field space
+  //{
+  //  FieldAllocator allocator =
+  //      runtime->create_field_allocator(ctx, config.field_space);
+  //  allocator.allocate_field(sizeof(float), FID_DATA);
+  //}
+  // Build training dataset
+  // if (config.datasetPath.length() == 0) {
+  //  dataLoader = NULL;
+  //} else {
+  //  dataLoader = new DataLoader(config.datasetPath);
+  //}
+  for (int idx = 0; idx < config.workersPerNode * config.numNodes; idx++) {
+    handlers[idx] = ffruntime_singleton->handlers[idx];
+  }
+}
+
+void FFModel::clear_graph_search_cache() {
+  this->graph_search->clear_cache();
+  this->search->clear_cache();
+}
+
 #ifdef FF_USE_NCCL
 ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
   auto const &it = view_hash_to_nccl_comms.find(view.hash());
   if (it == view_hash_to_nccl_comms.end()) {
     assert(config.computationMode == COMP_MODE_INFERENCE);
-    return NULL;
+    return nullptr;
   } else {
     return it->second;
   }
@@ -1707,6 +1834,7 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
   for (int i = 0; i < NDIM; i++) {
     p->dims[i] = dims[NDIM - 1 - i];
   }
+
   assert(p->get_volume() > 0);
   assert(p->check_valid());
   return p;
@@ -1821,6 +1949,12 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
     case DT_INT64:
       allocator.allocate_field(sizeof(int64_t), FID_DATA);
       break;
+    case DT_INT4:
+      allocator.allocate_field(sizeof(char), FID_DATA);
+      break;
+    case DT_INT8:
+      allocator.allocate_field(sizeof(char), FID_DATA);
+      break;
     default:
       assert(false);
   }
@@ -1869,8 +2003,10 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
           runtime->get_logical_partition(ctx, tensor->region_grad, ip);
     }
   }
-  // Step 3: initialize the tensor
-  if (tensor->initializer != NULL) {
+  // Step 3: initialize the tensor; don't randomly initialize weights
+  // for inference
+  if (tensor->initializer != NULL &&
+      config.computationMode == COMP_MODE_TRAINING) {
     tensor->initializer->init(this, tensor);
   }
 }
@@ -1907,6 +2043,7 @@ void FFModel::map_weight_with_dim(ParallelTensor weight,
   switch (parallel_op->op_type) {
     case OP_LINEAR:
     case OP_EMBEDDING:
+    case OP_EXPERTS:
     case OP_MULTIHEAD_ATTENTION: {
       switch (tdim) {
 #define DIMFUNC(TDIM)                                                          \
@@ -2723,9 +2860,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type == OP_WEIGHT) {
       continue;
     }
-    // don't fuse parallel op since they have different parallel_is in
-    // forward/backward
-    if (operators[l]->is_parallel_op()) {
+    // don't fuse parallel op except allReduce since they have different
+    // parallel_is in forward/backward
+    if (operators[l]->is_parallel_op() &&
+        operators[l]->op_type != OP_ALLREDUCE) {
       continue;
     }
     size_t start = 0;
@@ -2768,9 +2906,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
               operators[i]->op_type == OP_WEIGHT) {
             continue;
           }
-          // don't fuse parallel op since they have different parallel_is in
-          // forward/backward
-          if (operators[i]->is_parallel_op()) {
+          // don't fuse parallel op except allReduce since they have different
+          // parallel_is in forward/backward
+          if (operators[i]->is_parallel_op() &&
+              operators[i]->op_type != OP_ALLREDUCE) {
             continue;
           }
           fused_op = new FusedOp(*this, operators[i]);
@@ -2855,7 +2994,8 @@ Op *FFModel::create_operator_from_layer(
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel) {
+      if (config.only_data_parallel &&
+          config.computationMode == COMP_MODE_TRAINING) {
         Repartition *part = new Repartition(
             *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
         operators.push_back(part);
@@ -2865,6 +3005,24 @@ Op *FFModel::create_operator_from_layer(
     case OP_MULTIHEAD_ATTENTION: {
       Op *op =
           MultiHeadAttention::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = SpecIncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = IncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = TreeIncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2901,7 +3059,9 @@ Op *FFModel::create_operator_from_layer(
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL:
-    case OP_EW_DIV: {
+    case OP_EW_DIV:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -2919,6 +3079,7 @@ Op *FFModel::create_operator_from_layer(
     case OP_TANH:
     case OP_IDENTITY:
     case OP_GELU:
+    case OP_RSQRT:
     case OP_ELU: {
       Op *op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2929,8 +3090,18 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_GATHER: {
+      Op *op = Gather::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_LAYERNORM: {
       Op *op = LayerNorm::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_RMS_NORM: {
+      Op *op = RMSNorm::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2974,6 +3145,26 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_ARG_TOPK: {
+      Op *op = ArgTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_BEAM_TOPK: {
+      Op *op = BeamTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SAMPLING: {
+      Op *op = Sampling::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_ARGMAX: {
+      Op *op = ArgMax::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2989,6 +3180,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_EXPERTS: {
+      Op *op = Experts::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     default:
       assert(false);
   }
@@ -2996,7 +3192,9 @@ Op *FFModel::create_operator_from_layer(
 
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
-  for (auto const &l : layers) {
+  // for (auto const &l : layers) {
+  for (int layer_idx = 0; layer_idx < layers.size(); layer_idx++) {
+    auto const &l = layers[layer_idx];
     std::vector<ParallelTensor> inputs;
     for (int i = 0; i < l->numInputs; i++) {
       // create new input tensors
@@ -3004,7 +3202,109 @@ void FFModel::create_operators_from_layers() {
              tensors_to_parallel_tensors.end());
       inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
     }
-    Op *op = create_operator_from_layer(l, inputs);
+    Op *op = nullptr;
+    // add a combine before arg_topk
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
+         l->op_type == OP_ARGMAX)) {
+      std::vector<ParallelTensor> partitioned_inputs;
+      assert(inputs.size() == 1);
+      Combine *comb = new Combine(*this,
+                                  inputs[0],
+                                  0 /*inner most dim*/,
+                                  config.tensor_parallelism_degree);
+      partitioned_inputs.push_back(comb->outputs[0]);
+      operators.push_back(comb);
+      op = create_operator_from_layer(l, partitioned_inputs);
+    } else {
+      op = create_operator_from_layer(l, inputs);
+    }
+    // add replicate operators after op if needed
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 && l->op_type == OP_EMBEDDING) {
+      assert(op->numOutputs == 1);
+      Replicate *repl = new Replicate(*this,
+                                      op->outputs[0],
+                                      op->outputs[0]->num_dims - 1,
+                                      config.tensor_parallelism_degree);
+      operators.push_back(repl);
+      op = repl;
+    } else if (config.computationMode == COMP_MODE_INFERENCE &&
+               config.tensor_parallelism_degree > 1 &&
+               (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+                l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+                 layers[layer_idx - 1]->op_type == OP_RELU &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+                 layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+                 layers[layer_idx - 4]->op_type == OP_LINEAR &&
+                 layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+      assert(op->numOutputs == 1);
+      AllReduce *allreduce =
+          new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
+      operators.push_back(allreduce);
+      op = allreduce;
+    }
+#ifdef DEADCODE
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+         (l->op_type == OP_LINEAR && layer_idx + 3 <= layers.size() &&
+          layers[layer_idx + 1]->op_type == OP_RELU &&
+          layers[layer_idx + 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 6 <= layers.size() &&
+          layers[layer_idx + 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 2]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 5]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 5 <= layers.size() &&
+          layer_idx >= 1 && layers[layer_idx - 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 1]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_LINEAR))) {
+      std::vector<ParallelTensor> partitioned_inputs;
+      assert(inputs.size() == 1);
+      Replicate *repl = new Replicate(*this,
+                                      inputs[0],
+                                      inputs[0]->num_dims - 1,
+                                      config.tensor_parallelism_degree);
+      partitioned_inputs.push_back(repl->outputs[0]);
+      operators.push_back(repl);
+      op = create_operator_from_layer(l, partitioned_inputs);
+    } else {
+      op = create_operator_from_layer(l, inputs);
+    }
+    // Op *op = create_operator_from_layer(l, inputs);
+    //  add reduce operators if needed
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+         (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+          layers[layer_idx - 1]->op_type == OP_RELU &&
+          layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+          layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+          layers[layer_idx - 4]->op_type == OP_LINEAR &&
+          layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+      assert(op->numOutputs == 1);
+      Reduction *reduct = new Reduction(*this,
+                                        op->outputs[0],
+                                        op->outputs[0]->num_dims - 1,
+                                        config.tensor_parallelism_degree);
+      operators.push_back(reduct);
+      op = reduct;
+    }
+#endif
     assert(op->numOutputs == l->numOutputs);
     for (int i = 0; i < op->numOutputs; i++) {
       tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
@@ -3073,6 +3373,7 @@ void FFModel::compile(LossType loss_type,
         ParallelTensor parallel_weight = nullptr;
         for (auto const &op : operators) {
           if (op->layer_guid == layer->layer_guid) {
+            std::cout << "opopop: " << op->name << "\n";
             assert(op->op_type == layer->op_type);
             assert(op->numWeights == layer->numWeights);
             parallel_weight = op->weights[i];
@@ -3132,6 +3433,7 @@ void FFModel::compile(LossType loss_type,
 
   for (size_t l = 0; l < operators.size(); l++) {
     Op *op = operators[l];
+
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != NULL);
     }
@@ -3140,13 +3442,16 @@ void FFModel::compile(LossType loss_type,
       assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
+
     op->map_output_tensors(*this);
     // for (int i = 0; i < op->numOutputs; i++) {
     //   // Output tensor
     //   map_tensor(op->outputs[i], op);
     // }
-    if (op->is_parallel_op()) {
-      ((ParallelOp *)op)->create_input_partition(*this);
+    if (config.computationMode == COMP_MODE_TRAINING) {
+      if (op->is_parallel_op()) {
+        ((ParallelOp *)op)->create_input_partition(*this);
+      }
     }
     // op->map_output_tensors(*this);
   }
@@ -3247,7 +3552,7 @@ void FFModel::compile(LossType loss_type,
              operators[i]->op_guid);
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j]->region;
-        printf("inputs[%d] region(%d,%d,%d)\n",
+        printf("\tinputs[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3255,7 +3560,7 @@ void FFModel::compile(LossType loss_type,
       }
       for (int j = 0; j < op->numOutputs; j++) {
         LogicalRegion handle = op->outputs[j]->region;
-        printf("outputs[%d] region(%d,%d,%d)\n",
+        printf("\toutputs[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3263,7 +3568,7 @@ void FFModel::compile(LossType loss_type,
       }
       for (int j = 0; j < op->numWeights; j++) {
         LogicalRegion handle = op->weights[j]->region;
-        printf("weights[%d] region(%d,%d,%d)\n",
+        printf("\tweights[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3276,22 +3581,22 @@ void FFModel::compile(LossType loss_type,
   assert(final_operator->numOutputs == 1);
   for (size_t i = 0; i < operators.size(); i++) {
     Op *op = operators[i];
-    printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
+    log_model.print("operator[%zu]: type(%d)", i, operators[i]->op_type);
     for (int j = 0; j < op->numInputs; j++) {
       LogicalRegion handle = op->inputs[j]->region;
-      printf("inputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
+      log_model.print("\tinputs[%d] region(%d,%d,%d)",
+                      j,
+                      handle.get_index_space().get_id(),
+                      handle.get_field_space().get_id(),
+                      handle.get_tree_id());
     }
     for (int j = 0; j < op->numOutputs; j++) {
       LogicalRegion handle = op->outputs[j]->region;
-      printf("outputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
+      log_model.print("\toutputs[%d] region(%d,%d,%d)",
+                      j,
+                      handle.get_index_space().get_id(),
+                      handle.get_field_space().get_id(),
+                      handle.get_tree_id());
     }
   }
   // assert(final_operator->outputs[0].num_dims == 2);
@@ -3334,18 +3639,17 @@ void FFModel::compile(LossType loss_type,
       assert(false && "Unsupported dim");
     }
   }
-  // init optimizer
-  assert(optimizer != NULL);
-  optimizer->init();
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    // init optimizer
+    assert(optimizer != NULL);
+    optimizer->init();
+  }
 
 #ifdef FF_USE_NCCL
-  if (config.computationMode == COMP_MODE_TRAINING) {
-    // init all nccl communicators
-    for (size_t l = 0; l < operators.size(); l++) {
-      // Only create nccl for weights
-      if (operators[l]->op_type != OP_WEIGHT) {
-        continue;
-      }
+  for (size_t l = 0; l < operators.size(); l++) {
+    // Only create nccl for weights in training
+    if ((operators[l]->op_type == OP_WEIGHT &&
+         config.computationMode == COMP_MODE_TRAINING)) {
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==
           view_hash_to_nccl_comms.end()) {
@@ -3363,6 +3667,7 @@ void FFModel::compile(LossType loss_type,
             false /*must*/,
             0 /*mapper_id*/,
             view.hash() /*MappingTagID*/);
+        index_launcher.concurrent = true;
         FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
         fm.wait_all_results();
         int idx = 0;
@@ -3691,10 +3996,13 @@ struct DefaultConfig {
   const static int cpusPerNode = 0;
   const static size_t searchBudget = -1;
   const static size_t simulatorWorkSpaceSize =
-      (size_t)2 * 1024 * 1024 * 1024; // 2GB
+      (size_t)2 * 1024 * 1024 * 1024; // 2 GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
-  const static bool onlyDataParallel = false;
+  const static size_t offloadReserveSpaceSize =
+      (size_t)8 * 1024 * 1024 * 1024; // 8 GB
+  const static bool cpuOffload = false;
+  const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
@@ -3725,7 +4033,13 @@ FFConfig::FFConfig() {
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   computationMode = COMP_MODE_TRAINING;
+  cpu_offload = DefaultConfig::cpuOffload;
+  offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
+  quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
+  data_parallelism_degree = 1;
+  tensor_parallelism_degree = 1;
+  pipeline_parallelism_degree = 1;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
@@ -3747,6 +4061,7 @@ FFConfig::FFConfig() {
   syntheticInput = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
+  perform_memory_search = false;
 
   // Parse input arguments
   {
@@ -3755,13 +4070,22 @@ FFConfig::FFConfig() {
     int argc = command_args.argc;
     parse_args(argv, argc);
   }
-  // Use Real::Machine::get_address_space_count() to obtain the number of nodes
-  numNodes = Realm::Machine::get_machine().get_address_space_count();
+  // Use Real::Machine to obtain resource information
+  Realm::Machine machine = Realm::Machine::get_machine();
+  numNodes = machine.get_address_space_count();
+  workersPerNode = Machine::ProcessorQuery(machine)
+                       .local_address_space()
+                       .only_kind(Processor::TOC_PROC)
+                       .count();
+  cpusPerNode = Machine::ProcessorQuery(machine)
+                    .local_address_space()
+                    .only_kind(Processor::LOC_PROC)
+                    .count();
 
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
   lg_ctx = Runtime::get_context();
-  field_space = runtime->create_field_space(lg_ctx);
+  // field_space = runtime->create_field_space(lg_ctx);
 }
 
 void FFConfig::parse_args(char **argv, int argc) {
@@ -3817,8 +4141,39 @@ void FFConfig::parse_args(char **argv, int argc) {
       export_strategy_file = std::string(argv[++i]);
       continue;
     }
+    if ((!strcmp(argv[i], "-offload"))) {
+      cpu_offload = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "-offload-reserve-space-size")) {
+      offload_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--4bit-quantization"))) {
+      quantization_type = DT_INT4;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--8bit-quantization"))) {
+      quantization_type = DT_INT8;
+      continue;
+    }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {
       only_data_parallel = true;
+      continue;
+    }
+    // data parallelism degree
+    if (!strcmp(argv[i], "-data-parallelism-degree")) {
+      data_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // tensor parallelism degree
+    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
+      tensor_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // pipeline parallelism degree
+    if (!strcmp(argv[i], "-pipeline-parallelism-degree")) {
+      pipeline_parallelism_degree = std::stoi(argv[++i]);
       continue;
     }
     if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
@@ -3831,6 +4186,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "-ll:gpu")) {
       workersPerNode = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-ll:fsize")) {
+      device_mem = atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--nodes")) {
@@ -3919,17 +4278,153 @@ void FFConfig::parse_args(char **argv, int argc) {
       substitution_json_path = std::string(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--memory-search")) {
+      perform_memory_search = true;
+      continue;
+    }
   }
 }
 
-void register_flexflow_internal_tasks() {
+void register_flexflow_internal_tasks(Runtime *runtime,
+                                      bool pre_register,
+                                      bool enable_control_replication) {
+  if (!pre_register) {
+    assert(runtime != NULL);
+  }
   // CNN_INIT_TASK
   {
     TaskVariantRegistrar registrar(FF_INIT_TASK_ID, "cuda_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
-        registrar, "cuda_init_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<FFHandler,
+                                        UtilityTasks::init_cuda_task>(
+          registrar, "cuda_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
+          registrar);
+    }
+  }
+  // RequestManager load_tokens
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_TOKENS_TASK_ID,
+                                   "RequestManager Load Tokens");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
+          registrar, "RequestManager Load Tokens Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_tokens_task>(
+          registrar);
+    }
+  }
+  // RequestManager load position tokens
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_POSITION_TASK_ID,
+                                   "RequestManager Load Position tokens");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_positions_task>(
+          registrar, "RequestManager Load Position Tokens Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_positions_task>(
+          registrar);
+    }
+  }
+  // RequestManager prepare_next_batch
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_TASK_ID,
+                                   "RequestManager Prepare Next Batch");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BatchConfig,
+          RequestManager::prepare_next_batch_task>(
+          registrar, "RequestManager Prepare Next Batch Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchConfig,
+                                     RequestManager::prepare_next_batch_task>(
+          registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_beam
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+                                   "RequestManager Prepare Next Batch (Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_beam_task>(
+          registrar, "RequestManager Prepare Next Batch (Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_beam_task>(
+              registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_init
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+        "RequestManager Prepare Next Batch (Init Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_init_task>(
+          registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_init_task>(
+              registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_verify
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
+        "RequestManager Prepare Next Batch (Verify)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(
+          registrar, "RequestManager Prepare Next Batch (Verify) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(registrar);
+    }
   }
   // ElementUnary task
   {
@@ -3937,24 +4432,46 @@ void register_flexflow_internal_tasks() {
                                    "ElementWiseUnary Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, ElementUnary::init_task>(
-        registrar, "ElementWiseUnary Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ElementUnary::init_task>(
+          registrar, "ElementWiseUnary Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ElementUnary::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_FWD_TASK_ID,
                                    "ElementWiseUnary Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ElementUnary::forward_task>(
-        registrar, "ElementWiseUnary Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementUnary::forward_task>(
+          registrar, "ElementWiseUnary Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementUnary::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_BWD_TASK_ID,
                                    "ElementWiseUnary Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ElementUnary::backward_task>(
-        registrar, "ElementWiseUnary Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementUnary::backward_task>(
+          registrar, "ElementWiseUnary Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementUnary::backward_task>(registrar);
+    }
   }
   // ElementBinary task
   {
@@ -3962,68 +4479,189 @@ void register_flexflow_internal_tasks() {
                                    "ElementWiseBinary Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, ElementBinary::init_task>(
-        registrar, "ElementWiseBinary Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ElementBinary::init_task>(
+          registrar, "ElementWiseBinary Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ElementBinary::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ELEMENTBINARY_FWD_TASK_ID,
                                    "ElementWiseBinary Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ElementBinary::forward_task>(
-        registrar, "ElementWiseBinary Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementBinary::forward_task>(
+          registrar, "ElementWiseBinary Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementBinary::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ELEMENTBINARY_BWD_TASK_ID,
                                    "ElementWiseBinary Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ElementBinary::backward_task>(
-        registrar, "ElementWiseBinary Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementBinary::backward_task>(
+          registrar, "ElementWiseBinary Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementBinary::backward_task>(registrar);
+    }
+  }
+  // Experts
+  {
+    TaskVariantRegistrar registrar(EXPERTS_INIT_TASK_ID, "Experts Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Experts::init_task>(
+          registrar, "Experts Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Experts::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_FWD_TASK_ID, "Experts Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::forward_task>(
+          registrar, "Experts Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_BWD_TASK_ID, "Experts Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::backward_task>(
+          registrar, "Experts Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_INF_TASK_ID, "Experts Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::inference_task>(
+          registrar, "Experts Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::inference_task>(registrar);
+    }
   }
   // Cast
   {
     TaskVariantRegistrar registrar(CAST_INIT_TASK_ID, "Cast Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Cast::init_task>(
-        registrar, "Cast Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Cast::init_task>(
+          registrar, "Cast Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Cast::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CAST_FWD_TASK_ID, "Cast Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Cast::forward_task>(registrar,
-                                                          "Cast Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Cast::forward_task>(
+          registrar, "Cast Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Cast::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CAST_BWD_TASK_ID, "Cast Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Cast::backward_task>(
-        registrar, "Cast Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Cast::backward_task>(
+          registrar, "Cast Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Cast::backward_task>(registrar);
+    }
   }
   // Conv2D task
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "Conv2D Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Conv2D::init_task>(
-        registrar, "Conv2D Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Conv2D::init_task>(
+          registrar, "Conv2D Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Conv2D::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CONV2D_FWD_TASK_ID, "Conv2D Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::forward_task>(
-        registrar, "Conv2D Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Conv2D::forward_task>(
+          registrar, "Conv2D Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Conv2D::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CONV2D_BWD_TASK_ID, "Conv2D Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::backward_task>(
-        registrar, "Conv2D Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Conv2D::backward_task>(
+          registrar, "Conv2D Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Conv2D::backward_task>(registrar);
+    }
   }
   //{
   //  TaskVariantRegistrar registrar(CONV2D_UPD_TASK_ID, "Conv2D Update");
@@ -4037,44 +4675,86 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(DROPOUT_INIT_TASK_ID, "Dropout Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Dropout::init_task>(
-        registrar, "Dropout Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Dropout::init_task>(
+          registrar, "Dropout Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Dropout::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(DROPOUT_FWD_TASK_ID, "Dropout Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Dropout::forward_task>(
-        registrar, "Dropout Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Dropout::forward_task>(
+          registrar, "Dropout Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Dropout::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(DROPOUT_BWD_TASK_ID, "Dropout Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Dropout::backward_task>(
-        registrar, "Dropout Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Dropout::backward_task>(
+          registrar, "Dropout Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Dropout::backward_task>(registrar);
+    }
   }
   // Embedding task GPU
   {
     TaskVariantRegistrar registrar(EMBED_INIT_TASK_ID, "Embedding Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Embedding::init_task>(
-        registrar, "Embedding Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Embedding::init_task>(
+          registrar, "Embedding Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Embedding::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "Embedding Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Embedding::forward_task>(
-        registrar, "Embedding Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Embedding::forward_task>(
+          registrar, "Embedding Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Embedding::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(EMBED_BWD_TASK_ID, "Embedding Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Embedding::backward_task>(
-        registrar, "Embedding Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Embedding::backward_task>(
+          registrar, "Embedding Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Embedding::backward_task>(registrar);
+    }
   }
   // Embedding task CPU
   /* {
@@ -4091,50 +4771,135 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+  // Gather task
+  {
+    TaskVariantRegistrar registrar(GATHER_INIT_TASK_ID, "Gather Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
+          registrar, "Gather Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Gather::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_FWD_TASK_ID, "Gather Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Gather::forward_task>(
+          registrar, "Gather Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Gather::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_BWD_TASK_ID, "Gather Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Gather::backward_task>(
+          registrar, "Gather Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Gather::backward_task>(registrar);
+    }
+  }
 
   // Cache task CPU
   {
     TaskVariantRegistrar registrar(CACHE_INIT_TASK_ID, "Cache Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Cache::init_task>(
-        registrar, "Cache Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Cache::init_task>(
+          registrar, "Cache Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Cache::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CACHE_FWD_TASK_ID, "Cache Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Cache::forward_task>(
-        registrar, "Cache Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Cache::forward_task>(
+          registrar, "Cache Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Cache::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CACHE_UPDATE_TASK_ID, "Cache Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<float, Cache::update_task>(
-        registrar, "Cache Update Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<float, Cache::update_task>(
+          registrar, "Cache Update Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<float, Cache::update_task>(registrar);
+    }
   }
   // Group by task CPU
   {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Group_by::init_task>(
-        registrar, "Group_by Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Group_by::init_task>(
+          registrar, "Group_by Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Group_by::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "Group_by Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Group_by::forward_task>(
-        registrar, "Group_by Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Group_by::forward_task>(
+          registrar, "Group_by Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Group_by::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "Group_by Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Group_by::backward_task>(
-        registrar, "Group_by Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Group_by::backward_task>(
+          registrar, "Group_by Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Group_by::backward_task>(registrar);
+    }
   }
 
   // Aggregate task CPU
@@ -4142,22 +4907,43 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Aggregate::init_task>(
-        registrar, "Aggregate Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Aggregate::init_task>(
+          registrar, "Aggregate Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Aggregate::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(AGGREGATE_FWD_TASK_ID, "Aggregate Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Aggregate::forward_task>(
-        registrar, "Aggregate Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Aggregate::forward_task>(
+          registrar, "Aggregate Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Aggregate::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(AGGREGATE_BWD_TASK_ID, "Aggregate Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Aggregate::backward_task>(
-        registrar, "Aggregate Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Aggregate::backward_task>(
+          registrar, "Aggregate Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Aggregate::backward_task>(registrar);
+    }
   }
 
   // AggregateSpec task CPU
@@ -4166,24 +4952,46 @@ void register_flexflow_internal_tasks() {
                                    "Aggregate specification Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, AggregateSpec::init_task>(
-        registrar, "Aggregate specification Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, AggregateSpec::init_task>(
+          registrar, "Aggregate specification Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, AggregateSpec::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(AGG_SPEC_FWD_TASK_ID,
                                    "Aggregate specification Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<AggregateSpec::forward_task>(
-        registrar, "Aggregate specification Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<AggregateSpec::forward_task>(
+          registrar, "Aggregate specification Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AggregateSpec::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(AGG_SPEC_BWD_TASK_ID,
                                    "Aggregate specification Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<AggregateSpec::backward_task>(
-        registrar, "Aggregate specification Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<AggregateSpec::backward_task>(
+          registrar, "Aggregate specification Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AggregateSpec::backward_task>(registrar);
+    }
   }
 
   // Pool2D task
@@ -4191,44 +4999,86 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Pool2D::init_task>(
-        registrar, "pool2d_init_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Pool2D::init_task>(
+          registrar, "pool2d_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Pool2D::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(POOL2D_FWD_TASK_ID, "pool2d_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Pool2D::forward_task>(registrar,
-                                                            "pool2d_fwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Pool2D::forward_task>(
+          registrar, "pool2d_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Pool2D::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(POOL2D_BWD_TASK_ID, "pool2d_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Pool2D::backward_task>(registrar,
-                                                             "pool2d_bwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Pool2D::backward_task>(
+          registrar, "pool2d_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Pool2D::backward_task>(registrar);
+    }
   }
   // BatchNorm task
   {
     TaskVariantRegistrar registrar(BATCHNORM_INIT_TASK_ID, "bn_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, BatchNorm::init_task>(
-        registrar, "bn_init_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, BatchNorm::init_task>(
+          registrar, "bn_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, BatchNorm::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::forward_task>(registrar,
-                                                               "bn_fwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<BatchNorm::forward_task>(registrar,
+                                                                 "bn_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchNorm::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_BWD_TASK_ID, "bn_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::backward_task>(registrar,
-                                                                "bn_bwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<BatchNorm::backward_task>(
+          registrar, "bn_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchNorm::backward_task>(registrar);
+    }
   }
   // BatchMatmul task
   {
@@ -4236,24 +5086,46 @@ void register_flexflow_internal_tasks() {
                                    "BatchMatmul Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, BatchMatmul::init_task>(
-        registrar, "BatchMatmul Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, BatchMatmul::init_task>(
+          registrar, "BatchMatmul Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, BatchMatmul::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(BATCHMATMUL_FWD_TASK_ID,
                                    "BatchMatmul Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchMatmul::forward_task>(
-        registrar, "BatchMatmul Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<BatchMatmul::forward_task>(
+          registrar, "BatchMatmul Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchMatmul::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(BATCHMATMUL_BWD_TASK_ID,
                                    "BatchMatmul Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchMatmul::backward_task>(
-        registrar, "BatchMatmul Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<BatchMatmul::backward_task>(
+          registrar, "BatchMatmul Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchMatmul::backward_task>(registrar);
+    }
   }
   // LayerNorm task
   {
@@ -4261,104 +5133,262 @@ void register_flexflow_internal_tasks() {
                                    "layernorm_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, LayerNorm::init_task>(
-        registrar, "layernorm_init_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, LayerNorm::init_task>(
+          registrar, "layernorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, LayerNorm::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(LAYERNORM_FWD_TASK_ID, "layernorm_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<LayerNorm::forward_task>(
-        registrar, "layernorm_fwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<LayerNorm::forward_task>(
+          registrar, "layernorm_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LayerNorm::forward_task>(registrar);
+    }
+  }
+  // rms norm task
+  {
+    TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID, "rmsnorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, RMSNorm::init_task>(
+          registrar, "rmsnorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, RMSNorm::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RMSNROM_FWD_TASK_ID, "rmsnorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::forward_task>(
+          registrar, "rmsnorm_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<LayerNorm::backward_task>(
-        registrar, "layernorm_bwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<LayerNorm::backward_task>(
+          registrar, "layernorm_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LayerNorm::backward_task>(registrar);
+    }
   }
   // Linear task
   {
     TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "Linear Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Linear::init_task>(
-        registrar, "Linear Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Linear::init_task>(
+          registrar, "Linear Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Linear::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_INF_TASK_ID, "Linear Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Linear::inference_task>(
+          registrar, "Linear Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Linear::inference_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "Linear Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::forward_task>(
-        registrar, "Linear Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Linear::forward_task>(
+          registrar, "Linear Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Linear::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(LINEAR_BWD_TASK_ID, "Linear Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::backward_task>(
-        registrar, "Linear Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Linear::backward_task>(
+          registrar, "Linear Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Linear::backward_task>(registrar);
+    }
   }
   // Flat task
   {
     TaskVariantRegistrar registrar(FLAT_INIT_TASK_ID, "flat_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Flat::init_task>(
-        registrar, "flat_init_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Flat::init_task>(
+          registrar, "flat_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Flat::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(FLAT_FWD_TASK_ID, "flat_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Flat::forward_task>(registrar,
-                                                          "flat_fwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Flat::forward_task>(registrar,
+                                                            "flat_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Flat::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(FLAT_BWD_TASK_ID, "flat_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Flat::backward_task>(registrar,
-                                                           "flat_bwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Flat::backward_task>(registrar,
+                                                             "flat_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Flat::backward_task>(registrar);
+    }
   }
   // Softmax task
   {
     TaskVariantRegistrar registrar(SOFTMAX_INIT_TASK_ID, "softmax_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Softmax::init_task>(
-        registrar, "softmax_init_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Softmax::init_task>(
+          registrar, "softmax_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Softmax::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(SOFTMAX_FWD_TASK_ID, "softmax_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Softmax::forward_task>(
-        registrar, "softmax_fwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Softmax::forward_task>(
+          registrar, "softmax_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Softmax::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Softmax::backward_task>(
-        registrar, "softmax_bwd_task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Softmax::backward_task>(
+          registrar, "softmax_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Softmax::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        Softmax::inference_task>(
+          registrar, "softmax_inf_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, Softmax::inference_task>(
+          registrar);
+    }
   }
   // compute Loss
   {
     TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Loss::backward_task>(
-        registrar, "Loss Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Loss::backward_task>(
+          registrar, "Loss Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Loss::backward_task>(registrar);
+    }
   }
   // compute Metrics
   {
     TaskVariantRegistrar registrar(METRICS_COMP_TASK_ID, "Metrics Compute");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerfMetrics, Metrics::compute_task>(
-        registrar, "Metrics Compute Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<PerfMetrics, Metrics::compute_task>(
+          registrar, "Metrics Compute Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<PerfMetrics, Metrics::compute_task>(
+          registrar);
+    }
   }
   // MSELoss
   //{
@@ -4373,163 +5403,461 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(UPDATE_METRICS_TASK_ID, "Update Metrics");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerfMetrics,
-                                      FFModel::update_metrics_task>(
-        registrar, "Update Metrics Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<PerfMetrics,
+                                        FFModel::update_metrics_task>(
+          registrar, "Update Metrics Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<PerfMetrics, FFModel::update_metrics_task>(
+          registrar);
+    }
   }
   // Concat task
   {
     TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "Concat Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Concat::init_task>(
-        registrar, "Concat Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Concat::init_task>(
+          registrar, "Concat Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Concat::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CONCAT_FWD_TASK_ID, "Concat Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Concat::forward_task>(
-        registrar, "Concat Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Concat::forward_task>(
+          registrar, "Concat Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Concat::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CONCAT_BWD_TASK_ID, "Concat Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Concat::backward_task>(
-        registrar, "Concat Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Concat::backward_task>(
+          registrar, "Concat Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Concat::backward_task>(registrar);
+    }
   }
   // Split task
   {
     TaskVariantRegistrar registrar(SPLIT_INIT_TASK_ID, "Split Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Split::init_task>(
-        registrar, "Split Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Split::init_task>(
+          registrar, "Split Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Split::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(SPLIT_FWD_TASK_ID, "Split Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Split::forward_task>(
-        registrar, "Split Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Split::forward_task>(
+          registrar, "Split Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Split::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(SPLIT_BWD_TASK_ID, "Split Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Split::backward_task>(
-        registrar, "Split Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Split::backward_task>(
+          registrar, "Split Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Split::backward_task>(registrar);
+    }
   }
   // Reduce task
   {
     TaskVariantRegistrar registrar(REDUCE_INIT_TASK_ID, "Reduce Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Reduce::init_task>(
-        registrar, "Reduce Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Reduce::init_task>(
+          registrar, "Reduce Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Reduce::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REDUCE_FWD_TASK_ID, "Reduce Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reduce::forward_task>(
-        registrar, "Reduce Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reduce::forward_task>(
+          registrar, "Reduce Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reduce::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REDUCE_BWD_TASK_ID, "Reduce Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reduce::backward_task>(
-        registrar, "Reduce Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reduce::backward_task>(
+          registrar, "Reduce Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reduce::backward_task>(registrar);
+    }
   }
   // Reshape task
   {
     TaskVariantRegistrar registrar(RESHAPE_INIT_TASK_ID, "Reshape Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Reshape::init_task>(
-        registrar, "Reshape Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Reshape::init_task>(
+          registrar, "Reshape Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Reshape::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(RESHAPE_FWD_TASK_ID, "Reshape Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reshape::forward_task>(
-        registrar, "Reshape Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reshape::forward_task>(
+          registrar, "Reshape Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reshape::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(RESHAPE_BWD_TASK_ID, "Reshape Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reshape::backward_task>(
-        registrar, "Reshape Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reshape::backward_task>(
+          registrar, "Reshape Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reshape::backward_task>(registrar);
+    }
   }
   // Reverse task
   {
     TaskVariantRegistrar registrar(REVERSE_INIT_TASK_ID, "Reverse Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Reverse::init_task>(
-        registrar, "Reverse Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Reverse::init_task>(
+          registrar, "Reverse Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Reverse::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REVERSE_FWD_TASK_ID, "Reverse Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reverse::forward_task>(
-        registrar, "Reverse Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reverse::forward_task>(
+          registrar, "Reverse Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reverse::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REVERSE_BWD_TASK_ID, "Reverse Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reverse::backward_task>(
-        registrar, "Reverse Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reverse::backward_task>(
+          registrar, "Reverse Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reverse::backward_task>(registrar);
+    }
   }
   // Topk task
   {
     TaskVariantRegistrar registrar(TOPK_INIT_TASK_ID, "TopK Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, TopK::init_task>(
-        registrar, "TopK Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, TopK::init_task>(
+          registrar, "TopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, TopK::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(TOPK_FWD_TASK_ID, "TopK Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<TopK::forward_task>(registrar,
-                                                          "TopK Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<TopK::forward_task>(
+          registrar, "TopK Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<TopK::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(TOPK_BWD_TASK_ID, "TopK Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<TopK::backward_task>(
-        registrar, "TopK Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<TopK::backward_task>(
+          registrar, "TopK Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<TopK::backward_task>(registrar);
+    }
+  }
+  // ArgTopk task
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INIT_TASK_ID, "ArgTopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ArgTopK::init_task>(
+          registrar, "ArgTopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ArgTopK::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INF_TASK_ID, "ArgTopK Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgTopK::inference_task>(
+          registrar, "ArgTopK Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, ArgTopK::inference_task>(
+          registrar);
+    }
+  }
+  // BeamTopk task
+  {
+    TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
+          registrar, "BeamTopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, BeamTopK::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeamTopK Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        BeamTopK::inference_task>(
+          registrar, "BeamTopK Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     BeamTopK::inference_task>(registrar);
+    }
+  }
+  // Sampling task
+  {
+    TaskVariantRegistrar registrar(SAMPLING_INIT_TASK_ID, "Sampling Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Sampling::init_task>(
+          registrar, "Sampling Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Sampling::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SAMPLING_INF_TASK_ID, "Sampling Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        Sampling::inference_task>(
+          registrar, "Sampling Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, Sampling::inference_task>(
+          registrar);
+    }
+  }
+  // ArgMax task
+  {
+    TaskVariantRegistrar registrar(ARGMAX_INIT_TASK_ID, "ArgMax Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ArgMax::init_task>(
+          registrar, "ArgMax Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ArgMax::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_BEAM_INF_TASK_ID,
+                                   "ArgMax Beam Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        ArgMax::inference_task_beam>(
+          registrar, "ArgMax Inference Task Beam");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     ArgMax::inference_task_beam>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_NORM_INF_TASK_ID,
+                                   "ArgMax Norm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgMax::inference_task_norm>(
+          registrar, "ArgMax Inference Task Norm");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<InferenceResult, ArgMax::inference_task_norm>(
+              registrar);
+    }
   }
   // Transpose task
   {
     TaskVariantRegistrar registrar(TRANSPOSE_INIT_TASK_ID, "Transpose Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Transpose::init_task>(
-        registrar, "Transpose Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Transpose::init_task>(
+          registrar, "Transpose Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Transpose::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(TRANSPOSE_FWD_TASK_ID, "Transpose Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Transpose::forward_task>(
-        registrar, "Transpose Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Transpose::forward_task>(
+          registrar, "Transpose Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Transpose::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(TRANSPOSE_BWD_TASK_ID, "Transpose Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Transpose::backward_task>(
-        registrar, "Transpose Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Transpose::backward_task>(
+          registrar, "Transpose Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Transpose::backward_task>(registrar);
+    }
   }
   // MultiHeadAttention task
   {
@@ -4537,54 +5865,234 @@ void register_flexflow_internal_tasks() {
                                    "MultiHeadAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, MultiHeadAttention::init_task>(
-        registrar, "MultiHeadAttention Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *,
+                                        MultiHeadAttention::init_task>(
+          registrar, "MultiHeadAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, MultiHeadAttention::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ATTENTION_FWD_TASK_ID,
                                    "MultiHeadAttention Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<MultiHeadAttention::forward_task>(
-        registrar, "MultiHeadAttention Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<MultiHeadAttention::forward_task>(
+          registrar, "MultiHeadAttention Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<MultiHeadAttention::forward_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ATTENTION_BWD_TASK_ID,
                                    "MultiHeadAttention Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<MultiHeadAttention::backward_task>(
-        registrar, "MultiHeadAttention Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<MultiHeadAttention::backward_task>(
+          registrar, "MultiHeadAttention Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<MultiHeadAttention::backward_task>(
+          registrar);
+    }
+  }
+  // MultiHeadAttention task
+  {
+    TaskVariantRegistrar registrar(INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+                                   "IncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *,
+                                        IncMultiHeadSelfAttention::init_task>(
+          registrar, "IncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     IncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+                                   "IncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          IncMultiHeadSelfAttention::inference_task>(
+          registrar, "IncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<IncMultiHeadSelfAttention::inference_task>(
+          registrar);
+    }
+  }
+  // speculative MultiHeadAttention task
+  {
+    TaskVariantRegistrar registrar(
+        SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+        "Speculative IncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          OpMeta *,
+          SpecIncMultiHeadSelfAttention::init_task>(
+          registrar, "Speculative IncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     SpecIncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(
+        SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+        "Speculative IncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SpecIncMultiHeadSelfAttention::inference_task>(
+          registrar, "Speculative IncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SpecIncMultiHeadSelfAttention::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(
+        TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+        "TreeIncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          OpMeta *,
+          TreeIncMultiHeadSelfAttention::init_task>(
+          registrar, "TreeIncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     TreeIncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(
+        TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+        "TreeIncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeIncMultiHeadSelfAttention::inference_task>(
+          registrar, "TreeIncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeIncMultiHeadSelfAttention::inference_task>(registrar);
+    }
   }
   // NoOp
   {
     TaskVariantRegistrar registrar(NOOP_INIT_TASK_ID, "Weight NCCL Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, NoOp::init_task>(
-        registrar, "Weight NCCL Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, NoOp::init_task>(
+          registrar, "Weight NCCL Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, NoOp::init_task>(registrar);
+    }
   }
   // FusedOp Task
   {
     TaskVariantRegistrar registrar(FUSEDOP_INIT_TASK_ID, "FusedOp Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, FusedOp::init_task>(
-        registrar, "FusedOp Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, FusedOp::init_task>(
+          registrar, "FusedOp Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, FusedOp::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<FusedOp::forward_task>(
-        registrar, "FusedOp Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::forward_task>(
+          registrar, "FusedOp Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::inference_task>(
+          registrar, "FusedOp Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::inference_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(FUSEDOP_BWD_TASK_ID, "FusedOp Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<FusedOp::backward_task>(
-        registrar, "FusedOp Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::backward_task>(
+          registrar, "FusedOp Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::backward_task>(registrar);
+    }
   }
   // ParallelOp Task
   // Repartition
@@ -4593,76 +6101,233 @@ void register_flexflow_internal_tasks() {
                                    "Repartition Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Repartition::init_task>(
-        registrar, "Repartition init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Repartition::init_task>(
+          registrar, "Repartition init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Repartition::init_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REPARTITION_FWD_TASK_ID,
                                    "Repartition Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Repartition::forward_task>(
-        registrar, "Repartition Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Repartition::forward_task>(
+          registrar, "Repartition Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Repartition::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REPARTITION_BWD_TASK_ID,
                                    "Repartition Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Repartition::backward_task>(
-        registrar, "Repartition Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Repartition::backward_task>(
+          registrar, "Repartition Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Repartition::backward_task>(registrar);
+    }
   }
   // Combine
   {
     TaskVariantRegistrar registrar(COMBINE_INIT_TASK_ID, "Combine Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Combine::init_task>(
-        registrar, "Combine init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Combine::init_task>(
+          registrar, "Combine init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Combine::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(COMBINE_FWD_TASK_ID, "Combine Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Combine::forward_task>(
-        registrar, "Combine Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Combine::forward_task>(
+          registrar, "Combine Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Combine::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(COMBINE_BWD_TASK_ID, "Combine Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Combine::backward_task>(
-        registrar, "Combine Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Combine::backward_task>(
+          registrar, "Combine Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Combine::backward_task>(registrar);
+    }
   }
   // Replicate
+  {
+    TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Replicate::init_task>(
+          registrar, "Replicate init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Replicate::init_task>(registrar);
+    }
+  }
   {
     TaskVariantRegistrar registrar(REPLICATE_FWD_TASK_ID, "Replicate Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Replicate::forward_task>(
-        registrar, "Replicate Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Replicate::forward_task>(
+          registrar, "Replicate Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Replicate::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REPLICATE_BWD_TASK_ID, "Replicate Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Replicate::backward_task>(
-        registrar, "Replicate Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Replicate::backward_task>(
+          registrar, "Replicate Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Replicate::backward_task>(registrar);
+    }
   }
   // Reduction
+  {
+    TaskVariantRegistrar registrar(REDUCTION_INIT_TASK_ID, "Reduction Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Reduction::init_task>(
+          registrar, "Reduction init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Reduction::init_task>(registrar);
+    }
+  }
   {
     TaskVariantRegistrar registrar(REDUCTION_FWD_TASK_ID, "Reduction Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reduction::forward_task>(
-        registrar, "Reduction Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reduction::forward_task>(
+          registrar, "Reduction Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reduction::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(REDUCTION_BWD_TASK_ID, "Reduction Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Reduction::backward_task>(
-        registrar, "Reduction Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Reduction::backward_task>(
+          registrar, "Reduction Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Reduction::backward_task>(registrar);
+    }
+  }
+  // AllReduce
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INIT_TASK_ID, "AllReduce Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
+          registrar, "AllReduce init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, AllReduce::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
+                                   "AllReduce Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::inference_task>(
+          registrar, "AllReduce Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::forward_task>(
+          registrar, "AllReduce Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::backward_task>(
+          registrar, "AllReduce Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::backward_task>(registrar);
+    }
   }
   // FusedParallelOp
   {
@@ -4670,16 +6335,30 @@ void register_flexflow_internal_tasks() {
                                    "FusedParallel Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<FusedParallelOp::forward_task>(
-        registrar, "FusedParallel Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedParallelOp::forward_task>(
+          registrar, "FusedParallel Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedParallelOp::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(FUSED_PARALLELOP_BWD_TASK_ID,
                                    "FusedParallel Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<FusedParallelOp::backward_task>(
-        registrar, "FusedParallel Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedParallelOp::backward_task>(
+          registrar, "FusedParallel Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedParallelOp::backward_task>(registrar);
+    }
   }
   // Optimizer
   {
@@ -4687,31 +6366,60 @@ void register_flexflow_internal_tasks() {
                                    "SGD Parameter Server Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
-        registrar, "SGD Parameter Server Update Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
+          registrar, "SGD Parameter Server Update Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SGDOptimizer::ps_update_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ADAM_UPD_PS_TASK_ID,
                                    "Adam Parameter Server Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
-        registrar, "Adam Parameter Server Update Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
+          registrar, "Adam Parameter Server Update Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AdamOptimizer::ps_update_task>(registrar);
+    }
   }
 #ifdef FF_USE_NCCL
   {
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID, "SGD NCCL Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
-        registrar, "SGD NCCL Update Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
+          registrar, "SGD NCCL Update Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SGDOptimizer::nccl_update_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ADAM_UPD_NCCL_TASK_ID, "Adam NCCL Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
-        registrar, "Adam NCCL Update Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
+          registrar, "Adam NCCL Update Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AdamOptimizer::nccl_update_task>(
+          registrar);
+    }
   }
 #endif
   // Initializer
@@ -4719,50 +6427,100 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID, "Zero Init");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ZeroInitializer::init_task_cpu>(
-        registrar, "Zero Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ZeroInitializer::init_task_cpu>(
+          registrar, "Zero Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ZeroInitializer::init_task_cpu>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID, "Zero Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ZeroInitializer::init_task>(
-        registrar, "Zero Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ZeroInitializer::init_task>(
+          registrar, "Zero Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ZeroInitializer::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID, "Constant Init");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ConstantInitializer::init_task_cpu>(
-        registrar, "Constant Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ConstantInitializer::init_task_cpu>(
+          registrar, "Constant Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ConstantInitializer::init_task_cpu>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID, "Constant Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ConstantInitializer::init_task>(
-        registrar, "Constant Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ConstantInitializer::init_task>(
+          registrar, "Constant Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ConstantInitializer::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(UNIFORM_INIT_TASK_ID, "Uniform Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<UniformInitializer::init_task>(
-        registrar, "Uniform Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<UniformInitializer::init_task>(
+          registrar, "Uniform Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<UniformInitializer::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(GLOROT_INIT_TASK_ID, "Glorot Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<GlorotUniform::init_task>(
-        registrar, "Glorot Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<GlorotUniform::init_task>(
+          registrar, "Glorot Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<GlorotUniform::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(NORMAL_INIT_TASK_ID, "Normalize Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<NormInitializer::init_task>(
-        registrar, "Normalize Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<NormInitializer::init_task>(
+          registrar, "Normalize Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<NormInitializer::init_task>(registrar);
+    }
   }
 #ifdef FF_USE_NCCL
   // NCCL
@@ -4771,17 +6529,33 @@ void register_flexflow_internal_tasks() {
                                    "NCCL GetUniqueId");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ncclUniqueId,
-                                      Op::get_nccl_unique_id_task>(
-        registrar, "NCCL GetUniqueId Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ncclUniqueId,
+                                        Op::get_nccl_unique_id_task>(
+          registrar, "NCCL GetUniqueId Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ncclUniqueId, Op::get_nccl_unique_id_task>(
+          registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(NCCL_INIT_COMMS_TASK_ID,
                                    "NCCL Init Communicators");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
-        registrar, "NCCL Init Communicators Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
+          registrar, "NCCL Init Communicators Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
+          registrar);
+    }
   }
 #endif
   // Search
@@ -4789,25 +6563,67 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(STRATEGY_SEARCH_TASK_ID, "Strategy Search");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Simulator::strategy_search_task>(
-        registrar, "Strategy Search Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Simulator::strategy_search_task>(
+          registrar, "Strategy Search Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Simulator::strategy_search_task>(
+          registrar);
+    }
   }
   // Graph optimize
   {
     TaskVariantRegistrar registrar(GRAPH_OPTIMIZE_TASK_ID, "Graph Optimize");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PCG::GraphOptimalViewSerialized,
-                                      PCG::Graph::graph_optimize_task>(
-        registrar, "Graph Optimize Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<PCG::GraphOptimalViewSerialized,
+                                        PCG::Graph::graph_optimize_task>(
+          registrar, "Graph Optimize Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<PCG::GraphOptimalViewSerialized,
+                                     PCG::Graph::graph_optimize_task>(
+          registrar);
+    }
   }
   // Parameter Server Prefetch task
   {
     TaskVariantRegistrar registrar(PS_PREFETCH_TASK_ID, "Weights Prefetch");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<UtilityTasks::dummy_task>(
-        registrar, "Weights Prefetch Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<UtilityTasks::dummy_task>(
+          registrar, "Weights Prefetch Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<UtilityTasks::dummy_task>(registrar);
+    }
+  }
+  // Tensor Equal task
+  {
+    TaskVariantRegistrar registrar(TENSOR_EQUAL_TASK_ID, "Tensor Equal");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<bool,
+                                        ParallelTensorBase::tensor_equal_task>(
+          registrar, "Tensor Equal Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<bool, ParallelTensorBase::tensor_equal_task>(
+              registrar);
+    }
   }
 }
 

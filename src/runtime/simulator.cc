@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/simulator.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -40,6 +41,11 @@ LegionRuntime::Logger::Category log_xfer_est("xfer_est");
 
 size_t CostMetrics::total_memory() const {
   return inputs_memory + outputs_memory + weights_memory;
+}
+
+float CostMetrics::total_memory_in_mb() const {
+  float mem_mb = (float)((total_memory()) / 1e4) / 1e2;
+  return mem_mb;
 }
 
 size_t CostMetrics::total_mem_diff_from(off_t sim_offset) const {
@@ -344,25 +350,6 @@ void Simulator::free_all() {
   offset = 0;
 }
 
-size_t data_type_size(DataType type) {
-  switch (type) {
-    case DT_HALF:
-      return sizeof(half);
-    case DT_FLOAT:
-      return sizeof(float);
-    case DT_DOUBLE:
-      return sizeof(double);
-    case DT_INT32:
-      return sizeof(int32_t);
-    case DT_INT64:
-      return sizeof(int64_t);
-    case DT_BOOLEAN:
-      return sizeof(bool);
-    default:
-      assert(false);
-  }
-}
-
 void *Simulator::allocate(size_t num_elements, DataType type) {
   size_t element_size = data_type_size(type);
   void *ret_ptr = base_ptr + offset;
@@ -537,7 +524,7 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
     ProfilingRecordKey key{params, mv};
     if (this->strict_hash_to_operator_cost.find(key) ==
         this->strict_hash_to_operator_cost.end()) {
-      CostMetrics cost_metrics;
+      CostMetrics cost_metrics{};
       bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
       if (!is_implemented) {
         handle_measure_operator_cost_unimplemented(op);
@@ -558,7 +545,7 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
       hash_to_operator_cost.find(hash);
 
   if (iter == hash_to_operator_cost.end()) {
-    CostMetrics cost_metrics;
+    CostMetrics cost_metrics{};
     bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
     if (!is_implemented) {
       handle_measure_operator_cost_unimplemented(op);

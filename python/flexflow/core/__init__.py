@@ -22,35 +22,52 @@ import os
 import sys
 
 from flexflow.config import *
+from flexflow.jupyter import *
+
 
 if flexflow_init_import():
-  # check which python binding to use
-  if flexflow_python_binding() == 'pybind11':
-    print("Using pybind11 flexflow bindings.")
-    from .flexflow_pybind11 import *
+  os.environ["NCCL_LAUNCH_MODE"] = "PARALLEL"
+  from legion_cffi import ffi, is_legion_python
+  from .flexflowlib import flexflow_library
+  
+  # Default python mode
+  if is_legion_python == False:
+    print("Using Default Python")
+    _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
+    _CPU_ONLY = bool(os.environ.get('CPU_ONLY_TEST'))
+    if not _CPU_ONLY and not "-ll:gpu" in sys.argv:
+      os.environ["REALM_DEFAULT_ARGS"] = "-ll:gpu 1"
+    if not _FF_BUILD_DOCS and not _CPU_ONLY:
+      from legion_top import (
+          legion_canonical_python_main,
+          legion_canonical_python_cleanup,
+      )
+      import atexit, sys, os
+      # run from jupyter
+      if "ipykernel_launcher.py" in sys.argv[0]:
+        sys_argv = ["python", "dummy.py"]
+        argv_dict = load_jupyter_config()
+        for key, value in argv_dict.items():
+          sys_argv.append(key)
+          sys_argv.append(str(value))
+      else:
+        sys_argv = [
+          "python",
+        ] + sys.argv
+      legion_canonical_python_main(sys_argv)
+      atexit.register(legion_canonical_python_cleanup)
   else:
-    print("Using cffi flexflow bindings.")
-    from .flexflow_cffi import *
+    print("Using Legion Python")
 
-  # check if use native python interpreter
-  if flexflow_python_interpreter() == 'native': 
-    print("Using native python")
-    if flexflow_python_binding() == 'pybind11':
-      from .flexflow_pybind11_internal import begin_flexflow_task, finish_flexflow_task
-      print("Using native python")
-      begin_flexflow_task(sys.argv)
-      atexit.register(finish_flexflow_task)
-    else:
-      from .flexflow_cffi_header import ffc, ffi
-      argv = []
-      for arg in sys.argv:
-        argv.append(ffi.new("char[]", arg.encode('ascii')))
-      ffc.begin_flexflow_task(len(sys.argv), argv)
-      atexit.register(ffc.finish_flexflow_task)
+  flexflow_library.initialize()
+
+  # check which python binding to use
+  if flexflow_python_binding() == "pybind11":
+      print("Using pybind11 flexflow bindings.")
+      from .flexflow_pybind11 import *
   else:
-    print("Using flexflow python")
-    
-  from .flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
+      print("Using cffi flexflow bindings.")
+      from .flexflow_cffi import *
 
 else:
   pass

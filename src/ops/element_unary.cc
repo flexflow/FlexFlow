@@ -27,11 +27,11 @@ Tensor FFModel::unary(OperatorType op,
                       char const *name,
                       float scalar) {
   Layer *ele = nullptr;
-  DataType dtype;
-  // FIXME: currently cast input to float if it has a lower type
-  if (x->data_type < DT_FLOAT) {
+  DataType dtype = x->data_type;
+  // if (x->data_type < DT_FLOAT) {
+  if (false) {
     dtype = DT_FLOAT;
-    std::string str(name);
+    std::string str = nullptr ? "" : std::string(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
     ele = new Layer(this,
                     op,
@@ -68,8 +68,13 @@ Op *ElementUnary::create_operator_from_layer(
   bool inplace = (bool)value;
   float scalar;
   layer->get_float_property("scalar", scalar);
-  return new ElementUnary(
-      model, layer->op_type, inputs[0], inplace, layer->name, scalar);
+  return new ElementUnary(model,
+                          layer->layer_guid,
+                          layer->op_type,
+                          inputs[0],
+                          inplace,
+                          layer->name,
+                          scalar);
 }
 
 ElementUnaryParams ElementUnary::get_params() const {
@@ -77,6 +82,7 @@ ElementUnaryParams ElementUnary::get_params() const {
   params.op_type = this->op_type;
   params.inplace = this->inplace;
   params.scalar = this->scalar;
+  params.layer_guid = this->layer_guid;
   return params;
 }
 
@@ -167,6 +173,7 @@ bool operator==(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {
 }
 
 ElementUnary::ElementUnary(FFModel &model,
+                           LayerID const &_layer_guid,
                            OperatorType _op_type,
                            const ParallelTensor x,
                            bool _inplace,
@@ -181,6 +188,7 @@ ElementUnary::ElementUnary(FFModel &model,
          1 /*outputs*/,
          x),
       inplace(_inplace), scalar(_scalar) {
+  layer_guid = _layer_guid;
   numOutputs = 1;
   int numdim = x->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -199,8 +207,13 @@ ElementUnary::ElementUnary(FFModel &model,
                            ElementUnaryParams const &params,
                            const ParallelTensor input,
                            char const *name)
-    : ElementUnary(
-          model, params.op_type, input, params.inplace, name, params.scalar) {}
+    : ElementUnary(model,
+                   params.layer_guid,
+                   params.op_type,
+                   input,
+                   params.inplace,
+                   name,
+                   params.scalar) {}
 
 void ElementUnary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
@@ -285,6 +298,56 @@ void ElementUnary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void ElementUnary::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher init_launcher(ELEMENTUNARY_INIT_TASK_ID,
+                              parallel_is,
+                              TaskArgument(this, sizeof(ElementUnary)),
+                              argmap,
+                              Predicate::TRUE_PRED,
+                              false /*must*/,
+                              0 /*mapper_id*/,
+                              machine_view_hash);
+  if (!inplace) {
+    init_launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[0]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          batch_inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
+    init_launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    init_launcher.add_field(1, FID_DATA);
+  } else {
+    init_launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[0]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
+
 OpMeta *ElementUnary::init_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
@@ -355,12 +418,64 @@ void ElementUnary::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+FutureMap
+    ElementUnary::inference(FFModel const &ff,
+                            BatchConfigFuture const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+
+  IndexLauncher launcher(ELEMENTUNARY_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  if (inplace) {
+    assert(batch_outputs[0]->part == batch_inputs[0]->part);
+    assert(batch_outputs[0]->region == batch_inputs[0]->region);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+  } else {
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    launcher.add_field(1, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
 void ElementUnary::forward_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
   ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
-  if (m->data_type == DT_FLOAT) {
+  if (m->data_type == DT_HALF) {
+    forward_task_with_type<half>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (m->data_type == DT_DOUBLE) {
     forward_task_with_type<double>(task, regions, ctx, runtime);
@@ -556,6 +671,8 @@ void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->op_type);
   sez.serialize(this->inplace);
   sez.serialize(scalar);
+  sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
@@ -666,11 +783,16 @@ Node ElementUnary::deserialize(FFModel &ff,
   dez.deserialize(op_type);
   dez.deserialize(inplace);
   dez.deserialize(scalar);
+  size_t id, transformer_layer_id;
+  dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
 
   ElementUnaryParams params;
   params.op_type = op_type;
   params.inplace = inplace;
   params.scalar = scalar;
+  params.layer_guid = layer_guid;
   return ff.get_or_create_node<ElementUnary>(inputs[0], params);
 }
 
@@ -678,8 +800,13 @@ Op *ElementUnary::materialize(FFModel &ff,
                               ParallelTensor inputs[],
                               int num_inputs) const {
   assert(num_inputs == 1);
-  return new ElementUnary(
-      ff, this->op_type, inputs[0], this->inplace, this->name, this->scalar);
+  return new ElementUnary(ff,
+                          this->layer_guid,
+                          this->op_type,
+                          inputs[0],
+                          this->inplace,
+                          this->name,
+                          this->scalar);
 }
 
 }; // namespace FlexFlow
@@ -691,6 +818,7 @@ size_t hash<FlexFlow::ElementUnaryParams>::operator()(
   hash_combine(key, params.op_type);
   hash_combine(key, params.scalar);
   hash_combine(key, params.inplace);
+  hash_combine(key, params.layer_guid.id);
   return key;
 }
 }; // namespace std

@@ -24,7 +24,9 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
+LayerNormMeta::LayerNormMeta(FFHandler handle,
+                             LayerNorm const *ln,
+                             MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
@@ -37,6 +39,8 @@ LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
   checkCUDA(hipMalloc(&scale_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(hipMalloc(&bias_ptr, sizeof(float) * effective_batch_size));
 }
+
+LayerNormMeta::~LayerNormMeta(void) {}
 
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
@@ -79,26 +83,26 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__global__ void
-    RowwiseMomentsCUDAKernel(int64_t N, T eps, T const *X, T *mean, T *rstd) {
-  __shared__ T m_shared[C10_WARP_SIZE];
-  __shared__ T v_shared[C10_WARP_SIZE];
+__global__ void RowwiseMomentsCUDAKernel(
+    int64_t N, float eps, T const *X, T *mean, T *rstd) {
+  __shared__ float m_shared[C10_WARP_SIZE];
+  __shared__ float v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
-  T sum1 = 0;
-  T sum2 = 0;
+  float sum1 = 0.0f;
+  float sum2 = 0.0f;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
-    sum1 += static_cast<T>(X[index]);
-    sum2 += static_cast<T>(X[index]) * static_cast<T>(X[index]);
+    sum1 += static_cast<float>(X[index]);
+    sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
-  sum1 = BlockReduceSum<T>(sum1, m_shared);
-  sum2 = BlockReduceSum<T>(sum2, v_shared);
+  sum1 = BlockReduceSum<float>(sum1, m_shared);
+  sum2 = BlockReduceSum<float>(sum2, v_shared);
   if (threadIdx.x == 0) {
-    const T scale = T(1) / static_cast<T>(N);
+    float const scale = float(1) / static_cast<float>(N);
     sum1 *= scale;
-    sum2 = max(sum2 * scale - sum1 * sum1, T(0));
-    mean[i] = sum1;
-    rstd[i] = rsqrt(sum2 + static_cast<T>(eps));
+    sum2 = max(sum2 * scale - sum1 * sum1, float(0));
+    mean[i] = static_cast<T>(sum1);
+    rstd[i] = static_cast<T>(rsqrt(sum2 + eps));
   }
 }
 
@@ -129,10 +133,10 @@ template <typename T>
 void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T const *in_ptr,
                                T *out_ptr,
-                               T *gamma_ptr,
-                               T *beta_ptr,
+                               T const *gamma_ptr,
+                               T const *beta_ptr,
                                hipStream_t stream) {
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<float>),
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<T>),
                      m->effective_batch_size,
                      kCUDABlockReduceNumThreads,
                      0,
@@ -140,33 +144,47 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                      m->effective_num_elements,
                      m->eps,
                      in_ptr,
-                     m->mean_ptr,
-                     m->rstd_ptr);
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<float>),
+                     static_cast<T *>(m->mean_ptr),
+                     static_cast<T *>(m->rstd_ptr));
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<T>),
                      m->effective_batch_size,
                      kCUDANumThreads,
                      0,
                      stream,
                      m->effective_num_elements,
                      in_ptr,
-                     m->mean_ptr,
-                     m->rstd_ptr,
+                     static_cast<T *>(m->mean_ptr),
+                     static_cast<T *>(m->rstd_ptr),
                      gamma_ptr,
                      beta_ptr,
                      out_ptr);
 }
 
 /*static*/
-template <typename T>
 void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
-                                       T const *in_ptr,
-                                       T *out_ptr,
-                                       T *gamma_ptr,
-                                       T *beta_ptr) {
+                                       GenericTensorAccessorR const &input,
+                                       GenericTensorAccessorW &output,
+                                       GenericTensorAccessorR const &gamma,
+                                       GenericTensorAccessorR const &beta) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  LayerNorm::forward_kernel<float>(
-      m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
+  if (m->input_type[0] == DT_FLOAT) {
+    LayerNorm::forward_kernel<float>(m,
+                                     input.get_float_ptr(),
+                                     output.get_float_ptr(),
+                                     gamma.get_float_ptr(),
+                                     beta.get_float_ptr(),
+                                     stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    LayerNorm::forward_kernel<half>(m,
+                                    input.get_half_ptr(),
+                                    output.get_half_ptr(),
+                                    gamma.get_half_ptr(),
+                                    beta.get_half_ptr(),
+                                    stream);
+  } else {
+    assert(false && "unsupport datatype in layernorm");
+  }
 }
 
 template <typename T>
@@ -367,8 +385,8 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                      output_grad_ptr,
                      input_ptr,
                      gamma_ptr,
-                     m->ds_ptr,
-                     m->db_ptr);
+                     static_cast<T *>(m->ds_ptr),
+                     static_cast<T *>(m->db_ptr));
   const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeGradientFusedParamsCUDAKernel<T>),
                      B,
@@ -377,12 +395,12 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                      stream,
                      M,
                      N,
-                     m->mean_ptr,
-                     m->rstd_ptr,
-                     m->ds_ptr,
-                     m->db_ptr,
-                     m->scale_ptr,
-                     m->bias_ptr);
+                     static_cast<T *>(m->mean_ptr),
+                     static_cast<T *>(m->rstd_ptr),
+                     static_cast<T *>(m->ds_ptr),
+                     static_cast<T *>(m->db_ptr),
+                     static_cast<T *>(m->scale_ptr),
+                     static_cast<T *>(m->bias_ptr));
   if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
     if (M < 512) {
       // For small batch size, do colwise reduce directly
@@ -396,8 +414,8 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                          N,
                          output_grad_ptr,
                          input_ptr,
-                         m->mean_ptr,
-                         m->rstd_ptr,
+                         static_cast<T *>(m->mean_ptr),
+                         static_cast<T *>(m->rstd_ptr),
                          gamma_grad_ptr,
                          beta_grad_ptr);
     } else {
@@ -414,8 +432,8 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                          N,
                          output_grad_ptr,
                          input_ptr,
-                         m->mean_ptr,
-                         m->rstd_ptr,
+                         static_cast<T *>(m->mean_ptr),
+                         static_cast<T *>(m->rstd_ptr),
                          gamma_grad_ptr,
                          beta_grad_ptr);
     }
@@ -443,11 +461,6 @@ void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
                                     stream);
 }
 
-template void LayerNorm::forward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                                       float const *in_ptr,
-                                                       float *out_ptr,
-                                                       float *gamma_ptr,
-                                                       float *beta_ptr);
 template void
     LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
                                               float const *output_grad_ptr,

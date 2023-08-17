@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from .internal import BatchMatmul, Sin, Cos, Exp, Pow
+from .internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum
 
 
 def batch_dot(x, y):
@@ -34,3 +34,7 @@ def exp(x):
 
 def pow(x, a):
     return Pow(a)(x)
+
+
+def sum(x, axis=None, keepdims=False):
+    return ReduceSum(axis, keepdims)(x)

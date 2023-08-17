@@ -37,14 +37,15 @@ namespace FlexFlow {
 // ========================================================
 // Define Runtime Constants
 // ========================================================
-#define MAX_NUM_INPUTS 256
-#define MAX_NUM_WEIGHTS 64
-#define MAX_NUM_OUTPUTS 256
-#define MAX_NUM_FUSED_OPERATORS 64
-#define MAX_NUM_FUSED_TENSORS 64
+#define MAX_NUM_INPUTS 2048
+#define MAX_NUM_WEIGHTS 2048
+#define MAX_NUM_OUTPUTS 2048
+#define MAX_NUM_FUSED_OPERATORS 2048
+#define MAX_NUM_FUSED_TENSORS 2048
 #define MAX_NUM_WORKERS 1024
 #define MAX_FILENAME 200
 #define MAX_OPNAME 128
+#define MAX_NUM_TRANSFORMER_LAYERS 100
 // DataLoader
 #define MAX_SAMPLES_PER_LOAD 64
 #define MAX_FILE_LENGTH 128
@@ -70,6 +71,9 @@ struct FFHandler {
 #endif
   void *workSpace;
   size_t workSpaceSize;
+  void *offload_reserve_space;
+  size_t offload_reserve_space_size;
+  DataType quantization_type;
   bool allowTensorOpMathConversion;
 #ifdef FF_USE_NCCL
   ncclComm_t ncclComm;
@@ -78,6 +82,8 @@ struct FFHandler {
 
 struct FFInitInfo {
   size_t workSpaceSize;
+  size_t offload_reserve_space_size;
+  DataType quantization_type;
   bool allowTensorOpMathConversion;
   // int myRank, allRanks;
 };
@@ -117,23 +123,31 @@ public:
   int epochs, batchSize, printFreq;
   // int inputHeight, inputWidth;
   int numNodes, cpusPerNode, workersPerNode;
+  float device_mem; // The device (GPU) memory threshold; given by -ll:fsize
   float learningRate, weightDecay;
   size_t workSpaceSize;
   Legion::Context lg_ctx;
   Legion::Runtime *lg_hlr;
-  Legion::FieldSpace field_space;
+  // Legion::FieldSpace field_space;
   bool syntheticInput, profiling, perform_fusion;
   size_t simulator_work_space_size;
   size_t search_budget;
   float search_alpha;
   bool search_overlap_backward_update;
   CompMode computationMode;
+  bool cpu_offload;
+  size_t offload_reserve_space_size;
+  DataType quantization_type;
   // Control parallelizable dimensions
   bool only_data_parallel;
   bool enable_sample_parallel;
   bool enable_parameter_parallel;
   bool enable_attribute_parallel;
   bool enable_inplace_optimizations;
+  // Control parallelism degrees in inference
+  int data_parallelism_degree;
+  int tensor_parallelism_degree;
+  int pipeline_parallelism_degree;
   // Control Tensor Op Math Conversion
   bool allow_tensor_op_math_conversion;
   std::string dataset_path;
@@ -155,6 +169,7 @@ public:
   int base_optimize_threshold;
   bool enable_control_replication;
   int python_data_loader_type;
+  bool perform_memory_search{false};
 };
 
 class FFIterationConfig {

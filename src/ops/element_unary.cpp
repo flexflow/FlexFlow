@@ -45,10 +45,11 @@ void ElementUnary::init_kernel(ElementUnaryMeta *m,
       assert(false);
   }
   checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(
+      m->inputTensor, input_domain, m->data_type));
   // input_domain == output_domain
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(
+      m->outputTensor, output_domain, m->data_type));
 }
 
 template <typename T>
@@ -81,7 +82,9 @@ __global__ void elewise_unary_forward_kernel(
         break;
       }
       case OP_GELU: {
-        out[i] = (T)(in[i] * 0.5 * erfc(-in[i] * M_SQRT1_2));
+        out[i] = (T)(in[i] * static_cast<T>(0.5f) *
+                     static_cast<T>(erfc(static_cast<float>(
+                         -in[i] * static_cast<T>(M_SQRT1_2)))));
         break;
       }
       case OP_RSQRT: {
@@ -189,7 +192,7 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
       case OP_GELU: {
         input_grad[i] =
             (T)(output_grad[i] *
-                (0.5 * erfc(-input[i] * M_SQRT1_2) -
+                (0.5 * static_cast<T>(erfc(-input[i] * M_SQRT1_2)) -
                  0.5 * M_SQRT1_2 * input[i] * exp(-input[i] * input[i] * 0.5)));
         break;
       }
@@ -284,6 +287,11 @@ ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
   checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
 }
 
+template void
+    ElementUnary::forward_kernel_wrapper<half>(ElementUnaryMeta const *m,
+                                               half const *input_ptr,
+                                               half *output_ptr,
+                                               size_t num_elements);
 template void
     ElementUnary::forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
                                                 float const *input_ptr,

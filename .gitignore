@@ -1,9 +1,7 @@
 # Compiled files
 /.tools/
-/python/flexflow_python
 /python/flexflow/core/legion_cffi.py
 python/flexflow/core/flexflow_cffi_header.py
-python/flexflow/core/legion_cffi_header.py
 *.pb.cc
 *.pb.h
 *.o
@@ -16,6 +14,11 @@ __pycache__/
 
 # C extensions
 *.so
+
+/inference/weights/*
+/inference/tokenizer/*
+/inference/prompt/*
+/inference/output/*
 
 # Distribution / packaging
 .Python
@@ -175,3 +178,10 @@ train-images-idx3-ubyte.gz
 train-labels-idx1-ubyte.gz
 train-images-idx3-ubyte
 train-labels-idx1-ubyte
+
+# Logs
+logs/
+gpt_tokenizer
+
+# pip version
+python/flexflow/version.txt

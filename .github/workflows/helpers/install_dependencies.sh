@@ -13,16 +13,6 @@ sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binu
 # Install CUDNN
 ./install_cudnn.sh
 
-# Install Miniconda
-echo "Installing Miniconda..."
-wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    chmod +x ./Miniconda3-latest-Linux-x86_64.sh && \
-    ./Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    rm ./Miniconda3-latest-Linux-x86_64.sh && \
-    /opt/conda/bin/conda upgrade --all && \
-    /opt/conda/bin/conda install conda-build conda-verify && \
-    /opt/conda/bin/conda clean -ya
-
 # Install HIP dependencies if needed
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-"cuda"}
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
@@ -35,12 +25,22 @@ elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; th
     rm ./amdgpu-install_22.20.50205-1_all.deb
     sudo amdgpu-install -y --usecase=hip,rocm --no-dkms
     sudo apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk
+
+    # Install protobuf v3.20.x manually
+    sudo apt-get update -y && sudo apt-get install -y pkg-config zip g++ zlib1g-dev unzip python autoconf automake libtool curl make
+    git clone -b 3.20.x https://github.com/protocolbuffers/protobuf.git
+    cd protobuf/
+    git submodule update --init --recursive
+    ./autogen.sh
+    ./configure
+    cores_available=$(nproc --all)
+    n_build_cores=$(( cores_available -1 ))
+    if (( n_build_cores < 1 )) ; then n_build_cores=1 ; fi
+    make -j $n_build_cores
+    sudo make install
+    sudo ldconfig
+    cd ..
 else
     echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"
 fi
 sudo rm -rf /var/lib/apt/lists/*
-
-# Install conda packages
-echo "Installing conda packages..."
-/opt/conda/bin/conda install cmake make pillow
-/opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension

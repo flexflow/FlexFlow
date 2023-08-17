@@ -63,9 +63,10 @@ struct ParallelDim {
     return false;
   }
 
-  int size = 0;
-  int degree = UNKNOWN_DEGREE;
-  int parallel_idx = UNKNOWN_INDEX;
+  int size = 0;                     // Actual size of tensor
+  int degree = UNKNOWN_DEGREE;      // Degree of sharding
+  int parallel_idx = UNKNOWN_INDEX; // Runtime information, unique id of each
+                                    // degree of sharding
   bool is_replica_dim = false;
 };
 
@@ -167,6 +168,20 @@ struct ParallelTensorBase {
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_parameters);
   ParallelTensorShape get_shape() const;
+
+  template <typename T>
+  bool tensor_equal(FFConfig &config, ParallelTensorBase &tensor);
+  static bool
+      tensor_equal_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
+  template <int NDIM>
+  static bool tensor_equal_task_with_dim(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
 
 private:
   template <typename T>

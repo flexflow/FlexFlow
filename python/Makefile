@@ -23,18 +23,21 @@ USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 USE_HIP         ?= 0		# Include HIP support (requires HIP)
 HIP_TARGET      ?= ROCM
-GPU_ARCH        ?= 60,61,62,70,72,75,80,86
 USE_GPU_REDUCTIONS ?= 0
-FF_USE_NCCL  ?= 0
+FF_USE_NCCL     ?= 0
+USE_PYTHON      := 1
+FF_USE_PYTHON   := 1
+SHARED_OBJECTS  := 1     # we build the shared lib for legion
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
-ifeq ($(strip $(DARWIN)),1)
+INSTALL_TOKENIZERS := $(shell $(FF_HOME)/scripts/install_tokenizer.sh)
+
+ifeq ($(shell uname -s), Darwin)
   PYTHON_EXT := dylib
 else
   PYTHON_EXT := so
 endif
 
-USE_PYTHON := 1
 ifndef PYTHON_LIB
   ifndef PYTHON_ROOT
     PYTHON_EXE := $(shell which python3 | head -1)
@@ -64,31 +67,31 @@ endif
 
 $(info    VAR is $(PYTHON_EXE))
 
+FF_HOME ?= ../
+LG_RT_DIR ?= $(FF_HOME)/deps/legion/runtime
+LG_PYTHON_BINDINGS_DIR ?= $(FF_HOME)/deps/legion/bindings/python
+
 # Put the binary file name here
-OUTFILE		  ?= flexflow_python
+LEGION_PYTHON_BIN		  ?= legion_python
 
-GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
-GEN_GPU_SRC	  ?= flexflow_dataloader.cu # .cu files
-ifeq ($(strip $(HIP_TARGET)),CUDA)
-GEN_HIP_SRC	  ?= flexflow_dataloader.cu # .cu files
-else
-GEN_HIP_SRC	  ?= flexflow_dataloader.cpp # .cpp files
-endif
+GEN_SRC		  ?= $(LG_PYTHON_BINDINGS_DIR)/main.cc # .cc files
 
-FF_NATIVE_LIB = flexflow/core/libflexflow_native_python.$(PYTHON_EXT)
-FF_NATIVE_LIB_NAME = libflexflow_native_python.$(PYTHON_EXT)
-INC_FLAGS     += -I${FF_HOME}
-CC_FLAGS      += -fPIC
-NVCC_FLAGS    += -Xcompiler -fPIC
+CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH
+
+FF_LIB = libflexflow.$(PYTHON_EXT)
+LEGION_CANONICAL_PYTHON_LIB := liblegion_canonical_python.$(PYTHON_EXT)
+
+INC_FLAGS     ?= -I${FF_HOME}
+LD_FLAGS      ?=
+CC_FLAGS      ?= -fPIC -DBINDINGS_AUGMENT_PYTHONPATH
+NVCC_FLAGS    ?= -Xcompiler -fPIC
 ifeq ($(strip $(USE_HIP)),1)
 ifeq ($(strip $(HIP_TARGET)),CUDA)
-HIPCC_FLAGS    += -Xcompiler -fPIC
+HIPCC_FLAGS    ?= -Xcompiler -fPIC
 else
-HIPCC_FLAGS    += -fPIC
+HIPCC_FLAGS    ?= -fPIC
 endif
 endif
-
-CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
 
 #INC_FLAGS       += -DDISABLE_LEGION_CUDA_HIJACK 
   
@@ -104,37 +107,45 @@ NVCC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
 HIPCC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
 endif
 
-ifeq ($(shell uname), Darwin)
-	LD_FLAGS += -Wl,-force_load,liblegion.a
-else
-	LD_FLAGS += -Wl,--whole-archive -llegion -Wl,--no-whole-archive
-endif
-
-FF_USE_PYTHON = $(USE_PYTHON)
-
-FF_HOME ?= ../
-LG_RT_DIR ?= $(FF_HOME)/deps/legion/runtime
-
 include $(FF_HOME)/FlexFlow.mk
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py $(FF_NATIVE_LIB)
+all: $(LEGION_PYTHON_BIN) flexflow/core/flexflow_cffi_header.py $(FF_LIB) legion_info.py legion_builtin_cffi.py legion_canonical_cffi.py $(LEGION_CANONICAL_PYTHON_LIB) legion_top.py legion_cffi.py
 
-DEFINE_HEADERS_DIR ?= ./
+$(LEGION_PYTHON_BIN) : $(LG_PYTHON_BINDINGS_DIR)/main.cc.o $(SLIB_LEGION) $(SLIB_REALM)
+	@echo "---> Linking objects into one binary: $(LEGION_PYTHON_BIN)"
+	$(CXX) -o $(LEGION_PYTHON_BIN) $(LG_PYTHON_BINDINGS_DIR)/main.cc.o $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS)
 
-flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legion.h
-	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
+legion_builtin_cffi.py: $(LG_PYTHON_BINDINGS_DIR)/legion_cffi.py.in $(LG_PYTHON_BINDINGS_DIR)/legion_cffi_build.py $(LEGION_DEFINES_HEADER) $(REALM_DEFINES_HEADER)
+	$(PYTHON_EXE) $(LG_PYTHON_BINDINGS_DIR)/legion_cffi_build.py --defines-dir $(DEFINE_HEADERS_DIR) --output-dir .
+
+legion_canonical_cffi.py: $(LG_PYTHON_BINDINGS_DIR)/legion_cffi.py.in $(LG_PYTHON_BINDINGS_DIR)/legion_cffi_build.py $(LEGION_DEFINES_HEADER) $(REALM_DEFINES_HEADER)
+	$(PYTHON_EXE) $(LG_PYTHON_BINDINGS_DIR)/legion_cffi_build.py --canonical --defines-dir $(DEFINE_HEADERS_DIR) --libname $(LEGION_CANONICAL_PYTHON_LIB) --output-dir .
+
+legion_info.py: $(LG_PYTHON_BINDINGS_DIR)/legion_info_build.py
+	$(PYTHON_EXE) $(LG_PYTHON_BINDINGS_DIR)/legion_info_build.py
+
+# build the shared lib for canonical python
+$(LEGION_CANONICAL_PYTHON_LIB): $(LG_PYTHON_BINDINGS_DIR)/canonical_python.cc $(SLIB_LEGION) $(SLIB_REALM)
+	$(CXX) $(CC_FLAGS) $(INC_FLAGS) -shared $< $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) -o $@
+
+# the following two are copy
+legion_top.py: $(LG_PYTHON_BINDINGS_DIR)/legion_top.py
+	cp -f $< $@
+
+legion_cffi.py: $(LG_PYTHON_BINDINGS_DIR)/legion_cffi.py
+	cp -f $< $@
 	
-flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
-	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_NATIVE_LIB_NAME) --output-dir flexflow/core
+flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py $(FF_HOME)/include/flexflow/flexflow_c.h
+	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --output-dir flexflow/core
 
-# build the .so for native python
+# build the .so for flexflow
 # hack: we do not need main.cc anymore
-NATIVE_SHARED_OBJS := $(filter-out main.cc.o,$(APP_OBJS))
-$(FF_NATIVE_LIB): $(NATIVE_SHARED_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
-	$(CXX) $(CC_FLAGS) $(INC_FLAGS) -shared -lstdc++ -L$(FF_HOME)/python $(NATIVE_SHARED_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) -o $@
+FF_SHARED_OBJS := $(filter-out $(LG_PYTHON_BINDINGS_DIR)/main.cc.o,$(APP_OBJS))
+$(FF_LIB): $(FF_SHARED_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
+	$(CXX) $(CC_FLAGS) $(INC_FLAGS) -shared -lstdc++ -L$(FF_HOME)/python $(FF_SHARED_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) -o $@
 
 clean::
-	$(RM) -f $(FF_NATIVE_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py *.pyc
+	$(RM) -f -f $(FF_LIB) $(LEGION_PYTHON_BIN) $(SLIB_LEGION) $(SLIB_REALM) $(APP_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) $(LEGION_CANONICAL_PYTHON_LIB) legion_defines.h realm_defines.h legion_builtin_cffi.py legion_canonical_cffi.py legion_info.py legion_top.py legion_cffi.py flexflow/core/flexflow_cffi_header.py *.pyc
 	$(RM) -rf build dist *.egg-info

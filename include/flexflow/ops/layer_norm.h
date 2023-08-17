@@ -1,7 +1,8 @@
 #pragma once
 
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
-
+#include "flexflow/utils/memory_allocator.h"
 namespace FlexFlow {
 
 class LayerNormMeta;
@@ -24,8 +25,17 @@ public:
             bool allocate_weights,
             char const *name);
   void init(FFModel const &);
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void forward(FFModel const &);
   void backward(FFModel const &);
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) {
     assert(0);
   }
@@ -63,15 +73,14 @@ public:
   static void forward_kernel(LayerNormMeta const *m,
                              T const *input_ptr,
                              T *output_ptr,
-                             T *gamma_ptr,
-                             T *beta_ptr,
+                             T const *gamma_ptr,
+                             T const *beta_ptr,
                              ffStream_t stream);
-  template <typename T>
   static void forward_kernel_wrapper(LayerNormMeta const *m,
-                                     T const *input_ptr,
-                                     T *output_ptr,
-                                     T *gamma_ptr,
-                                     T *beta_ptr);
+                                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW &output,
+                                     GenericTensorAccessorR const &gamma,
+                                     GenericTensorAccessorR const &beta);
   template <typename T>
   static void backward_kernel(LayerNormMeta const *m,
                               T const *output_grad_ptr,
@@ -99,14 +108,18 @@ public:
 
 class LayerNormMeta : public OpMeta {
 public:
-  LayerNormMeta(FFHandler handle, LayerNorm const *ln);
+  LayerNormMeta(FFHandler handle,
+                LayerNorm const *ln,
+                MemoryAllocator &gpu_mem_allocator);
+  ~LayerNormMeta(void);
 
 public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
-  float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+  void *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
   char op_name[MAX_OPNAME];
+  Realm::RegionInstance reserveInst;
 };
 
 }; // namespace FlexFlow

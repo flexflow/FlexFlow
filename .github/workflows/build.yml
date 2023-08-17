@@ -3,8 +3,10 @@ on:
   pull_request:
     paths:
       - "include/**"
+      - "inference/**"
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "src/**"
       - ".github/workflows/helpers/install_dependencies.sh"
@@ -14,8 +16,10 @@ on:
       - "master"
     paths:
       - "include/**"
+      - "inference/**"
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "src/**"
       - ".github/workflows/helpers/install_dependencies.sh"
@@ -29,6 +33,9 @@ jobs:
   cmake-build:
     name: Build FlexFlow with CMake
     runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
@@ -43,21 +50,27 @@ jobs:
         run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.8
+        uses: Jimver/cuda-toolkit@v0.2.11
         id: cuda-toolkit
         with:
-          cuda: "11.1.1"
+          cuda: "11.8.0"
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
           use-github-cache: "false"
 
-      - name: Install FlexFlow Dependencies
+      - name: Install system dependencies
         run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
+
+      - name: Install conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: flexflow
+          environment-file: conda/environment.yml
+          auto-activate-base: false
 
       - name: Build FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
+          export CUDNN_DIR="$CUDA_PATH"
+          export CUDA_DIR="$CUDA_PATH"
           export FF_HOME=$(pwd)
           export FF_GPU_BACKEND=${{ matrix.gpu_backend }}
           export FF_CUDA_ARCH=70
@@ -67,24 +80,33 @@ jobs:
           mkdir build
           cd build
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export FF_BUILD_ALL_EXAMPLES=ON 
+            export FF_BUILD_ALL_EXAMPLES=ON
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
             export FF_BUILD_UNIT_TESTS=ON
+          else 
+            export FF_BUILD_ALL_EXAMPLES=OFF
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=OFF
+            export FF_BUILD_UNIT_TESTS=OFF
           fi
           ../config/config.linux
           make -j $n_build_cores
 
       - name: Install FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
+          export CUDNN_DIR="$CUDA_PATH"
+          export CUDA_DIR="$CUDA_PATH"
           export FF_HOME=$(pwd)
           export FF_GPU_BACKEND=${{ matrix.gpu_backend }}
           export FF_CUDA_ARCH=70
           cd build
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export FF_BUILD_ALL_EXAMPLES=ON 
+            export FF_BUILD_ALL_EXAMPLES=ON
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
             export FF_BUILD_UNIT_TESTS=ON
+          else 
+            export FF_BUILD_ALL_EXAMPLES=OFF
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=OFF
+            export FF_BUILD_UNIT_TESTS=OFF
           fi
           ../config/config.linux
           sudo make install
@@ -93,24 +115,27 @@ jobs:
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
+          sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
+          export CPU_ONLY_TEST=1
           python -c "import flexflow.core; exit()"
 
       - name: Run C++ unit tests
         if: ${{ matrix.gpu_backend == 'cuda' }}
         run: |
-          export PATH=/opt/conda/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
+          export CUDNN_DIR="$CUDA_PATH"
+          export CUDA_DIR="$CUDA_PATH"
+          export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
           export FF_HOME=$(pwd)
-          export LD_LIBRARY_PATH=$CUDA_DIR/lib64/stubs:$LD_LIBRARY_PATH
-          sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
           cd build
           ./tests/unit/unit-test
 
   makefile-build:
     name: Build FlexFlow with the Makefile
     runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -121,20 +146,28 @@ jobs:
         run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.8
+        uses: Jimver/cuda-toolkit@v0.2.11
         id: cuda-toolkit
         with:
-          cuda: "11.1.1"
+          cuda: "11.8.0"
           use-github-cache: "false"
 
-      - name: Install FlexFlow Dependencies
+      - name: Install system dependencies
         run: .github/workflows/helpers/install_dependencies.sh
+
+      - name: Install conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: flexflow
+          environment-file: conda/environment.yml
+          auto-activate-base: false
 
       - name: Build FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
+          export CUDNN_DIR="$CUDA_PATH"
+          export CUDA_DIR="$CUDA_PATH"
+          export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
+          sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
           export FF_HOME=$(pwd)
           cores_available=$(nproc --all)
           n_build_cores=$(( cores_available -1 ))
@@ -142,4 +175,5 @@ jobs:
 
           cd python
           make -j $n_build_cores
+          export CPU_ONLY_TEST=1
           python -c 'import flexflow.core'

@@ -47,6 +47,9 @@ ifeq ($(strip $(USE_GASNET)),1)
   endif
 endif
 
+# disable hijack
+USE_CUDART_HIJACK = 1
+
 GEN_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/mapper/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/metrics_functions/ -name '*.cc')\
@@ -54,7 +57,10 @@ GEN_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/recompile/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/runtime/ -name '*.cc')\
-		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cc')
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/dataloader/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/c/ -name '*.cc')\
+		$(shell find $(FF_HOME)/inference/ -name 'file_loader.cc')
 GEN_SRC := $(filter-out $(FF_HOME)/src/runtime/cpp_driver.cc, $(GEN_SRC))
 
 FF_CUDA_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cu')\
@@ -64,7 +70,8 @@ FF_CUDA_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cu')\
 		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cu')\
 		$(shell find $(FF_HOME)/src/recompile/ -name '*.cu')\
 		$(shell find $(FF_HOME)/src/runtime/ -name '*.cu')\
-		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cu')
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/dataloader/ -name '*.cu')
 
 FF_HIP_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/mapper/ -name '*.cpp')\
@@ -73,7 +80,8 @@ FF_HIP_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/recompile/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/runtime/ -name '*.cpp')\
-		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cpp')
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/dataloader/ -name '*.cpp')
 		
 GEN_GPU_SRC += $(FF_CUDA_SRC)
 ifeq ($(strip $(HIP_TARGET)),CUDA)
@@ -87,15 +95,17 @@ ifneq ($(strip $(FF_USE_PYTHON)), 1)
 endif
 
 
-INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include
+INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/inference -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include -I${FF_HOME}/deps/tokenizers-cpp/include -I${FF_HOME}/deps/tokenizers-cpp/sentencepiece/src
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 GASNET_FLAGS	+=
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11
-NVCC_FLAGS	+= -std=c++11
-HIPCC_FLAGS     += -std=c++11
+CC_FLAGS	+= -std=c++17
+NVCC_FLAGS	+= -std=c++17
+HIPCC_FLAGS     += -std=c++17
+
+LD_FLAGS += -L$(FF_HOME)/deps/tokenizers-cpp/example/tokenizers -ltokenizers_cpp -ltokenizers_c -L$(FF_HOME)/deps/tokenizers-cpp/example/tokenizers/sentencepiece/src -lsentencepiece
 
 ifeq ($(strip $(FF_USE_NCCL)), 1)
 INC_FLAGS	+= -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
@@ -131,42 +141,9 @@ endif
 endif
 
 # CUDA arch variables
-GPU_ARCH ?= all
-
-# translate legacy arch names into numbers
-ifeq ($(strip $(GPU_ARCH)),pascal)
-override GPU_ARCH = 60
-NVCC_FLAGS	+= -DPASCAL_ARCH
-endif
-ifeq ($(strip $(GPU_ARCH)),volta)
-override GPU_ARCH = 70
-NVCC_FLAGS	+= -DVOLTA_ARCH
-endif
-ifeq ($(strip $(GPU_ARCH)),turing)
-override GPU_ARCH = 75
-NVCC_FLAGS	+= -DTURING_ARCH
-endif
-ifeq ($(strip $(GPU_ARCH)),ampere)
-override GPU_ARCH = 80
-NVCC_FLAGS	+= -DAMPERE_ARCH
-endif
-
-ifeq ($(strip $(GPU_ARCH)),all)
-  # detect based on what nvcc supports
-  ALL_ARCHES = 60 61 62 70 72 75 80 86
-  override GPU_ARCH = $(shell for X in $(ALL_ARCHES) ; do \
-    $(NVCC) -gencode arch=compute_$$X,code=sm_$$X -cuda -x c++ /dev/null -o /dev/null 2> /dev/null && echo $$X; \
-  done)
-endif
-
-# finally, convert space-or-comma separated list of architectures (e.g. 35,50)
-#  into nvcc -gencode arguments
-ifeq ($(findstring nvc++,$(shell $(NVCC) --version)),nvc++)
-NVCC_FLAGS += $(foreach X,$(subst $(COMMA), ,$(GPU_ARCH)),-gpu=cc$(X))
-else
-COMMA=,
-NVCC_FLAGS += $(foreach X,$(subst $(COMMA), ,$(GPU_ARCH)),-gencode arch=compute_$(X)$(COMMA)code=sm_$(X))
-endif
+# We cannot use the default "auto" setting here because it will try to compile FlexFlow and Legion for GPU archs < 60, 
+# which are not compatible with the half precision type.
+GPU_ARCH ?= 60 61 62 70 72 75 80 90
 
 #ifndef HDF5
 #HDF5_inc	?= /usr/include/hdf5/serial

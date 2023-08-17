@@ -38,6 +38,7 @@ class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
 class ElementBinaryMeta;
+class LayerNormMeta;
 // class EmbeddingMeta;
 // class SoftmaxMeta;
 class BatchMatmulMeta;
@@ -53,9 +54,16 @@ class FFModel;
  */
 struct CostMetrics {
   /**
-   * @brief Return the sum of the memory usage recorded in this CostMetrics.
+   * @brief Return the sum of inputs_memory, outputs_memory, and weights_memory
+   * recorded in this CostMetrics.
    */
   size_t total_memory() const;
+
+  /**
+   * @brief Return the sum of memory recorded in this CostMetrics, but in MB,
+   * instead of Bytes.
+   */
+  float total_memory_in_mb() const;
 
   /**
    * @brief Get the incremental difference between the total memory in
@@ -76,6 +84,8 @@ public:
   // 2. we call Simulator::free_all before measuring an operator
   // Therefore, the current memory usage of an operator is (size_t)sim->offset
   size_t inputs_memory = 0, outputs_memory = 0, weights_memory = 0;
+  ///< Memory usage of Op* considering parallelization over devices
+  size_t op_total_mem = 0;
 };
 
 class Device {
@@ -675,8 +685,6 @@ public:
   std::map<size_t, SimTask *> hash_to_forward_task, hash_to_backward_task;
 };
 
-size_t data_type_size(DataType);
-
 using ProfilingRecordKey = std::tuple<OperatorParameters, MachineView>;
 
 class Simulator {
@@ -747,7 +755,8 @@ public:
   LinearMeta *linear_meta;
   Pool2DMeta *pool2d_meta;
   ElementUnaryMeta *ele_unary_meta;
-  ElementBinaryMeta *ele_binary_meta;
+  LayerNormMeta *layernorm_meta;
+  // ElementBinaryMeta *ele_binary_meta;
   // EmbeddingMeta *embedding_meta;
   // SoftmaxMeta *softmax_meta;
   BatchMatmulMeta *batch_matmul_meta;

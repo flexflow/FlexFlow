@@ -16,7 +16,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import sys
-from .backend_functions import batch_dot, sin, cos, exp, pow
+from .backend_functions import batch_dot, sin, cos, exp, pow, sum
 
 # Default backend: FlexFlow.
 _BACKEND = 'flexflow'
