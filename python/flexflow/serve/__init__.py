@@ -33,7 +33,8 @@ def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None
             sys.argv += [f"{ff_cli_name}", str(variable)]
 
 
-def init(configs: Optional[str] = None,
+def init(configs_dict: dict = None, 
+        *, 
         num_gpus: Optional[int] = None,
         memory_per_gpu: Optional[int] = None,
         zero_copy_memory_per_node: Optional[int] = None,
@@ -75,25 +76,43 @@ def init(configs: Optional[str] = None,
     :raises ValueError: This function will raise an exception if the JSON file pointed to by the input string is not in the right format
     :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
     """
-    configs_dict = {}
     
-    if configs is not None:
-      if type(configs) == str:
-        try:
-            with open(configs) as f:
-                configs_dict = json.load(f)
-        except json.JSONDecodeError as e:
-            print("JSON format error:")
-            print(e)
-      else:
-        raise ValueError(
-            "configs should be a valid JSON file"
-        )
-        
-    # Remove the arguments to avoid interferences
-    sys.argv = [sys.argv[0]]
-    
-    if configs is not None:
+    # if configs is not None:
+    #   if type(configs) == str:
+    #     try:
+    #         with open(configs) as f:
+    #             configs_dict = json.load(f)
+    #     except json.JSONDecodeError as e:
+    #         print("JSON format error:")
+    #         print(e)
+    #   else:
+    #     raise ValueError(
+    #         "configs should be a valid JSON file"
+    #     )
+
+    # Check that either configs_dict or any of individual, non-positional arguments (after the *) is passed, but not both
+    if configs_dict is not None and any([
+        num_gpus is not None,
+        memory_per_gpu is not None,
+        zero_copy_memory_per_node is not None,
+        num_cpus is not None,
+        legion_utility_processors is not None,
+        data_parallelism_degree is not None,
+        tensor_parallelism_degree is not None,
+        pipeline_parallelism_degree is not None,
+        offload is not None,
+        offload_reserve_space_size is not None,
+        use_4bit_quantization is not None,
+        use_8bit_quantization is not None,
+        profiling is not None,
+        fusion is not None,
+    ]):
+        raise ValueError("Cannot pass both configs_dict and individual args")
+
+    # If configs_dict is passed, check that the type is dictionary and that the mandatory key-value pairs are present (num_gpus, memory_per_gpu, zero_copy_memory_per_node)
+    if configs_dict is not None:
+        if type(configs_dict) != dict:
+            raise TypeError("configs_dict is not a dictionary")
         # configs should contain the following mandatory keys with non-zero integer values:
         num_gpus = configs_dict.get("num_gpus")
         memory_per_gpu = configs_dict.get("memory_per_gpu")
@@ -124,6 +143,8 @@ def init(configs: Optional[str] = None,
         profiling = False if profiling is None else profiling
         fusion = True if fusion is None else fusion
         
+    # Remove the arguments to avoid interferences
+    sys.argv = [sys.argv[0]]
                
     # parse arguments     
     _parse_positive_int_config("num_gpus", num_gpus, "-ll:gpu")
