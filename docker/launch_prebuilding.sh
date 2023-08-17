@@ -32,5 +32,5 @@ echo "Checking the size of the Legion tarball..."
 du -h "$LEGION_TARBALL"
 
 # Stop and remove the container
-docker stop $container_id
-docker rm $container_id
+docker stop "$container_id"
+docker rm "$container_id"
