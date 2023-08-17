@@ -3,5 +3,5 @@
 Overview
 *************
 
-.. mdinclude:: ../../.github/README.md
+.. mdinclude:: ../../README.md
    :start-line: 3

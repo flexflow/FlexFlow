@@ -1,7 +1,7 @@
 :tocdepth: 1
 *************
-Training Overview
+Serving Overview
 *************
 
-.. mdinclude:: ../../TRAIN.md
+.. mdinclude:: ../../SERVE.md
    :start-line: 3

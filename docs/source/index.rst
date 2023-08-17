@@ -14,6 +14,11 @@ Welcome to FlexFlow's documentation!
    docker
 
 .. toctree::
+   :caption: FlexFlow Serve
+   
+   serve_overview
+
+.. toctree::
    :caption: FlexFlow Train
    
    train_overview
