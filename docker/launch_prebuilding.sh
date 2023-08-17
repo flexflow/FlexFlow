@@ -21,9 +21,9 @@ cd ~/buildlegion
 export LEGION_TARBALL="legion_ubuntu-20.04_${FF_GPU_BACKEND}.tar.gz"
 echo "Creating archive $LEGION_TARBALL"
 touch "$LEGION_TARBALL"
-tar --exclude="$LEGION_TARBALL" -zcvf $LEGION_TARBALL .
+tar --exclude="$LEGION_TARBALL" -zcvf "$LEGION_TARBALL" .
 echo "Checking the size of the Legion tarball..."
-du -h $LEGION_TARBALL
+du -h "$LEGION_TARBALL"
 
 # Stop the Docker Container
 docker stop "flexflow-${FF_GPU_BACKEND}${cuda_version}"
