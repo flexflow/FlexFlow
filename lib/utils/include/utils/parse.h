@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-using VariantType = variant<int, bool, float, size_t, std::string, >;
+using VariantType = variant<int, bool, float, size_t, std::string>;
 
 struct Argument {
   VariantType default_value;
