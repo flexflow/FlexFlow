@@ -16,7 +16,7 @@ struct DeviceSpecificArg {
     NOT_IMPLEMENTED();
   }
 
-  T *get(size_t curr_device_idx) const {
+  T const *get(size_t curr_device_idx) const {
     if (curr_device_idx != this->device_idx) {
       throw mk_runtime_error("Invalid access to DeviceSpecificArg: attempted "
                              "device_idx {} != correct device_idx {})",
