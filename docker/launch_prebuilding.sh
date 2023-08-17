@@ -14,11 +14,11 @@ echo "building docker"
 ./docker/build.sh flexflow
 
 # Copy legion libraries to host
-docker cp "flexflow-${FF_GPU_BACKEND}${cuda_version}":/usr/FlexFlow/build/deps ~/buildlegion
+docker cp "flexflow-${gpu_backend}${cuda_version}":/usr/FlexFlow/build/deps ~/buildlegion
 
 # Create the tarball file
 cd ~/buildlegion
-export LEGION_TARBALL="legion_ubuntu-20.04_${FF_GPU_BACKEND}.tar.gz"
+export LEGION_TARBALL="legion_ubuntu-20.04_${gpu_backend}.tar.gz"
 echo "Creating archive $LEGION_TARBALL"
 touch "$LEGION_TARBALL"
 tar --exclude="$LEGION_TARBALL" -zcvf "$LEGION_TARBALL" .
