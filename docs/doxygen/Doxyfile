@@ -44,7 +44,7 @@ PROJECT_NUMBER         =
 # for a project that appears at the top of each page and should give viewer a
 # quick idea about the purpose of the project. Keep the description short.
 
-PROJECT_BRIEF          = A distributed deep learning framework that supports flexible parallelization strategies.
+PROJECT_BRIEF          = "A distributed deep learning framework that supports flexible parallelization strategies."
 
 # With the PROJECT_LOGO tag one can specify a logo or an icon that is included
 # in the documentation. The maximum height of the logo should not exceed 55
@@ -150,7 +150,7 @@ INLINE_INHERITED_MEMB  = NO
 # shortest path that makes the file name unique will be used
 # The default value is: YES.
 
-FULL_PATH_NAMES        = YES
+FULL_PATH_NAMES        = NO
 
 # The STRIP_FROM_PATH tag can be used to strip a user-defined part of the path.
 # Stripping is only done if one of the specified strings matches the left-hand
@@ -874,12 +874,7 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = $(FF_HOME)/align
-INPUT                 += $(FF_HOME)/bootcamp_demo
-INPUT                 += $(FF_HOME)/examples
 INPUT                 += $(FF_HOME)/include
-INPUT                 += $(FF_HOME)/nmt
-INPUT                 += $(FF_HOME)/python
 INPUT                 += $(FF_HOME)/src
 
 # This tag can be used to specify the character encoding of the source files
@@ -911,12 +906,10 @@ INPUT_ENCODING         = UTF-8
 
 FILE_PATTERNS          = *.c \
                          *.cc \
-                         *.cpp \
                          *.cu \
+                         *.cpp \
                          *.h \
-                         *.hpp \
-                         *.md \
-                         *.py
+                         *.hpp
 
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
@@ -2110,7 +2103,7 @@ MAN_LINKS              = NO
 # captures the structure of the code including all documentation.
 # The default value is: NO.
 
-GENERATE_XML           = YES
+GENERATE_XML           = NO
 
 # The XML_OUTPUT tag is used to specify where the XML pages will be put. If a
 # relative path is entered the value of OUTPUT_DIRECTORY will be put in front of
