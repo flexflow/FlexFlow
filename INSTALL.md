@@ -1,4 +1,4 @@
-# Installing FlexFlow
+# Building from source
 To build and install FlexFlow, follow the instructions below.
 
 ## 1. Download the source code

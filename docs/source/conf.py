@@ -105,32 +105,43 @@ def manual_post_processing(app, exception):
         print(f'Post-processing HTML docs at path {app.outdir}')
         build_dir = Path(app.outdir)
 
-        # Only get HTML files in build dir, not subfolders
-        html_files = build_dir.glob('*.html') 
+        # List of subfolders to search
+        folder_paths = [build_dir, build_dir / 'developers_guide'] 
 
-        
+        for folder_path in folder_paths:
 
-        for html_file in html_files:
-            content = html_file.read_text()
+            # Only get HTML files in build dir, not subfolders
+            html_files = folder_path.glob('*.html') 
 
-            # Find Markdown code blocks 
-            pattern = r'<details>\n<summary>Expand here</summary>\n<br>(.*?)</details>'
-            blocks = re.findall(pattern, content, re.DOTALL)
+            for html_file in html_files:
+                content = html_file.read_text()
 
-            for block in blocks:
-                # Convert Markdown to HTML
-                rst = convert(block, github_markdown=True)
-                html = publish_string(rst, writer_name='html')
-                html_str = html.decode('utf-8') 
+                # Find dropdown menus, and manually convert their contents
+                pattern = r'<details>\n<summary>Expand here</summary>\n<br>(.*?)</details>'
+                blocks = re.findall(pattern, content, re.DOTALL)
 
-                # Replace block with converted HTML
-                content = content.replace(block, html_str)
+                for block in blocks:
+                    # Convert Markdown to HTML
+                    rst = convert(block, github_markdown=True)
+                    html = publish_string(rst, writer_name='html')
+                    html_str = html.decode('utf-8') 
 
-            # Add space after <details> block
-            content = content.replace('</details></section>', 
-                              '</details></section>\n<p></p>')
+                    # Replace block with converted HTML
+                    content = content.replace(block, html_str)
 
-            html_file.write_text(content)
+                # Add space after dropdown menu block
+                content = content.replace('</details></section>', 
+                                  '</details></section>\n<p></p>')
+
+                # Replace incorrect links
+                content = content.replace('href="../docker/README.md"', 'href="docker.html"')
+                content = content.replace('href="./TRAIN.md"', 'href="train_overview.html"')
+                content = content.replace('href="./SERVE.md"', 'href="serve_overview.html"')
+                content = content.replace('href="./docs/source/keras.rst"', 'href="keras.html"')
+                content = content.replace('href="./docs/source/onnx.rst"', 'href="onnx.html"')
+                
+
+                html_file.write_text(content)
 
 
 def setup(app):
