@@ -1,6 +1,7 @@
-***************
-PyTorch Support
-***************
+:tocdepth: 1
+******************
+PyTorch Interface
+******************
 
 Users can use FlexFlow to optimize the parallelization performance of existing PyTorch models in two steps.
 The PyTorch support requires the `PyTorch FX module <https://github.com/pytorch/pytorch/pull/42741>`_, so make sure your PyTorch is up to date. 

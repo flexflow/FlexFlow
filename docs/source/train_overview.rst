@@ -1,7 +1,7 @@
 :tocdepth: 1
 *************
-Overview
+Training Overview
 *************
 
-.. mdinclude:: ../../README.md
+.. mdinclude:: ../../TRAIN.md
    :start-line: 3

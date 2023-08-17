@@ -20,11 +20,33 @@ enum class MappingRecordType { INPUT_OUTPUT, INPUT_WEIGHT };
 
 enum class MappingOperation { PARTITION, REPLICATE };
 
+/** @brief  A class to keep track of a dimension relation between two tensors
+ * used by an operator.
+ *
+ * Dimension relations are one-to-one mappings between the dimensions of the
+ * input, weights, and output tensors of an operator. Introduced in the Unity
+ * paper, dimension relations allow FlexFlow to keep track of an operator's
+ * parallelization plans as part of the Parallel Computation Graph (PCG).
+ *
+ * Each ParallelDimMappingRecord only keeps track of a single dimension
+ * relation.
+ *
+ * ParallelDimMappingRecord objects must be initialized with a
+ * MappingRecordType, which can be INPUT_OUTPUT, if the ParallelDimMappingRecord
+ * is tracking a dimension relation between the input and the output tensor, or
+ * INPUT_WEIGHT, if the ParallelDimMappingRecord is tracking a dimension
+ * relation between the input tensor and the weights tensor.
+ *
+ */
 class ParallelDimMappingRecord {
 private:
   ParallelDimMappingRecord(MappingRecordType);
 
 public:
+  /**
+   * @brief We disable this constructor because ParallelDimMappingRecord objects
+   * must specify the MappingRecordType upon creation.
+   */
   ParallelDimMappingRecord() = delete;
 
   static ParallelDimMappingRecord input_output_record(

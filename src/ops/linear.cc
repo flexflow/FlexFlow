@@ -1317,6 +1317,11 @@ bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
   return is_valid;
 }
 
+/** @brief  A wrapper around the main version of the solve_dims function.
+ *
+ * It takes a the input tensor as a parameter, instead of the input's
+ * ParallelTensorShape.
+ */
 void LinearParams::solve_dims(const ParallelTensor input,
                               ParallelDim output_dims[MAX_TENSOR_DIM],
                               int *output_ndims,
@@ -1333,6 +1338,13 @@ void LinearParams::solve_dims(const ParallelTensor input,
                    bias_ndims);
 }
 
+/** @brief  A wrapper around the main version of the solve_dims function.
+ *
+ * For each of the output, weights, and bias tensors, it takes a
+ * ParallelTensorShape argument, instead of a pointer to an integer variable to
+ * record the number of dimensions, plus a ParallelDim array to record all the
+ * information regarding each dimension.
+ */
 void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
                               ParallelTensorShape &output_shape,
                               ParallelTensorShape &kernel_shape,
@@ -1359,11 +1371,14 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
 
   std::vector<ParallelDimMappingRecord> mapping;
   this->construct_mappings(mapping, input_shape);
+  // sets the is_replica_dim field to true for the dimensions that are used to
+  // record the number of replicas
   this->mark_replica_dims(input_shape, output_dims, kernel_dims, bias_dims);
 
   solve_parallel_dim_mappings(
       mapping, {input_shape.dims}, {kernel_dims, bias_dims}, {output_dims});
 
+  // sets the dimension sizes of the output, weights, and bias tensors
   this->calculate_nonreplica_dim_sizes(input_shape,
                                        output_dims,
                                        output_ndims,
@@ -1373,6 +1388,34 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
                                        bias_ndims);
 }
 
+/** @brief  Create a map between each of a tensor's dimension name and its
+ * corresponding index
+ *
+ * The tensor dimension names are defined as follows. For the input tensor, the
+ * first dimension is called INPUT_CHANNEL, and generally corresponds to number
+ * of floats needed to store a single element from the input dataset. For
+ * example, when each element in the dataset is a flattened MNIST image, the
+ * INPUT_CHANNEL dimension will have a size of 28x28=784. The second to last and
+ * last dimensions in the input tensor are, respectively, the INPUT_SAMPLE and
+ * INPUT_REPLICA dimensions. The size of the INPUT_SAMPLE dimension generally
+ * corresponds to the batch size used for training. The size of the
+ * INPUT_REPLICA tells us how many replicas of the tensors have been created.
+ * The dimensions of the output tensor are named analogously: the first
+ * dimension is OUTPUT_CHANNEL, the second to last is OUTPUT_SAMPLE, and the
+ * last one is OUTPUT_REPLICA. Both the input and output tensor may have
+ * additional dimensions, without a name, between {INPUT,OUTPUT}_CHANNEL and
+ * {INPUT,OUTPUT}_SAMPLE. For instance, when the input data comes in textual
+ * form, it is common to have an additional dimension representing the sequence
+ * length. When it comes to the weights, the dimensions are named simply as
+ * KERNEL_CHANNEL_IN (first dimension of a weight's tensor), KERNEL_CHANNEL_OUT
+ * (second dimension) and BIAS_CHANNEL_OUT (first dimension of the bias tensor)
+ *
+ * @param[in] input_shape   A ParallelTensorShape object representing the shape
+ * of the ParallelTensor used for the input to the operator
+ * @return dimension_names  A map from each LinearParams::NamedDimensions to the
+ * index corresponding to that dimension in the input, weight, (bias), or output
+ * tensor.
+ */
 std::unordered_map<LinearParams::NamedDimensions, int>
     LinearParams::get_dimension_names(
         ParallelTensorShape const &input_shape) const {
@@ -1389,6 +1432,43 @@ std::unordered_map<LinearParams::NamedDimensions, int>
           {BIAS_CHANNEL_OUT, 0}};
 }
 
+/** @brief  Sets the size field of ParallelDim objects passed as arguments to
+ * the expected (non-replica) dimensions of the output, weights, and bias
+ * tensors. In addition, it sets the output_ndims, kernel_ndims and bias_ndims
+ * variables to the number of dimensions (including the replica dimensions) of,
+ * respectively, the ouput, weights, and bias tensors.
+ *
+ * The number of dimensions, and dimension sizes of the output, weights, and
+ * bias dimensions are set as follows. The number of dimensions of all three
+ * tensors are copied from the dimensions of the input tensor. The replica
+ * dimensions are not subtracted or otherwise excluded. The size of the output
+ * tensor dimensions are also copied from the input tensor, with the exception
+ * of the last dimension (replica dimension), which is not set, and the first
+ * dimension, whose size is set equal to the out_channels member of the
+ * LinearParams struct, which in turn is set by the outDim parameter of the
+ * FModel::dense function. When it comes to the size of the weights dimensions,
+ * the first dimension is set to have size equal to the quotient of the size of
+ * the INPUT_CHANNEL dimension of the input (first dimension) and the degree
+ * (number of partitions) of the same input dimension. The second dimension of
+ * the the weights tensor is set equal to out_channels, just like the first
+ * dimension of the output tensor. Finally, the size of the first dimension of
+ * the bias tensor is also set equal to the value of out_channels.
+ *
+ * @param[in]   input_shape   A required argument recording the dimensions of
+ * the input tensor
+ * @param[out]  output_dims   An array of ParallelDim objects representing the
+ * dimensions of the output tensor
+ * @param[out]  output_ndims  The number of dimensions (including the replica
+ * dimension(s)) of the output tensor
+ * @param[out]  kernel_dims   An array of ParallelDim objects representing the
+ * dimensions of the weights tensor
+ * @param[out]  kernel_ndims  The number of dimensions (including the replica
+ * dimension(s)) of the weights tensor
+ * @param[out]  bias_dims     An array of ParallelDim objects representing the
+ * dimensions of the bias tensor
+ * @param[out]  bias_ndims    The number of dimensions (including the replica
+ * dimension(s)) of the bias tensor
+ */
 void LinearParams::calculate_nonreplica_dim_sizes(
     ParallelTensorShape const &input_shape,
     ParallelDim output_dims[MAX_TENSOR_DIM],
@@ -1421,6 +1501,20 @@ void LinearParams::calculate_nonreplica_dim_sizes(
   }
 }
 
+/** @brief Switch the is_replica_dim field to true in each ParallelDim of
+ *         the output, weight and bias tensor, if the corresponding dimension
+ *         is used to keep track of the number of replicas
+ *
+ * @param[in]   input_shape   A required argument recording the dimensions of
+ * the input tensor
+ * @param[out]  output_dims   An array of ParallelDim objects representing the
+ * dimensions of the output tensor
+ * @param[out]  kernel_dims   An array of ParallelDim objects representing the
+ * dimensions of the weights tensor
+ * @param[out]  bias_dims     An array of ParallelDim objects representing the
+ * dimensions of the bias tensor
+ *
+ */
 void LinearParams::mark_replica_dims(
     ParallelTensorShape const &input_shape,
     ParallelDim output_dims[MAX_TENSOR_DIM],
