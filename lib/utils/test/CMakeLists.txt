@@ -19,7 +19,6 @@ add_executable(
 target_link_libraries(
   ${project_target}
   utils
-  argparse
   doctest::doctest)
 set_target_properties(
   ${project_target} 
