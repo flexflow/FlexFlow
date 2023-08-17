@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json, sys, os
+import sys, os
 from typing import Union, Optional
 from ..type import *
 
@@ -33,7 +33,7 @@ def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None
             sys.argv += [f"{ff_cli_name}", str(variable)]
 
 
-def init(configs_dict: dict = None, 
+def init(configs_dict: Optional[dict] = None, 
         *, 
         num_gpus: Optional[int] = None,
         memory_per_gpu: Optional[int] = None,
@@ -49,16 +49,20 @@ def init(configs_dict: dict = None,
         use_8bit_quantization: Optional[bool] = None,
         profiling: Optional[bool] = None,
         fusion: Optional[bool] = None):
-    """Configure FlexFlow for inference and start the FlexFlow runtime by importing the flexflow.core package.
-
-    The configurations are passed down to the FlexFlow runtime (implemented in C++) via command line arguments.
-
-    The init function takes three mandatory parameters, which cannot be changed after starting the runtime. These are:
+    """
+    Configure FlexFlow Serve and start the runtime. 
+    
+    The function takes, alternatively, configs_dict (a positional argument of type dictionary),
+    or three mandatory named parameters, plus some additional optional named parameters. When passing
+    a configs_dict, no named parameter should be specified, and the dictionary should have keys matching
+    at least the mandatory named parameters.
+    
+    The three mandatory parameters, which cannot be changed after starting the runtime, are:
     - num_gpus: the number of GPUs to reserve for the runtime
     - memory_per_gpu: the amount of memory (in MB) to pre-allocate on each GPU
     - zero_copy_memory_per_node: the amount of zero-copy memory (in MB) to pre-allocate for each node
-
-    In addition, the following optional parameters can be passed:
+    
+    The optional parameters are: 
     - num_cpus: the number of CPU processors to reserve for the runtime, defaults to 4
     - legion_utility_processors: number of Legion utility threads to create per process, defaults to 1
     - data_parallelism_degree: the degree of parallelization in the data parallel dimension, defaults to 1
@@ -70,13 +74,46 @@ def init(configs_dict: dict = None,
     - use_8bit_quantization: whether to use 8-bit quantization, defaults to False
     - profiling: whether to enable the FlexFlow profiling mode, defaults to False
     - fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
+    
+    The configurations are passed down to the FlexFlow runtime (implemented in C++) via command line arguments.
 
-    :param configs: The runtime configs, in the form of the path to a JSON file
-    :type configs: Union[str, dict]
-    :raises ValueError: This function will raise an exception if the JSON file pointed to by the input string is not in the right format
-    :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
+
+    :param configs_dict: A Python dictionary to pass all configurations as a single object
+    :type configs_dict: dict
+    :param num_gpus: the number of GPUs to reserve for the runtime
+    :type num_gpus: int
+    :param memory_per_gpu: memory_per_gpu: the amount of memory (in MB) to pre-allocate on each GPU
+    :type memory_per_gpu: int
+    :param zero_copy_memory_per_node: zero_copy_memory_per_node: the amount of zero-copy memory (in MB) to pre-allocate for each node
+    :type zero_copy_memory_per_node: int
+    :param num_cpus: the number of CPU processors to reserve for the runtime, defaults to 4
+    :type num_cpus: Optional[int], optional
+    :param legion_utility_processors: number of Legion utility threads to create per process, defaults to 1
+    :type legion_utility_processors: Optional[int], optional
+    :param data_parallelism_degree: the degree of parallelization in the data parallel dimension, defaults to 1
+    :type data_parallelism_degree: Optional[int], optional
+    :param tensor_parallelism_degree: the degree of parallelization in the tensor parallel dimension (using the Megatron technique), defaults to 1
+    :type tensor_parallelism_degree: Optional[int], optional
+    :param pipeline_parallelism_degree: the degree of parallelization in the pipeline parallel dimension, defaults to 1
+    :type pipeline_parallelism_degree: Optional[int], optional
+    :param offload: whether to enable offloading of the weights to CPU, defaults to False
+    :type offload: Optional[bool], optional
+    :param offload_reserve_space_size: the space (in MB) to reserve on CPU for offloading, default to 1024^2
+    :type offload_reserve_space_size: Optional[int], optional
+    :param use_4bit_quantization: whether to use 4-bit quantization, defaults to False
+    :type use_4bit_quantization: Optional[bool], optional
+    :param use_8bit_quantization: whether to use 8-bit quantization, defaults to False
+    :type use_8bit_quantization: Optional[bool], optional
+    :param profiling: whether to enable the FlexFlow profiling mode, defaults to False
+    :type profiling: Optional[bool], optional
+    :param fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
+    :type fusion: Optional[bool], optional
+    
+    :raises ValueError: this function will raise an exception if the user passes both a configs_dict and some named parameters
+    :raises TypeError: this function will raise an exception if the configs_dict is not a dictionary
+    :raises ValueError: this function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
     """
-
+    
     # Check that either configs_dict or any of individual, non-positional arguments (after the *) is passed, but not both
     if configs_dict is not None and any([
         num_gpus is not None,
