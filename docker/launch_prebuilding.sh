@@ -14,7 +14,7 @@ echo "building docker"
 ./docker/build.sh flexflow
 
 # Copy legion libraries to host
-docker cp "flexflow-${gpu_backend}${cuda_version}":/usr/FlexFlow/build/deps ~/buildlegion
+docker cp "flexflow-${gpu_backend}-${cuda_version}:${python_version}":/usr/FlexFlow/build/deps ~/buildlegion
 
 # Create the tarball file
 cd ~/buildlegion
