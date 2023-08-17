@@ -3,7 +3,6 @@
 
 #include "utils/type_traits.h"
 #include "undirected_edge.h"
-#include "utils/uid.h"
 
 namespace FlexFlow {
 

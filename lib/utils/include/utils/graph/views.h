@@ -14,6 +14,7 @@
 #include <memory>
 #include <vector>
 #include "digraph_interfaces.h"
+#include "undirected_interfaces.h" 
 
 namespace FlexFlow {
 

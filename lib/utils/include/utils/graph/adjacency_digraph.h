@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_ADJACENCY_DIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_ADJACENCY_DIGRAPH_H
 
-#include "digraph.h"
 #include <unordered_map>
 #include <unordered_set>
+#include "digraph_interfaces.h" 
 
 namespace FlexFlow {
 
 class AdjacencyDiGraph : public IDiGraph {
 public:
-  Node add_node() override;
+  void add_node(Node const &) override;
   void add_node_unsafe(Node const &) override;
   void remove_node_unsafe(Node const &) override;
   void add_edge(Edge const &) override;
