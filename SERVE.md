@@ -61,16 +61,12 @@ result = llm.generate("Here are some travel tips for Tokyo:\n")
 
 ### Incremental decoding
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/github.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
-<script>hljs.highlightAll();</script>
-
 <details>
 <summary>Expand here</summary>
 <br>
 
-<pre>
-<code class="language-python" style="white-space: pre-wrap;">
+```python
+
 import flexflow.serve as ff
 
 # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
@@ -97,8 +93,8 @@ llm.compile(generation_config)
 
 # Generation begins!
 result = llm.generate("Here are some travel tips for Tokyo:\n")
-</code>
-</pre>
+
+```
 
 </details>
 
@@ -113,11 +109,9 @@ If you'd like to use the C++ interface (mostly used for development and benchmar
 
 Before running FlexFlow Serve, you should manually download the LLM and SSM(s) model of interest using the [inference/utils/download_hf_model.py](https://github.com/flexflow/FlexFlow/blob/inference/inference/utils/download_hf_model.py) script (see example below). By default, the script will download all of a model's assets (weights, configs, tokenizer files, etc...) into the cache folder `~/.cache/flexflow`. If you would like to use a different folder, you can request that via the parameter `--cache-folder`.
 
-<pre>
-<code class="language-bash" style="white-space: pre-wrap;">
+```bash
 python3 ./inference/utils/download_hf_model.py <HF model 1> <HF model 2> ...
-</code>
-</pre>
+```
 
 #### Running the C++ examples
 A C++ example is available at [this folder](../inference/spec_infer/). After building FlexFlow Serve, the executable will be available at `/build_dir/inference/spec_infer/spec_infer`. You can use the following command-line arguments to run FlexFlow Serve:
@@ -134,12 +128,9 @@ A C++ example is available at [this folder](../inference/spec_infer/). After bui
 
 For example, you can use the following command line to serve a LLaMA-7B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-68M models for speculative inference.
 
-<pre>
-<code class="language-bash" style="white-space: pre-wrap;">
+```bash
 ./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model decapoda-research/llama-7b-hf -ssm-model JackFram/llama-68m -prompt /path/to/prompt.json -tensor-parallelism-degree 4 --fusion
-</code>
-</pre>
-
+```
 </details>
 
 ## Speculative Inference
