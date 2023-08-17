@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json, sys, os
-from typing import Union
+from typing import Union, Optional
 from ..type import *
 
 
@@ -33,7 +33,21 @@ def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None
             sys.argv += [f"{ff_cli_name}", str(variable)]
 
 
-def init(configs: Union[str, dict]):
+def init(configs: Optional[dict] = None,
+        num_gpus: Optional[int] = None,
+        memory_per_gpu: Optional[int] = None,
+        zero_copy_memory_per_node: Optional[int] = None,
+        num_cpus: Optional[int] = None,
+        legion_utility_processors: Optional[int] = None,
+        data_parallelism_degree: Optional[int] = None,
+        tensor_parallelism_degree: Optional[int] = None,
+        pipeline_parallelism_degree: Optional[int] = None,
+        offload: Optional[bool] = None,
+        offload_reserve_space_size: Optional[int] = None,
+        use_4bit_quantization: Optional[bool] = None,
+        use_8bit_quantization: Optional[bool] = None,
+        profiling: Optional[bool] = None,
+        fusion: Optional[bool] = None):
     """Configure FlexFlow for inference and start the FlexFlow runtime by importing the flexflow.core package.
 
     The configurations are passed down to the FlexFlow runtime (implemented in C++) via command line arguments.
@@ -62,31 +76,57 @@ def init(configs: Union[str, dict]):
     :raises ValueError: This function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
     """
     configs_dict = {}
-    if type(configs) == str:
+    
+    if configs:
+      if type(configs) == str:
         try:
             with open(configs) as f:
                 configs_dict = json.load(f)
         except json.JSONDecodeError as e:
             print("JSON format error:")
             print(e)
-    elif type(configs) == dict:
-        configs_dict = configs
-    else:
+        
+      else:
         raise ValueError(
-            "configs should be a dictionary or the path to a valid JSON file"
+            "configs should be a valid JSON file"
         )
-
+        
     # Remove the arguments to avoid interferences
     sys.argv = [sys.argv[0]]
-
-    # configs should contain the following mandatory keys with non-zero integer values:
-    num_gpus = configs_dict.get("num_gpus")
-    memory_per_gpu = configs_dict.get("memory_per_gpu")
-    zero_copy_memory_per_node = configs_dict.get("zero_copy_memory_per_node")
-    if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
-        raise ValueError(
-            "Missing one of the following configs: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
+    
+    if configs:
+        # configs should contain the following mandatory keys with non-zero integer values:
+        num_gpus = configs_dict.get("num_gpus")
+        memory_per_gpu = configs_dict.get("memory_per_gpu")
+        zero_copy_memory_per_node = configs_dict.get("zero_copy_memory_per_node")
+        if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
+            raise ValueError(
+                "Missing one of the following configs in config JSON file: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
+            )
+        num_cpus = configs_dict.get("num_cpus")
+        legion_utility_processors = configs_dict.get("legion_utility_processors")
+        data_parallelism_degree = configs_dict.get("data_parallelism_degree")
+        tensor_parallelism_degree = configs_dict.get("tensor_parallelism_degree")
+        pipeline_parallelism_degree = configs_dict.get("pipeline_parallelism_degree")
+        offload = configs_dict.get("offload", False)
+        offload_reserve_space_size = configs_dict.get("offload_reserve_space_size")
+        use_4bit_quantization = configs_dict.get("use_4bit_quantization", False)
+        use_8bit_quantization = configs_dict.get("use_8bit_quantization", False)
+        profiling = configs_dict.get("profiling", False)
+        fusion = configs_dict.get("fusion", True)
+    else:
+        if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
+            raise ValueError(
+            "Missing one of the following configs in input params: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
         )
+        offload = False if offload is None else offload
+        use_4bit_quantization = False if use_4bit_quantization is None else use_4bit_quantization
+        use_8bit_quantization = False if use_8bit_quantization is None else use_8bit_quantization
+        profiling = False if profiling is None else profiling
+        fusion = True if fusion is None else fusion
+        
+               
+    # parse arguments     
     _parse_positive_int_config("num_gpus", num_gpus, "-ll:gpu")
     _parse_positive_int_config("memory_per_gpu", memory_per_gpu, "-ll:fsize")
     _parse_positive_int_config(
@@ -94,16 +134,10 @@ def init(configs: Union[str, dict]):
     )
 
     # parse optional arguments
-    num_cpus = configs_dict.get("num_cpus")
     _parse_positive_int_config("num_cpus", num_cpus, "-ll:cpu")
-    legion_utility_processors = configs_dict.get("legion_utility_processors")
     _parse_positive_int_config(
         "legion_utility_processors", legion_utility_processors, "-ll:util"
     )
-
-    data_parallelism_degree = configs_dict.get("data_parallelism_degree")
-    tensor_parallelism_degree = configs_dict.get("tensor_parallelism_degree")
-    pipeline_parallelism_degree = configs_dict.get("pipeline_parallelism_degree")
     _parse_positive_int_config(
         "data_parallelism_degree", data_parallelism_degree, "-data-parallelism-degree"
     )
@@ -117,27 +151,19 @@ def init(configs: Union[str, dict]):
         pipeline_parallelism_degree,
         "-pipeline-parallelism-degree",
     )
-
-    offload = configs_dict.get("offload", False)
     if offload:
         sys.argv += ["-offload"]
-    offload_reserve_space_size = configs_dict.get("offload_reserve_space_size")
     _parse_positive_int_config(
         "offload_reserve_space_size",
         offload_reserve_space_size,
         "-offload-reserve-space-size",
     )
-    use_4bit_quantization = configs_dict.get("use_4bit_quantization", False)
     if use_4bit_quantization:
         sys.argv += ["--4bit-quantization"]
-    use_8bit_quantization = configs_dict.get("use_8bit_quantization", False)
     if use_8bit_quantization:
         sys.argv += ["--8bit-quantization"]
-
-    profiling = configs_dict.get("profiling", False)
     if profiling:
         sys.argv += ["--profiling"]
-    fusion = configs_dict.get("fusion", True)
     if fusion:
         sys.argv += ["--fusion"]
 
