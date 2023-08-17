@@ -13,28 +13,37 @@
 import os
 import sys
 import subprocess
+import shutil
 
 def get_parent_dir_path(path):
     return os.path.abspath(os.path.join(path, ".."))
 
 docs_path = get_parent_dir_path(os.path.dirname(os.path.abspath(__file__)))
 doxygen_path = os.path.join(docs_path, "doxygen")
+doxygen_output = os.path.join(doxygen_path, "output")
+doxygen_cpp_api_out = os.path.join(doxygen_path, "cpp_api")
 FF_HOME = get_parent_dir_path(docs_path)
 python_package_path = os.path.join(FF_HOME, "python")
 
 sys.path.insert(0, os.path.abspath(python_package_path))
 
 # Build the Doxygen docs
-#subprocess.call(f'cd {doxygen_path}; FF_HOME={FF_HOME} doxygen', shell=True)
+shutil.rmtree(doxygen_cpp_api_out, ignore_errors=True)
+for gpu_backend in ("cuda", "hip"):
+    doxygen_dest = os.path.join(doxygen_cpp_api_out, f"{gpu_backend}_api")
+    os.makedirs(doxygen_dest, exist_ok=True)
+    exclude_extension = ".cu" if gpu_backend == "hip" else ".cpp"
+    doxygen_cmd = f'export FF_HOME={FF_HOME}; ( cat Doxyfile ; echo "EXCLUDE_PATTERNS+=*{exclude_extension}" ) | doxygen -'
+    subprocess.check_call(doxygen_cmd, cwd=doxygen_path, shell=True)
+    subprocess.check_call(f'mv {os.path.join(doxygen_output, "html")}/* {doxygen_dest}/', shell=True)
 
 import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
 
 project = 'FlexFlow'
-copyright = '2023, CMU, Facebook, LANL, MIT, NVIDIA, and Stanford'
-author = 'CMU, Facebook, LANL, MIT, NVIDIA, and Stanford'
-
+copyright = '2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)'
+author = 'CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)'
 
 # -- General configuration ---------------------------------------------------
 
@@ -45,8 +54,6 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'm2r2',
-    #'breathe',
-    #'exhale',
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -55,6 +62,7 @@ extensions = [
 html_theme_options = {
     "collapse_navigation" : False
 }
+html_extra_path = [doxygen_cpp_api_out]
 
 # Add any paths that contain templates here, relative to this directory.
 # templates_path = ['_templates']
@@ -86,27 +94,3 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
 
-# Breathe + Exhale configuration
-
-# Setup the breathe extension
-# breathe_projects = {
-#     "FlexFlow": "./_doxygen/xml"
-# }
-# breathe_default_project = "FlexFlow"
-
-# c_plus_plus_src_dirs = " ".join([f"\"{os.path.join(FF_HOME, 'src', dirname)}\"" for dirname in ("loss_functions", "mapper", "metrics_functions", "ops", "parallel_ops", "recompile", "runtime", "utils")])
-# # Setup the exhale extension
-# exhale_args = {
-#     # These arguments are required
-#     "containmentFolder":     "./c++_api",
-#     "rootFileName":          "c++_api_root.rst",
-#     "doxygenStripFromPath":  "..",
-#     # Heavily encouraged optional argument (see docs)
-#     #"rootFileTitle":         "Library API",
-#     # Suggested optional arguments
-#     "createTreeView":        True,
-#     # TIP: if using the sphinx-bootstrap-theme, you need
-#     # "treeViewIsBootstrap": True,
-#     "exhaleExecutesDoxygen": True,
-#     "exhaleDoxygenStdin":    f'INPUT = {c_plus_plus_src_dirs}'
-# }

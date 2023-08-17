@@ -23,16 +23,17 @@ Welcome to FlexFlow's documentation!
    train_python_api
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: C++ API
 
-   c++_api/c++_api_root
+   cpp_api
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Developers Guide
 
-   developers_guide
+   developers_guide/developers_guide.rst
+   developers_guide/ff_internals.rst
 
 
 .. Indices and tables
