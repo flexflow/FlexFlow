@@ -31,7 +31,7 @@ class STARCODERConfig:
         self.num_hidden_layers = hf_config.n_layer
         self.vocab_size = hf_config.vocab_size
         self.intermediate_size = hf_config.n_inner
-        self.n_head_kv = 1 if hf_config.multi_query else hf_config.num_attention_heads
+        self.n_head_kv = 1 if hf_config.multi_query else hf_config.n_head
 
 
 class FlexFlowSTARCODER(FlexFlowModel):
@@ -89,6 +89,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
             raise ValueError(
                 f"Number of k/v attention heads ({self.starcoder_config.n_head_kv}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
+            
         self.build_model()
 
     def build_model(self):
