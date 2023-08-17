@@ -23,8 +23,7 @@ Welcome to FlexFlow's documentation!
    train_python_api
 
 .. toctree::
-   :maxdepth: 3
-   :caption: C++ API
+   :caption: FlexFlow Backend
 
    cpp_api
 
