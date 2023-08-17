@@ -8,6 +8,7 @@
 #include "utils/tuple.h"
 #include "utils/type_traits.h"
 #include "utils/visitable_core.h"
+#include "utils/required_core.h"
 
 namespace FlexFlow {
 

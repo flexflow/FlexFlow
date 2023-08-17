@@ -4,6 +4,7 @@
 #include "cow_ptr_t.h"
 #include "multidigraph_interfaces.h"
 #include "node.h"
+#include "utils/for_internal_use_only.h"
 
 namespace FlexFlow {
 struct MultiDiGraphView {
@@ -12,10 +13,8 @@ public:
   using EdgeQuery = MultiDiEdgeQuery;
 
   operator GraphView() const {
-    return GraphView(ptr);
+    return GraphView(ptr, for_internal_use_only{});
   }
-
-  friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 

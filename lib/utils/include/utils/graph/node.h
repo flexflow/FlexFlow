@@ -4,6 +4,7 @@
 #include "cow_ptr_t.h"
 #include "query_set.h"
 #include "utils/fmt.h"
+#include "utils/for_internal_use_only.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
@@ -53,10 +54,6 @@ struct GraphView {
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
-  IGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
   static GraphView unsafe_create_without_ownership(IGraphView const &);
 
   template <typename T, typename... Args>
@@ -66,9 +63,8 @@ struct GraphView {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
+  GraphView(std::shared_ptr<IGraphView const> ptr, for_internal_use_only) : ptr(ptr) {}
 private:
-  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
-
   std::shared_ptr<IGraphView const> ptr;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);

@@ -3,6 +3,7 @@
 
 #include "type_traits_core.h"
 #include <vector>
+#include "hash-utils-core.h"
 
 namespace FlexFlow {
 
@@ -129,5 +130,17 @@ static_assert(
     "");
 
 } // namespace FlexFlow
+
+namespace std {
+
+template <typename T>
+struct hash<::FlexFlow::req<T>> {
+  size_t operator()(::FlexFlow::req<T> const &r) const {
+    return get_std_hash(static_cast<T>(r));
+  }
+};
+
+} // namespace std
+
 
 #endif

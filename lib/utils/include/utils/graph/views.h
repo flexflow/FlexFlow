@@ -84,19 +84,10 @@ private:
 enum class LRDirection { LEFT, RIGHT };
 
 struct JoinNodeKey {
-  JoinNodeKey() = delete;
-  JoinNodeKey(Node const &, LRDirection);
-
-  bool operator==(JoinNodeKey const &) const;
-  bool operator<(JoinNodeKey const &) const;
-
   Node node;
-  LRDirection direction;
+  req<LRDirection> direction;
 };
-
-} // namespace FlexFlow
-
-namespace FlexFlow {
+FF_VISITABLE_STRUCT(JoinNodeKey, node, direction);
 
 struct JoinedNodeView {
 public:
@@ -340,7 +331,5 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 }
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::JoinNodeKey, node, direction);
 
 #endif

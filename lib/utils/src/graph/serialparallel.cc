@@ -2,7 +2,6 @@
 #include "serialparallel_internal.h"
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
-#include "utils/graph/conversions.h"
 #include "utils/graph/digraph.h"
 
 namespace FlexFlow {

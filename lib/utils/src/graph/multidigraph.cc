@@ -2,14 +2,6 @@
 
 namespace FlexFlow {
 
-MultiDiInput get_input(MultiDiEdge const &e) {
-  return {e.dst, e.dstIdx};
-}
-
-MultiDiOutput get_output(MultiDiEdge const &e) {
-  return {e.src, e.srcIdx};
-}
-
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
