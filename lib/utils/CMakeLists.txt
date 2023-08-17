@@ -7,9 +7,6 @@ file(GLOB_RECURSE SRC
      LIST_DIRECTORIES False
      src/*.cc)
 
-find_package(Boost REQUIRED COMPONENTS program_options)
-
-
 add_library(
   ${project_target}
   SHARED
@@ -34,7 +31,6 @@ target_link_libraries(
   json
   any
   cuda
-  Boost::program_options
 )
 define_ff_vars(${project_target})
 ff_set_cxx_properties(${project_target})
