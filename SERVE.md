@@ -145,7 +145,7 @@ which largely reduces the end-to-end inference latency and computational require
 for serving generative LLMs while provably preserving model quality.
 
 <p align="center">
-<img src="https://github.com/flexflow/FlexFlow/blob/inference/img/spec_infer_demo.gif" alt="A Speculative Inference Demo" width="630"/>
+<img src="https://github.com/flexflow/FlexFlow/blob/inference/img/spec_infer_demo.gif?raw=true" alt="A Speculative Inference Demo" width="630"/>
 </p>
 
 ### Supported LLMs and SSMs
