@@ -1,6 +1,7 @@
 #include "utils/graph/serialparallel.h"
 #include "serialparallel_internal.h"
 #include "utils/containers.h"
+#include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
 
@@ -221,17 +222,17 @@ std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
                                                MultiDiGraph const &ext) {
   std::unordered_map<Node, Node> node_map;
   std::unordered_map<NodePort, NodePort> node_port_map;
-  for (Node const &node : get_nodes(ext)) {
-    node_map[node] = g.add_node();
+  for (Node const &node : get_nodes(MultiDiGraphView(ext))) {
+    node_map.emplace(node, g.add_node());
   }
   for (NodePort const &node_port : get_node_ports(ext)) {
-    node_port_map[node_port] = g.add_node_port();
+    node_port_map.emplace(node_port, g.add_node_port());
   }
   for (MultiDiEdge const &edge : get_edges(ext)) {
-    g.add_edge(MultiDiEdge{node_map[edge.src],
-                           node_map[edge.dst],
-                           node_map[edge.srcIdx],
-                           node_map[edge.dstIdx]});
+    g.add_edge(MultiDiEdge{node_map.at(edge.src),
+                           node_map.at(edge.dst),
+                           node_port_map.at(edge.srcIdx),
+                           node_port_map.at(edge.dstIdx)});
   }
   return node_map;
 }
@@ -243,7 +244,7 @@ std::unordered_map<Node, Node> serial_extend(MultiDiGraph &g,
   for (Node const &node1 : original_sinks) {
     for (Node const &node2 : get_sources(ext)) {
       g.add_edge(MultiDiEdge{
-          node1, node_map[node2], g.add_node_port(), g.add_node_port()});
+          node1, node_map.at(node2), g.add_node_port(), g.add_node_port()});
     }
   }
   return node_map;
