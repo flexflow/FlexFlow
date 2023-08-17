@@ -18,7 +18,7 @@ docker cp "flexflow-${FF_GPU_BACKEND}${cuda_version}":/usr/FlexFlow/build/deps ~
 
 # Create the tarball file
 cd ~/buildlegion
-export LEGION_TARBALL="legion_ubuntu-20.04_${{ matrix.gpu_backend }}.tar.gz"
+export LEGION_TARBALL="legion_ubuntu-20.04_${FF_GPU_BACKEND}.tar.gz"
 echo "Creating archive $LEGION_TARBALL"
 touch "$LEGION_TARBALL"
 tar --exclude="$LEGION_TARBALL" -zcvf $LEGION_TARBALL .
