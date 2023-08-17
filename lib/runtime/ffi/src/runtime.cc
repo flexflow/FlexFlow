@@ -1,9 +1,13 @@
 #include "flexflow/runtime.h"
+#include "internal/opaque.h"
 #include "runtime/model_training_instance.h"
 #include "utils/expected.h"
-#include "utils/ffi/opaque.h"
 
 using namespace FlexFlow;
+
+flexflow_error_t flexflow_runtime_error_create(flexflow_runtime_error_t) {
+  NOT_IMPLEMENTED();
+}
 
 using Runtime = LibraryUtils<flexflow_runtime_error_t,
                              FLEXFLOW_RUNTIME_STATUS_OK,

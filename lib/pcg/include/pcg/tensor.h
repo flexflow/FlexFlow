@@ -9,27 +9,21 @@
 namespace FlexFlow {
 
 struct Tensor {
-  /* Tensor() = delete; */
-  /* Tensor(TensorShape const &, */
-  /*        CreateGrad create_gradients, */
-  /*        optional<Initializer const &> initializer = nullopt, */
-  /*        optional<ParamSync> sync_type = nullopt); */
-
   size_t get_volume() const;
   TensorShape get_shape() const;
   int num_dims() const;
 
+  DataType get_data_type() const;
+
   operator TensorShape() const;
 
 public:
-  TensorDims dims;
-  DataType data_type;
-  req<optional<Initializer>> initializer;
-  req<bool> create_gradients;
+  TensorShape shape;
+  CreateGrad create_gradients;
+  optional<Initializer> initializer;
   req<optional<ParamSync>> sync_type;
 };
-FF_VISITABLE_STRUCT(
-    Tensor, dims, data_type, initializer, create_gradients, sync_type);
+FF_VISITABLE_STRUCT(Tensor, shape, create_gradients, initializer, sync_type);
 
 using Parameter = Tensor;
 

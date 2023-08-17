@@ -1,13 +1,24 @@
 #ifndef _FLEXFLOW_UTILS_BIDICT_H
 #define _FLEXFLOW_UTILS_BIDICT_H
 
+#include "optional.h"
 #include <unordered_map>
 
 namespace FlexFlow {
 
 template <typename L, typename R>
 struct bidict {
+  using const_iterator = typename std::unordered_map<L, R>::const_iterator;
+  using value_type = std::pair<L, R>;
+  using reference = value_type &;
+  using const_reference = value_type const &;
+  using key_type = L;
+  using mapped_type = R;
+
   bidict() : fwd_map{}, bwd_map{} {}
+
+  bidict(std::initializer_list<value_type> init)
+      : bidict(init.begin(), init.end()) {}
 
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {
@@ -54,17 +65,27 @@ struct bidict {
     return bwd_map.at(r);
   }
 
+  optional<R const &> maybe_at_l(L const &l) const {
+    if (fwd_map.count(l) != 0) {
+      return fwd_map.at(l);
+    } else {
+      return nullopt;
+    }
+  }
+
+  optional<L const &> maybe_at_r(R const &r) const {
+    if (bwd_map.count(r) != 0) {
+      return bwd_map.at(r);
+    } else {
+      return nullopt;
+    }
+  }
+
   std::size_t size() const {
     assert(fwd_map.size() == bwd_map.size());
     return fwd_map.size();
   }
 
-  using const_iterator = typename std::unordered_map<L, R>::const_iterator;
-  using value_type = std::pair<L, R>;
-  using reference = value_type &;
-  using const_reference = value_type const &;
-  using key_type = L;
-  using mapped_type = R;
   /* struct const_iterator { */
   /*   using iterator_category = std::forward_iterator_tag; */
   /*   using difference_type = std::size_t; */

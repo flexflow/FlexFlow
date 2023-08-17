@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 
+#include <cstddef>
+#include <iterator>
 #include <type_traits>
 
 namespace FlexFlow {
@@ -90,6 +92,31 @@ struct pack_contains_type<T, pack<Args...>> : pack_contains_type<T, Args...> {};
 
 template <typename T>
 struct pack_contains_type<T> : std::false_type {};
+
+template <int i, typename... Args>
+struct pack_get {
+  using type = typename pack_get<(i - 1), Args...>::type;
+};
+
+template <typename Head, typename... Tail>
+struct pack_get<0, Head, Tail...> {
+  using type = Head;
+};
+
+template <int i, typename Head>
+struct pack_get<i, Head> {
+  static_assert(i > 0, "Out of bounds access for pack_get");
+};
+
+template <typename... Args>
+struct pack_size;
+
+template <typename Head, typename... Tail>
+struct pack_size<Head, Tail...>
+    : std::integral_constant<size_t, (pack_size<Tail...>::value + 1)> {};
+
+template <>
+struct pack_size<> : std::integral_constant<size_t, 0> {};
 
 static_assert(pack_contains_type<int, float, double, int, char>::value, "");
 static_assert(!pack_contains_type<int, float, double, char>::value, "");

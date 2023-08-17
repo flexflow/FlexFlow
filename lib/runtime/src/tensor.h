@@ -18,70 +18,56 @@
 
 #include "create_grad.h"
 #include "initializer.h"
-#include "kernels/array_shape.h"
-#include "legion.h"
-#include "legion_tensor_shape.h"
-#include "op-attrs/datatype.h"
-#include "op-attrs/param_sync.h"
-#include "op-attrs/tensor_shape.h"
-#include "utils/optional.h"
-#include "utils/stack_vector.h"
-#include <memory>
-#include <type_traits>
-#include <unordered_map>
+/* #include "kernels/array_shape.h" */
+/* #include "legion.h" */
+/* #include "legion_tensor_shape.h" */
+/* #include "op-attrs/datatype.h" */
+/* #include "op-attrs/param_sync.h" */
+/* #include "op-attrs/tensor_shape.h" */
+/* #include "utils/optional.h" */
+/* #include "utils/stack_vector.h" */
+/* #include "utils/visitable.h" */
+/* #include <memory> */
+/* #include <type_traits> */
+/* #include <unordered_map> */
 
-namespace FlexFlow {
+/* namespace FlexFlow { */
 
-struct FFModel;
+/* struct Tensor { */
+/*   Tensor() = delete; */
+/*   Tensor(TensorShape const &, */
+/*          CreateGrad create_gradients, */
+/*          optional<Initializer> const &initializer = nullopt, */
+/*          optional<ParamSync> sync_type = nullopt); */
 
-struct Tensor : public use_visitable_cmp<Tensor> {
-  Tensor() = delete;
-  Tensor(TensorShape const &,
-         CreateGrad create_gradients,
-         optional<Initializer const &> initializer = nullopt,
-         optional<ParamSync> sync_type = nullopt);
+/*   size_t get_volume() const; */
+/*   Legion::Domain get_domain() const; */
+/*   TensorShape get_shape() const; */
+/*   int num_dims() const; */
 
-  size_t get_volume() const;
-  Legion::Domain get_domain() const;
-  TensorShape get_shape() const;
-  int num_dims() const;
+/*   operator TensorShape const &() const; */
+/* public: */
+/*   TensorShape shape; */
+/*   CreateGrad create_gradients; */
+/*   optional<Initializer> initializer; */
+/*   optional<ParamSync> sync_type; */
+/* }; */
+/* FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Tensor, shape, create_gradients,
+ * initializer, sync_type); */
 
-  operator TensorShape const &() const;
+/* template <typename T> */
+/* bool set_tensor(Tensor const &, */
+/*                 FFModel const *model, */
+/*                 std::vector<int> const &dims, */
+/*                 T const *data); */
+/* template <typename T> */
+/* bool get_tensor(Tensor const &, */
+/*                 FFModel const *model, */
+/*                 T *data, */
+/*                 bool get_gradients); */
 
-  friend void swap(Tensor &, Tensor &);
-
-public:
-  TensorDims dims;
-  DataType data_type;
-  optional<Initializer> initializer;
-  bool create_gradients;
-  optional<ParamSync> sync_type;
-};
-
-template <typename T>
-bool set_tensor(Tensor const &,
-                FFModel const *model,
-                std::vector<int> const &dims,
-                T const *data);
-template <typename T>
-bool get_tensor(Tensor const &,
-                FFModel const *model,
-                T *data,
-                bool get_gradients);
-
-static_assert(std::is_copy_constructible<Tensor>::value,
-              "Tensor must be copy constructible");
-
-using Parameter = Tensor;
+/* using Parameter = Tensor; */
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::Tensor,
-                 dims,
-                 data_type,
-                 initializer,
-                 create_gradients,
-                 sync_type);
-MAKE_VISIT_HASHABLE(::FlexFlow::Tensor);
 
 #endif

@@ -63,6 +63,7 @@ FF_VISITABLE_STRUCT(
     V1ComputationGraph, node_labels, outputs, output_labels, graph);
 CHECK_IS_JSONABLE(V1ComputationGraph);
 V1ComputationGraph to_v1(ComputationGraph const &);
+ComputationGraph from_v1(V1ComputationGraph const &);
 
 using V1ParallelComputationGraph =
     V1JsonableGraph<V1PCGOperatorAttrs, V1ParallelTensor>;

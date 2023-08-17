@@ -1,4 +1,5 @@
 set(target pcg-ffi)
+set(internal_target pcg-ffi-internal)
 
 project(${target})
 file(GLOB_RECURSE SRC
@@ -15,14 +16,33 @@ target_include_directories(
   PUBLIC
     include/
   PRIVATE
+    internal/
     src/
 )
 target_link_libraries(
   ${target}
-  PUBLIC
+  PRIVATE
     pcg
+    internal-utils-ffi
+    internal-op-attrs-ffi
+  PUBLIC
     utils-ffi
     op-attrs-ffi
+)
+
+add_library(
+  ${internal_target} 
+  INTERFACE
+)
+target_link_libraries(
+  ${internal_target} 
+  INTERFACE 
+    ${target}
+)
+target_include_directories(
+  ${internal_target} 
+  INTERFACE
+    internal/
 )
 
 define_ff_vars(${target})

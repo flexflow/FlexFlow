@@ -372,7 +372,9 @@ std::unordered_set<D>
 
 template <typename C>
 typename C::value_type get_only(C const &c) {
-  assert(c.size() == 1);
+  if (c.size() != 1) {
+    throw mk_runtime_error("get_only called on container of size {}", c.size());
+  }
   return *c.cbegin();
 }
 
@@ -446,6 +448,15 @@ template <typename F,
 std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
+  return result;
+}
+
+template <typename F,
+          typename It,
+          typename Out = decltype(std::declval<F>()(*std::declval<It>()))>
+std::vector<Out> transform(It start, It end, F const &f) {
+  std::vector<Out> result;
+  std::transform(start, end, std::back_inserter(result), f);
   return result;
 }
 

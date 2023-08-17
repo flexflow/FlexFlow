@@ -11,7 +11,7 @@ namespace FlexFlow {
 
 using TensorDims = FFOrdered<size_t>;
 
-struct TensorShape : public use_visitable_cmp<TensorShape> {
+struct TensorShape {
   TensorShape() = delete;
 
   template <typename Dims>
@@ -25,10 +25,10 @@ public:
   TensorDims dims;
   DataType data_type;
 };
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(TensorShape, dims, data_type);
+
+DataType get_data_type(TensorShape const &);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::TensorShape, dims, data_type);
-MAKE_VISIT_HASHABLE(::FlexFlow::TensorShape);
 
 #endif

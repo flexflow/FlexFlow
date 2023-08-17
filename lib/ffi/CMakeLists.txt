@@ -26,6 +26,8 @@ target_link_libraries(
     substitutions-ffi
     pcg-ffi
     op-attrs-ffi
+  PRIVATE
+    pcg-ffi-internal
 )
 
 ff_set_cxx_properties(${target})

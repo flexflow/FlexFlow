@@ -69,7 +69,13 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
 fi
 
 CLANG_FORMAT_CONFIG="$GIT_ROOT/.clang-format-for-format-sh"
-mapfile -t FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
+mapfile -t ALL_MODIFIED_FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
+mapfile -t DELETED_FILES < <(git ls-files -d)
+
+# set difference -- see https://unix.stackexchange.com/questions/443575/how-to-subtract-two-list-fast
+# used to avoid trying to format deleted files
+FILES=($(comm -3 <(printf "%s\n" "${ALL_MODIFIED_FILES[@]}" | sort) <(printf "%s\n" "${DELETED_FILES[@]}" | sort) | sort -n))
+
 if [[ -f $CLANG_FORMAT_CONFIG ]]; then 
   "$CLANG_FORMAT_PATH" --style=file:"$CLANG_FORMAT_CONFIG" -i "${FILES[@]}"
 else 
