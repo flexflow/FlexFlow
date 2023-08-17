@@ -11,6 +11,7 @@ cd "${BASH_SOURCE[0]%/*}"
 image=${1:-flexflow}
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 cuda_version=${cuda_version:-"empty"}
+detached=${detached:-"OFF"}
 
 # Parameter controlling whether to attach GPUs to the Docker container
 ATTACH_GPUS=${ATTACH_GPUS:-true}
@@ -69,4 +70,8 @@ if [[ "$(docker images -q "$image"-"$FF_GPU_BACKEND""$cuda_version_hyphen":lates
   exit 1
 fi
 
-eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
+if [[ "$detached"!="ON" ]]; then
+  eval docker run -d -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
+else
+  eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${image}-${FF_GPU_BACKEND}${cuda_version_hyphen}:latest"
+fi
