@@ -295,9 +295,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 template <>
 void register_task<ATTENTION_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
-  init.add_arg_slot<int>(QUERY_PARALLEL_TENSOR_SHAPE);
-  init.add_arg_slot<int>(KEY_PARALLEL_TENSOR_SHAPE);
-  init.add_arg_slot<int>(VALUE_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
   init.add_arg_slot<int>(QPROJSIZE);
   init.add_arg_slot<int>(KPROJSIZE);
   init.add_arg_slot<int>(VPROJSIZE);
