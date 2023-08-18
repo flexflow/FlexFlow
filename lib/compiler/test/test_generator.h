@@ -7,12 +7,34 @@
 
 using namespace FlexFlow;
 
-template <typename NodeLabel, typename OutputLabel>
-OutputLabelledMultiDiGraph<NodeLabel, OutputLabel>
-    generate_test_labelled_sp_graph() {
-  NOT_IMPLEMENTED();
-  // Is there a way to construct a labelled graph from a MultiDiGraph and the
-  // labels?
+/*
+  Generates computation graphs with trivial layers and tensors, which are used
+  for tests focusing on graph structures.
+*/
+ComputationGraph test_computataion_graph(MultiDiGraphView const &g) {
+  return materialize_output_labelled_multidigraph_view(
+      ViewMultiDiGraphAsOutputLabelled(
+          g,
+          [](Layer(Node const &)) { return Layer(NoopAttrs{}); },
+          [](Tensor(MultiDiOutput const &)) {
+            return Tensor{0, DataType::FLOAT, nullopt, false, nullopt};
+          }));
+}
+
+/*
+  Generates parallel computation graphs with trivial layers and tensors, which
+  are used for tests focusing on graph structures.
+*/
+ParallelComputationGraph
+    test_parallel_computation_graph(MultiDiGraphView const &g) {
+  return materialize_output_labelled_multidigraph_view(
+      ViewMultiDiGraphAsOutputLabelled(
+          g,
+          [](Operator(Node const &)) { return ParallelTensor(NoopAttrs{}); },
+          [](Operator(MultiDiOutput const &)) {
+            return ParallelTensor(ParallelTensorDims(TensorDims({})),
+                                  DataType::FLOAT);
+          }));
 }
 
 rc::Gen<int> small_integer_generator() {
@@ -25,6 +47,21 @@ Gen<MultiDiGraph> serialParallelMultiDiGraph() {
   return gen::map(gen::arbitrary<SerialParallelDecomposition>(),
                   multidigraph_from_sp_decomposition);
 }
+
+template <>
+struct Arbitrary<ComputationGraph> {
+  static Gen<ComputationGraph> arbitrary() {
+    return gen::map(serialParallelMultiDiGraph, test_computataion_graph);
+  }
+};
+
+template <>
+struct Arbitrary<ParallelComputationGraph> {
+  static Gen<ParallelComputationGraph> arbitrary() {
+    return gen::map(serialParallelMultiDiGraph,
+                    test_parallel_computataion_graph);
+  }
+};
 
 template <>
 struct Arbitrary<variant<Serial, Node>> {

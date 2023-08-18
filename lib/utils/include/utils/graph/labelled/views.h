@@ -59,6 +59,23 @@ private:
 CHECK_NOT_ABSTRACT(ViewMultiDiGraphAsOutputLabelled<test_types::hash_cmp,
                                                     test_types::hash_cmp>);
 
+template <typename Impl, typename NodeLabel, typename OutputLabel>
+Impl materialize_output_labelled_multidigraph_view(
+    IOutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> const &g) {
+  Impl result;
+  for (Node const &n : get_nodes(g)) {
+    result.add_node_unsafe(n);
+    result.at(n) = g.at(n);
+  }
+  for (auto const &e : get_edges(g)) {
+    result.add_edge(e);
+  }
+  for (MultiDiOutput const &o : get_outputs(g)) {
+    result.add_output(o, g.at(o));
+  }
+  return result;
+}
+
 } // namespace FlexFlow
 
 #endif

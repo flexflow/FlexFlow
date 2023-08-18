@@ -264,7 +264,7 @@ MultiDiGraph parallel_composition(MultiDiGraph const &g1,
   return g;
 }
 
-struct MultiDiGraphFromSPDecomposition {
+struct MultiDiGraphFromSPDecompositionFunctor {
   template <typename T>
   MultiDiGraph operator()(T const &t) {
     return multidigraph_from_sp_decomposition(t);
@@ -273,22 +273,22 @@ struct MultiDiGraphFromSPDecomposition {
 
 MultiDiGraph multidigraph_from_sp_decomposition(
     SerialParallelDecomposition const &sp_decomposition) {
-  return visit(MultiDiGraphFromSPDecomposition{}, sp_decomposition);
+  return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
 }
 
 MultiDiGraph multidigraph_from_sp_decomposition(
     variant<Parallel, Node> const &sp_decomposition) {
-  return visit(MultiDiGraphFromSPDecomposition{}, sp_decomposition);
+  return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
 }
 
 MultiDiGraph multidigraph_from_sp_decomposition(
     variant<Serial, Node> const &sp_decomposition) {
-  return visit(MultiDiGraphFromSPDecomposition{}, sp_decomposition);
+  return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
 }
 
 MultiDiGraph multidigraph_from_sp_decomposition(Serial const &serial) {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-  for (auto child : serial.children) {
+  for (variant<Parallel, Node> const &child : serial.children) {
     serial_extend(g, multidigraph_from_sp_decomposition(child));
   }
   return g;
@@ -296,7 +296,7 @@ MultiDiGraph multidigraph_from_sp_decomposition(Serial const &serial) {
 
 MultiDiGraph multidigraph_from_sp_decomposition(Parallel const &parallel) {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-  for (auto child : parallel.children) {
+  for (variant<Serial, Node> const &child : parallel.children) {
     parallel_extend(g, multidigraph_from_sp_decomposition(child));
   }
   return g;
