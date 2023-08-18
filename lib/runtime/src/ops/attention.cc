@@ -305,7 +305,7 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
   init.add_arg_slot<MultiHeadAttentionAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
-  init.add_return_value<DeviceSpecificArg<MHAPerDeviceState>>();
+  init.add_return_value<MHAPerDeviceState>();
 
   register_task(
       ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init, init_task);
@@ -321,6 +321,7 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   fwd.add_weight_slot(WEIGHTS);
   fwd.add_output_slot(OUTPUT);
 
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_arg_slot<DeviceSpecificArg<MHAPerDeviceState>>(PER_DEVICE_STATE);
 
   register_task(
