@@ -14,6 +14,7 @@ target_link_libraries(
   ${project_target}
   kernels
   cuda
+  rapidcheck
   doctest::doctest)
 
 set_target_properties(

@@ -1,44 +1,41 @@
-// #include "doctest.h"
-// #include "rapidcheck.h"
+#include "doctest.h"
+#include "kernels/datatype_dispatch.h"
 
-// using namespace FlexFlow;
+using namespace FlexFlow;
 
-// struct TestFn {
-//   template <DataType DT>
-//   int operator()(int x) const {
-//     if (DT == DataType::FLOAT) {
-//       return x + 1;
-//     } else if (DT == DataType::DOUBLE) {
-//       return x + 2;
-//     }
-//     return 0;
-//   }
-// };
+template <DataType DT>
+struct Function1 {
+  int operator()(int value) const {
+    if (DT == DataType::FLOAT) {
+      return value + 1;
+    }
+    if (DT == DataType::DOUBLE) {
+      return value + 2;
+    }
+    return 0;
+  }
+};
 
-// RC_GTEST_PROP(dispatch, "Dispatch float", (int x)) {
-//   RC_ASSERT(dispatch<TestFn>(DataType::FLOAT, x) == x + 1);
-// }
+template <DataType DT1, DataType DT2>
+struct Function2 {
+  int operator()(int value) const {
+    if (DT1 == DataType::FLOAT && DT2 == DataType::DOUBLE) {
+      return value + 3;
+    }
+    return 0;
+  }
+};
 
-// RC_GTEST_PROP(dispatch, "Dispatch double", (int x)) {
-//   RC_ASSERT(dispatch<TestFn>(DataType::DOUBLE, x) == x + 2);
-// }
+TEST_CASE("Testing dispatch function") {
+  int value = 10;
+  int result = dispatch<Function1>(DataType::FLOAT, value);
+  CHECK(result == 11);
+}
 
-// RC_GTEST_PROP(DataTypeDispatch1, "Dispatch1 float", (int x)) {
-//   DataTypeDispatch1<TestFn> dispatcher;
-//   RC_ASSERT(dispatcher(DataType::FLOAT, x) == x + 1);
-// }
-
-// RC_GTEST_PROP(DataTypeDispatch1, "Dispatch1 double", (int x)) {
-//   DataTypeDispatch1<TestFn> dispatcher;
-//   RC_ASSERT(dispatcher(DataType::DOUBLE, x) == x + 2);
-// }
-
-// RC_GTEST_PROP(DataTypeDispatch2, "Dispatch2 float", (int x)) {
-//   DataTypeDispatch2<TestFn> dispatcher;
-//   RC_ASSERT(dispatcher(DataType::FLOAT, x) == x + 1);
-// }
-
-// RC_GTEST_PROP(DataTypeDispatch2, "Dispatch2 double", (int x)) {
-//   DataTypeDispatch2<TestFn> dispatcher;
-//   RC_ASSERT(dispatcher(DataType::DOUBLE, x) == x + 2);
-// }
+// test DataTypeDispatch1
+TEST_CASE("Testing DataTypeDispatch1") {
+  DataTypeDispatch1<Function1> dispatcher;
+  int value = 10;
+  int result = dispatcher(DataType::FLOAT, value);
+  CHECK(result == 11);
+}

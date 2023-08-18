@@ -1,45 +1,49 @@
-// #include "kernels/perf_metrics.h"
-// #include "rapidcheck.h"
+#include "doctest.h"
+#include "kernels/perf_metrics.h"
+#include <random>
 
-// using namespace FlexFlow;
+using namespace FlexFlow;
 
-// // 1. Generator for PerfMetrics
-// namespace rc {
+// Helper function to generate random values for PerfMetrics
+PerfMetrics randomPerfMetrics() {
+  std::random_device rd;
+  std::mt19937 gen(rd());
 
-// template <>
-// struct Arbitrary<PerfMetrics> {
-//   static Gen<PerfMetrics> arbitrary() {
-//     return gen::build<PerfMetrics>(gen::set(&PerfMetrics::train_all),
-//                                    gen::set(&PerfMetrics::train_correct),
-//                                    gen::set(&PerfMetrics::cce_loss),
-//                                    gen::set(&PerfMetrics::sparse_cce_loss),
-//                                    gen::set(&PerfMetrics::mse_loss),
-//                                    gen::set(&PerfMetrics::rmse_loss),
-//                                    gen::set(&PerfMetrics::mae_loss),
-//                                    gen::set(&PerfMetrics::start_time),
-//                                    gen::set(&PerfMetrics::current_time));
-//   }
-// };
+  std::uniform_real_distribution<> dis(0.0, 1.0);
 
-// } // namespace rc
+  PerfMetrics metrics{0};
+  metrics.train_all = dis(gen);
+  metrics.train_correct = dis(gen);
+  metrics.cce_loss = dis(gen);
+  metrics.sparse_cce_loss = dis(gen);
+  metrics.mse_loss = dis(gen);
+  metrics.rmse_loss = dis(gen);
+  metrics.mae_loss = dis(gen);
+  metrics.start_time = dis(gen);
+  metrics.current_time = dis(gen);
 
-// // 2. Properties for PerfMetrics
+  return metrics;
+}
 
-// RC_GTEST_PROP(PerfMetricsTests, "Throughput non-negative", ()) {
-//   auto const m = *rc::gen::arbitrary<PerfMetrics>();
-//   RC_ASSERT(get_throughput(m) >= 0);
-// }
+TEST_CASE("PerfMetricsTests") {
 
-// RC_GTEST_PROP(PerfMetricsTests, "Accuracy between 0 and 1", ()) {
-//   auto const m = *rc::gen::arbitrary<PerfMetrics>();
-//   float accuracy = get_accuracy(m);
-//   RC_ASSERT(accuracy >= 0.0f && accuracy <= 1.0f);
-// }
+  SUBCASE("Throughput non-negative") {
+    auto m = randomPerfMetrics();
+    CHECK(get_throughput(m) >= 0);
+  }
 
-// RC_GTEST_PROP(PerfMetricsTests, "Update maintains non-negative values", ()) {
-//   auto const lhs = *rc::gen::arbitrary<PerfMetrics>();
-//   auto const rhs = *rc::gen::arbitrary<PerfMetrics>();
-//   auto const result = update(lhs, rhs);
-//   RC_ASSERT(result.train_all >= 0);
-//   // Add other assertions for other fields...
-// }
+  SUBCASE("Accuracy between 0 and 1") {
+    auto m = randomPerfMetrics();
+    float accuracy = get_accuracy(m);
+    CHECK(accuracy <= 0.0f);
+    CHECK(accuracy <= 1.0f);
+  }
+
+  SUBCASE("Update maintains non-negative values") {
+    auto lhs = randomPerfMetrics();
+    auto rhs = randomPerfMetrics();
+    auto result = update(lhs, rhs);
+    CHECK(result.train_all >= 0);
+    // Add other assertions for other fields...
+  }
+}
