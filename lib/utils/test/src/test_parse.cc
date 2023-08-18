@@ -1,9 +1,7 @@
-Viewed
-@@ -0,0 +1,30 @@
 #include "doctest.h"
 #include "utils/parse.h"
 
-using namespace FlexFlow;
+    using namespace FlexFlow;
 
 TEST_CASE("Test ArgsParser basic functionality") {
   char const *test_argv[] = {"program_name",
