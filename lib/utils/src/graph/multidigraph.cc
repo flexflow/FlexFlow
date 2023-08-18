@@ -1,5 +1,5 @@
 #include "utils/graph/multidigraph.h"
-#include "utils/graph/internal.h"
+#include "internal.h"
 
 namespace FlexFlow {
 
@@ -11,11 +11,6 @@ MultiDiEdgeQuery
   }
   e.srcs = nodes;
   return e;
-}
-
-std::ostream &operator<<(std::ostream &os, MultiDiEdge const &edge) {
-  return os << "MultiDiEdge{" << edge.src.value() << "," << edge.dst.value()
-            << "," << edge.srcIdx.value() << "," << edge.dstIdx.value() << "}";
 }
 
 MultiDiEdgeQuery
@@ -112,7 +107,7 @@ std::unordered_set<MultiDiEdge>
 }
 
 MultiDiGraphView::operator GraphView() const {
-  return GraphInternal::create_nodegraphview(this->ptr);
+  return GraphInternal::create_graphview(this->ptr);
 }
 
 // Set the shared_ptr's destructor to a nop so that effectively there is no

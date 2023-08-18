@@ -1,9 +1,11 @@
 #include "utils/graph/views.h"
 #include "utils/containers.h"
 #include "utils/disjoint_set.h"
+#include "utils/exception.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
 #include "utils/graph/query_set.h"
+#include "utils/containers.inl"
 
 namespace FlexFlow {
 
@@ -142,7 +144,8 @@ JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {
 
 std::unordered_set<Node>
     JoinedNodeView::query_nodes(NodeQuery const &query) const {
-  return unique(values(query_keys(query.nodes, this->mapping)));
+  // TODO @lockshaw this is going to be reimplemented in 984, so don't bother fixing it for now
+  NOT_IMPLEMENTED(); 
 }
 
 std::pair<std::unordered_set<Node>, std::unordered_set<Node>>
@@ -305,11 +308,8 @@ UndirectedEdge to_undirected_edge(DirectedEdge const &e) {
 std::unordered_set<UndirectedEdge> to_undirected_edges(
     std::unordered_set<DirectedEdge> const &directed_edges) {
   std::unordered_set<UndirectedEdge> result;
-  std::transform(directed_edges.cbegin(),
-                 directed_edges.cend(),
-                 std::inserter(result, result.begin()),
+  return transform(directed_edges, 
                  [](DirectedEdge const &e) { return to_undirected_edge(e); });
-  return result;
 }
 
 UndirectedEdge to_undirected_edge(MultiDiEdge const &e) {

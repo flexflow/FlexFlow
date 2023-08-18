@@ -4,11 +4,6 @@
 
 namespace FlexFlow {
 
-std::ostream &operator<<(std::ostream &s, DirectedEdge const &e) {
-  std::string str = fmt::format("DirectedEdge(src={}, dst={})", e.src, e.dst);
-  return s << str;
-}
-
 void swap(DiGraph &lhs, DiGraph &rhs) {
   using std::swap;
 
@@ -44,10 +39,10 @@ std::unordered_set<DirectedEdge>
   return this->ptr->query_edges(q);
 }
 
-DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
+DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)), as_graph(Graph::unsafe_create_without_ownership(this->ptr)) {}
 
 DiGraphView::operator GraphView() const {
-  return GraphInternal::create_nodegraphview(this->ptr);
+  return GraphInternal::create_graphview(this->ptr);
 }
 
 std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const &q) const {
@@ -96,6 +91,14 @@ DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
   result.srcs = srcs_tl;
   result.dsts = dsts_tl;
   return result;
+}
+
+DiGraph::operator Graph&() {
+  return this->as_graph;
+}
+
+DiGraph::operator DiGraphView() const {
+  return GraphInternal::create_digraphview(this->ptr.get());
 }
 
 } // namespace FlexFlow

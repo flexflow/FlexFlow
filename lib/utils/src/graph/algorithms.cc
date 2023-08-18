@@ -1,5 +1,5 @@
 #include "utils/graph/algorithms.h"
-#include "utils/containers.h"
+#include "utils/containers.inl"
 #include "utils/exception.h"
 #include "utils/graph/digraph.h"
 #include "utils/graph/traversal.h"
@@ -11,7 +11,8 @@
 #include <queue>
 
 namespace FlexFlow {
-std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
+
+std::vector<Node> add_nodes(Graph &g, int num_nodes) {
   std::vector<Node> nodes;
   for (int i = 0; i < num_nodes; i++) {
     nodes.push_back(g.add_node());
@@ -19,13 +20,16 @@ std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
   return nodes;
 }
 
-std::unordered_set<Node> get_nodes(GraphView const &g) {
-  return g.query_nodes(NodeQuery::all());
+std::vector<NodePort> add_node_ports(MultiDiGraph &g, int num_node_ports) {
+  std::vector<NodePort> node_ports;
+  for (int i = 0; i < num_node_ports; i++) {
+    node_ports.push_back(g.add_node_port());
+  }
+  return node_ports;
 }
 
-std::unordered_set<Node> query_nodes(IGraphView const &g,
-                                     std::unordered_set<Node> const &nodes) {
-  return g.query_nodes({nodes});
+std::unordered_set<Node> get_nodes(GraphView const &g) {
+  return g.query_nodes(NodeQuery::all());
 }
 
 void remove_node(MultiDiGraph &g, Node const &n) {

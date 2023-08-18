@@ -4,6 +4,7 @@
 #include "stack_vector.h"
 #include <cstring>
 #include <string>
+#include "utils/fmt.h"
 
 namespace FlexFlow {
 
@@ -56,6 +57,7 @@ private:
 template <size_t MAXSIZE>
 using stack_string = stack_basic_string<char, MAXSIZE>;
 
+
 } // namespace FlexFlow
 
 namespace std {
@@ -69,6 +71,19 @@ struct hash<::FlexFlow::stack_basic_string<Char, MAXSIZE>> {
 };
 
 } // namespace std
+
+namespace fmt {
+
+template <int MAXSIZE>
+struct formatter<::FlexFlow::stack_string<MAXSIZE>> : formatter<::std::string> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::stack_string<MAXSIZE> const &m, FormatContext &ctx)
+      -> decltype(ctx.out()) {
+    return formatter<std::string>::format(static_cast<std::string>(m), ctx);
+  }
+};
+
+}
 
 namespace FlexFlow {
 

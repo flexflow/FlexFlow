@@ -3,23 +3,6 @@
 
 namespace FlexFlow {
 
-std::ostream &operator<<(std::ostream &os, Node const &node) {
-  return os << fmt::format("Node({})", node.value());
-}
-
-std::ostream &operator<<(std::ostream &os,
-                         std::unordered_set<Node> const &nodes) {
-  os << fmt::format("{ ");
-  for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-    if (it != nodes.begin()) {
-      os << fmt::format(", ");
-    }
-    os << *it;
-  }
-  os << fmt::format(" }");
-  return os;
-}
-
 NodeQuery NodeQuery::all() {
   return {matchall<Node>()};
 }

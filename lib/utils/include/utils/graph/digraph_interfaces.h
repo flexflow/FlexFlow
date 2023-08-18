@@ -11,6 +11,7 @@ struct DirectedEdge {
   Node dst;
 };
 FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
+FF_VISIT_FMTABLE(DirectedEdge);
 
 struct DirectedEdgeQuery {
   query_set<Node> srcs;

@@ -55,6 +55,7 @@ public:
 
   operator DiGraphView() const;
   operator Graph() const;
+  operator Graph&();
 
   friend void swap(DiGraph &, DiGraph &);
 
@@ -80,6 +81,8 @@ private:
 
   friend struct GraphInternal;
 private:
+  Graph as_graph;
+
   cow_ptr_t<IDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);

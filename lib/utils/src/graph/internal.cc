@@ -29,7 +29,7 @@ UndirectedGraphView GraphInternal::create_undirectedgraphview(std::shared_ptr<IU
   return {std::move(ptr)};
 }
 
-Graph create_graph(std::unique_ptr<IGraph> ptr) {
+Graph GraphInternal::create_graph(std::unique_ptr<IGraph> ptr) {
   return {std::move(ptr)};
 }
 

@@ -53,9 +53,8 @@ bool is(variant<Args...> const &v) {
  * mpark::variant<Args2...>> { */
 /*     using type = mpark::variant<Args1..., Args2...>; */
 /* }; */
-template <template <typename, typename = void> class Cond, typename... Ts>
-struct elements_satisfy_impl<Cond, void, variant<Ts...>>
-    : elements_satisfy<Cond, std::tuple<Ts...>> {};
+template <template <typename...> class Cond, typename... Ts>
+struct elements_satisfy<Cond, variant<Ts...>> : elements_satisfy_impl<Cond, Ts...> { };
 
 template <typename T, typename Variant>
 struct is_in_variant;
@@ -198,12 +197,14 @@ auto narrow(Container const &c) -> decltype(transform(
   return transform(c, [](VariantIn const &i) { return narrow<VariantOut>(i); });
 }
 
-template <typename... VariantOut,
+template <typename T1,
+          typename T2,
+          typename...Trest,
           typename VariantIn,
           typename = std::enable_if<
-              is_subeq_variant<variant<VariantOut...>, VariantIn>::value>>
-optional<variant<VariantOut...>> narrow(VariantIn const &v) {
-  return visit(VariantNarrowFunctor<variant<VariantOut...>>{}, v);
+              !is_subeq_variant<variant<T1, T2, Trest...>, VariantIn>::value>>
+optional<variant<T1, T2, Trest...>> narrow(VariantIn const &v) {
+  return visit(VariantNarrowFunctor<variant<T1, T2, Trest...>>{}, v);
 }
 
 template <typename VariantOut, typename VariantIn>

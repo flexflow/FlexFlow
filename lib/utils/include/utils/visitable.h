@@ -246,7 +246,7 @@ std::string visit_format(T const &t) {
 
   std::ostringstream oss;
   oss << "<" << ::visit_struct::get_name<T>();
-  visit_struct::for_each(fmt_visitor{oss}, t);
+  visit_struct::for_each(t, fmt_visitor{oss});
   oss << ">";
 
   return oss.str();
@@ -351,20 +351,23 @@ struct Arbitrary<
   CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME);
 
 #define FF_VISIT_FMTABLE(TYPENAME)                                             \
-  static_assert(is_visitable(TYPENAME)::value,                                 \
+  static_assert(is_visitable<TYPENAME>::value,                                 \
                 #TYPENAME " must be visitable to use FF_VISIT_FMTABLE");       \
-  static_assert(elements_satisfy<is_visitable, TYPENAME>::value,               \
-                #TYPENAME "'s elements must use be fmtable");                  \
+  static_assert(elements_satisfy<is_streamable, TYPENAME>::value,               \
+                #TYPENAME "'s elements must use be streamable");                  \
   }                                                                            \
   namespace fmt {                                                              \
   template <>                                                                  \
   struct formatter<::FlexFlow::TYPENAME>                                       \
-      : ::FlexFlow::visitable_formatter<T> {};                                 \
+      : ::FlexFlow::visitable_formatter<::FlexFlow::TYPENAME> {};                                 \
   }                                                                            \
   namespace FlexFlow {                                                         \
   static_assert(is_fmtable<TYPENAME>::value,                                   \
                 #TYPENAME                                                      \
-                " failed sanity check on is_fmtable and FF_VISIT_FMTABLE");
+                " failed sanity check on is_fmtable and FF_VISIT_FMTABLE");    \
+  static_assert(is_streamable<TYPENAME>::value, \
+                #TYPENAME \
+                " failed sanity check on is_streamable and FF_VISIT_FMTABLE");
 
 #define CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME)                                \
   CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME);            \

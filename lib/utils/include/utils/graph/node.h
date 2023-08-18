@@ -28,9 +28,7 @@ struct NodeQuery {
 
   query_set<Node> nodes;
 
-  static NodeQuery all() {
-    NOT_IMPLEMENTED();
-  }
+  static NodeQuery all();
 };
 FF_VISITABLE_STRUCT(NodeQuery, nodes);
 
@@ -103,6 +101,8 @@ public:
       create() {
     return Graph(make_unique<T>());
   }
+
+  static Graph unsafe_create_without_ownership(cow_ptr_t<IGraph> const &);
 
 private:
   Graph(std::unique_ptr<IGraph> ptr)

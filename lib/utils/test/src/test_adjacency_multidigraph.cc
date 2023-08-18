@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "utils/graph/adjacency_multidigraph.h"
+#include "utils/graph/multidiedge.h"
 #include "utils/graph/multidigraph_interfaces.h"
 
 using namespace FlexFlow;
@@ -7,14 +8,16 @@ using namespace FlexFlow;
 TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
 
-  std::vector<Node> n = g.add_nodes(3);
-  std::vector<NodePort> p = g.add_node_ports(3);
+  std::vector<Node> n = { g.add_node(), g.add_node(), g.add_node() };
+  std::vector<NodePort> p = { g.add_node_port(), g.add_node_port(), g.add_node_port() };
 
   std::vector<MultiDiEdge> e = {{n[0], n[1], p[0], p[1]},
                                 {n[0], n[2], p[0], p[2]},
                                 {n[2], n[0], p[2], p[0]},
                                 {n[2], n[1], p[2], p[1]}};
-  g.add_edges(e);
+  for (MultiDiEdge const &edge : e) {
+    g.add_edge(edge);
+  }
 
   CHECK(g.query_nodes(NodeQuery::all()) ==
         std::unordered_set<Node>{n[0], n[1], n[2]});

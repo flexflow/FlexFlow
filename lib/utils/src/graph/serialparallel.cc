@@ -3,6 +3,7 @@
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
+#include "utils/containers.inl"
 
 namespace FlexFlow {
 

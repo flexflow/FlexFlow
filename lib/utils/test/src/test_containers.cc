@@ -1,5 +1,5 @@
 #include "doctest.h"
-#include "utils/containers.h"
+#include "utils/containers.inl"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -87,8 +87,8 @@ TEST_CASE("map_values") {
 TEST_CASE("keys") {
   std::unordered_map<int, std::string> m = {
       {1, "one"}, {2, "two"}, {3, "three"}};
-  std::vector<int> result = keys(m);
-  std::vector<int> expected = {3, 2, 1};
+  std::unordered_set<int> result = keys(m);
+  std::unordered_set<int> expected = {3, 2, 1};
   CHECK(result == expected);
 }
 
@@ -326,7 +326,9 @@ TEST_CASE("Testing sorted_by function") {
 
 TEST_CASE("Testing vector_split function") {
   std::vector<int> v = {1, 2, 3, 4, 5};
-  auto [prefix, postfix] = vector_split(v, 2);
+  auto result = vector_split(v, 2);
+  std::vector<int> prefix = result.first;
+  std::vector<int> postfix = result.second;
   CHECK(prefix == std::vector<int>({1, 2}));
   CHECK(postfix == std::vector<int>({3, 4, 5}));
 }

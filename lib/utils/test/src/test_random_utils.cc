@@ -1,6 +1,6 @@
-
 #include "doctest.h"
 #include "utils/random_utils.h"
+#include <algorithm>
 
 void checkProbabilities(std::vector<int> const &counts,
                         int numIterations,

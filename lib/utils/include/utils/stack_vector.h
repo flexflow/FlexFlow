@@ -7,6 +7,8 @@
 #include <array>
 #include <cassert>
 #include <type_traits>
+#include "utils/fmt.h"
+#include "containers.inl"
 
 namespace FlexFlow {
 
@@ -295,5 +297,20 @@ struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
 };
 
 } // namespace std
+
+namespace fmt {
+
+template <typename T, int MAXSIZE>
+struct formatter<::FlexFlow::stack_vector<T, MAXSIZE>> : formatter<::std::string> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::stack_vector<T, MAXSIZE> const &m, FormatContext &ctx)
+      -> decltype(ctx.out()) {
+    std::string result = "[" + join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); }) + "]";
+    return formatter<std::string>::format(result, ctx);
+  }
+};
+
+}
+
 
 #endif

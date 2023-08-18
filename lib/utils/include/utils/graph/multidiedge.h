@@ -26,7 +26,7 @@ struct MultiDiEdge {
   NodePort srcIdx, dstIdx;
 };
 FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
-std::ostream &operator<<(std::ostream &os, MultiDiEdge const &edge);
+FF_VISIT_FMTABLE(MultiDiEdge);
 
 struct MultiDiInput {
   Node node;
