@@ -192,20 +192,17 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  // tensors
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
   auto value = acc.get_tensor<Permissions::RO>(VALUE);
   auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
 
-  // tensor gradients
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHTS);
   auto query_grad = acc.get_tensor_grad<Permissions::RW>(QUERY);
   auto key_grad = acc.get_tensor_grad<Permissions::RW>(KEY);
   auto value_grad = acc.get_tensor_grad<Permissions::RW>(VALUE);
 
-  // arguments
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
