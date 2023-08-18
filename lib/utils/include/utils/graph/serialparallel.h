@@ -35,6 +35,20 @@ SerialParallelDecomposition
 
 std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp);
 
+std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
+                                               MultiDiGraph const &ext);
+
+std::unordered_map<Node, Node> serial_extend(MultiDiGraph &g,
+                                             MultiDiGraph const &ext);
+
+MultiDiGraph serial_composition(MultiDiGraph const &g1, MultiDiGraph const &g2);
+
+MultiDiGraph parallel_composition(MultiDiGraph const &g1,
+                                  MultiDiGraph const &g2);
+
+MultiDiGraph multidigraph_from_sp_decomposition(
+    SerialParallelDecomposition const &sp_decomposition);
+
 } // namespace FlexFlow
 
 #endif

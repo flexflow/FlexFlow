@@ -13,8 +13,9 @@ struct Substitution {};
 struct Strategy {
   ParallelComputationGraph pcg;
   MachineMapping machine_mapping;
+  req<float> runtime;
 };
-FF_VISITABLE_STRUCT(Strategy, pcg, machine_mapping);
+FF_VISITABLE_STRUCT(Strategy, pcg, machine_mapping, runtime);
 
 struct StrategyRuntimeCmp {
   bool operator()(Strategy const &, Strategy const &);
