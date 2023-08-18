@@ -3,6 +3,7 @@
 #include "utils/exception.h"
 #include "utils/graph/digraph.h"
 #include "utils/graph/traversal.h"
+#include "utils/graph/undirected.h"
 #include "utils/graph/views.h"
 #include <algorithm>
 #include <cassert>
@@ -239,7 +240,7 @@ std::unordered_map<Node, std::unordered_set<Node>>
 }
 
 std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
-  return get_predecessors(g, {n}).at(node);
+  return get_predecessors(g, std::unordered_set<Node>{n}).at(n);
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -250,7 +251,7 @@ std::unordered_map<Node, std::unordered_set<Node>>
 
 std::unordered_set<Node> get_predecessors(MultiDiGraphView const &g,
                                           Node const &n) {
-  return get_predecessors(g, {n});
+  return get_predecessors(g, std::unordered_set<Node>{n}).at(n);
 }
 
 std::vector<Node> get_unchecked_dfs_ordering(
@@ -385,17 +386,10 @@ std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
                                        Node const &n) {
-  static_assert(false, "TODO @lockshaw");
-  std::unordered_set<UndirectedEdge> edges =
-      filter(get_node_edges(g, n), [&](UndirectedEdge const &edge) {
-        return ((edge.smaller == n && edge.bigger != n) ||
-                (edge.smaller != n && edge.bigger == n));
-      });
-  return transform(
-      [&](UndirectedEdge const &edge) -> Node {
-        return (edge.smaller == n) ? edge.bigger : edge.smaller;
-      },
-      edges);
+  return flatmap(get_node_edges(g, n), 
+                 [&](UndirectedEdge const &edge) {
+    return set_difference(get_endpoints(edge), {n});
+  });
 }
 
 std::vector<MultiDiEdge>

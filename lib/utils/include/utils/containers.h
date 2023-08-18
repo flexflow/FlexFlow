@@ -354,6 +354,11 @@ std::unordered_set<T> set_union(std::unordered_set<T> const &l,
   return result;
 }
 
+template <typename T>
+std::unordered_set<T> set_difference(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+  return filter(l, [&](T const &element) { return !contains(r, element); });
+}
+
 template <typename C, typename T = typename C::value_type::value_type>
 std::unordered_set<T> set_union(C const &sets) {
   std::unordered_set<T> result;
@@ -397,9 +402,19 @@ std::unordered_set<D>
 }
 
 template <typename C>
+optional<typename C::value_type> maybe_get_only(C const &c) {
+  if (c.size() == 1) {
+    return *c.cbegin();
+  } else {
+    return nullopt;
+  }
+}
+
+template <typename C>
 typename C::value_type get_only(C const &c) {
-  assert(c.size() == 1);
-  return *c.cbegin();
+  return unwrap(maybe_get_only(c), [&] {
+    throw mk_runtime_error("Encountered container with size {} in get_only", c.size());
+  });
 }
 
 template <typename T>
@@ -417,6 +432,13 @@ template <typename T, typename C>
 void extend(std::unordered_set<T> &lhs, C const &rhs) {
   lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
   lhs.insert(rhs.cbegin(), rhs.cend());
+}
+
+template <typename C, typename E = typename C::value_type>
+void extend(C &lhs, optional<E> const &e) {
+  if (e.has_value()) {
+    return extend(lhs, e.value());
+  }
 }
 
 template <typename C, typename F>
@@ -521,7 +543,20 @@ std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   return result;
 }
 
-template <typename In, typename F, typename Out = invoke_result_t<F, In>>
+template <typename C, typename Enable = void>
+struct get_element_type {
+  using type = typename C::value_type;
+};
+
+template <typename T>
+struct get_element_type<optional<T>> {
+  using type = T;
+};
+
+template <typename T>
+using get_element_type_t = typename get_element_type<T>::type;
+
+template <typename In, typename F, typename Out = get_element_type_t<invoke_result_t<F, In>>>
 std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f) {
   std::unordered_set<Out> result;
   for (auto const &elem : v) {
@@ -614,7 +649,7 @@ T reversed(T const &t) {
 
 template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
-  return transform(v, [](optional<T> const &t) {
+  return transform(v, [](optional<T> const &element) {
     return element.value_or([] {
       throw mk_runtime_error("Encountered element without value in call to value_all");
     });

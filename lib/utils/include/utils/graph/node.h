@@ -4,7 +4,6 @@
 #include "cow_ptr_t.h"
 #include "query_set.h"
 #include "utils/fmt.h"
-#include "utils/for_internal_use_only.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
@@ -62,11 +61,11 @@ struct GraphView {
       create(Args &&...args) {
     return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
-  GraphView(std::shared_ptr<IGraphView const> const &ptr,
-            should_only_be_used_internally_tag_t const &tag)
-      : GraphView(ptr) {}
 
-  GraphView(std::shared_ptr<IGraphView const> ptr, for_internal_use_only) : ptr(ptr) {}
+private:
+  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
+
+  friend struct GraphInternal;
 private:
   std::shared_ptr<IGraphView const> ptr;
 };
@@ -105,10 +104,11 @@ public:
     return Graph(make_unique<T>());
   }
 
-  Graph(std::unique_ptr<IGraph> ptr,
-        should_only_be_used_internally_tag_t const &tag)
+private:
+  Graph(std::unique_ptr<IGraph> ptr)
       : ptr(std::move(ptr)) {}
 
+  friend struct GraphInternal;
 private:
   cow_ptr_t<IGraph> ptr;
 };

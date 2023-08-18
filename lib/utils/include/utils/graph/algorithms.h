@@ -81,6 +81,8 @@ void remove_edges(MultiDiGraph &, std::unordered_set<MultiDiEdge> const &);
 void remove_edges(DiGraph &, std::unordered_set<DirectedEdge> const &);
 void remove_edges(UndirectedGraph &, std::vector<UndirectedEdge> const &);
 
+std::unordered_set<Node> get_endpoints(UndirectedEdge const &);
+
 std::unordered_set<MultiDiEdge> get_edges(MultiDiGraphView const &);
 std::unordered_set<DirectedEdge> get_edges(DiGraphView const &);
 std::unordered_set<UndirectedEdge> get_edges(UndirectedGraphView const &);

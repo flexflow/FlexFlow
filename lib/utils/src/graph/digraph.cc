@@ -1,5 +1,6 @@
 #include "utils/graph/digraph.h"
 #include "utils/containers.h"
+#include "internal.h"
 
 namespace FlexFlow {
 
@@ -46,7 +47,7 @@ std::unordered_set<DirectedEdge>
 DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
 
 DiGraphView::operator GraphView() const {
-  return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
+  return GraphInternal::create_nodegraphview(this->ptr);
 }
 
 std::unordered_set<Node> DiGraphView::query_nodes(NodeQuery const &q) const {

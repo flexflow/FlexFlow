@@ -1,11 +1,16 @@
 #include "utils/graph/undirected.h"
 #include "utils/containers.h"
 #include <cassert>
+#include "internal.h"
 
 namespace FlexFlow {
 
 UndirectedEdge::UndirectedEdge(Node const &src, Node const &dst)
     : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger)) {}
+
+bool is_connected_to(UndirectedEdge const &e, Node const &n) {
+  return e.bigger == n || e.smaller == n;
+}
 
 UndirectedEdgeQuery UndirectedEdgeQuery::all() {
   return {matchall<Node>()};
@@ -53,8 +58,7 @@ UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UndirectedGraph::operator UndirectedGraphView() const {
-  return UndirectedGraphView(this->ptr.get(),
-                             should_only_be_used_internally_tag_t{});
+  return GraphInternal::create_undirectedgraphview(this->ptr.get());
 }
 
 std::unordered_set<UndirectedEdge>
@@ -77,7 +81,7 @@ UndirectedGraphView UndirectedGraphView::unsafe_create_without_ownership(
 }
 
 UndirectedGraphView::operator GraphView() const {
-  return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
+  return GraphInternal::create_graphview(this->ptr);
 }
 
 } // namespace FlexFlow

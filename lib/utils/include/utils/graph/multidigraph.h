@@ -4,7 +4,6 @@
 #include "cow_ptr_t.h"
 #include "multidigraph_interfaces.h"
 #include "node.h"
-#include "utils/for_internal_use_only.h"
 
 namespace FlexFlow {
 struct MultiDiGraphView {
@@ -12,9 +11,7 @@ public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
 
-  operator GraphView() const {
-    return GraphView(ptr, for_internal_use_only{});
-  }
+  operator GraphView() const;
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
@@ -34,6 +31,9 @@ public:
 
 private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
+
+  friend struct GraphInternal;
+private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
@@ -72,6 +72,8 @@ public:
 
 private:
   MultiDiGraph(std::unique_ptr<IMultiDiGraph> ptr) : ptr(std::move(ptr)) {}
+
+  friend struct GraphInternal;
 
 private:
   cow_ptr_t<IMultiDiGraph> ptr;

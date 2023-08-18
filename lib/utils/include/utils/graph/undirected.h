@@ -3,7 +3,9 @@
 
 #include "cow_ptr_t.h"
 #include "node.h"
+#include "utils/exception.h"
 #include "utils/optional.h"
+#include "utils/type_traits.h"
 #include "utils/unique.h"
 #include <unordered_set>
 
@@ -20,12 +22,12 @@ public:
 };
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(UndirectedEdge, smaller, bigger);
 
+bool is_connected_to(UndirectedEdge const &, Node const &);
+
 struct UndirectedEdgeQuery {
   query_set<Node> nodes;
 
-  static UndirectedEdgeQuery all() {
-    NOT_IMPLEMENTED();
-  }
+  static UndirectedEdgeQuery all();
 };
 FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
 
@@ -46,9 +48,7 @@ struct IUndirectedGraphView : public IGraphView {
 protected:
   IUndirectedGraphView() = default;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IUndirectedGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUndirectedGraphView);
 
 struct UndirectedGraphView {
 public:
@@ -62,9 +62,7 @@ public:
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-  std::unordered_set<Edge> query_edges(EdgeQuery const &query) const {
-    return ptr->query_edges(query);
-  }
+  std::unordered_set<Edge> query_edges(EdgeQuery const &query) const;
 
   template <typename T, typename... Args>
   static
@@ -77,13 +75,13 @@ public:
 
   static UndirectedGraphView
       unsafe_create_without_ownership(IUndirectedGraphView const &);
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> const &ptr,
-                      should_only_be_used_internally_tag_t const &tag)
-      : UndirectedGraphView(ptr) {}
 
 private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
       : ptr(ptr) {}
+
+  friend struct GraphInternal;
+private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
@@ -128,6 +126,7 @@ public:
 private:
   UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
 
+  friend struct GraphInternal;
 private:
   cow_ptr_t<IUndirectedGraph> ptr;
 };

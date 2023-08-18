@@ -1,4 +1,5 @@
 #include "utils/graph/multidigraph.h"
+#include "utils/graph/internal.h"
 
 namespace FlexFlow {
 
@@ -111,7 +112,7 @@ std::unordered_set<MultiDiEdge>
 }
 
 MultiDiGraphView::operator GraphView() const {
-  return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
+  return GraphInternal::create_nodegraphview(this->ptr);
 }
 
 // Set the shared_ptr's destructor to a nop so that effectively there is no
@@ -136,27 +137,11 @@ void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
 }
 
 MultiDiGraph::operator MultiDiGraphView() const {
-  return MultiDiGraphView::unsafe_create_without_ownership(*this->ptr);
+  return GraphInternal::create_multidigraphview(this->ptr.get());
 }
 
 Node MultiDiGraph::add_node() {
   return this->ptr.get_mutable()->add_node();
-}
-
-std::vector<Node> MultiDiGraph::add_nodes(size_t n) {
-  std::vector<Node> nodes;
-  for (size_t i = 0; i < n; i++) {
-    nodes.push_back(add_node());
-  }
-  return nodes;
-}
-
-std::vector<NodePort> MultiDiGraph::add_node_ports(size_t n) {
-  std::vector<NodePort> ports;
-  for (size_t i = 0; i < n; i++) {
-    ports.push_back(add_node_port());
-  }
-  return ports;
 }
 
 NodePort MultiDiGraph::add_node_port() {
@@ -177,12 +162,6 @@ void MultiDiGraph::remove_node_unsafe(Node const &n) {
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
   return this->ptr.get_mutable()->add_edge(e);
-}
-
-void MultiDiGraph::add_edges(std::vector<MultiDiEdge> const &edges) {
-  for (MultiDiEdge const &e : edges) {
-    add_edge(e);
-  }
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
