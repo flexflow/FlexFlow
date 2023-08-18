@@ -6,6 +6,7 @@
 #include "optional.h"
 #include "required_core.h"
 #include "type_traits_core.h"
+#include "utils/exception.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -561,7 +562,9 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
   std::vector<T> result;
 
   for (auto const &element : v) {
-    result.push_back(element.value());
+    result.push_back(element.value_or([] {
+      throw mk_runtime_error("Encountered element without value in call to value_all");
+    }));
   }
 
   return result;
