@@ -52,9 +52,9 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
 
-  b.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(0));
-  b.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(1));
-  b.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(2));
+  b.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(0));
+  b.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(1));
+  b.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(2));
 
   b.bind_arg(QPROJSIZE, get_qProjSize(attrs));
   b.bind_arg(KPROJSIZE, get_kProjSize(attrs));
@@ -267,9 +267,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   SimTaskBinding init_binding;
   init_binding.bind_arg(HANDLE, ff_handle());
   init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(0));
-  init_binding.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(1));
-  init_binding.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(2));
+  init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(0));
+  init_binding.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(1));
+  init_binding.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(2));
   init_binding.bind_arg(QPROJSIZE, get_qProjSize(attrs));
   init_binding.bind_arg(KPROJSIZE, get_kProjSize(attrs));
   init_binding.bind_arg(VPROJSIZE, get_vProjSize(attrs));
