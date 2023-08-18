@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_GRAPH_ALGORITHMS_H
 
 #include "digraph.h"
+#include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "node.h"
 #include "open_graphs.h"
@@ -177,6 +178,11 @@ Node get_dst_node(MultiDiEdge const &);
 Node get_src_node(InputMultiDiEdge const &);
 Node get_dst_node(OutputMultiDiEdge const &);
 
+std::unordered_set<Node> get_neighbors(UndirectedGraphView const &,
+                                       Node const &);
+std::unordered_set<Node> get_neighbors(DiGraphView const &, Node const &);
+std::unordered_set<Node> get_neighbors(MultiDiGraphView const &, Node const &);
+
 // return the set of nodes without incoming edges
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sources(MultiDiGraphView const &);
@@ -268,6 +274,10 @@ MultiDiGraphView get_subgraph(MultiDiGraphView const &,
 OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &,
                                   std::unordered_set<Node> const &);
 
+std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &);
+Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &,
+                                      DiGraphView const &);
+
 MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);
 UndirectedGraphView join(UndirectedGraphView const &lhs,
@@ -279,6 +289,7 @@ DiGraphView with_added_edges(DiGraphView const &,
                              std::unordered_set<DirectedEdge> const &);
 
 UndirectedGraphView as_undirected(DiGraphView const &);
+UndirectedGraphView as_undirected(MultiDiGraphView const &);
 MultiDiGraphView as_multidigraph(DiGraphView const &);
 DiGraphView as_digraph(MultiDiGraphView const &);
 MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &);

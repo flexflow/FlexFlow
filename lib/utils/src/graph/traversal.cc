@@ -35,7 +35,13 @@ udi &udi::operator++() {
 
   std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(graph, {last});
   for (DirectedEdge const &e : outgoing) {
-    stack.push_back(e.dst);
+    auto it = std::find(stack.begin(), stack.end(), e.dst);
+    if (it == stack.end()) {
+      stack.push_back(e.dst);
+    } else {
+      stack.erase(it);
+      stack.push_back(e.dst);
+    }
   }
   return *this;
 }
@@ -146,12 +152,12 @@ bfi bfi::operator++(int) {
 
 bool bfi::operator==(bfi const &other) const {
   return this->q == other.q && this->seen == other.seen &&
-         this->graph == other.graph;
+         is_ptr_equal(this->graph, other.graph);
 }
 
 bool bfi::operator!=(bfi const &other) const {
   return this->q != other.q ||
-         this->seen != other.seen && this->graph != other.graph;
+         this->seen != other.seen && is_ptr_equal(this->graph, other.graph);
 }
 
 CheckedDFSView::CheckedDFSView(DiGraphView const &g,

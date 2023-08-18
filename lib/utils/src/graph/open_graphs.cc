@@ -1,6 +1,27 @@
 #include "utils/graph/open_graphs.h"
+#include "utils/graph/query_set.h"
 
 namespace FlexFlow {
+
+InputMultiDiEdgeQuery InputMultiDiEdgeQuery::all() {
+  return {matchall<Node>(), matchall<NodePort>()};
+}
+
+OutputMultiDiEdgeQuery OutputMultiDiEdgeQuery::all() {
+  return {matchall<Node>(), matchall<NodePort>()};
+}
+
+std::unordered_set<Node>
+    OpenMultiDiGraphView::query_nodes(NodeQuery const &q) const {
+  return this->ptr->query_nodes(q);
+}
+std::unordered_set<OpenMultiDiEdge>
+    OpenMultiDiGraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
+
+OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)
+    : ptr(other.ptr) {}
 
 void swap(OpenMultiDiGraph &lhs, OpenMultiDiGraph &rhs) {
   using std::swap;

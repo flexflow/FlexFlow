@@ -20,9 +20,7 @@ struct DirectedEdgeQuery {
   query_set<Node> srcs;
   query_set<Node> dsts;
 
-  static DirectedEdgeQuery all() {
-    NOT_IMPLEMENTED();
-  }
+  static DirectedEdgeQuery all();
 };
 FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
 
@@ -56,11 +54,9 @@ public:
 
   friend void swap(DiGraphView &, DiGraphView &);
 
-  bool operator==(DiGraphView const &) const;
-  bool operator!=(DiGraphView const &) const;
-
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
+  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
@@ -69,17 +65,19 @@ public:
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
+  static DiGraphView
+      unsafe_create_without_ownership(IDiGraphView const &graphView);
+
+  DiGraphView(std::shared_ptr<IDiGraphView const> const &ptr,
+              should_only_be_used_internally_tag_t const &tag)
+      : DiGraphView(ptr) {}
+
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
 
-  friend DiGraphView unsafe(IDiGraphView const &);
-
-private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
-
-DiGraphView unsafe(IDiGraphView const &);
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
@@ -97,7 +95,14 @@ public:
   DiGraph(DiGraph const &) = default;
   DiGraph &operator=(DiGraph const &) = default;
 
-  operator DiGraphView() const;
+  operator DiGraphView() const {
+    return DiGraphView(this->ptr.get(), should_only_be_used_internally_tag_t{});
+  }
+
+  operator Graph() const {
+    return Graph(this->ptr.get_mutable(),
+                 should_only_be_used_internally_tag_t{});
+  }
 
   friend void swap(DiGraph &, DiGraph &);
 

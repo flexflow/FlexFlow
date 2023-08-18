@@ -10,10 +10,15 @@
 namespace FlexFlow {
 
 struct UndirectedEdge {
+public:
+  UndirectedEdge() = delete;
+  UndirectedEdge(Node const &src, Node const &dst);
+
+public:
   Node smaller;
   Node bigger;
 };
-FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(UndirectedEdge, smaller, bigger);
 
 struct UndirectedEdgeQuery {
   query_set<Node> nodes;
@@ -52,18 +57,13 @@ public:
 
   UndirectedGraphView() = delete;
 
-  operator GraphView const &() const;
-  operator GraphView &();
+  operator GraphView() const;
 
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &query) const {
     return ptr->query_edges(query);
-  }
-
-  IUndirectedGraphView const *unsafe() const {
-    return this->ptr.get();
   }
 
   template <typename T, typename... Args>
@@ -75,13 +75,15 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
+  static UndirectedGraphView
+      unsafe_create_without_ownership(IUndirectedGraphView const &);
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> const &ptr,
+                      should_only_be_used_internally_tag_t const &tag)
+      : UndirectedGraphView(ptr) {}
+
 private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
       : ptr(ptr) {}
-
-  friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
-
-private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);

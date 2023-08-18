@@ -9,8 +9,11 @@ namespace FlexFlow {
 
 class AdjacencyMultiDiGraph : public IMultiDiGraph {
 public:
+  AdjacencyMultiDiGraph() = default;
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
+  NodePort add_node_port() override;
+  void add_node_port_unsafe(NodePort const &) override;
   void remove_node_unsafe(Node const &) override;
   void add_edge(Edge const &) override;
   void remove_edge(Edge const &) override;
@@ -18,10 +21,9 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   AdjacencyMultiDiGraph *clone() const override {
-    return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
+    return new AdjacencyMultiDiGraph(
+        this->next_node_idx, this->next_node_port, this->adjacency);
   }
-
-  AdjacencyMultiDiGraph() = default;
 
   ~AdjacencyMultiDiGraph() = default;
 
@@ -33,8 +35,10 @@ private:
           std::unordered_map<NodePort, std::unordered_set<NodePort>>>>;
 
   AdjacencyMultiDiGraph(std::size_t next_node_idx,
+                        std::size_t next_node_port,
                         ContentsType const &adjacency)
-      : next_node_idx(next_node_idx), adjacency(adjacency) {}
+      : next_node_idx(next_node_idx), next_node_port(next_node_port),
+        adjacency(adjacency) {}
 
 private:
   std::size_t next_node_idx = 0;

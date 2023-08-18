@@ -21,6 +21,39 @@ std::unordered_set<Node>
   return this->g.query_nodes(query);
 }
 
+std::unordered_set<DirectedEdge>
+    ContractNodeView::query_edges(DirectedEdgeQuery const &q) const {
+  return g.query_edges(q);
+}
+
+std::unordered_set<Node>
+    ContractNodeView::query_nodes(NodeQuery const &q) const {
+  return g.query_nodes(q);
+}
+
+std::unordered_set<Node> ViewOpenMultiDiGraphAsMultiDiGraph::query_nodes(
+    NodeQuery const &query) const {
+  return g.query_nodes(query);
+}
+
+std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
+    MultiDiEdgeQuery const &query) const {
+
+  InputMultiDiEdgeQuery input_edge_query = InputMultiDiEdgeQuery::all();
+  OutputMultiDiEdgeQuery output_edge_query = OutputMultiDiEdgeQuery::all();
+
+  OpenMultiDiEdgeQuery q{input_edge_query, query, output_edge_query};
+
+  std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);
+
+  return transform(
+      filter(edges,
+             [](OpenMultiDiEdge const &edge) {
+               return holds_alternative<MultiDiEdge>(edge);
+             }),
+      [](OpenMultiDiEdge const &edge) { return get<MultiDiEdge>(edge); });
+}
+
 DirectedEdge flipped(DirectedEdge const &e) {
   return {e.src, e.dst};
 }
@@ -67,6 +100,11 @@ std::unordered_set<MultiDiEdge>
                                         .with_src_nodes(this->subgraph_nodes)
                                         .with_dst_nodes(this->subgraph_nodes);
   return this->g.query_edges(query_intersection(query, subgraph_query));
+}
+
+std::unordered_set<Node>
+    MultiDiSubgraphView::query_nodes(NodeQuery const &query) const {
+  return this->g.query_nodes(query_intersection(query, {this->subgraph_nodes}));
 }
 
 UndirectedGraphView
@@ -189,6 +227,7 @@ std::unordered_set<Node>
 
 std::unordered_set<DirectedEdge>
     JoinedDigraphView::query_edges(DirectedEdgeQuery const &query) const {
+
   std::unordered_set<Node> srcs = this->query_nodes(query.srcs);
   std::unordered_set<Node> dsts = this->query_nodes(query.dsts);
   auto traced_srcs = this->joined_nodes.trace_nodes(srcs);

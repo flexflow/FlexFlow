@@ -3,6 +3,7 @@
 
 #include "adjacency_digraph.h"
 #include "digraph.h"
+#include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "open_graphs.h"
 #include "tl/optional.hpp"
@@ -204,9 +205,10 @@ private:
 
 struct ContractNodeView : public IDiGraphView {
   ContractNodeView() = delete;
-  explicit ContractNodeView(DiGraphView const &,
+  explicit ContractNodeView(DiGraphView const &g,
                             Node const &removed,
-                            Node const &into);
+                            Node const &into)
+      : g(g), from(removed), to(into) {}
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -223,8 +225,8 @@ private:
 struct OpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
 public:
   OpenMultiDiSubgraphView() = delete;
-  explicit OpenMultiDiSubgraphView(OpenMultiDiGraphView const &,
-                                   std::unordered_set<Node> const &);
+  OpenMultiDiSubgraphView(OpenMultiDiGraphView const &,
+                          std::unordered_set<Node> const &);
 
   std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &) const override;
@@ -288,7 +290,8 @@ private:
 struct ViewOpenMultiDiGraphAsMultiDiGraph : public IMultiDiGraphView {
 public:
   ViewOpenMultiDiGraphAsMultiDiGraph() = delete;
-  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const &);
+  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const &g)
+      : g(g) {}
 
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &) const override;

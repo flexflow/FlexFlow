@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <vector>
 
+using namespace FlexFlow;
+
 namespace doctest {
 
 template <typename InputIt, typename Stringifiable = std::string>

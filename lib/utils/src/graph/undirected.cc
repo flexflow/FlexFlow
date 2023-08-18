@@ -4,6 +4,13 @@
 
 namespace FlexFlow {
 
+UndirectedEdge::UndirectedEdge(Node const &src, Node const &dst)
+    : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger)) {}
+
+UndirectedEdgeQuery UndirectedEdgeQuery::all() {
+  return {matchall<Node>()};
+}
+
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
                                        UndirectedEdgeQuery const &rhs) {
   return {
@@ -44,5 +51,33 @@ std::unordered_set<UndirectedEdge>
 
 UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
+
+UndirectedGraph::operator UndirectedGraphView() const {
+  return UndirectedGraphView(this->ptr.get(),
+                             should_only_be_used_internally_tag_t{});
+}
+
+std::unordered_set<UndirectedEdge>
+    UndirectedGraphView::query_edges(UndirectedEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
+
+std::unordered_set<Node>
+    UndirectedGraphView::query_nodes(NodeQuery const &q) const {
+  return this->ptr->query_nodes(q);
+}
+
+// Set the shared_ptr's destructor to a nop so that effectively there is no
+// ownership
+UndirectedGraphView UndirectedGraphView::unsafe_create_without_ownership(
+    IUndirectedGraphView const &g) {
+  std::shared_ptr<IUndirectedGraphView const> ptr(
+      (&g), [](IUndirectedGraphView const *) {});
+  return UndirectedGraphView(ptr);
+}
+
+UndirectedGraphView::operator GraphView() const {
+  return GraphView(this->ptr, should_only_be_used_internally_tag_t{});
+}
 
 } // namespace FlexFlow

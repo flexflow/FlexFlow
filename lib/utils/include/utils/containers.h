@@ -139,8 +139,20 @@ template <typename K,
 std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
                                    F const &f) {
   std::unordered_map<K2, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     result.insert({f(kv.first), kv.second});
+  }
+  return result;
+}
+
+template <typename K,
+          typename V,
+          typename F,
+          typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
+bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
+  bidict<K2, V> result;
+  for (auto const &kv : m) {
+    result.equate(f(kv.first), kv.second);
   }
   return result;
 }
@@ -149,9 +161,20 @@ template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
                                      F const &f) {
   std::unordered_map<K, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     if (f(kv.first)) {
       result.insert(kv);
+    }
+  }
+  return result;
+}
+
+template <typename K, typename V, typename F>
+bidict<K, V> filter_values(bidict<K, V> const &m, F const &f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : m) {
+    if (f(kv.second)) {
+      result.equate(kv);
     }
   }
   return result;
@@ -166,6 +189,18 @@ std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
   std::unordered_map<K, V2> result;
   for (auto const &kv : m) {
     result.insert({kv.first, f(kv.second)});
+  }
+  return result;
+}
+
+template <typename K,
+          typename V,
+          typename F,
+          typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
+bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
+  bidict<K, V2> result;
+  for (auto const &kv : m) {
+    result.equate({kv.first, f(kv.second)});
   }
   return result;
 }
@@ -234,6 +269,20 @@ std::unordered_set<T> intersection(std::unordered_set<T> const &l,
 }
 
 template <typename T>
+std::unordered_set<T>
+    intersection(std::vector<std::unordered_set<T>> const &v) {
+  if (v.empty()) {
+    throw mk_runtime_error("cannot take intersection of no sets");
+  }
+
+  std::unordered_set<T> result = v[0];
+  for (int i = 1; i < v.size(); i++) {
+    result = intersection(result, v[i]);
+  }
+  return result;
+}
+
+template <typename T>
 bool are_disjoint(std::unordered_set<T> const &l,
                   std::unordered_set<T> const &r) {
   return intersection<T>(l, r).empty();
@@ -289,12 +338,12 @@ std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
 
 template <typename L, typename R>
 std::function<R(L const &)> lookup_in_l(bidict<L, R> const &m) {
-  return [&m](L const &l) -> L { return m.at_l(l); };
+  return [&m](L const &l) -> R { return m.at_l(l); };
 }
 
 template <typename L, typename R>
 std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
-  return [&m](R const &r) -> R { return m.at_r(r); };
+  return [&m](R const &r) -> L { return m.at_r(r); };
 }
 
 template <typename T>
@@ -496,8 +545,16 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
 template <typename C, typename F, typename Elem = typename C::value_type>
 std::vector<Elem> sorted_by(C const &c, F const &f) {
   std::vector<Elem> result(c.begin(), c.end());
-  inplace_sorted_by(c, f);
+  inplace_sorted_by(result, f);
   return result;
+}
+
+template <typename T, typename F>
+void inplace_sorted_by(std::vector<T> &v, F const &f) {
+  auto custom_comparator = [&](T const &lhs, T const &rhs) -> bool {
+    return f(lhs, rhs);
+  };
+  std::sort(v.begin(), v.end(), custom_comparator);
 }
 
 template <typename C, typename F, typename Elem = typename C::value_type>
@@ -545,13 +602,13 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
 
 template <typename C>
 typename C::value_type maximum(C const &v) {
-  return std::max_element(v.begin(), v.end());
+  return *std::max_element(v.begin(), v.end());
 }
 
 template <typename T>
 T reversed(T const &t) {
   T r;
-  for (auto i = t.cend() - 1; i >= t.begin(); i++) {
+  for (auto i = t.cend() - 1; i >= t.begin(); i--) {
     r.push_back(*i);
   }
   return r;
@@ -559,16 +616,12 @@ T reversed(T const &t) {
 
 template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
-  std::vector<T> result;
-
-  for (auto const &element : v) {
-    result.push_back(element.value_or([] {
+  return transform(v, [](optional<T> const &t) {
+    return element.value_or([] {
       throw mk_runtime_error("Encountered element without value in call to value_all");
-    }));
-  }
-
-  return result;
-}
+    });
+  });
+ }
 
 template <typename T>
 std::vector<T> subvec(std::vector<T> const &v,
@@ -590,7 +643,7 @@ std::vector<T> subvec(std::vector<T> const &v,
     begin_iter += resolve_loc(maybe_start.value());
   }
   if (maybe_end.has_value()) {
-    end_iter = v.cbegin() + resolve_loc(maybe_start.value());
+    end_iter = v.cbegin() + resolve_loc(maybe_end.value());
   }
 
   std::vector<T> output(begin_iter, end_iter);
