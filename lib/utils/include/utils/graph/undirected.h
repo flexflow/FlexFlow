@@ -6,44 +6,10 @@
 #include "utils/optional.h"
 #include "utils/unique.h"
 #include <unordered_set>
+#include "undirected_edge.h"
+#include "undirected_interfaces.h"
 
 namespace FlexFlow {
-
-struct UndirectedEdge {
-  Node smaller;
-  Node bigger;
-};
-FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
-
-struct UndirectedEdgeQuery {
-  query_set<Node> nodes;
-
-  static UndirectedEdgeQuery all() {
-    NOT_IMPLEMENTED();
-  }
-};
-FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
-
-UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
-                                       UndirectedEdgeQuery const &);
-
-struct IUndirectedGraphView : public IGraphView {
-  using Edge = UndirectedEdge;
-  using EdgeQuery = UndirectedEdgeQuery;
-
-  IUndirectedGraphView(IUndirectedGraphView const &) = delete;
-  IUndirectedGraphView &operator=(IUndirectedGraphView const &) = delete;
-
-  virtual std::unordered_set<Edge>
-      query_edges(UndirectedEdgeQuery const &) const = 0;
-  virtual ~IUndirectedGraphView();
-
-protected:
-  IUndirectedGraphView() = default;
-};
-
-static_assert(is_rc_copy_virtual_compliant<IUndirectedGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
 
 struct UndirectedGraphView {
 public:
@@ -59,10 +25,6 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-
-  IUndirectedGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
 
   template <typename T, typename... Args>
   static
@@ -82,13 +44,6 @@ private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
-
-struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
-  virtual void add_edge(UndirectedEdge const &) = 0;
-  virtual void remove_edge(UndirectedEdge const &) = 0;
-
-  virtual IUndirectedGraph *clone() const = 0;
-};
 
 struct UndirectedGraph {
 public:
