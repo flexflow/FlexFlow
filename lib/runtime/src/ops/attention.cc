@@ -88,8 +88,12 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
 static DeviceSpecificArg<MHAPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
-
-  // get ParallelTensorShapes from acc
+  Allocator allocator = acc.get_allocator();
+  int qProjSize = acc.get_argument<int>(QPROJSIZE);
+  int kProjSize = acc.get_argument<int>(KPROJSIZE);
+  int vProjSize = acc.get_argument<int>(VPROJSIZE);
+  int oProjSize = acc.get_argument<int>(OPROJSIZE);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   ParallelTensorShape query_parallel_tensor_shape =
       acc.get_argument<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
   ParallelTensorShape key_parallel_tensor_shape =
@@ -97,7 +101,6 @@ static DeviceSpecificArg<MHAPerDeviceState>
   ParallelTensorShape value_parallel_tensor_shape =
       acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
 
-  // create MultiHeadAttentionInputs from ParallelTensorShapes
   MultiHeadAttentionInputs<ParallelTensorShape> inputs =
       MultiHeadAttentionInputs<ParallelTensorShape>(
           query_parallel_tensor_shape,
@@ -111,14 +114,6 @@ static DeviceSpecificArg<MHAPerDeviceState>
   int qSize = get_qSize(inputs);
   int kSize = get_kSize(inputs);
   int vSize = get_vSize(inputs);
-
-  int qProjSize = acc.get_argument<int>(QPROJSIZE);
-  int kProjSize = acc.get_argument<int>(KPROJSIZE);
-  int vProjSize = acc.get_argument<int>(VPROJSIZE);
-  int oProjSize = acc.get_argument<int>(OPROJSIZE);
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-
-  Allocator allocator = acc.get_allocator();
 
   int qoSeqLength = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(1)];
   int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
