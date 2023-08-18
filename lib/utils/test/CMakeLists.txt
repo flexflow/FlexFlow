@@ -1,13 +1,6 @@
 set(project_target utils-test)
 project(${project_target})
 
-include(FetchContent)
-FetchContent_Declare(
-    argparse
-    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
-)
-FetchContent_MakeAvailable(argparse)
-
 file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
