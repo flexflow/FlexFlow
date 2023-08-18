@@ -65,6 +65,7 @@ public:
 
   FFConfig() = default;
   static Legion::MappingTagID get_hash_id(std::string const &pcname);
+  void parse_args(char **argv, int argc);
 
 public:
   int epochs = 1;
