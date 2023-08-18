@@ -5,9 +5,30 @@
 #include "op-attrs/op.h"
 #include "op-attrs/ops/embedding.h"
 #include "utils/bidict.h"
+#include "utils/exception.h"
 
 flexflow_utils_exception_t
     make_opattrs_exception(flexflow_opattrs_error_code_t);
+
+flexflow_error_t flexflow_opattrs_error_wrap(flexflow_opattrs_error_t e) {
+  return flexflow_error_wrap(FLEXFLOW_ERROR_SOURCE_OPATTRS, *unwrap_opaque(e));
+}
+
+flexflow_error_t flexflow_opattrs_error_unwrap(
+    flexflow_error_t err flexflow_opattrs_error_t *out) {
+  return flexflow_error_unwrap(err, FLEXFLOW_ERROR_SOURCE_OPATTRS, out);
+}
+
+flexflow_error_t flexflow_opattrs_error_is_ok(flexflow_opattrs_error_t err,
+                                              bool *out) {
+  *out = false;
+  return status_ok();
+}
+
+flexflow_error_t flexflow_opattrs_error_get_string(flexflow_opattrs_error_t err,
+                                                   char **m_out) {
+  NOT_IMPLEMENTED(); // TODO(lambda)
+}
 
 REGISTER_FFI_ENUM(flexflow_param_sync_t,
                   ParamSync,
