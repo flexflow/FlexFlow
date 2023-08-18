@@ -316,7 +316,7 @@ struct Arbitrary<
                 #TYPENAME " should be fully visitable");                       \
   CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME);
 
-#define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME)       \
+#define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME) \
   static_assert(is_visitable<TYPENAME>::value,                                 \
                 #TYPENAME " is not visitable (this should never "              \
                           "happen--contact the FF developers)");               \
@@ -330,8 +330,8 @@ struct Arbitrary<
                 #TYPENAME                                                      \
                 " should be list-initialializable by the visit field types");
 
-#define CHECK_WELL_BEHAVED_VISIT_TYPE_NO_EQ(TYPENAME)                                \
-  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME);            \
+#define CHECK_WELL_BEHAVED_VISIT_TYPE_NO_EQ(TYPENAME)                          \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME);      \
   static_assert(is_visit_list_initializable<TYPENAME>::value,                  \
                 #TYPENAME                                                      \
                 " should be list-initialializable by the visit field types");
@@ -345,7 +345,7 @@ struct Arbitrary<
   static_assert(std::is_default_constructible<TYPENAME>::value,                \
                 #TYPENAME " should be default-constructible as it is empty")
 
-#define CHECK_CONSTRUCTION(TYPENAME)         \
+#define CHECK_CONSTRUCTION(TYPENAME)                                           \
   static_assert(is_only_visit_list_initializable<TYPENAME>::value,             \
                 #TYPENAME                                                      \
                 " should not be list-initialializable from any sub-tuples "    \
@@ -354,24 +354,24 @@ struct Arbitrary<
                 #TYPENAME " should not be default-constructible (you "         \
                           "probably need to insert req<...>s)")
 
-#define CHECK_CONSTRUCTION_EMPTY(TYPENAME)         \
+#define CHECK_CONSTRUCTION_EMPTY(TYPENAME)                                     \
   static_assert(std::is_default_constructible<TYPENAME>::value,                \
                 #TYPENAME " should be default-constructible as it is empty")
 
-#define FF_VISITABLE_STRUCT_EMPTY_NO_EQ(TYPENAME)                                    \
+#define FF_VISITABLE_STRUCT_EMPTY_NO_EQ(TYPENAME)                              \
   }                                                                            \
   VISITABLE_STRUCT_EMPTY(::FlexFlow::TYPENAME);                                \
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
   namespace FlexFlow {                                                         \
-  CHECK_WELL_BEHAVED_VISIT_TYPE_NO_EQ(TYPENAME);                                     \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NO_EQ(TYPENAME);                               \
   CHECK_CONSTRUCTION_EMPTY(TYPENAME);
 
-#define FF_VISITABLE_STRUCT_NONEMPTY_NO_EQ(TYPENAME, ...)                            \
+#define FF_VISITABLE_STRUCT_NONEMPTY_NO_EQ(TYPENAME, ...)                      \
   }                                                                            \
   VISITABLE_STRUCT(::FlexFlow::TYPENAME, __VA_ARGS__);                         \
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
   namespace FlexFlow {                                                         \
-  CHECK_WELL_BEHAVED_VISIT_TYPE_NO_EQ(TYPENAME);                                     \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NO_EQ(TYPENAME);                               \
   CHECK_CONSTRUCTION(TYPENAME)
 
 #define FF_VISITABLE_STRUCT_NONEMPTY(TYPENAME, ...)                            \

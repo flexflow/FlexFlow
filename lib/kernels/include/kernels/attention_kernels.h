@@ -27,21 +27,21 @@ struct MHAPerDeviceState {
   Allocator allocator;
 };
 
-FF_VISITABLE_STRUCT_NONEMPTY_NO_EQ(MHAPerDeviceState, 
-                    handle,
-                    weightSize,
-                    reserveSpaceSize,
-                    attnDesc,
-                    qDesc,
-                    kDesc,
-                    vDesc,
-                    oDesc,
-                    devQoSeqArray,
-                    devKvSeqArray,
-                    loWinIdx,
-                    hiWinIdx,
-                    reserveSpace,
-                    allocator);
+FF_VISITABLE_STRUCT_NONEMPTY_NO_EQ(MHAPerDeviceState,
+                                   handle,
+                                   weightSize,
+                                   reserveSpaceSize,
+                                   attnDesc,
+                                   qDesc,
+                                   kDesc,
+                                   vDesc,
+                                   oDesc,
+                                   devQoSeqArray,
+                                   devKvSeqArray,
+                                   loWinIdx,
+                                   hiWinIdx,
+                                   reserveSpace,
+                                   allocator);
 
 namespace Kernels {
 namespace MultiHeadAttention {

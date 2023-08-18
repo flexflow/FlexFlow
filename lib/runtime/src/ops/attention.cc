@@ -14,9 +14,9 @@
  */
 
 #include "attention.h"
-#include "op-attrs/ops/attention.h"
 #include "kernels/attention_kernels.h"
 #include "legion.h"
+#include "op-attrs/ops/attention.h"
 
 namespace FlexFlow {
 
@@ -58,7 +58,8 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
 
-  //get 3 parallel tensor shapes to construct MultiHeadAttentionInputs (in init_task_impl)
+  // get 3 parallel tensor shapes to construct MultiHeadAttentionInputs (in
+  // init_task_impl)
   b.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(0));
   b.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(1));
   b.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(2));
@@ -96,13 +97,20 @@ static DeviceSpecificArg<MHAPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
 
-  //get ParallelTensorShapes from acc
-  ParallelTensorShape query_parallel_tensor_shape = acc.get_argument<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
-  ParallelTensorShape key_parallel_tensor_shape = acc.get_argument<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
-  ParallelTensorShape value_parallel_tensor_shape = acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
+  // get ParallelTensorShapes from acc
+  ParallelTensorShape query_parallel_tensor_shape =
+      acc.get_argument<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
+  ParallelTensorShape key_parallel_tensor_shape =
+      acc.get_argument<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
+  ParallelTensorShape value_parallel_tensor_shape =
+      acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
 
-  //create MultiHeadAttentionInputs from ParallelTensorShapes
-  MultiHeadAttentionInputs<ParallelTensorShape> inputs = MultiHeadAttentionInputs<ParallelTensorShape>(query_parallel_tensor_shape, key_parallel_tensor_shape, value_parallel_tensor_shape);
+  // create MultiHeadAttentionInputs from ParallelTensorShapes
+  MultiHeadAttentionInputs<ParallelTensorShape> inputs =
+      MultiHeadAttentionInputs<ParallelTensorShape>(
+          query_parallel_tensor_shape,
+          key_parallel_tensor_shape,
+          value_parallel_tensor_shape);
 
   int kvSeqLength = get_kvSeqLength(inputs);
   int qSize = get_qSize(inputs);
@@ -261,7 +269,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   MachineView const &mv) {
   auto env = sim.new_environment();
 
-  MultiHeadAttentionInputs<ParallelTensorShape> inputs = MultiHeadAttentionInputs<ParallelTensorShape>(query_shape.shape, key_shape.shape, value_shape.shape);
+  MultiHeadAttentionInputs<ParallelTensorShape> inputs =
+      MultiHeadAttentionInputs<ParallelTensorShape>(
+          query_shape.shape, key_shape.shape, value_shape.shape);
   ParallelTensorShape output_shape = get_output_shape(attrs, inputs);
   ParallelTensorShape weight_shape = get_weights_shape(attrs, inputs);
 
@@ -290,7 +300,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-  auto init_accessor = env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
+  auto init_accessor =
+      env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
   auto fwd_accessor = env.get_fwd_accessor(ATTENTION_FWD_TASK_ID, fwd_binding);
   auto bwd_accessor = env.get_bwd_accessor(ATTENTION_BWD_TASK_ID, bwd_binding);
 
