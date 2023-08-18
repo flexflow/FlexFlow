@@ -164,7 +164,7 @@ bool contains_edge(DiGraph const &g, DirectedEdge const &edge) {
   return get_edges(g).count(edge) > 0;
 }
 
-}
+
 bool contains_edge(UndirectedGraph const &g, UndirectedEdge const &edge) {
   return get_edges(g).count(edge) > 0;
 }
@@ -441,7 +441,7 @@ std::unordered_map<Node, std::unordered_set<Node>>
 
 std::unordered_set<Node> get_dominators(DiGraphView const &g,
                                         Node const &node) {
-  return get_dominators(g), at(node);
+  return get_dominators(g).at(node);
 }
 
 std::unordered_set<Node> get_dominators(DiGraphView const &g,
