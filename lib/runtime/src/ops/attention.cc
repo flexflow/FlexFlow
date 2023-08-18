@@ -52,8 +52,6 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
 
-  // get 3 parallel tensor shapes to construct MultiHeadAttentionInputs (in
-  // init_task_impl)
   b.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(0));
   b.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(1));
   b.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(2));
