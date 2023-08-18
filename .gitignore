@@ -88,10 +88,7 @@ docs/build/
 
 # Doxygen documentation
 docs/doxygen/output/
-
-# Exhale documentation
-docs/source/_doxygen/
-docs/source/c++_api/
+docs/doxygen/cpp_api/
 
 # PyBuilder
 .pybuilder/
