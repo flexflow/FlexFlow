@@ -1900,6 +1900,37 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
                                     model->config.workersPerNode,
                                     model->config.cpusPerNode,
                                     model->all_valid_views);
+  if (model->config.only_data_parallel) {
+    Graph *graph = new Graph(model);
+    graph->print_dot();
+    std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
+    for (FlexFlow::Op const *dstOp : model->operators) {
+      Node dstNode;
+      dstNode.ptr = dstOp;
+      dstNode.guid = model->node_global_guid++;
+      op_to_node_map[dstOp] = dstNode;
+      for (int j = 0; j < dstOp->numInputs; j++) {
+        FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
+        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+        Node srcNode = op_to_node_map[srcOp];
+        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+      }
+    }
+    graph->print_dot();
+    curr_best_graph = std::unique_ptr<Graph>(graph);
+    MachineView data_parallel_view;
+    data_parallel_view.device_type = MachineView::GPU;
+    data_parallel_view.ndims = 1;
+    data_parallel_view.dim[0] =
+        model->config.numNodes * model->config.workersPerNode;
+    data_parallel_view.stride[0] = 1;
+    data_parallel_view.start_device_id = 0;
+    for (auto const &node : curr_best_graph->inEdges) {
+      curr_optimal_views[node.first] = data_parallel_view;
+    }
+    return std::make_pair(std::move(curr_best_graph), curr_optimal_views);
+  }
+
   Runtime *runtime = model->config.lg_hlr;
   Context ctx = model->config.lg_ctx;
   const Task* task = runtime->get_current_task(ctx);
@@ -1939,44 +1970,14 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
   std::unique_ptr<Graph> curr_best_graph;
   std::unordered_map<Node, MachineView> curr_optimal_views;
 
-  if (model->config.only_data_parallel) {
-    Graph *graph = new Graph(model);
-    graph->print_dot();
-    std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
-    for (FlexFlow::Op const *dstOp : model->operators) {
-      Node dstNode;
-      dstNode.ptr = dstOp;
-      dstNode.guid = model->node_global_guid++;
-      op_to_node_map[dstOp] = dstNode;
-      for (int j = 0; j < dstOp->numInputs; j++) {
-        FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
-        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
-        Node srcNode = op_to_node_map[srcOp];
-        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
-      }
-    }
-    graph->print_dot();
-    curr_best_graph = std::unique_ptr<Graph>(graph);
-    MachineView data_parallel_view;
-    data_parallel_view.device_type = MachineView::GPU;
-    data_parallel_view.ndims = 1;
-    data_parallel_view.dim[0] =
-        model->config.numNodes * model->config.workersPerNode;
-    data_parallel_view.stride[0] = 1;
-    data_parallel_view.start_device_id = 0;
-    for (auto const &node : curr_best_graph->inEdges) {
-      curr_optimal_views[node.first] = data_parallel_view;
-    }
-  } else {
-    // Main step to optimize the PCG of an FFModel
-    model->graph_optimize(model->config.search_budget,
-                          model->config.only_data_parallel,
-                          curr_best_graph,
-                          curr_optimal_views,
-                          perform_memory_search,
-                          MemoryOptimConfig{lambda.first},
-                          lambda.second);
-  }
+  // Main step to optimize the PCG of an FFModel
+  model->graph_optimize(model->config.search_budget,
+                        model->config.only_data_parallel,
+                        curr_best_graph,
+                        curr_optimal_views,
+                        perform_memory_search,
+                        MemoryOptimConfig{lambda.first},
+                        lambda.second);
   // Return the best result of the current search
   return std::make_pair(std::move(curr_best_graph), curr_optimal_views);
 };
