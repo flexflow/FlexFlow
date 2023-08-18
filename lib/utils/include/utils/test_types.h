@@ -79,11 +79,7 @@ using hash_cmp = test_type_t<HASHABLE, CMP>;
 
 namespace std {
 
-template <
-    ::FlexFlow::test_types::
-        capability... CAPABILITIES> //, typename = typename
-                                    // std::enable_if<::FlexFlow::test_types::has_capability<::FlexFlow::test_types::HASHABLE>::value,
-                                    // bool>::type>
+template <::FlexFlow::test_types::capability... CAPABILITIES>
 struct hash<::FlexFlow::test_types::test_type_t<CAPABILITIES...>> {
   typename std::enable_if<
       ::FlexFlow::test_types::has_capability<::FlexFlow::test_types::HASHABLE,
