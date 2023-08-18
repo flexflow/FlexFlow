@@ -27,7 +27,7 @@ struct MHAPerDeviceState {
   Allocator allocator;
 };
 
-FF_VISITABLE_STRUCT_NONEMPTY_NO_EQ(MHAPerDeviceState,
+FF_VISITABLE_STRUCT_NO_EQ(MHAPerDeviceState,
                                    handle,
                                    weightSize,
                                    reserveSpaceSize,
