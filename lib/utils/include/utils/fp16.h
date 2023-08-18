@@ -3,7 +3,7 @@
 
 #include "hash-utils.h"
 
-// #if defined(FF_USE_CUDA)
+#if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>
 #elif defined(FF_USE_HIP_CUDA)
 #include <cuda_fp16.h>
