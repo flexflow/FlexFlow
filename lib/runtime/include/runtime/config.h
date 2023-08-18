@@ -88,7 +88,7 @@ public:
   bool enable_parameter_parallel = false;
   bool enable_inplace_optimizations = false;
   // Control Tensor Op Math Conversion
-  bool allow_tensor_op_math_conversion =false;
+  bool allow_tensor_op_math_conversion = false;
   optional<std::string> dataset_path = nullopt;
   optional<std::string> export_strategy_computation_graph_file = nullopt;
   bool include_costs_dot_graph = false;
