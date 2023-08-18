@@ -307,7 +307,8 @@ list(APPEND FF_NVCC_FLAGS
 list(APPEND FF_LD_FLAGS
   -lrt
   -ldl
-  -rdynamic)
+  -rdynamic
+  -lstdc++fs)
 
 # Set FF FLAGS
 add_compile_options(${FF_CC_FLAGS})
