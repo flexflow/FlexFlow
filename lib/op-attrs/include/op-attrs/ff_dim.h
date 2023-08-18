@@ -15,6 +15,5 @@ struct ff_dim_t : public numerical_typedef<ff_dim_t, int> {
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::ff_dim_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::ff_dim_t, "ff_dim");
-static_assert(FlexFlow::is_neq_comparable<::FlexFlow::ff_dim_t>::value);
 
 #endif

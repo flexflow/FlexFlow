@@ -1,6 +1,9 @@
 #include "pcg/computation_graph_builder.h"
+#include "op-attrs/datatype.h"
 #include "op-attrs/get_op_type.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/operator_attrs.h"
+#include "op-attrs/tensor_shape.h"
 #include "pcg/computation_graph.h"
 #include "pcg/create_grad.h"
 #include "pcg/layer_guid_t.h"
@@ -10,8 +13,28 @@
 #include "utils/expected.h"
 #include "utils/fmt.h"
 #include "utils/graph/multidiedge.h"
+#include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
+
+static TensorShape get_shape(ComputationGraph const &, tensor_guid_t const &);
+static TensorShape get_shape(ComputationGraph const &, std::vector<tensor_guid_t> const &);
+
+template <typename Attrs>
+static TensorShape get_output_shape(ComputationGraph const &, Attrs const &, tensor_guid_t const &);
+
+template <typename Attrs>
+static TensorShape get_output_shape(ComputationGraph const &, Attrs const &, tensor_guid_t const &, tensor_guid_t const &);
+
+template <typename Attrs>
+static std::vector<TensorShape> get_output_shapes(ComputationGraph const &, Attrs const &, tensor_guid_t const &, tensor_guid_t const &);
+
+static TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
+static TensorShape get_broadcast_target_shape(ComputationGraph const &, std::vector<tensor_guid_t> const &);
+
+static tensor_guid_t broadcast(ComputationGraph &, tensor_guid_t, TensorShape const &);
+
+static DataType get_data_type(ComputationGraph const &, tensor_guid_t const &);
 
 static layer_guid_t add_layer(ComputationGraph &cg,
                               Layer const &layer,
@@ -110,8 +133,6 @@ static tensor_guid_t insert_layer(
       cg, add_layer(cg, layer, inputs, weights, {output_shape}));
 }
 
-static TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
-
 static tensor_guid_t
     element_binary(ComputationGraph &,
                    OperatorType,
@@ -175,28 +196,28 @@ static tensor_guid_t insert_element_unary_layer(
       as_type(cg, x, DataType::FLOAT, name + "input_pre_cast");
 
   Layer layer = {widen<ComputationGraphAttrs>(attrs), name};
-  TensorShape output_shape = get_output_shape(attrs, input);
+  TensorShape output_shape = get_output_shape(attrs, get_shape(cg, input));
 
   return insert_layer(cg, layer, {input}, {}, output_shape);
 }
 
 static tensor_guid_t
-    insert_element_unary_layer(ComputationGraph &,
+    insert_element_unary_layer(ComputationGraph &cg,
                                OperatorType op_type,
                                tensor_guid_t const &input,
                                optional<std::string> const &name) {
   ElementUnaryAttrs attrs = {op_type};
-  return insert_element_unary_layer(attrs, input, name);
+  return insert_element_unary_layer(cg, attrs, input, name);
 }
 
 static tensor_guid_t
-    insert_element_scalar_unary_layer(ComputationGraph &,
+    insert_element_scalar_unary_layer(ComputationGraph &cg,
                                       OperatorType op_type,
                                       tensor_guid_t const &input,
                                       float scalar,
                                       optional<std::string> const &name) {
   ElementScalarUnaryAttrs attrs = {op_type, scalar};
-  return insert_element_unary_layer(attrs, input, name);
+  return insert_element_unary_layer(cg, attrs, input, name);
 }
 
 static tensor_guid_t
@@ -207,18 +228,18 @@ static tensor_guid_t
                                 optional<std::string> const &maybe_name) {
   std::string name = maybe_name.value_or(get_default_name(op_type));
 
-  TensorShape compute_shape = get_broadcast_target_shape({lhs, rhs});
-  DataType compute_type = std::max(get_data_type(lhs), get_data_type(rhs));
+  TensorShape compute_shape = get_broadcast_target_shape(cg, {lhs, rhs});
+  DataType compute_type = std::max(get_data_type(cg, lhs), get_data_type(cg, rhs));
 
-  tensor_guid_t const lhs_input = as_type(
-      broadcast(lhs, compute_shape), compute_type, name + "_inputl_pre_cast");
-  tensor_guid_t const rhs_input = as_type(
-      broadcast(rhs, compute_shape), compute_type, name + "_inputr_pre_cast");
+  tensor_guid_t const lhs_input = as_type(cg,
+      broadcast(cg, lhs, compute_shape), compute_type, name + "_inputl_pre_cast");
+  tensor_guid_t const rhs_input = as_type(cg,
+      broadcast(cg, rhs, compute_shape), compute_type, name + "_inputr_pre_cast");
 
   ElementBinaryAttrs attrs = {op_type, compute_type, false, false};
 
   Layer layer = {attrs, name};
-  TensorShape output_shape = get_output_shape(attrs, lhs_input, rhs_input);
+  TensorShape output_shape = get_output_shape(cg, attrs, lhs_input, rhs_input);
 
   return insert_layer(cg, layer, {lhs_input, rhs_input}, {}, output_shape);
 }
@@ -394,14 +415,14 @@ tensor_guid_t
       as_type(cg, x, DataType::FLOAT, name + "input_pre_cast");
 
   Layer layer = {attrs, name};
-  TensorShape output_shape = get_output_shape(attrs, input);
+  TensorShape output_shape = get_output_shape(cg, attrs, input);
 
   std::vector<std::pair<TensorShape, optional<Initializer>>> weights;
 
-  weights.push_back({get_kernel_shape(attrs, input), kernel_initializer});
+  weights.push_back({get_kernel_shape(attrs, get_shape(cg, input)), kernel_initializer});
 
   if (use_bias) {
-    weights.push_back({get_bias_shape(attrs, input), bias_initializer});
+    weights.push_back({get_bias_shape(attrs, get_shape(cg, input)), bias_initializer});
   }
 
   return insert_layer(cg, layer, {input}, weights, output_shape);
@@ -419,7 +440,7 @@ tensor_guid_t insert_dropout_layer(ComputationGraph &cg,
   tensor_guid_t input =
       as_type(cg, x, DataType::FLOAT, name + "input_pre_cast");
 
-  TensorShape output_shape = get_output_shape(attrs, input);
+  TensorShape output_shape = get_output_shape(attrs, get_shape(cg, input));
 
   return insert_layer(cg, layer, {input}, {}, output_shape);
 }
@@ -437,10 +458,10 @@ tensor_guid_t
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   Layer layer = {attrs, name};
-  tensor_guid_t input = as_type(x, DataType::FLOAT, name + "input_pre_cast");
+  tensor_guid_t input = as_type(cg, x, DataType::FLOAT, name + "input_pre_cast");
 
-  TensorShape output_shape = get_output_shape(attrs, input);
-  TensorShape weights_shape = get_weights_shape(attrs, input);
+  TensorShape output_shape = get_output_shape(cg, attrs, input);
+  TensorShape weights_shape = get_weights_shape(attrs, get_shape(cg, input));
 
   return insert_layer(
       cg, layer, {input}, {{weights_shape, kernel_initializer}}, output_shape);
@@ -455,8 +476,7 @@ std::vector<tensor_guid_t>
   GatherAttrs attrs = {dim};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  Tensor index_tensor = cg.at(index);
-  DataType index_dt = get_data_type(index_tensor);
+  DataType index_dt = get_data_type(cg.at(index));
 
   Layer layer = {attrs, name};
   if (index_dt != DataType::INT32 && index_dt != DataType::INT64) {
@@ -467,7 +487,7 @@ std::vector<tensor_guid_t>
                            DataType::INT64);
   }
   std::vector<TensorShape> output_shapes =
-      get_output_shapes(attrs, input, index_tensor);
+      get_output_shapes(cg, attrs, input, index);
 
   return insert_layer(cg, layer, {input, index}, {}, output_shapes);
 }
@@ -483,7 +503,7 @@ tensor_guid_t
                            float lambda_bal,
                            optional<std::string> const &maybe_name) {
   auto get_shape = [&](tensor_guid_t const &t) {
-    return get_data_type(cg.at(t));
+    return cg.at(t).shape;
   };
 
   AggregateAttrs attrs = {n, lambda_bal};
@@ -512,7 +532,7 @@ tensor_guid_t insert_batch_norm_layer(ComputationGraph &cg,
 
   Layer layer = {attrs, name};
 
-  TensorShape output_shape = get_output_shape(attrs, get_shape(input));
+  TensorShape output_shape = get_output_shape(attrs, get_shape(cg, input));
 
   return insert_layer(cg, layer, {input}, {}, output_shape);
 }
