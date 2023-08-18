@@ -164,7 +164,6 @@ bool contains_edge(DiGraph const &g, DirectedEdge const &edge) {
   return get_edges(g).count(edge) > 0;
 }
 
-
 bool contains_edge(UndirectedGraph const &g, UndirectedEdge const &edge) {
   return get_edges(g).count(edge) > 0;
 }
