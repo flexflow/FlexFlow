@@ -19,7 +19,7 @@ OpArgRef<DeviceSpecificArg<T>> per_device_op_state() {
   return {OpArgRefType::PER_DEVICE_OP_STATE};
 }
 
-OpArgRef<ParallelTensorShape> parallel_tensor_shape(int idx) {
+OpArgRef<ParallelTensorShape> input_parallel_tensor_shape(int idx) {
   return {OpArgRefType::PARALLEL_TENSOR_SHAPE};
 }
 
