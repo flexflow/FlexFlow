@@ -2,36 +2,14 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_PARSE_H
 
 #include "runtime/config.h"
-#include "utils/excecption.h"
+#include "utils/exception.h"
 #include "utils/variant.h"
+#include <ostream>
 #include <string>
 #include <unordered_map>
-
 namespace FlexFlow {
 
-using VariantType = variant<int, bool, float, size_t, std::string>;
-
-struct Argument {
-  VariantType default_value;
-  std::string description;
-  variant<std::monostate, int, float, bool, size_t, std::string> type;
-
-  Argument &set_default(VariantType const &val) {
-    default_value = val;
-    return *this;
-  }
-
-  Argument &set_help(std::string const &desc) {
-    description = desc;
-    return *this;
-  }
-
-  template <typename T>
-  Argument &set_type() {
-    type = T{};
-    return *this;
-  }
-};
+using VariantType = variant<int, bool, float, std::string>;
 
 class ArgsParser {
 private:
@@ -60,9 +38,14 @@ public:
     }
   }
 
-  void add_argument(std::string const &key, Argument const &arg) {
-    mDefaultValues[parseKey(key)] = arg.default_value;
-    mDescriptions[key] = arg.description;
+  template <typename T>
+  T get_from_variant(VariantType const &v) const;
+
+  void add_argument(std::string const &key,
+                    VariantType const &value,
+                    std::string const &description) {
+    mDefaultValues[parseKey(key)] = std::move(value);
+    mDescriptions[key] = description;
   }
 
   template <typename T>
@@ -73,15 +56,15 @@ public:
     } else {
       auto def_it = mDefaultValues.find(key);
       if (def_it != mDefaultValues.end()) {
-        return std::get<T>(def_it->second);
+        return get_from_variant<T>(def_it->second);
       }
     }
     throw mk_runtime_error("Key not found: " + key);
   }
 
   void showDescriptions() const {
-    for (auto const &[key, description] : mDescriptions) {
-      std::cout << key << ": " << description << std::endl;
+    for (auto const &kv : mDescriptions) {
+      std::cout << kv.first << ": " << kv.second << std::endl;
     }
   }
 
@@ -111,6 +94,27 @@ std::string ArgsParser::convert<std::string>(std::string const &s) const {
   return s;
 }
 
+template <>
+int ArgsParser::get_from_variant<int>(VariantType const &v) const {
+  return mpark::get<int>(v);
+}
+
+template <>
+float ArgsParser::get_from_variant<float>(VariantType const &v) const {
+  return mpark::get<float>(v);
+}
+
+template <>
+bool ArgsParser::get_from_variant<bool>(VariantType const &v) const {
+  return mpark::get<bool>(v);
+}
+
+template <>
+std::string
+    ArgsParser::get_from_variant<std::string>(VariantType const &v) const {
+  return mpark::get<std::string>(v);
+}
+
 std::ostream &operator<<(std::ostream &out, ArgsParser const &args) {
   args.showDescriptions();
   return out;
@@ -118,108 +122,71 @@ std::ostream &operator<<(std::ostream &out, ArgsParser const &args) {
 
 void FFConfig::parse_args(char **argv, int argc) {
   ArgsParser args;
+  args.add_argument("--epochs", 1, "Number of epochs.");
+  args.add_argument("--batch-size", 32, "Size of each batch during training");
   args.add_argument(
-      "--epochs",
-      Argument().set_type<int>().set_default(1).set_help("Number of epochs."));
+      "--learning-rate", 0.01f, "Learning rate for the optimizer");
   args.add_argument(
-      "--batch-size",
-      Argument().set_type<int>().set_default(32).set_help("Batch size."));
-  args.add_argument("--learning-rate",
-                    Argument()
-                        .set_type<float>()
-                        .set_default((float)0.01)
-                        .set_help("Learning rate."));
-  args.add_argument("--weight-decay",
-                    Argument()
-                        .set_type<float>()
-                        .set_default((float)0.0001)
-                        .set_help("Weight decay."));
-  args.add_argument("--dataset",
-                    Argument().sset_type<std::string>().et_default("").set_help(
-                        "Dataset path."));
-  args.add_argument("--search-budget",
-                    Argument()
-                        .set_type<size_t>()
-                        .set_default(size_t(-1))
-                        .set_help("Search budget."));
-  args.add_argument("--search-alpha",
-                    Argument()
-                        .set_type<float>()
-                        .set_default(float(1.2))
-                        .set_help("Search alpha."));
-  args.add_argument("--simulator-workspace-size",
-                    Argument()
-                        .set_type<size_t>()
-                        .set_default((size_t)2 * 1024 * 1024 * 1024;)
-                        .set_help("Simulator workspace size."));
-  args.add_argument("--only-data-parallel",
-                    Argument().set_type<bool>().set_default(false).set_help(
-                        "Only data parallel."));
-  args.add_argument("--enable-parameter-parallel",
-                    Argument().set_type<bool>().set_default(false).set_help(
-                        "Enable parameter parallel."));
+      "--weight-decay", 0.0001f, "Weight decay for the optimizer");
+  args.add_argument("--dataset-path", "", "Path to the dataset");
+  args.add_argument("--search-budget", 0, "Search budget");
+  args.add_argument("--search-alpha", 0.0f, "Search alpha");
   args.add_argument(
-      "--nodes",
-      Argument().set_type<int>().set_default(1).set_help("Number of nodes."));
-  args.add_argument("--profiling",
-                    Argument().set_type<bool>().set_default(false).set_help(
-                        "Enable profiling."));
-  arg.add_argument("--allow-tensor-op-math-conversion",
-                   Argument().set_type<bool>().set_default(false).set_help(
-                       "Allow tensor op math conversion."));
-  args.add_argument("--fusion",
-                    Argument().set_type<bool>().set_default(false).set_help(
-                        "Enable fusion."));
-  args.add_argument("--overlap",
-                    Argument().set_type<bool>().set_default(false).set_help(
-                        "Search overlap backward update."));
-  args.add_argument("--taskgraph",
-                    Argument().set_type<std::string>().set_default("").set_help(
-                        " export_strategy_task_graph_file"));
-  args.add_argument("--include-costs-dot-graph",
-                    Argument().set_type<bool>().set_default(false).set_help(
-                        "Include costs dot graph."));
-  args.add_argument("--machine-model-version",
-                    Argument().set_type<int>().set_default(0).set_help(
-                        "Machine model version."));
-  args.add_argument("--machine-model-file",
-                    Argument().set_type<std::string>().set_default("").set_help(
-                        "Machine model file."));
-  args.add_argument("--simulator-segment-size",
-                    Argument().set_type<int>().set_default(16777216).set_help(
-                        "Simulator segment size."));
-  args.add_argument("--simulator-max-num-segments",
-                    Argument().set_type<int>().set_default(1).set_help(
-                        "Simulator max number of segments."));
-  args.add_argument("--enable-inplace-optimizations",
-                    Argument().set_type<bool>().set_default(false).set_help(
-                        "Enable inplace optimizations."));
-  args.add_argument("--search-num-nodes",
-                    Argument().set_type<int>().set_default(-1).set_help(
-                        "Search number of nodes."));
-  args.add_argument("--search-num-workers",
-                    Argument().set_type<int>().set_default(-1).set_help(
-                        "Search number of workers."));
-  args.add_argument("--base-optimize-threshold",
-                    Argument().set_type<int>().set_default(10).set_help(
-                        "Base optimize threshold."));
-  args.add_argument("--enable-control-replication",
-                    Argument().set_type<bool>().set_default(true).set_help(
-                        "Enable control replication."));
-  args.add_argument("--python-data-loader-type",
-                    Argument().set_type<int>().set_default(2).set_help(
-                        "Python data loader type."));
-  args.add_argument("--substitution-json",
-                    Argument().set_type<std::string>().set_default("").set_help(
-                        "Substitution json path."));
+      "--simulator-workspace-size", 0, "Simulator workspace size");
+  args.add_argument("--only-data-parallel", false, "Only use data parallelism");
+  args.add_argument(
+      "--enable-parameter-parallel", false, "Enable parameter parallelism");
+  args.add_argument("--nodes", 1, "Number of nodes");
+  args.add_argument("--profiling", false, "Enable profiling");
+  args.add_argument("--allow-tensor-op-math-conversion",
+                    false,
+                    "Allow tensor op math conversion");
+  args.add_argument("--fusion", false, "Enable fusion");
+  args.add_argument("--overlap", false, "Enable overlap");
+  args.add_argument(
+      "--taskgraph", "", "Export strategy computation graph file");
+  args.add_argument(
+      "--include-costs-dot-graph", false, "Include costs dot graph");
+  args.add_argument("--machine-model-version", 0, "Machine model version");
+  args.add_argument("--machine-model-file", "", "Machine model file");
+  args.add_argument("--simulator-segment-size", 0, "Simulator segment size");
+  args.add_argument(
+      "--simulator-max-num-segments", 0, "Simulator max number of segments");
+  args.add_argument(
+      "--enable-inplace-optimizations", false, "Enable inplace optimizations");
+  args.add_argument("--search-num-nodes", 0, "Search number of nodes");
+  args.add_argument("--search-num-workers", 0, "Search number of workers");
+  args.add_argument("--base-optimize-threshold", 0, "Base optimize threshold");
+  args.add_argument(
+      "--enable-control-replication", false, "Enable control replication");
+  args.add_argument("--python-data-loader-type", 0, "Python data loader type");
+  args.add_argument("--substitution-json", "", "Substitution json path");
 
   // legion arguments
+  args.add_argument("-level", 5, "level of logging output");
+  args.add_argument("-logfile", "", "name of log file");
+  args.add_argument("-ll:cpu", 1, "CPUs per node");
+  args.add_argument("-ll:gpu", 0, "GPUs per node");
+  args.add_argument("-ll:util", 1, "utility processors to create per process");
   args.add_argument(
-      "-ll:gpu",
-      Argument().set_type<int>().set_default(1).set_help("Number of workers."));
+      "-ll:csize", 1024, "size of CPU DRAM memory per process(in MB)");
+  args.add_argument("-ll:gsize", 0, "size of GPU DRAM memory per process");
   args.add_argument(
-      "-ll:cpu",
-      Argument().set_type<int>().set_default(1).set_help("Number of cpus."));
+      "-ll:rsize",
+      0,
+      "size of GASNet registered RDMA memory available per process (in MB)");
+  args.add_argument(
+      "-ll:fsize", 1, "size of framebuffer memory for each GPU (in MB)");
+  args.add_argument(
+      "-ll:zsize", 0, "size of zero-copy memory for each GPU (in MB)");
+  args.add_argument(
+      "-lg:window",
+      8192,
+      "maximum number of tasks that can be created in a parent task window");
+  args.add_argument("-lg:sched",
+                    1024,
+                    " minimum number of tasks to try to schedule for each "
+                    "invocation of the scheduler");
 
   args.parse_args(argc, argv);
 

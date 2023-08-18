@@ -380,7 +380,6 @@ std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
         return ((edge.smaller == n && edge.bigger != n) ||
                 (edge.smaller != n && edge.bigger == n));
       });
-  std::cout << "get_neighbors: " << edges.size() << "\n";
   return map_over_unordered_set<UndirectedEdge, Node>(
       [&](UndirectedEdge const &edge) -> Node {
         return (edge.smaller == n) ? edge.bigger : edge.smaller;
