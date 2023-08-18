@@ -55,7 +55,8 @@ To download a Docker container for a backend other than CUDA v11.8, you can repl
 You can install FlexFlow Serve from source code by building the inference branch of FlexFlow. Please follow these [instructions](https://flexflow.readthedocs.io/en/latest/installation.html).
 
 ## Quickstart
-The following example shows how to deploy an LLM using FlexFlow Serve and accelerate its serving using [speculative inference](#speculative-inference). First, we import `flexflow.serve` and initialize the FlexFlow Serve runtime. Note that `memory_per_gpu` and `zero_copy_memory_per_node` specify the size of device memory on each GPU (in MB) and zero-copy memory on each node (in MB), respectively. FlexFlow Serve combines tensor and pipeline model parallelism for LLM serving.
+The following example shows how to deploy an LLM using FlexFlow Serve and accelerate its serving using [speculative inference](#speculative-inference). First, we import `flexflow.serve` and initialize the FlexFlow Serve runtime. Note that `memory_per_gpu` and `zero_copy_memory_per_node` specify the size of device memory on each GPU (in MB) and zero-copy memory on each node (in MB), respectively. 
+We need to make sure the aggregated GPU memory and zero-copy memory are **both** sufficient to store LLM parameters in non-offloading serving. FlexFlow Serve combines tensor and pipeline model parallelism for LLM serving.
 ```python
 import flexflow.serve as ff
 
