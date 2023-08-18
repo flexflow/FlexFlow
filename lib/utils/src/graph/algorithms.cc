@@ -1,5 +1,6 @@
 #include "utils/graph/algorithms.h"
 #include "utils/containers.h"
+#include "utils/exception.h"
 #include "utils/graph/traversal.h"
 #include "utils/graph/views.h"
 #include <algorithm>
@@ -153,6 +154,19 @@ std::unordered_set<DirectedEdge> get_edges(DiGraphView const &g) {
 
 std::unordered_set<UndirectedEdge> get_edges(UndirectedGraphView const &g) {
   return g.query_edges(UndirectedEdgeQuery::all());
+}
+
+bool contains_edge(MultiDiGraph const &g, MultiDiEdge const &edge) {
+  return get_edges(g).count(edge) > 0;
+}
+
+bool contains_edge(DiGraph const &g, DirectedEdge const &edge) {
+  return get_edges(g).count(edge) > 0;
+}
+
+}
+bool contains_edge(UndirectedGraph const &g, UndirectedEdge const &edge) {
+  return get_edges(g).count(edge) > 0;
 }
 
 std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
@@ -423,6 +437,16 @@ std::unordered_map<Node, std::unordered_set<Node>>
     result[n].insert(n);
   }
   return result;
+}
+
+std::unordered_set<Node> get_dominators(DiGraphView const &g,
+                                        Node const &node) {
+  return get_dominators(g), at(node);
+}
+
+std::unordered_set<Node> get_dominators(DiGraphView const &g,
+                                        std::unordered_set<Node> const &nodes) {
+  NOT_IMPLEMENTED(); //
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
