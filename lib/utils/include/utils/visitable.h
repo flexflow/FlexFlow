@@ -366,7 +366,7 @@ struct Arbitrary<
   CHECK_WELL_BEHAVED_VISIT_TYPE_NO_EQ(TYPENAME);                               \
   CHECK_CONSTRUCTION_EMPTY(TYPENAME);
 
-#define FF_VISITABLE_STRUCT_NONEMPTY_NO_EQ(TYPENAME, ...)                      \
+#define FF_VISITABLE_STRUCT_NO_EQ(TYPENAME, ...)                      \
   }                                                                            \
   VISITABLE_STRUCT(::FlexFlow::TYPENAME, __VA_ARGS__);                         \
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
