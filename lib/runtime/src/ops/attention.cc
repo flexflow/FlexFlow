@@ -49,12 +49,6 @@ enum Slots {
 OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   OpTaskBinding b;
 
-  b.bind(QUERY, input_tensor(0));
-  b.bind(KEY, input_tensor(1));
-  b.bind(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, weight_tensor(0));
-  b.bind(OUTPUT, output_tensor(0));
-
   b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
 
@@ -112,6 +106,9 @@ static DeviceSpecificArg<MHAPerDeviceState>
           key_parallel_tensor_shape,
           value_parallel_tensor_shape);
 
+  ParallelTensorShape output_parallel_tensor_shape = get_output_shape(attrs, inputs);
+  ParallelTensorShape weight_parallel_tensor_shape = get_weights_shape(attrs, inputs);
+
   int kvSeqLength = get_kvSeqLength(inputs);
   int qSize = get_qSize(inputs);
   int kSize = get_kSize(inputs);
@@ -125,16 +122,10 @@ static DeviceSpecificArg<MHAPerDeviceState>
 
   Allocator allocator = acc.get_allocator();
 
-  auto query = acc.get_tensor<Permissions::RO>(QUERY);
-  auto key = acc.get_tensor<Permissions::RO>(KEY);
-  auto value = acc.get_tensor<Permissions::RO>(VALUE);
-  auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
-  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  int qoSeqLength = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(1)];
+  int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
+  int num_heads = get_piece_shape(weight_parallel_tensor_shape)[ff_dim_t(1)];
 
-  int qoSeqLength = query.shape[legion_dim_t(1)];
-
-  int num_samples = query.shape[legion_dim_t(2)];
-  int num_heads = weight.shape[legion_dim_t(1)];
   assert(qoSeqLength == query.shape[legion_dim_t(1)]);
   assert(qSize == query.shape[legion_dim_t(0)]);
   assert(num_samples == key.shape[legion_dim_t(2)]);
@@ -276,11 +267,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   ParallelTensorShape weight_shape = get_weights_shape(attrs, inputs);
 
   SimTaskBinding init_binding;
-  init_binding.bind(QUERY, query_shape);
-  init_binding.bind(KEY, key_shape);
-  init_binding.bind(VALUE, value_shape);
-  init_binding.bind(WEIGHTS, weight_shape);
-  init_binding.bind(OUTPUT, output_shape);
   init_binding.bind_arg(HANDLE, ff_handle());
   init_binding.bind_arg(ATTRS, attrs);
   init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, parallel_tensor_shape(0));
@@ -325,11 +311,6 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
   init.add_arg_slot<int>(OPROJSIZE);
   init.add_arg_slot<MultiHeadAttentionAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-  init.add_input_slot(QUERY);
-  init.add_input_slot(KEY);
-  init.add_input_slot(VALUE);
-  init.add_weight_slot(WEIGHTS);
-  init.add_output_slot(OUTPUT);
 
   init.add_return_value<DeviceSpecificArg<MHAPerDeviceState>>();
 
