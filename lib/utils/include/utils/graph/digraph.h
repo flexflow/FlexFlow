@@ -64,10 +64,8 @@ public:
       create(Args &&...args) {
     return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
   }
-
   static DiGraphView
       unsafe_create_without_ownership(IDiGraphView const &graphView);
-
   DiGraphView(std::shared_ptr<IDiGraphView const> const &ptr,
               should_only_be_used_internally_tag_t const &tag)
       : DiGraphView(ptr) {}

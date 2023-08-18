@@ -71,7 +71,7 @@ Element sum(Container const &container) {
 template <typename Container,
           typename ConditionF,
           typename Element = typename Container::value_type>
-Element sum(Container const &container, ConditionF const &condition) {
+Element sum_where(Container const &container, ConditionF const &condition) {
   Element result = 0;
   for (Element const &element : container) {
     if (condition(element)) {
@@ -451,15 +451,6 @@ bool are_all_same(C const &c) {
   return true;
 }
 
-template <typename F,
-          typename In,
-          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
-std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
-  std::vector<Out> result;
-  std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
-  return result;
-}
-
 template <typename C, typename E = typename C::value_type>
 std::vector<E> as_vector(C const &c) {
   std::vector<E> result(c.cbegin(), c.end());
@@ -479,6 +470,13 @@ template <typename F, typename C>
 auto transform(req<C> const &c, F const &f)
     -> decltype(transform(std::declval<C>(), std::declval<F>())) {
   return transform(static_cast<C>(c), f);
+}
+
+template <typename F,
+          typename In,
+          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
+  return transform(v, f);
 }
 
 template <typename F,

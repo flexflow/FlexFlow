@@ -36,7 +36,9 @@ public:
 
   template <class... Args>
   void emplace_back(Args &&...args) {
-    this->contents.emplace_back(std::forward<Args>(args)...);
+    assert(this->m_size < MAXSIZE);
+    this->contents[this->m_size] = {std::forward<Args>(args)...};
+    this->m_size++;
   }
 
   T const &back() const {
