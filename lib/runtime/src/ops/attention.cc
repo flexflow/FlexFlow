@@ -322,7 +322,7 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   fwd.add_output_slot(OUTPUT);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-  fwd.add_arg_slot<DeviceSpecificArg<MHAPerDeviceState>>(PER_DEVICE_STATE);
+  fwd.add_unchecked_arg_slot<MHAPerDeviceState>(PER_DEVICE_STATE);
 
   register_task(
       ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, forward_task);
