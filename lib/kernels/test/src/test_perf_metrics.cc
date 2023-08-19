@@ -35,7 +35,7 @@ TEST_CASE("PerfMetricsTests") {
   SUBCASE("Accuracy between 0 and 1") {
     auto m = randomPerfMetrics();
     float accuracy = get_accuracy(m);
-    CHECK(accuracy <= 0.0f);
+    CHECK(accuracy >= 0.0f);
     CHECK(accuracy <= 1.0f);
   }
 
