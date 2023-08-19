@@ -28,20 +28,20 @@ struct MHAPerDeviceState {
 };
 
 FF_VISITABLE_STRUCT_NO_EQ(MHAPerDeviceState,
-                                   handle,
-                                   weightSize,
-                                   reserveSpaceSize,
-                                   attnDesc,
-                                   qDesc,
-                                   kDesc,
-                                   vDesc,
-                                   oDesc,
-                                   devQoSeqArray,
-                                   devKvSeqArray,
-                                   loWinIdx,
-                                   hiWinIdx,
-                                   reserveSpace,
-                                   allocator);
+                          handle,
+                          weightSize,
+                          reserveSpaceSize,
+                          attnDesc,
+                          qDesc,
+                          kDesc,
+                          vDesc,
+                          oDesc,
+                          devQoSeqArray,
+                          devKvSeqArray,
+                          loWinIdx,
+                          hiWinIdx,
+                          reserveSpace,
+                          allocator);
 
 namespace Kernels {
 namespace MultiHeadAttention {

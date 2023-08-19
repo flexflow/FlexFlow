@@ -107,8 +107,10 @@ static DeviceSpecificArg<MHAPerDeviceState>
           key_parallel_tensor_shape,
           value_parallel_tensor_shape);
 
-  ParallelTensorShape output_parallel_tensor_shape = get_output_shape(attrs, inputs);
-  ParallelTensorShape weight_parallel_tensor_shape = get_weights_shape(attrs, inputs);
+  ParallelTensorShape output_parallel_tensor_shape =
+      get_output_shape(attrs, inputs);
+  ParallelTensorShape weight_parallel_tensor_shape =
+      get_weights_shape(attrs, inputs);
 
   int kvSeqLength = get_kvSeqLength(inputs);
   int qSize = get_qSize(inputs);
@@ -259,9 +261,12 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   SimTaskBinding init_binding;
   init_binding.bind_arg(HANDLE, ff_handle());
   init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(0));
-  init_binding.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(1));
-  init_binding.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(2));
+  init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE,
+                        input_parallel_tensor_shape(0));
+  init_binding.bind_arg(KEY_PARALLEL_TENSOR_SHAPE,
+                        input_parallel_tensor_shape(1));
+  init_binding.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE,
+                        input_parallel_tensor_shape(2));
   init_binding.bind_arg(QPROJSIZE, get_qProjSize(attrs));
   init_binding.bind_arg(KPROJSIZE, get_kProjSize(attrs));
   init_binding.bind_arg(VPROJSIZE, get_vProjSize(attrs));
@@ -269,7 +274,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto init_accessor =
       env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
-  DeviceSpecificArg<MHAPerDeviceState> per_device_state = init_task_impl(init_accessor);
+  DeviceSpecificArg<MHAPerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(QUERY, query_shape);
@@ -284,7 +290,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto fwd_accessor = env.get_fwd_accessor(ATTENTION_FWD_TASK_ID, fwd_binding);
   auto bwd_accessor = env.get_bwd_accessor(ATTENTION_BWD_TASK_ID, bwd_binding);
-  
+
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
 

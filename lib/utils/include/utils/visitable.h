@@ -309,7 +309,7 @@ struct Arbitrary<
 } // namespace rc
 
 #define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME)       \
-  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME);       \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME);      \
   CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME);
 
 #define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME) \
@@ -326,7 +326,7 @@ struct Arbitrary<
                 #TYPENAME                                                      \
                 " should be list-initialializable by the visit field types");
 
-#define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME)                                           \
+#define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME)                                  \
   static_assert(is_only_visit_list_initializable<TYPENAME>::value,             \
                 #TYPENAME                                                      \
                 " should not be list-initialializable from any sub-tuples "    \
@@ -484,8 +484,8 @@ struct Arbitrary<
                            _GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__),     \
                            __VA_ARGS__)
 
-#define FF_VISITABLE_STRUCT_NO_EQ(...)                      \
-  _DISPATCH_VISITABLE_CASE(FF_VISITABLE_STRUCT_NO_EQ,       \
+#define FF_VISITABLE_STRUCT_NO_EQ(...)                                         \
+  _DISPATCH_VISITABLE_CASE(FF_VISITABLE_STRUCT_NO_EQ,                          \
                            _GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__),     \
                            __VA_ARGS__)
 
