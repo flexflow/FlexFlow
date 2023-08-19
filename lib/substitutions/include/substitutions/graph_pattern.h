@@ -4,36 +4,30 @@
 #include "utils/graph.h"
 
 namespace FlexFlow {
-namespace substitutions {
 
 struct DiGraphPatternMatch {
   bidict<Node, Node> nodeAssignment;
-  bidict<OpenMultiDiEdge, MultiDiEdge> edgeAssignment;
+  req<bidict<OpenMultiDiEdge, MultiDiEdge>> edgeAssignment;
 };
+
+FF_VISITABLE_STRUCT(DiGraphPatternMatch, nodeAssignment, edgeAssignment);
 
 struct MatchSplit {
   DiGraphPatternMatch prefix_submatch;
-  DiGraphPatternMatch postfix_submatch;
+  req<DiGraphPatternMatch> postfix_submatch;
 };
 
-GraphSplit split_pattern(IOpenMultiDiGraph const &pattern);
+FF_VISITABLE_STRUCT(MatchSplit, prefix_submatch, postfix_submatch);
 
-bool pattern_matches(IOpenMultiDiGraphView const &,
-                     IMultiDiGraph const &,
-                     DiGraphPatternMatch const &);
-bool is_singleton_pattern(IOpenMultiDiGraphView const &);
+GraphSplit split_pattern(OpenMultiDiGraphView const &pattern);
 
-} // namespace substitutions
+bool pattern_matches(OpenMultiDiGraphView const &,
+                     MultiDiGraphView const &,
+                     DiGraphPatternMatch const &,
+                     F const &additional_criterion);
+
+bool is_singleton_pattern(OpenMultiDiGraphView const &);
+
 } // namespace FlexFlow
-
-namespace std {
-
-template <>
-struct hash<::FlexFlow::substitutions::DiGraphPatternMatch> {
-  size_t
-      operator()(::FlexFlow::substitutions::DiGraphPatternMatch const &) const;
-};
-
-} // namespace std
 
 #endif

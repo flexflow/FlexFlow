@@ -1,101 +1,117 @@
-#ifndef _FLEXFLOW_SUBSTITUTION_LOADER_H
-#define _FLEXFLOW_SUBSTITUTION_LOADER_H
+#ifndef _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTIONS_V2_H
+#define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTIONS_V2_H
 
-#include "op-meta/op-meta.h"
-#include "tl/optional.hpp"
-#include <fstream>
-#include <vector>
+#include "graph_pattern.h"
+#include "mpark/variant.hpp"
+#include "utils/bidict.h"
+#include "utils/graph.h"
 
 namespace FlexFlow {
-namespace substitutions {
 
-enum class ParameterAttribute {
-  OP_TYPE,            // AnyOp
-  NUM_INPUTS,         // AnyOp
-  NUM_OUTPUTS,        // AnyOp
-  GROUP,              // Conv2D
-  KERNEL_H,           // Conv2D, Pool2D
-  KERNEL_W,           // Conv2D, Pool2D
-  STRIDE_H,           // Conv2D, Pool2D
-  STRIDE_W,           // Conv2D, Pool2D
-  PADDING_H,          // Conv2D, Pool2D
-  PADDING_W,          // Conv2D, Pool2D
-  ACTIVATION,         // Conv2D, Pool2D
-  NUMDIM,             // Concat, Transpose
-  AXIS,               // Concat, Split
-  PERM,               // Transpose
-  OUTSHUFFLE,         // Transpose
-  MERGE_GCONV_COUNT,  // MergeGConv
-  AXES,               // Squeeze, Unsqueeze, Reduce*
-  KEEP_DIMS,          // Reduce*
-  EPSILON,            // BatchNorm
-  REPARTITION_DIM,    // Repartition
-  REPARTITION_DEGREE, // Repartition
-  REPLICATE_DIM,      // Replicate
-  REPLICATE_DEGREE,   // Replicate
-  COMBINE_DIM,        // Combine
-  COMBINE_DEGREE,     // Combine
-  REDUCTION_DIM,      // Reduction
-  REDUCTION_DEGREE,   // Reduction
-  SOFTMAX_DIM,        // Softmax
-  NUM_HEADS,          // MultiHeadAttention
-  INVALID,
+enum class ConstraintType { EQUAL };
+
+enum class OperatorAttributeKey {
+  OP_TYPE, // AnyOp
+  USE_BIAS,
+  GROUPS,
+  POOL_TYPE,
+  KERNEL_H,
+  KERNEL_W,
+  DATA_TYPE,
+  SCALAR,
+  STRIDE_H,
+  STRIDE_W,
+  PADDING_H,
+  PADDING_W,
+  AGGR_MODE,
+  NUM_ENTRIES,
+  OUT_CHANNELS,
+  ACTIVATION,
+  NUMDIM,
+  AXIS,
+  PERMUTATION,
+  OUTSHUFFLE,
+  MERGE_GCONV_COUNT,
+  AXES,
+  KEEP_DIMS,
+  EPSILON,
+  PARALLEL_OP_DIM,
+  PARALLEL_OP_DEGREE,
+  SOFTMAX_DIM,
+  NUM_HEADS,
   PARALLEL_DIM,
   PARALLEL_DEGREE,
   PAD,
 };
 
-enum class ConstraintType {
-  Equal,
-  NotEqual,
-  LessThan,
-  LessThanEqual,
-  GreaterThan,
-  GreaterThanEqual,
+template <typename T>
+struct ListIndexAccess {
+  T attribute_key;
+  int index;
 };
 
-struct OperatorAttributeConstraint {
-  ParameterAttribute key;
-  ConstraintType constraint;
+template <typename T>
+struct ListSize {
+  T attribute_key;
+};
+
+template <typename T>
+using AttributeExpr = variant<T, ListIndexAccess<T>, ListSize<T>>;
+
+enum class TensorDimensionAttribute { SIZE, DEGREE };
+
+struct TensorNumDimensionsConstraint {
   int value;
 };
-
-struct TensorConstraint {};
-
-struct Tensor {
-  int opId;
-  int tsId;
-
-  std::vector<TensorConstraint> constraints;
+struct TensorDimensionAttributeConstraint {
+  TensorDimensionAttribute attribute;
+  int index;
 };
 
-struct OperatorConstraint {
-  OperatorType op_type;
-  std::vector<Tensor> inputs;
-  std::vector<OperatorConstraint> constraints;
+enum class TensorAttributeKey { DIM_SIZES, DIM_DEGREES };
 
-  tl::optional<int> at(ParameterAttribute key) const;
+using OperatorAttributeValue = variant<int, float, bool, std::vector<int>>;
+using TensorAttributeValue = variant<int, std::vector<int>>;
+
+template <typename K, typename V>
+struct AttributeConstraint {
+  ConstraintType constraint_type;
+  AttributeExpr<K> attribute_expr;
+  V attribute_value;
 };
 
-struct MapOutput {
-  int dstOpId;
-  int dstTsId;
-  int srcOpId;
-  int srcTsId;
+using TensorAttributeConstraint =
+    AttributeConstraint<TensorAttributeKey, TensorAttributeValue>;
+using OperatorAttributeConstraint =
+    AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
+
+struct OperatorPattern {
+  std::unordered_set<OperatorAttributeConstraint> attribute_constraints;
 };
 
-struct Substitution {
-  std::string name;
-  std::vector<OperatorConstraint> srcOp;
-  std::vector<OperatorConstraint> dstOp;
-  std::vector<MapOutput> mappedOutput;
+struct ParallelTensorPattern {
+  std::unordered_set<TensorAttributeConstraint> attribute_constraints;
 };
 
-struct SubstitutionCollection {
-  std::vector<Substitution> substitutions;
+struct SubstitutionPattern
+    : public strong_typedef<
+          SubstitutionPattern,
+          LabelledOpenMultiDiGraph<OperatorPattern, ParallelTensorPattern>> {
+  using strong_typedef::strong_typedef;
 };
 
-} // namespace substitutions
+// struct SubstitutionPattern {
+//   OperatorPattern at(utils::Node) const;
+//   ParallelTensorPattern at(PatternEdge) const;
+
+//   MultiDiGraphPattern graph;
+//   utils::bidict<utils::Node, OperatorPattern> node_map;
+//   utils::bidict<PatternEdge, ParallelTensorPattern> edge_map;
+// };
+
+bool assignment_satisfies(SubstitutionPattern const &,
+                          DiGraphPatternMatch const &);
+
 } // namespace FlexFlow
 
 #endif

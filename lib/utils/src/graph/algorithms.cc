@@ -22,6 +22,18 @@ std::unordered_set<Node> get_nodes(GraphView const &g) {
   return g.query_nodes(NodeQuery::all());
 }
 
+std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &pattern_edge) {
+  if (is_input_edge(pattern_edge)) {
+    return {mpark::get<InputMultiDiEdge>(pattern_edge).dst};
+  } else if (is_output_edge(pattern_edge)) {
+    return {mpark::get<OutputMultiDiEdge>(pattern_edge).src};
+  } else {
+    assert(is_standard_edge(pattern_edge));
+    auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
+    return {standard_edge.src, standard_edge.dst};
+  }
+}
+
 std::unordered_set<Node> query_nodes(IGraphView const &g,
                                      std::unordered_set<Node> const &nodes) {
   return g.query_nodes({nodes});
@@ -466,6 +478,32 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
   assert(input_edge.uid.second == output_edge.srcIdx.value());
   return {
       output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx};
+}
+
+bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
+    get_edge_splits(IOpenMultiDiGraphView const &pattern,
+                    GraphSplit const &split) {
+  auto prefix = split.first;
+  auto postfix = split.second;
+
+  bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>> result;
+
+  for (OpenMultiDiEdge const &pattern_edge : get_edges(pattern)) {
+    if (!is_standard_edge(pattern_edge)) {
+      continue;
+    }
+
+    auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
+    if (is_subseteq_of(get_nodes(standard_edge), prefix) ||
+        is_subseteq_of(get_nodes(standard_edge), postfix)) {
+      continue;
+    }
+
+    auto divided = split_edge(standard_edge);
+    result.equate(standard_edge, divided);
+  }
+
+  return result;
 }
 
 std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g,

@@ -3,10 +3,9 @@
 #include <memory>
 
 namespace FlexFlow {
-namespace substitutions {
 
 DiGraphPatternMatch narrow_match(DiGraphPatternMatch const &match,
-                                 IOpenMultiDiGraphView const &pattern) {
+                                 OpenMultiDiGraphView const &pattern) {
   DiGraphPatternMatch result;
   std::unordered_set<Node> nodes = get_nodes(pattern);
   for (auto const &kv : match.nodeAssignment) {
@@ -27,7 +26,7 @@ DiGraphPatternMatch narrow_match(DiGraphPatternMatch const &match,
   return result;
 }
 
-GraphSplit split_pattern(IOpenMultiDiGraphView const &pattern) {
+GraphSplit split_pattern(OpenMultiDiGraphView const &pattern) {
   std::vector<Node> topological_ordering = get_topological_ordering(pattern);
   assert(topological_ordering.size() >= 2);
 
@@ -38,52 +37,16 @@ GraphSplit split_pattern(IOpenMultiDiGraphView const &pattern) {
   return {prefix, postfix};
 }
 
-std::pair<std::unique_ptr<IOpenMultiDiGraphView>,
-          std::unique_ptr<IOpenMultiDiGraphView>>
-    apply_split(IOpenMultiDiGraphView const &pattern, GraphSplit const &split) {
-  return {unsafe_view_as_subgraph(pattern, split.first),
-          unsafe_view_as_subgraph(pattern, split.second)};
+std::pair<OpenMultiDiGraphView, OpenMultiDiGraphView>
+    apply_split(OpenMultiDiGraphView const &pattern, GraphSplit const &split) {
+  return {get_subgraph(pattern, split.first),
+          get_subgraph(pattern, split.second)};
 }
 
-std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &pattern_edge) {
-  if (is_input_edge(pattern_edge)) {
-    return {mpark::get<InputMultiDiEdge>(pattern_edge).dst};
-  } else if (is_output_edge(pattern_edge)) {
-    return {mpark::get<OutputMultiDiEdge>(pattern_edge).src};
-  } else {
-    assert(is_standard_edge(pattern_edge));
-    auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
-    return {standard_edge.src, standard_edge.dst};
-  }
-}
-
-bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
-    get_edge_splits(IOpenMultiDiGraphView const &pattern,
-                    GraphSplit const &split) {
-  auto prefix = split.first;
-  auto postfix = split.second;
-
-  bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>> result;
-
-  for (OpenMultiDiEdge const &pattern_edge : get_edges(pattern)) {
-    if (!is_standard_edge(pattern_edge)) {
-      continue;
-    }
-
-    auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
-    if (is_subseteq_of(get_nodes(standard_edge), prefix) ||
-        is_subseteq_of(get_nodes(standard_edge), postfix)) {
-      continue;
-    }
-
-    auto divided = split_edge(standard_edge);
-    result.equate(standard_edge, divided);
-  }
-
-  return result;
-}
-
-MatchSplit apply_split(IOpenMultiDiGraphView const &pattern,
+/*
+Given a match and a pattern split, gets the submatches in subpatterns.
+*/
+MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
                        DiGraphPatternMatch const &match,
                        GraphSplit const &split) {
   auto prefix = split.first;
@@ -129,13 +92,13 @@ MatchSplit apply_split(IOpenMultiDiGraphView const &pattern,
   return result;
 }
 
-bool is_singleton_pattern(IOpenMultiDiGraphView const &pattern) {
+bool is_singleton_pattern(OpenMultiDiGraphView const &pattern) {
   return num_nodes(pattern) == 1;
 }
 
 template <typename F>
-bool pattern_matches(IOpenMultiDiGraphView const &pattern,
-                     IMultiDiGraph const &graph,
+bool pattern_matches(OpenMultiDiGraphView const &pattern,
+                     MultiDiGraphView const &graph,
                      DiGraphPatternMatch const &match,
                      F const &additional_criterion) {
   if (is_singleton_pattern(pattern)) {
@@ -186,9 +149,9 @@ bool pattern_matches(IOpenMultiDiGraphView const &pattern,
                          additional_criterion);
 }
 
-tl::optional<DiGraphPatternMatch>
-    get_candidate_singleton_match(IOpenMultiDiGraphView const &pattern,
-                                  IMultiDiGraphView const &graph,
+optional<DiGraphPatternMatch>
+    get_candidate_singleton_match(OpenMultiDiGraphView const &pattern,
+                                  MultiDiGraphView const &graph,
                                   Node const &graph_node) {
   assert(is_singleton_pattern(pattern));
 
@@ -295,5 +258,4 @@ std::unordered_set<DiGraphPatternMatch>
   return matches;
 }
 
-} // namespace substitutions
 } // namespace FlexFlow

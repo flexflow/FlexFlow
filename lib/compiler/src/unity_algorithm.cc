@@ -14,7 +14,7 @@ std::unordered_set<Substitution>
 
 std::unordered_set<ParallelComputationGraph>
     apply_substitution(ParallelComputationGraph const &pcg,
-                       Substitution const &);
+                       Substitution const &) {}
 
 Strategy
     graph_optimize(ComputationGraph &cg,
