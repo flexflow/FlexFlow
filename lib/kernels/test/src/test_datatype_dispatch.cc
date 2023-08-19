@@ -16,16 +16,6 @@ struct Function1 {
   }
 };
 
-template <DataType DT1, DataType DT2>
-struct Function2 {
-  int operator()(int value) const {
-    if (DT1 == DataType::FLOAT && DT2 == DataType::DOUBLE) {
-      return value + 3;
-    }
-    return 0;
-  }
-};
-
 TEST_CASE("Testing dispatch function") {
   int value = 10;
   int result = dispatch<Function1>(DataType::FLOAT, value);
