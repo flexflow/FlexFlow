@@ -15,7 +15,7 @@ flexflow_error_t flexflow_opattrs_error_wrap(flexflow_opattrs_error_t e) {
 }
 
 flexflow_error_t flexflow_opattrs_error_unwrap(
-    flexflow_error_t err flexflow_opattrs_error_t *out) {
+    flexflow_error_t err ,flexflow_opattrs_error_t *out) {
   return flexflow_error_unwrap(err, FLEXFLOW_ERROR_SOURCE_OPATTRS, out);
 }
 
@@ -27,7 +27,45 @@ flexflow_error_t flexflow_opattrs_error_is_ok(flexflow_opattrs_error_t err,
 
 flexflow_error_t flexflow_opattrs_error_get_string(flexflow_opattrs_error_t err,
                                                    char **m_out) {
-  NOT_IMPLEMENTED(); // TODO(lambda)
+  flexflow_opattrs_error_code_t err_code;
+  flexflow_opattrs_error_get_error_code(err, &err_code);
+  auto out = const_cast<char const**>(m_out);
+  switch (err_code) {
+    case FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_PARAM_SYNC_VALUE:
+      *out = strdup("Invalid param sync value");
+      break;
+    case FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_DATATYPE_VALUE:
+      *out = strdup("Invalid datatype value");
+      break;
+    case FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_ACTIVATION_VALUE:
+      *out = strdup("Invalid activation value");
+      break;
+    case FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_POOL_OP_VALUE:
+      *out = strdup("Invalid pool op value");
+      break;
+    case FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_AGGREGATE_OP_VALUE:
+      *out = strdup("Invalid aggregate op value");
+      break;
+    case FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_OP_TYPE_VALUE:
+      *out = strdup("Invalid op type value");
+      break;
+    default:
+      *out = strdup("Unknown error");
+  }
+  return status_ok();
+}
+
+flexflow_error_t flexflow_opattrs_error_get_error_code(flexflow_opattrs_error_t err,
+                                                       flexflow_opattrs_error_code_t * out) {
+ flexflow_opattrs_error_t opaque;
+ RAISE_FLEXFLOW(flexflow_opattrs_error_unwrap(err, &opaque));
+ interal_flexflow_opattrs_error_t const *unwrapped = unwrap_opaque(opaque);
+  *out = unwrapped->code;
+  return status_ok();
+}
+
+flexflow_error_t flexflow_opattrs_error_destroy(flexflow_opattrs_error_t err){
+ return status_ok();//  Note(lambda): this is follow the https://github.com/lockshaw/FlexFlow/blob/expanded-ffi/lib/pcg/ffi/src/pcg.cc#L71-#L72 // return flexflow_error_destroy(err);
 }
 
 REGISTER_FFI_ENUM(flexflow_param_sync_t,
