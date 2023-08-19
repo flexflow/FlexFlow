@@ -1,7 +1,7 @@
+#include "substitutions/substitutions.h"
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "substitutions/get_attribute.h"
-#include "substitutions/substitutions.h"
 
 namespace FlexFlow {
 
@@ -10,11 +10,9 @@ bool satisfies(Operator const &,
                OperatorAttributeConstraint const &);
 
 template <typename T, typename V>
-optional<V>
-    evaluate_list_index_access(ListIndexAccess<T> const &index_access,
-                               optional<V> const &v) {
-  if (!v.has_value() ||
-      !holds_alternative<std::vector<int>>(v.value())) {
+optional<V> evaluate_list_index_access(ListIndexAccess<T> const &index_access,
+                                       optional<V> const &v) {
+  if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
     return nullopt;
   }
 
@@ -28,8 +26,7 @@ optional<V>
 
 template <typename V>
 optional<V> evaluate_list_size(optional<V> const &v) {
-  if (!v.has_value() ||
-      !holds_alternative<std::vector<int>>(v.value())) {
+  if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
     return nullopt;
   }
 
@@ -124,8 +121,8 @@ optional<OperatorAttributeValue>
 
 template <typename V>
 optional<bool> satisfies(ConstraintType constraint_type,
-                             V const &constraint_value,
-                             optional<V> const &maybe_attribute_value) {
+                         V const &constraint_value,
+                         optional<V> const &maybe_attribute_value) {
   if (!maybe_attribute_value.has_value()) {
     return nullopt;
   }
@@ -143,14 +140,14 @@ optional<bool> satisfies(ConstraintType constraint_type,
 }
 
 optional<bool> satisfies(ParallelTensor const &tensor_shape,
-                             TensorAttributeConstraint const &constraint) {
+                         TensorAttributeConstraint const &constraint) {
   auto value = evaluate_attribute_expr(tensor_shape, constraint.attribute_expr);
   return satisfies(
       constraint.constraint_type, constraint.attribute_value, value);
 }
 
 optional<bool> satisfies(Operator const &params,
-                             OperatorAttributeConstraint const &constraint) {
+                         OperatorAttributeConstraint const &constraint) {
   auto value = evaluate_attribute_expr(params, constraint.attribute_expr);
   return satisfies(
       constraint.constraint_type, constraint.attribute_value, value);
@@ -158,7 +155,7 @@ optional<bool> satisfies(Operator const &params,
 
 template <typename Container, typename Function>
 optional<bool> optional_all_of(Container const &container,
-                                   Function const &func) {
+                               Function const &func) {
   for (auto const &element : container) {
     optional<bool> condition = func(element);
     if (!condition.has_value()) {
@@ -173,7 +170,7 @@ optional<bool> optional_all_of(Container const &container,
 }
 
 optional<bool> satisfies(Operator const &params,
-                             OperatorPattern const &pattern) {
+                         OperatorPattern const &pattern) {
   return optional_all_of(pattern.attribute_constraints,
                          [&](OperatorAttributeConstraint const &c) {
                            return satisfies(params, c);
@@ -181,16 +178,15 @@ optional<bool> satisfies(Operator const &params,
 }
 
 optional<bool> satisfies(ParallelTensor const &params,
-                             ParallelTensorPattern const &pattern) {
+                         ParallelTensorPattern const &pattern) {
   return optional_all_of(
       pattern.attribute_constraints,
       [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });
 }
 
-bool assignment_satisfies(
-    ParallelComputationGraph const &pcg,
-    SubstitutionPattern const &pattern,
-    DiGraphPatternMatch const &patternMatch) {
+bool assignment_satisfies(ParallelComputationGraph const &pcg,
+                          SubstitutionPattern const &pattern,
+                          DiGraphPatternMatch const &patternMatch) {
   bool result = true;
   for (auto const &kv : patternMatch.nodeAssignment) {
     auto patternNode = kv.first;
@@ -208,7 +204,8 @@ bool assignment_satisfies(
     result &= constraintResult.value_or(false);
   }
 
-  result &= pattern_matches(OpenMultiDiGraphView(pattern), MultiDiGraphView(pcg), patternMatch);
+  result &= pattern_matches(
+      OpenMultiDiGraphView(pattern), MultiDiGraphView(pcg), patternMatch);
 
   return result;
 }
