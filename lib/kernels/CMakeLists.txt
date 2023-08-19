@@ -35,3 +35,5 @@ set_target_properties(
   PROPERTIES 
   CUDA_STANDARD 11
 )
+
+add_subdirectory(test)

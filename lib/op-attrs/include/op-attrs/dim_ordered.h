@@ -4,6 +4,8 @@
 #include "op-attrs/ff_dim.h"
 #include "utils/stack_vector.h"
 
+#define MAX_TENSOR_DIM 5
+
 namespace FlexFlow {
 
 template <typename Idx, typename T>

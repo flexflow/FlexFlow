@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct ProfilingSettings : public use_visitable_cmp<ProfilingSettings> {
+struct ProfilingSettings {
 public:
   ProfilingSettings() = delete;
   ProfilingSettings(int warmup_iters, int measure_iters);
@@ -16,6 +16,8 @@ public:
   int warmup_iters;
   int measure_iters;
 };
+
+FF_VISITABLE_STRUCT(ProfilingSettings, warmup_iters, measure_iters);
 
 template <typename F, typename... Ts>
 optional<float>
