@@ -99,7 +99,7 @@ class LLM:
             ff_arch = self.supported_models.get(architectures[0])
         if ff_arch is None:
             print(
-                "Huggingface model of type {architectures} is not yet supported by FlexFlow"
+                f"Huggingface model of type {architectures} is not yet supported by FlexFlow"
             )
             sys.exit(1)
         return ff_arch
