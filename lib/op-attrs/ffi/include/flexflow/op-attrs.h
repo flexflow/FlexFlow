@@ -23,8 +23,9 @@ flexflow_error_t flexflow_opattrs_error_unwrap(flexflow_error_t,
 flexflow_error_t flexflow_opattrs_error_is_ok(flexflow_opattrs_error_t, bool *);
 flexflow_error_t flexflow_opattrs_error_get_string(flexflow_opattrs_error_t,
                                                    char **);
-flexflow_error_t flexflow_opattrs_error_get_error_code(flexflow_opattrs_error_t,
-                                                       flexflow_opattrs_error_code_t *);
+flexflow_error_t
+    flexflow_opattrs_error_get_error_code(flexflow_opattrs_error_t,
+                                          flexflow_opattrs_error_code_t *);
 flexflow_error_t flexflow_opattrs_error_destroy(flexflow_opattrs_error_t);
 
 //
@@ -33,13 +34,14 @@ FF_NEW_OPAQUE_TYPE(flexflow_regularizer_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dim_ordered_t);
 FF_NEW_OPAQUE_TYPE(flexflow_ff_dim_t);
 FF_NEW_OPAQUE_TYPE(flexflow_parallel_dim_t);
-FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_dims_t); 
+FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_dims_t);
 FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_shape_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_t);
-FF_NEW_OPAQUE_TYPE(flexflow_parallel_tesor_shape_list_t);//std::vector<ParallelTensorShape>
-FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_list_t);//std::vector<TensorShape>
+FF_NEW_OPAQUE_TYPE(
+    flexflow_parallel_tesor_shape_list_t); // std::vector<ParallelTensorShape>
+FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_list_t); // std::vector<TensorShape>
 
-//ops
+// ops
 FF_NEW_OPAQUE_TYPE(flexflow_aggregate_specattrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_aggregate_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_attrs_t);
