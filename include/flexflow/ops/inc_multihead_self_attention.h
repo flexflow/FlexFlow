@@ -191,6 +191,9 @@ public:
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t qk_tensor;
   cuFloatComplex *complex_input;
+#else
+   miopenTensorDescriptor_t qk_tensor;
+   hipFloatComplex complex_input;
 #endif
 };
 
