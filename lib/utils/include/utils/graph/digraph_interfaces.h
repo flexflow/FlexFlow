@@ -29,14 +29,14 @@ public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
+  IDiGraphView() = default;
+
   IDiGraphView(IDiGraphView const &) = delete;
   IDiGraphView &operator=(IDiGraphView const &) = delete;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
   virtual ~IDiGraphView() = default;
 
-protected:
-  IDiGraphView() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraphView);
 
