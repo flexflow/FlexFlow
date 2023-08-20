@@ -33,15 +33,17 @@ FF_NEW_OPAQUE_TYPE(flexflow_regularizer_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dim_ordered_t);
 FF_NEW_OPAQUE_TYPE(flexflow_ff_dim_t);
 FF_NEW_OPAQUE_TYPE(flexflow_parallel_dim_t);
-FF_NEW_OPAQUE_TYPE(flexflow_paallel_tensor_dims_t);
+FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_dims_t); 
 FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_shape_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_t);
+FF_NEW_OPAQUE_TYPE(flexflow_parallel_tesor_shape_list_t);//std::vector<ParallelTensorShape>
+FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_list_t);//std::vector<TensorShape>
 
 //ops
-FF_NEW_OPAQUE_TYPE(flexflow_aggregae_specattrs_t);
-FF_NEW_OPAQUE_TYPE(flexflow_aggregate_t);
-FF_NEW_OPAQUE_TYPE(flexflow_multihead_attentionattrs_t);
-FF_NEW_OPAQUE_TYPE(flexflow_multihead_attentioninputs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_aggregate_specattrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_aggregate_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_inputs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_batchmatmul_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_batchnorm_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_broadcast_attrs_t);
