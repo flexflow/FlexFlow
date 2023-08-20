@@ -13,7 +13,8 @@ typedef enum {
   FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_ACTIVATION_VALUE,
   FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_POOL_OP_VALUE,
   FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_AGGREGATE_OP_VALUE,
-  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_OP_TYPE_VALUE
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_OP_TYPE_VALUE,
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_LOSS_FUNCTION_VALUE,
 } flexflow_opattrs_error_code_t;
 
 FF_NEW_OPAQUE_TYPE(flexflow_opattrs_error_t);
@@ -45,7 +46,8 @@ FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_list_t); // std::vector<TensorShape>
 FF_NEW_OPAQUE_TYPE(flexflow_aggregate_specattrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_aggregate_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_attrs_t);
-FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_inputs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_inputs_parallel_tensor_shape_t);
+FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_inputs_tensor_shape_t);
 FF_NEW_OPAQUE_TYPE(flexflow_batchmatmul_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_batchnorm_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_broadcast_attrs_t);
@@ -67,6 +69,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_l2_regularizer_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_linear_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_sparse_categorical_crossentropy_loss_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_other_loss_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_loss_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_noop_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_pool2d_attrs_t);
 FF_NEW_OPAQUE_TYPE(flexflow_reduce_attrs_t);
@@ -112,6 +115,14 @@ typedef enum {
   FLEXFLOW_AGGREGATE_OP_SUM,
   FLEXFLOW_AGGREGATE_OP_AVG,
 } flexflow_aggregate_op_t;
+
+typedef enum {
+  FLEXFLOW_LOSS_FUNCTION_CATEGORICAL_CROSSENTROPY,
+  FLEXFLOW_LOSS_FUNCTION_SPARSE_CATEGORICAL_CROSSENTROPY,
+  FLEXFLOW_LOSS_FUNCTION_MEAN_SQUARED_ERROR_AVG_REDUCE,
+  FLEXFLOW_LOSS_FUNCTION_MEAN_SQUARED_ERROR_SUM_REDUCE,
+  FLEXFLOW_LOSS_FUNCTION_IDENTITY,
+} flexflow_loss_function_t;
 
 typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
   FLEXFLOW_OP_TYPE_NOOP,

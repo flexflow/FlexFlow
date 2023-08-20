@@ -64,8 +64,10 @@ REGISTER_OPAQUE(flexflow_tensor_shape_list_t, std::vector<TensorShape>)
 REGISTER_OPAQUE(flexflow_aggregate_specattrs_t, AggregateSpecAttrs);
 REGISTER_OPAQUE(flexflow_aggregate_attrs_t, AggregateAttrs);
 REGISTER_OPAQUE(flexflow_multihead_attention_attrs_t, MultiHeadAttentionAttrs);
-REGISTER_OPAQUE(flexflow_multihead_attention_inputs_t,
-                MultiHeadAttentionInputs);
+REGISTER_OPAQUE(flexflow_multihead_attention_inputs_parallel_tensor_shape_t,
+                MultiHeadAttentionInputs<ParallelTensorShape>);
+REGISTER_OPAQUE(flexflow_multihead_attention_inputs_tensor_shape_t,
+                MultiHeadAttentionInputs<TensorShape>);
 REGISTER_OPAQUE(flexflow_batchmatmul_attrs_t, BatchMatmulAttrs);
 REGISTER_OPAQUE(flexflow_batchnorm_attrs_t, BatchNormAttrs);
 REGISTER_OPAQUE(flexflow_broadcast_attrs_t, BroadcastAttrs);
@@ -88,6 +90,7 @@ REGISTER_OPAQUE(flexflow_linear_attrs_t, LinearAttrs);
 REGISTER_OPAQUE(flexflow_sparse_categorical_crossentropy_loss_attrs_t,
                 SparseCategoricalCrossEntropyLossAttrs);
 REGISTER_OPAQUE(flexflow_other_loss_attrs_t, OtherLossAttrs);
+REGISTER_OPAQUE(flexflow_loss_attrs_t, LossAttrs);
 REGISTER_OPAQUE(flexflow_noop_attrs_t, NoopAttrs);
 REGISTER_OPAQUE(flexflow_pool2d_attrs_t, Pool2DAttrs);
 REGISTER_OPAQUE(flexflow_reduce_attrs_t, ReduceAttrs);
@@ -108,6 +111,61 @@ flexflow_error_t
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_list_t);
+flexflow_error_t flexflow_is_valid(flexflow_aggregate_attrs_t,
+                                   flexflow_parallel_tensor_shape_t,
+                                   bool *out flexflow_parallel_tensor_shape_t,
+                                   flexflow_parallel_tensor_shape_t,
+                                   flexflow_parallel_tensor_shape_t,
+                                   flexflow_parallel_tensor_shape_list_t);
+
+flexflow_error_t flexflow_get_kProjSize(flexflow_multihead_attention_attrs_t,
+                                        int *out);
+flexflow_error_t flexflow_get_vProjSize(flexflow_multihead_attention_attrs_t,
+                                        int *out);
+flexflow_error_t flexflow_get_kProjSize(flexflow_multihead_attention_attrs_t,
+                                        int *out);
+flexflow_error_t flexflow_get_oProjSize(flexflow_multihead_attention_attrs_t,
+                                        int *out);
+
+flexflow_error_t flexflow_get_qSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+flexflow_error_t flexflow_get_kSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+flexflow_error_t flexflow_get_vSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+flexflow_error_t flexflow_get_oSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+
+flexflow_error_t flexflow_get_qoSeqLength(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+flexflow_error_t flexflow_get_kvSeqLength(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+flexflow_error_t flexflow_get_kvSeqLength(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+
+flexflow_error_t flexflow_get_num_samples(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
+
+flexflow_error_t flexflow_get_weights_shape(
+    flexflow_multihead_attention_attrs_t,
+    flexflow_tensor_shape_t *out
+        flexflow_multihead_attention_inputs_tensor_shape_t);
+
+flexflow_error_t flexflow_get_weights_shape(
+    flexflow_multihead_attention_attrs_t,
+    flexflow_parallel_tensor_shape_t *out
+        flexflow_multihead_attention_inputs_parallel_tensor_shape_t);
+
+flexflow_error_t flexflow_get_output_shape(
+    flexflow_multihead_attention_attrs_t,
+    flexflow_parallel_tensor_shape_t *out,
+    flexflow_multihead_attention_inputs_tensor_shape_t);
+
+flexflow_error_t flexflow_get_output_shape(
+    flexflow_multihead_attention_attrs_t,
+    flexflow_tensor_shape_t *out,
+    flexflow_multihead_attention_inputs_tensor_shape_t);
+
 flexflow_error_t
     flexflow_get_output_shape(flexflow_aggregate_attrs_t,
                               flexflow_parallel_tensor_shape_t,
@@ -116,69 +174,100 @@ flexflow_error_t
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_list_t);
-// TODO(Note(lambda)):how to support op-attrs/include/op-attrs/ops/attention.h?
-// how to define MultiHeadAttentionInputs<ParallelTensorShape>
+
 flexflow_error_t flexflow_get_output_shape(
     flexflow_batchnorm_attrs_t,
     flexflow_parallel_tensor_shape_t
         *out); // ParallelTensorShape get_output_shape(BatchNormAttrs const &);
+
 flexflow_error_t flexflow_get_kernel_shape(
     flexflow_conv2d_attrs_t,
     flexflow_tensor_shape_t *out,
     flexflow_tensor_shape_t); // TensorShape get_kernel_shape(Conv2DAttrs const
                               // &. TensorShape const &);
+
 flexflow_error_t flexflow_get_bias_shape(
     flexflow_conv2d_attrs_t,
     flexflow_tensor_shape_t *out,
     flexflow_tensor_shape_t); // TensorShape get_bias_shape(Conv2DAttrs const &,
                               // TensorShape const &);
+
 flexflow_error_t flexflow_get_weights_shape(
     flexflow_embedding_attrs_t,
     flexflow_tensor_shape_t *out,
     flexflow_tensor_shape); // TensorShape get_weights_shape(EmbeddingAttrs
                             // const &, TensorShape const &);
-// how to represent the LossFunction parse_loss_function_name(std::string const
-// &);? because its parameter is std::string
+
+// has some problem on loss_function.h
+// how to define LossFunction  in loss_function.h
+flexflow_error_t flexflow_parse_loss_function_name(
+    char **,
+    flexflow_loss_function_t
+        *out); // LossFunction parse_loss_function_name(std::string const &);
+
 flexflow_error_t flexflow_get_loss_function(
     flexflow_other_loss_attrs_t,
     flexflow_loss_function_t
         *out); // LossFunction get_loss_function(OtherLossAttrs const &);
+
 flexflow_error_t flexflow_get_loss_function(
     flexflow_sparse_categorical_crossentropy_loss_attrs_t,
-    flexflow_loss_function_t *out); // LossFunction
-                                    // get_loss_function(SparseCategoricalCrossEntropyLossAttrs
-                                    // const &);
-// flexflow_error_t flexflow_get_loss_function(flexflow_loss_)
-// TODO(Note lambda):how to define  nner_to_outer_idxs, outer_to_inner_idxs,
-// outer_to_inner(op-attrs/include/op-attrs/dim_ordered.h)
-/*
-how to define the function 1)its parameter is bool, std::string, or 2)its return
-type is bool, std::string,int bool is_parallel_op(PCGOperatorAttrs const &);
-bool is_valid(PCGOperatorAttrs const &,
-              std::vector<ParallelTensorShape> const &);
-*/
+    flexflow_loss_function_t
+        *out); // LossFunction
+               // get_loss_function(SparseCategoricalCrossEntropyLossAttrs
+               // const &);
+
+flexflow_error_t flexflow_get_loss_function(
+    flexflow_loss_attrs_t,
+    flexflow_loss_function_t
+        *out); // LossFunction get_loss_function(LossAttrs const &);
+
+// TODO(Note lambda):how to define  nner_to_outer_idxs, outer_to_inner_idxs,how
+// to define DimOrdered outer_to_inner(op-attrs/include/op-attrs/dim_ordered.h)
+
+// Note(lambda): have to define all
+// get_output_shape(op-attrs/include/op-attrs/get_output_shapes.h)?
+flexflow_error_t
+    flexflow_is_valid(flexflow_parallel_tensor_dims_t,
+                      bool *out); // bool is_valid(ParallelTensorDims const &);
+
 flexflow_error_t flexflow_get_piece_dims(
     flexflow_parallel_tensor_dims_t,
     flexflow_tensor_dims_t
         *out); // TensorDims get_piece_dims(ParallelTensorDims const &);
+
 flexflow_error_t flexflow_get_tensor_dims_unsafe(
     flexflow_parallel_tensor_dims_t,
     flexflow_tensor_dims_t
         *out); // TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &);
+
 flexflow_error_t flexflow_get_piece_shape(
     flexflow_parallel_tensor_shape_t,
     flexflow_tensor_shape_t
         *out); // TensorShape get_piece_shape(ParallelTensorShape const &);
+
+flexflow_error_t flexflow_get_num_replica_dims(
+    flexflolw_parallel_tensor_shape_t,
+    int *out); // int get_num_replica_dims(ParallelTensorShape const &);
+flexflow_error_t flexflow_get_num_replicas(
+    flexflow_parallel_tensor_shape_t,
+    int *out); // int get_num_replicas(ParallelTensorShape const &);
+flexflow_error_t
+    flexflow_is_valid(flexflow_parallel_tensor_shape_t,
+                      bool *out); // bool is_valid(ParallelTensorShape const &);
+
 flexflow_error_t flexflow_get_tensor_shape_unsafe(
     flexflow_parallel_tensor_shape_t,
     flexflow_tensor_shape_t
         *out); // TensorShape get_tensor_shape_unsafe(ParallelTensorShape const
                // &);
+
 flexflow_error_t flexflow_get_tensor_shape_unsafe(
     flexflow_parallel_tesor_shape_list_t,
-    flexflow_tensor_shape_list_t *out); // std::vector<TensorShape>
-                                        // get_tensor_shape_unsafe(std::vector<ParallelTensorShape>
-                                        // const &);
+    flexflow_tensor_shape_list_t
+        *out); // std::vector<TensorShape>
+               // get_tensor_shape_unsafe(std::vector<ParallelTensorShape>
+               // const &);
 
 optional<ParamSync> to_internal(flexflow_param_sync_t);
 flexflow_param_sync_t to_external(optional<ParamSync>);

@@ -1,9 +1,11 @@
 #include "flexflow/op-attrs.h"
+#include "flexflow/utils.h"
 #include "internal/enums.h"
 #include "internal/error.h"
 #include "internal/op-attrs.h"
 #include "op-attrs/op.h"
 #include "op-attrs/ops/embedding.h"
+#include "op-attrs/ops/loss_functions.h"
 #include "utils/bidict.h"
 #include "utils/exception.h"
 
@@ -68,7 +70,6 @@ flexflow_error_t
 flexflow_error_t flexflow_opattrs_error_destroy(flexflow_opattrs_error_t err) {
   return status_ok(); //  Note(lambda): this is follow the
                       //  https://github.com/lockshaw/FlexFlow/blob/expanded-ffi/lib/pcg/ffi/src/pcg.cc#L71-#L72
-                      //  // return flexflow_error_destroy(err);
 }
 
 REGISTER_FFI_ENUM(flexflow_param_sync_t,
@@ -107,6 +108,18 @@ REGISTER_FFI_ENUM(flexflow_aggregate_op_t,
                   FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_AGGREGATE_OP_VALUE,
                   {{FLEXFLOW_AGGREGATE_OP_SUM, AggregateOp::SUM},
                    {FLEXFLOW_AGGREGATE_OP_AVG, AggregateOp::AVG}});
+
+REGISTER_FFI_NUM(flexflow_loss_function_t,
+                 LossFunction,
+                 FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_LOSS_FUNCTION_VALUE,
+                 {{FLEXFLOW_LOSS_FUNCTION_CATEGORICAL_CROSSENTROPY,
+                   LossFunction::CATEGORICAL_CROSSENTROPY},
+                  {FLEXFLOW_LOSS_FUNCTION_SPARSE_CATEGORICAL_CROSSENTROPY,
+                   LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY},
+                  {FLEXFLOW_LOSS_FUNCTION_MEAN_SQUARED_ERROR,
+                   LossFunction::MEAN_SQUARED_ERROR},
+                  {FLEXFLOW_LOSS_FUNCTION_MEAN_ABSOLUTE_ERROR,
+                   LossFunction::MEAN_ABSOLUTE_ERROR}});
 
 REGISTER_FFI_ENUM(flexflow_op_type_t,
                   OperatorType,
