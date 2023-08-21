@@ -65,7 +65,7 @@ struct OutputGraph
     : public strong_typedef<
           OutputGraph,
           OutputLabelledMultiDiGraph<OperatorAttrAssignment,
-                                   ParallelTensorAttrAssignment>> {
+                                     ParallelTensorAttrAssignment>> {
   using strong_typedef::strong_typedef;
 };
 
