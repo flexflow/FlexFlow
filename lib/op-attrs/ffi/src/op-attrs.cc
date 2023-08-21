@@ -535,9 +535,25 @@ flexflow_error_t
   }
 }
 
+flexflow_opattrs_error_t
+    flexflow_get_datatype_size(flexflow_datatype_t datatype, int *out) {
+  return handle_errors(out, [&]) {
+    return size_of(to_internal(datatype));
+  }
+}
+
+flexflow_opattrs_error_t
+    flexflow_operator_attrs_get_op_type(flexflow_operator_attrs_t op_attrs,
+                                        flexflow_op_type_t *out) {
+  return handle_errors(out, [&]) {
+    return deref_opaque(op_attrs).op_type;
+  }
+}
+
 ParamSync to_internal(flexflow_param_sync_t e) {
   return to_internal_impl(e);
 }
+
 flexflow_param_sync_t to_external(ParamSync i) {
   return to_external_impl(i);
 }
@@ -552,6 +568,7 @@ flexflow_datatype_t to_external(DataType i) {
 optional<Activation> to_internal(flexflow_activation_t e) {
   return to_internal_impl(e);
 }
+
 flexflow_activation_t to_external(optional<Activation> i) {
   return to_external_impl(i);
 }

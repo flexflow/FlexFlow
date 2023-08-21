@@ -217,7 +217,9 @@ typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
 typedef struct {
   flexflow_op_type_t op_type;
   void *data;
-} flexflow_operator_attrs_t;
+} flexflow_operator_attrs;
+
+FF_NEW_OPAQUE_TYPE(flexflow_operator_attrs_t);
 
 flexflow_opattrs_error_t flexflow_get_datatype_size(flexflow_datatype_t,
                                                     int *out);

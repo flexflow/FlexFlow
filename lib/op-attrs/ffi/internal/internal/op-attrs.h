@@ -106,6 +106,8 @@ REGISTER_OPAQUE(flexflow_softmax_attrs_t, SoftmaxAttrs);
 REGISTER_OPAQUE(flexflow_split_attrs_t, SplitAttrs);
 REGISTER_OPAQUE(flexflow_topk_attrs_t, TopKAttrs);
 
+REGISTER_OPAQUE(flexflow_operator_attrs_t, flexflow_operator_attrs);
+
 flexflow_error_t
     flexflow_get_output_shape(flexflow_aggregate_specattrs_t,
                               flexflow_parallel_tensor_shape_t,
