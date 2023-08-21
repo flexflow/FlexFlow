@@ -15,11 +15,11 @@
 
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ffconst_utils.h"
-#include "flexflow/utils/hip_helper.h"
-#include <hip/hip_runtime.h>
 #include "flexflow/ops/kernels/decompress_kernels.h"
-#include <hip/hip_complex.h>
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
+#include "flexflow/utils/hip_helper.h"
+#include <hip/hip_complex.h>
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
@@ -489,7 +489,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
 using namespace Kernels::IncMultiHeadAttention;
 
-
 template <typename DT>
 __global__ void fill_entries_above_diagonal(DT *matrix,
                                             size_t num_rows,
@@ -817,7 +816,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-   bool use_bias = *m->bias;
+  bool use_bias = *m->bias;
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -1043,7 +1042,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
             size_of_dt +
         tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
         complex_size * sizeof(hipFloatComplex); // more components will
-                                               // be added here later
+                                                // be added here later
     if (offload) {
       // assert that we have enough reserved work space left
       size_t totalSharedSize =

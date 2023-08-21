@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/utils/hip_helper.h"
 
 namespace FlexFlow {
@@ -41,7 +41,7 @@ __global__ void decompress_int4_attention_weights(char *input_weight_ptr,
                                                   DT *weight_ptr,
                                                   int qProjSize,
                                                   int qSize,
-                                                  int num_heads) {} 
+                                                  int num_heads) {}
 
 template <typename DT>
 __global__ void decompress_int8_attention_weights(char *input_weight_ptr,
@@ -49,8 +49,6 @@ __global__ void decompress_int8_attention_weights(char *input_weight_ptr,
                                                   int qProjSize,
                                                   int qSize,
                                                   int num_heads) {}
-
-
 
 template __global__ void
     decompress_int4_attention_weights<half>(char *input_weight_ptr,
@@ -74,4 +72,4 @@ template __global__ void
                                             int num_heads);
 
 } // namespace Kernels
-}; // namespace FlexFlow                                                                                                                                                                                                                                             
+}; // namespace FlexFlow

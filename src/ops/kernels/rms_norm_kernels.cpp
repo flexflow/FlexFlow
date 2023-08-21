@@ -14,10 +14,10 @@
  */
 
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
-#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 // declare Legion names

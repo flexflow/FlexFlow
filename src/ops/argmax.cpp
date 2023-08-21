@@ -55,7 +55,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             int *parent,
                             int const length,
                             int const batch_size,
-                            hipStream_t stream){
+                            hipStream_t stream) {
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -151,71 +151,71 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                        int total_ele,
                        MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {
-DataType data_type = op->data_type;
-hipStream_t stream;
-checkCUDA(get_legion_stream(&stream));
+  DataType data_type = op->data_type;
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
 
-size_t d_offsets_size = batch_size;
-size_t prob_size = batch_size;
-assert(data_type == DT_FLOAT || data_type == DT_HALF);
-size_t total_size =
-    d_offsets_size * sizeof(int) +
-    (data_type == DT_FLOAT
-         ? sizeof(hipcub::KeyValuePair<int, float>) * batch_size
-         : sizeof(hipcub::KeyValuePair<int, half>) * batch_size) +
-    prob_size * sizeof(float);
+  size_t d_offsets_size = batch_size;
+  size_t prob_size = batch_size;
+  assert(data_type == DT_FLOAT || data_type == DT_HALF);
+  size_t total_size =
+      d_offsets_size * sizeof(int) +
+      (data_type == DT_FLOAT
+           ? sizeof(hipcub::KeyValuePair<int, float>) * batch_size
+           : sizeof(hipcub::KeyValuePair<int, half>) * batch_size) +
+      prob_size * sizeof(float);
 
-gpu_mem_allocator.create_legion_instance(reserveInst, total_size);
-d_offsets = gpu_mem_allocator.allocate_instance<int>(d_offsets_size);
-d_out = data_type == DT_FLOAT
-            ? gpu_mem_allocator.allocate_instance_untyped(
-                  batch_size * sizeof(hipcub::KeyValuePair<int, float>))
-            : gpu_mem_allocator.allocate_instance_untyped(
-                  batch_size * sizeof(hipcub::KeyValuePair<int, half>));
-probs = gpu_mem_allocator.allocate_instance<float>(prob_size);
-// init offset
-int parallelism = total_ele;
+  gpu_mem_allocator.create_legion_instance(reserveInst, total_size);
+  d_offsets = gpu_mem_allocator.allocate_instance<int>(d_offsets_size);
+  d_out = data_type == DT_FLOAT
+              ? gpu_mem_allocator.allocate_instance_untyped(
+                    batch_size * sizeof(hipcub::KeyValuePair<int, float>))
+              : gpu_mem_allocator.allocate_instance_untyped(
+                    batch_size * sizeof(hipcub::KeyValuePair<int, half>));
+  probs = gpu_mem_allocator.allocate_instance<float>(prob_size);
+  // init offset
+  int parallelism = total_ele;
 
-hipLaunchKernelGGL(HIP_KERNEL_NAME(init_offset),
-                   GET_BLOCKS(parallelism),
-                   min(CUDA_NUM_THREADS, parallelism),
-                   0,
-                   stream,
-                   batch_size,
-                   total_ele / batch_size,
-                   total_ele,
-                   d_offsets);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(init_offset),
+                     GET_BLOCKS(parallelism),
+                     min(CUDA_NUM_THREADS, parallelism),
+                     0,
+                     stream,
+                     batch_size,
+                     total_ele / batch_size,
+                     total_ele,
+                     d_offsets);
 
-if (data_type == DT_FLOAT) {
-  checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
-      d_temp_storage,
-      temp_storage_bytes,
-      input.get_float_ptr(),
-      static_cast<hipcub::KeyValuePair<int, float> *>(d_out),
-      batch_size,
-      d_offsets,
-      d_offsets + 1,
-      stream));
+  if (data_type == DT_FLOAT) {
+    checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
+        d_temp_storage,
+        temp_storage_bytes,
+        input.get_float_ptr(),
+        static_cast<hipcub::KeyValuePair<int, float> *>(d_out),
+        batch_size,
+        d_offsets,
+        d_offsets + 1,
+        stream));
 
-} else if (data_type == DT_HALF) {
-  checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
-      d_temp_storage,
-      temp_storage_bytes,
-      input.get_half_ptr(),
-      static_cast<hipcub::KeyValuePair<int, half> *>(d_out),
-      batch_size,
-      d_offsets,
-      d_offsets + 1,
-      stream));
+  } else if (data_type == DT_HALF) {
+    checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
+        d_temp_storage,
+        temp_storage_bytes,
+        input.get_half_ptr(),
+        static_cast<hipcub::KeyValuePair<int, half> *>(d_out),
+        batch_size,
+        d_offsets,
+        d_offsets + 1,
+        stream));
+  }
+
+  gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
+  d_temp_storage =
+      gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
 }
-
-gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
-d_temp_storage =
-    gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
-    }
-ArgMaxMeta::~ArgMaxMeta(void){
-if (reserveInst != Realm::RegionInstance::NO_INST) {
-  reserveInst.destroy();
-}
+ArgMaxMeta::~ArgMaxMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
 }
 }; // namespace FlexFlow
