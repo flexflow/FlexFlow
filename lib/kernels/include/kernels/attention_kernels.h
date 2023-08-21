@@ -4,7 +4,6 @@
 #include "kernels/allocation.h"
 #include "kernels/device.h"
 #include "kernels/ff_handle.h"
-#include "kernels/per_device_op_state.h"
 #include "op-attrs/ops/attention.h"
 #include <memory>
 

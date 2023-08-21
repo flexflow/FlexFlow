@@ -2,7 +2,6 @@
 #define _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
