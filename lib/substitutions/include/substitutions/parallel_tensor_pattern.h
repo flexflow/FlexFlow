@@ -27,6 +27,10 @@ struct ParallelTensorPattern {
   std::unordered_set<TensorAttributeConstraint> attribute_constraints;
 };
 
+optional<TensorAttributeValue>
+    evaluate_attribute_expr(ParallelTensor const &tensor_shape,
+                            AttributeExpr<TensorAttributeKey> const &expr);
+
 } // namespace FlexFlow
 
 #endif

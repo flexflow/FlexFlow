@@ -1,7 +1,8 @@
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "substitutions/get_attribute.h"
-#include "substitutions/substitutions.h"
+#include "substitutions/operator_pattern.h"
+#include "substitutions/parallel_tensor_pattern.h"
 
 namespace FlexFlow {
 

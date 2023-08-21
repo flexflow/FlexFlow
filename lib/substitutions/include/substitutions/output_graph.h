@@ -18,20 +18,32 @@ struct EdgeAttrAccess {
   T attr_expr;
 };
 
-enum class AttrBinaryOpType { ADD, SUB, MUL, DIV };
+enum class AttrOpType { ADD, SUB, MUL, DIV };
+
+template <typename T>
+struct AttrConstant {
+  T value;
+};
+template <typename L, typename R>
+struct AttrUnary {
+  AttrOpType op_type;
+  L lhs;
+  R rhs;
+};
 
 template <typename L, typename R>
 struct AttrBinary {
-  AttrBinaryOpType op_type;
+  AttrOpType op_type;
   L lhs;
   R rhs;
 };
 
 template <typename T>
-using GraphAttributeExpr = variant<NodeAttrAccess<T>, EdgeAttrAccess<T>>;
+using GraphAttributeExpr =
+    variant<NodeAttrAccess<T>, EdgeAttrAccess<T>, AttrConstant<T>>;
 
 template <typename L, typename R>
-using GraphAttributeExpr = AttrBinary<L, R>;
+using GraphAttributeExpr = variant<AttrUnary<L, R>, AttrBinary<L, R>>;
 
 using GraphAttributeValue =
     variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
@@ -49,8 +61,11 @@ struct ParallelTensorAttrAssignment {
   std::vector<std::pair<TensorAttributeKey, GraphAttributeExpr<T>>> assignment;
 };
 
-struct OutputGraph : public strong_typedef<OperatorAttrAssignment,
-                                           ParallelTensorAttrAssignment> {
+struct OutputGraph
+    : public strong_typedef<
+          OutputGraph,
+          OutputLabelledMultiDiGraph<OperatorAttrAssignment,
+                                   ParallelTensorAttrAssignment>> {
   using strong_typedef::strong_typedef;
 };
 

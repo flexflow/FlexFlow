@@ -9,6 +9,8 @@ namespace FlexFlow {
 struct Substitution {
   GraphPattern input_graph;
   OutputGraph output_graph;
+  bidict<InputMultiDiEdge, IutputMultiDiEdge> input_mapping;
+  bidict<OutputMultiDiEdge, OutputMultiDiEdge> output_mapping;
 };
 
 ParallelComputationGraph apply_substitution(ParallelComputationGraph const &,

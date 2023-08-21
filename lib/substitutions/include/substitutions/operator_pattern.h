@@ -49,6 +49,10 @@ struct OperatorPattern {
   std::unordered_set<OperatorAttributeConstraint> attribute_constraints;
 };
 
+optional<OperatorAttributeValue>
+    evaluate_attribute_expr(Operator const &attrs,
+                            AttributeExpr<OperatorAttributeKey> const &expr);
+
 } // namespace FlexFlow
 
 #endif
