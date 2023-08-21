@@ -565,9 +565,13 @@ flexflow_perf_metrics_t
 
 void flexflow_model_set_transformer_layer_id(flexflow_model_t handle, int id);
 
-flexflow_generation_result_t flexflow_model_generate(flexflow_model_t handle_,
-                                                     char const *text,
-                                                     int max_seq_length);
+flexflow_generation_result_t
+    flexflow_model_generate(flexflow_model_t handle_,
+                            char const *input_text,
+                            int max_num_chars,
+                            char *output_text,
+                            int max_seq_length,
+                            int *output_length_and_tokens);
 
 void flexflow_model_set_position_offset(flexflow_model_t handle, int offset);
 

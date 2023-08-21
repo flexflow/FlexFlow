@@ -212,8 +212,8 @@ def init(configs_dict: Optional[dict] = None,
     if fusion:
         sys.argv += ["--fusion"]
 
-    global LLM, SSM, GenerationConfig
-    from .serve import LLM, SSM, GenerationConfig
+    global LLM, SSM, GenerationConfig, GenerationResult
+    from .serve import LLM, SSM, GenerationConfig, GenerationResult
 
 
 def init_cpu():
@@ -225,5 +225,5 @@ def init_cpu():
     # Ask the runtime to avoid using GPU/GPU memory
     os.environ["CPU_ONLY_TEST"] = "1"
 
-    global LLM, SSM, GenerationConfig
-    from .serve import LLM, SSM, GenerationConfig
+    global LLM, SSM, GenerationConfig, GenerationResult
+    from .serve import LLM, SSM, GenerationConfig, GenerationResult
