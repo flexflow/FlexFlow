@@ -8,6 +8,8 @@
 #include "op-attrs/datatype.h"
 #include "op-attrs/dim_ordered.h"
 #include "op-attrs/ff_dim.h"
+#include "op-attrs/get_op_type.h"
+#include "op-attrs/get_output_shapes.h"
 #include "op-attrs/op.h"
 #include "op-attrs/ops/aggreagate.h"
 #include "op-attrs/ops/aggregate_spec.h"
