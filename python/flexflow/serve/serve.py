@@ -51,6 +51,11 @@ class GenerationConfig:
         self.topp = topp
         self.topk = topk
 
+class GenerationResult:
+    """A class to store the output of a generation request."""
+    def __init__(self, text: str = None, tokens: list = None):
+        self.output_text = text
+        self.output_tokens = tokens
 
 class LLM:
     """This class creates a LLM (Large-Language Model) object based on a model from HuggingFace"""

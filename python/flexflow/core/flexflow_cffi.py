@@ -23,6 +23,7 @@ import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, InferenceMode, ModelType, OpType, ParameterSyncType, enum_to_int, int_to_enum
+
 _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
 if not _FF_BUILD_DOCS:
   from .flexflowlib import ffi, flexflow_library
@@ -2962,9 +2963,18 @@ class FFModel(object):
     assert ret_val == True
     return np_array   
   
-  def generate(self, text, max_sequence_length):
-    c_text = get_c_name(text)
-    return ffc.flexflow_model_generate(self.handle, c_text, max_sequence_length)
+  def generate(self, prompt, max_sequence_length):
+    c_input_text = get_c_name(prompt)
+    max_num_chars = 36000
+    c_output_text = ffi.new("char[]", max_num_chars)
+    c_output_length_and_tokens = ffi.new("int[]", max_sequence_length + 100)
+    ffc.flexflow_model_generate(self.handle, c_input_text, max_num_chars, c_output_text, max_sequence_length, c_output_length_and_tokens)
+    output_length = c_output_length_and_tokens[0]
+    output_tokens = []
+    for i in range(output_length):
+      output_tokens.append(c_output_length_and_tokens[i+1])
+    from flexflow.serve import GenerationResult
+    return GenerationResult(ffi.string(c_output_text), output_tokens)
   
   def set_position_offset(self, offset):
     ffc.flexflow_model_set_position_offset(self.handle, offset)
