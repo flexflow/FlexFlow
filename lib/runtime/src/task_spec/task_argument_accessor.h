@@ -173,7 +173,7 @@ struct TaskArgumentAccessor {
   template <typename T, typename... Args>
   DeviceSpecific<T> create_device_specific(Args &&...args) const {
     return DeviceSpecific<T>::create(this->get_device_idx(),
-                                        std::forward<Args>(args)...);
+                                     std::forward<Args>(args)...);
   }
 
   size_t get_device_idx() const {
