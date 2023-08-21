@@ -110,13 +110,16 @@ flexflow_error_t
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_t,
-                              flexflow_parallel_tensor_shape_list_t);
+                              flexflow_parallel_tensor_shape_t *,
+                              int num_exp_preds);
 flexflow_error_t flexflow_is_valid(flexflow_aggregate_attrs_t,
                                    flexflow_parallel_tensor_shape_t,
-                                   bool *out flexflow_parallel_tensor_shape_t,
+                                   bool *out ,
                                    flexflow_parallel_tensor_shape_t,
                                    flexflow_parallel_tensor_shape_t,
-                                   flexflow_parallel_tensor_shape_list_t);
+                                   flexflow_parallel_tensor_shape_t,
+                                   flexflow_parallel_tensor_shape_t *,
+                                   int num_exp_preds);
 
 flexflow_error_t flexflow_get_kProjSize(flexflow_multihead_attention_attrs_t,
                                         int *out);
@@ -173,7 +176,8 @@ flexflow_error_t
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_t,
                               flexflow_parallel_tensor_shape_t,
-                              flexflow_parallel_tensor_shape_list_t);
+                              flexflow_parallel_tensor_shape_t *,
+                              int num_exp_preds);
 
 flexflow_error_t flexflow_get_output_shape(
     flexflow_batchnorm_attrs_t,
@@ -263,49 +267,11 @@ flexflow_error_t flexflow_get_tensor_shape_unsafe(
                // &);
 
 flexflow_error_t flexflow_get_tensor_shape_unsafe(
-    flexflow_parallel_tesor_shape_list_t,
-    int n,
-    flexflow_tensor_shape_list_t
-        *out); // std::vector<TensorShape>
+    flexflow_parallel_tesor_shape_t * input,
+    int num_input,
+    flexflow_tensor_shape_list_t *out); // std::vector<TensorShape>
                // get_tensor_shape_unsafe(std::vector<ParallelTensorShape>
                // const &);
-
-/*
-flexflow_error_t flexflow_computation_graph_add_op_aggregate(
-    flexflow_computation_graph_t cg,
-    flexflow_tensor_t gate_preds,
-    flexflow_tensor_t gate_assign,
-    flexflow_tensor_t true_gate_assign,
-    flexflow_tensor_t full_gate_gradients,
-    flexflow_tensor_t *exp_preds,
-    int n,
-    float lambda_bal,
-    flexflow_tensor_t *out,
-    char *name) {
-  return handle_errors(out, [&] {
-    return aggregate(deref_opaque(cg),
-                     c_deref_opaque(gate_preds),
-                     c_deref_opaque(gate_assign),
-                     c_deref_opaque(true_gate_assign),
-                     c_deref_opaque(full_gate_gradients),
-                     c_deref_opaque_list(exp_preds, n),
-                     lambda_bal,
-                     maybe_string(name));
-  });
-}
-对应于函数 tensor_guid_t
-    insert_aggregate_layer(ComputationGraph &,
-                           tensor_guid_t const &gate_preds,
-                           tensor_guid_t const &gate_assign,
-                           tensor_guid_t const &true_gate_assign,
-                           tensor_guid_t const &full_gate_gradients,
-                           std::vector<tensor_guid_t> const &exp_preds,
-                           float lambda_bal,
-                           optional<std::string> const &name = nullopt);
-
-关于参数有std::vector的，参考上面这个函数，    flexflow_tensor_t *exp_preds,
-    int n,组合成std::vector<tensor_guid_t> const &exp_preds,
-*/
 
 optional<ParamSync> to_internal(flexflow_param_sync_t);
 flexflow_param_sync_t to_external(optional<ParamSync>);
