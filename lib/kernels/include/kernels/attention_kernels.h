@@ -10,25 +10,7 @@
 
 namespace FlexFlow {
 
-class MHAPerDeviceState : public use_visitable_cmp<MHAPerDeviceState> {
-public:
-  MHAPerDeviceState() = delete;
-  MHAPerDeviceState(PerDeviceFFHandle const &,
-                    size_t weightSize,
-                    size_t reserveSpaceSize,
-                    ffAttnDescriptor_t attnDesc,
-                    ffSeqDataDescriptor_t qDesc,
-                    ffSeqDataDescriptor_t kDesc,
-                    ffSeqDataDescriptor_t vDesc,
-                    ffSeqDataDescriptor_t oDesc,
-                    int *devQoSeqArray,
-                    int *devKvSeqArray,
-                    int *loWinIdx,
-                    int *hiWinIdx,
-                    void *reserveSpace,
-                    Allocator const &allocator);
-
-public:
+struct MHAPerDeviceState {
   PerDeviceFFHandle handle;
   size_t weightSize;
   size_t reserveSpaceSize;
@@ -44,6 +26,22 @@ public:
   void *reserveSpace;
   Allocator allocator;
 };
+
+FF_VISITABLE_STRUCT_NO_EQ(MHAPerDeviceState,
+                          handle,
+                          weightSize,
+                          reserveSpaceSize,
+                          attnDesc,
+                          qDesc,
+                          kDesc,
+                          vDesc,
+                          oDesc,
+                          devQoSeqArray,
+                          devKvSeqArray,
+                          loWinIdx,
+                          hiWinIdx,
+                          reserveSpace,
+                          allocator);
 
 namespace Kernels {
 namespace MultiHeadAttention {
