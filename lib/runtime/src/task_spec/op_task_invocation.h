@@ -49,12 +49,12 @@ struct OpTaskBinding {
   void bind_grad(slot_id, OpTensorSpec const &);
 
   template <typename T>
-  void bind_device_specific_arg(slot_id name, T const &t) {
+  void bind_device_specific(slot_id name, T const &t) {
     NOT_IMPLEMENTED();
   }
 
   template <typename T>
-  void bind_device_specific_arg(slot_id name, OpArgRef<T> const &t) {
+  void bind_device_specific(slot_id name, OpArgRef<T> const &t) {
     NOT_IMPLEMENTED();
   }
 

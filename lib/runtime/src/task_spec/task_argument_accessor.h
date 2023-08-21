@@ -2,7 +2,7 @@
 #define _FLEXFLOW_RUNTIME_SRC_TASK_ARGUMENT_ACCESSOR_H
 
 #include "accessor.h"
-#include "device_specific_arg.h"
+#include "device_specific.h"
 #include "realm_allocator.h"
 #include "runtime/config.h"
 #include "utils/exception.h"
@@ -166,13 +166,13 @@ struct TaskArgumentAccessor {
   }
 
   template <typename T>
-  T *unwrap(DeviceSpecificArg<T> const &arg) const {
+  T *unwrap(DeviceSpecific<T> const &arg) const {
     return arg.get(this->get_device_idx());
   }
 
   template <typename T, typename... Args>
-  DeviceSpecificArg<T> create_device_specific(Args &&...args) const {
-    return DeviceSpecificArg<T>::create(this->get_device_idx(),
+  DeviceSpecific<T> create_device_specific(Args &&...args) const {
+    return DeviceSpecific<T>::create(this->get_device_idx(),
                                         std::forward<Args>(args)...);
   }
 

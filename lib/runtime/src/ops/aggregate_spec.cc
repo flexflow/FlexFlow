@@ -15,7 +15,7 @@
 
 #include "aggregate_spec.h"
 #include "kernels/aggregate_spec_kernels.h"
-#include "task_spec/device_specific_arg.h"
+#include "task_spec/device_specific.h"
 
 namespace FlexFlow {
 
@@ -159,7 +159,7 @@ OpTaskInvocation forward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_device_specific_arg(
+  binding.bind_device_specific(
       PER_DEVICE_STATE, per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_FWD_TASK_ID, binding};
@@ -181,7 +181,7 @@ OpTaskInvocation backward(AggregateSpecAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_device_specific_arg(
+  binding.bind_device_specific(
       PER_DEVICE_STATE, per_device_op_state<AggregateSpecPerDeviceState>());
 
   return {AGG_SPEC_BWD_TASK_ID, binding};
