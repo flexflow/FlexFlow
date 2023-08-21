@@ -216,6 +216,325 @@ REGISTER_FFI_ENUM(flexflow_op_type_t,
 
 flexflow_error_t make_opattrs_error(flexflow_opattrs_error_code_t);
 
+flexflow_error_t flexflow_get_output_shape(
+    flexflow_aggregate_specattrs_t aggregate_spec_attrs,
+    flexflow_parallel_tensor_shape_t gate_preds,
+    flexflow_parallel_tensor_shape_t *out,
+    flexflow_parallel_tensor_shape_t gate_assign,
+    flexflow_parallel_tensor_shape_t true_gate_assign,
+    flexflow_parallel_tensor_shape_t gate_gridents_full,
+    flexflow_parallel_tensor_shape_t *exp_preds,
+    int num_exp_preds) {
+  return handle_errors(out, [&]) {
+    return get_out_shape(deref_opaque(aggregate_spec_attrs),
+                         deref_opaque(gate_preds),
+                         deref_opaque(gate_assign),
+                         deref_opaque(true_gate_assign),
+                         deref_opaque(gate_gridents_full),
+                         c_deref_opaque_list(exp_preds, num_exp_preds));
+  }
+}
+
+flexflow_error_t flexflow_is_valid(
+    flexflow_aggregate_attrs_t aggregate_attrs,
+    flexflow_parallel_tensor_shape_t gate_preds,
+    bool *out,
+    flexflow_parallel_tensor_shape_t gate_assign,
+    flexflow_parallel_tensor_shape_t true_gate_assign,
+    flexflow_parallel_tensor_shape_t full_gate_gradients,
+    flexflow_parallel_tensor_shape_t *exp_preds int num_exp_preds) {
+  return handle_errors(out, [&]) {
+    return is_valid(deref_opaque(aggregate_attrs),
+                    deref_opaque(gate_preds),
+                    deref_opaque(gate_assign),
+                    deref_opaque(true_gate_assign),
+                    deref_opaque(full_gate_gradients),
+                    c_deref_opaque_list(exp_preds, num_exp_preds));
+  }
+}
+
+flexflow_error_t flexflow_get_output_shape(
+    flexflow_aggregate_attrs_t aggregate_attrs,
+    flexflow_parallel_tensor_shape_t gate_preds,
+    flexflow_parallel_tensor_shape_t *out,
+    flexflow_parallel_tensor_shape_t gate_assign,
+    flexflow_parallel_tensor_shape_t true_gate_assign,
+    flexflow_parallel_tensor_shape_t full_gate_gradients,
+    flexflow_parallel_tensor_shape_t *exp_preds,
+    int num_exp_preds) {
+  return handle_errors(out, [&]) {
+    return get_out_shape(deref_opaque(aggregate_attrs),
+                         deref_opaque(gate_preds),
+                         deref_opaque(gate_assign),
+                         deref_opaque(true_gate_assign),
+                         deref_opaque(full_gate_gradients),
+                         c_deref_opaque_list(exp_preds, num_exp_preds));
+  }
+}
+
+flexflow_error_t flexflow_get_kProjSize(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs, int *out) {
+  return handle_errors(out, [&]) {
+    return get_kProjSize(deref_opaque(multi_head_attention_attrs));
+  }
+}
+
+flexflow_error_t flexflow_get_vProjSize(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs, int *out) {
+  return handle_errors(out, [&]) {
+    return get_vProjSize(deref_opaque(multi_head_attention_attrs));
+  }
+}
+
+flexflow_error_t flexflow_get_kProjSize(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs, int *out) {
+  return handle_errors(out, [&]) {
+    return get_kProjSize(deref_opaque(multi_head_attention_attrs));
+  }
+}
+
+flexflow_error_t flexflow_get_oProjSize(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs, int *out) {
+  return handle_errors(out, [&]) {
+    return get_oProjSize(deref_opaque(multi_head_attention_attrs));
+  }
+}
+
+flexflow_error_t flexflow_get_qSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    int *out) {
+  return handle_errors(out, [&]) {
+    return get_qSize(deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_kSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    int *out) {
+  return handle_errors(out, [&]) {
+    return get_kSize(deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_vSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    int *out) {
+  return handle_errors(out, [&]) {
+    return get_vSize(deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_oSize(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    int *out) {
+  return handle_errors(out, [&]) {
+    return get_oSize(deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_qoSeqLength(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    int *out) {
+  return handle_errors(out, [&]) {
+    return get_qoSeqLength(deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_kvSeqLength(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    int *out) {
+  return handle_errors(out, [&]) {
+    return get_kvSeqLength(deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_num_samples(
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    int *out) {
+  return handle_errors(out, [&]) {
+    return get_num_samples(deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_weights_shape(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs,
+    flexflow_multihead_attention_inputs_tensor_shape_t
+        multi_head_attention_inputs,
+    flexflow_tensor_shape_t *out) {
+  return handle_errors(out, [&]) {
+    return get_weights_shape(deref_opaque(multi_head_attention_attrs),
+                             deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_weights_shape(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs,
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t
+        multi_head_attention_inputs,
+    flexflow_parallel_tensor_shape_t *out) {
+  return handle_errors(out, [&]) {
+    return get_weights_shape(deref_opaque(multi_head_attention_attrs),
+                             deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_output_shape(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs,
+    flexflow_multihead_attention_inputs_tensor_shape_t
+        multi_head_attention_inputs,
+    flexflow_parallel_tensor_shape_t *out, ) {
+  return handle_errors(out, [&]) {
+    return get_output_shape(deref_opaque(multi_head_attention_attrs),
+                            deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t flexflow_get_output_shape(
+    flexflow_multihead_attention_attrs_t multi_head_attention_attrs,
+    flexflow_multihead_attention_inputs_tensor_shape_t
+        multi_head_attention_inputs,
+    flexflow_tensor_shape_t *out) {
+  return handle_errors(out, [&]) {
+    return get_output_shape(deref_opaque(multi_head_attention_attrs),
+                            deref_opaque(multi_head_attention_inputs));
+  }
+}
+
+flexflow_error_t
+    flexflow_get_output_shape(flexflow_batchnorm_attrs_t batchnorm_attrs,
+                              flexflow_parallel_tensor_shape_t *out) {
+  return handle_errors(out, [&]) {
+    return get_output_shape(deref_opaque(batchnorm_attrs));
+  }
+}
+
+flexflow_error_t
+    flexflow_get_kernel_shape(flexflow_conv2d_attrs_t conv2d_attrs,
+                              flexflow_tensor_shape_t *out,
+                              flexflow_tensor_shape_t input_shape) {
+  return handle_errors(out, [&]) {
+    return get_kernel_shape(deref_opaque(conv2d_attrs),
+                            deref_opaque(input_shape));
+  }
+}
+
+flexflow_error_t flexflow_get_bias_shape(flexflow_conv2d_attrs_t conv2d_attrs,
+                                         flexflow_tensor_shape_t *out,
+                                         flexflow_tensor_shape_t input_shape) {
+  return handle_errors(out, [&]) {
+    return get_bias_shape(deref_opaque(conv2d_attrs),
+                          deref_opaque(input_shape));
+  }
+}
+
+flexflow_error_t
+    flexflow_get_weights_shape(flexflow_embedding_attrs_t embedding_attrs,
+                               flexflow_tensor_shape_t *out,
+                               flexflow_tensor_shape_t input_shape) {
+  return handle_errors(out, [&]) {
+    return get_weights_shape(deref_opaque(embedding_attrs),
+                             deref_opaque(input_shape));
+  }
+}
+
+flexflow_error_t
+    flexflow_parse_loss_function_name(char **raw_name,
+                                      flexflow_loss_function_t *out) {
+  NOT_IMPLEMENTED(); // Note(lambda):how to implement the function
+}
+
+flexflow_error_t flexflow_is_valid(flexflow_parallel_dim_t parallel_dim_t,
+                                   bool *out) {
+  return handle_errors(out, [&]) {
+    return is_valid(deref_opaque(parallel_dim_t));
+  }
+}
+
+flexflow_error_t flexflow_is_replica_dim(flexflow_parallel_dim_t parallel_dim_t,
+                                         bool *out) {
+  return handle_errors(out, [&]) {
+    return is_replica_dim(deref_opaque(parallel_dim_t));
+  }
+}
+
+flexflow_error_t
+    flexflow_is_valid(flexflow_parallel_tensor_dims_t parallel_tensor_dims_t,
+                      bool *out) {
+  return handle_errors(out, [&]) {
+    return is_valid(deref_opaque(parallel_tensor_dims_t));
+  }
+}
+
+flexflow_error_t flexflow_get_piece_dims(
+    flexflow_parallel_tensor_dims_t parallel_tensor_dims_t,
+    flexflow_tensor_dims_t *out) {
+  return handle_errors(out, [&]) {
+    return get_piece_dims(deref_opaque(parallel_tensor_dims_t));
+  }
+}
+
+flexflow_error_t flexflow_get_tensor_dims_unsafe(
+    flexflow_parallel_tensor_dims_t tensor_dims_t,
+    flexflow_tensor_dims_t *out) {
+  return handle_errors(out, [&]) {
+    return get_tensor_dims_unsafe(deref_opaque(tensor_dims_t));
+  }
+}
+
+flexflow_error_t flexflow_get_piece_shape(
+    flexflow_parallel_tensor_shape_t parallel_tensor_shape,
+    flexflow_tensor_shape_t *out) {
+  return handle_errors(out, [&]) {
+    return get_piece_shape(deref_opaque(parallel_tensor_shape));
+  }
+}
+
+flexflow_error_t flexflow_get_num_replica_dims(
+    flexflolw_parallel_tensor_shape_t parallel_tensor_shape, int *out) {
+  return handle_errors(out, [&]) {
+    return get_num_replica_dims(deref_opaque(parallel_tensor_shape));
+  }
+}
+
+flexflow_error_t flexflow_get_num_replicas(
+    flexflow_parallel_tensor_shape_t parallel_tensor_shape, int *out) {
+  return handle_errors(out, [&]) {
+    return get_num_replicas(deref_opaque(parallel_tensor_shape));
+  }
+}
+
+flexflow_error_t
+    flexflow_is_valid(flexflow_parallel_tensor_shape_t parallel_tensor_shape,
+                      bool *out) {
+  return handle_errors(out, [&]) {
+    return is_valid(deref_opaque(parallel_tensor_shape));
+  }
+}
+
+flexflow_error_t flexflow_get_tensor_shape_unsafe(
+    flexflow_parallel_tensor_shape_t parallel_tensor_shape,
+    flexflow_tensor_shape_t *out) {
+  return handle_errors(out, [&]) {
+    return get_tensor_shape_unsafe(deref_opaque(parallel_tensor_shape));
+  }
+}
+
+flexflow_error_t
+    flexflow_get_tensor_shape_unsafe(flexflow_parallel_tesor_shape_t *input,
+                                     int num_input,
+                                     flexflow_tensor_shape_list_t *out) {
+  return handle_errors(out, [&]) {
+    return get_tensor_shape_unsafe(c_deref_opaque_list(input, num_input));
+  }
+}
+
 ParamSync to_internal(flexflow_param_sync_t e) {
   return to_internal_impl(e);
 }

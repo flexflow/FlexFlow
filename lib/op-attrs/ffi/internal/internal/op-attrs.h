@@ -51,7 +51,8 @@ using namespace FlexFlow;
 
 REGISTER_OPAQUE(flexflow_regularizer_attrs_t, optional<RegularizerAttrs>);
 REGISTER_OPAQUE(flexflow_ff_dim_t, ff_dim_t);
-// REGISTER_OPAQUE(flexflow_dim_ordered_t, DimOrdered);
+// REGISTER_OPAQUE(flexflow_dim_ordered_t, DimOrdered); Note:how to define
+// DimOrdered
 REGISTER_OPAQUE(flexflow_parallel_dim_t, ParallelDim);
 REGISTER_OPAQUE(flexflow_parallel_tensor_dims_t, ParallelTensorDims);
 REGISTER_OPAQUE(flexflow_parallel_tensor_shape_t, ParallelTensorShape);
@@ -114,12 +115,22 @@ flexflow_error_t
                               int num_exp_preds);
 flexflow_error_t flexflow_is_valid(flexflow_aggregate_attrs_t,
                                    flexflow_parallel_tensor_shape_t,
-                                   bool *out ,
+                                   bool *out,
                                    flexflow_parallel_tensor_shape_t,
                                    flexflow_parallel_tensor_shape_t,
                                    flexflow_parallel_tensor_shape_t,
                                    flexflow_parallel_tensor_shape_t *,
                                    int num_exp_preds);
+
+flexflow_error_t
+    flexflow_get_output_shape(flexflow_aggregate_attrs_t,
+                              flexflow_parallel_tensor_shape_t,
+                              flexflow_parallel_tensor_shape_t *out,
+                              flexflow_parallel_tensor_shape_t,
+                              flexflow_parallel_tensor_shape_t,
+                              flexflow_parallel_tensor_shape_t,
+                              flexflow_parallel_tensor_shape_t *,
+                              int num_exp_preds);
 
 flexflow_error_t flexflow_get_kProjSize(flexflow_multihead_attention_attrs_t,
                                         int *out);
@@ -143,41 +154,29 @@ flexflow_error_t flexflow_get_qoSeqLength(
     flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
 flexflow_error_t flexflow_get_kvSeqLength(
     flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
-flexflow_error_t flexflow_get_kvSeqLength(
-    flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
 
 flexflow_error_t flexflow_get_num_samples(
     flexflow_multihead_attention_inputs_parallel_tensor_shape_t, int *out);
 
 flexflow_error_t flexflow_get_weights_shape(
     flexflow_multihead_attention_attrs_t,
-    flexflow_tensor_shape_t *out
-        flexflow_multihead_attention_inputs_tensor_shape_t);
+    flexflow_multihead_attention_inputs_tensor_shape_t,
+    flexflow_tensor_shape_t *out);
 
 flexflow_error_t flexflow_get_weights_shape(
     flexflow_multihead_attention_attrs_t,
-    flexflow_parallel_tensor_shape_t *out
-        flexflow_multihead_attention_inputs_parallel_tensor_shape_t);
+    flexflow_multihead_attention_inputs_parallel_tensor_shape_t,
+    flexflow_parallel_tensor_shape_t *out);
 
 flexflow_error_t flexflow_get_output_shape(
     flexflow_multihead_attention_attrs_t,
-    flexflow_parallel_tensor_shape_t *out,
-    flexflow_multihead_attention_inputs_tensor_shape_t);
+    flexflow_multihead_attention_inputs_tensor_shape_t,
+    flexflow_parallel_tensor_shape_t *out, );
 
 flexflow_error_t flexflow_get_output_shape(
     flexflow_multihead_attention_attrs_t,
-    flexflow_tensor_shape_t *out,
-    flexflow_multihead_attention_inputs_tensor_shape_t);
-
-flexflow_error_t
-    flexflow_get_output_shape(flexflow_aggregate_attrs_t,
-                              flexflow_parallel_tensor_shape_t,
-                              flexflow_parallel_tensor_shape_t *out,
-                              flexflow_parallel_tensor_shape_t,
-                              flexflow_parallel_tensor_shape_t,
-                              flexflow_parallel_tensor_shape_t,
-                              flexflow_parallel_tensor_shape_t *,
-                              int num_exp_preds);
+    flexflow_multihead_attention_inputs_tensor_shape_t,
+    flexflow_tensor_shape_t *out);
 
 flexflow_error_t flexflow_get_output_shape(
     flexflow_batchnorm_attrs_t,
@@ -199,8 +198,8 @@ flexflow_error_t flexflow_get_bias_shape(
 flexflow_error_t flexflow_get_weights_shape(
     flexflow_embedding_attrs_t,
     flexflow_tensor_shape_t *out,
-    flexflow_tensor_shape); // TensorShape get_weights_shape(EmbeddingAttrs
-                            // const &, TensorShape const &);
+    flexflow_tensor_shape_t); // TensorShape get_weights_shape(EmbeddingAttrs
+                              // const &, TensorShape const &);
 
 // has some problem on loss_function.h
 // how to define LossFunction  in loss_function.h
@@ -231,6 +230,11 @@ flexflow_error_t flexflow_get_loss_function(
 
 // Note(lambda): have to define all
 // get_output_shape(op-attrs/include/op-attrs/get_output_shapes.h)?
+
+flexflow_error_t flexflow_is_valid(flexflow_parallel_dim_t, bool *out);
+
+flexflow_error_t flexflow_is_replica_dim(flexflow_parallel_dim_t, bool *out);
+
 flexflow_error_t
     flexflow_is_valid(flexflow_parallel_tensor_dims_t,
                       bool *out); // bool is_valid(ParallelTensorDims const &);
@@ -267,9 +271,10 @@ flexflow_error_t flexflow_get_tensor_shape_unsafe(
                // &);
 
 flexflow_error_t flexflow_get_tensor_shape_unsafe(
-    flexflow_parallel_tesor_shape_t * input,
+    flexflow_parallel_tesor_shape_t *input,
     int num_input,
-    flexflow_tensor_shape_list_t *out); // std::vector<TensorShape>
+    flexflow_tensor_shape_list_t
+        *out); // std::vector<TensorShape>
                // get_tensor_shape_unsafe(std::vector<ParallelTensorShape>
                // const &);
 
