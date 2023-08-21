@@ -13,7 +13,8 @@ typedef enum {
   FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_ACTIVATION_VALUE,
   FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_POOL_OP_VALUE,
   FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_AGGREGATE_OP_VALUE,
-  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_OP_TYPE_VALUE
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_OP_TYPE_VALUE,
+  FLEXFLOW_OPATTRS_ERROR_CODE_INVALID_LOSS_FUNCTION_VALUE,
 } flexflow_opattrs_error_code_t;
 
 FF_NEW_OPAQUE_TYPE(flexflow_opattrs_error_t);
@@ -23,11 +24,64 @@ flexflow_error_t flexflow_opattrs_error_unwrap(flexflow_error_t,
 flexflow_error_t flexflow_opattrs_error_is_ok(flexflow_opattrs_error_t, bool *);
 flexflow_error_t flexflow_opattrs_error_get_string(flexflow_opattrs_error_t,
                                                    char **);
+flexflow_error_t
+    flexflow_opattrs_error_get_error_code(flexflow_opattrs_error_t,
+                                          flexflow_opattrs_error_code_t *);
 flexflow_error_t flexflow_opattrs_error_destroy(flexflow_opattrs_error_t);
 
 //
 
 FF_NEW_OPAQUE_TYPE(flexflow_regularizer_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_dim_ordered_t);
+FF_NEW_OPAQUE_TYPE(flexflow_ff_dim_t);
+FF_NEW_OPAQUE_TYPE(flexflow_parallel_dim_t);
+FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_dims_t);
+FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_shape_t);
+FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_t);
+FF_NEW_OPAQUE_TYPE(
+    flexflow_parallel_tesor_shape_list_t); // std::vector<ParallelTensorShape>
+FF_NEW_OPAQUE_TYPE(flexflow_tensor_shape_list_t); // std::vector<TensorShape>
+
+// ops
+FF_NEW_OPAQUE_TYPE(flexflow_aggregate_specattrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_aggregate_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_inputs_parallel_tensor_shape_t);
+FF_NEW_OPAQUE_TYPE(flexflow_multihead_attention_inputs_tensor_shape_t);
+FF_NEW_OPAQUE_TYPE(flexflow_batchmatmul_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_batchnorm_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_broadcast_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_cast_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_combine_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_concat_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_conv2d_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_dropout_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_element_sclar_unary_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_element_unary_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_embedding_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_flat_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_gather_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_group_by_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_input_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_layernorm_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_l1_regularizer_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_l2_regularizer_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_linear_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_sparse_categorical_crossentropy_loss_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_other_loss_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_loss_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_noop_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_pool2d_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_reduce_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_reduction_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_repartition_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_replicate_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_reshape_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_reverse_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_softmax_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_split_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_topk_attrs_t);
+FF_NEW_OPAQUE_TYPE(flexflow_transpose_attrs_t);
 
 typedef enum {
   FLEXFLOW_DATATYPE_BOOL,
@@ -61,6 +115,14 @@ typedef enum {
   FLEXFLOW_AGGREGATE_OP_SUM,
   FLEXFLOW_AGGREGATE_OP_AVG,
 } flexflow_aggregate_op_t;
+
+typedef enum {
+  FLEXFLOW_LOSS_FUNCTION_CATEGORICAL_CROSSENTROPY,
+  FLEXFLOW_LOSS_FUNCTION_SPARSE_CATEGORICAL_CROSSENTROPY,
+  FLEXFLOW_LOSS_FUNCTION_MEAN_SQUARED_ERROR_AVG_REDUCE,
+  FLEXFLOW_LOSS_FUNCTION_MEAN_SQUARED_ERROR_SUM_REDUCE,
+  FLEXFLOW_LOSS_FUNCTION_IDENTITY,
+} flexflow_loss_function_t;
 
 typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
   FLEXFLOW_OP_TYPE_NOOP,
@@ -155,7 +217,9 @@ typedef enum { // does _not_ have to stay synchronized with op-attrs/op.h
 typedef struct {
   flexflow_op_type_t op_type;
   void *data;
-} flexflow_operator_attrs_t;
+} flexflow_operator_attrs;
+
+FF_NEW_OPAQUE_TYPE(flexflow_operator_attrs_t);
 
 flexflow_opattrs_error_t flexflow_get_datatype_size(flexflow_datatype_t,
                                                     int *out);
