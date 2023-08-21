@@ -10,7 +10,10 @@ namespace FlexFlow {
 
 struct GatherAttrs {
   ff_dim_t dim;
+  bool is_valid(ParallelTensorShape const &lhs,
+                ParallelTensorShape const &rhs) const;
 };
+
 FF_VISITABLE_STRUCT(GatherAttrs, dim);
 CHECK_VALID_OP_ATTR(GatherAttrs);
 
