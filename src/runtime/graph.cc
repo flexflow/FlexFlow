@@ -1917,6 +1917,8 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
       }
     }
     graph->print_dot();
+    std::unique_ptr<Graph> curr_best_graph;
+    std::unordered_map<Node, MachineView> curr_optimal_views;
     curr_best_graph = std::unique_ptr<Graph>(graph);
     MachineView data_parallel_view;
     data_parallel_view.device_type = MachineView::GPU;

@@ -672,6 +672,20 @@ bool ParallelTensorBase::set_tensor(FFModel const *ff,
   for (size_t i = 0; i < dim_sizes.size(); i++) {
     volume = volume * dim_sizes[i];
   }
+  // Debug prints
+  {
+    std::string tensor_name;
+    if (owner_op == nullptr) {
+      tensor_name = "No OwnerOp";
+    } else {
+      tensor_name = std::string(owner_op->name);
+    }
+    std::ostringstream oss;
+    for (int i = 0; i < dim_sizes.size(); i++)
+      oss << dim_sizes[i] << ", ";
+    printf("%s num_replicas(%zu) volume(%zu) dims(%s)\n", tensor_name.c_str(),
+        num_replicas, volume, oss.str().c_str());
+  }
   RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
