@@ -178,52 +178,34 @@ flexflow_error_t flexflow_get_output_shape(
     flexflow_multihead_attention_inputs_tensor_shape_t,
     flexflow_tensor_shape_t *out);
 
-flexflow_error_t flexflow_get_output_shape(
-    flexflow_batchnorm_attrs_t,
-    flexflow_parallel_tensor_shape_t
-        *out); // ParallelTensorShape get_output_shape(BatchNormAttrs const &);
+flexflow_error_t
+    flexflow_get_output_shape(flexflow_batchnorm_attrs_t,
+                              flexflow_parallel_tensor_shape_t *out);
 
-flexflow_error_t flexflow_get_kernel_shape(
-    flexflow_conv2d_attrs_t,
-    flexflow_tensor_shape_t *out,
-    flexflow_tensor_shape_t); // TensorShape get_kernel_shape(Conv2DAttrs const
-                              // &. TensorShape const &);
+flexflow_error_t flexflow_get_kernel_shape(flexflow_conv2d_attrs_t,
+                                           flexflow_tensor_shape_t *out,
+                                           flexflow_tensor_shape_t);
 
-flexflow_error_t flexflow_get_bias_shape(
-    flexflow_conv2d_attrs_t,
-    flexflow_tensor_shape_t *out,
-    flexflow_tensor_shape_t); // TensorShape get_bias_shape(Conv2DAttrs const &,
-                              // TensorShape const &);
+flexflow_error_t flexflow_get_bias_shape(flexflow_conv2d_attrs_t,
+                                         flexflow_tensor_shape_t *out,
+                                         flexflow_tensor_shape_t);
 
-flexflow_error_t flexflow_get_weights_shape(
-    flexflow_embedding_attrs_t,
-    flexflow_tensor_shape_t *out,
-    flexflow_tensor_shape_t); // TensorShape get_weights_shape(EmbeddingAttrs
-                              // const &, TensorShape const &);
+flexflow_error_t flexflow_get_weights_shape(flexflow_embedding_attrs_t,
+                                            flexflow_tensor_shape_t *out,
+                                            flexflow_tensor_shape_t);
 
-// has some problem on loss_function.h
-// how to define LossFunction  in loss_function.h
-flexflow_error_t flexflow_parse_loss_function_name(
-    char **,
-    flexflow_loss_function_t
-        *out); // LossFunction parse_loss_function_name(std::string const &);
+flexflow_error_t
+    flexflow_parse_loss_function_name(char **, flexflow_loss_function_t *out);
 
-flexflow_error_t flexflow_get_loss_function(
-    flexflow_other_loss_attrs_t,
-    flexflow_loss_function_t
-        *out); // LossFunction get_loss_function(OtherLossAttrs const &);
+flexflow_error_t flexflow_get_loss_function(flexflow_other_loss_attrs_t,
+                                            flexflow_loss_function_t *out);
 
 flexflow_error_t flexflow_get_loss_function(
     flexflow_sparse_categorical_crossentropy_loss_attrs_t,
-    flexflow_loss_function_t
-        *out); // LossFunction
-               // get_loss_function(SparseCategoricalCrossEntropyLossAttrs
-               // const &);
+    flexflow_loss_function_t *out);
 
-flexflow_error_t flexflow_get_loss_function(
-    flexflow_loss_attrs_t,
-    flexflow_loss_function_t
-        *out); // LossFunction get_loss_function(LossAttrs const &);
+flexflow_error_t flexflow_get_loss_function(flexflow_loss_attrs_t,
+                                            flexflow_loss_function_t *out);
 
 // TODO(Note lambda):how to define  nner_to_outer_idxs, outer_to_inner_idxs,how
 // to define DimOrdered outer_to_inner(op-attrs/include/op-attrs/dim_ordered.h)
@@ -235,48 +217,34 @@ flexflow_error_t flexflow_is_valid(flexflow_parallel_dim_t, bool *out);
 
 flexflow_error_t flexflow_is_replica_dim(flexflow_parallel_dim_t, bool *out);
 
+flexflow_error_t flexflow_is_valid(flexflow_parallel_tensor_dims_t, bool *out);
+
+flexflow_error_t flexflow_get_piece_dims(flexflow_parallel_tensor_dims_t,
+                                         flexflow_tensor_dims_t *out);
+
 flexflow_error_t
-    flexflow_is_valid(flexflow_parallel_tensor_dims_t,
-                      bool *out); // bool is_valid(ParallelTensorDims const &);
+    flexflow_get_tensor_dims_unsafe(flexflow_parallel_tensor_dims_t,
+                                    flexflow_tensor_dims_t *out);
 
-flexflow_error_t flexflow_get_piece_dims(
-    flexflow_parallel_tensor_dims_t,
-    flexflow_tensor_dims_t
-        *out); // TensorDims get_piece_dims(ParallelTensorDims const &);
+flexflow_error_t flexflow_get_piece_shape(flexflow_parallel_tensor_shape_t,
+                                          flexflow_tensor_shape_t *out);
 
-flexflow_error_t flexflow_get_tensor_dims_unsafe(
-    flexflow_parallel_tensor_dims_t,
-    flexflow_tensor_dims_t
-        *out); // TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &);
-
-flexflow_error_t flexflow_get_piece_shape(
-    flexflow_parallel_tensor_shape_t,
-    flexflow_tensor_shape_t
-        *out); // TensorShape get_piece_shape(ParallelTensorShape const &);
-
-flexflow_error_t flexflow_get_num_replica_dims(
-    flexflolw_parallel_tensor_shape_t,
-    int *out); // int get_num_replica_dims(ParallelTensorShape const &);
-flexflow_error_t flexflow_get_num_replicas(
-    flexflow_parallel_tensor_shape_t,
-    int *out); // int get_num_replicas(ParallelTensorShape const &);
 flexflow_error_t
-    flexflow_is_valid(flexflow_parallel_tensor_shape_t,
-                      bool *out); // bool is_valid(ParallelTensorShape const &);
+    flexflow_get_num_replica_dims(flexflolw_parallel_tensor_shape_t, int *out);
 
-flexflow_error_t flexflow_get_tensor_shape_unsafe(
-    flexflow_parallel_tensor_shape_t,
-    flexflow_tensor_shape_t
-        *out); // TensorShape get_tensor_shape_unsafe(ParallelTensorShape const
-               // &);
+flexflow_error_t flexflow_get_num_replicas(flexflow_parallel_tensor_shape_t,
+                                           int *out);
 
-flexflow_error_t flexflow_get_tensor_shape_unsafe(
-    flexflow_parallel_tesor_shape_t *input,
-    int num_input,
-    flexflow_tensor_shape_list_t
-        *out); // std::vector<TensorShape>
-               // get_tensor_shape_unsafe(std::vector<ParallelTensorShape>
-               // const &);
+flexflow_error_t flexflow_is_valid(flexflow_parallel_tensor_shape_t, bool *out);
+
+flexflow_error_t
+    flexflow_get_tensor_shape_unsafe(flexflow_parallel_tensor_shape_t,
+                                     flexflow_tensor_shape_t *out);
+
+flexflow_error_t
+    flexflow_get_tensor_shape_unsafe(flexflow_parallel_tesor_shape_t *input,
+                                     int num_input,
+                                     flexflow_tensor_shape_list_t *out);
 
 optional<ParamSync> to_internal(flexflow_param_sync_t);
 flexflow_param_sync_t to_external(optional<ParamSync>);
