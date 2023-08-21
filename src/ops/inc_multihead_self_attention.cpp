@@ -17,6 +17,9 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
+#include "flexflow/ops/kernels/decompress_kernels.h"
+#include <hip/hip_complex.h>
+#include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 
 namespace FlexFlow {
 
@@ -141,7 +144,7 @@ __global__ void
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
     hipFloatComplex complex_pos = {cos(freq), sin(freq)};
 
-    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
+    complex_input[i] = complex_input[i] * complex_pos;
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[complex_part_index] = complex_input[i].y;
   }
@@ -195,9 +198,46 @@ __global__ void
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
     hipFloatComplex complex_pos = {cos(freq), sin(freq)};
 
-    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
+    complex_input[i] = complex_input[i] * complex_pos;
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[complex_part_index] = complex_input[i].y;
+  }
+}
+
+template <typename DT>
+__global__ void store_kv_cache(DT const *devQKVProjArray,
+                               DT *kCache_ptr,
+                               DT *vCache_ptr,
+                               BatchConfig::PerTokenInfo const *tokenInfos,
+                               int qProjSize,
+                               int kProjSize,
+                               int vProjSize,
+                               int num_tokens,
+                               int num_q_heads,
+                               int num_kv_heads,
+                               int max_seq_len) {
+  CUDA_KERNEL_LOOP(i, num_tokens * (kProjSize + vProjSize) * num_kv_heads) {
+    int q_array_size = qProjSize * num_tokens * num_q_heads;
+    int k_array_size = kProjSize * num_tokens * num_kv_heads;
+
+    bool k_cache = i < k_array_size;
+    int real_i = k_cache ? i : i - k_array_size;
+
+    int proj_size = k_cache ? kProjSize : vProjSize;
+    int head_idx = real_i / (num_tokens * proj_size);
+    int token_idx = (real_i - head_idx * (num_tokens * proj_size)) / proj_size;
+    int data_idx = real_i % proj_size;
+
+    DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
+                             head_idx * proj_size * num_tokens +
+                             token_idx * proj_size + data_idx];
+    int const req_id = tokenInfos[token_idx].request_index;
+    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+
+    DT *cache_ptr = k_cache ? kCache_ptr : vCache_ptr;
+    cache_ptr[req_id * (num_kv_heads * max_seq_len * proj_size) +
+              head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+              data_idx] = val;
   }
 }
 
@@ -215,12 +255,12 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
-  hipblasDatatype_t hipblasDatatype_t = ff_to_cuda_datatype(m->output_type[0]);
+  hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to HIPBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = HIPBLAS_COMPUTE_16F;
 #else
-  hipblasDatatype_t compute_type = hipblasDatatype_t;
+  hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
   // Weights: qSize x qProjSize x 3 x num_q_heads
@@ -248,22 +288,22 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                         k,
                                         &alpha,
                                         weight_ptr,
-                                        hipblasDatatype_t,
+                                        hipblas_data_type,
                                         lda,
                                         strideA,
                                         input_ptr,
-                                        hipblasDatatype_t,
+                                        hipblas_data_type,
                                         ldb,
                                         strideB,
                                         &beta,
                                         output_ptr,
-                                        hipblasDatatype_t,
+                                        hipblas_data_type,
                                         ldc,
                                         strideC,
                                         m->num_q_heads + m->num_kv_heads +
                                             m->num_kv_heads,
                                         compute_type,
-                                        HIPBLAS_GEMM_DEFAULT_TENSOR_OP));
+                                        HIPBLAS_GEMM_DEFAULT));
 
   // apply rotary emmmbedding for q and k
   // step1 change the k, v to complex tensor
@@ -449,42 +489,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
 using namespace Kernels::IncMultiHeadAttention;
 
-template <typename DT>
-__global__ void store_kv_cache(DT const *devQKVProjArray,
-                               DT *kCache_ptr,
-                               DT *vCache_ptr,
-                               BatchConfig::PerTokenInfo const *tokenInfos,
-                               int qProjSize,
-                               int kProjSize,
-                               int vProjSize,
-                               int num_tokens,
-                               int num_q_heads,
-                               int num_kv_heads,
-                               int max_seq_len) {
-  CUDA_KERNEL_LOOP(i, num_tokens * (kProjSize + vProjSize) * num_kv_heads) {
-    int q_array_size = qProjSize * num_tokens * num_q_heads;
-    int k_array_size = kProjSize * num_tokens * num_kv_heads;
-
-    bool k_cache = i < k_array_size;
-    int real_i = k_cache ? i : i - k_array_size;
-
-    int proj_size = k_cache ? kProjSize : vProjSize;
-    int head_idx = real_i / (num_tokens * proj_size);
-    int token_idx = (real_i - head_idx * (num_tokens * proj_size)) / proj_size;
-    int data_idx = real_i % proj_size;
-
-    DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
-                             head_idx * proj_size * num_tokens +
-                             token_idx * proj_size + data_idx];
-    int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
-
-    DT *cache_ptr = k_cache ? kCache_ptr : vCache_ptr;
-    cache_ptr[req_id * (num_kv_heads * max_seq_len * proj_size) +
-              head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-              data_idx] = val;
-  }
-}
 
 template <typename DT>
 __global__ void fill_entries_above_diagonal(DT *matrix,
@@ -520,7 +524,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
-  cudaDataType_t compute_type = hipblasDatatype_t;
+  hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
@@ -584,7 +588,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                             strideC,
                                             m->num_q_heads,
                                             compute_type,
-                                            HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                            HIPBLAS_GEMM_DEFAULT));
 
     } else {
       strideB = 0;
@@ -618,7 +622,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                         strideC,
                                         one_step_heads,
                                         compute_type,
-                                        HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                        HIPBLAS_GEMM_DEFAULT));
       }
     }
     // Fill all elements above diagonal in qk prods with -inf to force
@@ -713,7 +717,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                             strideC,
                                             m->num_q_heads,
                                             compute_type,
-                                            HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                            HIPBLAS_GEMM_DEFAULT));
     } else {
       int one_step_heads = m->num_q_heads / m->num_kv_heads;
       n = m->vProjSize;
@@ -745,7 +749,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                         strideC,
                                         one_step_heads,
                                         compute_type,
-                                        HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                        HIPBLAS_GEMM_DEFAULT));
       }
     }
     // Project to output, save result directly on output tensor
@@ -768,17 +772,17 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             k,
                             &alpha,
                             A,
-                            hipblasDatatype_t,
+                            hipblas_data_type,
                             lda,
                             B,
-                            hipblasDatatype_t,
+                            hipblas_data_type,
                             ldb,
                             &beta,
                             C,
-                            hipblasDatatype_t,
+                            hipblas_data_type,
                             ldc,
                             compute_type,
-                            HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                            HIPBLAS_GEMM_DEFAULT));
     tokens_previous_requests += num_new_tokens;
   }
 
@@ -813,6 +817,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+   bool use_bias = *m->bias;
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -884,7 +889,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int num_samples,
     int _num_q_heads,
     int _num_kv_heads)
-    : OpMeta(handler, attn)
     : IncMultiHeadSelfAttentionMeta(handler,
                                     INC_DECODING_MODE,
                                     attn,

@@ -17,6 +17,7 @@
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
+#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -55,11 +56,11 @@ RMSNormMeta::~RMSNormMeta(void) {
 namespace Kernels {
 namespace RMSNorm {
 
-emplate<typename T> __device__ __forceinline__ T
-    WARP_SHFL_DOWN(T value,
-                   unsigned int delta,
-                   int width = warpSize,
-                   unsigned int mask = 0xffffffff) {
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL_DOWN(T value,
+                                            unsigned int delta,
+                                            int width = warpSize,
+                                            unsigned int mask = 0xffffffff) {
 #ifndef __HIP_PLATFORM_HCC__
   return __shfl_down_sync(mask, value, delta, width);
 #else
@@ -140,7 +141,7 @@ void forward_kernel(RMSNormMeta const *m,
                     hipStream_t stream) {
   int parallelism = m->batch_size * m->in_dim;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseRootMeanSquareKernel<T>),
-                     < m->batch_size,
+                     m->batch_size,
                      kCUDABlockReduceNumThreads,
                      0,
                      stream,

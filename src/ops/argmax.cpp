@@ -33,7 +33,7 @@ __global__ void init_offset(int batch_size,
 }
 
 template <typename DT>
-__global__ void copy_result(cub::KeyValuePair<int, DT> *d_out,
+__global__ void copy_result(hipcub::KeyValuePair<int, DT> *d_out,
                             int *indices,
                             float *prob_ptr,
                             int batch_size,
@@ -52,11 +52,10 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             DT *input_ptr,
                             int *indices_ptr,
                             float *prob_ptr,
-                            int *parent_ptr,
-                            int length,
-                            int batch_size,
-                            ffStream_t stream) {
-  hipStream_t stream;
+                            int *parent,
+                            int const length,
+                            int const batch_size,
+                            hipStream_t stream){
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -151,7 +150,7 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                        int batch_size,
                        int total_ele,
                        MemoryAllocator &gpu_mem_allocator)
-    : OpMeta(handler, op) {}
+    : OpMeta(handler, op) {
 DataType data_type = op->data_type;
 hipStream_t stream;
 checkCUDA(get_legion_stream(&stream));
@@ -213,9 +212,10 @@ if (data_type == DT_FLOAT) {
 gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
 d_temp_storage =
     gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
-
-ArgMaxMeta::~ArgMaxMeta(void) {}
+    }
+ArgMaxMeta::~ArgMaxMeta(void){
 if (reserveInst != Realm::RegionInstance::NO_INST) {
   reserveInst.destroy();
+}
 }
 }; // namespace FlexFlow

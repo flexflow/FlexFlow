@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
+#include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_complex.h>
@@ -296,7 +297,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                               strideC,
                                               m->num_q_heads,
                                               compute_type,
-                                              HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                              HIPBLAS_GEMM_DEFAULT));
       } else {
         strideB = 0;
         int one_step_heads = m->num_q_heads / m->num_kv_heads;
@@ -328,7 +329,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                           strideC,
                                           one_step_heads,
                                           compute_type,
-                                          HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                          HIPBLAS_GEMM_DEFAULT));
         }
       }
 
@@ -425,7 +426,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                               strideC,
                                               m->num_q_heads,
                                               compute_type,
-                                              HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                              HIPBLAS_GEMM_DEFAULT));
       } else {
         int one_step_heads = m->num_q_heads / m->num_kv_heads;
         n = m->vProjSize;
@@ -457,7 +458,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                           strideC,
                                           one_step_heads,
                                           compute_type,
-                                          HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                                          HIPBLAS_GEMM_DEFAULT));
         }
       }
 
@@ -492,7 +493,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                               hipblas_data_type,
                               ldc,
                               compute_type,
-                              HIPBLAS__GEMM_DEFAULT_TENSOR_OP));
+                              HIPBLAS_GEMM_DEFAULT));
       tokens_previous_requests += num_new_tokens;
       tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
@@ -581,6 +582,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  bool use_bias = *m->bias;
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -589,7 +591,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     hipEventRecord(t_start, stream);
   }
 
-  ssert(input.data_type == weight.data_type);
+  assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
   if (use_bias) {
     assert(input.data_type == bias.data_type);

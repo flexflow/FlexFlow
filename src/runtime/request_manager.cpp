@@ -53,7 +53,7 @@ void RequestManager::load_tokens_task(
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpyAsync(fb_ptr,
                            dram_copy,
-                           sizeof(TokenId) * batch_config.num_tokens,
+                           sizeof(TokenId) * batch_config->num_tokens,
                            hipMemcpyHostToDevice,
                            stream));
 }
@@ -81,7 +81,7 @@ void RequestManager::load_positions_task(
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpyAsync(pos_ptr,
                            dram_copy,
-                           sizeof(int) * batch_config.num_tokens,
+                           sizeof(int) * batch_config->num_tokens,
                            hipMemcpyHostToDevice,
                            stream));
 }

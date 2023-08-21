@@ -31,7 +31,9 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     bool scaling_query,
                                     float scaling_factor);
 
-template <typename DT>
+
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  template <typename DT>
 __global__ void
     apply_rotary_embedding(DT *input_ptr,
                            cuFloatComplex *complex_input,
@@ -45,6 +47,23 @@ __global__ void
                            int k_block_size,
                            int q_array_size,
                            bool q_tensor);
+#elif defined(FF_USE_HIP_ROCM)
+  template <typename DT>
+__global__ void
+    apply_rotary_embedding(DT *input_ptr,
+                           hipFloatComplex *complex_input,
+                           BatchConfig::PerTokenInfo const *tokenInfos,
+                           int qProjSize,
+                           int kProjSize,
+                           int num_heads,
+                           int num_tokens,
+                           int num_kv_heads,
+                           int q_block_size,
+                           int k_block_size,
+                           int q_array_size,
+                           bool q_tensor);
+#endif
+
 
 template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
@@ -54,13 +73,13 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         DT const *weight_ptr,
                         DT *output_ptr,
                         DT const *bias_ptr,
-                        cudaStream_t stream);
+                        ffStream_t stream);
 
 template <typename DT>
 void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              GenericTensorAccessorR const weight,
                              DataType data_type,
-                             cudaStream_t stream);
+                             ffStream_t stream);
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 } // namespace FlexFlow
