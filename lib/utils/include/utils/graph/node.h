@@ -75,6 +75,7 @@ private:
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
 
 struct IGraph : IGraphView {
+  IGraph() = default;
   IGraph(IGraph const &) = delete;
   IGraph &operator=(IGraph const &) = delete;
 
