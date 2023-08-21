@@ -10,8 +10,6 @@ on:
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/build.yml"
   push:
-    branches:
-      - "master"
     paths:
       - "include/**"
       - "cmake/**"
