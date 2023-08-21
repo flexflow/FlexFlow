@@ -34,14 +34,13 @@ public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
+  IDiGraphView() = default;
+
   IDiGraphView(IDiGraphView const &) = delete;
   IDiGraphView &operator=(IDiGraphView const &) = delete;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
   virtual ~IDiGraphView();
-
-protected:
-  IDiGraphView() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraphView);
 
@@ -86,6 +85,7 @@ CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 DiGraphView unsafe(IDiGraphView const &);
 
 struct IDiGraph : public IDiGraphView, public IGraph {
+  IDiGraph() = default;
   virtual void add_edge(Edge const &) = 0;
   virtual void remove_edge(Edge const &) = 0;
   virtual IDiGraph *clone() const = 0;

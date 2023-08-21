@@ -9,6 +9,7 @@ namespace FlexFlow {
 
 class AdjacencyDiGraph : public IDiGraph {
 public:
+  AdjacencyDiGraph() = default;
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
   void remove_node_unsafe(Node const &) override;
