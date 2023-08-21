@@ -18,12 +18,7 @@ struct EdgeAttrAccess {
   T attr_expr;
 };
 
-enum class AttrBinaryOpType {
-  ADD,
-  SUB,
-  MUL,
-  DIV
-};
+enum class AttrBinaryOpType { ADD, SUB, MUL, DIV };
 
 template <typename L, typename R>
 struct AttrBinary {
@@ -38,12 +33,15 @@ using GraphAttributeExpr = variant<NodeAttrAccess<T>, EdgeAttrAccess<T>>;
 template <typename L, typename R>
 using GraphAttributeExpr = AttrBinary<L, R>;
 
-using GraphAttributeValue = variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
+using GraphAttributeValue =
+    variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
 
-// NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can define the assignment for each operator type.
+// NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
+// define the assignment for each operator type.
 template <typename T>
 struct OperatorAttrAssignment {
-  std::vector<std::pair<OperatorAttributeKey, GraphAttributeExpr<T>>> assignment;
+  std::vector<std::pair<OperatorAttributeKey, GraphAttributeExpr<T>>>
+      assignment;
 };
 
 template <typename T>
@@ -51,10 +49,11 @@ struct ParallelTensorAttrAssignment {
   std::vector<std::pair<TensorAttributeKey, GraphAttributeExpr<T>>> assignment;
 };
 
-struct OutputGraph : public strong_typedef<OperatorAttrAssignment, ParallelTensorAttrAssignment> {
+struct OutputGraph : public strong_typedef<OperatorAttrAssignment,
+                                           ParallelTensorAttrAssignment> {
   using strong_typedef::strong_typedef;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

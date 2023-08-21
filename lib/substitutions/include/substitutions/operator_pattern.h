@@ -39,7 +39,8 @@ enum class OperatorAttributeKey {
   PAD,
 };
 
-using OperatorAttributeValue = variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
+using OperatorAttributeValue =
+    variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
 
 using OperatorAttributeConstraint =
     AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
@@ -48,6 +49,6 @@ struct OperatorPattern {
   std::unordered_set<OperatorAttributeConstraint> attribute_constraints;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

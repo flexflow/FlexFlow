@@ -27,6 +27,6 @@ struct ParallelTensorPattern {
   std::unordered_set<TensorAttributeConstraint> attribute_constraints;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

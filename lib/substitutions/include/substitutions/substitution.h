@@ -11,8 +11,10 @@ struct Substitution {
   OutputGraph output_graph;
 };
 
-ParallelComputationGraph apply_substitution(ParallelComputationGraph const &, Substitution const &, DiGraphPatternMatch const &);
+ParallelComputationGraph apply_substitution(ParallelComputationGraph const &,
+                                            Substitution const &,
+                                            DiGraphPatternMatch const &);
 
-}
+} // namespace FlexFlow
 
 #endif

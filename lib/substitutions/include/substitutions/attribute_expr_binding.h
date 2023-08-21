@@ -18,10 +18,11 @@ struct AttributeExprBinding {
   GraphAttributeExpr<T> get_expr(attr_expr_id const &id) const {
     return binding.at(id);
   }
+
 private:
   std::unordered_map<attr_expr_id, AttributeExpr<T>> binding;
 };
 
-}
+} // namespace FlexFlow
 
 #endif
