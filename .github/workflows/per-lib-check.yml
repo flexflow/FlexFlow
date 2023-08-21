@@ -1,24 +1,5 @@
 name: "per-lib-checks"
-on:
-  pull_request:
-    paths:
-      - "include/**"
-      - "cmake/**"
-      - "config/**"
-      - "python/**"
-      - "src/**"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/build.yml"
-  push:
-    paths:
-      - "include/**"
-      - "cmake/**"
-      - "config/**"
-      - "python/**"
-      - "src/**"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/build.yml"
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
 concurrency:
   group: build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
