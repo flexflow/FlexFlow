@@ -14,7 +14,10 @@ struct BMMPerDeviceState {
 };
 
 FF_VISITABLE_STRUCT_NO_EQ(BMMPerDeviceState,
-                          handle,);
+                          handle,
+                          allocator,
+                          a_seq_length_dim,
+                          b_seq_length_dim);
 
 namespace Kernels {
 namespace BatchMatmul {
