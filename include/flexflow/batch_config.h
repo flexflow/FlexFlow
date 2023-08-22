@@ -53,6 +53,7 @@ public:
 
   //  These are set by update
   int num_tokens;
+  bool loading_prompt = false;
 
   struct PerRequestInfo {
     int token_start_offset;
@@ -113,7 +114,6 @@ public:
   inline static int const MAX_BEAM_DEPTH = 8;
 
   int model_id;
-  int max_init_length = 0;
 
   struct BeamSearchPerRequestInfo {
     int beam_size;

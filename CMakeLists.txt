@@ -307,6 +307,7 @@ list(APPEND FF_NVCC_FLAGS
 list(APPEND FF_LD_FLAGS
   -lrt
   -ldl
+  -lstdc++fs
   -rdynamic)
 
 # Set FF FLAGS
