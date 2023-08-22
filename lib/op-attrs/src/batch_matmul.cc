@@ -2,6 +2,14 @@
 
 namespace FlexFlow {
 
+int get_aSeqLengthDim(BatchMatmulAttrs const &attrs) {
+  return attrs.a_seq_length_dim;
+}
+
+int get_bSeqLengthDim(BatchMatmulAttrs const &attrs) {
+  return attrs.b_seq_length_dim;
+}
+
 /* bool BatchMatmulAttrs::is_valid( */
 /*     ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const {
  */

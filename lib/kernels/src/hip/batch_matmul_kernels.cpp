@@ -19,9 +19,6 @@
 
 namespace FlexFlow {
 
-BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
 namespace BatchMatmul {
 
@@ -42,9 +39,9 @@ void forward_kernel(hipStream_t stream,
                     int k,
                     int batch,
                     hipStream_t stream,
-                    int a_seq_length_dim,
-                    int b_seq_length_dim,
                     int seq_length) {
+  int a_seq_length_dim = meta->a_seq_length_dim;
+  int b_seq_length_dim = meta->b_seq_length_dim;
   checkCUDA(hipblasSetStream(meta->handle.blas, stream));
   checkCUDNN(miopenSetStream(meta->handle.dnn, stream));
 
