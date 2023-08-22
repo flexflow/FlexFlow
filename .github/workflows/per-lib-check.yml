@@ -42,7 +42,7 @@ jobs:
           environment-file: packaging/conda/environment.yml
           auto-activate-base: false
 
-      - name: Build FFI libs
+      - name: Build op-attrs libs
         run: |
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
@@ -59,7 +59,7 @@ jobs:
             export FF_BUILD_UNIT_TESTS=ON
           fi
           ../config/config.linux
-          make ffi -j $n_build_cores
+          make -j $n_build_cores op-attrs
 
 
 
