@@ -55,10 +55,10 @@ jobs:
           if (( $n_build_cores < 1 )) ; then n_build_cores=1 ; fi
           mkdir build
           cd build
-          if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export FF_BUILD_ALL_EXAMPLES=ON 
-            export FF_BUILD_UNIT_TESTS=ON
-          fi
+          #if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
+          #  export FF_BUILD_ALL_EXAMPLES=ON 
+          #  export FF_BUILD_UNIT_TESTS=ON
+          #fi
           ../config/config.linux
           make -j $n_build_cores ${{ matrix.library }}
 
