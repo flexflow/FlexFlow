@@ -6,14 +6,14 @@ concurrency:
 
 jobs:
   cmake-build:
-    name: Build FlexFlow with CMake
+    name: FlexFlow Library build with CMake
     runs-on: ubuntu-20.04
     defaults:
       run:
         shell: bash -l {0} # required to use an activated conda environment
     strategy:
       matrix:
-        gpu_backend: ["cuda"]
+        gpu_backend: ["cuda","hip_rocm"]
         library: ["compiler","ffi","kernels","op-attrs","pcg","runtime","substitutions","triton","utils"]
       fail-fast: false
     steps:
@@ -43,7 +43,7 @@ jobs:
           environment-file: packaging/conda/environment.yml
           auto-activate-base: false
 
-      - name: Build op-attrs libs
+      - name: Build lib ${{ matrix.library }}
         run: |
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
