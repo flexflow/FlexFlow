@@ -920,6 +920,18 @@ flexflow_request_manager_t flexflow_request_manager_get_request_manager(void);
 
 // void flexflow_request_manager_destroy(flexflow_request_manager_t handle_);
 
+void flexflow_request_manager_set_max_requests_per_batch(
+    flexflow_request_manager_t handle_,
+    int max_num_requests);
+
+void flexflow_request_manager_set_max_tokens_per_batch(
+    flexflow_request_manager_t handle_,
+    int max_num_tokens);
+
+void flexflow_request_manager_set_max_sequence_length(
+    flexflow_request_manager_t handle_,
+    int max_seq_length);
+
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,

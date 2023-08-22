@@ -89,6 +89,12 @@ public:
   size_t get_num_processed_requests();
   size_t get_num_ssms();
 
+  void set_max_requests_per_batch(int max_num_requests);
+  int get_max_requests_per_batch();
+  void set_max_tokens_per_batch(int max_num_tokens);
+  int get_max_tokens_per_batch();
+  void set_max_sequence_length(int max_seq_length);
+  int get_max_sequence_length();
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type, std::string const &path);
   void register_output_filepath(std::string const &);
@@ -192,6 +198,11 @@ public:
       Legion::Runtime *runtime);
 
 private:
+  // configuration parameters
+  int max_requests_per_batch;
+  int max_tokens_per_batch;
+  int max_sequence_length;
+  // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
   ModelType model_type;

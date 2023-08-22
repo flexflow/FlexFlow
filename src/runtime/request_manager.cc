@@ -65,6 +65,30 @@ RequestManager::RequestManager()
   }
 }
 
+void RequestManager::set_max_requests_per_batch(int max_num_requests) {
+  max_requests_per_batch = max_num_requests;
+}
+
+int RequestManager::get_max_requests_per_batch() {
+  return max_requests_per_batch;
+}
+
+void RequestManager::set_max_tokens_per_batch(int max_num_tokens) {
+  max_tokens_per_batch = max_num_tokens;
+}
+
+int RequestManager::get_max_tokens_per_batch() {
+  return max_tokens_per_batch;
+}
+
+void RequestManager::set_max_sequence_length(int max_seq_length) {
+  max_sequence_length = max_seq_length;
+}
+
+int RequestManager::get_max_sequence_length() {
+  return max_sequence_length;
+}
+
 void RequestManager::register_tokenizer(ModelType type,
                                         std::string const &path) {
   // bos id
