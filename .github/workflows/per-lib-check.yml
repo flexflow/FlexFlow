@@ -14,6 +14,7 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
+        library: ["compiler","ffi","kernels","op-attrs","pcg","runtime","substitutions","triton","utils"]
       fail-fast: false
     steps:
       - name: Checkout Git Repository
@@ -59,7 +60,7 @@ jobs:
             export FF_BUILD_UNIT_TESTS=ON
           fi
           ../config/config.linux
-          make -j $n_build_cores op-attrs
+          make -j $n_build_cores ${{ matrix.library }}
 
 
 
