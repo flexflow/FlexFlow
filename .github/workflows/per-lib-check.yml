@@ -13,7 +13,7 @@ jobs:
         shell: bash -l {0} # required to use an activated conda environment
     strategy:
       matrix:
-        gpu_backend: ["cuda", "hip_rocm"]
+        gpu_backend: ["cuda"]
         library: ["compiler","ffi","kernels","op-attrs","pcg","runtime","substitutions","triton","utils"]
       fail-fast: false
     steps:
@@ -29,7 +29,7 @@ jobs:
         uses: Jimver/cuda-toolkit@v0.2.8
         id: cuda-toolkit
         with:
-          cuda: "11.1.1"
+          cuda: "12.0.0"
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
           use-github-cache: "false"
 
