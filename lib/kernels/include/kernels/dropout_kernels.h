@@ -2,7 +2,6 @@
 #define _FLEXFLOW_OPS_KERNELS_DROPOUT_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/per_device_op_state.h"
 #include <cstddef>
 
 namespace FlexFlow {

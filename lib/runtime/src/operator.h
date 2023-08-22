@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
 #define _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
 
-#include "kernels/per_device_op_state.h"
 #include "kernels/profiling.h"
 #include "layer_id.h"
 #include "op-attrs/operator_attrs.h"

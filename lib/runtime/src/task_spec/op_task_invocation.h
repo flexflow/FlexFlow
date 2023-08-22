@@ -90,7 +90,7 @@ struct OpTaskBinding {
 private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
     assert(!contains_key(this->arg_bindings, name));
-    arg_bindings.insert({name, arg_spec});
+    this->arg_bindings.insert({name, arg_spec});
   }
 
   // template <typename T>

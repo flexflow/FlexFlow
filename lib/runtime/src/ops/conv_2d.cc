@@ -607,7 +607,7 @@ PerDeviceOpState *Conv2D::init_task(Task const *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // Conv2D const *conv = (Conv2D *)task->args;
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   FFHandler handle = *((FFHandler const *)task->local_args);
   auto const &attrs = acc.get_argument<Conv2dAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
@@ -796,7 +796,7 @@ void Conv2D::forward_task(Task const *task,
                           Runtime *runtime) {
   Conv2DPerDeviceState const *m = *((Conv2DPerDeviceState **)task->local_args);
 
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   auto input = acc.get_tensor<READ_ONLY>(INPUT);
   auto filter = acc.get_tensor<READ_ONLY>(FILTER);
