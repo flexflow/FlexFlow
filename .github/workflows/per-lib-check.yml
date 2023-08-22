@@ -6,7 +6,7 @@ concurrency:
 
 jobs:
   cmake-build:
-    name: FlexFlow Library build with CMake
+    name: Library CMake Build
     runs-on: ubuntu-20.04
     defaults:
       run:
