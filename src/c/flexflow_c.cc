@@ -1416,13 +1416,24 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
   handle->set_transformer_layer_id(id);
 }
 
-flexflow_generation_result_t flexflow_model_generate(flexflow_model_t handle_,
-                                                     char const *text,
-                                                     int max_seq_length) {
+flexflow_generation_result_t
+    flexflow_model_generate(flexflow_model_t handle_,
+                            char const *input_text,
+                            int max_num_chars,
+                            char *output_text,
+                            int max_seq_length,
+                            int *output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  std::string const text_str(text);
+  std::string const text_str(input_text);
   GenerationResult result = handle->generate(text_str, max_seq_length);
   DEBUG_PRINT("[Model] generate %p %s %i", handle, text, max_seq_length);
+  assert(result.output_tokens.size() <= max_seq_length);
+  output_length_and_tokens[0] = result.output_tokens.size();
+  std::copy(result.output_tokens.begin(),
+            result.output_tokens.end(),
+            output_length_and_tokens + 1);
+  std::memcpy(
+      output_text, result.output_text.c_str(), result.output_text.length());
   return FFCObjectWrapper::wrap(&result);
 }
 

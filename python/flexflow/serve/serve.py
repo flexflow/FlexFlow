@@ -21,7 +21,7 @@ from flexflow.serve.models import (
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
-import sys, torch, shutil
+import sys, torch, shutil, hashlib
 from typing import Union, List
 
 
@@ -51,6 +51,11 @@ class GenerationConfig:
         self.topp = topp
         self.topk = topk
 
+class GenerationResult:
+    """A class to store the output of a generation request."""
+    def __init__(self, text: str = None, tokens: list = None):
+        self.output_text = text
+        self.output_tokens = tokens
 
 class LLM:
     """This class creates a LLM (Large-Language Model) object based on a model from HuggingFace"""
@@ -99,7 +104,7 @@ class LLM:
             ff_arch = self.supported_models.get(architectures[0])
         if ff_arch is None:
             print(
-                "Huggingface model of type {architectures} is not yet supported by FlexFlow"
+                f"Huggingface model of type {architectures} is not yet supported by FlexFlow"
             )
             sys.exit(1)
         return ff_arch
@@ -115,6 +120,23 @@ class LLM:
         print(f"Saving {self.model_name} configs to file {self.config_path}...")
         self.hf_config.to_json_file(self.config_path)
 
+    def __get_revision_hashes(self, model_name: str, weights: bool):
+        ff_revision = None
+        ff_revision_file = os.path.join(self.weights_path, "rev_sha.txt") if weights else os.path.join(self.tokenizer_path, "rev_sha.txt")
+        if os.path.exists(ff_revision_file):
+            ff_revision = "".join(open(ff_revision_file).read().split())
+        
+        if os.path.exists(model_name) and os.path.isdir(model_name):
+            # Local model
+            files = os.listdir(model_name)
+            state = files + [os.path.getmtime(os.path.join(model_name, f)) for f in files]
+            latest_revision = hashlib.md5(str(state).encode('utf-8')).hexdigest() 
+        else:
+            # Remote HuggingFace model
+            hf_api = HfApi()
+            latest_revision = hf_api.model_info(self.model_name).sha
+        return ff_revision, ff_revision_file, latest_revision
+    
     def download_hf_weights_if_needed(self):
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
@@ -144,25 +166,27 @@ class LLM:
         os.makedirs(self.weights_path, exist_ok=True)
         print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
 
-        # Get local revision SHA, check if it matches latest one on huggingface
-        local_revision = None
-        local_revision_file = os.path.join(self.weights_path, "rev_sha.txt")
-        if os.path.exists(local_revision_file):
-            local_revision = "".join(open(local_revision_file).read().split())
-        hf_api = HfApi()
-        latest_revision = hf_api.model_info(self.model_name).sha
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights=True)
 
         # Download if needed
-        if local_revision != latest_revision:
-            print(
-                f"'{self.model_name}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
-            )
-            hf_model = AutoModelForCausalLM.from_pretrained(
-                self.model_name, trust_remote_code=True
-            )
-            print("Done downloading HF weights. Converting them now...")
+        if ff_revision != latest_revision:
+            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
+                # Local model
+                print(
+                    f"'{self.model_name}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
+                )
+            else:
+                # Remote model
+                print(f"'{self.model_name}' local model weights were updated! Converting new weights now...")
+            # Download model from HuggingFace, or load it from the local folder
+            hf_model = AutoModelForCausalLM.from_pretrained(self.model_name, trust_remote_code=True)
+            # Print log message to notify user download of model has finished
+            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
+                print("Done downloading HF weights. Converting them now...")
+            # Convert the model to FlexFlow format
             self.model_class.convert_hf_model(hf_model, self.weights_path)
-            with open(local_revision_file, "w+") as f:
+            # Save new revision hash to file
+            with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
             print("Done converting the weights...")
         else:
@@ -191,29 +215,32 @@ class LLM:
         os.makedirs(self.tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface
-        local_revision = None
-        local_revision_file = os.path.join(self.tokenizer_path, "rev_sha.txt")
-        if os.path.exists(local_revision_file):
-            local_revision = "".join(open(local_revision_file).read().split())
-        hf_api = HfApi()
-        latest_revision = hf_api.model_info(self.model_name).sha
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights=False)
 
-        # Download if needed
-        if local_revision != latest_revision:
-            print(
-                f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ..."
-            )
+        if ff_revision != latest_revision:
+            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
+                # Local model
+                print(f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ...")
+            else:
+                # Remote model
+                print(f"'{self.model_name}' local tokenizer was updated! Saving new tokenizer now...")
+            # Download tokenizer from HuggingFace, or load it from the local folder
             if self.model_type == ModelType.LLAMA:
                 hf_tokenizer = LlamaTokenizer.from_pretrained(
                     self.model_name, use_fast=True
                 )
             else:
                 hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            # Print log message to notify user download of tokenizer has finished
+            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
+                print("Done downloading tokenizer. Saving it now...")
+            # Save tokenizer
             hf_tokenizer.save_pretrained(self.tokenizer_path)
-            print("Done downloading HF tokenizer.")
-            with open(local_revision_file, "w+") as f:
+            print("Done saving HF tokenizer.")
+            # Save new revision hash to file
+            with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
-            print("Loading the tokenizer...")
+            
         else:
             print(f"Loading '{self.model_name}' tokenizer from the cache...")
 
