@@ -15,7 +15,7 @@
 
 #include "aggregate_spec.h"
 #include "kernels/aggregate_spec_kernels.h"
-#include "task_spec/device_specific_arg.h"
+#include "task_spec/device_specific.h"
 
 namespace FlexFlow {
 
