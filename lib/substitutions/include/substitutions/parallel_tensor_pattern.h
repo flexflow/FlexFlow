@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_TENSOR_PATTERN_H
 #define _FLEXFLOW_SUBSTITUTIONS_TENSOR_PATTERN_H
 
-#include "constraint.h"
+#include "attribute_expr.h"
+#include "pcg/parallel_tensor.h"
 
 namespace FlexFlow {
 

@@ -20,6 +20,7 @@ namespace FlexFlow {
 
 std::vector<Node> add_nodes(Graph &, int);
 std::unordered_set<Node> get_nodes(GraphView const &);
+std::unordered_set<Node> get_nodes(OpenMultiDiGraphView const &);
 std::unordered_set<NodePort> get_node_ports(MultiDiGraphView const &);
 
 std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &);
@@ -66,6 +67,7 @@ UndirectedGraphView apply_contraction(UndirectedGraphView const &,
                                       std::unordered_map<Node, Node> const &);
 
 std::size_t num_nodes(GraphView const &);
+std::size_t num_nodes(OpenMultiDiGraphView const &);
 bool empty(GraphView const &);
 
 void add_edges(MultiDiGraph &, std::vector<MultiDiEdge> const &);
@@ -113,9 +115,9 @@ std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
 std::unordered_set<DirectedEdge>
     get_incoming_edges(DiGraphView const &, std::unordered_set<Node> const &);
 
-std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>>
+std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
     get_incoming_edges_by_idx(MultiDiGraphView const &, Node const &);
-std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>>
+std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
     get_outgoing_edges_by_idx(MultiDiGraphView const &, Node const &);
 
 std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &,

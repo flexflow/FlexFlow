@@ -2,6 +2,7 @@
 #define _FLEXFLOW_SUBSTITUTIONS_ATTRIBUTE_EXPR_BINDING_H
 
 #include "attribute_expr.h"
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 

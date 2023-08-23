@@ -1,9 +1,9 @@
-#ifndef _FLEXFLOW_SUBSTITUTIONS_OPERATOR_ATTRIBUTES_H
-#define _FLEXFLOW_SUBSTITUTIONS_OPERATOR_ATTRIBUTES_H
+#ifndef _FLEXFLOW_SUBSTITUTIONS_GET_ATTRIBUTES_H
+#define _FLEXFLOW_SUBSTITUTIONS_GET_ATTRIBUTES_H
 
 #include "op-attrs/operator_attrs.h"
-#include "substitutions/substitutions.h"
-#include "tl/optional.hpp"
+#include "operator_pattern.h"
+#include "utils/optional.h"
 
 namespace FlexFlow {
 
@@ -67,8 +67,8 @@ optional<OperatorAttributeValue> get_attribute(TopKAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
                                                OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(FusedParallelOpAttrs const &p,
-                                               OperatorAttributeKey);
+// optional<OperatorAttributeValue> get_attribute(FusedParallelOpAttrs const &p,
+//                                                OperatorAttributeKey);
 
 } // namespace FlexFlow
 

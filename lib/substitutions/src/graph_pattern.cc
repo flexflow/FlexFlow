@@ -6,10 +6,6 @@
 
 namespace FlexFlow {
 
-bool satisfies(Operator const &,
-               std::vector<ParallelTensor> const &,
-               OperatorAttributeConstraint const &);
-
 template <typename T, typename V>
 optional<V> evaluate_list_index_access(ListIndexAccess<T> const &index_access,
                                        optional<V> const &v) {
@@ -37,7 +33,7 @@ optional<V> evaluate_list_size(optional<V> const &v) {
 struct EvaluateOperatorAttributeExpr {
   EvaluateOperatorAttributeExpr(Operator const &attrs) : attrs(attrs) {}
 
-  optional<OperatorAttributeValue> operator()(OperatorAttributeKey key) {
+  optional<OperatorAttributeValue> operator()(OperatorAttributeKey const &key) {
     return get_attribute(this->attrs, key);
   }
 

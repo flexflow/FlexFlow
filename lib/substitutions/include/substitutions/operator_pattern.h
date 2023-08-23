@@ -1,7 +1,12 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_OPERATOR_PATTERN_H
 #define _FLEXFLOW_SUBSTITUTIONS_OPERATOR_PATTERN_H
 
-#include "constraint.h"
+#include "attribute_expr.h"
+#include "op-attrs/activation.h"
+#include "op-attrs/op.h"
+#include "pcg/operator.h"
+#include <unordered_set>
+#include <vector>
 
 namespace FlexFlow {
 

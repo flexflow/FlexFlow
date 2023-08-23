@@ -2,6 +2,9 @@
 #define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTIONS_H
 
 #include "graph_pattern_match.h"
+#include "operator_pattern.h"
+#include "parallel_tensor_pattern.h"
+#include "pcg/parallel_computation_graph.h"
 
 namespace FlexFlow {
 

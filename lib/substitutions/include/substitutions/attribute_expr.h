@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_CONSTRAINT_H
 #define _FLEXFLOW_SUBSTITUTIONS_CONSTRAINT_H
 
-#include "mpark/variant.hpp"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 

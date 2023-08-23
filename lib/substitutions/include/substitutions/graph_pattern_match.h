@@ -1,24 +1,22 @@
-#ifndef _FLEXFLOW_SUBSTITUTIONS_GRAPH_PATTERN_H
-#define _FLEXFLOW_SUBSTITUTIONS_GRAPH_PATTERN_H
+#ifndef _FLEXFLOW_SUBSTITUTIONS_GRAPH_PATTERN_MATCH_H
+#define _FLEXFLOW_SUBSTITUTIONS_GRAPH_PATTERN_MATCH_H
 
 #include "utils/graph.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
 struct DiGraphPatternMatch {
   bidict<Node, Node> nodeAssignment;
-  req<bidict<OpenMultiDiEdge, MultiDiEdge>> edgeAssignment;
+  bidict<OpenMultiDiEdge, MultiDiEdge> edgeAssignment;
 };
-
-FF_VISITABLE_STRUCT(DiGraphPatternMatch, nodeAssignment, edgeAssignment);
 
 struct MatchSplit {
   DiGraphPatternMatch prefix_submatch;
-  req<DiGraphPatternMatch> postfix_submatch;
+  DiGraphPatternMatch postfix_submatch;
 };
 
-FF_VISITABLE_STRUCT(MatchSplit, prefix_submatch, postfix_submatch);
-
+template <typename F>
 bool pattern_matches(OpenMultiDiGraphView const &,
                      MultiDiGraphView const &,
                      DiGraphPatternMatch const &,
