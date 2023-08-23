@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/model.h"
+#include "utils/parse.h" // Note(lambda):this may have problems
 #define MAX_NUM_SAMPLES 4196
 
 using namespace Legion;

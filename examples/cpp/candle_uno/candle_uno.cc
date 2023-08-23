@@ -14,6 +14,7 @@
  */
 
 #include "candle_uno.h"
+#include "utils/parser.h" //Note(lambda): this headfile may be false, 
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -22,8 +23,6 @@ using namespace Legion;
 using namespace std;
 
 LegionRuntime::Logger::Category log_app("Candle_Uno");
-
-void parse_input_args(char **argv, int argc, CandleConfig &apConfig);
 
 CandleConfig::CandleConfig(void) {
   // Set default configurations here
@@ -56,6 +55,16 @@ Tensor build_feature_model(FFModel *model,
   return t;
 }
 
+std::vector<int> parse_string(std::string & inputs) {
+  std::vector<int> result;
+  std::stringstream ss(inputs);
+  std::string word;
+  while (std::getline(ss, word, '-')) {
+    result.push_back(std::stoi(word));
+  }
+  return result;
+}
+
 void print_vector(std::string const &name, std::vector<int> const &vector) {
   std::ostringstream out;
   for (size_t i = 0; i < vector.size() - 1; i++) {
@@ -77,7 +86,14 @@ void FlexFlow::top_level_task(Task const *task,
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, candle_config);
+    ArgsParser args;
+    args.add_argument("--dense-layers", "64-32-16","Dense layers");
+    args.add_argument("--dense-feature-layers", "64-32-16","Dense feature layers");
+    args.add_argument("--dataset", "", "Dataset path");
+    args.parse_args(argc, argv);
+    candle_config.dense_layers = parse_string(args.get<std::string>("dense-layers"));
+    candle_config.dense_feature_layers = parse_string(args.get<std::string>("dense-feature-layers"));
+    candle_config.dataset_path = args.get<std::string>("dataset");
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ff_config.batchSize,
                   ff_config.workersPerNode,
@@ -179,33 +195,6 @@ void FlexFlow::top_level_task(Task const *task,
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
          run_time,
          data_loader.num_samples * ff_config.epochs / run_time);
-}
-
-void parse_input_args(char **argv, int argc, CandleConfig &config) {
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--dense-layers")) {
-      std::stringstream ss(std::string(argv[++i]));
-      std::string word;
-      config.dense_layers.clear();
-      while (std::getline(ss, word, '-')) {
-        config.dense_layers.push_back(std::stoi(word));
-      }
-      continue;
-    }
-    if (!strcmp(argv[i], "--dense-feature-layers")) {
-      std::stringstream ss(std::string(argv[++i]));
-      std::string word;
-      config.dense_feature_layers.clear();
-      while (std::getline(ss, word, '-')) {
-        config.dense_feature_layers.push_back(std::stoi(word));
-      }
-      continue;
-    }
-    if (!strcmp(argv[i], "--dataset")) {
-      config.dataset_path = std::string(argv[++i]);
-      continue;
-    }
-  }
 }
 
 size_t get_file_size(std::string const &filename) {

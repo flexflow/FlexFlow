@@ -14,6 +14,7 @@
  */
 
 #include "alexnet.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -28,14 +29,14 @@ using FlexFlow::Tensor;
 
 LegionRuntime::Logger::Category log_app("AlexNet");
 
-void parse_input_args(char **argv, int argc, AlexNetConfig &config) {
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--dataset")) {
-      std::strcpy(config.dataset_path, argv[++i]);
-      continue;
-    }
-  }
-}
+// void parse_input_args(char **argv, int argc, AlexNetConfig &config) {
+//   for (int i = 1; i < argc; i++) {
+//     if (!strcmp(argv[i], "--dataset")) {
+//       std::strcpy(config.dataset_path, argv[++i]);
+//       continue;
+//     }
+//   }
+// }
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
@@ -47,6 +48,13 @@ void FlexFlow::top_level_task(Task const *task,
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
+    ArgsParser args;
+    args.add_argument("--dataset",
+                      std::string(""),
+                      "Path to the dataset file");
+    args.parse_args(argc, argv);
+    std::strcpy(alexnetConfig.dataset_path,
+                args.get<std::string>("--dataset").data());
     parse_input_args(argv, argc, alexnetConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
