@@ -6,10 +6,13 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "runtime/config.h"
 
-
 namespace FlexFlow {
 
-enum class OpArgRefType { PER_DEVICE_OP_STATE, PARALLEL_TENSOR_SHAPE, ITERATION_CONFIG };
+enum class OpArgRefType {
+  PER_DEVICE_OP_STATE,
+  PARALLEL_TENSOR_SHAPE,
+  ITERATION_CONFIG
+};
 
 template <typename T>
 using OpArgRef = ArgRef<OpArgRefType, T>;

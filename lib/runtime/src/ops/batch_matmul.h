@@ -24,11 +24,11 @@ OpTaskInvocation forward(BatchMatmulAttrs const &);
 OpTaskInvocation backward(BatchMatmulAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                        BatchMatmulAttrs const &attrs,
-                                        InputParallelTensorDesc const &a_input,
-                                        InputParallelTensorDesc const &b_input,
-                                        ProfilingSettings const &settings,
-                                        MachineView const &pc);
+                                  BatchMatmulAttrs const &attrs,
+                                  InputParallelTensorDesc const &a_input,
+                                  InputParallelTensorDesc const &b_input,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &pc);
 
 /* class BatchMatmul : public Op { */
 /* public: */
@@ -88,8 +88,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 } // namespace FlexFlow
 
 #endif
-
-
 
 // BatchMatmulParams BatchMatmul::get_params() const {
 //   BatchMatmulParams params;
@@ -242,15 +240,14 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 //   return new BatchMatmul(ff, params, {inputs[0], inputs[1]}, this->name);
 // }
 
-
 // void BatchMatmul::forward(FFModel const &ff) {
 //   int dim = outputs[0]->num_dims;
 //   switch (dim) {
-// #define DIMFUNC(DIM)                                                           \
-//   case DIM: {                                                                  \
+// #define DIMFUNC(DIM) \
+//   case DIM: { \
 //     // forward_with_dim<DIM>(ff);
-//     this->execute_task(ff, BATCHMATMUL_FWD_TASK_ID, get_fwd_task_signature());
-//     break;
+//     this->execute_task(ff, BATCHMATMUL_FWD_TASK_ID,
+//     get_fwd_task_signature()); break;
 //   }
 //   LEGION_FOREACH_N(DIMFUNC)
 // #undef DIMFUNC
@@ -299,15 +296,14 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   output = A * B  /////////+ C
 */
 
-
 // void BatchMatmul::init(FFModel const &ff) {
 //   int dim = outputs[0]->num_dims;
 //   switch (dim) {
-// #define DIMFUNC(DIM)                                                           \
-//   case DIM: {                                                                  \
+// #define DIMFUNC(DIM) \
+//   case DIM: { \
 //     // init_with_dim<DIM>(ff);
-//     this->execute_task(ff, BATCHMATMUL_INIT_TASK_ID, get_init_task_signature());
-//     break;
+//     this->execute_task(ff, BATCHMATMUL_INIT_TASK_ID,
+//     get_init_task_signature()); break;
 //   }
 //   LEGION_FOREACH_N(DIMFUNC)
 // #undef DIMFUNC
@@ -365,7 +361,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 //   return binding;
 // }
 
-
 // static OpTaskSignature get_fwd_task_signature() {
 //   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -409,27 +404,24 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 //   return binding;
 // }
 
-//void BatchMatmul::backward(FFModel const &ff) {
-//   int dim = outputs[0]->num_dims;
-//   switch (dim) {
-// #define DIMFUNC(DIM)                                                           \
-//   case DIM: {                                                                  \
-//     backward_with_dim<DIM>(ff);                                                \
-//     break;                                                                     \
+// void BatchMatmul::backward(FFModel const &ff) {
+//    int dim = outputs[0]->num_dims;
+//    switch (dim) {
+//  #d ef ine DIMFUNC(DIM) \
+//   case DIM: { \
+//     backward_with_dim<DIM>(ff); \
+//     break; \
 //   }
-//     LEGION_FOREACH_N(DIMFUNC)
-// #undef DIMFUNC
-//     default:
-//       assert(false);
-//   }
-// }
-
+//      LEGION_FOREACH_N(DIMFUNC)
+//  #undef DIMFUNC
+//      default:
+//        assert(false);
+//    }
+//  }
 
 // void BatchMatmul::print_layer(FFModel const &ff) {
 //   return;
 // }
-
-
 
 /*
   regions[0](I): output

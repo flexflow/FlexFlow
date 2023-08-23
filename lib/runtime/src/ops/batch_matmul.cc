@@ -16,8 +16,8 @@
 #include "batch_matmul.h"
 #include "kernels/batch_matmul_kernels.h"
 #include "legion.h"
-#include "op-attrs/ops/batch_matmul.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/ops/batch_matmul.h"
 
 namespace FlexFlow {
 
@@ -29,16 +29,16 @@ using Legion::Runtime;
 using Legion::Task;
 
 enum Slots {
-  A_INPUT, //tensor
-  B_INPUT, //tensor
-  OUTPUT, //tensor
+  A_INPUT, // tensor
+  B_INPUT, // tensor
+  OUTPUT,  // tensor
   PROFILING,
   HANDLE,
   A_SEQ_LENGTH_DIM,
   B_SEQ_LENGTH_DIM,
   PER_DEVICE_STATE,
   ITERATION_CONFIG
-  };
+};
 
 OpTaskInvocation init(BatchMatmulAttrs const &attrs) {
   OpTaskBinding init;
@@ -70,18 +70,16 @@ OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
   return {BATCHMATMUL_BWD_TASK_ID, bwd};
 }
 
-static DeviceSpecificArg<BMMPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecificArg<BMMPerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   auto const a_seq_length_dim = acc.get_argument<int>(A_SEQ_LENGTH_DIM);
   auto const b_seq_length_dim = acc.get_argument<int>(B_SEQ_LENGTH_DIM);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   Allocator allocator = acc.get_allocator();
 
-    DeviceSpecificArg<BMMPerDeviceState> per_device_state =
+  DeviceSpecificArg<BMMPerDeviceState> per_device_state =
       acc.create_device_specific<BMMPerDeviceState>(
-          init_kernel(handle,
-                      allocator,
-                      a_seq_length_dim,
-                      b_seq_length_dim));
+          init_kernel(handle, allocator, a_seq_length_dim, b_seq_length_dim));
 
   // assert(weight.shape.get_volume() * sizeof(float) ==
   //        acc.unwrap(per_device_state)->weightSize);
@@ -107,7 +105,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state = acc.get_argument<BMMPerDeviceState>(PER_DEVICE_STATE);
-  FFIterationConfig iter_config = acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
+  FFIterationConfig iter_config =
+      acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
 
   int m = b_input.shape[legion_dim_t(0)];
   assert(m == output.shape[legion_dim_t(0)]);
@@ -120,7 +119,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   assert(a_input.shape.size() == output.shape.size());
 
   int batch = 1;
-  for (int i = 2; i < a_input.shape.get_dim(); i++) { //get_dim() or get_volume()?
+  for (int i = 2; i < a_input.shape.get_dim();
+       i++) { // get_dim() or get_volume()?
     int dim_size = a_input.shape[legion_dim_t(i)];
     assert(dim_size == b_input.shape[legion_dim_t(i)]);
     assert(dim_size == output.shape[legion_dim_t(i)]);
@@ -128,18 +128,18 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   }
 
   return profile(forward_kernel,
-          profiling,
-          "[BatchMatmul] forward_time = %.2lfms\n",
-          per_device_state,
-          output.get_float_ptr(),
-          a_input.get_float_ptr(),
-          b_input.get_float_ptr(),
-          nullptr, //c_ptr
-          m,
-          n,
-          k,
-          batch,
-          iter_config.seq_length);
+                 profiling,
+                 "[BatchMatmul] forward_time = %.2lfms\n",
+                 per_device_state,
+                 output.get_float_ptr(),
+                 a_input.get_float_ptr(),
+                 b_input.get_float_ptr(),
+                 nullptr, // c_ptr
+                 m,
+                 n,
+                 k,
+                 batch,
+                 iter_config.seq_length);
 }
 
 static void forward_task(Task const *task,
@@ -156,14 +156,15 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(task->regions.size() == 6);
 
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
-  FFIterationConfig iter_config = acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
+  FFIterationConfig iter_config =
+      acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state = acc.get_argument<BMMPerDeviceState>(PER_DEVICE_STATE);
 
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RW>(OUTPUT);
   // is this equivalent to checking `Domain` equality?
-  assert(output == output_grad); 
+  assert(output == output_grad);
 
   auto a_input = acc.get_tensor<Permissions::RO>(A_INPUT);
   auto a_input_grad = acc.get_tensor_grad<Permissions::RW>(A_INPUT);
@@ -183,7 +184,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(a_input.shape.size() == b_input.shape.size());
   assert(a_input.shape.size() == output.shape.size());
   int batch = 1;
-  for (int i = 2; i < a_input.shape.get_dim(); i++) {  //@colin get_dim() or get_volume()?
+  for (int i = 2; i < a_input.shape.get_dim();
+       i++) { //@colin get_dim() or get_volume()?
     int dim_size = a_input.shape[legion_dim_t(i)];
     assert(dim_size == b_input.shape[legion_dim_t(i)]);
     assert(dim_size == output.shape[legion_dim_t(i)]);
@@ -196,19 +198,19 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert((meta->b_seq_length_dim >= b_len) || (iter_config.seq_length == 0));
 
   return profile(backward_kernel,
-          profiling,
-          "[BatchMatmul] backward_time = %.2lfms\n",
-          per_device_state,
-          output.get_float_ptr(),
-          output_grad.get_float_ptr(),
-          a_input.get_float_ptr(),
-          a_input_grad.get_float_ptr(),
-          b_input.get_float_ptr(),
-          b_input_grad.get_float_ptr(),
-          m,
-          n,
-          k,
-          batch);
+                 profiling,
+                 "[BatchMatmul] backward_time = %.2lfms\n",
+                 per_device_state,
+                 output.get_float_ptr(),
+                 output_grad.get_float_ptr(),
+                 a_input.get_float_ptr(),
+                 a_input_grad.get_float_ptr(),
+                 b_input.get_float_ptr(),
+                 b_input_grad.get_float_ptr(),
+                 m,
+                 n,
+                 k,
+                 batch);
 }
 
 static void backward_task(Task const *task,
@@ -220,15 +222,17 @@ static void backward_task(Task const *task,
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                        BatchMatmulAttrs const &attrs,
-                                        InputParallelTensorDesc const &a_input,
-                                        InputParallelTensorDesc const &b_input,
-                                        ProfilingSettings const &settings,
-                                        MachineView const &pc) {
+                                  BatchMatmulAttrs const &attrs,
+                                  InputParallelTensorDesc const &a_input,
+                                  InputParallelTensorDesc const &b_input,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &pc) {
   auto env = sim.new_environment();
 
-  ParallelTensorShape output_shape = get_output_shape(attrs, a_input.shape, b_input.shape);
-  ParallelTensorShape weight_shape = get_weights_shape(attrs, a_input.shape, b_input.shape);
+  ParallelTensorShape output_shape =
+      get_output_shape(attrs, a_input.shape, b_input.shape);
+  ParallelTensorShape weight_shape =
+      get_weights_shape(attrs, a_input.shape, b_input.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(A_SEQ_LENGTH_DIM, get_aSeqLengthDim(attrs));
@@ -249,8 +253,10 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-  auto fwd_accessor = env.get_fwd_accessor(BATCHMATMUL_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(BATCHMATMUL_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor =
+      env.get_fwd_accessor(BATCHMATMUL_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor =
+      env.get_bwd_accessor(BATCHMATMUL_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();

@@ -13,19 +13,16 @@ struct BMMPerDeviceState {
   req<int> b_seq_length_dim;
 };
 
-FF_VISITABLE_STRUCT_NO_EQ(BMMPerDeviceState,
-                          handle,
-                          allocator,
-                          a_seq_length_dim,
-                          b_seq_length_dim);
+FF_VISITABLE_STRUCT_NO_EQ(
+    BMMPerDeviceState, handle, allocator, a_seq_length_dim, b_seq_length_dim);
 
 namespace Kernels {
 namespace BatchMatmul {
 
 BMMPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                  Allocator allocator,
-                  int a_seq_length_dim,
-                  int b_seq_length_dim);
+                              Allocator allocator,
+                              int a_seq_length_dim,
+                              int b_seq_length_dim);
 
 void forward_kernel(ffStream_t stream,
                     BMMPerDeviceState const &meta,
@@ -40,7 +37,7 @@ void forward_kernel(ffStream_t stream,
                     int seq_length = -1);
 
 void backward_kernel(ffStream_t stream,
-                    BMMPerDeviceState const &meta,
+                     BMMPerDeviceState const &meta,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,
