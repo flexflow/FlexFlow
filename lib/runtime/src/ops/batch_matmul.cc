@@ -13,16 +13,11 @@
  * limitations under the License.
  */
 
-// #include "batch_matmul.h"
-// #include "kernels/batch_matmul_kernels.h"
-// #include "kernels/profiling.h"
-// #include "legion/legion_utilities.h"
-// #include "tasks.h"
-
 #include "batch_matmul.h"
 #include "kernels/batch_matmul_kernels.h"
 #include "legion.h"
 #include "op-attrs/ops/batch_matmul.h"
+#include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
 
@@ -232,9 +227,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                         MachineView const &pc) {
   auto env = sim.new_environment();
 
-  // @colin todo add get_output_shape and get_weights_shape to batch_matmul op-attrs
-  // ParallelTensorShape output_shape = get_output_shape(attrs, inputs);
-  // ParallelTensorShape weight_shape = get_weights_shape(attrs, inputs);
+  ParallelTensorShape output_shape = get_output_shape(attrs, a_input.shape, b_input.shape);
+  ParallelTensorShape weight_shape = get_weights_shape(attrs, a_input.shape, b_input.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(A_SEQ_LENGTH_DIM, get_aSeqLengthDim(attrs));
@@ -249,8 +243,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   SimTaskBinding fwd_binding;
   fwd_binding.bind(A_INPUT, a_input);
   fwd_binding.bind(B_INPUT, b_input);
-  //@colin will uncomment after get_output_shape is done
-  // fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
 
