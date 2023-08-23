@@ -41,7 +41,8 @@ enum Slots {
   HANDLE,
   A_SEQ_LENGTH_DIM,
   B_SEQ_LENGTH_DIM,
-  PER_DEVICE_STATE
+  PER_DEVICE_STATE,
+  ITERATION_CONFIG
   };
 
 OpTaskInvocation init(BatchMatmulAttrs const &attrs) {
@@ -63,6 +64,7 @@ OpTaskInvocation forward(BatchMatmulAttrs const &attrs) {
 
   fwd.bind_arg(PROFILING, profiling_settings());
   fwd.bind_arg(PER_DEVICE_STATE, per_device_op_state<BMMPerDeviceState>());
+  fwd.bind_arg(ITERATION_CONFIG, iteration_config());
 
   return {BATCHMATMUL_FWD_TASK_ID, fwd};
 }
@@ -110,7 +112,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state = acc.get_argument<BMMPerDeviceState>(PER_DEVICE_STATE);
-  FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
+  FFIterationConfig iter_config = acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
 
   int m = b_input.shape[legion_dim_t(0)];
   assert(m == output.shape[legion_dim_t(0)]);
@@ -123,7 +125,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   assert(a_input.shape.size() == output.shape.size());
 
   int batch = 1;
-  for (int i = 2; i < a_input.shape.size(); i++) {
+  for (int i = 2; i < a_input.shape.get_dim(); i++) { //get_dim() or get_volume()?
     int dim_size = a_input.shape[legion_dim_t(i)];
     assert(dim_size == b_input.shape[legion_dim_t(i)]);
     assert(dim_size == output.shape[legion_dim_t(i)]);
@@ -137,12 +139,12 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
           output.get_float_ptr(),
           a_input.get_float_ptr(),
           b_input.get_float_ptr(),
-          NULL, //c_ptr
+          nullptr, //c_ptr
           m,
           n,
           k,
           batch,
-          iter_config->seq_length);
+          iter_config.seq_length);
 }
 
 static void forward_task(Task const *task,
@@ -159,7 +161,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(task->regions.size() == 6);
 
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
-  FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
+  FFIterationConfig iter_config = acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state = acc.get_argument<BMMPerDeviceState>(PER_DEVICE_STATE);
 
@@ -186,7 +188,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(a_input.shape.size() == b_input.shape.size());
   assert(a_input.shape.size() == output.shape.size());
   int batch = 1;
-  for (int i = 2; i < a_input.shape.size(); i++) {
+  for (int i = 2; i < a_input.shape.get_dim(); i++) {  //@colin get_dim() or get_volume()?
     int dim_size = a_input.shape[legion_dim_t(i)];
     assert(dim_size == b_input.shape[legion_dim_t(i)]);
     assert(dim_size == output.shape[legion_dim_t(i)]);
@@ -195,8 +197,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
 
   // TODO: add support for meta->a_seq_length_dim >= 0
   // or meta->b_seq_length_dim >= 0
-  assert((meta->a_seq_length_dim >= a_len) || (iter_config->seq_length == 0));
-  assert((meta->b_seq_length_dim >= b_len) || (iter_config->seq_length == 0));
+  assert((meta->a_seq_length_dim >= a_len) || (iter_config.seq_length == 0));
+  assert((meta->b_seq_length_dim >= b_len) || (iter_config.seq_length == 0));
 
   return profile(backward_kernel,
           profiling,
@@ -208,7 +210,6 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
           a_input_grad.get_float_ptr(),
           b_input.get_float_ptr(),
           b_input_grad.get_float_ptr(),
-          NULL, //c_grad_ptr
           m,
           n,
           k,
@@ -228,10 +229,10 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                         InputParallelTensorDesc const &a_input,
                                         InputParallelTensorDesc const &b_input,
                                         ProfilingSettings const &settings,
-                                        MachineView const &pc) const {
+                                        MachineView const &pc) {
   auto env = sim.new_environment();
 
-  //todo add get_output_shape and get_weights_shape to batch_matmul op-attrs
+  // @colin todo add get_output_shape and get_weights_shape to batch_matmul op-attrs
   // ParallelTensorShape output_shape = get_output_shape(attrs, inputs);
   // ParallelTensorShape weight_shape = get_weights_shape(attrs, inputs);
 
@@ -248,6 +249,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   SimTaskBinding fwd_binding;
   fwd_binding.bind(A_INPUT, a_input);
   fwd_binding.bind(B_INPUT, b_input);
+  //@colin will uncomment after get_output_shape is done
   // fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
@@ -268,9 +270,9 @@ template <>
 void register_task<BATCHMATMUL_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
-  init.add_arg_slot(A_SEQ_LENGTH_DIM, get_aSeqLengthDim(attrs));
-  init.add_arg_slot(B_SEQ_LENGTH_DIM, get_bSeqLengthDim(attrs));
-  init.add_unchecked_arg_slot(HANDLE, ff_handle());
+  init.add_arg_slot<int>(A_SEQ_LENGTH_DIM);
+  init.add_arg_slot<int>(B_SEQ_LENGTH_DIM);
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   register_task(BATCHMATMUL_INIT_TASK_ID, "BatchMatmul Init", init, init_task);
 }
