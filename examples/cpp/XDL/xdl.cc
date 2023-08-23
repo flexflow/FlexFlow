@@ -20,7 +20,15 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("XDL");
 
-void parse_input_args(char **argv, int argc, XDLConfig &apConfig);
+std::vector<int> parse_string(std::string & inputs) {
+  std::vector<int> result;
+  std::stringstream ss(inputs);
+  std::string word;
+  while (std::getline(ss, word, '-')) {
+    result.push_back(std::stoi(word));
+  }
+  return result;
+}
 
 XDLConfig::XDLConfig(void)
     : sparse_feature_size(64), embedding_bag_size(1), dataset_path(""),
@@ -105,7 +113,24 @@ void FlexFlow::top_level_task(Task const *task,
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, xdlConfig);
+    ArgParser args;
+    args.add_argument("--arch-sparse-feature-size", 0," sparse feature size");
+    args.add_argument("--arch-embedding-size", "32-64-96-128", "embedding size");
+    args.add_argument("--embedding-bag-size", 1, "embedding bag size");
+    args.add_argument("--arch-mlp", "13-512-256-64-16", "mlp layer");
+    args.add_argument("--loss-threshold", 0.0f, "loss threshold");
+    args.add_argument("--dataset", "", "dataset path");
+    args.add_argument("--data-size", -1, "data size");
+    args.parse_args(argc, argv);
+
+    xdlConfig.sparse_feature_size = args.get<int>("--arch-sparse-feature-size");
+    xdlConfig.embedding_size = parse_string(args.get<std::string>("--arch-embedding-size"));
+    xdlConfig.embedding_bag_size = args.get<int>("--embedding-bag-size");
+    xdlConfig.mlp_top = parse_string(args.get<std::string>("--arch-mlp"));
+    xdlConfig.loss_threshold = args.get<float>("--loss-threshold");
+    xdlConfig.dataset_path = args.get<std::string>("--dataset");
+    xdlConfig.data_size = args.get<int>("--data-size");
+
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
                   ffConfig.workersPerNode,
@@ -203,49 +228,6 @@ void FlexFlow::top_level_task(Task const *task,
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
          run_time,
          data_loader.num_samples * ffConfig.epochs / run_time);
-}
-
-void parse_input_args(char **argv, int argc, XDLConfig &config) {
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--arch-sparse-feature-size")) {
-      config.sparse_feature_size = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--arch-embedding-size")) {
-      std::stringstream ss(std::string(argv[++i]));
-      std::string word;
-      config.embedding_size.clear();
-      while (std::getline(ss, word, '-')) {
-        config.embedding_size.push_back(std::stoi(word));
-      }
-      continue;
-    }
-    if (!strcmp(argv[i], "--embedding-bag-size")) {
-      config.embedding_bag_size = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--arch-mlp")) {
-      std::stringstream ss(std::string(argv[++i]));
-      std::string word;
-      config.mlp_top.clear();
-      while (std::getline(ss, word, '-')) {
-        config.mlp_top.push_back(std::stoi(word));
-      }
-      continue;
-    }
-    if (!strcmp(argv[i], "--loss-threshold")) {
-      config.loss_threshold = atof(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--dataset")) {
-      config.dataset_path = std::string(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--data-size")) {
-      config.data_size = atoi(argv[++i]);
-      continue;
-    }
-  }
 }
 
 DataLoader::DataLoader(FFModel &ff,

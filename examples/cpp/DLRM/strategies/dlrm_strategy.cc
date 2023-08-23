@@ -5,6 +5,7 @@
 --------------------------*/
 
 #include "strategy.pb.h"
+#include "utils/parse.h"
 #include <fstream>
 #include <iostream>
 
@@ -218,31 +219,18 @@ void FFStrategy::export_file(std::string const &output) {
   strategy.SerializeToOstream(&outputFile);
 }
 
-void parse_input_args(char **argv,
-                      int argc,
-                      int &gpus_per_node,
-                      int &embs_per_node,
-                      int &num_nodes) {
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--gpu")) {
-      gpus_per_node = std::atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--node")) {
-      num_nodes = std::atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--emb")) {
-      embs_per_node = std::atoi(argv[++i]);
-      continue;
-    }
-  }
-}
-
 int main(int argc, char **argv) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   int gpus_per_node = 0, embs_per_node = 0, num_nodes = 0;
-  parse_input_args(argv, argc, gpus_per_node, embs_per_node, num_nodes);
+  ArgParser args;
+  args.add_argument("--gpu", 4, "Number of GPUs Per Node");
+  args.add_argument("--node", 1, "Number of Nodes");
+  args.add_argument("--emb", 4, "Number of Embeddings Per Node");
+  args.parse_args(argc, argv);
+  gpus_per_node = args.get<int>("--gpu");
+  embs_per_node = args.get<int>("--emb");
+  num_nodes = args.get<int>("--node");
+  
   printf("Number of GPUs Per Node = %d\n", gpus_per_node);
   printf("Number of Nodes = %d\n", num_nodes);
   printf("Number of Embeddings Per Node = %d\n", embs_per_node);

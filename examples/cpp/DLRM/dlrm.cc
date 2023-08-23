@@ -15,7 +15,7 @@
 
 #include "dlrm.h"
 #include "hdf5.h"
-#include "utils/parser.h" //Note(lambda): this headfile may be false, 
+#include "utils/parse.h" //Note(lambda): this headfile may be false, 
 #include <sstream>
 
 using namespace Legion;

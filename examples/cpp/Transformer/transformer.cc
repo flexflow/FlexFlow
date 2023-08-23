@@ -16,8 +16,8 @@
 #include "transformer.h"
 
 using namespace Legion;
-
 LegionRuntime::Logger::Category log_app("Transformer");
+using namespace FlexFlow::ArgsParser;
 
 Tensor create_emb(FFModel *model,
                   Tensor const &input,
@@ -84,31 +84,6 @@ TransformerConfig::TransformerConfig(void) {
   sequence_length = 512;
 }
 
-void parse_input_args(char **argv, int argc, TransformerConfig &config) {
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--num-layers")) {
-      config.num_layers = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--embedding-size")) {
-      config.embedding_size = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--hidden-size")) {
-      config.hidden_size = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--num-heads")) {
-      config.num_heads = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--sequence-length")) {
-      config.sequence_length = atoi(argv[++i]);
-      continue;
-    }
-  }
-}
-
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
@@ -119,7 +94,19 @@ void FlexFlow::top_level_task(Task const *task,
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, tfConfig);
+    ArgParser args;
+    args.add_argument("--num-layers",4, "number of layers");
+    args.add_argument("--embedding-size", 4, "embedding size");
+    args.add_argument("--hidden-size", 4, "hidden size");
+    args.add_argument("--num-heads", 4, "number of heads");
+    args.add_argument("--sequence-length", 4, "sequence length");
+    args.parse_args(argc, argv)
+    tfConfig.num_layers = args.get<int>("--num-layers");
+    tfConfig.embedding_size = args.get<int>("--embedding-size");
+    tfConfig.hidden_size = args.get<int>("--hidden-size");
+    tfConfig.num_heads = args.get<int>("--num-heads");
+    tfConfig.sequence_length = args.get<int>("--sequence-length");
+    
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
                   ffConfig.workersPerNode,

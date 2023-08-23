@@ -46,7 +46,6 @@ void FlexFlow::top_level_task(Task const *task,
     args.parse_args(argc, argv);
     std::strcpy(alexnetConfig.dataset_path,
                 args.get<std::string>("--dataset").data());
-    parse_input_args(argv, argc, alexnetConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
                   ffConfig.workersPerNode,

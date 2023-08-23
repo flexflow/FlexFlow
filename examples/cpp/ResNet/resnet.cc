@@ -14,6 +14,7 @@
  */
 
 #include "resnet.h"
+#include "utils/parse.h"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -25,15 +26,6 @@ using FlexFlow::SGDOptimizer;
 using FlexFlow::Tensor;
 
 LegionRuntime::Logger::Category log_app("ResNet");
-
-void parse_input_args(char **argv, int argc, ResNetConfig &config) {
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--dataset")) {
-      config.dataset_path = std::string(argv[++i]);
-      continue;
-    }
-  }
-}
 
 Tensor
     BottleneckBlock(FFModel &ff, Tensor input, int out_channels, int stride) {
@@ -68,7 +60,13 @@ void FlexFlow::top_level_task(Task const *task,
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, resnetConfig);
+    ArgsParser args;
+    args.add_argument("--dataset",
+                      std::string(""),
+                      "Path to the dataset file");
+    args.parse_args(argc, argv);
+    resetConfig.dataset_path = args.get<std::string>("--dataset");
+    
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
                   ffConfig.workersPerNode,
