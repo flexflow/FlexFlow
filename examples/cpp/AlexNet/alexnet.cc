@@ -14,7 +14,6 @@
  */
 
 #include "alexnet.h"
-
 #include <fstream>
 #include <sstream>
 #include <string>
