@@ -29,15 +29,6 @@ using FlexFlow::Tensor;
 
 LegionRuntime::Logger::Category log_app("AlexNet");
 
-// void parse_input_args(char **argv, int argc, AlexNetConfig &config) {
-//   for (int i = 1; i < argc; i++) {
-//     if (!strcmp(argv[i], "--dataset")) {
-//       std::strcpy(config.dataset_path, argv[++i]);
-//       continue;
-//     }
-//   }
-// }
-
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,

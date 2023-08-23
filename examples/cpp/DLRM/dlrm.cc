@@ -15,13 +15,12 @@
 
 #include "dlrm.h"
 #include "hdf5.h"
+#include "utils/parser.h" //Note(lambda): this headfile may be false, 
 #include <sstream>
 
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("DLRM");
-
-void parse_input_args(char **argv, int argc, DLRMConfig &apConfig);
 
 DLRMConfig::DLRMConfig(void)
     : sparse_feature_size(64), sigmoid_bot(-1), sigmoid_top(-1),
@@ -39,6 +38,16 @@ DLRMConfig::DLRMConfig(void)
   mlp_top.push_back(64);
   mlp_top.push_back(64);
   mlp_top.push_back(2);
+}
+
+std::vector<int> parse_string(std::string & inputs) {
+  std::vector<int> result;
+  std::stringstream ss(inputs);
+  std::string word;
+  while (std::getline(ss, word, '-')) {
+    result.push_back(std::stoi(word));
+  }
+  return result;
 }
 
 Tensor create_mlp(FFModel *model,
@@ -122,7 +131,31 @@ void FlexFlow::top_level_task(Task const *task,
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, dlrmConfig);
+    ArgsParser args; //Note(lambda): this is a class in utils/parser.h
+    args.add_argument("--arch-sparse-feature-size", 0," sparse feature size");
+    args.add_argument("--arch-embedding-size", "32-64-96-128", "embedding size");
+    args.add_argument("--embedding-bag-size", 1, "embedding bag size");
+    args.add_argument("--arch-mlp-bot", "13-512-256-64-16", "mlp bot");
+    args.add_argument("--arch-mlp-top", "512-256-1", "mlp top");
+    args.add_argument("--loss-threshold", 0.0f, "loss threshold");
+    args.add_argument("--sigmoid-top", -1, "sigmoid top");
+    args.add_argument("--sigmoid-bot", -1, "sigmoid bot");
+    args.add_argument("--arch-interaction-op", "cat", "interaction op");
+    args.add_argument("--dataset", "", "dataset path");
+    args.add_argument("--data-size", -1, "data size");
+    args.parse_args(argc, argv);
+    dlrmConfig.sparse_feature_size =
+        args.get<int>("--arch-sparse-feature-size");
+    dlrmConfig.embedding_size = parse_string(args.get<std::string>("--arch-embedding-size"));
+    dlrmConfig.embedding_bag_size = args.get<int>("--embedding-bag-size");
+    dlrmConfig.mlp_bot = parse_string(args.get<std::string>("--arch-mlp-bot"));
+    dlrmConfig.mlp_top = parse_string(args.get<std::string>("--arch-mlp-top"));
+    dlrmConfig.loss_threshold = args.get<float>("--loss-threshold");
+    dlrmConfig.sigmoid_top = args.get<int>("--sigmoid-top");
+    dlrmConfig.sigmoid_bot = args.get<int>("--sigmoid-bot");
+    dlrmConfig.arch_interaction_op = args.get<std::string>("--arch-interaction-op");
+    dlrmConfig.dataset_path = args.get<std::string>("--dataset");
+    dlrmConfig.data_size = args.get<int>("--data-size");
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
                   ffConfig.workersPerNode,
@@ -238,70 +271,6 @@ void FlexFlow::top_level_task(Task const *task,
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
          run_time,
          data_loader.num_samples * ffConfig.epochs / run_time);
-}
-
-void parse_input_args(char **argv, int argc, DLRMConfig &config) {
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "--arch-sparse-feature-size")) {
-      config.sparse_feature_size = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--arch-embedding-size")) {
-      std::stringstream ss(std::string(argv[++i]));
-      std::string word;
-      config.embedding_size.clear();
-      while (std::getline(ss, word, '-')) {
-        config.embedding_size.push_back(std::stoi(word));
-      }
-      continue;
-    }
-    if (!strcmp(argv[i], "--embedding-bag-size")) {
-      config.embedding_bag_size = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--arch-mlp-bot")) {
-      std::stringstream ss(std::string(argv[++i]));
-      std::string word;
-      config.mlp_bot.clear();
-      while (std::getline(ss, word, '-')) {
-        config.mlp_bot.push_back(std::stoi(word));
-      }
-      continue;
-    }
-    if (!strcmp(argv[i], "--arch-mlp-top")) {
-      std::stringstream ss(std::string(argv[++i]));
-      std::string word;
-      config.mlp_top.clear();
-      while (std::getline(ss, word, '-')) {
-        config.mlp_top.push_back(std::stoi(word));
-      }
-      continue;
-    }
-    if (!strcmp(argv[i], "--loss-threshold")) {
-      config.loss_threshold = atof(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--sigmoid-top")) {
-      config.sigmoid_top = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--sigmoid-bot")) {
-      config.sigmoid_bot = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--arch-interaction-op")) {
-      config.arch_interaction_op = std::string(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--dataset")) {
-      config.dataset_path = std::string(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--data-size")) {
-      config.data_size = atoi(argv[++i]);
-      continue;
-    }
-  }
 }
 
 DataLoader::DataLoader(FFModel &ff,
