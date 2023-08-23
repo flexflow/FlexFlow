@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
   gpus_per_node = args.get<int>("--gpu");
   embs_per_node = args.get<int>("--emb");
   num_nodes = args.get<int>("--node");
-  
+
   printf("Number of GPUs Per Node = %d\n", gpus_per_node);
   printf("Number of Nodes = %d\n", num_nodes);
   printf("Number of Embeddings Per Node = %d\n", embs_per_node);

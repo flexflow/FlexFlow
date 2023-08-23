@@ -132,9 +132,7 @@ void FlexFlow::top_level_task(Task const *task,
     char **argv = command_args.argv;
     int argc = command_args.argc;
     ArgsParser args;
-    args.add_argument("--dataset",
-                      std::string(""),
-                      "Path to the dataset file");
+    args.add_argument("--dataset", std::string(""), "Path to the dataset file");
     args.parse_args(argc, argv);
     moeConfig.dataset_path = args.get<std::string>("--dataset");
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",

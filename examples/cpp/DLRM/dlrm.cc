@@ -15,7 +15,7 @@
 
 #include "dlrm.h"
 #include "hdf5.h"
-#include "utils/parse.h" //Note(lambda): this headfile may be false, 
+#include "utils/parse.h" //Note(lambda): this headfile may be false,
 #include <sstream>
 
 using namespace Legion;
@@ -40,7 +40,7 @@ DLRMConfig::DLRMConfig(void)
   mlp_top.push_back(2);
 }
 
-std::vector<int> parse_string(std::string & inputs) {
+std::vector<int> parse_string(std::string &inputs) {
   std::vector<int> result;
   std::stringstream ss(inputs);
   std::string word;
@@ -131,9 +131,10 @@ void FlexFlow::top_level_task(Task const *task,
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    ArgsParser args; //Note(lambda): this is a class in utils/parser.h
-    args.add_argument("--arch-sparse-feature-size", 0," sparse feature size");
-    args.add_argument("--arch-embedding-size", "32-64-96-128", "embedding size");
+    ArgsParser args; // Note(lambda): this is a class in utils/parser.h
+    args.add_argument("--arch-sparse-feature-size", 0, " sparse feature size");
+    args.add_argument(
+        "--arch-embedding-size", "32-64-96-128", "embedding size");
     args.add_argument("--embedding-bag-size", 1, "embedding bag size");
     args.add_argument("--arch-mlp-bot", "13-512-256-64-16", "mlp bot");
     args.add_argument("--arch-mlp-top", "512-256-1", "mlp top");
@@ -146,14 +147,16 @@ void FlexFlow::top_level_task(Task const *task,
     args.parse_args(argc, argv);
     dlrmConfig.sparse_feature_size =
         args.get<int>("--arch-sparse-feature-size");
-    dlrmConfig.embedding_size = parse_string(args.get<std::string>("--arch-embedding-size"));
+    dlrmConfig.embedding_size =
+        parse_string(args.get<std::string>("--arch-embedding-size"));
     dlrmConfig.embedding_bag_size = args.get<int>("--embedding-bag-size");
     dlrmConfig.mlp_bot = parse_string(args.get<std::string>("--arch-mlp-bot"));
     dlrmConfig.mlp_top = parse_string(args.get<std::string>("--arch-mlp-top"));
     dlrmConfig.loss_threshold = args.get<float>("--loss-threshold");
     dlrmConfig.sigmoid_top = args.get<int>("--sigmoid-top");
     dlrmConfig.sigmoid_bot = args.get<int>("--sigmoid-bot");
-    dlrmConfig.arch_interaction_op = args.get<std::string>("--arch-interaction-op");
+    dlrmConfig.arch_interaction_op =
+        args.get<std::string>("--arch-interaction-op");
     dlrmConfig.dataset_path = args.get<std::string>("--dataset");
     dlrmConfig.data_size = args.get<int>("--data-size");
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",

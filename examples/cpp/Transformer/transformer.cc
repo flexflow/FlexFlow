@@ -95,18 +95,18 @@ void FlexFlow::top_level_task(Task const *task,
     char **argv = command_args.argv;
     int argc = command_args.argc;
     ArgParser args;
-    args.add_argument("--num-layers",4, "number of layers");
+    args.add_argument("--num-layers", 4, "number of layers");
     args.add_argument("--embedding-size", 4, "embedding size");
     args.add_argument("--hidden-size", 4, "hidden size");
     args.add_argument("--num-heads", 4, "number of heads");
     args.add_argument("--sequence-length", 4, "sequence length");
-    args.parse_args(argc, argv)
-    tfConfig.num_layers = args.get<int>("--num-layers");
+    args.parse_args(argc, argv) tfConfig.num_layers =
+        args.get<int>("--num-layers");
     tfConfig.embedding_size = args.get<int>("--embedding-size");
     tfConfig.hidden_size = args.get<int>("--hidden-size");
     tfConfig.num_heads = args.get<int>("--num-heads");
     tfConfig.sequence_length = args.get<int>("--sequence-length");
-    
+
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
                   ffConfig.workersPerNode,

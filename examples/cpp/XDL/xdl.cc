@@ -20,7 +20,7 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("XDL");
 
-std::vector<int> parse_string(std::string & inputs) {
+std::vector<int> parse_string(std::string &inputs) {
   std::vector<int> result;
   std::stringstream ss(inputs);
   std::string word;
@@ -114,8 +114,9 @@ void FlexFlow::top_level_task(Task const *task,
     char **argv = command_args.argv;
     int argc = command_args.argc;
     ArgParser args;
-    args.add_argument("--arch-sparse-feature-size", 0," sparse feature size");
-    args.add_argument("--arch-embedding-size", "32-64-96-128", "embedding size");
+    args.add_argument("--arch-sparse-feature-size", 0, " sparse feature size");
+    args.add_argument(
+        "--arch-embedding-size", "32-64-96-128", "embedding size");
     args.add_argument("--embedding-bag-size", 1, "embedding bag size");
     args.add_argument("--arch-mlp", "13-512-256-64-16", "mlp layer");
     args.add_argument("--loss-threshold", 0.0f, "loss threshold");
@@ -124,7 +125,8 @@ void FlexFlow::top_level_task(Task const *task,
     args.parse_args(argc, argv);
 
     xdlConfig.sparse_feature_size = args.get<int>("--arch-sparse-feature-size");
-    xdlConfig.embedding_size = parse_string(args.get<std::string>("--arch-embedding-size"));
+    xdlConfig.embedding_size =
+        parse_string(args.get<std::string>("--arch-embedding-size"));
     xdlConfig.embedding_bag_size = args.get<int>("--embedding-bag-size");
     xdlConfig.mlp_top = parse_string(args.get<std::string>("--arch-mlp"));
     xdlConfig.loss_threshold = args.get<float>("--loss-threshold");

@@ -14,7 +14,7 @@
  */
 
 #include "candle_uno.h"
-#include "utils/parse.h" //Note(lambda): this headfile may be false, 
+#include "utils/parse.h" //Note(lambda): this headfile may be false,
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -55,7 +55,7 @@ Tensor build_feature_model(FFModel *model,
   return t;
 }
 
-std::vector<int> parse_string(std::string & inputs) {
+std::vector<int> parse_string(std::string &inputs) {
   std::vector<int> result;
   std::stringstream ss(inputs);
   std::string word;
@@ -87,12 +87,15 @@ void FlexFlow::top_level_task(Task const *task,
     char **argv = command_args.argv;
     int argc = command_args.argc;
     ArgsParser args;
-    args.add_argument("--dense-layers", "64-32-16","Dense layers");
-    args.add_argument("--dense-feature-layers", "64-32-16","Dense feature layers");
+    args.add_argument("--dense-layers", "64-32-16", "Dense layers");
+    args.add_argument(
+        "--dense-feature-layers", "64-32-16", "Dense feature layers");
     args.add_argument("--dataset", "", "Dataset path");
     args.parse_args(argc, argv);
-    candle_config.dense_layers = parse_string(args.get<std::string>("dense-layers"));
-    candle_config.dense_feature_layers = parse_string(args.get<std::string>("dense-feature-layers"));
+    candle_config.dense_layers =
+        parse_string(args.get<std::string>("dense-layers"));
+    candle_config.dense_feature_layers =
+        parse_string(args.get<std::string>("dense-feature-layers"));
     candle_config.dataset_path = args.get<std::string>("dataset");
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ff_config.batchSize,
