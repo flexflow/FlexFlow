@@ -70,14 +70,14 @@ OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
   return {BATCHMATMUL_BWD_TASK_ID, bwd};
 }
 
-static DeviceSpecificArg<BMMPerDeviceState>
+static DeviceSpecific<BMMPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const a_seq_length_dim = acc.get_argument<int>(A_SEQ_LENGTH_DIM);
   auto const b_seq_length_dim = acc.get_argument<int>(B_SEQ_LENGTH_DIM);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   Allocator allocator = acc.get_allocator();
 
-  DeviceSpecificArg<BMMPerDeviceState> per_device_state =
+  DeviceSpecific<BMMPerDeviceState> per_device_state =
       acc.create_device_specific<BMMPerDeviceState>(
           init_kernel(handle, allocator, a_seq_length_dim, b_seq_length_dim));
 
@@ -86,7 +86,7 @@ static DeviceSpecificArg<BMMPerDeviceState>
   return per_device_state;
 }
 
-static DeviceSpecificArg<BMMPerDeviceState>
+static DeviceSpecific<BMMPerDeviceState>
     init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
@@ -241,7 +241,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto init_accessor =
       env.get_init_accessor(BATCHMATMUL_INIT_TASK_ID, init_binding);
-  DeviceSpecificArg<BMMPerDeviceState> per_device_state =
+  DeviceSpecific<BMMPerDeviceState> per_device_state =
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
