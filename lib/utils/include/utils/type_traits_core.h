@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 
+#include <iterator>
 #include <type_traits>
 
 namespace FlexFlow {
