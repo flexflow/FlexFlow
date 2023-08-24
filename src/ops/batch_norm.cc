@@ -286,7 +286,7 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
     cost_metrics.weights_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
-    backward = [&] {
+    backward = [=] {
       backward_kernel(m,
                       input_ptr,
                       output_grad_ptr,

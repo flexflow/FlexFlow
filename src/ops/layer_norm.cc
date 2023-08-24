@@ -505,7 +505,7 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
       return true;
     }
 
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper<float>(m,
                                      out_grad_ptr,
                                      in_ptr,
