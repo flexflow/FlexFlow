@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Parse input params
-python_version=${1:-lastest}
+python_version=${1:-latest}
 cuda_version=${2:-11.8}
 gpu_backend=${3:-cuda}
 
