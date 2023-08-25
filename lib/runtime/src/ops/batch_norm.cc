@@ -226,7 +226,7 @@ PerDeviceOpState *
                          Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   FFHandler handle = *((FFHandler const *)task->local_args);
 
   auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
@@ -300,7 +300,7 @@ void BatchNorm::forward_task(Task const *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // const BatchNorm* bm = (BatchNorm*) task->args;
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   BatchNormPerDeviceState *m = *((BatchNormPerDeviceState **)task->local_args);
 
   auto input = acc.get_tensor<READ_ONLY>(INPUT);
@@ -402,7 +402,7 @@ __host__ void
   assert(task->regions.size() == 7);
   // float beta = 0.0f;
   // const BatchNorm* bm = (BatchNorm*) task->args;
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   BatchNormPerDeviceState *m = *((BatchNormPerDeviceState **)task->local_args);
 
   auto input = acc.get_tensor<READ_ONLY>(INPUT);

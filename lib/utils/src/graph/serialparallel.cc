@@ -1,6 +1,7 @@
 #include "utils/graph/serialparallel.h"
 #include "serialparallel_internal.h"
 #include "utils/containers.h"
+#include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
 
@@ -226,6 +227,96 @@ std::unordered_set<Node> get_nodes(Parallel const &parallel) {
 
 std::unordered_set<Node> get_nodes(Node const &node) {
   return {node};
+}
+
+std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
+                                               MultiDiGraph const &ext) {
+  std::unordered_map<Node, Node> node_map;
+  std::unordered_map<NodePort, NodePort> node_port_map;
+  for (Node const &node : get_nodes(MultiDiGraphView(ext))) {
+    node_map.emplace(node, g.add_node());
+  }
+  for (NodePort const &node_port : get_node_ports(ext)) {
+    node_port_map.emplace(node_port, g.add_node_port());
+  }
+  for (MultiDiEdge const &edge : get_edges(ext)) {
+    g.add_edge(MultiDiEdge{node_map.at(edge.src),
+                           node_map.at(edge.dst),
+                           node_port_map.at(edge.srcIdx),
+                           node_port_map.at(edge.dstIdx)});
+  }
+  return node_map;
+}
+
+std::unordered_map<Node, Node> serial_extend(MultiDiGraph &g,
+                                             MultiDiGraph const &ext) {
+  std::unordered_set<Node> original_sinks = get_sinks(g);
+  std::unordered_map<Node, Node> node_map = parallel_extend(g, ext);
+  for (Node const &node1 : original_sinks) {
+    for (Node const &node2 : get_sources(ext)) {
+      g.add_edge(MultiDiEdge{
+          node1, node_map.at(node2), g.add_node_port(), g.add_node_port()});
+    }
+  }
+  return node_map;
+}
+
+MultiDiGraph serial_composition(MultiDiGraph const &g1,
+                                MultiDiGraph const &g2) {
+  MultiDiGraph g = g1;
+  serial_extend(g, g2);
+  return g;
+}
+
+MultiDiGraph parallel_composition(MultiDiGraph const &g1,
+                                  MultiDiGraph const &g2) {
+  MultiDiGraph g = g1;
+  parallel_extend(g, g2);
+  return g;
+}
+
+struct MultiDiGraphFromSPDecompositionFunctor {
+  template <typename T>
+  MultiDiGraph operator()(T const &t) {
+    return multidigraph_from_sp_decomposition(t);
+  }
+};
+
+MultiDiGraph multidigraph_from_sp_decomposition(
+    SerialParallelDecomposition const &sp_decomposition) {
+  return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(
+    variant<Parallel, Node> const &sp_decomposition) {
+  return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(
+    variant<Serial, Node> const &sp_decomposition) {
+  return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(Serial const &serial) {
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+  for (variant<Parallel, Node> const &child : serial.children) {
+    serial_extend(g, multidigraph_from_sp_decomposition(child));
+  }
+  return g;
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(Parallel const &parallel) {
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+  for (variant<Serial, Node> const &child : parallel.children) {
+    parallel_extend(g, multidigraph_from_sp_decomposition(child));
+  }
+  return g;
+}
+
+MultiDiGraph multidigraph_from_sp_decomposition(Node const &Node) {
+  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+  g.add_node();
+  return g;
 }
 
 } // namespace FlexFlow

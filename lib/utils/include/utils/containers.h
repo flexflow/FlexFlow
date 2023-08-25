@@ -203,6 +203,12 @@ std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
   return result;
 }
 
+template <typename K, typename V>
+bool is_submap(std::unordered_map<K, V> const &m,
+               std::unordered_map<K, V> const &sub) {
+  return restrict_keys(m, keys(sub)) == sub;
+}
+
 template <typename C>
 std::unordered_set<typename C::key_type> keys(C const &c) {
   std::unordered_set<typename C::key_type> result;

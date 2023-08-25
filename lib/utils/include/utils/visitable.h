@@ -310,12 +310,16 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
 } // namespace FlexFlow
 
 #define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME)       \
+  CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME);      \
+  CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME);
+
+#define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME) \
   static_assert(is_visitable<TYPENAME>::value,                                 \
                 #TYPENAME " is not visitable (this should never "              \
                           "happen--contact the FF developers)");               \
   static_assert(sizeof(visit_as_tuple_raw_t<TYPENAME>) == sizeof(TYPENAME),    \
                 #TYPENAME " should be fully visitable");                       \
-  CHECK_WELL_BEHAVED_VALUE_TYPE(TYPENAME);
+  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(TYPENAME);
 
 #define FF_VISIT_FMTABLE(TYPENAME)                                             \
   static_assert(is_visitable<TYPENAME>::value,                                 \
@@ -342,14 +346,43 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
                 #TYPENAME                                                      \
                 " should be list-initialializable by the visit field types");
 
+#define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME)                                  \
+  static_assert(is_only_visit_list_initializable<TYPENAME>::value,             \
+                #TYPENAME                                                      \
+                " should not be list-initialializable from any sub-tuples "    \
+                "(you probably need to insert req<...>s)");                    \
+  static_assert(!std::is_default_constructible<TYPENAME>::value,               \
+                #TYPENAME " should not be default-constructible (you "         \
+                          "probably need to insert req<...>s)");               \
+  static_assert(is_visit_list_initializable<TYPENAME>::value,                  \
+                #TYPENAME                                                      \
+                " should be list-initialializable by the visit field types");
+
+#define CHECK_CONSTRUCTION_EMPTY(TYPENAME)                                     \
+  static_assert(std::is_default_constructible<TYPENAME>::value,                \
+                #TYPENAME " should be default-constructible as it is empty")
+
+#define FF_VISITABLE_STRUCT_NO_EQ_EMPTY(TYPENAME)                              \
+  }                                                                            \
+  VISITABLE_STRUCT_EMPTY(::FlexFlow::TYPENAME);                                \
+  MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
+  namespace FlexFlow {                                                         \
+  CHECK_CONSTRUCTION_EMPTY(TYPENAME);
+
+#define FF_VISITABLE_STRUCT_NO_EQ_NONEMPTY(TYPENAME, ...)                      \
+  }                                                                            \
+  VISITABLE_STRUCT(::FlexFlow::TYPENAME, __VA_ARGS__);                         \
+  MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
+  namespace FlexFlow {                                                         \
+  CHECK_CONSTRUCTION_NONEMPTY(TYPENAME);
+
 #define FF_VISITABLE_STRUCT_EMPTY(TYPENAME)                                    \
   }                                                                            \
   VISITABLE_STRUCT_EMPTY(::FlexFlow::TYPENAME);                                \
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
   namespace FlexFlow {                                                         \
   CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME);                                     \
-  static_assert(std::is_default_constructible<TYPENAME>::value,                \
-                #TYPENAME " should be default-constructible as it is empty")
+  CHECK_CONSTRUCTION_EMPTY(TYPENAME);
 
 #define FF_VISITABLE_STRUCT_NONEMPTY(TYPENAME, ...)                            \
   }                                                                            \
@@ -357,13 +390,7 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
   MAKE_VISIT_HASHABLE(::FlexFlow::TYPENAME);                                   \
   namespace FlexFlow {                                                         \
   CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME);                                     \
-  static_assert(is_only_visit_list_initializable<TYPENAME>::value,             \
-                #TYPENAME                                                      \
-                " should not be list-initialializable from any sub-tuples "    \
-                "(you probably need to insert req<...>s)");                    \
-  static_assert(!std::is_default_constructible<TYPENAME>::value,               \
-                #TYPENAME " should not be default-constructible (you "         \
-                          "probably need to insert req<...>s)")
+  CHECK_CONSTRUCTION_NONEMPTY(TYPENAME);
 
 #define FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION_EMPTY(TYPENAME)           \
   }                                                                            \
@@ -474,6 +501,11 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
 
 #define FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(...)                      \
   _DISPATCH_VISITABLE_CASE(FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION,       \
+                           _GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__),     \
+                           __VA_ARGS__)
+
+#define FF_VISITABLE_STRUCT_NO_EQ(...)                                         \
+  _DISPATCH_VISITABLE_CASE(FF_VISITABLE_STRUCT_NO_EQ,                          \
                            _GET_VISITABLE_CASE_FROM_NUM_ARGS(__VA_ARGS__),     \
                            __VA_ARGS__)
 

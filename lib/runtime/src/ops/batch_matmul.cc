@@ -333,7 +333,7 @@ PerDeviceOpState *
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   auto const &attrs = acc.get_argument<BatchMatmulAttrs>(ATTRS);
   bool profiling = acc.get_argument<bool>(PROFILING);
 
@@ -407,7 +407,7 @@ void BatchMatmul::forward_task(Task const *task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
 
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   // const BatchMatmul* bmm = (const BatchMatmul*) task->args;
   FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
@@ -565,7 +565,7 @@ __host__ void
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
   BatchMatmulPerDeviceState const *meta =
       *((BatchMatmulPerDeviceState **)task->local_args);

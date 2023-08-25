@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 bool StrategyRuntimeCmp::operator()(Strategy const &lhs, Strategy const &rhs) {
-  return lhs.machine_mapping.runtime < rhs.machine_mapping.runtime;
+  return lhs.runtime < rhs.runtime;
 }
 
 std::unordered_set<Substitution>
@@ -29,7 +29,7 @@ Strategy
 
   std::unordered_set<Substitution> subs = get_all_substitutions(pcg);
 
-  std::unordered_map<size_t, MachineMapping> cached_subgraph_costs;
+  OptimalCostCache cached_subgraph_costs;
   DeduplicatedPriorityQueue<Strategy, std::vector<Strategy>, StrategyRuntimeCmp>
       candidates;
 
@@ -50,20 +50,20 @@ Strategy
 
     if (StrategyRuntimeCmp(current_result, best_result)) {
       best_result = current_result;
-    } else if (current_result.machine_mapping.runtime >
-               best_result.machine_mapping.runtime * opt_config.alpha) {
+    } else if (current_result.runtime >
+               best_result.runtime * opt_config.alpha) {
       continue;
     }
 
     for (auto const &sub : subs) {
       for (auto const &new_pcg : apply_substitution(current_result.pcg, sub)) {
-        Strategy new_result(new_pcg,
-                            optimal_cost(new_pcg,
-                                         allowed_machine_views,
-                                         cost_estimator,
-                                         resources,
-                                         cached_subgraph_costs));
-        if (new_result.machine_mapping.runtime <= opt_config.threshold &&
+        OptimalCostResult c = optimal_cost(new_pcg,
+                                           allowed_machine_views,
+                                           cost_estimator,
+                                           resources,
+                                           cached_subgraph_costs);
+        Strategy new_result(new_pcg, c.machine_mapping, c.runtime);
+        if (new_result.runtime <= opt_config.threshold &&
             new_result.pcg.query_nodes({}).size() <= opt_config.max_num_ops) {
           candidates.push(new_result);
         }

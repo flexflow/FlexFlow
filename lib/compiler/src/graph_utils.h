@@ -16,7 +16,16 @@ SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &g);
 
 template <typename T>
 void minimize(T &t, T const &v) {
-  t = std::min(t, v);
+  if (v < t) {
+    t = v;
+  }
+}
+
+template <typename T, typename Compare>
+void minimize(T &t, T const &v, Compare comp) {
+  if (comp(v, t)) {
+    t = v;
+  }
 }
 
 } // namespace FlexFlow

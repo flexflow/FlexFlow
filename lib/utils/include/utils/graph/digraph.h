@@ -41,6 +41,7 @@ private:
 
   friend struct GraphInternal;
 
+private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);

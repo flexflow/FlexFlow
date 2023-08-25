@@ -219,7 +219,7 @@ PerDeviceOpState *Cast::init_task(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
 
   FFHandler handler = *((FFHandler const *)task->local_args);
   CastPerDeviceState *m = new CastPerDeviceState(handler);

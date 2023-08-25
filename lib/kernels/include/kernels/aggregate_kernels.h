@@ -3,7 +3,6 @@
 
 #include "kernels/device.h"
 #include "kernels/ff_handle.h"
-#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 

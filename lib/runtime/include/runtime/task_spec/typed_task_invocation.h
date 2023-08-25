@@ -31,12 +31,17 @@ public:
   friend TypedStandardTaskInvocation
       ensure_return_type<T>(StandardTaskInvocation const &);
 
-  friend bool operator==(TypedStandardTaskInvocation const &,
-                         TypedStandardTaskInvocation const &);
-  friend bool operator!=(TypedStandardTaskInvocation const &,
-                         TypedStandardTaskInvocation const &);
-  friend bool operator<(TypedStandardTaskInvocation const &,
-                        TypedStandardTaskInvocation const &);
+  template <typename U>
+  friend bool operator==(TypedStandardTaskInvocation<U> const &,
+                         TypedStandardTaskInvocation<U> const &);
+
+  template <typename U>
+  friend bool operator!=(TypedStandardTaskInvocation<U> const &,
+                         TypedStandardTaskInvocation<U> const &);
+
+  template <typename U>
+  friend bool operator<(TypedStandardTaskInvocation<U> const &,
+                        TypedStandardTaskInvocation<U> const &);
 
   operator StandardTaskInvocation() const;
 
@@ -57,12 +62,17 @@ struct TypedIndexTaskInvocation {
   friend TypedIndexTaskInvocation
       ensure_return_type<T>(IndexTaskInvocation const &);
 
-  friend bool operator==(TypedIndexTaskInvocation const &,
-                         TypedIndexTaskInvocation const &);
-  friend bool operator!=(TypedIndexTaskInvocation const &,
-                         TypedIndexTaskInvocation const &);
-  friend bool operator<(TypedIndexTaskInvocation const &,
-                        TypedIndexTaskInvocation const &);
+  template <typename U>
+  friend bool operator==(TypedIndexTaskInvocation<U> const &,
+                         TypedIndexTaskInvocation<U> const &);
+
+  template <typename U>
+  friend bool operator!=(TypedIndexTaskInvocation<U> const &,
+                         TypedIndexTaskInvocation<U> const &);
+
+  template <typename U>
+  friend bool operator<(TypedIndexTaskInvocation<U> const &,
+                        TypedIndexTaskInvocation<U> const &);
 
   operator TaskInvocation() const;
 
