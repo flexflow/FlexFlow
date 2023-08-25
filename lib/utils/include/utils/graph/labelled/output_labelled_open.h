@@ -3,15 +3,19 @@
 
 namespace FlexFlow {
 
-template <typename NodeLabel, typename InputLabel, typename OutputLabel=InputLabel>
+template <typename NodeLabel,
+          typename InputLabel,
+          typename OutputLabel = InputLabel>
 struct OutputLabelledOpenMultiDiGraph {
   OutputLabelledOpenMultiDiGraph() = delete;
-  OutputLabelledOpenMultiDiGraph(OutputLabelledOpenMultiDiGraph const &) = default;
-  OutputLabelledOpenMultiDiGraph& operator=(OutputLabelledOpenMultiDiGraph const &) = default;
+  OutputLabelledOpenMultiDiGraph(OutputLabelledOpenMultiDiGraph const &) =
+      default;
+  OutputLabelledOpenMultiDiGraph &
+      operator=(OutputLabelledOpenMultiDiGraph const &) = default;
 
   operator OpenMultiDiGraphView();
 };
 
-}
+} // namespace FlexFlow
 
 #endif
