@@ -219,7 +219,7 @@ private:
                                                   {ModelType::STARCODER, 0}};
   const std::map<ModelType, int> model_eos_map = {{ModelType::LLAMA, 1},
                                                   {ModelType::OPT, 2},
-                                                  {ModelType::LLAMA2, 13},
+                                                  {ModelType::LLAMA2, 2},
                                                   {ModelType::FALCON, 11},
                                                   {ModelType::STARCODER, 0}};
 
