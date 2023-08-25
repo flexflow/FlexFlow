@@ -1,4 +1,4 @@
-#include "doctest.h"
+#include "test/utils/doctest.h"
 #include "utils/variant.h"
 
 TEST_CASE("widen and narrow functions") {

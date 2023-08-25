@@ -101,13 +101,14 @@ struct is_hashable<
     void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
     : std::true_type {};
 
-template <template <typename...> class Cond,
-          typename... Ts>
+#define CHECK_HASHABLE(...)                             \
+  static_assert(is_hashable<__VA_ARGS__>::value,                       \
+                #__VA_ARGS__ " should be hashable (but is not)");                    \
+
+template <template <typename...> class Cond, typename... Ts>
 struct elements_satisfy_impl;
 
-template <template <typename...> class Cond,
-          typename Head,
-          typename... Ts>
+template <template <typename...> class Cond, typename Head, typename... Ts>
 struct elements_satisfy_impl<Cond, Head, Ts...>
     : conjunction<Cond<Head>, elements_satisfy_impl<Cond, Ts...>> {};
 
@@ -116,14 +117,23 @@ struct elements_satisfy_impl<Cond> : std::true_type {};
 
 template <template <typename...> class Cond, typename T, typename Enable = void>
 struct elements_satisfy {
-  static_assert(!is_nary_metafunction<Cond, 1>::value, "Cannot call elements_satisfy with a metafunction with more than 1 argument");
+  static_assert(!is_nary_metafunction<Cond, 1>::value,
+                "Cannot call elements_satisfy with a metafunction with more "
+                "than 1 argument");
 };
 
 template <template <typename...> class Cond, typename T>
-struct elements_satisfy<Cond, T, enable_if_t<(is_nary_metafunction<Cond, 1>::value && is_visitable<T>::value)>> : elements_satisfy<Cond, visit_as_tuple_t<T>> { };
+struct elements_satisfy<Cond,
+                        T,
+                        enable_if_t<(is_nary_metafunction<Cond, 1>::value &&
+                                     is_visitable<T>::value)>>
+    : elements_satisfy<Cond, visit_as_tuple_t<T>> {};
 
-template <template <typename...> class Cond, typename ...Ts>
-struct elements_satisfy<Cond, std::tuple<Ts...>, enable_if_t<is_nary_metafunction<Cond, 1>::value>> : elements_satisfy_impl<Cond, Ts...> { };
+template <template <typename...> class Cond, typename... Ts>
+struct elements_satisfy<Cond,
+                        std::tuple<Ts...>,
+                        enable_if_t<is_nary_metafunction<Cond, 1>::value>>
+    : elements_satisfy_impl<Cond, Ts...> {};
 
 static_assert(
     elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");

@@ -1,5 +1,4 @@
-
-#include "doctest.h"
+#include "test/utils/doctest.h"
 #include "utils/deduplicated_priority_queue.h"
 
 TEST_CASE("DeduplicatedPriorityQueue push and pop") {

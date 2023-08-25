@@ -1,9 +1,10 @@
-#include "doctest.h"
-#include "utils/containers.inl"
+#include "test/utils/doctest.h"
 #include "utils/graph/adjacency_digraph.h"
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/construction.h"
+#include "utils/graph/hashmap_undirected_graph.h"
+#include "utils/graph/undirected.h"
 #include <cinttypes>
 #include <iterator>
 #include <type_traits>
@@ -63,15 +64,13 @@ TEST_CASE("DiGraph") {
   CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 
   SUBCASE("get_imm_dominators") {
-    std::unordered_map<Node, Node> result =
-        map_values(get_imm_dominators(g),
-                   [&](optional<Node> const &node) { return *node; });
+    std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
 
-    std::unordered_map<Node, Node> expected_result = {
+    std::unordered_map<Node, optional<Node>> expected_result = {
         {n[2], n[0]},
         {n[1], n[0]},
         {n[3], n[0]},
-        {n[0], n[0]},
+        {n[0], nullopt},
     };
     CHECK(result == expected_result);
   }
@@ -79,9 +78,9 @@ TEST_CASE("DiGraph") {
   SUBCASE("get_dominators") {
     std::unordered_map<Node, std::unordered_set<Node>> expected = {
         {n[0], {n[0]}},
-        {n[1], {n[1]}},
+        {n[1], {n[0], n[1]}},
         {n[2], {n[0], n[2]}},
-        {n[3], {n[3]}},
+        {n[3], {n[0], n[3]}},
     };
     CHECK(get_dominators(g) == expected);
   }
@@ -108,16 +107,18 @@ TEST_CASE("DiGraph") {
 
 TEST_CASE("traversal") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  std::vector<Node> const n = add_nodes(g, 4);
+  std::vector<Node> const n = add_nodes(g, 5);
   std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
   add_edges(g, edges);
 
-  CHECK(get_sources(g) == std::unordered_set<Node>{n[0]});
+  CHECK(get_sources(g) == std::unordered_set<Node>{n[0], n[4]});
   CHECK(get_unchecked_dfs_ordering(g, {n[0]}) ==
         std::vector<Node>{n[0], n[1], n[2], n[3]});
   CHECK(get_bfs_ordering(g, {n[0]}) ==
         std::vector<Node>{n[0], n[1], n[2], n[3]});
   CHECK(is_acyclic(g) == true);
+  CHECK(get_bfs_ordering(g, {n[4]}) == std::vector<Node>{n[4]});
+  CHECK(get_dfs_ordering(g, {n[4]}) == std::vector<Node>{n[4]});
 
   SUBCASE("with root") {
     g.add_edge({n[3], n[2]});
@@ -137,6 +138,11 @@ TEST_CASE("traversal") {
   SUBCASE("nonlinear") {
     g.add_edge({n[1], n[3]});
     CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the  unchecked_dfs
+  }
+  
+  SUBCASE("not connected") {
+    g.remove_edge({n[2], n[3]});
+    CHECK(get_dfs_ordering(g, {n[0]}) == std::vector<Node>{n[0], n[1], n[2]});
   }
 }
 
@@ -205,19 +211,33 @@ TEST_CASE("get_topological_ordering") {
   CHECK_BEFORE(4, 5);
 }
 
+TEST_CASE("get_connected_components") {
+  UndirectedGraph g = UndirectedGraph::create<HashmapUndirectedGraph>();
+  std::vector<Node> n = add_nodes(g, 4);
+  std::vector<UndirectedEdge> edges = {{n[0], n[1]}, {n[2], n[1]}};
+
+  add_edges(g, edges);
+  std::unordered_set<std::unordered_set<Node>> expected_components = {
+      {n[0], n[1], n[2]},
+      {n[3]},
+  };
+
+  CHECK(get_connected_components(g) == expected_components);
+}
+
 TEST_CASE("get_weakly_connected_components") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> n = add_nodes(g, 4);
 
-  std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
+  std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[2], n[1]}};
 
   add_edges(g, edges);
-  std::vector<std::unordered_set<Node>> expected_components = {
-      {n[0]},
-      {n[1]},
-      {n[2]},
+  std::unordered_set<std::unordered_set<Node>> expected_components = {
+      {n[0], n[1], n[2]},
       {n[3]},
   };
+
+  CHECK(get_outgoing_edges(as_digraph(as_undirected(g)), n[0]).size() == 1);
 
   CHECK(get_weakly_connected_components(g) == expected_components);
 }

@@ -90,6 +90,6 @@ struct hash<std::vector<T>> {
   }
 };
 
-}
+} // namespace std
 
 #endif

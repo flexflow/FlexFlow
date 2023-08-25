@@ -2,12 +2,12 @@
 #define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
 
 #include "cow_ptr_t.h"
+#include "digraph_interfaces.h"
 #include "node.h"
 #include "utils/optional.h"
 #include "utils/unique.h"
 #include "utils/visitable.h"
 #include <unordered_set>
-#include "digraph_interfaces.h"
 
 namespace FlexFlow {
 
@@ -35,6 +35,7 @@ public:
 
   static DiGraphView
       unsafe_create_without_ownership(IDiGraphView const &graphView);
+
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
 
@@ -54,8 +55,6 @@ public:
   DiGraph &operator=(DiGraph const &) = default;
 
   operator DiGraphView() const;
-  operator Graph() const;
-  operator Graph&();
 
   friend void swap(DiGraph &, DiGraph &);
 
@@ -73,16 +72,15 @@ public:
   static typename std::enable_if<std::is_base_of<IDiGraph, T>::value,
                                  DiGraph>::type
       create() {
-    return DiGraph(make_unique<T>());
+    return DiGraph(make_cow_ptr<T>());
   }
 
 private:
-  DiGraph(std::unique_ptr<IDiGraph>);
+  DiGraph(cow_ptr_t<IDiGraph>);
 
   friend struct GraphInternal;
-private:
-  Graph as_graph;
 
+private:
   cow_ptr_t<IDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);

@@ -1,6 +1,7 @@
 #include "utils/graph/digraph.h"
-#include "utils/containers.h"
 #include "internal.h"
+#include "utils/containers.h"
+#include "utils/graph/digraph_interfaces.h"
 
 namespace FlexFlow {
 
@@ -39,7 +40,8 @@ std::unordered_set<DirectedEdge>
   return this->ptr->query_edges(q);
 }
 
-DiGraph::DiGraph(std::unique_ptr<IDiGraph> _ptr) : ptr(std::move(_ptr)), as_graph(Graph::unsafe_create_without_ownership(this->ptr)) {}
+DiGraph::DiGraph(cow_ptr_t<IDiGraph> _ptr)
+    : ptr(std::move(_ptr)) { }
 
 DiGraphView::operator GraphView() const {
   return GraphInternal::create_graphview(this->ptr);
@@ -67,6 +69,10 @@ DirectedEdgeQuery DirectedEdgeQuery::all() {
   return {matchall<Node>(), matchall<Node>()};
 }
 
+bool matches_edge(DirectedEdgeQuery const &q, DirectedEdge const &e) {
+  return includes(q.srcs, e.src) && includes(q.dsts, e.dst);
+}
+
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
                                      DirectedEdgeQuery const &rhs) {
   std::unordered_set<Node> srcs_tl;
@@ -91,10 +97,6 @@ DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
   result.srcs = srcs_tl;
   result.dsts = dsts_tl;
   return result;
-}
-
-DiGraph::operator Graph&() {
-  return this->as_graph;
 }
 
 DiGraph::operator DiGraphView() const {

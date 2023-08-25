@@ -2,9 +2,9 @@
 #define _FLEXFLOW_UTILS_INCLUDE_STACK_STRING_H
 
 #include "stack_vector.h"
+#include "utils/fmt.h"
 #include <cstring>
 #include <string>
-#include "utils/fmt.h"
 
 namespace FlexFlow {
 
@@ -57,7 +57,6 @@ private:
 template <size_t MAXSIZE>
 using stack_string = stack_basic_string<char, MAXSIZE>;
 
-
 } // namespace FlexFlow
 
 namespace std {
@@ -83,7 +82,7 @@ struct formatter<::FlexFlow::stack_string<MAXSIZE>> : formatter<::std::string> {
   }
 };
 
-}
+} // namespace fmt
 
 namespace FlexFlow {
 

@@ -1,15 +1,15 @@
-#include "doctest.h"
+#include "test/utils/doctest.h"
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/multidiedge.h"
 #include "utils/graph/multidigraph_interfaces.h"
 
 using namespace FlexFlow;
 
-TEST_CASE("AdjacencyMultiDiGraph:basic_test") {
-  MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
+TEST_CASE_TEMPLATE("MultiDiGraph implementations", T, AdjacencyMultiDiGraph) {
+  MultiDiGraph g = MultiDiGraph::create<T>();
 
-  std::vector<Node> n = { g.add_node(), g.add_node(), g.add_node() };
-  std::vector<NodePort> p = { g.add_node_port(), g.add_node_port(), g.add_node_port() };
+  std::vector<Node> n = repeat(3, [&] { return g.add_node(); });
+  std::vector<NodePort> p = repeat(3, [&] { return g.add_node_port(); });
 
   std::vector<MultiDiEdge> e = {{n[0], n[1], p[0], p[1]},
                                 {n[0], n[2], p[0], p[2]},

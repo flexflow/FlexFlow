@@ -1,5 +1,6 @@
 #include "utils/graph/multidigraph.h"
 #include "internal.h"
+#include "utils/graph/multidigraph_interfaces.h"
 
 namespace FlexFlow {
 

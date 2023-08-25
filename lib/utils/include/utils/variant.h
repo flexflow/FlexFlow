@@ -54,7 +54,8 @@ bool is(variant<Args...> const &v) {
 /*     using type = mpark::variant<Args1..., Args2...>; */
 /* }; */
 template <template <typename...> class Cond, typename... Ts>
-struct elements_satisfy<Cond, variant<Ts...>> : elements_satisfy_impl<Cond, Ts...> { };
+struct elements_satisfy<Cond, variant<Ts...>>
+    : elements_satisfy_impl<Cond, Ts...> {};
 
 template <typename T, typename Variant>
 struct is_in_variant;
@@ -199,7 +200,7 @@ auto narrow(Container const &c) -> decltype(transform(
 
 template <typename T1,
           typename T2,
-          typename...Trest,
+          typename... Trest,
           typename VariantIn,
           typename = std::enable_if<
               !is_subeq_variant<variant<T1, T2, Trest...>, VariantIn>::value>>

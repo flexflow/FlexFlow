@@ -21,6 +21,7 @@ public:
   Node bigger;
 };
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(UndirectedEdge, smaller, bigger);
+FF_VISIT_FMTABLE(UndirectedEdge);
 
 bool is_connected_to(UndirectedEdge const &, Node const &);
 
@@ -30,6 +31,7 @@ struct UndirectedEdgeQuery {
   static UndirectedEdgeQuery all();
 };
 FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
+FF_VISIT_FMTABLE(UndirectedEdgeQuery);
 
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
                                        UndirectedEdgeQuery const &);
@@ -81,6 +83,7 @@ private:
       : ptr(ptr) {}
 
   friend struct GraphInternal;
+
 private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
@@ -90,7 +93,12 @@ struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
   virtual void remove_edge(UndirectedEdge const &) = 0;
 
-  virtual IUndirectedGraph *clone() const = 0;
+  virtual std::unordered_set<Node>
+      query_nodes(NodeQuery const &query) const override {
+    return static_cast<IUndirectedGraphView const *>(this)->query_nodes(query);
+  }
+
+  virtual IUndirectedGraph *clone() const override = 0;
 };
 
 struct UndirectedGraph {
@@ -114,19 +122,21 @@ public:
   void add_edge(Edge const &);
   void remove_edge(Edge const &);
 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
   static typename std::enable_if<std::is_base_of<IUndirectedGraph, T>::value,
                                  UndirectedGraph>::type
       create() {
-    return UndirectedGraph(make_unique<T>());
+    return UndirectedGraph(make_cow_ptr<T>());
   }
 
 private:
-  UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
+  UndirectedGraph(cow_ptr_t<IUndirectedGraph>);
 
   friend struct GraphInternal;
+
 private:
   cow_ptr_t<IUndirectedGraph> ptr;
 };

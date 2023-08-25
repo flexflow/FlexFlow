@@ -1,4 +1,4 @@
-#include "doctest.h"
+#include "test/utils/doctest.h"
 #include "utils/stack_map.h"
 
 using namespace FlexFlow;

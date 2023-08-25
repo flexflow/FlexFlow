@@ -4,8 +4,10 @@
 #include "utils/exception.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
+#include "utils/graph/digraph_interfaces.h"
 #include "utils/graph/query_set.h"
-#include "utils/containers.inl"
+#include "utils/graph/undirected.h"
+#include <unordered_set>
 
 namespace FlexFlow {
 
@@ -144,8 +146,9 @@ JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {
 
 std::unordered_set<Node>
     JoinedNodeView::query_nodes(NodeQuery const &query) const {
-  // TODO @lockshaw this is going to be reimplemented in 984, so don't bother fixing it for now
-  NOT_IMPLEMENTED(); 
+  // TODO @lockshaw this is going to be reimplemented in 984, so don't bother
+  // fixing it for now
+  NOT_IMPLEMENTED();
 }
 
 std::pair<std::unordered_set<Node>, std::unordered_set<Node>>
@@ -307,9 +310,8 @@ UndirectedEdge to_undirected_edge(DirectedEdge const &e) {
 
 std::unordered_set<UndirectedEdge> to_undirected_edges(
     std::unordered_set<DirectedEdge> const &directed_edges) {
-  std::unordered_set<UndirectedEdge> result;
-  return transform(directed_edges, 
-                 [](DirectedEdge const &e) { return to_undirected_edge(e); });
+  return transform(directed_edges,
+                   [](DirectedEdge const &e) { return to_undirected_edge(e); });
 }
 
 UndirectedEdge to_undirected_edge(MultiDiEdge const &e) {
@@ -344,16 +346,27 @@ ViewDiGraphAsUndirectedGraph::ViewDiGraphAsUndirectedGraph(DiGraphView const &g)
 
 std::unordered_set<UndirectedEdge> ViewDiGraphAsUndirectedGraph::query_edges(
     UndirectedEdgeQuery const &undirected_query) const {
-  DirectedEdgeQuery directed_query{undirected_query.nodes,
-                                   undirected_query.nodes};
-  std::unordered_set<DirectedEdge> const directed_edges =
-      this->g.query_edges(directed_query);
-  return to_undirected_edges(directed_edges);
+  DirectedEdgeQuery q1{undirected_query.nodes, query_set<Node>::matchall()};
+  DirectedEdgeQuery q2{query_set<Node>::matchall(), undirected_query.nodes};
+  return to_undirected_edges(set_union(this->g.query_edges(q1), this->g.query_edges(q2)));
 }
 
 std::unordered_set<Node> ViewDiGraphAsUndirectedGraph::query_nodes(
     NodeQuery const &node_query) const {
   return this->g.query_nodes(node_query);
+}
+
+ViewUndirectedGraphAsDiGraph::ViewUndirectedGraphAsDiGraph(UndirectedGraphView const &g)
+  : g(g) { }
+
+std::unordered_set<DirectedEdge> ViewUndirectedGraphAsDiGraph::query_edges(DirectedEdgeQuery const &q) const {
+  std::unordered_set<UndirectedEdge> undirected_edges = intersection(g.query_edges({q.srcs}), g.query_edges({q.dsts}));
+  std::unordered_set<DirectedEdge> directed_edges = flatmap(undirected_edges, [](UndirectedEdge const &e) { return to_directed_edges(e); });
+  return filter(directed_edges, [&](DirectedEdge const &e) { return matches_edge(q, e); });
+}
+
+std::unordered_set<Node> ViewUndirectedGraphAsDiGraph::query_nodes(NodeQuery const &q) const {
+  return g.query_nodes(q);
 }
 
 ViewDiGraphAsMultiDiGraph::ViewDiGraphAsMultiDiGraph(DiGraphView const &g)

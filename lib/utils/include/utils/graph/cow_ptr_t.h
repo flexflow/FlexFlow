@@ -14,8 +14,8 @@ struct cow_ptr_t {
   static_assert(is_clonable<T>::value,
                 "cow_ptr_t requires the type to have a clone() method");
 
-  cow_ptr_t(std::shared_ptr<T> ptr) : ptr(std::move(ptr)) {}
-  cow_ptr_t(std::unique_ptr<T> ptr) : ptr(std::move(ptr)) {}
+  cow_ptr_t(std::shared_ptr<T> const &ptr) : ptr(ptr) {}
+  cow_ptr_t(std::shared_ptr<T> &&ptr) : ptr(std::move(ptr)) {}
   cow_ptr_t(T const &val) : ptr(std::make_shared<T>(val)) {}
   cow_ptr_t(cow_ptr_t const &other) {
     this->ptr = other.ptr;
@@ -31,7 +31,7 @@ struct cow_ptr_t {
   }
 
   template <typename TT, typename = enable_if_t<std::is_base_of<TT, T>::value>>
-  operator cow_ptr_t<TT>() {
+  operator cow_ptr_t<TT>() const {
     return cow_ptr_t<TT>(this->ptr);
   }
 
@@ -40,17 +40,10 @@ struct cow_ptr_t {
   }
 
   std::shared_ptr<T const> get() const {
-    if (this->owner != nullptr) {
-      return this->owner->get();
-    }
     return this->ptr;
   }
 
   std::shared_ptr<T> get_mutable() const {
-    if (this->owner != nullptr) {
-      return this->owner->get_mutable();
-    }
-
     if (!this->has_unique_access()) {
       this->ptr = std::shared_ptr<T>(this->ptr->clone());
     }
@@ -58,46 +51,31 @@ struct cow_ptr_t {
   }
 
   friend bool operator==(cow_ptr_t const &lhs, cow_ptr_t const &rhs) {
-    if (lhs.owner != nullptr && rhs.owner != nullptr) {
-      return lhs.owner == rhs.owner;
-    } else if (lhs.ptr != nullptr && rhs.ptr != nullptr) {
-      return lhs.ptr == rhs.ptr;
-    } else {
-      return false;
-    }
+    return lhs.ptr == rhs.ptr;
   }
 
   friend bool operator!=(cow_ptr_t const &lhs, cow_ptr_t const &rhs) {
-    if (lhs.owner != nullptr && rhs.owner != nullptr) {
-      return lhs.owner != rhs.owner;
-    } else if (lhs.ptr != nullptr && rhs.ptr != nullptr) {
-      return lhs.ptr != rhs.ptr;
-    } else {
-      return true;
-    }
+    return lhs.ptr != rhs.ptr;
   }
 
   friend void swap(cow_ptr_t &lhs, cow_ptr_t &rhs) {
     using std::swap;
 
     swap(lhs.ptr, rhs.ptr);
-    swap(lhs.owner, rhs.owner);
   }
-  
-  static cow_ptr_t unsafe_create_without_ownership(cow_ptr_t<T> const &p) {
-    return {&p};
-  };
 
 private:
-  cow_ptr_t(cow_ptr_t<T> *);
-
   bool has_unique_access() const {
     return this->ptr.use_count() == 1;
   }
 
   mutable std::shared_ptr<T> ptr = nullptr;
-  cow_ptr_t<T> const *owner = nullptr;
 };
+
+template <typename T, typename ...Args>
+cow_ptr_t<T> make_cow_ptr(Args &&... args) {
+  return {std::make_shared<T>(std::forward<Args>(args)...)};
+}
 
 } // namespace FlexFlow
 

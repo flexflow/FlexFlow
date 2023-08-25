@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H
 
 #include "multidigraph.h"
+#include "utils/type_traits.h"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -45,9 +46,7 @@ private:
   std::size_t next_node_port = 0;
   ContentsType adjacency;
 };
-
-static_assert(is_rc_copy_virtual_compliant<AdjacencyMultiDiGraph>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(AdjacencyMultiDiGraph);
 
 } // namespace FlexFlow
 

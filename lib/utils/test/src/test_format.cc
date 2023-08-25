@@ -1,4 +1,4 @@
-#include "doctest.h"
+#include "test/utils/doctest.h"
 #include "utils/record_formatter.h"
 
 std::string formatRecord(RecordFormatter const &formatter) {

@@ -13,8 +13,7 @@ struct bidict {
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {
     for (auto it = first; it != last; it++) {
-      fwd_map[it->first] = it->second;
-      bwd_map[it->second] = it->first;
+      this->equate(it->first, it->second);
     }
   }
 

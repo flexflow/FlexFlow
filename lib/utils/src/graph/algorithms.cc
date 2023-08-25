@@ -1,7 +1,10 @@
 #include "utils/graph/algorithms.h"
-#include "utils/containers.inl"
+#include "utils/containers.h"
 #include "utils/exception.h"
 #include "utils/graph/digraph.h"
+#include "utils/graph/multidiedge.h"
+#include "utils/graph/multidigraph.h"
+#include "utils/graph/multidigraph_interfaces.h"
 #include "utils/graph/traversal.h"
 #include "utils/graph/undirected.h"
 #include "utils/graph/views.h"
@@ -9,15 +12,33 @@
 #include <cassert>
 #include <iostream>
 #include <queue>
+#include <unordered_set>
 
 namespace FlexFlow {
 
-std::vector<Node> add_nodes(Graph &g, int num_nodes) {
+template <typename G>
+static std::vector<Node> add_nodes_impl(G &g, int num_nodes) {
   std::vector<Node> nodes;
   for (int i = 0; i < num_nodes; i++) {
     nodes.push_back(g.add_node());
   }
   return nodes;
+}
+
+std::vector<Node> add_nodes(Graph &g, int num_nodes) {
+  return add_nodes_impl<Graph>(g, num_nodes);
+}
+
+std::vector<Node> add_nodes(UndirectedGraph &g, int num_nodes) {
+  return add_nodes_impl<UndirectedGraph>(g, num_nodes);
+}
+
+std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
+  return add_nodes_impl<DiGraph>(g, num_nodes);
+}
+
+std::vector<Node> add_nodes(MultiDiGraph &g, int num_nodes) {
+  return add_nodes_impl<MultiDiGraph>(g, num_nodes);
 }
 
 std::vector<NodePort> add_node_ports(MultiDiGraph &g, int num_node_ports) {
@@ -167,6 +188,10 @@ void remove_edges(UndirectedGraph &g,
   }
 }
 
+std::unordered_set<Node> get_endpoints(UndirectedEdge const &e) {
+  return {e.smaller, e.bigger};
+}
+
 std::unordered_set<MultiDiEdge> get_edges(MultiDiGraphView const &g) {
   return g.query_edges(MultiDiEdgeQuery::all());
 }
@@ -223,11 +248,19 @@ std::unordered_set<MultiDiEdge>
   return g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(srcs));
 }
 
+std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g, Node const &n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
+}
+
 std::unordered_set<DirectedEdge>
     get_outgoing_edges(DiGraphView const &g,
                        std::unordered_set<Node> const &dsts) {
   auto multidigraph_view = as_multidigraph(g);
   return to_directed_edges(get_outgoing_edges(multidigraph_view, dsts));
+}
+
+std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g, Node const &n) {
+  return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -317,7 +350,9 @@ optional<bool> is_acyclic(DiGraphView const &g) {
       seen.insert(*it);
     }
   }
-  assert(seen == get_nodes(g));
+  if (seen != get_nodes(g)) {
+    return false;
+  }
   return true;
 }
 
@@ -390,8 +425,7 @@ std::unordered_set<Node> get_neighbors(MultiDiGraphView const &g,
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
                                        Node const &n) {
-  return flatmap(get_node_edges(g, n), 
-                 [&](UndirectedEdge const &edge) {
+  return flatmap(get_node_edges(g, n), [&](UndirectedEdge const &edge) {
     return set_difference(get_endpoints(edge), {n});
   });
 }
@@ -421,17 +455,25 @@ std::unordered_map<Node, std::unordered_set<Node>>
   std::unordered_map<Node, std::unordered_set<Node>> result;
 
   for (Node const &n : topo) {
-    for (Node const &pred : get_predecessors(g, n)) {
-      if (contains_key(result, n)) {
-        result.at(n) = result.at(pred);
-      } else {
-        result.at(n) = intersection(result.at(n), result.at(pred));
-      }
-    }
+    result[n] = intersection(transform(get_predecessors(g, n), [&](Node const &n) { return result.at(n); })).value_or(std::unordered_set<Node>{});;
     result[n].insert(n);
   }
 
   return result;
+}
+
+std::unordered_set<Node> get_dominators(DiGraphView const &g, Node const &n) {
+  return get_dominators(g).at(n);
+}
+
+std::unordered_set<Node> get_dominators(DiGraphView const &g, std::unordered_set<Node> const &n) {
+  if (n.empty()) {
+    throw mk_runtime_error("Cannot find dominators of no nodes");
+  }
+  optional<std::unordered_set<Node>> result = intersection(values(restrict_keys(get_dominators(g), n)));
+  assert (result.has_value());
+
+  return result.value();
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -511,8 +553,11 @@ Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &nodes,
 optional<Node> get_imm_post_dominator(DiGraphView const &g,
                                       std::unordered_set<Node> const &nodes) {
 
+  if (nodes.empty()) {
+    throw mk_runtime_error("Cannot get imm_post_dominator of no nodes");
+  }
   std::unordered_set<Node> commonDoms =
-      intersection(values(restrict_keys(get_post_dominators(g), nodes)));
+      assert_unwrap(intersection(values(restrict_keys(get_post_dominators(g), nodes))));
 
   if (!commonDoms.empty()) {
     return get_node_with_greatest_topo_rank(commonDoms, g);
@@ -535,6 +580,15 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
   assert(input_edge.uid.second == output_edge.srcIdx.value());
   return {
       output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx};
+}
+
+bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
+    get_edge_splits(MultiDiGraphView const &g, GraphSplit const &s) {
+  return generate_bidict(
+    set_union(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(s.first).with_dst_nodes(s.second)),
+              g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(s.second).with_dst_nodes(s.first))),
+    [](MultiDiEdge const &e) { return split_edge(e); }
+  );
 }
 
 std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g,
@@ -588,53 +642,33 @@ DiGraphView as_digraph(MultiDiGraphView const &g) {
   return DiGraphView::create<ViewMultiDiGraphAsDiGraph>(g);
 }
 
+DiGraphView as_digraph(UndirectedGraphView const &g) {
+  return DiGraphView::create<ViewUndirectedGraphAsDiGraph>(g);
+}
+
 MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &g) {
   return MultiDiGraphView::create<ViewOpenMultiDiGraphAsMultiDiGraph>(g);
 }
 
-std::vector<std::unordered_set<Node>>
+std::unordered_set<std::unordered_set<Node>>
     get_weakly_connected_components(DiGraphView const &g) {
   return get_connected_components(as_undirected(g));
 }
 
-std::vector<std::unordered_set<Node>>
+std::unordered_set<std::unordered_set<Node>>
     get_weakly_connected_components(MultiDiGraphView const &g) {
   return get_connected_components(as_undirected(g));
 }
 
-std::vector<std::unordered_set<Node>>
+std::unordered_set<std::unordered_set<Node>>
     get_connected_components(UndirectedGraphView const &g) {
-  std::vector<std::unordered_set<Node>> components;
+  std::unordered_set<std::unordered_set<Node>> components;
   std::unordered_set<Node> visited;
 
-  std::unordered_set<Node> nodes = g.query_nodes(NodeQuery::all());
-  for (Node const &node : nodes) {
-    if (visited.count(node) > 0) {
-      continue;
-    }
-
-    std::unordered_set<Node> component;
-    std::stack<Node> stack;
-    stack.push(node);
-
-    while (!stack.empty()) {
-      Node current = stack.top();
-      stack.pop();
-
-      if (visited.count(current) > 0) {
-        continue;
-      }
-
-      component.insert(current);
-      visited.insert(current);
-      std::unordered_set<Node> neighbors = get_neighbors(g, current);
-
-      for (auto const &neighbor : neighbors) {
-        stack.push(neighbor);
-      }
-    }
-
-    components.push_back(std::move(component));
+  for (Node const &node : get_nodes(g)) {
+    std::unordered_set<Node> component = without_order(get_bfs_ordering(as_digraph(g), {node}));
+    components.insert(component);
+    visited = set_union(visited, component);
   }
   return components;
 }

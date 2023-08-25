@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_DIGRAPH_INTERFACES_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_DIGRAPH_INTERFACES_H
 
-#include "utils/type_traits.h"
 #include "node.h"
+#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
@@ -20,6 +20,9 @@ struct DirectedEdgeQuery {
   static DirectedEdgeQuery all();
 };
 FF_VISITABLE_STRUCT(DirectedEdgeQuery, srcs, dsts);
+FF_VISIT_FMTABLE(DirectedEdgeQuery);
+
+bool matches_edge(DirectedEdgeQuery const &, DirectedEdge const &);
 
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
                                      DirectedEdgeQuery const &);
@@ -36,7 +39,6 @@ public:
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
   virtual ~IDiGraphView() = default;
-
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraphView);
 
@@ -47,7 +49,6 @@ struct IDiGraph : public IDiGraphView, public IGraph {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraph);
 
-
-}
+} // namespace FlexFlow
 
 #endif

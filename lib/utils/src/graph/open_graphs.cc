@@ -1,5 +1,8 @@
 #include "utils/graph/open_graphs.h"
+#include "utils/graph/multidigraph.h"
 #include "utils/graph/query_set.h"
+#include "internal.h"
+#include "utils/graph/algorithms.h"
 
 namespace FlexFlow {
 
@@ -18,6 +21,10 @@ std::unordered_set<Node>
 std::unordered_set<OpenMultiDiEdge>
     OpenMultiDiGraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
+}
+
+OpenMultiDiGraphView::operator MultiDiGraphView() const {
+  return as_multidigraph(*this);
 }
 
 OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)

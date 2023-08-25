@@ -10,4 +10,4 @@ MultiDiOutput get_output(MultiDiEdge const &e) {
   return {e.src, e.srcIdx};
 }
 
-}
+} // namespace FlexFlow

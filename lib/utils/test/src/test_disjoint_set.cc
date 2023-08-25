@@ -1,4 +1,4 @@
-#include "doctest.h"
+#include "test/utils/doctest.h"
 #include "utils/disjoint_set.h"
 
 using namespace FlexFlow;

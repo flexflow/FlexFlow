@@ -1,5 +1,5 @@
-#include "doctest.h"
-#include "utils/containers.inl"
+#include "test/utils/doctest.h"
+#include "utils/containers.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -113,6 +113,12 @@ TEST_CASE("unique") {
   std::unordered_set<int> result = unique(v);
   std::unordered_set<int> expected = {1, 2, 3};
   CHECK(result == expected);
+}
+
+TEST_CASE("without_order") {
+  std::vector<int> v = {1, 4, 6, 4, 6};
+  std::unordered_set<int> expected = { 1, 4, 6 };
+  CHECK(without_order(v) == expected);
 }
 
 TEST_CASE("index_of") {
@@ -289,6 +295,13 @@ TEST_CASE("transform_string") {
   CHECK(result == "ABC");
 }
 
+TEST_CASE("repeat") {
+  int ctr = 0;
+  std::vector<int> result = repeat(5, [&] { return ctr++; });
+
+  CHECK(result == std::vector<int>{0, 1, 2, 3, 4});
+}
+
 TEST_CASE("Testing the 'enumerate' function") {
   std::unordered_set<int> input_set = {1, 2, 3, 4, 5};
   std::unordered_map<size_t, int> result = enumerate(input_set);
@@ -322,6 +335,12 @@ TEST_CASE("Testing sorted_by function") {
   std::unordered_set<int> s2 = {-5, -1, -3, -2, -4};
   auto sorted_s2 = sorted_by(s2, [](int a, int b) { return a > b; });
   CHECK(sorted_s2 == std::vector<int>({-1, -2, -3, -4, -5}));
+}
+
+TEST_CASE("Testing compare_by function") {
+  std::unordered_set<int> s = {5, 2, 3, 4, 1};  
+  std::vector<int> result = sorted_by(s, compare_by<int>([](int i) { return (-i); }));
+  CHECK(result == std::vector<int>{5, 4, 3, 2, 1});
 }
 
 TEST_CASE("Testing vector_split function") {

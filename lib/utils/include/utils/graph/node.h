@@ -64,6 +64,7 @@ private:
   GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
 
   friend struct GraphInternal;
+
 private:
   std::shared_ptr<IGraphView const> ptr;
 };
@@ -84,7 +85,7 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraph);
 struct Graph {
 public:
   Graph() = delete;
-  Graph(Graph const &);
+  Graph(Graph const &) = default;
 
   Graph &operator=(Graph);
 
@@ -99,16 +100,14 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IGraph, T>::value, Graph>::type
       create() {
-    return Graph(make_unique<T>());
+    return Graph(make_cow_ptr<T>());
   }
 
-  static Graph unsafe_create_without_ownership(cow_ptr_t<IGraph> const &);
-
 private:
-  Graph(std::unique_ptr<IGraph> ptr)
-      : ptr(std::move(ptr)) {}
+  Graph(cow_ptr_t<IGraph>);
 
   friend struct GraphInternal;
+
 private:
   cow_ptr_t<IGraph> ptr;
 };

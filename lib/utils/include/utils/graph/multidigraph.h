@@ -33,6 +33,7 @@ private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
 
   friend struct GraphInternal;
+
 private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
@@ -48,8 +49,6 @@ public:
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
 
   operator MultiDiGraphView() const;
-  operator Graph() const;
-  operator Graph &();
 
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 
@@ -69,11 +68,11 @@ public:
   static typename std::enable_if<std::is_base_of<IMultiDiGraph, T>::value,
                                  MultiDiGraph>::type
       create() {
-    return MultiDiGraph(make_unique<T>());
+    return MultiDiGraph(make_cow_ptr<T>());
   }
 
 private:
-  MultiDiGraph(std::unique_ptr<IMultiDiGraph> ptr) : ptr(std::move(ptr)) {}
+  MultiDiGraph(cow_ptr_t<IMultiDiGraph>);
 
   friend struct GraphInternal;
 

@@ -3,7 +3,6 @@
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
-#include "utils/containers.inl"
 
 namespace FlexFlow {
 
@@ -120,7 +119,7 @@ SplitAST sp_decomposition(DiGraphView const &g) {
 }
 
 SplitAST parallel_decomposition(DiGraphView const &g) {
-  std::vector<std::unordered_set<Node>> weakly_connected_components =
+  std::unordered_set<std::unordered_set<Node>> weakly_connected_components =
       get_weakly_connected_components(g);
   assert(weakly_connected_components.size() > 1);
 
@@ -131,6 +130,9 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
 
   return split;
 }
+
+SplitASTNode::SplitASTNode(SplitType type)
+  : SplitASTNode(type, {}) {}
 
 SplitASTNode::SplitASTNode(SplitType type,
                            SplitAST const &lhs,

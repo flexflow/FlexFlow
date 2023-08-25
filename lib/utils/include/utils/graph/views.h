@@ -9,6 +9,7 @@
 #include "tl/optional.hpp"
 #include "undirected.h"
 #include "utils/bidict.h"
+#include "utils/graph/digraph_interfaces.h"
 #include "utils/visitable.h"
 #include <memory>
 #include <vector>
@@ -260,6 +261,17 @@ public:
 
 private:
   DiGraphView g;
+};
+
+struct ViewUndirectedGraphAsDiGraph : public IDiGraphView {
+public:
+  explicit ViewUndirectedGraphAsDiGraph(UndirectedGraphView const &);
+
+  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+private:
+  UndirectedGraphView g;
 };
 
 struct ViewDiGraphAsMultiDiGraph : public IMultiDiGraphView {

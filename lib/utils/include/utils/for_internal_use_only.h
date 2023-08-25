@@ -7,6 +7,6 @@ struct for_internal_use_only {
   explicit for_internal_use_only();
 };
 
-}
+} // namespace FlexFlow
 
 #endif

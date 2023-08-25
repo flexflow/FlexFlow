@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 
+#include "hash-utils-core.h"
 #include "type_traits_core.h"
 #include <vector>
-#include "hash-utils-core.h"
 
 namespace FlexFlow {
 
@@ -74,7 +74,7 @@ struct required_inheritance_impl : public T {
   template <typename TT>
   required_inheritance_impl(
       TT const &tt,
-      typename std::enable_if<std::is_convertible<TT, T>::value>::type * = 0)
+      typename std::enable_if<std::is_convertible<TT, T>::value && !std::is_same<TT, T>::value>::type * = 0)
       : required_inheritance_impl(static_cast<T>(tt)) {}
 
   operator T() const;
@@ -141,6 +141,5 @@ struct hash<::FlexFlow::req<T>> {
 };
 
 } // namespace std
-
 
 #endif

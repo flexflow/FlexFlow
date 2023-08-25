@@ -20,7 +20,12 @@
 namespace FlexFlow {
 
 std::vector<Node> add_nodes(Graph &, int);
+std::vector<Node> add_nodes(UndirectedGraph &, int);
+std::vector<Node> add_nodes(DiGraph &, int);
+std::vector<Node> add_nodes(MultiDiGraph &, int);
+
 std::vector<NodePort> add_node_ports(MultiDiGraph &, int);
+
 std::unordered_set<Node> get_nodes(GraphView const &);
 std::unordered_set<NodePort> get_node_ports(MultiDiGraphView const &);
 
@@ -166,12 +171,12 @@ struct GetDstNodeFunctor {
   }
 };
 
-template <typename ...Args>
+template <typename... Args>
 Node get_src_node(variant<Args...> const &t) {
   return visit(GetSrcNodeFunctor{}, t);
 }
 
-template <typename ...Args>
+template <typename... Args>
 Node get_dst_node(variant<Args...> const &t) {
   return visit(GetDstNodeFunctor{}, t);
 }
@@ -215,13 +220,13 @@ std::unordered_map<Node, std::unordered_set<Node>>
     get_post_dominators(MultiDiGraphView const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_post_dominators(DiGraphView const &);
-std::unordered_map<Node, tl::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_dominators(MultiDiGraphView const &);
-std::unordered_map<Node, tl::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_dominators(DiGraphView const &);
-std::unordered_map<Node, tl::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_post_dominators(MultiDiGraphView const &);
-std::unordered_map<Node, tl::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_post_dominators(DiGraphView const &);
 tl::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &);
 tl::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
@@ -247,11 +252,11 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &);
 std::vector<MultiDiEdge>
     get_edge_topological_ordering(MultiDiGraphView const &);
 
-std::vector<std::unordered_set<Node>>
+std::unordered_set<std::unordered_set<Node>>
     get_weakly_connected_components(MultiDiGraphView const &);
-std::vector<std::unordered_set<Node>>
+std::unordered_set<std::unordered_set<Node>>
     get_weakly_connected_components(DiGraphView const &);
-std::vector<std::unordered_set<Node>>
+std::unordered_set<std::unordered_set<Node>>
     get_connected_components(UndirectedGraphView const &);
 
 std::unordered_set<DirectedEdge>
@@ -264,7 +269,7 @@ std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
 MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 
 bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
-    get_edge_splits(OpenMultiDiGraphView const &, GraphSplit const &);
+    get_edge_splits(MultiDiGraphView const &, GraphSplit const &);
 
 std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &,
                                         GraphSplit const &);
@@ -295,6 +300,7 @@ UndirectedGraphView as_undirected(DiGraphView const &);
 UndirectedGraphView as_undirected(MultiDiGraphView const &);
 MultiDiGraphView as_multidigraph(DiGraphView const &);
 DiGraphView as_digraph(MultiDiGraphView const &);
+DiGraphView as_digraph(UndirectedGraphView const &);
 MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &);
 
 void export_as_dot(

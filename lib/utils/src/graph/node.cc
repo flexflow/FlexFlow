@@ -1,4 +1,5 @@
 #include "utils/graph/node.h"
+#include "utils/graph/cow_ptr_t.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -36,6 +37,16 @@ GraphView
   std::shared_ptr<IGraphView const> ptr((&graphView),
                                         [](IGraphView const *) {});
   return GraphView(ptr);
+}
+
+Graph::Graph(cow_ptr_t<IGraph> _ptr)
+  : ptr(std::move(_ptr))
+{ 
+  assert(this->ptr.get() != nullptr);
+}
+
+Node Graph::add_node() {
+  return this->ptr.get_mutable()->add_node();
 }
 
 } // namespace FlexFlow

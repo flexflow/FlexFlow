@@ -2,7 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
 #include "utils/bidict.h"
-#include "utils/containers.h"
+#include "utils/containers.decl"
 #include "utils/exception.h"
 #include "utils/optional.h"
 #include <unordered_set>
@@ -18,7 +18,7 @@ struct query_set {
 
   query_set(optional<std::unordered_set<T>> const &query) : query(query) {}
 
-    query_set(std::initializer_list<T> const &l)
+  query_set(std::initializer_list<T> const &l)
       : query_set(std::unordered_set<T>{l}) {}
 
   friend bool operator==(query_set const &lhs, query_set const &rhs) {
@@ -111,5 +111,26 @@ query_set<T> query_union(query_set<T> const &lhs, query_set<T> const &rhs) {
 }
 
 } // namespace FlexFlow
+
+namespace fmt {
+
+template <typename T>
+struct formatter<::FlexFlow::query_set<T>> : formatter<std::string> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::query_set<T> const &q, FormatContext &ctx)
+      -> decltype(ctx.out()) {
+    std::string result;
+    if (is_matchall(q)) {
+      result = "(all)";
+    } else {
+      result = fmt::format("query_set({})", allowed_values(q));
+    }
+    return formatter<std::string>::format(result, ctx);
+  }
+};
+
+}
+
+#include "utils/containers.h"
 
 #endif
