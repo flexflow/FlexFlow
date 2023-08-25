@@ -1,6 +1,9 @@
+#include "substitutions/graph_pattern.h"
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "pcg/parallel_computation_graph.h"
 #include "substitutions/get_attribute.h"
+#include "substitutions/graph_pattern_match.h"
 #include "substitutions/operator_pattern.h"
 #include "substitutions/parallel_tensor_pattern.h"
 
@@ -72,14 +75,14 @@ struct EvaluateTensorAttributeExpr {
     switch (key) {
       case TensorAttributeKey::DIM_SIZES: {
         std::vector<int> result;
-        for (ParallelDim const &dim : this->tensor_shape) {
+        for (ParallelDim const &dim : this->tensor_shape.dims) {
           result.push_back(dim.size);
         }
         return result;
       }
       case TensorAttributeKey::DIM_DEGREES: {
         std::vector<int> result;
-        for (ParallelDim const &dim : this->tensor_shape) {
+        for (ParallelDim const &dim : this->tensor_shape.dims) {
           result.push_back(dim.degree);
         }
         return result;
@@ -201,8 +204,7 @@ bool assignment_satisfies(ParallelComputationGraph const &pcg,
     result &= constraintResult.value_or(false);
   }
 
-  result &= pattern_matches(
-      OpenMultiDiGraphView(pattern), MultiDiGraphView(pcg), patternMatch);
+  result &= pattern_matches(pattern, pcg, patternMatch);
 
   return result;
 }

@@ -11,7 +11,8 @@ namespace FlexFlow {
 struct GraphPattern
     : public strong_typedef<
           GraphPattern,
-          LabelledOpenMultiDiGraph<OperatorPattern, ParallelTensorPattern>> {
+          OutputLabelledOpenMultiDiGraph<OperatorPattern,
+                                         ParallelTensorPattern>> {
   using strong_typedef::strong_typedef;
 };
 

@@ -1,60 +1,84 @@
 #include "substitutions/substitution.h"
+#include
 
 namespace FlexFlow {
 
-template <typename T>
-GraphAttributeValue
-    graph_attribute_value_op(AttrOpType op, T const &lhs, T const &rhs) {
-  switch (op) {
-    case AttrOpType::ADD:
-      return lhs + rhs;
-      break;
-    case AttrOpType::SUB:
-      return lhs - rhs;
-      break;
-    case AttrOpType::MUL:
-      return lhs * rhs;
-      break;
-    case AttrOpType::DIV:
-      return lhs / rhs;
-      break;
-    default:
-      mk_runtime_error("Unknown attribute operator type");
+struct GraphAttributeValueOp {
+  template <typename T>
+  GraphAttributeValue operator()(T const &lhs, T const &rhs) {
+    switch (op) {
+      case AttrOpType::ADD:
+        return lhs + rhs;
+        break;
+      case AttrOpType::SUB:
+        return lhs - rhs;
+        break;
+      case AttrOpType::MUL:
+        return lhs * rhs;
+        break;
+      case AttrOpType::DIV:
+        return lhs / rhs;
+        break;
+      default:
+        mk_runtime_error("Unknown attribute operator type");
+    }
   }
+  AttrOpType op;
+};
+
+GraphAttributeValue graph_attribute_value_op(AttrOpType op,
+                                             GraphAttributeValue const &lhs,
+                                             GraphAttributeValue const &rhs) {
+  visit(GraphAttributeValueOp{op}, lhs, rhs);
+}
+
+struct EvaluateGraphAttributeExprLeaf {
+  template <typename T>
+  GraphAttributeValue operator()(T const &t) {
+    return evaluate(t);
+  }
+
+  GraphAttributeValue evaluate(NodeAttrAccess const &t) {
+    Node node_in_pattern = t.node;
+    Node node_in_pcg = match.nodeAssignment.at_l(node_in_pattern);
+    return widen<GraphAttributeValue>(
+        evaluate_attribute_expr(graph.at(node_in_pcg), t.attr_expr).value());
+  }
+
+  GraphAttributeValue evaluate(EdgeAttrAccess const &t) {
+    OpenMultiDiEdge output_in_pattern = t.edge;
+    MultiDiEdge output_in_pcg = match.edgeAssignment.at_l(output_in_pattern);
+    return widen<GraphAttributeValue>(
+        evaluate_attribute_expr(graph.at(output_in_pcg), t.attr_expr).value());
+  }
+
+  ParallelComputationGraph const &graph;
+  DiGraphPatternMatch const &match;
+};
+
+GraphAttributeValue
+    evaluate_graph_attribute_expr_leaf(ParallelComputationGraph const &g,
+                                       DiGraphPatternMatch const &match,
+                                       GraphAttributeExprLeaf const &expr) {
+  return visit(EvaluateGraphAttributeExprLeaf{g, match}, expr);
 }
 
 struct EvaluateGraphAttributeExpr {
-  template <typename... Ts>
-  GraphAttributeValue operator()(Ts... const &ts) {
-    return evaluate(ts);
-  }
-
   template <typename T>
-  GraphAttributeValue evaluate(NodeAttrAccess<T> const &t) {
-    Node node_in_pattern = t.node;
-    Node node_in_pcg = match.nodeAssignment.at_l(node_in_pattern);
-    return evaluate_attribute_expr(node_in_pcg, t.attr_expr);
+  GraphAttributeValue operator()(T const &t) {
+    return evaluate(t);
   }
 
-  template <typename T>
-  GraphAttributeValue evaluate(EdgeAttrAccess<T> const &t) {
-    OpenMultiDiEdge edge_in_pattern = t.edge;
-    MultiDiEdge edge_in_pcg = match.edgeAssignment.at_l(edge_in_pattern);
-    return evaluate_attribute_expr(edge_in_pcg, t.attr_expr);
+  GraphAttributeValue evaluate(AttrUnary const &expr) {
+    auto lhs = evaluate_graph_attribute_expr_leaf(graph, match, expr.lhs);
+    auto rhs = expr.rhs;
+    return graph_attribute_value_op(expr.op_type, lhs, rhs);
   }
 
-  template <typename L, typename R>
-  GraphAttributeValue evaluate(AttrUnary<L, R> const &t) {
-    auto lhs = (*this)(t.lhs).value();
-    auto rhs = t.rhs;
-    return graph_attribute_value_op(lhs, rhs);
-  }
-
-  template <typename L, typename R>
-  GraphAttributeValue evaluate(AttrBinary<L, R> const &t) {
-    auto lhs = (*this)(t.lhs).value();
-    auto rhs = (*this)(t.rhs).value();
-    return graph_attribute_value_op(lhs, rhs);
+  GraphAttributeValue evaluate(AttrBinary const &expr) {
+    auto lhs = evaluate_graph_attribute_expr_leaf(graph, match, expr.lhs);
+    auto rhs = evaluate_graph_attribute_expr_leaf(graph, match, expr.rhs);
+    return graph_attribute_value_op(expr.op_type, lhs, rhs);
   }
 
   EvaluateGraphAttributeExpr(ParallelComputationGraph const &graph,
@@ -65,11 +89,10 @@ struct EvaluateGraphAttributeExpr {
   DiGraphPatternMatch const &match;
 };
 
-template <typename... Ts>
 GraphAttributeValue
     evaluate_graph_attribute_expr(ParallelComputationGraph const &graph,
                                   DiGraphPatternMatch const &match,
-                                  GraphAttributeExpr<Ts...> const &expr) {
+                                  GraphAttributeExpr const &expr) {
   return visit(EvaluateGraphAttributeExpr(graph, match), expr);
 }
 
@@ -93,12 +116,12 @@ ParallelComputationGraph apply_substitution(ParallelComputationGraph const &pcg,
       ParallelComputationGraph::create<UnorderedOutputLabelledMultiDiGraph>();
   bidict<Node, Node> node_mapping; // Refactor it with global nodes
   for (Node const &node : get_nodes(pcg)) {
-    if (!contains_r(match.nodeAssignment)) {
+    if (!contains_r(match.nodeAssignment, node)) {
       node_mapping.equate(node, new_pcg.add_node(pcg.at(node)));
     }
   }
   for (MultiDiEdge const &edge : get_edges(pcg)) {
-    if (!contains_r(match.edgeAssignment)) {
+    if (!contains_r(match.edgeAssignment, edge)) {
       new_pcg.add_edge(MultiDiEdge{node_mapping.at_l(edge.src),
                                    node_mapping.at_r(edge.dst),
                                    new_pcg.add_node_port(),

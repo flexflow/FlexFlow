@@ -8,6 +8,7 @@
 #include "labelled/node_labelled.h"
 #include "labelled/open_algorithms.h"
 #include "labelled/output_labelled.h"
+#include "labelled/output_labelled_open.h"
 #include "labelled/standard_labelled.h"
 #include "labelled/unordered_labelled_graphs.h"
 
