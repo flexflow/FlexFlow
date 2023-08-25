@@ -10,5 +10,5 @@ ff_add_library(
   DEPS
     utils-ffi
   PRIVATE_DEPS
-    op-atts
+    op-attrs
 )

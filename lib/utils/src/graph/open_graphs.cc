@@ -1,5 +1,5 @@
 #include "utils/graph/open_graphs.h"
-#include "internal.h"
+#include "utils/graph/internal.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/multidigraph.h"
 #include "utils/graph/query_set.h"
