@@ -82,7 +82,7 @@ class LLM:
         :type output_file: str, optional
         """
         self.supported_models = {
-            "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
+            "LlamaForCausalLM": (ModelType.LLAMA2, FlexFlowLLAMA),
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
             "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
