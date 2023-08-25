@@ -131,8 +131,7 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
   return split;
 }
 
-SplitASTNode::SplitASTNode(SplitType type)
-  : SplitASTNode(type, {}) {}
+SplitASTNode::SplitASTNode(SplitType type) : SplitASTNode(type, {}) {}
 
 SplitASTNode::SplitASTNode(SplitType type,
                            SplitAST const &lhs,

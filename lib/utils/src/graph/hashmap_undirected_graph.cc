@@ -1,6 +1,6 @@
 #include "utils/graph/hashmap_undirected_graph.h"
-#include "utils/exception.h"
 #include "utils/containers.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -25,10 +25,12 @@ void HashmapUndirectedGraph::remove_node_unsafe(Node const &n) {
 
 void HashmapUndirectedGraph::add_edge(UndirectedEdge const &e) {
   if (!contains_key(this->adjacency, e.bigger)) {
-    throw mk_runtime_error("Could not add edge connected to non-existent node {}", e.bigger);
+    throw mk_runtime_error(
+        "Could not add edge connected to non-existent node {}", e.bigger);
   }
   if (!contains_key(this->adjacency, e.smaller)) {
-    throw mk_runtime_error("Could not add edge connected to non-existent node {}", e.smaller);
+    throw mk_runtime_error(
+        "Could not add edge connected to non-existent node {}", e.smaller);
   }
 
   this->adjacency.at(e.bigger).insert(e.smaller);
@@ -43,8 +45,8 @@ void HashmapUndirectedGraph::remove_edge(UndirectedEdge const &e) {
   }
 }
 
-std::unordered_set<UndirectedEdge>
-    HashmapUndirectedGraph::query_edges(UndirectedEdgeQuery const &query) const {
+std::unordered_set<UndirectedEdge> HashmapUndirectedGraph::query_edges(
+    UndirectedEdgeQuery const &query) const {
   std::unordered_set<UndirectedEdge> result;
   for (auto const &src_kv : query_keys(query.nodes, this->adjacency)) {
     for (auto const &dst : src_kv.second) {
@@ -59,7 +61,8 @@ std::unordered_set<Node>
   return apply_query(query.nodes, keys(this->adjacency));
 }
 
-bool operator==(HashmapUndirectedGraph const &lhs, HashmapUndirectedGraph const &rhs) {
+bool operator==(HashmapUndirectedGraph const &lhs,
+                HashmapUndirectedGraph const &rhs) {
   bool result = lhs.adjacency == rhs.adjacency;
   if (result) {
     assert(lhs.next_node_idx == rhs.next_node_idx);
@@ -67,7 +70,8 @@ bool operator==(HashmapUndirectedGraph const &lhs, HashmapUndirectedGraph const 
   return result;
 }
 
-bool operator!=(HashmapUndirectedGraph const &lhs, HashmapUndirectedGraph const &rhs) {
+bool operator!=(HashmapUndirectedGraph const &lhs,
+                HashmapUndirectedGraph const &rhs) {
   return (lhs.adjacency != rhs.adjacency);
 }
 

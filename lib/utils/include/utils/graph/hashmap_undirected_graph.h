@@ -18,8 +18,10 @@ public:
       query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
-  friend bool operator==(HashmapUndirectedGraph const &, HashmapUndirectedGraph const &);
-  friend bool operator!=(HashmapUndirectedGraph const &, HashmapUndirectedGraph const &);
+  friend bool operator==(HashmapUndirectedGraph const &,
+                         HashmapUndirectedGraph const &);
+  friend bool operator!=(HashmapUndirectedGraph const &,
+                         HashmapUndirectedGraph const &);
 
   HashmapUndirectedGraph *clone() const override {
     return new HashmapUndirectedGraph(this->next_node_idx, this->adjacency);
@@ -34,6 +36,6 @@ private:
   ContentsType adjacency;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

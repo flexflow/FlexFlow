@@ -3,11 +3,11 @@
 
 #include "utils/bidict.h"
 #include "utils/invoke.h"
+#include "utils/optional.decl"
 #include "utils/required_core.h"
 #include "utils/type_traits_core.h"
 #include <string>
 #include <vector>
-#include "utils/optional.decl"
 
 namespace FlexFlow {
 
@@ -143,10 +143,16 @@ std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
 template <typename K, typename V>
 bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs);
 
-template <typename F, typename C, typename K = get_element_type_t<C>, typename V = invoke_result_t<F, K>>
+template <typename F,
+          typename C,
+          typename K = get_element_type_t<C>,
+          typename V = invoke_result_t<F, K>>
 std::unordered_map<K, V> generate_map(C const &c, F const &f);
 
-template <typename F, typename C, typename K = get_element_type_t<C>, typename V = invoke_result_t<F, K>>
+template <typename F,
+          typename C,
+          typename K = get_element_type_t<C>,
+          typename V = invoke_result_t<F, K>>
 bidict<K, V> generate_bidict(C const &c, F const &f);
 
 template <typename K, typename V>

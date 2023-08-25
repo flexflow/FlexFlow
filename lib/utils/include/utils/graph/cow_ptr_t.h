@@ -72,8 +72,8 @@ private:
   mutable std::shared_ptr<T> ptr = nullptr;
 };
 
-template <typename T, typename ...Args>
-cow_ptr_t<T> make_cow_ptr(Args &&... args) {
+template <typename T, typename... Args>
+cow_ptr_t<T> make_cow_ptr(Args &&...args) {
   return {std::make_shared<T>(std::forward<Args>(args)...)};
 }
 

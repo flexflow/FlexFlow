@@ -248,7 +248,8 @@ std::unordered_set<MultiDiEdge>
   return g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(srcs));
 }
 
-std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g, Node const &n) {
+std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &g,
+                                                   Node const &n) {
   return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
 
@@ -259,7 +260,8 @@ std::unordered_set<DirectedEdge>
   return to_directed_edges(get_outgoing_edges(multidigraph_view, dsts));
 }
 
-std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g, Node const &n) {
+std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g,
+                                                    Node const &n) {
   return get_outgoing_edges(g, std::unordered_set<Node>{n});
 }
 
@@ -455,7 +457,11 @@ std::unordered_map<Node, std::unordered_set<Node>>
   std::unordered_map<Node, std::unordered_set<Node>> result;
 
   for (Node const &n : topo) {
-    result[n] = intersection(transform(get_predecessors(g, n), [&](Node const &n) { return result.at(n); })).value_or(std::unordered_set<Node>{});;
+    result[n] =
+        intersection(transform(get_predecessors(g, n), [&](Node const &n) {
+          return result.at(n);
+        })).value_or(std::unordered_set<Node>{});
+    ;
     result[n].insert(n);
   }
 
@@ -466,12 +472,14 @@ std::unordered_set<Node> get_dominators(DiGraphView const &g, Node const &n) {
   return get_dominators(g).at(n);
 }
 
-std::unordered_set<Node> get_dominators(DiGraphView const &g, std::unordered_set<Node> const &n) {
+std::unordered_set<Node> get_dominators(DiGraphView const &g,
+                                        std::unordered_set<Node> const &n) {
   if (n.empty()) {
     throw mk_runtime_error("Cannot find dominators of no nodes");
   }
-  optional<std::unordered_set<Node>> result = intersection(values(restrict_keys(get_dominators(g), n)));
-  assert (result.has_value());
+  optional<std::unordered_set<Node>> result =
+      intersection(values(restrict_keys(get_dominators(g), n)));
+  assert(result.has_value());
 
   return result.value();
 }
@@ -556,8 +564,8 @@ optional<Node> get_imm_post_dominator(DiGraphView const &g,
   if (nodes.empty()) {
     throw mk_runtime_error("Cannot get imm_post_dominator of no nodes");
   }
-  std::unordered_set<Node> commonDoms =
-      assert_unwrap(intersection(values(restrict_keys(get_post_dominators(g), nodes))));
+  std::unordered_set<Node> commonDoms = assert_unwrap(
+      intersection(values(restrict_keys(get_post_dominators(g), nodes))));
 
   if (!commonDoms.empty()) {
     return get_node_with_greatest_topo_rank(commonDoms, g);
@@ -585,10 +593,14 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
 bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
     get_edge_splits(MultiDiGraphView const &g, GraphSplit const &s) {
   return generate_bidict(
-    set_union(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(s.first).with_dst_nodes(s.second)),
-              g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(s.second).with_dst_nodes(s.first))),
-    [](MultiDiEdge const &e) { return split_edge(e); }
-  );
+      set_union(
+          g.query_edges(
+              MultiDiEdgeQuery::all().with_src_nodes(s.first).with_dst_nodes(
+                  s.second)),
+          g.query_edges(
+              MultiDiEdgeQuery::all().with_src_nodes(s.second).with_dst_nodes(
+                  s.first))),
+      [](MultiDiEdge const &e) { return split_edge(e); });
 }
 
 std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g,
@@ -666,7 +678,8 @@ std::unordered_set<std::unordered_set<Node>>
   std::unordered_set<Node> visited;
 
   for (Node const &node : get_nodes(g)) {
-    std::unordered_set<Node> component = without_order(get_bfs_ordering(as_digraph(g), {node}));
+    std::unordered_set<Node> component =
+        without_order(get_bfs_ordering(as_digraph(g), {node}));
     components.insert(component);
     visited = set_union(visited, component);
   }

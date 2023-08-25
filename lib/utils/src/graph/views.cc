@@ -348,7 +348,8 @@ std::unordered_set<UndirectedEdge> ViewDiGraphAsUndirectedGraph::query_edges(
     UndirectedEdgeQuery const &undirected_query) const {
   DirectedEdgeQuery q1{undirected_query.nodes, query_set<Node>::matchall()};
   DirectedEdgeQuery q2{query_set<Node>::matchall(), undirected_query.nodes};
-  return to_undirected_edges(set_union(this->g.query_edges(q1), this->g.query_edges(q2)));
+  return to_undirected_edges(
+      set_union(this->g.query_edges(q1), this->g.query_edges(q2)));
 }
 
 std::unordered_set<Node> ViewDiGraphAsUndirectedGraph::query_nodes(
@@ -356,16 +357,23 @@ std::unordered_set<Node> ViewDiGraphAsUndirectedGraph::query_nodes(
   return this->g.query_nodes(node_query);
 }
 
-ViewUndirectedGraphAsDiGraph::ViewUndirectedGraphAsDiGraph(UndirectedGraphView const &g)
-  : g(g) { }
+ViewUndirectedGraphAsDiGraph::ViewUndirectedGraphAsDiGraph(
+    UndirectedGraphView const &g)
+    : g(g) {}
 
-std::unordered_set<DirectedEdge> ViewUndirectedGraphAsDiGraph::query_edges(DirectedEdgeQuery const &q) const {
-  std::unordered_set<UndirectedEdge> undirected_edges = intersection(g.query_edges({q.srcs}), g.query_edges({q.dsts}));
-  std::unordered_set<DirectedEdge> directed_edges = flatmap(undirected_edges, [](UndirectedEdge const &e) { return to_directed_edges(e); });
-  return filter(directed_edges, [&](DirectedEdge const &e) { return matches_edge(q, e); });
+std::unordered_set<DirectedEdge> ViewUndirectedGraphAsDiGraph::query_edges(
+    DirectedEdgeQuery const &q) const {
+  std::unordered_set<UndirectedEdge> undirected_edges =
+      intersection(g.query_edges({q.srcs}), g.query_edges({q.dsts}));
+  std::unordered_set<DirectedEdge> directed_edges =
+      flatmap(undirected_edges,
+              [](UndirectedEdge const &e) { return to_directed_edges(e); });
+  return filter(directed_edges,
+                [&](DirectedEdge const &e) { return matches_edge(q, e); });
 }
 
-std::unordered_set<Node> ViewUndirectedGraphAsDiGraph::query_nodes(NodeQuery const &q) const {
+std::unordered_set<Node>
+    ViewUndirectedGraphAsDiGraph::query_nodes(NodeQuery const &q) const {
   return g.query_nodes(q);
 }
 

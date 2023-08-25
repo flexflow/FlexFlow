@@ -7,6 +7,8 @@
 #include "required_core.h"
 #include "type_traits_core.h"
 #include "utils/exception.h"
+#include "utils/optional.h"
+#include "utils/type_traits.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -18,8 +20,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utils/type_traits.h"
-#include "utils/optional.h"
 
 namespace FlexFlow {
 
@@ -320,19 +320,26 @@ bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
 
 template <typename F, typename C, typename K, typename V>
 std::unordered_map<K, V> generate_map(C const &c, F const &f) {
-  static_assert(is_hashable<K>::value, "Key type should be hashable (but is not)");
+  static_assert(is_hashable<K>::value,
+                "Key type should be hashable (but is not)");
 
-  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> { return {k, f(k)}; });
-  return {transformed.cbegin(), transformed.cend() };
+  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> {
+    return {k, f(k)};
+  });
+  return {transformed.cbegin(), transformed.cend()};
 }
 
 template <typename F, typename C, typename K, typename V>
 bidict<K, V> generate_bidict(C const &c, F const &f) {
-  static_assert(is_hashable<K>::value, "Key type should be hashable (but is not)");
-  static_assert(is_hashable<V>::value, "Value type should be hashable (but is not)");
+  static_assert(is_hashable<K>::value,
+                "Key type should be hashable (but is not)");
+  static_assert(is_hashable<V>::value,
+                "Value type should be hashable (but is not)");
 
-  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> { return {k, f(k)}; });
-  return {transformed.cbegin(), transformed.cend() };
+  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> {
+    return {k, f(k)};
+  });
+  return {transformed.cbegin(), transformed.cend()};
 }
 
 template <typename K, typename V>
@@ -521,7 +528,7 @@ std::string transform(std::string const &s, F const &f) {
 
 template <typename F, typename Out>
 std::vector<Out> repeat(int n, F const &f) {
-  assert (n >= 0);
+  assert(n >= 0);
 
   std::vector<Out> result;
   for (int i = 0; i < n; i++) {

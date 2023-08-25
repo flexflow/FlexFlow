@@ -129,7 +129,7 @@ struct formatter<::FlexFlow::query_set<T>> : formatter<std::string> {
   }
 };
 
-}
+} // namespace fmt
 
 #include "utils/containers.h"
 

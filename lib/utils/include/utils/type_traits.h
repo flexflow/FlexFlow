@@ -101,9 +101,9 @@ struct is_hashable<
     void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
     : std::true_type {};
 
-#define CHECK_HASHABLE(...)                             \
-  static_assert(is_hashable<__VA_ARGS__>::value,                       \
-                #__VA_ARGS__ " should be hashable (but is not)");                    \
+#define CHECK_HASHABLE(...)                                                    \
+  static_assert(is_hashable<__VA_ARGS__>::value,                               \
+                #__VA_ARGS__ " should be hashable (but is not)");
 
 template <template <typename...> class Cond, typename... Ts>
 struct elements_satisfy_impl;

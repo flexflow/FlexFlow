@@ -1,9 +1,9 @@
 #include "test/utils/all.h"
 #include "test/utils/rapidcheck/visitable.h"
 #include "utils/containers.decl"
+#include "utils/containers.h"
 #include "utils/graph/hashmap_undirected_graph.h"
 #include "utils/graph/undirected.h"
-#include "utils/containers.h"
 
 /* namespace rc { */
 
@@ -22,16 +22,19 @@ using namespace rc;
 
 /* static_assert(supports_rc_arbitrary<Node>::value, ""); */
 /* static_assert(is_strong_typedef<Node>::value, ""); */
-/* static_assert(supports_rc_arbitrary<std::tuple<int, int, int>>::value, ""); */
-/* static_assert(supports_rc_arbitrary<visit_as_tuple_t<UndirectedEdge>>::value, ""); */
+/* static_assert(supports_rc_arbitrary<std::tuple<int, int, int>>::value, "");
+ */
+/* static_assert(supports_rc_arbitrary<visit_as_tuple_t<UndirectedEdge>>::value,
+ * ""); */
 /* static_assert(supports_rc_arbitrary<UndirectedEdge>::value, ""); */
 /* static_assert(is_fmtable<Node>::value, ""); */
 /* static_assert(is_fmtable<UndirectedEdge>::value, ""); */
 /* static_assert(is_streamable<UndirectedEdge>::value, ""); */
 /* static_assert(is_fmtable<UndirectedEdgeQuery>::value, ""); */
 
-
-TEST_CASE_TEMPLATE("UndirectedGraph implementations", T, HashmapUndirectedGraph) {
+TEST_CASE_TEMPLATE("UndirectedGraph implementations",
+                   T,
+                   HashmapUndirectedGraph) {
 
   rc::dc_check("Full", [&]() {
     UndirectedGraph g = UndirectedGraph::create<T>();
@@ -40,17 +43,19 @@ TEST_CASE_TEMPLATE("UndirectedGraph implementations", T, HashmapUndirectedGraph)
     int num_edges = *gen::inRange(0, num_nodes);
     std::vector<UndirectedEdge> e;
     if (num_nodes > 0) {
-      e = *gen::unique<std::vector<UndirectedEdge>>(num_edges, gen::construct<UndirectedEdge>(gen::elementOf(n), gen::elementOf(n)));
-    } 
+      e = *gen::unique<std::vector<UndirectedEdge>>(
+          num_edges,
+          gen::construct<UndirectedEdge>(gen::elementOf(n), gen::elementOf(n)));
+    }
     for (UndirectedEdge const &edge : e) {
       g.add_edge(edge);
     }
 
-   CHECK(g.query_nodes(NodeQuery::all()) == without_order(n));
+    CHECK(g.query_nodes(NodeQuery::all()) == without_order(n));
 
-   auto subset = *rc::subset_of(n);
-   CHECK(g.query_nodes(NodeQuery{query_set<Node>{subset}}) == subset);
+    auto subset = *rc::subset_of(n);
+    CHECK(g.query_nodes(NodeQuery{query_set<Node>{subset}}) == subset);
 
-   CHECK(g.query_edges(UndirectedEdgeQuery::all()) == without_order(e));
+    CHECK(g.query_edges(UndirectedEdgeQuery::all()) == without_order(e));
   });
 }

@@ -39,9 +39,7 @@ GraphView
   return GraphView(ptr);
 }
 
-Graph::Graph(cow_ptr_t<IGraph> _ptr)
-  : ptr(std::move(_ptr))
-{ 
+Graph::Graph(cow_ptr_t<IGraph> _ptr) : ptr(std::move(_ptr)) {
   assert(this->ptr.get() != nullptr);
 }
 

@@ -117,7 +117,7 @@ TEST_CASE("unique") {
 
 TEST_CASE("without_order") {
   std::vector<int> v = {1, 4, 6, 4, 6};
-  std::unordered_set<int> expected = { 1, 4, 6 };
+  std::unordered_set<int> expected = {1, 4, 6};
   CHECK(without_order(v) == expected);
 }
 
@@ -338,8 +338,9 @@ TEST_CASE("Testing sorted_by function") {
 }
 
 TEST_CASE("Testing compare_by function") {
-  std::unordered_set<int> s = {5, 2, 3, 4, 1};  
-  std::vector<int> result = sorted_by(s, compare_by<int>([](int i) { return (-i); }));
+  std::unordered_set<int> s = {5, 2, 3, 4, 1};
+  std::vector<int> result =
+      sorted_by(s, compare_by<int>([](int i) { return (-i); }));
   CHECK(result == std::vector<int>{5, 4, 3, 2, 1});
 }
 

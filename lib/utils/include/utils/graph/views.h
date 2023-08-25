@@ -267,7 +267,8 @@ struct ViewUndirectedGraphAsDiGraph : public IDiGraphView {
 public:
   explicit ViewUndirectedGraphAsDiGraph(UndirectedGraphView const &);
 
-  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<DirectedEdge>
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
 private:

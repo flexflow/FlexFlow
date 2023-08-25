@@ -74,7 +74,8 @@ struct required_inheritance_impl : public T {
   template <typename TT>
   required_inheritance_impl(
       TT const &tt,
-      typename std::enable_if<std::is_convertible<TT, T>::value && !std::is_same<TT, T>::value>::type * = 0)
+      typename std::enable_if<std::is_convertible<TT, T>::value &&
+                              !std::is_same<TT, T>::value>::type * = 0)
       : required_inheritance_impl(static_cast<T>(tt)) {}
 
   operator T() const;

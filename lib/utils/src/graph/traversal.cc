@@ -126,7 +126,7 @@ bfi::pointer bfi::operator->() {
 
 bfi &bfi::operator++() {
   Node current = this->operator*();
-  assert (this->seen.has_value());
+  assert(this->seen.has_value());
   this->seen.value().insert(current);
   this->q.pop();
 
@@ -152,13 +152,17 @@ bfi bfi::operator++(int) {
 }
 
 bool bfi::operator==(bfi const &other) const {
-  return this->q == other.q && (!this->seen.has_value() || !other.seen.has_value() || this->seen == other.seen) &&
+  return this->q == other.q &&
+         (!this->seen.has_value() || !other.seen.has_value() ||
+          this->seen == other.seen) &&
          is_ptr_equal(this->graph, other.graph);
 }
 
 bool bfi::operator!=(bfi const &other) const {
   return this->q != other.q ||
-         (this->seen.has_value() && other.seen.has_value() && this->seen != other.seen) && is_ptr_equal(this->graph, other.graph);
+         (this->seen.has_value() && other.seen.has_value() &&
+          this->seen != other.seen) &&
+             is_ptr_equal(this->graph, other.graph);
 }
 
 CheckedDFSView::CheckedDFSView(DiGraphView const &g,

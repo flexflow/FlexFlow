@@ -40,8 +40,7 @@ std::unordered_set<DirectedEdge>
   return this->ptr->query_edges(q);
 }
 
-DiGraph::DiGraph(cow_ptr_t<IDiGraph> _ptr)
-    : ptr(std::move(_ptr)) { }
+DiGraph::DiGraph(cow_ptr_t<IDiGraph> _ptr) : ptr(std::move(_ptr)) {}
 
 DiGraphView::operator GraphView() const {
   return GraphInternal::create_graphview(this->ptr);

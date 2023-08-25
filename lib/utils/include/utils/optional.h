@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 
-#include "utils/optional.decl"
-#include "utils/exception.h"
 #include "fmt.h"
+#include "utils/exception.h"
+#include "utils/optional.decl"
 
 namespace FlexFlow {
 
@@ -19,7 +19,7 @@ T const &unwrap(optional<T> const &o, F const &f) {
 
 template <typename T>
 T const &assert_unwrap(optional<T> const &o) {
-  assert (o.has_value());
+  assert(o.has_value());
   return o.value();
 }
 
@@ -42,7 +42,6 @@ struct formatter<::FlexFlow::optional<T>> : formatter<std::string> {
   }
 };
 
-}
-
+} // namespace fmt
 
 #endif

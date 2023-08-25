@@ -35,30 +35,22 @@ namespace rc {
  *         this implementation is based.
  */
 template <class testable>
-void dc_check(const char*          d,
-           testable&&           t,
-           bool                 v = false)
-{
+void dc_check(char const *d, testable &&t, bool v = false) {
   using namespace ::rc::detail;
   using namespace ::doctest::detail;
 
-  DOCTEST_SUBCASE(d)
-  {
+  DOCTEST_SUBCASE(d) {
     auto r = checkTestable(std::forward<testable>(t));
 
-    if (r.template is<SuccessResult>())
-    {
-      if (!r.template get<SuccessResult>().distribution.empty() || v)
-      {
+    if (r.template is<SuccessResult>()) {
+      if (!r.template get<SuccessResult>().distribution.empty() || v) {
         std::cout << "- " << d << std::endl;
         printResultMessage(r, std::cout);
         std::cout << std::endl;
       }
 
       REQUIRE(true);
-    }
-    else
-    {
+    } else {
       std::ostringstream o;
       printResultMessage(r, o << '\n');
       DOCTEST_INFO(o.str());
@@ -96,16 +88,11 @@ void dc_check(const char*          d,
  *         this implementation is based.
  */
 template <class testable>
-inline
-void dc_check(testable&&           t,
-           bool                 v = false
-           )
-{
+inline void dc_check(testable &&t, bool v = false) {
   check("", t, v);
 }
 
-#define RC_SUBCASE(NAME) \
-  rc
+#define RC_SUBCASE(NAME) rc
 
 } // namespace rc
 
