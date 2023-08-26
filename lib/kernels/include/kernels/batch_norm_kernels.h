@@ -8,29 +8,65 @@
 
 namespace FlexFlow {
 
-class BatchNormPerDeviceState : public PerDeviceOpState {
-public:
-  BatchNormPerDeviceState(FFHandler handle,
-                          std::unique_ptr<IAllocator> allocator,
-                          int output_n,
-                          int output_c,
-                          int output_h,
-                          int output_w,
-                          bool relu,
-                          bool profiling);
-  ~BatchNormPerDeviceState(void);
-
-  ffTensorDescriptor_t inputTensor, outputTensor, biasTensor;
+struct BatchNormPerDeviceState {
+  PerDeviceFFHandle handle;
+  Allocator allocator;
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffTensorDescriptor_t biasTensor;
   ffActivationDescriptor_t actiDesc;
   ffBatchNormMode_t mode;
-  float *runningMean, *runningVar, *saveMean, *saveVar;
-  bool relu;
-  bool profiling;
-  std::unique_ptr<IAllocator> allocator;
+  float *runningMean;
+  float *runningVar;
+  float *saveMean;
+  float *saveVar;
+  int output_n;
+  int output_c;
+  int output_h;
+  int output_w;
+  ProfilingSettings profiling;
+  req<bool> relu;
 };
+
+FF_VISITABLE_STRUCT_NO_EQ(BatchNormPerDeviceState,
+                          handle,
+                          allocator,
+                          inputTensor,
+                          outputTensor,
+                          biasTensor,
+                          actiDesc,
+                          mode,
+                          runningMean,
+                          runningVar,
+                          saveMean,
+                          saveVar,
+                          output_n,
+                          output_c,
+                          output_h,
+                          output_w,
+                          profiling,
+                          relu);
 
 namespace Kernels {
 namespace BatchNorm {
+
+BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                    Allocator allocator,
+                                    ffTensorDescriptor_t inputTensor,
+                                    ffTensorDescriptor_t outputTensor,
+                                    ffTensorDescriptor_t biasTensor,
+                                    ffActivationDescriptor_t actiDesc,
+                                    ffBatchNormMode_t mode,
+                                    float *runningMean,
+                                    float *runningVar,
+                                    float *saveMean,
+                                    float *saveVar,
+                                    int output_n,
+                                    int output_c,
+                                    int output_h,
+                                    int output_w,
+                                    ProfilingSettings profiling,
+                                    bool relu);
 
 void forward_kernel(ffStream_t stream,
                     BatchNormPerDeviceState *m,
