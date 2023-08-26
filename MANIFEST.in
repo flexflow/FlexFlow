@@ -1,0 +1,4 @@
+graft deps
+recursive-exclude . .git
+prune triton
+include python/flexflow/version.txt

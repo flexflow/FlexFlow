@@ -1,0 +1,72 @@
+name: "pip-deploy"
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: pip-deploy-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-n-publish:
+    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+    runs-on: ubuntu-20.04
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install pypa/build
+        run: >-
+          python3 -m
+          pip install
+          build
+          --user
+
+      - name: Build a source tarball
+        env:
+          DEPLOY_TO_TEST_PYPI: ${{ vars.DEPLOY_TO_TEST_PYPI }}
+        run: >-
+          python3 -m
+          build
+          --sdist
+          --outdir dist/
+          .
+
+      - name: Publish distribution 📦 to Test PyPI
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'true' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish distribution 📦 to PyPI
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Get package version
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
+        run: |
+          # when running setup.py outside of pip install, we need to manually install the modules that are imported in the script
+          pip install setuptools requests cmake-build-extension
+          version=$(python setup.py --version)
+          echo "PY_VERSION=${version}" >> $GITHUB_ENV
+            
+      - name: Create Git tag
+        if: ${{ vars.DEPLOY_TO_TEST_PYPI == 'false' }}
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.FLEXFLOW_TOKEN }}
+          custom_tag: ${{ env.PY_VERSION }}
+
