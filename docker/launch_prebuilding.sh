@@ -18,7 +18,7 @@ echo "building docker"
 ./build.sh flexflow
 
 # Cleanup any existing container with the same name
-docker rm prelegion
+docker rm prelegion || true
 
 # Create container to be able to copy data from the image
 docker create --name prelegion flexflow-"${gpu_backend}"-"${cuda_version}":"${python_version}"
