@@ -344,7 +344,7 @@ bool Reduce::measure_operator_cost(Simulator *sim,
     GenericTensorAccessorR output_grad_acc(
         outputs[0]->data_type, sub_output.get_domain(), output_grad_ptr);
 
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(m, output_grad_acc, input_grad_acc);
     };
   }

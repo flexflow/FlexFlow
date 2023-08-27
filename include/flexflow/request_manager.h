@@ -51,9 +51,15 @@ public:
 };
 
 struct Request {
+  enum Status {
+    PENDING = 101,
+    RUNNING = 102,
+    COMPLETED = 103,
+  };
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
   int initial_len;
+  Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
   std::vector<struct BeamTree> beam_trees;
@@ -206,8 +212,16 @@ private:
   InferenceResultFuture last_irf;
   TreeVerifyBatchConfigFuture last_tree_bcf;
   InferenceResultFuture last_tree_irf;
-  const std::map<ModelType, int> model_bos_map = {
-      {ModelType::LLAMA, 0}, {ModelType::OPT, 2}, {ModelType::LLAMA2, 1}};
+  const std::map<ModelType, int> model_bos_map = {{ModelType::LLAMA, 0},
+                                                  {ModelType::OPT, 2},
+                                                  {ModelType::LLAMA2, 1},
+                                                  {ModelType::FALCON, 11},
+                                                  {ModelType::STARCODER, 0}};
+  const std::map<ModelType, int> model_eos_map = {{ModelType::LLAMA, 1},
+                                                  {ModelType::OPT, 2},
+                                                  {ModelType::LLAMA2, 2},
+                                                  {ModelType::FALCON, 11},
+                                                  {ModelType::STARCODER, 0}};
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,

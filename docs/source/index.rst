@@ -12,6 +12,7 @@ Welcome to FlexFlow's documentation!
    welcome
    installation
    docker
+   multinode
 
 .. toctree::
    :caption: FlexFlow Serve

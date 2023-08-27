@@ -1181,7 +1181,7 @@ bool Linear::measure_operator_cost(Simulator *sim,
       cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
       return true;
     }
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(m,
                               input_ptr,
                               input_grad_ptr,

@@ -135,6 +135,7 @@ RequestManager::RequestGuid
 
   // Add a new request
   Request request;
+  request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
 
@@ -194,6 +195,7 @@ RequestManager::RequestGuid
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
+  request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
   if (this->model_bos_map.find(this->model_type) != this->model_bos_map.end()) {
@@ -253,7 +255,8 @@ bool RequestManager::is_request_completed(RequestGuid const &guid) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   assert(all_requests.find(guid) != all_requests.end());
   Request const &request = all_requests[guid];
-  return request.tokens.size() >= request.max_sequence_length;
+  // return request.tokens.size() >= request.max_sequence_length;
+  return request.status == Request::COMPLETED;
 }
 
 GenerationResult
@@ -326,9 +329,23 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     int processed_tokens = old_bc.requestsInfo[i].token_start_offset +
                            old_bc.requestsInfo[i].num_tokens_in_batch;
     assert(processed_tokens < request.tokens.size());
-    if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length
-        // || ir.results[t] == 0 TODO: replace this with <EOS>
-    ) {
+    bool request_completed = false;
+    printf("model_type = %d\n", this->model_type);
+    if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
+      request_completed = true;
+    } else if (this->model_eos_map.find(this->model_type) !=
+               this->model_eos_map.end()) {
+      TokenId eos_token_id = this->model_eos_map.at(this->model_type);
+      printf("request_tokens.back() == %d eos_token_id = %d\n",
+             request.tokens.back(),
+             eos_token_id);
+      // Encounter EOS token id
+      if (request.tokens.back() == eos_token_id) {
+        request_completed = true;
+      }
+    }
+    if (request_completed) {
+      request.status = Request::COMPLETED;
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
@@ -352,13 +369,12 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           profile_info.finish_time - profile_info.start_time;
       profiling_requests[request.guid] = profile_info;
       log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
-                        "finish(%.1lf) latency(%.1lf) acc_latency(%.1lf)",
+                        "finish(%.1lf) latency(%.1lf)",
                         request.guid,
                         profile_info.decoding_steps,
                         profile_info.start_time,
                         profile_info.finish_time,
-                        profile_info.finish_time - profile_info.start_time,
-                        total_request_run_time);
+                        profile_info.finish_time - profile_info.start_time);
       // Write output to file if needed:
       if (!output_filepath.empty()) {
         std::ofstream outputFile(output_filepath);
@@ -715,7 +731,7 @@ BeamSearchBatchConfig
           request.tokens.push_back(verified_tokens[j].first);
         }
       }
-
+      request.status = Request::COMPLETED;
       log_req_mgr.print("[Done] guid(%zu) with final length(%zu)",
                         request.guid,
                         request.tokens.size());
@@ -736,13 +752,12 @@ BeamSearchBatchConfig
           profile_info.finish_time - profile_info.start_time;
       profiling_requests[request.guid] = profile_info;
       log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
-                        "finish(%.1lf) latency(%.1lf) acc_latency(%.1lf)",
+                        "finish(%.1lf) latency(%.1lf)",
                         request.guid,
                         profile_info.decoding_steps,
                         profile_info.start_time,
                         profile_info.finish_time,
-                        profile_info.finish_time - profile_info.start_time,
-                        total_request_run_time);
+                        profile_info.finish_time - profile_info.start_time);
 
       // Write output to file if needed:
       if (!output_filepath.empty()) {
@@ -1639,7 +1654,7 @@ GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
     runtime->end_trace(ctx, 12346 /*trace_id*/);
   }
   GenerationResult gr = get_generation_result(guid);
-  assert(gr.output_tokens.size() >= max_seq_length);
+  // assert(gr.output_tokens.size() >= max_seq_length);
   return gr;
 }
 
@@ -1714,7 +1729,7 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
   }
 
   GenerationResult gr = get_generation_result(guid);
-  assert(gr.output_tokens.size() >= max_seq_length);
+  // assert(gr.output_tokens.size() >= max_seq_length);
   return gr;
 }
 
