@@ -15,10 +15,19 @@ COPY . .
 ARG BUILD_CONFIGS
 ARG N_BUILD_CORES
 
+# Create install directory if needed
+RUN for pair in $BUILD_CONFIGS; do \
+        key=${pair%%=*}; \
+        value=${pair#*=}; \
+        if [ "$key" = "INSTALL_DIR" ] && [ -n "$value" ]; then \
+            mkdir -p "$value"; \
+        fi; \
+    done
+
 # Build and install C++ and Python versions of FlexFlow
 RUN mkdir -p build && cd build && \
     eval "$BUILD_CONFIGS" ../config/config.linux && \
-    make -j $N_BUILD_CORES && \
+    MAKEFLAGS=$N_BUILD_CORES make -j $N_BUILD_CORES && \
     eval "$BUILD_CONFIGS" ../config/config.linux && \
     make install && \
     ldconfig
