@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 MultiDiGraph
-    GraphInternal::create_multidigraph(std::shared_ptr<IMultiDiGraph> ptr) {
+    GraphInternal::create_multidigraph(cow_ptr_t<IMultiDiGraph> ptr) {
   return {std::move(ptr)};
 }
 
@@ -15,7 +15,15 @@ MultiDiGraphView GraphInternal::create_multidigraphview(
   return {std::move(ptr)};
 }
 
-DiGraph GraphInternal::create_digraph(std::shared_ptr<IDiGraph> ptr) {
+OpenMultiDiGraphView GraphInternal::create_open_multidigraph_view(std::shared_ptr<IOpenMultiDiGraphView const> ptr) {
+  return {std::move(ptr)};
+}
+
+OpenMultiDiGraph GraphInternal::create_open_multidigraph(cow_ptr_t<IOpenMultiDiGraph> ptr) {
+  return {std::move(ptr)};
+}
+
+DiGraph GraphInternal::create_digraph(cow_ptr_t<IDiGraph> ptr) {
   return {std::move(ptr)};
 }
 
@@ -25,7 +33,7 @@ DiGraphView
 }
 
 UndirectedGraph GraphInternal::create_undirectedgraph(
-    std::shared_ptr<IUndirectedGraph> ptr) {
+    cow_ptr_t<IUndirectedGraph> ptr) {
   return {std::move(ptr)};
 }
 
@@ -34,7 +42,7 @@ UndirectedGraphView GraphInternal::create_undirectedgraphview(
   return {std::move(ptr)};
 }
 
-Graph GraphInternal::create_graph(std::shared_ptr<IGraph> ptr) {
+Graph GraphInternal::create_graph(cow_ptr_t<IGraph> ptr) {
   return {std::move(ptr)};
 }
 

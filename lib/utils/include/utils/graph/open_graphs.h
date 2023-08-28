@@ -4,7 +4,7 @@
 #include "multidigraph.h"
 #include "node.h"
 #include "open_graph_interfaces.h"
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
 
@@ -36,6 +36,9 @@ public:
 private:
   OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr)
       : ptr(ptr) {}
+
+  friend struct GraphInternal;
+
   std::shared_ptr<IOpenMultiDiGraphView const> ptr;
 };
 
@@ -64,11 +67,14 @@ public:
   static typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value,
                                  OpenMultiDiGraph>::type
       create() {
-    return OpenMultiDiGraph(make_unique<T>());
+    return make_cow_ptr<T>();
   }
 
 private:
-  OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> ptr);
+  OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> ptr);
+
+  friend struct GraphInternal;
+private:
   cow_ptr_t<IOpenMultiDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OpenMultiDiGraph);

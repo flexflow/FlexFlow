@@ -61,7 +61,7 @@ std::unordered_set<OpenMultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
-OpenMultiDiGraph::OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> _ptr)
+OpenMultiDiGraph::OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UpwardOpenMultiDiGraph &
