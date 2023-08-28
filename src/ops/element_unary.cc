@@ -741,7 +741,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(m,
                               input_ptr,
                               input_grad_ptr,

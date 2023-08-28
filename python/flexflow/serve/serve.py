@@ -212,7 +212,7 @@ class LLM:
                 shutil.rmtree(self.tokenizer_path)
         if not os.path.exists(self.tokenizer_path):
             print(f"Creating directory {self.tokenizer_path} (if it doesn't exist)...")
-        os.makedirs(self.tokenizer_path, exist_ok=True)
+            os.makedirs(self.tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface
         ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights=False)
@@ -358,7 +358,7 @@ class LLM:
 
         # Create request manager
         self.rm = RequestManager()
-        self.rm.register_tokenizer(self.model_type, self.tokenizer_path)
+        self.rm.register_tokenizer(self.model_type, self.hf_config.bos_token_id, self.hf_config.eos_token_id, self.tokenizer_path)
         self.rm.register_output_filepath(self.output_file)
 
         self.im.init_operators_inference(self.model.ffmodel)

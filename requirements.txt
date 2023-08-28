@@ -7,9 +7,7 @@ pybind11
 cmake-build-extension
 ninja
 requests
-qualname
 regex
-requests
 torch>=1.13.1
 torchaudio>=0.13.1
 torchvision>=0.14.1

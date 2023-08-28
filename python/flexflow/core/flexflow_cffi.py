@@ -3231,10 +3231,10 @@ class RequestManager(object):
     self.handle = ffc.flexflow_request_manager_get_request_manager()
     #self._handle = ffi.gc(self.handle, ffc.flexflow_request_manager_destroy)
 
-  def register_tokenizer(self, model_type, tokenizer_filepath):
+  def register_tokenizer(self, model_type, bos_token_id, eos_token_id, tokenizer_filepath):
     c_model_type = enum_to_int(ModelType, model_type)
     c_tokenizer_filepath = get_c_name(tokenizer_filepath)
-    return ffc.flexflow_request_manager_register_tokenizer(self.handle, c_model_type, c_tokenizer_filepath)
+    return ffc.flexflow_request_manager_register_tokenizer(self.handle, c_model_type, bos_token_id, eos_token_id, c_tokenizer_filepath)
   
   def register_output_filepath(self, output_filepath):
     c_output_filepath = get_c_name(output_filepath)
