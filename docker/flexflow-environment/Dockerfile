@@ -16,15 +16,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
         apt-get update -y && \
         apt-get upgrade -y libstdc++6
 
-# Install Python3 with Miniconda corresponding version  
+# Install Python3 with Miniconda
 RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-        mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
-        chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
-        bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-        rm ~/Miniconda3-latest-Linux-x86_64.sh && \
-        /opt/conda/bin/conda upgrade --all && \
-        /opt/conda/bin/conda install conda-build conda-verify && \
-        /opt/conda/bin/conda clean -ya; \
+    mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
+    chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
+    bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
+    rm ~/Miniconda3-latest-Linux-x86_64.sh && \
+    /opt/conda/bin/conda upgrade --all && \
+    /opt/conda/bin/conda install conda-build conda-verify && \
+    /opt/conda/bin/conda clean -ya
+
 # Optionally install HIP dependencies
 # Note that amd's docs say to also install the `hip-runtime-nvidia` package. This
 # package attempts to re-install cuda even though cuda is already installed
