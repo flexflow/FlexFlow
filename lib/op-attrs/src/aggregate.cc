@@ -21,6 +21,18 @@ ParallelTensorShape
   return output_shape;
 }
 
+TensorShape
+    get_output_shape(AggregateAttrs const &attrs,
+                     TensorShape const &gate_preds,
+                     TensorShape const &gate_assign,
+                     TensorShape const &true_gate_assign,
+                     TensorShape const &full_gate_gradients,
+                     std::vector<TensorShape> const &exp_preds) {
+  TensorShape output_shape = exp_preds.at(0);
+  return output_shape;
+}
+
+
 bool is_valid(AggregateAttrs const &attrs,
               ParallelTensorShape const &gate_preds,
               ParallelTensorShape const &gate_assign,
