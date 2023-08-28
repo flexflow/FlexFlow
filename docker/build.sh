@@ -1,6 +1,5 @@
 #! /usr/bin/env bash
 set -euo pipefail
-set -x
 
 # Usage: ./build.sh <docker_image_name>
 # Optional environment variables: FF_GPU_BACKEND, cuda_version
