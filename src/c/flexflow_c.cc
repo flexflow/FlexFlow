@@ -2388,12 +2388,15 @@ flexflow_request_manager_t flexflow_request_manager_get_request_manager(void) {
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,
+    int bos_token_id,
+    int eos_token_id,
     char const *tokenizer_filepath) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
   assert(tokenizer_filepath != nullptr &&
          "Cannot convert nullptr char * to std::string");
   std::string const tokenizer_filepath_str(tokenizer_filepath);
-  handle->register_tokenizer(model_type, tokenizer_filepath_str);
+  handle->register_tokenizer(
+      model_type, bos_token_id, eos_token_id, tokenizer_filepath_str);
   DEBUG_PRINT(
       "[RequestManager] register tokenizer %p %s", handle, tokenizer_filepath);
 }

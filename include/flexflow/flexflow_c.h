@@ -923,6 +923,8 @@ flexflow_request_manager_t flexflow_request_manager_get_request_manager(void);
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,
+    int bos_token_id,
+    int eos_token_id,
     char const *tokenizer_filepath);
 
 void flexflow_request_manager_register_output_filepath(
