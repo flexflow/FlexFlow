@@ -7,6 +7,39 @@ macro(ff_parse_args)
   cmake_parse_arguments(${FF_PARSE_ARGS_PREFIX} "${FF_PARSE_ARGS_FLAGS}" "${FF_PARSE_ARGS_ARGS}" "${FF_PARSE_ARGS_VARIADIC_ARGS}" ${FF_PARSE_ARGS_PARSE})
 endmacro()
 
+function(define_ff_vars target)
+  target_compile_definitions(${target} PRIVATE 
+    MAX_OPNAME=${FF_MAX_OPNAME}
+    MAX_NUM_OUTPUTS=${FF_MAX_NUM_OUTPUTS}
+    MAX_NUM_INPUTS=${FF_MAX_NUM_INPUTS}
+    MAX_NUM_WEIGHTS=${FF_MAX_NUM_WEIGHTS}
+    MAX_NUM_FUSED_OPERATORS=${FF_MAX_NUM_FUSED_OPERATORS}
+    MAX_NUM_FUSED_TENSORS=${FF_MAX_NUM_FUSED_TENSORS}
+    MAX_NUM_WORKERS=${FF_MAX_NUM_WORKERS}
+    FF_USE_NCCL=${FF_USE_NCCL}
+    MAX_TENSOR_DIM=${FF_MAX_DIM}
+    MAX_NUM_TASK_REGIONS=${FF_MAX_NUM_TASK_REGIONS}
+    MAX_NUM_TASK_ARGUMENTS=${FF_MAX_NUM_TASK_ARGUMENTS}
+    )
+
+  if (FF_GPU_BACKEND STREQUAL "cuda")
+    target_compile_definitions(${target} PRIVATE FF_USE_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
+    target_compile_definitions(${target} PRIVATE FF_USE_HIP_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
+    target_compile_definitions(${target} PRIVATE FF_USE_HIP_ROCM)
+  endif()
+endfunction()
+
+function(ff_set_cxx_properties target)
+  set_target_properties(${target}
+    PROPERTIES
+      CXX_STANDARD 17
+      CXX_STANDARD_REQUIRED YES
+      CXX_EXTENSIONS NO
+  )
+endfunction()
+
 function(ff_add_library)
   ff_parse_args(
     PREFIX 
