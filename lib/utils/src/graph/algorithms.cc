@@ -53,6 +53,10 @@ std::unordered_set<Node> get_nodes(GraphView const &g) {
   return g.query_nodes(NodeQuery::all());
 }
 
+std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const &g) {
+  return flatmap(get_edges(g), [](MultiDiEdge const &e) { return std::unordered_set<NodePort>{e.srcIdx, e.dstIdx}; });
+}
+
 void remove_node(MultiDiGraph &g, Node const &n) {
   for (MultiDiEdge const &e : get_incoming_edges(g, n)) {
     g.remove_edge(e);
@@ -332,6 +336,10 @@ std::unordered_set<Node> get_sources(DiGraphView const &g) {
   return filter(get_nodes(g), [&](Node const &n) {
     return get_incoming_edges(g, n).size() == 0;
   });
+}
+
+std::unordered_set<Node> get_sources(MultiDiGraphView const &g) {
+  return get_sources(as_digraph(g));
 }
 
 optional<bool> is_acyclic(DiGraphView const &g) {

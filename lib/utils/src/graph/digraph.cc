@@ -1,5 +1,5 @@
 #include "utils/graph/digraph.h"
-#include "internal.h"
+#include "utils/graph/internal.h"
 #include "utils/containers.h"
 #include "utils/graph/digraph_interfaces.h"
 

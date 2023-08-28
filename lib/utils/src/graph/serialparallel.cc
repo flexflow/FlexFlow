@@ -236,7 +236,7 @@ std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
   for (Node const &node : get_nodes(MultiDiGraphView(ext))) {
     node_map.emplace(node, g.add_node());
   }
-  for (NodePort const &node_port : get_node_ports(ext)) {
+  for (NodePort const &node_port : get_present_node_ports(ext)) {
     node_port_map.emplace(node_port, g.add_node_port());
   }
   for (MultiDiEdge const &edge : get_edges(ext)) {
