@@ -3,7 +3,9 @@
 
 namespace FlexFlow {
 
-struct GraphAttributeValueOp {
+struct GraphAttributeValueOpFunctor {
+  AttrOpType op;
+
   template <typename T>
   GraphAttributeValue operator()(T const &lhs, T const &rhs) {
     switch (op) {
@@ -23,13 +25,12 @@ struct GraphAttributeValueOp {
         mk_runtime_error("Unknown attribute operator type");
     }
   }
-  AttrOpType op;
 };
 
 GraphAttributeValue graph_attribute_value_op(AttrOpType op,
                                              GraphAttributeValue const &lhs,
                                              GraphAttributeValue const &rhs) {
-  visit(GraphAttributeValueOp{op}, lhs, rhs);
+  visit(GraphAttributeValueOpFunctor{op}, lhs, rhs);
 }
 
 struct EvaluateGraphAttributeExprLeaf {
@@ -53,12 +54,12 @@ struct EvaluateGraphAttributeExprLeaf {
   }
 
   ParallelComputationGraph const &graph;
-  DiGraphPatternMatch const &match;
+  MultiDiGraphPatternMatch const &match;
 };
 
 GraphAttributeValue
     evaluate_graph_attribute_expr_leaf(ParallelComputationGraph const &g,
-                                       DiGraphPatternMatch const &match,
+                                       MultiDiGraphPatternMatch const &match,
                                        GraphAttributeExprLeaf const &expr) {
   return visit(EvaluateGraphAttributeExprLeaf{g, match}, expr);
 }
@@ -82,36 +83,37 @@ struct EvaluateGraphAttributeExpr {
   }
 
   EvaluateGraphAttributeExpr(ParallelComputationGraph const &graph,
-                             DiGraphPatternMatch const &match)
+                             MultiDiGraphPatternMatch const &match)
       : graph(graph), match(match) {}
 
   ParallelComputationGraph const &graph;
-  DiGraphPatternMatch const &match;
+  MultiDiGraphPatternMatch const &match;
 };
 
 GraphAttributeValue
     evaluate_graph_attribute_expr(ParallelComputationGraph const &graph,
-                                  DiGraphPatternMatch const &match,
+                                  MultiDiGraphPatternMatch const &match,
                                   GraphAttributeExpr const &expr) {
   return visit(EvaluateGraphAttributeExpr(graph, match), expr);
 }
 
 Operator get_operator_attrs(ParallelComputationGraph const &graph,
-                            DiGraphPatternMatch const &match,
+                            MultiDiGraphPatternMatch const &match,
                             OperatorAttrAssignment const &assignment) {
   NOT_IMPLEMENTED();
 }
 
 ParallelTensor
     get_parallel_tensor_attrs(ParallelComputationGraph const &graph,
-                              DiGraphPatternMatch const &match,
+                              MultiDiGraphPatternMatch const &match,
                               ParallelTensorAttrAssignment const &assignment) {
   NOT_IMPLEMENTED();
 }
 
-ParallelComputationGraph apply_substitution(ParallelComputationGraph const &pcg,
-                                            Substitution const &substitution,
-                                            DiGraphPatternMatch const &match) {
+ParallelComputationGraph
+    apply_substitution(ParallelComputationGraph const &pcg,
+                       Substitution const &substitution,
+                       MultiDiGraphPatternMatch const &match) {
   ParallelComputationGraph new_pcg =
       ParallelComputationGraph::create<UnorderedOutputLabelledMultiDiGraph>();
   bidict<Node, Node> node_mapping; // Refactor it with global nodes
@@ -128,13 +130,13 @@ ParallelComputationGraph apply_substitution(ParallelComputationGraph const &pcg,
                                    new_pcg.add_node_port()});
     }
   }
-  for (Node const &output_node : get_nodes(substitution.output_graph)) {
+  for (Node const &output_node : get_nodes(substitution.output_graph_expr)) {
     Node new_node = new_pcg.add_node(get_operator_attrs(
-        pcg, match, substitution.output_graph.at(output_node)));
+        pcg, match, substitution.output_graph_expr.at(output_node)));
     node_mapping.equate(output_node, new_node);
   }
   for (OpenMultiDiEdge const &output_edge :
-       get_edges(substitution.output_graph)) {
+       get_edges(substitution.output_graph_expr)) {
     if (holds_alternative<InputMultiDiEdge>(output_edge)) {
       MultiDiEdge origin_edge = match.edgeAssignment.at_r(
           substitution.input_mapping.at_r(output_edge));
@@ -157,11 +159,12 @@ ParallelComputationGraph apply_substitution(ParallelComputationGraph const &pcg,
                                    new_pcg.add_node_port()});
     }
   }
-  for (MultiDiOutput const &output : get_outputs(substitution.output_graph)) {
+  for (MultiDiOutput const &output :
+       get_outputs(substitution.output_graph_expr)) {
     new_pcg.add_output(
         MultiDiOutput{node_mapping.at_l(output.src), new_pcg.add_node_port()},
         get_parallel_tensor_attrs(
-            pcg, match, substitution.output_graph.at(output)));
+            pcg, match, substitution.output_graph_expr.at(output)));
   }
 
   return new_pcg;

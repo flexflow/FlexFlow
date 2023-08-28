@@ -186,7 +186,7 @@ optional<bool> satisfies(ParallelTensor const &params,
 
 bool assignment_satisfies(ParallelComputationGraph const &pcg,
                           GraphPattern const &pattern,
-                          DiGraphPatternMatch const &patternMatch) {
+                          MultiDiGraphPatternMatch const &patternMatch) {
   bool result = true;
   for (auto const &kv : patternMatch.nodeAssignment) {
     auto patternNode = kv.first;

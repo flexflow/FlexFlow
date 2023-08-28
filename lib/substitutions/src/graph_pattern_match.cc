@@ -4,9 +4,9 @@
 
 namespace FlexFlow {
 
-// DiGraphPatternMatch narrow_match(DiGraphPatternMatch const &match,
+// MultiDiGraphPatternMatch narrow_match(MultiDiGraphPatternMatch const &match,
 //                                  OpenMultiDiGraphView const &pattern) {
-//   DiGraphPatternMatch result;
+//   MultiDiGraphPatternMatch result;
 //   std::unordered_set<Node> nodes = get_nodes(pattern);
 //   for (auto const &kv : match.nodeAssignment) {
 //     Node pattern_node = kv.first;
@@ -47,7 +47,7 @@ std::pair<OpenMultiDiGraphView, OpenMultiDiGraphView>
 Given a match and a pattern split, gets the submatches in subpatterns.
 */
 MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
-                       DiGraphPatternMatch const &match,
+                       MultiDiGraphPatternMatch const &match,
                        GraphSplit const &split) {
   auto prefix = split.first;
   auto postfix = split.second;
@@ -99,7 +99,7 @@ bool is_singleton_pattern(OpenMultiDiGraphView const &pattern) {
 template <typename F>
 bool pattern_matches(OpenMultiDiGraphView const &pattern,
                      MultiDiGraphView const &graph,
-                     DiGraphPatternMatch const &match,
+                     MultiDiGraphPatternMatch const &match,
                      F const &additional_criterion) {
   if (is_singleton_pattern(pattern)) {
     Node pattern_node = get_only(get_nodes(pattern));
@@ -149,7 +149,7 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
                          additional_criterion);
 }
 
-optional<DiGraphPatternMatch>
+optional<MultiDiGraphPatternMatch>
     get_candidate_singleton_match(OpenMultiDiGraphView const &pattern,
                                   MultiDiGraphView const &graph,
                                   Node const &graph_node) {
@@ -157,7 +157,7 @@ optional<DiGraphPatternMatch>
 
   Node pattern_node = get_only(get_nodes(pattern));
 
-  DiGraphPatternMatch match;
+  MultiDiGraphPatternMatch match;
   match.nodeAssignment.equate(pattern_node, graph_node);
 
   auto incoming = get_incoming_edges_by_idx(graph, graph_node);
@@ -185,12 +185,12 @@ optional<DiGraphPatternMatch>
   return match;
 }
 
-optional<DiGraphPatternMatch> unsplit_matches(
-    DiGraphPatternMatch const &prefix,
-    DiGraphPatternMatch const &postfix,
+optional<MultiDiGraphPatternMatch> unsplit_matches(
+    MultiDiGraphPatternMatch const &prefix,
+    MultiDiGraphPatternMatch const &postfix,
     bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>> const
         &edge_splits) {
-  DiGraphPatternMatch result;
+  MultiDiGraphPatternMatch result;
   std::unordered_set<OpenMultiDiEdge> handled;
   for (auto const &kv : edge_splits) {
     MultiDiEdge standard_edge = kv.first;
@@ -222,14 +222,14 @@ optional<DiGraphPatternMatch> unsplit_matches(
 }
 
 template <typename F>
-std::unordered_set<DiGraphPatternMatch>
+std::unordered_set<MultiDiGraphPatternMatch>
     find_pattern_matches(OpenMultiDiGraphView const &pattern,
                          MultiDiGraphView const &graph,
                          F const &additional_criterion) {
-  std::unordered_set<DiGraphPatternMatch> matches;
+  std::unordered_set<MultiDiGraphPatternMatch> matches;
   if (is_singleton_pattern(pattern)) {
     for (Node const &graph_node : get_nodes(graph)) {
-      optional<DiGraphPatternMatch> candidate =
+      optional<MultiDiGraphPatternMatch> candidate =
           get_candidate_singleton_match(pattern, graph, graph_node);
       if (candidate.has_value() ||
           pattern_matches<F>(pattern, graph, candidate.value())) {
@@ -244,9 +244,9 @@ std::unordered_set<DiGraphPatternMatch>
     auto postfix_matches =
         find_pattern_matches(subpatterns.first, graph, additional_criterion);
     auto edge_splits = get_edge_splits(pattern, split);
-    for (DiGraphPatternMatch const &prefix_match : prefix_matches) {
-      for (DiGraphPatternMatch const &postfix_match : postfix_matches) {
-        optional<DiGraphPatternMatch> unsplit =
+    for (MultiDiGraphPatternMatch const &prefix_match : prefix_matches) {
+      for (MultiDiGraphPatternMatch const &postfix_match : postfix_matches) {
+        optional<MultiDiGraphPatternMatch> unsplit =
             unsplit_matches(prefix_match, postfix_match, edge_splits);
         if (unsplit.has_value()) {
           matches.insert(unsplit.value());

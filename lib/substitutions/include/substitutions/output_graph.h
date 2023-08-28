@@ -46,16 +46,16 @@ using GraphAttributeExpr =
 // NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
 // define the assignment for each operator type.
 struct OperatorAttrAssignment {
-  std::vector<std::pair<OperatorAttributeKey, GraphAttributeExpr>> assignment;
+  std::unordered_map<OperatorAttributeKey, GraphAttributeExpr> assignment;
 };
 
 struct ParallelTensorAttrAssignment {
-  std::vector<std::pair<TensorAttributeKey, GraphAttributeExpr>> assignment;
+  std::unordered_map<TensorAttributeKey, GraphAttributeExpr> assignment;
 };
 
-struct OutputGraph
+struct OutputGraphExpr
     : public strong_typedef<
-          OutputGraph,
+          OutputGraphExpr,
           OutputLabelledOpenMultiDiGraph<OperatorAttrAssignment,
                                          ParallelTensorAttrAssignment>> {
   using strong_typedef::strong_typedef;

@@ -8,15 +8,6 @@ namespace FlexFlow {
 
 enum class TensorDimensionAttribute { SIZE, DEGREE };
 
-struct TensorNumDimensionsConstraint {
-  int value;
-};
-
-struct TensorDimensionAttributeConstraint {
-  TensorDimensionAttribute attribute;
-  int index;
-};
-
 enum class TensorAttributeKey { DIM_SIZES, DIM_DEGREES };
 
 using TensorAttributeValue = variant<int, std::vector<int>>;

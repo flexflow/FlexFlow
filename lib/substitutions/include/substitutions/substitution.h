@@ -7,15 +7,20 @@
 namespace FlexFlow {
 
 struct Substitution {
+  using InputPatternInput = InputMultiDiEdge;
+  using InputPatternOutput = OutputMultiDiEdge;
+  using OutputPatternInput = InputMultiDiEdge;
+  using OutputPatternOutput = OutputMultiDiEdge;
+
   GraphPattern input_graph;
-  OutputGraph output_graph;
-  bidict<InputMultiDiEdge, InputMultiDiEdge> input_mapping;
-  bidict<OutputMultiDiEdge, OutputMultiDiEdge> output_mapping;
+  OutputGraphExpr output_graph_expr;
+  bidict<InputPatternInput, OutputPatternInput> input_mapping;
+  bidict<InputPatternOutput, OutputPatternOutput> output_mapping;
 };
 
 ParallelComputationGraph apply_substitution(ParallelComputationGraph const &,
                                             Substitution const &,
-                                            DiGraphPatternMatch const &);
+                                            MultiDiGraphPatternMatch const &);
 
 } // namespace FlexFlow
 

@@ -6,21 +6,32 @@
 
 namespace FlexFlow {
 
-struct DiGraphPatternMatch {
-  bidict<Node, Node> nodeAssignment;
-  bidict<OpenMultiDiEdge, MultiDiEdge> edgeAssignment;
+struct MultiDiGraphPatternMatch {
+  using PatternNode = Node;
+  using PCGNode = Node;
+  using PatternEdge = OpenMultiDiEdge;
+  using PCGEdge = MultiDiEdge;
+
+  bidict<PatternNode, PCGNode> nodeAssignment;
+  bidict<PatternEdge, PCGEdge> edgeAssignment;
 };
 
 struct MatchSplit {
-  DiGraphPatternMatch prefix_submatch;
-  DiGraphPatternMatch postfix_submatch;
+  MultiDiGraphPatternMatch prefix_submatch;
+  MultiDiGraphPatternMatch postfix_submatch;
 };
 
 template <typename F>
 bool pattern_matches(OpenMultiDiGraphView const &,
                      MultiDiGraphView const &,
-                     DiGraphPatternMatch const &,
+                     MultiDiGraphPatternMatch const &,
                      F const &additional_criterion);
+
+template <typename F>
+std::unordered_set<MultiDiGraphPatternMatch>
+    find_pattern_matches(OpenMultiDiGraphView const &pattern,
+                         MultiDiGraphView const &graph,
+                         F const &additional_criterion);
 
 } // namespace FlexFlow
 

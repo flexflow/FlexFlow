@@ -22,7 +22,7 @@ bool is_singleton_pattern(OpenMultiDiGraphView const &);
 
 bool assignment_satisfies(ParallelComputationGraph const &,
                           GraphPattern const &,
-                          DiGraphPatternMatch const &);
+                          MultiDiGraphPatternMatch const &);
 
 } // namespace FlexFlow
 
