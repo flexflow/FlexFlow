@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -euo pipefail
 
-# Parse input params
+# Parse input params (assume python_version format is either "latest" or "3.11")
 python_version=${1:-latest}
 cuda_version=${2:-11.8}
 gpu_backend=${3:-cuda}
@@ -12,7 +12,11 @@ cd "${BASH_SOURCE[0]%/*}"
 export FF_CUDA_ARCH=all
 export BUILD_LEGION_ONLY=ON
 export INSTALL_DIR="/usr/legion"
+if [[ $python_version != "latest" ]]; then
+    python_version="${python_version//./}"
+fi
 export python_version="${python_version}"
+export FF_GPU_BACKEND="${gpu_backend}"
 
 # Build Docker Flexflow Container
 echo "building docker"
@@ -21,8 +25,14 @@ echo "building docker"
 # Cleanup any existing container with the same name
 docker rm prelegion || true
 
+if [[ $gpu_backend != "cuda" ]]; then
+    cuda_version=""
+else
+    cuda_version="-${cuda_version}"
+fi
+
 # Create container to be able to copy data from the image
-docker create --name prelegion flexflow-"${gpu_backend}"-"${cuda_version}":"${python_version}"
+docker create --name prelegion "flexflow-${gpu_backend}${cuda_version}"
 
 # Copy legion libraries to host
 echo "extract legion library assets"
@@ -33,13 +43,12 @@ docker cp prelegion:$INSTALL_DIR ../prebuild_legion/tmp
 
 # Create the tarball file
 cd ../prebuild_legion/tmp
-export LEGION_TARBALL="legion_ubuntu-20.04_${gpu_backend}_${python_version}.tar.gz"
+export LEGION_TARBALL="legion_ubuntu-20.04${cuda_version}_${gpu_backend}_${python_version}.tar.gz"
 echo "Creating archive $LEGION_TARBALL"
 tar -zcvf "../$LEGION_TARBALL" ./
 cd ..
 echo "Checking the size of the Legion tarball..."
 du -h "$LEGION_TARBALL"
-
 
 # Cleanup
 rm -rf tmp/*
