@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 project(FlexFlow)
+
+add_definitions(-w)
+
 
 include(ExternalProject)
 
@@ -216,10 +220,10 @@ message(STATUS "CPU architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(ROCM_PATH "/opt/rocm" CACHE STRING "Default ROCM installation directory.")
+  set(GPU_TARGETS "gfx1036;gfx1100" CACHE STRING "The GPU TARGETs")
 endif()
 
 # ZLIB
-include(zlib)
 
 # CUDA
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
@@ -365,7 +369,7 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
   endif()
 
-  list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
+  list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH} "/home/xinhaoc/FlexFlow/protobuf")
 
   find_package(hip REQUIRED)
 

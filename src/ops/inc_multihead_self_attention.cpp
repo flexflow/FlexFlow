@@ -144,7 +144,7 @@ __global__ void
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
     hipFloatComplex complex_pos = {cos(freq), sin(freq)};
 
-    complex_input[i] = complex_input[i] * complex_pos;
+    complex_input[i] = hipCmulf(complex_input[i] ,complex_pos);
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[complex_part_index] = complex_input[i].y;
   }
@@ -198,7 +198,7 @@ __global__ void
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
     hipFloatComplex complex_pos = {cos(freq), sin(freq)};
 
-    complex_input[i] = complex_input[i] * complex_pos;
+    complex_input[i] = hipCmulf(complex_input[i], complex_pos);
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[complex_part_index] = complex_input[i].y;
   }

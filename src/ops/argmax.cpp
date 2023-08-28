@@ -64,16 +64,16 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
     checkCUDA(hipMemset(parent, 0, batch_size * sizeof(int)));
   }
   size_t temp_storage_bytes = m->temp_storage_bytes;
-  // use cub
-  checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
-      m->d_temp_storage,
-      temp_storage_bytes,
-      input_ptr,
-      static_cast<hipcub::KeyValuePair<int, DT> *>(m->d_out),
-      batch_size,
-      m->d_offsets,
-      m->d_offsets + 1,
-      stream));
+  //use cub
+  // checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
+  //     m->d_temp_storage,
+  //     temp_storage_bytes,
+  //     input_ptr,
+  //     static_cast<hipcub::KeyValuePair<int, DT> *>(m->d_out),
+  //     batch_size,
+  //     m->d_offsets,
+  //     m->d_offsets + 1,
+  //     stream));
 
   // copy dout to incides
   int parallelism = batch_size;
@@ -186,28 +186,29 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
                      total_ele,
                      d_offsets);
 
-  if (data_type == DT_FLOAT) {
-    checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
-        d_temp_storage,
-        temp_storage_bytes,
-        input.get_float_ptr(),
-        static_cast<hipcub::KeyValuePair<int, float> *>(d_out),
-        batch_size,
-        d_offsets,
-        d_offsets + 1,
-        stream));
+  // if (data_type == DT_FLOAT) {
+  //   checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
+  //       d_temp_storage,
+  //       temp_storage_bytes,
+  //       input.get_float_ptr(),
+  //       static_cast<hipcub::KeyValuePair<int, float> *>(d_out),
+  //       batch_size,
+  //       d_offsets,
+  //       d_offsets + 1,
+  //       stream));
 
-  } else if (data_type == DT_HALF) {
-    checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
-        d_temp_storage,
-        temp_storage_bytes,
-        input.get_half_ptr(),
-        static_cast<hipcub::KeyValuePair<int, half> *>(d_out),
-        batch_size,
-        d_offsets,
-        d_offsets + 1,
-        stream));
-  }
+  // }
+  // else if (data_type == DT_HALF) {
+  //   checkCUDA(hipcub::DeviceSegmentedReduce::ArgMax(
+  //       d_temp_storage,
+  //       temp_storage_bytes,
+  //       input.get_half_ptr(),
+  //       static_cast<hipcub::KeyValuePair<int, half> *>(d_out),
+  //       batch_size,
+  //       d_offsets,
+  //       d_offsets + 1,
+  //       stream));
+  // }
 
   gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
   d_temp_storage =

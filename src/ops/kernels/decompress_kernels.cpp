@@ -50,6 +50,21 @@ __global__ void decompress_int8_attention_weights(char *input_weight_ptr,
                                                   int qSize,
                                                   int num_heads) {}
 
+template __global__ void decompress_int4_general_weights<float>(
+    char const *input_weight_ptr, float *weight_ptr, int in_dim, int valueSize);
+template __global__ void decompress_int4_general_weights<half>(
+    char const *input_weight_ptr, half *weight_ptr, int in_dim, int valueSize);
+template __global__ void decompress_int8_general_weights<float>(
+    char const *input_weight_ptr, float *weight_ptr, int in_dim, int valueSize);
+template __global__ void decompress_int8_general_weights<half>(
+    char const *input_weight_ptr, half *weight_ptr, int in_dim, int valueSize);
+template __global__ void
+    decompress_int4_attention_weights<float>(char *input_weight_ptr,
+                                             float *weight_ptr,
+                                             int qProjSize,
+                                             int qSize,
+                                             int num_heads);
+
 template __global__ void
     decompress_int4_attention_weights<half>(char *input_weight_ptr,
                                             half *weight_ptr,

@@ -238,7 +238,7 @@ __host__ void
   int idx = 0;
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
-    printf(" %.4lf", (float)host_ptr[idx]);
+    printf(" %.20lf", (float)host_ptr[idx]);
     if (idx >= 16) {
       break;
     }
@@ -251,12 +251,14 @@ template <typename T>
 __host__ T *download_tensor(T const *ptr, size_t num_elements) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(hipHostMalloc(&host_ptr,
                           sizeof(T) * num_elements,
                           hipHostMallocPortable | hipHostMallocMapped));
-  checkCUDA(hipMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost));
+  checkCUDA(hipMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
   // checkCUDA(hipDeviceSynchronize());
   return host_ptr;
 }
@@ -265,9 +267,11 @@ template <typename T>
 __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   assert(dst != nullptr);
   checkCUDA(
-      hipMemcpy(dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost));
+      hipMemcpyAsync(dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
   // checkCUDA(hipDeviceSynchronize());
   return true;
 }
