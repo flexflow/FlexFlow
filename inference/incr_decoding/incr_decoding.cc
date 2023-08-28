@@ -176,13 +176,16 @@ void FlexFlow::top_level_task(Task const *task,
       break;
     }
   }
+  int bos_token_id = model_config["bos_token_id"];
+  int eos_token_id = model_config["eos_token_id"];
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
-  rm->register_tokenizer(model_type, tokenizer_filepath);
+  rm->register_tokenizer(
+      model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);

@@ -45,6 +45,8 @@ struct ModelMeta {
   std::string llm_weights_path;
   std::string llm_model_config_path;
 
+  int bos_token_id, eos_token_id;
+
   std::vector<ModelType> ssm_model_types;
   std::vector<std::string> ssm_model_config_paths;
   std::vector<std::string> ssm_model_weights_paths;
@@ -165,6 +167,8 @@ void get_model_meta(FilePaths &file_paths,
       break;
     }
   }
+  model_metadata.bos_token_id = llm_model_config["bos_token_id"];
+  model_metadata.eos_token_id = llm_model_config["eos_token_id"];
 
   for (auto ssm_model_name : model_metadata.model_names.ssm_model_names) {
     std::string ssm_config_path = join_path({file_paths.cache_folder_path,
@@ -210,6 +214,12 @@ void get_model_meta(FilePaths &file_paths,
         ssm_model_type = ModelType::FALCON;
         break;
       }
+    }
+    if (ssm_model_config["bos_token_id"] != model_metadata.bos_token_id ||
+        ssm_model_config["eos_token_id"] != model_metadata.eos_token_id) {
+      printf("Error: bos/eos token id mismatch between LLM and one of the "
+             "SSMs!\n");
+      assert(false);
     }
     model_metadata.ssm_model_types.push_back(ssm_model_type);
     model_metadata.ssm_model_config_paths.push_back(ssm_config_path);
@@ -257,6 +267,8 @@ void FlexFlow::top_level_task(Task const *task,
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
   rm->register_tokenizer(model_metadata.llm_model_type,
+                         model_metadata.bos_token_id,
+                         model_metadata.eos_token_id,
                          model_metadata.llm_tokenizer_path);
   rm->register_output_filepath(file_paths.output_file_path);
 

@@ -53,6 +53,10 @@ if [[ "${FF_GPU_BACKEND}" == "cuda" || "${FF_GPU_BACKEND}" == "hip_cuda" ]]; the
     echo "cuda_version is not supported, please choose among {11.1|11.2|11.3|11.4|11.5|11.6|11.7|11.8|12.0|12.1|12.2}"
     exit 1
   fi
+  # Use CUDA 12.0 for all versions greater or equal to 12.0 for now
+  if [[ "$cuda_version" == @(12.1|12.2|12.3|12.4|12.5|12.6|12.7|12.8|12.9) ]]; then
+    cuda_version=12.0
+  fi
   # Set cuda version suffix to docker image name
   echo "Running $image docker image with CUDA $cuda_version"
   cuda_version_hyphen="-${cuda_version}"
