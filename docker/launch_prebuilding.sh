@@ -12,9 +12,6 @@ cd "${BASH_SOURCE[0]%/*}"
 export FF_CUDA_ARCH=all
 export BUILD_LEGION_ONLY=ON
 export INSTALL_DIR="/usr/legion"
-if [[ $python_version != "latest" ]]; then
-    python_version="${python_version//./}"
-fi
 export python_version="${python_version}"
 export FF_GPU_BACKEND="${gpu_backend}"
 
