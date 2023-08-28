@@ -6,14 +6,17 @@
 
 namespace FlexFlow {
 
-class CombinePerDeviceState : public PerDeviceOpState {
-public:
-  CombinePerDeviceState(FFHandler handle);
-  DataType data_type;
+struct CombinePerDeviceState {
+  req<DataType> data_type;
 };
+
+FF_VISITABLE_STRUCT_NO_EQ(CombinePerDeviceState,
+                          data_type);
 
 namespace Kernels {
 namespace Combine {
+
+CombinePerDeviceState init_kernel(DataType data_type);
 
 void forward_kernel(ffStream_t stream,
                     CombinePerDeviceState const *m,

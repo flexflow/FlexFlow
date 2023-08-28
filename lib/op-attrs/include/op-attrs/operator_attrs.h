@@ -43,6 +43,7 @@ using SharedOperatorAttrs = variant<AggregateAttrs,
                                     BatchMatmulAttrs,
                                     BatchNormAttrs,
                                     CastAttrs,
+                                    CombineAttrs,
                                     ConcatAttrs,
                                     Conv2DAttrs,
                                     DropoutAttrs,
@@ -73,6 +74,7 @@ static_assert(is_valid_opattr<AggregateAttrs>::value, "");
 static_assert(is_valid_opattr<AggregateSpecAttrs>::value, "");
 static_assert(is_valid_opattr<BatchMatmulAttrs>::value, "");
 static_assert(is_valid_opattr<CastAttrs>::value, "");
+static_assert(is_valid_opattr<CombineAttrs>::value, "");
 static_assert(is_valid_opattr<ConcatAttrs>::value, "");
 static_assert(is_valid_opattr<Conv2DAttrs>::value, "");
 static_assert(is_valid_opattr<DropoutAttrs>::value, "");

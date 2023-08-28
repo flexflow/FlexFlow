@@ -12,6 +12,7 @@ OperatorType get_op_type(BatchMatmulAttrs const &);
 OperatorType get_op_type(BatchNormAttrs const &);
 OperatorType get_op_type(BroadcastAttrs const &);
 OperatorType get_op_type(CastAttrs const &);
+OperatorType get_op_type(CombineAttrs const &);
 OperatorType get_op_type(ConcatAttrs const &);
 OperatorType get_op_type(Conv2DAttrs const &);
 OperatorType get_op_type(DropoutAttrs const &);
