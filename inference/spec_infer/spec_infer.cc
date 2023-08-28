@@ -217,9 +217,8 @@ void get_model_meta(FilePaths &file_paths,
     }
     if (ssm_model_config["bos_token_id"] != model_metadata.bos_token_id ||
         ssm_model_config["eos_token_id"] != model_metadata.eos_token_id) {
-      printf("Error: bos/eos token id mismatch between LLM and one of the "
+      printf("Warning: bos/eos token id mismatch between LLM and one of the "
              "SSMs!\n");
-      assert(false);
     }
     model_metadata.ssm_model_types.push_back(ssm_model_type);
     model_metadata.ssm_model_config_paths.push_back(ssm_config_path);
