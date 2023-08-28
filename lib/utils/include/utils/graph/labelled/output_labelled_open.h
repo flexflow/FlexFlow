@@ -13,7 +13,53 @@ struct OutputLabelledOpenMultiDiGraph {
   OutputLabelledOpenMultiDiGraph &
       operator=(OutputLabelledOpenMultiDiGraph const &) = default;
 
-  operator OpenMultiDiGraphView();
+  operator OpenMultiDiGraphView() {
+    NOT_IMPLEMENTED();
+  }
+
+  Node add_node(NodeLabel const &) {
+    NOT_IMPLEMENTED();
+  }
+  NodeLabel const &at(Node const &) const {
+    NOT_IMPLEMENTED();
+  }
+  NodeLabel &at(Node const &) const {
+    NOT_IMPLEMENTED();
+  }
+
+  void add_edge(MultiDiEdge const &) {
+    NOT_IMPLEMENTED();
+  }
+  void add_edge(InputMultiDiEdge const &) {
+    NOT_IMPLEMENTED();
+  }
+  void add_edge(OutputMultiDiEdge const &) {
+    NOT_IMPLEMENTED();
+  }
+
+  InputLabel const &at(InputMultiDiEdge const &) const {
+    NOT_IMPLEMENTED();
+  }
+  OutputLabel const &at(OutputMultiDiEdge const &) const {
+    NOT_IMPLEMENTED();
+  }
+
+  InputLabel &at(InputMultiDiEdge const &) {
+    NOT_IMPLEMENTED();
+  }
+  OutputLabel &at(OutputMultiDiEdge const &) {
+    NOT_IMPLEMENTED();
+  }
+
+  void add_output(MultiDiOutput const &, OutputLabel const &) {
+    NOT_IMPLEMENTED();
+  }
+  OutputLabel const &at(MultiDiOutput const &) const {
+    NOT_IMPLEMENTED();
+  }
+  OutputLabel &at(MultiDiOutput const &) {
+    NOT_IMPLEMENTED();
+  }
 };
 
 } // namespace FlexFlow

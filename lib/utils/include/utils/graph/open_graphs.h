@@ -17,6 +17,8 @@ public:
 
   OpenMultiDiGraphView() = delete;
 
+  operator MultiDiGraphView() const;
+
   friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
