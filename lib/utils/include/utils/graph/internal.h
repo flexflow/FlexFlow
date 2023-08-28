@@ -3,21 +3,23 @@
 
 #include "utils/graph/digraph.h"
 #include "utils/graph/digraph_interfaces.h"
+#include "utils/graph/labelled/labelled_open.decl"
+#include "utils/graph/labelled/labelled_open_interfaces.h"
 #include "utils/graph/multidigraph.h"
 #include "utils/graph/multidigraph_interfaces.h"
 #include "utils/graph/node.h"
 #include "utils/graph/open_graph_interfaces.h"
 #include "utils/graph/open_graphs.h"
 #include "utils/graph/undirected.h"
-#include "utils/graph/labelled/labelled_open_interfaces.h"
-#include "utils/graph/labelled/labelled_open.decl"
 
 namespace FlexFlow {
 
 struct GraphInternal {
 private:
-  static OpenMultiDiGraph create_open_multidigraph(cow_ptr_t<IOpenMultiDiGraph>);
-  static OpenMultiDiGraphView create_open_multidigraph_view(std::shared_ptr<IOpenMultiDiGraphView const>);
+  static OpenMultiDiGraph
+      create_open_multidigraph(cow_ptr_t<IOpenMultiDiGraph>);
+  static OpenMultiDiGraphView create_open_multidigraph_view(
+      std::shared_ptr<IOpenMultiDiGraphView const>);
 
   static MultiDiGraph create_multidigraph(cow_ptr_t<IMultiDiGraph>);
   static MultiDiGraphView
@@ -26,8 +28,7 @@ private:
   static DiGraph create_digraph(cow_ptr_t<IDiGraph>);
   static DiGraphView create_digraphview(std::shared_ptr<IDiGraphView const>);
 
-  static UndirectedGraph
-      create_undirectedgraph(cow_ptr_t<IUndirectedGraph>);
+  static UndirectedGraph create_undirectedgraph(cow_ptr_t<IUndirectedGraph>);
   static UndirectedGraphView
       create_undirectedgraphview(std::shared_ptr<IUndirectedGraphView const>);
 
@@ -35,10 +36,18 @@ private:
   static GraphView create_graphview(std::shared_ptr<IGraphView const>);
 
   template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel,
-          typename OutputLabel>
-  static LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> create_labelled_open_multidigraph_view(std::shared_ptr<ILabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel> const>);
+            typename EdgeLabel,
+            typename InputLabel,
+            typename OutputLabel>
+  static LabelledOpenMultiDiGraphView<NodeLabel,
+                                      EdgeLabel,
+                                      InputLabel,
+                                      OutputLabel>
+      create_labelled_open_multidigraph_view(
+          std::shared_ptr<ILabelledOpenMultiDiGraphView<NodeLabel,
+                                                        EdgeLabel,
+                                                        InputLabel,
+                                                        OutputLabel> const>);
 
   friend struct MultiDiGraph;
   friend struct MultiDiGraphView;
@@ -52,15 +61,15 @@ private:
   friend struct OpenMultiDiGraph;
 
   template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel,
-          typename OutputLabel>
+            typename EdgeLabel,
+            typename InputLabel,
+            typename OutputLabel>
   friend struct LabelledOpenMultiDiGraphView;
 
   template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel,
-          typename OutputLabel>
+            typename EdgeLabel,
+            typename InputLabel,
+            typename OutputLabel>
   friend struct LabelledOpenMultiDiGraph;
 };
 

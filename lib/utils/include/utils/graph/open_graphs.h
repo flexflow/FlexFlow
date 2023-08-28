@@ -74,6 +74,7 @@ private:
   OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> ptr);
 
   friend struct GraphInternal;
+
 private:
   cow_ptr_t<IOpenMultiDiGraph> ptr;
 };

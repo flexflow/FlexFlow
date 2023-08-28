@@ -1,7 +1,7 @@
 #include "utils/graph/digraph.h"
-#include "utils/graph/internal.h"
 #include "utils/containers.h"
 #include "utils/graph/digraph_interfaces.h"
+#include "utils/graph/internal.h"
 
 namespace FlexFlow {
 
