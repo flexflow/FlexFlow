@@ -12,6 +12,7 @@ cd "${BASH_SOURCE[0]%/*}"
 export FF_CUDA_ARCH=all
 export BUILD_LEGION_ONLY=ON
 export INSTALL_DIR="/usr/legion"
+export python_version="${python_version}"
 
 # Build Docker Flexflow Container
 echo "building docker"
@@ -32,7 +33,7 @@ docker cp prelegion:$INSTALL_DIR ../prebuild_legion/tmp
 
 # Create the tarball file
 cd ../prebuild_legion/tmp
-export LEGION_TARBALL="legion_ubuntu-20.04_${gpu_backend}.tar.gz"
+export LEGION_TARBALL="legion_ubuntu-20.04_${gpu_backend}_${python_version}.tar.gz"
 echo "Creating archive $LEGION_TARBALL"
 tar -zcvf "../$LEGION_TARBALL" ./
 cd ..

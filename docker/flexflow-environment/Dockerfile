@@ -16,16 +16,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
         apt-get update -y && \
         apt-get upgrade -y libstdc++6
 
-# Install Python3 with Miniconda
-RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
-    chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
-    bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    rm ~/Miniconda3-latest-Linux-x86_64.sh && \
-    /opt/conda/bin/conda upgrade --all && \
-    /opt/conda/bin/conda install conda-build conda-verify && \
-    /opt/conda/bin/conda clean -ya
-
+# Install Python3 with Miniconda corresponding version (assume python_version format is either "latest" or "3.11")
+ARG conda_package="Miniconda3-${python_version}-Linux-x86_64.sh"
+RUN  if [ "$python_version" != "lastest" ]; then \
+        ARG conda_package="Miniconda3-py${python_version//./}_23.5.2-0-Linux-x86_64.sh" \
+    fi
+RUN wget -c -q https://repo.continuum.io/miniconda/${conda_packge} && \
+            mv ${conda_packge} ~/${conda_packge} && \
+            chmod +x ~/${conda_packge} && \
+            bash ~/${conda_packge} -b -p /opt/conda && \
+            rm ~/${conda_packge} && \
+            /opt/conda/bin/conda upgrade --all && \
+            /opt/conda/bin/conda install conda-build conda-verify && \
+            /opt/conda/bin/conda clean -ya; \
 # Optionally install HIP dependencies
 # Note that amd's docs say to also install the `hip-runtime-nvidia` package. This
 # package attempts to re-install cuda even though cuda is already installed
