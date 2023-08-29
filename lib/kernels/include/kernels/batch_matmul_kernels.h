@@ -19,8 +19,8 @@ FF_VISITABLE_STRUCT_NO_EQ(
 namespace Kernels {
 namespace BatchMatmul {
 
-BMMPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                              Allocator allocator,
+BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
+                              Allocator const &allocator,
                               int a_seq_length_dim,
                               int b_seq_length_dim);
 
