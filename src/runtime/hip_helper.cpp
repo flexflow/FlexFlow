@@ -358,6 +358,23 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
   }
   return HIPBLAS_R_32F;
 }
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type) {
+  switch (type) {
+    case DT_HALF:
+      return ncclHalf;
+    case DT_FLOAT:
+      return ncclFloat;
+    case DT_DOUBLE:
+      return ncclDouble;
+    case DT_INT32:
+      return ncclInt;
+    default:
+      assert(false && "Unspoorted nccl data type");
+  }
+  return ncclFloat;
+}
+#endif
 
 void handle_unimplemented_hip_kernel(OperatorType op_type) {
   throw std::runtime_error("Unimplemented hip kernel for Operator: " +
