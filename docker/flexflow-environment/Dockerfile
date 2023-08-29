@@ -57,14 +57,9 @@ RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]
         wget $AMD_GPU_SCRIPT_URL; \
         apt-get install -y ./${AMD_GPU_SCRIPT_NAME}; \
         rm ./${AMD_GPU_SCRIPT_NAME}; \
-        if [[ "$FF_GPU_BACKEND" == "hip_rocm" ]]; then \
-            amdgpu-install -y --usecase=hip,rocm --no-dkms; \
-            apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
-        else \
-            # Install HIP without ROCM or RCCL if the backend is hip_cuda
-            amdgpu-install -y --usecase=hip --no-dkms; \
-            apt-get install -y hip-dev hipblas miopen-hip; \
-        fi; \
+        amdgpu-install -y --usecase=hip,rocm --no-dkms; \
+        apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
+        apt-get install -y rocm-device-libs; \
         # Install protobuf v3.20.x manually
         apt-get update -y && sudo apt-get install -y pkg-config zip g++ zlib1g-dev autoconf automake libtool make; \
         git clone -b 3.20.x https://github.com/protocolbuffers/protobuf.git; cd protobuf/ ; git submodule update --init --recursive; \
