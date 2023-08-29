@@ -1,5 +1,5 @@
-ARG cuda_version
-FROM nvidia/cuda:${cuda_version}-cudnn8-devel-ubuntu20.04
+ARG ff_environment_base_image
+FROM ${ff_environment_base_image}
 
 LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow environment container"
@@ -31,13 +31,40 @@ RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_6
 # in the container. It also attempts to install packages for a graphical install.
 # For our container, we don't need `hip-runtime-nvidia`
 ARG FF_GPU_BACKEND "cuda"
+ARG hip_version "5.6"
+ARG N_BUILD_CORES
+# set MAKEFLAGS to speedup any dependency that uses make
+ENV MAKEFLAGS "${MAKEFLAGS} -j${N_BUILD_CORES}"
+
 RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
-        wget https://repo.radeon.com/amdgpu-install/22.20.5/ubuntu/bionic/amdgpu-install_22.20.50205-1_all.deb; \
-        apt-get install -y ./amdgpu-install_22.20.50205-1_all.deb; \
-        rm ./amdgpu-install_22.20.50205-1_all.deb; \
-        amdgpu-install -y --usecase=hip,rocm --no-dkms; \
-        apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
+        # Check that hip_version is one of 5.3,5.4,5.5,5.6
+        if [[ "$hip_version" != "5.3" && "$hip_version" != "5.4" && "$hip_version" != "5.5" && "$hip_version" != "5.6" ]]; then \
+            echo "hip_version '${hip_version}' is not supported, please choose among {5.3, 5.4, 5.5, 5.6}"; \
+            exit 1; \
+        fi; \
+        # Compute script name and url given the version
+        AMD_GPU_SCRIPT_NAME=amdgpu-install_5.6.50600-1_all.deb; \
+        if [[ "$hip_version" == "5.3" ]]; then \
+            AMD_GPU_SCRIPT_NAME=amdgpu-install_5.3.50300-1_all.deb; \
+        elif [[ "$hip_version" == "5.4" ]]; then \
+            AMD_GPU_SCRIPT_NAME=amdgpu-install_5.4.50400-1_all.deb; \
+        elif [[ "$hip_version" == "5.5" ]]; then \
+            AMD_GPU_SCRIPT_NAME=amdgpu-install_5.5.50500-1_all.deb; \
+        fi; \
+        AMD_GPU_SCRIPT_URL="https://repo.radeon.com/amdgpu-install/${hip_version}/ubuntu/focal/${AMD_GPU_SCRIPT_NAME}"; \
+        # Download and install AMD GPU software with ROCM and HIP support
+        wget $AMD_GPU_SCRIPT_URL; \
+        apt-get install -y ./${AMD_GPU_SCRIPT_NAME}; \
+        rm ./${AMD_GPU_SCRIPT_NAME}; \
+        if [[ "$FF_GPU_BACKEND" = "hip_rocm" ]]; then \
+            amdgpu-install -y --usecase=hip,rocm --no-dkms; \
+            apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk rocm-cmake; \
+        else \
+            # Install HIP without ROCM or RCCL if the backend is hip_cuda
+            amdgpu-install -y --usecase=hip --no-dkms; \
+            apt-get install -y hip-dev hipblas miopen-hip; \
+        fi; \
         # Install protobuf v3.20.x manually
         apt-get update -y && sudo apt-get install -y pkg-config zip g++ zlib1g-dev autoconf automake libtool make; \
         git clone -b 3.20.x https://github.com/protocolbuffers/protobuf.git; cd protobuf/ ; git submodule update --init --recursive; \
