@@ -23,25 +23,8 @@ struct AttrConstant {
   GraphAttributeValue value;
 };
 
-using GraphAttributeExprLeaf =
-    variant<NodeAttrAccess, EdgeAttrAccess, AttrConstant>;
-
-enum class AttrOpType { ADD, SUB, MUL, DIV };
-
-struct AttrUnary {
-  AttrOpType op_type;
-  GraphAttributeExprLeaf lhs;
-  GraphAttributeValue rhs;
-};
-
-struct AttrBinary {
-  AttrOpType op_type;
-  GraphAttributeExprLeaf lhs;
-  GraphAttributeExprLeaf rhs;
-};
-
 using GraphAttributeExpr =
-    variant<AttrUnary, AttrBinary, GraphAttributeExprLeaf>;
+    variant<NodeAttrAccess, EdgeAttrAccess, AttrConstant>;
 
 // NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
 // define the assignment for each operator type.

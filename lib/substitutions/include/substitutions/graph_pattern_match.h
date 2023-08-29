@@ -12,8 +12,8 @@ struct MultiDiGraphPatternMatch {
   using PatternEdge = OpenMultiDiEdge;
   using PCGEdge = MultiDiEdge;
 
-  bidict<PatternNode, PCGNode> nodeAssignment;
-  bidict<PatternEdge, PCGEdge> edgeAssignment;
+  bidict<PatternNode, PCGNode> node_assignment;
+  bidict<PatternEdge, PCGEdge> edge_assignment;
 };
 
 struct MatchSplit {
