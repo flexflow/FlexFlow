@@ -1,7 +1,7 @@
 #include "utils/graph/digraph.h"
-#include "utils/graph/internal.h"
 #include "utils/containers.h"
 #include "utils/graph/digraph_interfaces.h"
+#include "utils/graph/internal.h"
 
 namespace FlexFlow {
 
@@ -101,5 +101,7 @@ DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
 DiGraph::operator DiGraphView() const {
   return GraphInternal::create_digraphview(this->ptr.get());
 }
+
+DiGraphView::DiGraphView(std::shared_ptr<IDiGraphView const> ptr):ptr(ptr) {}
 
 } // namespace FlexFlow

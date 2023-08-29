@@ -1,6 +1,6 @@
 #include "utils/graph/undirected.h"
-#include "utils/graph/internal.h"
 #include "utils/containers.h"
+#include "utils/graph/internal.h"
 #include "utils/graph/node.h"
 #include <cassert>
 
@@ -66,6 +66,10 @@ UndirectedGraph::UndirectedGraph(cow_ptr_t<IUndirectedGraph> _ptr)
 UndirectedGraph::operator UndirectedGraphView() const {
   return GraphInternal::create_undirectedgraphview(this->ptr.get());
 }
+
+UndirectedGraphView::UndirectedGraphView(
+    std::shared_ptr<IUndirectedGraphView const> ptr)
+    : ptr(ptr) {}
 
 std::unordered_set<UndirectedEdge>
     UndirectedGraphView::query_edges(UndirectedEdgeQuery const &q) const {

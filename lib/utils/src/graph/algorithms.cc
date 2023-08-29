@@ -54,7 +54,9 @@ std::unordered_set<Node> get_nodes(GraphView const &g) {
 }
 
 std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const &g) {
-  return flatmap(get_edges(g), [](MultiDiEdge const &e) { return std::unordered_set<NodePort>{e.srcIdx, e.dstIdx}; });
+  return flatmap(get_edges(g), [](MultiDiEdge const &e) {
+    return std::unordered_set<NodePort>{e.srcIdx, e.dstIdx};
+  });
 }
 
 void remove_node(MultiDiGraph &g, Node const &n) {

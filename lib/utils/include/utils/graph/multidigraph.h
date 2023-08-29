@@ -30,7 +30,7 @@ public:
       unsafe_create_without_ownership(IMultiDiGraphView const &);
 
 private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr);
 
   friend struct GraphInternal;
 

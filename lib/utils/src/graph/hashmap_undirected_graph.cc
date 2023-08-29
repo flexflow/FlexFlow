@@ -17,10 +17,7 @@ void HashmapUndirectedGraph::add_node_unsafe(Node const &node) {
 }
 
 void HashmapUndirectedGraph::remove_node_unsafe(Node const &n) {
-  auto iter = this->adjacency.find(n);
-  if (iter != this->adjacency.end()) {
-    this->adjacency.erase(iter);
-  }
+  this->adjacency.erase(n);
 }
 
 void HashmapUndirectedGraph::add_edge(UndirectedEdge const &e) {
@@ -39,10 +36,8 @@ void HashmapUndirectedGraph::add_edge(UndirectedEdge const &e) {
 
 void HashmapUndirectedGraph::remove_edge(UndirectedEdge const &e) {
   std::unordered_set<Node> &m = this->adjacency.at(e.bigger);
-  auto iter = m.find(e.smaller);
-  if (iter != m.end()) {
-    m.erase(iter);
-  }
+  m.erase(e.smaller);
+  m.erase(e.bigger);
 }
 
 std::unordered_set<UndirectedEdge> HashmapUndirectedGraph::query_edges(

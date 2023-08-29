@@ -1,6 +1,6 @@
 #include "utils/graph/open_graphs.h"
-#include "utils/graph/internal.h"
 #include "utils/graph/algorithms.h"
+#include "utils/graph/internal.h"
 #include "utils/graph/multidigraph.h"
 #include "utils/graph/query_set.h"
 
@@ -26,6 +26,9 @@ std::unordered_set<OpenMultiDiEdge>
 OpenMultiDiGraphView::operator MultiDiGraphView() const {
   return as_multidigraph(*this);
 }
+
+OpenMultiDiGraphView::OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr)
+      : ptr(ptr) {}
 
 OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)
     : ptr(other.ptr) {}
@@ -61,7 +64,7 @@ std::unordered_set<OpenMultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
-OpenMultiDiGraph::OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> _ptr)
+OpenMultiDiGraph::OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UpwardOpenMultiDiGraph &

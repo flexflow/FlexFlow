@@ -102,6 +102,9 @@ std::unordered_set<Node>
   return this->ptr->query_nodes(q);
 }
 
+MultiDiGraphView::MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr) : ptr(ptr) {}
+
+
 std::unordered_set<MultiDiEdge>
     MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
@@ -126,7 +129,8 @@ void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
   swap(lhs.ptr, rhs.ptr);
 }
 
-MultiDiGraph::MultiDiGraph(cow_ptr_t<IMultiDiGraph> _ptr) : ptr(std::move(_ptr)) {}
+MultiDiGraph::MultiDiGraph(cow_ptr_t<IMultiDiGraph> _ptr)
+    : ptr(std::move(_ptr)) {}
 
 void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
   using std::swap;
