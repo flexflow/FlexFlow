@@ -102,6 +102,6 @@ DiGraph::operator DiGraphView() const {
   return GraphInternal::create_digraphview(this->ptr.get());
 }
 
-DiGraphView::DiGraphView(std::shared_ptr<IDiGraphView const> ptr):ptr(ptr) {}
+DiGraphView::DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
 
 } // namespace FlexFlow
