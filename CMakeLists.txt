@@ -158,10 +158,6 @@ endif()
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
 
-if (FF_GPU_BACKEND STREQUAL "hip_rocm" AND FF_USE_NCCL STREQUAL "ON")
-  message(FATAL_ERROR "NCCL: ON for FF_GPU_BACKEND: hip_rocm. hip_rocm backend must have NCCL disabled.")
-endif()
-
 # option for avx2
 option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
 
@@ -224,7 +220,9 @@ endif()
 
 # NCCL
 if(FF_USE_NCCL)
-  include(nccl)
+  if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "cuda")
+    include(nccl)
+  endif()
   list(APPEND FF_CC_FLAGS
     -DFF_USE_NCCL)
   list(APPEND FF_NVCC_FLAGS
@@ -369,11 +367,13 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
     find_package(hipblas REQUIRED)
     find_package(miopen REQUIRED)
+    if(FF_USE_NCCL)
+      find_package(rccl REQUIRED)
+    endif()
     # find_package(rocrand REQUIRED)
     find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
 
     add_compile_definitions(FF_USE_HIP_ROCM)
-
     # The hip cmake config module defines three targets, 
     # hip::amdhip64, hip::host, and hip::device.
     #
@@ -387,12 +387,15 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     # Docs (outdated):
     # https://rocmdocs.amd.com/en/latest/Installation_Guide/Using-CMake-with-AMD-ROCm.html
     target_link_libraries(flexflow hip::device roc::hipblas MIOpen ${HIP_RAND_LIBRARY})
+    if(FF_USE_NCCL)
+        target_link_libraries(flexflow rccl)
+    endif()
   endif()
 else()
   message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
 endif()
 
-if(FF_USE_NCCL)
+if(FF_USE_NCCL AND (FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "cuda"))
   add_dependencies(flexflow ${NCCL_NAME})
 endif()
 

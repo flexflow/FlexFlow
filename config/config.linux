@@ -70,11 +70,9 @@ FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
   echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
   exit 1
-elif [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
+elif [["$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" || "$FF_GPU_BACKEND" == "hip_rocm"]]; then
     # enable NCCL
     FF_USE_NCCL=${FF_USE_NCCL:-ON}
-else
-    FF_USE_NCCL=OFF
 fi
 
 function get_build_configs() {

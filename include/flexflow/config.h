@@ -28,8 +28,10 @@
 #error "Unknown device"
 #endif
 #include "tl/optional.hpp"
-#ifdef FF_USE_NCCL
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <nccl.h>
+#else
+#include <rccl.h>
 #endif
 
 namespace FlexFlow {
