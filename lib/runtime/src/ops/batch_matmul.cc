@@ -80,9 +80,7 @@ static DeviceSpecific<BMMPerDeviceState>
   DeviceSpecific<BMMPerDeviceState> per_device_state =
       acc.create_device_specific<BMMPerDeviceState>(
           init_kernel(handle, allocator, a_seq_length_dim, b_seq_length_dim));
-
-  // assert(weight.shape.get_volume() * sizeof(float) ==
-  //        acc.unwrap(per_device_state)->weightSize);
+          
   return per_device_state;
 }
 
@@ -230,8 +228,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   ParallelTensorShape output_shape =
       get_output_shape(attrs, a_input.shape, b_input.shape);
-  ParallelTensorShape weight_shape =
-      get_weights_shape(attrs, a_input.shape, b_input.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(A_SEQ_LENGTH_DIM, get_aSeqLengthDim(attrs));
