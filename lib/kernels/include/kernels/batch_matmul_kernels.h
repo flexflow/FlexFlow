@@ -26,7 +26,7 @@ BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
 
 void forward_kernel(ffStream_t stream,
                     BMMPerDeviceState const &meta,
-                    float *o_ptr,
+                    float *output_ptr,
                     float const *a_ptr,
                     float const *b_ptr,
                     float const *c_ptr,
