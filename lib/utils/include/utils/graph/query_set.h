@@ -12,7 +12,7 @@ namespace FlexFlow {
 template <typename T>
 struct query_set {
   query_set() = delete;
-  query_set(T const &query) : query({query}) {}
+  query_set(T const &t) : query(std::unordered_set<T>{t}) {}
 
   query_set(std::unordered_set<T> const &query) : query(query) {}
 
