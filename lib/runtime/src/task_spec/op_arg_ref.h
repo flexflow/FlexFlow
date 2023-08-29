@@ -4,15 +4,13 @@
 #include "arg_ref.h"
 #include "device_specific.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "runtime/config.h"
 
 namespace FlexFlow {
 
 enum class OpArgRefType {
   PER_DEVICE_OP_STATE,
-  PARALLEL_TENSOR_SHAPE,
-  ITERATION_CONFIG
-};
+  PARALLEL_TENSOR_SHAPE
+  };
 
 template <typename T>
 using OpArgRef = ArgRef<OpArgRefType, T>;
@@ -26,10 +24,6 @@ OpArgRef<DeviceSpecific<T>> per_device_op_state() {
 
 OpArgRef<ParallelTensorShape> input_parallel_tensor_shape(int idx) {
   return {OpArgRefType::PARALLEL_TENSOR_SHAPE};
-}
-
-OpArgRef<FFIterationConfig> iteration_config() {
-  return {OpArgRefType::ITERATION_CONFIG};
 }
 
 } // namespace FlexFlow

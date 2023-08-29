@@ -29,7 +29,7 @@ O: (batch, n, m)
 O = A * B
 */
 void forward_kernel(hipStream_t stream,
-                    BatchMatmulPerDeviceState const *meta,
+                    BatchMatmulPerDeviceState const &meta,
                     float *o_ptr,
                     float const *a_ptr,
                     float const *b_ptr,
