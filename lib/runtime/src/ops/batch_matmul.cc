@@ -134,7 +134,6 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr(),
                  a_input.get_float_ptr(),
                  b_input.get_float_ptr(),
-                 nullptr, // c_ptr
                  m,
                  n,
                  k,
