@@ -72,8 +72,8 @@ OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
 
 static DeviceSpecific<BMMPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
-  auto const a_seq_length_dim = acc.get_argument<int>(A_SEQ_LENGTH_DIM);
-  auto const b_seq_length_dim = acc.get_argument<int>(B_SEQ_LENGTH_DIM);
+  int const a_seq_length_dim = acc.get_argument<int>(A_SEQ_LENGTH_DIM);
+  int const b_seq_length_dim = acc.get_argument<int>(B_SEQ_LENGTH_DIM);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   Allocator allocator = acc.get_allocator();
 
@@ -94,9 +94,6 @@ static DeviceSpecific<BMMPerDeviceState>
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
-
   auto a_input = acc.get_tensor<Permissions::RO>(A_INPUT);
   auto b_input = acc.get_tensor<Permissions::RO>(B_INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -148,10 +145,6 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  // Currently assume C is NULL
-  assert(regions.size() == 6);
-  assert(task->regions.size() == 6);
-
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
   FFIterationConfig iter_config =
       acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
@@ -161,15 +154,15 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RW>(OUTPUT);
   // is this equivalent to checking `Domain` equality?
-  assert(output == output_grad);
+  assert(output.shape == output_grad.shape);
 
   auto a_input = acc.get_tensor<Permissions::RO>(A_INPUT);
   auto a_input_grad = acc.get_tensor_grad<Permissions::RW>(A_INPUT);
-  assert(a_input == a_input_grad);
+  assert(a_input.shape == a_input_grad.shape);
 
   auto b_input = acc.get_tensor<Permissions::RO>(B_INPUT);
   auto b_input_grad = acc.get_tensor_grad<Permissions::RW>(B_INPUT);
-  assert(b_input == b_input_grad);
+  assert(b_input.shape == b_input_grad.shape);
 
   // check dins
   int m = b_input.shape[legion_dim_t(0)];
@@ -181,8 +174,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(a_input.shape.size() == b_input.shape.size());
   assert(a_input.shape.size() == output.shape.size());
   int batch = 1;
-  for (int i = 2; i < a_input.shape.get_dim();
-       i++) { //@colin get_dim() or get_volume()?
+  for (int i = 2; i < a_input.shape.dims.num_dims();
+       i++) {
     int dim_size = a_input.shape[legion_dim_t(i)];
     assert(dim_size == b_input.shape[legion_dim_t(i)]);
     assert(dim_size == output.shape[legion_dim_t(i)]);
