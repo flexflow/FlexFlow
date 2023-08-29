@@ -13,7 +13,7 @@ set(CPU_SRC
   ../models/falcon.cc
   ../models/starcoder.cc)
 
-if (FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
+if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   cuda_add_executable(${project_target} ${CPU_SRC})
   target_compile_definitions(${project_target} PRIVATE __HIP_PLATFORM_NVIDIA__)
 elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
