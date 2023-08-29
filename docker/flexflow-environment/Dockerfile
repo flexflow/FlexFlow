@@ -17,7 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
         apt-get upgrade -y libstdc++6
 
 # Install Python3 with Miniconda
-RUN ./$HOME/FlexFlow/workflows/helper/install_miniconda.sh 
+RUN mkdir -p /scripts
+COPY ~/FlexFlow/.github/workflows/helpers/install_miniconda.sh /scripts
+RUN chmod +x scripts/install_miniconda.sh 
+RUN .scripts/install_miniconda.sh 
 
 # wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
 #     mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \

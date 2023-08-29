@@ -57,6 +57,12 @@ else
   cuda_version_input="11.8.0"
 fi
 
+# check python_version
+if [[ "$python_version" != @(3.8|3.9|3.10|3.11|latest) ]]; then
+  echo "python_version not supported!"
+  exit 0
+fi
+
 docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "cuda_version=${cuda_version_input}" --build-arg "python_version=${python_version}" -t "flexflow-environment-${FF_GPU_BACKEND}${cuda_version}" -f docker/flexflow-environment/Dockerfile .
 
 # If the user only wants to build the environment image, we are done

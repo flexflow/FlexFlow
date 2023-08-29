@@ -24,13 +24,12 @@ elif [[ "$python_version" == "3.10" ]]; then
     PYTHON_LINK=https://repo.continuum.io/miniconda/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
     PYTHON_TARBALL_NAME=Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
 fi
-export PYTHON_LINK
-export PYTHON_TARBALL_NAME
-wget -c -q PYTHON_LINK && \
-    mv PYTHON_TARBALL_NAME ~/PYTHON_TARBALL_NAME && \
-    chmod +x ~/PYTHON_TARBALL_NAME && \
-    bash ~/PYTHON_TARBALL_NAME -b -p /opt/conda && \
-    rm ~/PYTHON_TARBALL_NAME && \
+
+wget -c -q $PYTHON_LINK && \
+    mv $PYTHON_TARBALL_NAME ~/$PYTHON_TARBALL_NAME && \
+    chmod +x ~/$PYTHON_TARBALL_NAME && \
+    bash ~/$PYTHON_TARBALL_NAME -b -p /opt/conda && \
+    rm ~/$PYTHON_TARBALL_NAME && \
     /opt/conda/bin/conda upgrade --all && \
     /opt/conda/bin/conda install conda-build conda-verify && \
     /opt/conda/bin/conda clean -ya
