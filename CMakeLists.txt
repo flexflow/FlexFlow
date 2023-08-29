@@ -160,8 +160,13 @@ set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
 set(FF_CUDA_ARCH "autodetect" CACHE STRING "Target CUDA Arch")
-if (FF_CUDA_ARCH STREQUAL "")
+if ((FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda") AND FF_CUDA_ARCH STREQUAL "")
   message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
+endif()
+# option for hip arch
+set(FF_HIP_ARCH "all" CACHE STRING "Target HIP Arch")
+if (FF_GPU_BACKEND STREQUAL "hip_rocm" AND FF_CUDA_ARCH STREQUAL "")
+  message(FATAL_ERROR "FF_HIP_ARCH cannot be an empty string. Set it to `all`, or pass one or multiple valid HIP archs.")
 endif()
 
 # option for nccl
@@ -396,6 +401,20 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
 
     add_compile_definitions(FF_USE_HIP_ROCM)
+
+    if (NOT FF_HIP_ARCH STREQUAL "")
+      if (FF_HIP_ARCH STREQUAL "all")
+        set(FF_HIP_ARCH "gfx700,gfx701,gfx702,gfx703,gfx704,gfx705,gfx801,gfx802,gfx803,gfx805,gfx8010,gfx900,gfx902,gfx904,gfx906,gfx908,gfx909,gfx90a,gfx90c,gfx940,gfx941,gfx942,gfx1010,gfx1011,gfx1012,gfx1013,gfx1030,gfx1031,gfx1032,gfx1033,gfx1034,gfx1035,gfx1036,gfx1100,gfx1101,gfx1102,gfx1103,gfx1150,gfx1151")
+      endif()
+      string(REPLACE "," " " HIP_ARCH_LIST "${FF_HIP_ARCH}")
+      set_property(TARGET flexflow PROPERTY HIP_ARCHITECTURES "${HIP_ARCH_LIST}")
+    endif()
+
+    message(STATUS "FF_GPU_BACKEND: ${FF_GPU_BACKEND}")
+    message(STATUS "FF_HIP_ARCH: ${FF_HIP_ARCH}")
+    message(STATUS "HIP_ARCH_LIST: ${HIP_ARCH_LIST}")
+    get_property(CHECK_HIP_ARCHS TARGET flexflow PROPERTY HIP_ARCHITECTURES)
+    message(STATUS "CHECK_HIP_ARCHS: ${CHECK_HIP_ARCHS}")
 
     # The hip cmake config module defines three targets, 
     # hip::amdhip64, hip::host, and hip::device.
