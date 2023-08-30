@@ -7,10 +7,7 @@
 
 namespace FlexFlow {
 
-enum class OpArgRefType {
-  PER_DEVICE_OP_STATE,
-  PARALLEL_TENSOR_SHAPE
-  };
+enum class OpArgRefType { PER_DEVICE_OP_STATE, PARALLEL_TENSOR_SHAPE };
 
 template <typename T>
 using OpArgRef = ArgRef<OpArgRefType, T>;
