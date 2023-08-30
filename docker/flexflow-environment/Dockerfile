@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
 # Install Python3 with Miniconda
 RUN echo "current python version is ${python_version}"
 RUN echo "downloading python from miniconda"
-RUN if [ "$python_version" == "3.8" ]; then \
+RUN if [ "${python_version}" == "3.8" ]; then \
         wget -c -q https://repo.continuum.io/miniconda/Miniconda3-py38_23.5.2-0-Linux-x86_64.shK && \
             mv Miniconda3-py38_23.5.2-0-Linux-x86_64.sh ~/Miniconda3-py38_23.5.2-0-Linux-x86_64.sh && \
             chmod +x ~/Miniconda3-py38_23.5.2-0-Linux-x86_64.sh && \
@@ -28,7 +28,7 @@ RUN if [ "$python_version" == "3.8" ]; then \
             /opt/conda/bin/conda upgrade --all && \
             /opt/conda/bin/conda install conda-build conda-verify && \
             /opt/conda/bin/conda clean -ya; \
-    elif [ "$python_version" == "3.9" ]; then \
+    elif [ "${python_version}" == "3.9" ]; then \
         wget -c -q https://repo.continuum.io/miniconda/Miniconda3-py39_23.5.2-0-Linux-x86_64.sh && \
             mv Miniconda3-py39_23.5.2-0-Linux-x86_64.sh ~/Miniconda3-py39_23.5.2-0-Linux-x86_64.sh && \
             chmod +x ~/Miniconda3-py39_23.5.2-0-Linux-x86_64.sh && \
@@ -37,7 +37,7 @@ RUN if [ "$python_version" == "3.8" ]; then \
             /opt/conda/bin/conda upgrade --all && \
             /opt/conda/bin/conda install conda-build conda-verify && \
             /opt/conda/bin/conda clean -ya; \
-    elif [ "$python_version" == "3.10" ]; then \
+    elif [ "${python_version}" == "3.10" ]; then \
         wget -c -q https://repo.continuum.io/miniconda/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh && \
             mv Miniconda3-py310_23.5.2-0-Linux-x86_64.sh ~/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh && \
             chmod +x ~/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh && \
@@ -46,7 +46,7 @@ RUN if [ "$python_version" == "3.8" ]; then \
             /opt/conda/bin/conda upgrade --all && \
             /opt/conda/bin/conda install conda-build conda-verify && \
             /opt/conda/bin/conda clean -ya; \
-    elif [ "$python_version" == "3.11" ]; then \
+    elif [ "${python_version}" == "3.11" ]; then \
         wget -c -q https://repo.continuum.io/miniconda/Miniconda3-py311_23.5.2-0-Linux-x86_64.sh && \
             mv Miniconda3-py311_23.5.2-0-Linux-x86_64.sh ~/Miniconda3-py311_23.5.2-0-Linux-x86_64.sh && \
             chmod +x ~/Miniconda3-py311_23.5.2-0-Linux-x86_64.sh && \
