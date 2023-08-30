@@ -38,6 +38,7 @@ jobs:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
         cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6", "11.7", "11.8"]
+        python_version: ["3.8", "3.9", "3.10", "3.11", "latest"]
         # The CUDA version doesn't matter when building for hip_rocm, so we just pick one arbitrarily (11.8) to avoid building for hip_rocm once per number of CUDA version supported
         exclude:
           - gpu_backend: "hip_rocm"
