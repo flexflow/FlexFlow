@@ -95,8 +95,8 @@ if [[ "${FF_GPU_BACKEND}" == "hip_rocm" || "${FF_GPU_BACKEND}" == "hip_cuda" ]];
 fi
 
 # Check that image exists, if fails, print the default error message.
-if [[ "$(docker images -q "$image"-"$FF_GPU_BACKEND""$gpu_backend_version":latest 2> /dev/null)" == "" ]]; then
-  echo "Error, "$image"-"$FF_GPU_BACKEND""$gpu_backend_version":latest does not exist!"
+if [[ "$(docker images -q "${image}-${FF_GPU_BACKEND}${gpu_backend_version}":latest 2> /dev/null)" == "" ]]; then
+  echo "Error, ${image}-${FF_GPU_BACKEND}${gpu_backend_version}:latest does not exist!"
   if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
     echo ""
     echo "To download the docker image, run:"

@@ -10,18 +10,18 @@ echo "Installing apt dependencies..."
 sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev libhdf5-dev && \
     sudo rm -rf /var/lib/apt/lists/*
 
-
-
-# Install HIP dependencies if needed
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-"cuda"}
+hip_version=${hip_version:-"5.6"}
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
   echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
   exit 1
 fi
+# Install CUDNN if needed
 if [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
     # Install CUDNN
     ./install_cudnn.sh
 fi
+# Install HIP dependencies if needed
 if [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; then
     echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"
     # Check that hip_version is one of 5.3,5.4,5.5,5.6
