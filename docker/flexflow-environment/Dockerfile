@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
 
 # Install Python3 with Miniconda
 RUN mkdir -p /scripts
-COPY ~/FlexFlow/.github/workflows/helpers/install_miniconda.sh /scripts
+COPY docker/flexflow-environment/install_miniconda.sh /scripts
 RUN chmod +x scripts/install_miniconda.sh 
 RUN .scripts/install_miniconda.sh 
 
