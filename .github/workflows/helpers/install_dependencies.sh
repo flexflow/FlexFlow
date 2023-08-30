@@ -40,7 +40,7 @@ if [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; then
     fi
     AMD_GPU_SCRIPT_URL="https://repo.radeon.com/amdgpu-install/${hip_version}/ubuntu/focal/${AMD_GPU_SCRIPT_NAME}"
     # Download and install AMD GPU software with ROCM and HIP support
-    wget $AMD_GPU_SCRIPT_URL
+    wget -c -q $AMD_GPU_SCRIPT_URL
     apt-get install -y ./${AMD_GPU_SCRIPT_NAME}
     rm ./${AMD_GPU_SCRIPT_NAME}
     amdgpu-install -y --usecase=hip,rocm --no-dkms
