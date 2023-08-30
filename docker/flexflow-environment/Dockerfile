@@ -55,15 +55,15 @@ RUN if [ "${python_version}" == "3.8" ]; then \
     #         /opt/conda/bin/conda upgrade --all && \
     #         /opt/conda/bin/conda install conda-build conda-verify && \
     #         /opt/conda/bin/conda clean -ya; \
-    # else \
-    #     wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    #         mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
-    #         chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
-    #         bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    #         rm ~/Miniconda3-latest-Linux-x86_64.sh && \
-    #         /opt/conda/bin/conda upgrade --all && \
-    #         /opt/conda/bin/conda install conda-build conda-verify && \
-    #         /opt/conda/bin/conda clean -ya; \
+    else \
+        wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+            mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
+            chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
+            bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
+            rm ~/Miniconda3-latest-Linux-x86_64.sh && \
+            /opt/conda/bin/conda upgrade --all && \
+            /opt/conda/bin/conda install conda-build conda-verify && \
+            /opt/conda/bin/conda clean -ya; \
     fi
 
 # wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
