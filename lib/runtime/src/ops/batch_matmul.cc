@@ -80,7 +80,7 @@ static DeviceSpecific<BMMPerDeviceState>
   DeviceSpecific<BMMPerDeviceState> per_device_state =
       acc.create_device_specific<BMMPerDeviceState>(
           init_kernel(handle, allocator, a_seq_length_dim, b_seq_length_dim));
-          
+
   return per_device_state;
 }
 
@@ -174,8 +174,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(a_input.shape.get_volume() == b_input.shape.get_volume());
   assert(a_input.shape.get_volume() == output.shape.get_volume());
   int batch = 1;
-  for (int i = 2; i < a_input.shape.dims.num_dims();
-       i++) {
+  for (int i = 2; i < a_input.shape.dims.num_dims(); i++) {
     int dim_size = a_input.shape[legion_dim_t(i)];
     assert(dim_size == b_input.shape[legion_dim_t(i)]);
     assert(dim_size == output.shape[legion_dim_t(i)]);
