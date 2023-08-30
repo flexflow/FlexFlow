@@ -59,6 +59,9 @@ jobs:
     env:
       FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
       gpu_backend_version: ${{ matrix.gpu_backend_version }}
+      # one of the two variables below will be unused
+      cuda_version: ${{ matrix.gpu_backend_version }}
+      hip_version: ${{ matrix.gpu_backend_version }}
       branch_name: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Checkout Git Repository
