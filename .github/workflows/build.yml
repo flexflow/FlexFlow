@@ -119,18 +119,6 @@ jobs:
           ../config/config.linux
           sudo make install
           sudo ldconfig
-          # Remove build folder to check that the installed version can run independently of the build files
-          cd ..
-          rm -rf build
-
-      - name: Check availability of Python flexflow.core module
-        run: |
-          if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
-            sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
-          fi
-          export CPU_ONLY_TEST=1
-          python -c "import flexflow.core; exit()"
 
       - name: Run C++ unit tests
         if: ${{ matrix.gpu_backend == 'cuda' }}
@@ -141,6 +129,17 @@ jobs:
           export FF_HOME=$(pwd)
           cd build
           ./tests/unit/unit-test
+
+      - name: Check availability of Python flexflow.core module
+        run: |
+          if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
+            export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
+            sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
+          fi
+          # Remove build folder to check that the installed version can run independently of the build files
+          rm -rf build
+          export CPU_ONLY_TEST=1
+          python -c "import flexflow.core; exit()"
 
   makefile-build:
     name: Build FlexFlow with the Makefile

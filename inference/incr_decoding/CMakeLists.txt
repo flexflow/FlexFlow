@@ -15,6 +15,8 @@ set(CPU_SRC
 
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   cuda_add_executable(${project_target} ${CPU_SRC})
+endif()
+if (FF_GPU_BACKEND STREQUAL "hip_cuda")
   target_compile_definitions(${project_target} PRIVATE __HIP_PLATFORM_NVIDIA__)
 elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
   hip_add_executable(${project_target} ${CPU_SRC})
