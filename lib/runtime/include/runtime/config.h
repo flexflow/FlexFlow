@@ -107,7 +107,7 @@ public:
 struct FFIterationConfig {
   FFIterationConfig();
   void reset();
-  req<int> seq_length;
+  int seq_length;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(FFIterationConfig, seq_length);
