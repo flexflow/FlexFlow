@@ -1,9 +1,8 @@
 #! /usr/bin/env bash
 set -euo pipefail
-# shellcheck disable=SC2015
 
 # Usage: ./build.sh <docker_image_name>
-# Optional environment variables: FF_GPU_BACKEND, cuda_version
+# Optional environment variables: FF_GPU_BACKEND, cuda_version, hip_version
 
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "${BASH_SOURCE[0]%/*}/.."
@@ -38,6 +37,7 @@ gpu_backend_version=""
 if [[ "${FF_GPU_BACKEND}" == "cuda" || "${FF_GPU_BACKEND}" == "hip_cuda" ]]; then
   # Autodetect cuda version if not specified
   if [[ $cuda_version == "empty" ]]; then
+    # shellcheck disable=SC2015
     cuda_version=$(command -v nvcc >/dev/null 2>&1 && nvcc --version | grep "release" | awk '{print $NF}' || true)
     # Change cuda_version eg. V11.7.99 to 11.7
     cuda_version=${cuda_version:1:4}
@@ -72,6 +72,7 @@ fi
 if [[ "${FF_GPU_BACKEND}" == "hip_rocm" || "${FF_GPU_BACKEND}" == "hip_cuda" ]]; then
   # Autodetect HIP version if not specified
   if [[ $hip_version == "empty" ]]; then
+    # shellcheck disable=SC2015
     hip_version=$(command -v hipcc >/dev/null 2>&1 && hipcc --version | grep "HIP version:" | awk '{print $NF}' || true)
     # Change hip_version eg. 5.6.31061-8c743ae5d to 5.6
     hip_version=${hip_version:0:3}
