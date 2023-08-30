@@ -127,6 +127,7 @@ jobs:
           export CUDA_DIR="$CUDA_PATH"
           export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
           export FF_HOME=$(pwd)
+          sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
           cd build
           ./tests/unit/unit-test
 
@@ -134,7 +135,6 @@ jobs:
         run: |
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
             export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
-            sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
           fi
           # Remove build folder to check that the installed version can run independently of the build files
           rm -rf build
