@@ -491,7 +491,8 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
       output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx};
 }
 
-std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &graph, GraphSplit const &split) {
+std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &graph,
+                                            GraphSplit const &split) {
   auto prefix = split.first;
   auto postfix = split.second;
 
@@ -508,7 +509,7 @@ std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &graph, Graph
 }
 
 std::unordered_set<MultiDiEdge> get_cut_set(OpenMultiDiGraphView const &graph,
-                                        GraphSplit const &split) {
+                                            GraphSplit const &split) {
   return get_cut_set(graph, split);
 }
 

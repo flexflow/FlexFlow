@@ -18,6 +18,8 @@ struct Substitution {
   bidict<InputPatternOutput, OutputPatternOutput> output_mapping;
 };
 
+bool is_valid_substitution(Substitution const &);
+
 ParallelComputationGraph apply_substitution(ParallelComputationGraph const &,
                                             Substitution const &,
                                             MultiDiGraphPatternMatch const &);

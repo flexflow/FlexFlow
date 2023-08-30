@@ -29,8 +29,8 @@ struct EvaluateGraphAttributeExpr {
 
 GraphAttributeValue
     evaluate_graph_attribute_expr(ParallelComputationGraph const &g,
-                                       MultiDiGraphPatternMatch const &match,
-                                       GraphAttributeExpr const &expr) {
+                                  MultiDiGraphPatternMatch const &match,
+                                  GraphAttributeExpr const &expr) {
   return visit(EvaluateGraphAttributeExpr{g, match}, expr);
 }
 
