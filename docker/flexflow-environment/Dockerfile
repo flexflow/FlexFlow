@@ -39,17 +39,17 @@ ENV MAKEFLAGS "${MAKEFLAGS} -j${N_BUILD_CORES}"
 RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
         # Check that hip_version is one of 5.3,5.4,5.5,5.6
-        if [[ "$hip_version" != "5.3" && "$hip_version" != "5.4" && "$hip_version" != "5.5" && "$hip_version" != "5.6" ]]; then \
+        if [ "$hip_version" != "5.3" ] && [ "$hip_version" != "5.4" ] && [ "$hip_version" != "5.5" ] && [ "$hip_version" != "5.6" ]; then \
             echo "hip_version '${hip_version}' is not supported, please choose among {5.3, 5.4, 5.5, 5.6}"; \
             exit 1; \
         fi; \
         # Compute script name and url given the version
         AMD_GPU_SCRIPT_NAME=amdgpu-install_5.6.50600-1_all.deb; \
-        if [[ "$hip_version" == "5.3" ]]; then \
+        if [ "$hip_version" = "5.3" ]; then \
             AMD_GPU_SCRIPT_NAME=amdgpu-install_5.3.50300-1_all.deb; \
-        elif [[ "$hip_version" == "5.4" ]]; then \
+        elif [ "$hip_version" = "5.4" ]; then \
             AMD_GPU_SCRIPT_NAME=amdgpu-install_5.4.50400-1_all.deb; \
-        elif [[ "$hip_version" == "5.5" ]]; then \
+        elif [ "$hip_version" = "5.5" ]; then \
             AMD_GPU_SCRIPT_NAME=amdgpu-install_5.5.50500-1_all.deb; \
         fi; \
         AMD_GPU_SCRIPT_URL="https://repo.radeon.com/amdgpu-install/${hip_version}/ubuntu/focal/${AMD_GPU_SCRIPT_NAME}"; \
