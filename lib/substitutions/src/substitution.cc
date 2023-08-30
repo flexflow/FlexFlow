@@ -1,7 +1,56 @@
 #include "substitutions/substitution.h"
-#include
 
 namespace FlexFlow {
+
+std::unordered_set<AttributeExpr<OperatorAttributeKey>>
+    get_valid_operator_attribute_exprs(OperatorPattern const &pattern) {
+  NOT_IMPLEMENTED();
+}
+
+bool is_valid_operator_attribute_expr(
+    OperatorPattern const &pattern,
+    AttributeExpr<OperatorAttributeKey> const &expr) {
+  return contains(get_valid_operator_attribute_exprs(pattern), expr);
+}
+
+struct IsValidGraphAttributeExprFunctor {
+  GraphPattern const &graph_pattern;
+
+  template <typename T>
+  bool operator()(T const &t) const {
+    return is_valid(t);
+  }
+
+  bool is_valid(NodeAttrAccess const &t) const {
+    return is_valid_operator_attribute_expr(graph_pattern.value().at(t.node),
+                                            t.attr_expr);
+  }
+
+  bool is_valid(EdgeAttrAccess const &t) const {
+    NOT_IMPLEMENTED();
+  }
+
+  bool is_valid(AttrConstant const &t) const {
+    return true;
+  }
+};
+
+bool is_valid_graph_attribute_expr(GraphPattern const &pattern,
+                                   GraphAttributeExpr const &expr) {
+  return visit(IsValidGraphAttributeExprFunctor{pattern}, expr);
+}
+
+bool is_valid_substitution(Substitution const &s) {
+  for (Node const &node : get_nodes(s.output_graph_expr)) {
+    for (GraphAttributeExpr expr :
+         values(s.output_graph_expr.value().at(node).assignment)) {
+      if (!is_valid_graph_attribute_expr(s.input_graph, expr)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 struct EvaluateGraphAttributeExpr {
   ParallelComputationGraph const &graph;
