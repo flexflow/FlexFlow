@@ -41,10 +41,10 @@ if [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; then
     AMD_GPU_SCRIPT_URL="https://repo.radeon.com/amdgpu-install/${hip_version}/ubuntu/focal/${AMD_GPU_SCRIPT_NAME}"
     # Download and install AMD GPU software with ROCM and HIP support
     wget "$AMD_GPU_SCRIPT_URL"
-    apt-get install -y ./${AMD_GPU_SCRIPT_NAME}
-    rm ./${AMD_GPU_SCRIPT_NAME}
-    amdgpu-install -y --usecase=hip,rocm --no-dkms
-    apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk rocm-device-libs
+    sudo apt-get install -y ./${AMD_GPU_SCRIPT_NAME}
+    sudo rm ./${AMD_GPU_SCRIPT_NAME}
+    sudo amdgpu-install -y --usecase=hip,rocm --no-dkms
+    sudo apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk rocm-device-libs
 
     # Install protobuf v3.20.x manually
     sudo apt-get update -y && sudo apt-get install -y pkg-config zip g++ zlib1g-dev unzip python autoconf automake libtool curl make
