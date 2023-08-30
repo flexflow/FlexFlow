@@ -72,7 +72,7 @@ jobs:
       - name: Free additional space on runner
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.4' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
             .github/workflows/helpers/free_space_on_runner.sh
@@ -83,7 +83,7 @@ jobs:
       - name: Build Docker container
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.4' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
@@ -104,7 +104,7 @@ jobs:
         if: ${{ matrix.gpu_backend == 'cuda' }}
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.4' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
             if [[ $FF_GPU_BACKEND == "cuda" ]]; then
