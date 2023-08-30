@@ -38,7 +38,6 @@ jobs:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
         cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6", "11.7", "11.8"]
-        python_version: ["latest", "3.11", "3.10", "3.9"]
         # The CUDA version doesn't matter when building for hip_rocm, so we just pick one arbitrarily (11.8) to avoid building for hip_rocm once per number of CUDA version supported
         exclude:
           - gpu_backend: "hip_rocm"
@@ -93,7 +92,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}
-          path: build/export/legion_ubuntu-20.04-${{ matrix.cuda_version }}_${{ matrix.gpu_backend }}_${{ matrix.python_version }}.tar.gz #how o incororate the cuda version + how to deal with python version
+          path: build/export/legion_ubuntu-20.04-${{ matrix.cuda_version }}-${{ matrix.gpu_backend }}-${{ matrix.python_version }}.tar.gz #how to incororate the cuda version + how to deal with python version
 
   create-release:
     name: Create new release
