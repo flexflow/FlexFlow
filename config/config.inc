@@ -207,7 +207,7 @@ if [ -n "$FF_GPU_BACKEND" ]; then
         chmod +x "$(pwd)/nvidia_hipcc"
         SET_CXX="-DCMAKE_CXX_COMPILER=$(pwd)/nvidia_hipcc -DCMAKE_CXX_LINKER=$(pwd)/nvidia_hipcc"
       else
-        SET_CXX="-DCMAKE_CXX_COMPILER=/opt/rocm/bin/hipcc -DCMAKE_CXX_LINKER=/opt/rocm/bin/hipcc"
+        SET_CXX="-DCMAKE_CXX_COMPILER=/opt/rocm/bin/hipcc -DCMAKE_CXX_LINKER=/opt/rocm/bin/hipcc" #-DHIP_CLANG_PATH=/opt/rocm/llvm/bin"
       fi
     fi
   fi

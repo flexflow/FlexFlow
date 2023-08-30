@@ -231,6 +231,11 @@ if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cuda)
 endif()
 
+# HIP
+if (FF_GPU_BACKEND STREQUAL "hip_rocm" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
+  include(hip)
+endif()
+
 # CUDNN
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cudnn)
@@ -402,19 +407,17 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
 
     add_compile_definitions(FF_USE_HIP_ROCM)
 
-    if (NOT FF_HIP_ARCH STREQUAL "")
-      if (FF_HIP_ARCH STREQUAL "all")
-        set(FF_HIP_ARCH "gfx700,gfx701,gfx702,gfx703,gfx704,gfx705,gfx801,gfx802,gfx803,gfx805,gfx8010,gfx900,gfx902,gfx904,gfx906,gfx908,gfx909,gfx90a,gfx90c,gfx940,gfx941,gfx942,gfx1010,gfx1011,gfx1012,gfx1013,gfx1030,gfx1031,gfx1032,gfx1033,gfx1034,gfx1035,gfx1036,gfx1100,gfx1101,gfx1102,gfx1103,gfx1150,gfx1151")
-      endif()
-      string(REPLACE "," " " HIP_ARCH_LIST "${FF_HIP_ARCH}")
-      set_property(TARGET flexflow PROPERTY HIP_ARCHITECTURES "${HIP_ARCH_LIST}")
+    if (FF_HIP_ARCH STREQUAL "")
+      message(FATAL_ERROR "FF_HIP_ARCH is undefined")
     endif()
+    set_property(TARGET flexflow PROPERTY HIP_ARCHITECTURES "${HIP_ARCH_LIST}")
 
     message(STATUS "FF_GPU_BACKEND: ${FF_GPU_BACKEND}")
     message(STATUS "FF_HIP_ARCH: ${FF_HIP_ARCH}")
     message(STATUS "HIP_ARCH_LIST: ${HIP_ARCH_LIST}")
     get_property(CHECK_HIP_ARCHS TARGET flexflow PROPERTY HIP_ARCHITECTURES)
     message(STATUS "CHECK_HIP_ARCHS: ${CHECK_HIP_ARCHS}")
+    message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
 
     # The hip cmake config module defines three targets, 
     # hip::amdhip64, hip::host, and hip::device.
