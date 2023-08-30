@@ -30,61 +30,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   ProfilingSettings const &settings,
                                   MachineView const &pc);
 
-/* class BatchMatmul : public Op { */
-/* public: */
-/*   BatchMatmul(FFModel &model, */
-/*               const ParallelTensor A, */
-/*               const ParallelTensor B, */
-/*               int a_seq_length_dim, */
-/*               int b_seq_length_dim, */
-/*               char const *name = nullptr); */
-/*   static Op * */
-/*       create_operator_from_layer(FFModel &model, */
-/*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs);
- */
-
-/*   void init(FFModel const &) override; */
-/*   void forward(FFModel const &) override; */
-/*   void backward(FFModel const &) override; */
-/*   /1* static PCG::Node deserialize(FFModel &ff, *1/ */
-/*   /1*                              Legion::Deserializer &d, *1/ */
-/*   /1*                              ParallelTensor inputs[], *1/ */
-/*   /1*                              int num_inputs); *1/ */
-/*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                            Legion::Context ctx, */
-/*                            Legion::Runtime *runtime); */
-/*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                            Legion::Context ctx, */
-/*                            Legion::Runtime *runtime); */
-/*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                             Legion::Context ctx, */
-/*                             Legion::Runtime *runtime); */
-/*   bool measure_operator_cost(Simulator *sim, */
-/*                              MachineView const &pc, */
-/*                              CostMetrics &cost_metrics) const override; */
-
-/*   OpTaskBinding get_init_task_binding() const override; */
-/*   OpTaskBinding get_fwd_task_binding() const override; */
-/*   OpTaskBinding get_bwd_task_binding() const override; */
-/* private: */
-/*   template <int NDIM> */
-/*   void init_with_dim(FFModel const &ff); */
-/*   template <int NDIM> */
-/*   void forward_with_dim(FFModel const &ff); */
-/*   template <int NDIM> */
-/*   void backward_with_dim(FFModel const &ff); */
-
-/* public: */
-/*   int a_seq_length_dim, b_seq_length_dim; */
-/* }; */
-
 } // namespace FlexFlow
 
 #endif

@@ -18,9 +18,6 @@
 
 namespace FlexFlow {
 
-BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
 namespace BatchMatmul {
 
@@ -124,7 +121,7 @@ O = A * B
 */
 
 void forward_kernel(cudaStream_t stream,
-                    BatchMatmulPerDeviceState const *meta,
+                    BatchMatmulPerDeviceState const &meta,
                     float *o_ptr,
                     float const *a_ptr,
                     float const *b_ptr,
