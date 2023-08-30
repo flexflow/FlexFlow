@@ -121,18 +121,6 @@ static DeviceSpecific<MHAPerDeviceState>
   int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
   int num_heads = get_piece_shape(weight_parallel_tensor_shape)[ff_dim_t(1)];
 
-  assert(qoSeqLength == query.shape[legion_dim_t(1)]);
-  assert(qSize == query.shape[legion_dim_t(0)]);
-  assert(num_samples == key.shape[legion_dim_t(2)]);
-  assert(kvSeqLength == key.shape[legion_dim_t(1)]);
-  assert(kSize == key.shape[legion_dim_t(0)]);
-  assert(num_samples == value.shape[legion_dim_t(2)]);
-  assert(kvSeqLength == value.shape[legion_dim_t(1)]);
-  assert(vSize == value.shape[legion_dim_t(0)]);
-  assert(num_samples == output.shape[legion_dim_t(2)]);
-  assert(qoSeqLength == output.shape[legion_dim_t(1)]);
-  assert(oProjSize == output.shape[legion_dim_t(0)]);
-
   DeviceSpecific<MHAPerDeviceState> per_device_state =
       acc.create_device_specific<MHAPerDeviceState>(
           init_kernel(handle,
@@ -149,9 +137,6 @@ static DeviceSpecific<MHAPerDeviceState>
                       qoSeqLength,
                       kvSeqLength,
                       attrs.add_bias_kv));
-
-  assert(weight.shape.get_volume() * sizeof(float) ==
-         acc.unwrap(per_device_state)->weightSize);
   return per_device_state;
 }
 

@@ -110,8 +110,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   int k = a_input.shape[legion_dim_t(0)];
   assert(k == b_input.shape[legion_dim_t(1)]);
 
-  assert(a_input.shape.size() == b_input.shape.size());
-  assert(a_input.shape.size() == output.shape.size());
+  assert(a_input.shape.get_volume() == b_input.shape.get_volume());
+  assert(a_input.shape.get_volume() == output.shape.get_volume());
 
   int batch = 1;
   for (int i = 2; i < a_input.shape.get_dim();
@@ -171,8 +171,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(n == output.shape[legion_dim_t(1)]);
   int k = a_input.shape[legion_dim_t(0)];
   assert(k == b_input.shape[legion_dim_t(1)]);
-  assert(a_input.shape.size() == b_input.shape.size());
-  assert(a_input.shape.size() == output.shape.size());
+  assert(a_input.shape.get_volume() == b_input.shape.get_volume());
+  assert(a_input.shape.get_volume() == output.shape.get_volume());
   int batch = 1;
   for (int i = 2; i < a_input.shape.dims.num_dims();
        i++) {
@@ -181,11 +181,6 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
     assert(dim_size == output.shape[legion_dim_t(i)]);
     batch *= dim_size;
   }
-
-  // TODO: add support for meta->a_seq_length_dim >= 0
-  // or meta->b_seq_length_dim >= 0
-  assert((meta->a_seq_length_dim >= a_len) || (iter_config.seq_length == 0));
-  assert((meta->b_seq_length_dim >= b_len) || (iter_config.seq_length == 0));
 
   return profile(backward_kernel,
                  profiling,
