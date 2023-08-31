@@ -3,7 +3,7 @@
 
 #include "utils/graph/digraph.h"
 #include "utils/graph/digraph_interfaces.h"
-#include "utils/graph/labelled/labelled_open.decl"
+#include "utils/graph/labelled/labelled_open.decl.h"
 #include "utils/graph/labelled/labelled_open_interfaces.h"
 #include "utils/graph/multidigraph.h"
 #include "utils/graph/multidigraph_interfaces.h"

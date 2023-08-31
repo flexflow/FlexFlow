@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_DECL
-#define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_DECL
+#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_DECL_H
+#define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_DECL_H
 
 #include "labelled_open_interfaces.h"
 #include "node_labelled.h"
@@ -63,7 +63,11 @@ public:
   operator OpenMultiDiGraphView() const;
 
   friend void swap(LabelledOpenMultiDiGraph &lhs,
-                   LabelledOpenMultiDiGraph &rhs);
+                   LabelledOpenMultiDiGraph &rhs) {
+    using std::swap;
+
+    swap(lhs.ptr, rhs.ptr);
+  }
 
   Node add_node(NodeLabel const &l);
   NodeLabel &at(Node const &n);

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_H
 
-#include "labelled_open.decl"
+#include "labelled_open.decl.h"
 #include "labelled_open_interfaces.h"
 #include "node_labelled.h"
 #include "utils/graph/internal.h"
@@ -67,14 +67,6 @@ LabelledOpenMultiDiGraph<N, E, I, O>::
 template <typename N, typename E, typename I, typename O>
 LabelledOpenMultiDiGraph<N, E, I, O>::operator OpenMultiDiGraphView() const {
   return GraphInternal::create_open_multidigraph_view(this->ptr);
-}
-
-template <typename N, typename E, typename I, typename O>
-void swap(LabelledOpenMultiDiGraph<N, E, I, O> &lhs,
-          LabelledOpenMultiDiGraph<N, E, I, O> &rhs) {
-  using std::swap;
-
-  swap(lhs.ptr, rhs.ptr);
 }
 
 template <typename NodeLabel, typename E, typename I, typename O>
