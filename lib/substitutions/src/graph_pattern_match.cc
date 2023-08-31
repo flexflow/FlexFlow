@@ -8,18 +8,18 @@ namespace FlexFlow {
 //                                  OpenMultiDiGraphView const &pattern) {
 //   MultiDiGraphPatternMatch result;
 //   std::unordered_set<Node> nodes = get_nodes(pattern);
-//   for (auto const &kv : match.nodeAssignment) {
+//   for (auto const &kv : match.node_assignment) {
 //     Node pattern_node = kv.first;
 //     if (contains(nodes, pattern_node)) {
-//       result.nodeAssignment.equate(kv.first, kv.second);
+//       result.node_assignment.equate(kv.first, kv.second);
 //     }
 //   }
 
 //   std::unordered_set<OpenMultiDiEdge> edges = get_edges(pattern);
-//   for (auto const &kv : match.edgeAssignment) {
+//   for (auto const &kv : match.edge_assignment) {
 //     OpenMultiDiEdge pattern_edge = kv.first;
 //     if (contains(edges, pattern_edge)) {
-//       result.edgeAssignment.equate(kv.first, kv.second);
+//       result.edge_assignment.equate(kv.first, kv.second);
 //     }
 //   }
 
@@ -54,14 +54,14 @@ MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
 
   MatchSplit result;
 
-  for (auto const &kv : match.nodeAssignment) {
+  for (auto const &kv : match.node_assignment) {
     Node pattern_node = kv.first;
     Node graph_node = kv.second;
     if (contains(split.first, pattern_node)) {
-      result.prefix_submatch.nodeAssignment.equate(pattern_node, graph_node);
+      result.prefix_submatch.node_assignment.equate(pattern_node, graph_node);
     } else {
       assert(contains(split.second, pattern_node));
-      result.postfix_submatch.nodeAssignment.equate(pattern_node, graph_node);
+      result.postfix_submatch.node_assignment.equate(pattern_node, graph_node);
     }
   }
 
@@ -69,12 +69,12 @@ MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
 
   std::function<void(OpenMultiDiEdge const &)> handle_edge =
       [&](OpenMultiDiEdge const &pattern_edge) -> void {
-    MultiDiEdge graph_edge = match.edgeAssignment.at_l(pattern_edge);
+    MultiDiEdge graph_edge = match.edge_assignment.at_l(pattern_edge);
     auto edge_nodes = get_nodes(pattern_edge);
     if (is_subseteq_of(edge_nodes, prefix)) {
-      result.prefix_submatch.edgeAssignment.equate(pattern_edge, graph_edge);
+      result.prefix_submatch.edge_assignment.equate(pattern_edge, graph_edge);
     } else if (is_subseteq_of(edge_nodes, postfix)) {
-      result.postfix_submatch.edgeAssignment.equate(pattern_edge, graph_edge);
+      result.postfix_submatch.edge_assignment.equate(pattern_edge, graph_edge);
     } else {
       assert(is_standard_edge(pattern_edge));
       auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
@@ -84,7 +84,7 @@ MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
     }
   };
 
-  for (auto const &kv : match.edgeAssignment) {
+  for (auto const &kv : match.edge_assignment) {
     OpenMultiDiEdge pattern_edge = kv.first;
     handle_edge(pattern_edge);
   }
@@ -103,24 +103,24 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
                      F const &additional_criterion) {
   if (is_singleton_pattern(pattern)) {
     Node pattern_node = get_only(get_nodes(pattern));
-    Node graph_matched_node = match.nodeAssignment.at_l(pattern_node);
+    Node graph_matched_node = match.node_assignment.at_l(pattern_node);
     if (!additional_criterion(pattern_node, graph_matched_node)) {
       return false;
     }
     for (OpenMultiDiEdge const &e : get_edges(pattern)) {
-      MultiDiEdge graph_matched_edge = match.edgeAssignment.at_l(e);
+      MultiDiEdge graph_matched_edge = match.edge_assignment.at_l(e);
 
       assert(is_input_edge(e) || is_output_edge(e));
       if (is_input_edge(e)) {
         InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(e);
-        if (match.nodeAssignment.at_l(input_edge.dst) !=
+        if (match.node_assignment.at_l(input_edge.dst) !=
                 graph_matched_edge.dst ||
             input_edge.dstIdx != graph_matched_edge.dstIdx) {
           return false;
         }
       } else {
         OutputMultiDiEdge output_edge = mpark::get<OutputMultiDiEdge>(e);
-        if (match.nodeAssignment.at_l(output_edge.src) !=
+        if (match.node_assignment.at_l(output_edge.src) !=
                 graph_matched_edge.src ||
             output_edge.srcIdx != graph_matched_edge.srcIdx) {
           return false;
@@ -158,7 +158,7 @@ optional<MultiDiGraphPatternMatch>
   Node pattern_node = get_only(get_nodes(pattern));
 
   MultiDiGraphPatternMatch match;
-  match.nodeAssignment.equate(pattern_node, graph_node);
+  match.node_assignment.equate(pattern_node, graph_node);
 
   auto incoming = get_incoming_edges_by_idx(graph, graph_node);
   auto outgoing = get_outgoing_edges_by_idx(graph, graph_node);
@@ -169,16 +169,16 @@ optional<MultiDiGraphPatternMatch>
       if (!contains_key(incoming, input_edge.dstIdx)) {
         return nullopt;
       }
-      match.edgeAssignment.equate(input_edge,
-                                  get_only(incoming.at(input_edge.dstIdx)));
+      match.edge_assignment.equate(input_edge,
+                                   get_only(incoming.at(input_edge.dstIdx)));
     } else {
       OutputMultiDiEdge output_edge =
           mpark::get<OutputMultiDiEdge>(pattern_edge);
       if (!contains_key(outgoing, output_edge.srcIdx)) {
         return nullopt;
       }
-      match.edgeAssignment.equate(output_edge,
-                                  get_only(outgoing.at(output_edge.srcIdx)));
+      match.edge_assignment.equate(output_edge,
+                                   get_only(outgoing.at(output_edge.srcIdx)));
     }
   }
 
@@ -199,24 +199,24 @@ optional<MultiDiGraphPatternMatch> unsplit_matches(
     handled.insert(output_edge);
     handled.insert(input_edge);
 
-    MultiDiEdge output_graph_edge = prefix.edgeAssignment.at_l(output_edge);
-    MultiDiEdge input_graph_edge = postfix.edgeAssignment.at_l(input_edge);
+    MultiDiEdge output_graph_edge = prefix.edge_assignment.at_l(output_edge);
+    MultiDiEdge input_graph_edge = postfix.edge_assignment.at_l(input_edge);
     if (output_graph_edge == input_graph_edge) {
-      result.edgeAssignment.equate(standard_edge, output_graph_edge);
+      result.edge_assignment.equate(standard_edge, output_graph_edge);
     } else {
       return nullopt;
     }
   }
 
   for (auto const &kv :
-       merge_maps(prefix.edgeAssignment, postfix.edgeAssignment)) {
+       merge_maps(prefix.edge_assignment, postfix.edge_assignment)) {
     if (!contains(handled, kv.first)) {
-      result.edgeAssignment.equate(kv.first, kv.second);
+      result.edge_assignment.equate(kv.first, kv.second);
     }
   }
 
-  result.nodeAssignment =
-      merge_maps(prefix.nodeAssignment, postfix.nodeAssignment);
+  result.node_assignment =
+      merge_maps(prefix.node_assignment, postfix.node_assignment);
 
   return result;
 }

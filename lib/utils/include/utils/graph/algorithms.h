@@ -286,6 +286,7 @@ UndirectedGraphView as_undirected(DiGraphView const &);
 MultiDiGraphView as_multidigraph(DiGraphView const &);
 DiGraphView as_digraph(MultiDiGraphView const &);
 MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &);
+OpenMultiDiGraphView as_openmultidigraph(MultiDiGraphView const &);
 
 void export_as_dot(
     DotFile<Node> &,

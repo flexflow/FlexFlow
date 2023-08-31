@@ -22,7 +22,7 @@ struct IsValidGraphAttributeExprFunctor {
   }
 
   bool is_valid(NodeAttrAccess const &t) const {
-    return is_valid_operator_attribute_expr(graph_pattern.value().at(t.node),
+    return is_valid_operator_attribute_expr(graph_pattern->at(t.node),
                                             t.attr_expr);
   }
 
@@ -65,14 +65,14 @@ struct EvaluateGraphAttributeExpr {
     Node node_in_pattern = t.node;
     Node node_in_pcg = match.node_assignment.at_l(node_in_pattern);
     return widen<GraphAttributeValue>(
-        evaluate_attribute_expr(graph.at(node_in_pcg), t.attr_expr).value());
+        evaluate_attribute_expr(graph->at(node_in_pcg), t.attr_expr).value());
   }
 
   GraphAttributeValue evaluate(EdgeAttrAccess const &t) {
     OpenMultiDiEdge output_in_pattern = t.edge;
     MultiDiEdge output_in_pcg = match.edge_assignment.at_l(output_in_pattern);
     return widen<GraphAttributeValue>(
-        evaluate_attribute_expr(graph.at(output_in_pcg), t.attr_expr).value());
+        evaluate_attribute_expr(graph->at(output_in_pcg), t.attr_expr).value());
   }
 };
 
@@ -101,11 +101,12 @@ ParallelComputationGraph
                        Substitution const &substitution,
                        MultiDiGraphPatternMatch const &match) {
   ParallelComputationGraph new_pcg =
-      ParallelComputationGraph::create<UnorderedOutputLabelledMultiDiGraph>();
+      OutputLabelledMultiDiGraph<Operator, ParallelTensor>::create<
+          UnorderedOutputLabelledMultiDiGraph<Operator, ParallelTensor>>();
   bidict<Node, Node> node_mapping; // Refactor it with global nodes
   for (Node const &node : get_nodes(pcg)) {
     if (!contains_r(match.node_assignment, node)) {
-      node_mapping.equate(node, new_pcg.add_node(pcg.at(node)));
+      node_mapping.equate(node, new_pcg.add_node(pcg.value().at(node)));
     }
   }
   for (MultiDiEdge const &edge : get_edges(pcg)) {

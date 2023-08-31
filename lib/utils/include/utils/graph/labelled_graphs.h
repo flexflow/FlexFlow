@@ -11,5 +11,6 @@
 #include "labelled/output_labelled_open.h"
 #include "labelled/standard_labelled.h"
 #include "labelled/unordered_labelled_graphs.h"
+#include "labelled/views.h"
 
 #endif

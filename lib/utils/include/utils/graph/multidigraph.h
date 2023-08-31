@@ -52,6 +52,7 @@ public:
   MultiDiGraph(MultiDiGraph const &) = default;
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
 
+  operator GraphView() const;
   operator MultiDiGraphView() const;
 
   friend void swap(MultiDiGraph &, MultiDiGraph &);
