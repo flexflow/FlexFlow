@@ -5,6 +5,8 @@
 #include "index_task_invocation.h"
 #include "legion.h"
 #include "op_arg_ref.h"
+#include "op_tensor_spec.h"
+#include "variadic_tensor_ref.h"
 #include "op_task_signature.h"
 #include "runtime/config.h"
 #include "runtime/profiling.h"
@@ -22,16 +24,6 @@ namespace FlexFlow {
 
 enum class IsTrainable { YES, NO };
 
-struct OpTensorSpec {
-  TensorRole role;
-  req<int> idx;
-};
-FF_VISITABLE_STRUCT(OpTensorSpec, role, idx);
-
-OpTensorSpec input_tensor(int);
-OpTensorSpec output_tensor(int);
-OpTensorSpec weight_tensor(int);
-
 using OpArgSpec = variant<ConcreteArgSpec,
                           IndexArgSpec,
                           OpArgRefSpec,
@@ -47,6 +39,11 @@ struct OpTaskBinding {
 
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);
+
+  template <typename T>
+  void bind(slot_id name, VariadicTensorRef<T> const &t) {
+    NOT_IMPLEMENTED();
+  }
 
   template <typename T>
   void bind_device_specific_arg(slot_id name, T const &t) {

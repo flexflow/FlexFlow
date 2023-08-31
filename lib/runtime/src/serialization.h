@@ -9,7 +9,8 @@
 #include "utils/optional.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
-#include <type_traits>
+#include "utils/type_traits.h"
+#include "utils/required.h"
 
 namespace FlexFlow {
 
@@ -76,6 +77,12 @@ struct is_trivially_serializable<
     T,
     typename std::enable_if<std::is_integral<T>::value>::type>
     : std::true_type {};
+
+template <typename T>
+struct is_trivially_serializable<T, void_t<underlying_type<T>>> : is_trivially_serializable<underlying_type<T>> {};
+
+template <typename T>
+struct is_trivially_serializable<req<T>> : is_trivially_serializable<T> {};
 
 template <>
 struct is_trivially_serializable<half> : std::true_type {};

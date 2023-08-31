@@ -26,10 +26,6 @@ using Legion::Rect;
 namespace Kernels {
 namespace Concat {
 
-void init_meta(ConcatPerDeviceState *m, int legion_axis) {
-  m->legion_axis = legion_axis;
-}
-
 template <int N>
 void calc_blk_size(coord_t &num_blocks,
                    coord_t &blk_size,
