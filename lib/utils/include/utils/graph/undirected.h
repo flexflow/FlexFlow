@@ -79,8 +79,7 @@ public:
       unsafe_create_without_ownership(IUndirectedGraphView const &);
 
 private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr)
-      : ptr(ptr) {}
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr);
 
   friend struct GraphInternal;
 

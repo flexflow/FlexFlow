@@ -61,7 +61,7 @@ struct GraphView {
   }
 
 private:
-  GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
+  GraphView(std::shared_ptr<IGraphView const> ptr);
 
   friend struct GraphInternal;
 

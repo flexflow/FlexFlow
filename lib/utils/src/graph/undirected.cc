@@ -67,6 +67,10 @@ UndirectedGraph::operator UndirectedGraphView() const {
   return GraphInternal::create_undirectedgraphview(this->ptr.get());
 }
 
+UndirectedGraphView::UndirectedGraphView(
+    std::shared_ptr<IUndirectedGraphView const> ptr)
+    : ptr(ptr) {}
+
 std::unordered_set<UndirectedEdge>
     UndirectedGraphView::query_edges(UndirectedEdgeQuery const &q) const {
   return this->ptr->query_edges(q);
