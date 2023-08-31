@@ -26,12 +26,17 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -893,8 +898,11 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_EW_MUL:
     case OP_EW_MAX:
     case OP_EW_MIN: {
+      ElementBinaryParams params;
+      params.type = opx->type;
+      params.inplace_a = false;
       op = model->get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
-                                                    {opx->type});
+                                                    params);
       break;
     }
     case OP_RELU: {
@@ -3651,6 +3659,13 @@ bool FFModel::convert_graph_to_operators(
         new_op = new Aggregate(*this, inputs, aggr->n, aggr->lambda_bal, NULL);
         break;
       }
+      case OP_EXPERTS: {
+        Experts *exp = (Experts *)node.ptr;
+        ExpertsParams params = exp->get_params();
+        new_op = new Experts(
+            *this, params, {std::begin(inputs), std::end(inputs)}, true);
+        break;
+      }
       case OP_SPLIT: {
         Split *split = (Split *)node.ptr;
         std::vector<int> splits;
@@ -3671,8 +3686,13 @@ bool FFModel::convert_graph_to_operators(
       case OP_EW_MIN: {
         assert(inList.size() == 2);
         ElementBinary *eb = (ElementBinary *)node.ptr;
-        new_op = new ElementBinary(
-            *this, eb->op_type, inputs[0], inputs[1], eb->inplace_a, NULL);
+        new_op = new ElementBinary(*this,
+                                   eb->layer_guid,
+                                   eb->op_type,
+                                   inputs[0],
+                                   inputs[1],
+                                   eb->inplace_a,
+                                   NULL);
         break;
       }
       case OP_POOL2D: {
@@ -3697,6 +3717,25 @@ bool FFModel::convert_graph_to_operators(
         new_op = new MultiHeadAttention(
             *this, *attn, inputs[0], inputs[1], inputs[2], true);
         break;
+      }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(inList.size() == 1);
+        IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)node.ptr;
+        new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
+        break;
+      }
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(inList.size() == 1);
+        TreeIncMultiHeadSelfAttention *attn =
+            (TreeIncMultiHeadSelfAttention *)node.ptr;
+        new_op =
+            new TreeIncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
+        break;
+      }
+      case OP_RMS_NORM: {
+        assert(inList.size() == 1);
+        RMSNorm *rms = (RMSNorm *)node.ptr;
+        new_op = new RMSNorm(*this, *rms, inputs[0], true);
         break;
       }
       case OP_SOFTMAX: {
@@ -3737,6 +3776,12 @@ bool FFModel::convert_graph_to_operators(
                                inputs[0],
                                reduction->reduction_dim,
                                reduction->reduction_degree);
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(inList.size() == 1);
+        AllReduce *allreduce = (AllReduce *)node.ptr;
+        new_op = new AllReduce(*this, inputs[0], allreduce->allreduce_dim);
         break;
       }
       case OP_FUSED_PARALLEL: {

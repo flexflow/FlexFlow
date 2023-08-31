@@ -3,6 +3,7 @@
 
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/inference.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
@@ -64,8 +65,17 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }

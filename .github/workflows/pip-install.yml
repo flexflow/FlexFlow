@@ -7,6 +7,7 @@ on:
       - "deps/**"
       - "python/**"
       - "setup.py"
+      - "requirements.txt"
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   push:
@@ -18,6 +19,7 @@ on:
       - "deps/**"
       - "python/**"
       - "setup.py"
+      - "requirements.txt"
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   workflow_dispatch:
@@ -64,6 +66,8 @@ jobs:
           export FF_HOME=$(pwd)
           export FF_CUDA_ARCH=70
           pip install . --verbose
+          # Remove build folder to check that the installed version can run independently of the build files
+          rm -rf build
 
       - name: Check availability of Python flexflow.core module
         run: |

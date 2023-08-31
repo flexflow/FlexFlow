@@ -1,4 +1,5 @@
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/accessor.h"
 #include <stdexcept>
 
 namespace FlexFlow {
@@ -45,6 +46,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Split";
     case OP_EMBEDDING:
       return "Embedding";
+    case OP_EXPERTS:
+      return "Experts";
     case OP_GATHER:
       return "Gather";
     case OP_GROUP_BY:
@@ -111,6 +114,10 @@ std::string get_operator_type_name(OperatorType type) {
       return "Size";
     case OP_TOPK:
       return "TopK";
+    case OP_ARG_TOPK:
+      return "ArgTopK";
+    case OP_BEAM_TOPK:
+      return "BeamTopK";
     case OP_WHERE:
       return "Where";
     case OP_CEIL:
@@ -141,6 +148,12 @@ std::string get_operator_type_name(OperatorType type) {
       return "PReLU";
     case OP_MULTIHEAD_ATTENTION:
       return "MultiHeadAttention";
+    case OP_INC_MULTIHEAD_SELF_ATTENTION:
+      return "IncMultiHeadSelfAttention";
+    case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION:
+      return "SpecIncMultiHeadSelfAttention";
+    case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION:
+      return "TreeIncMultiHeadSelfAttention";
     case OP_INPUT:
       return "Input";
     case OP_WEIGHT:
@@ -157,8 +170,16 @@ std::string get_operator_type_name(OperatorType type) {
       return "Mean";
     case OP_LAYERNORM:
       return "LayerNorm";
+    case OP_RMS_NORM:
+      return "RMSNorm";
+    case OP_GELU:
+      return "GELU";
     case OP_IDENTITY:
       return "Identity";
+    case OP_SAMPLING:
+      return "Sampling";
+    case OP_ARGMAX:
+      return "ArgMax";
     // Parallel Ops
     case OP_REPARTITION:
       return "Repartition";
@@ -168,6 +189,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Replicate";
     case OP_REDUCTION:
       return "Reduction";
+    case OP_ALLREDUCE:
+      return "AllReduce";
     case OP_PIPELINE:
       return "Pipeline";
     case OP_FUSED_PARALLEL:
@@ -176,6 +199,34 @@ std::string get_operator_type_name(OperatorType type) {
       throw std::runtime_error("Operator type unsupported: " +
                                std::to_string(type));
   }
+}
+
+size_t data_type_size(DataType type) {
+  switch (type) {
+    case DT_HALF:
+      return sizeof(half);
+    case DT_FLOAT:
+      return sizeof(float);
+    case DT_DOUBLE:
+      return sizeof(double);
+    case DT_INT32:
+      return sizeof(int32_t);
+    case DT_INT64:
+      return sizeof(int64_t);
+    case DT_BOOLEAN:
+      return sizeof(bool);
+    default:
+      assert(false);
+  }
+}
+
+size_t get_quantization_to_byte_size(DataType type,
+                                     DataType quantization_type,
+                                     size_t num_elements) {
+  assert(quantization_type == DT_INT4 || quantization_type == DT_INT8);
+  return (num_elements / (quantization_type == DT_INT4 ? 2 : 1)) +
+         (num_elements / INT4_NUM_OF_ELEMENTS_PER_GROUP) * 2 *
+             data_type_size(type);
 }
 
 std::ostream &operator<<(std::ostream &s, OperatorType op_type) {

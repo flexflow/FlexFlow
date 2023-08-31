@@ -12,7 +12,16 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
 endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
+set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS} -fPIC -UNDEBUG")
+
+option(INFERENCE_TESTS "Run inference tests" OFF)
+set(LIBTORCH_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libtorch" CACHE STRING "LibTorch Path")
+if (INFERENCE_TESTS)
+  find_package(Torch REQUIRED PATHS ${LIBTORCH_PATH} NO_DEFAULT_PATH)
+  set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS} -fPIC ${TORCH_CXX_FLAGS}")
+  message(STATUS "LIBTORCH_PATH: ${LIBTORCH_PATH}")
+  message(STATUS "TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
+endif()
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -154,8 +163,13 @@ set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
 set(FF_CUDA_ARCH "autodetect" CACHE STRING "Target CUDA Arch")
-if (FF_CUDA_ARCH STREQUAL "")
+if ((FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda") AND FF_CUDA_ARCH STREQUAL "")
   message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
+endif()
+# option for hip arch
+set(FF_HIP_ARCH "all" CACHE STRING "Target HIP Arch")
+if (FF_GPU_BACKEND STREQUAL "hip_rocm" AND FF_CUDA_ARCH STREQUAL "")
+  message(FATAL_ERROR "FF_HIP_ARCH cannot be an empty string. Set it to `all`, or pass one or multiple valid HIP archs.")
 endif()
 
 # option for nccl
@@ -173,6 +187,7 @@ set(FF_MAX_DIM "4" CACHE STRING "Maximum dimention of tensors")
 
 # option for legion
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
+set(LEGION_MAX_RETURN_SIZE "32768" CACHE STRING "Maximum Legion return size")
 
 set(FLEXFLOW_EXT_LIBRARIES "")
 set(FLEXFLOW_INCLUDE_DIRS "")
@@ -184,10 +199,9 @@ set(LD_FLAGS $ENV{LD_FLAGS})
 
 # Set global FLAGS
 list(APPEND CC_FLAGS
-  -std=c++11)
-
+  -std=c++17)
 list(APPEND NVCC_FLAGS
-  -std=c++11)
+  -std=c++17)
 
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
@@ -220,12 +234,25 @@ if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cuda)
 endif()
 
+# HIP
+if (FF_GPU_BACKEND STREQUAL "hip_rocm" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
+  include(hip)
+endif()
+
 # CUDNN
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cudnn)
 endif()
 
-# legion
+# Inference tests
+if(INFERENCE_TESTS)
+  list(APPEND FF_CC_FLAGS
+    -DINFERENCE_TESTS)
+  list(APPEND FF_NVCC_FLAGS
+    -DINFERENCE_TESTS)
+endif()
+
+# Legion
 include(legion)
 
 # Not build FlexFlow if BUILD_LEGION_ONLY is ON
@@ -275,9 +302,11 @@ if(NOT BUILD_LEGION_ONLY)
   endif()
 
   message(STATUS "FlexFlow MAX_DIM: ${FF_MAX_DIM}")
+  message(STATUS "LEGION_MAX_RETURN_SIZE: ${LEGION_MAX_RETURN_SIZE}")
 
   list(APPEND FF_CC_FLAGS
-    -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+    -DMAX_TENSOR_DIM=${FF_MAX_DIM}
+    -DLEGION_MAX_RETURN_SIZE=${LEGION_MAX_RETURN_SIZE})
 
   if(FF_USE_AVX2)
     list(APPEND FF_CC_FLAGS
@@ -287,12 +316,14 @@ if(NOT BUILD_LEGION_ONLY)
 
   list(APPEND FF_NVCC_FLAGS
     -Wno-deprecated-gpu-targets
-    -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+    -DMAX_TENSOR_DIM=${FF_MAX_DIM}
+    -DLEGION_MAX_RETURN_SIZE=${LEGION_MAX_RETURN_SIZE})
 
   list(APPEND FF_LD_FLAGS
     -lrt
     -ldl
-    -rdynamic)
+    -rdynamic
+    -lstdc++fs)
 
   # Set FF FLAGS
   add_compile_options(${FF_CC_FLAGS})
@@ -306,11 +337,15 @@ if(NOT BUILD_LEGION_ONLY)
   file(GLOB_RECURSE FLEXFLOW_HDR
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/include/*.h)
+  
+  list(APPEND FLEXFLOW_HDR ${FLEXFLOW_ROOT}/inference/file_loader.h)
 
   file(GLOB_RECURSE FLEXFLOW_SRC
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/src/*.cc)
+  
   list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
+  list(APPEND FLEXFLOW_SRC ${FLEXFLOW_ROOT}/inference/file_loader.cc)
 
   set(FLEXFLOW_CPP_DRV_SRC
     ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
@@ -378,6 +413,18 @@ if(NOT BUILD_LEGION_ONLY)
       find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
 
       add_compile_definitions(FF_USE_HIP_ROCM)
+
+      if (FF_HIP_ARCH STREQUAL "")
+        message(FATAL_ERROR "FF_HIP_ARCH is undefined")
+      endif()
+      set_property(TARGET flexflow PROPERTY HIP_ARCHITECTURES "${HIP_ARCH_LIST}")
+
+      message(STATUS "FF_GPU_BACKEND: ${FF_GPU_BACKEND}")
+      message(STATUS "FF_HIP_ARCH: ${FF_HIP_ARCH}")
+      message(STATUS "HIP_ARCH_LIST: ${HIP_ARCH_LIST}")
+      get_property(CHECK_HIP_ARCHS TARGET flexflow PROPERTY HIP_ARCHITECTURES)
+      message(STATUS "CHECK_HIP_ARCHS: ${CHECK_HIP_ARCHS}")
+      message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
 
       # The hip cmake config module defines three targets, 
       # hip::amdhip64, hip::host, and hip::device.
@@ -456,30 +503,38 @@ if(NOT BUILD_LEGION_ONLY)
     endif()
   endif()
 
-  # build binary
-  option(FF_BUILD_RESNET "build resnet example" OFF)
-  option(FF_BUILD_RESNEXT "build resnext example" OFF)
-  option(FF_BUILD_ALEXNET "build alexnet example" OFF)
-  option(FF_BUILD_DLRM "build DLRM example" OFF)
-  option(FF_BUILD_XDL "build XDL example" OFF)
-  option(FF_BUILD_INCEPTION "build inception example" OFF)
-  option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
-  option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
-  option(FF_BUILD_MOE "build mixture of experts example" OFF)
-  option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
-  option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
-  option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
-  option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
-  option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
-  option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
-  option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
+if (INFERENCE_TESTS)
+  target_link_libraries(flexflow "${TORCH_LIBRARIES}")
+  set_property(TARGET flexflow PROPERTY CXX_STANDARD 14)
+endif()
 
-  if(FF_BUILD_UNIT_TESTS)
-    set(BUILD_GMOCK OFF)
-    add_subdirectory(deps/googletest)
-    enable_testing()
-    add_subdirectory(tests/unit)
-  endif()
+# build binary
+option(FF_BUILD_TOKENIZER "build tokenizer=cpp for LLM serving" ON)
+option(FF_BUILD_RESNET "build resnet example" OFF)
+option(FF_BUILD_RESNEXT "build resnext example" OFF)
+option(FF_BUILD_ALEXNET "build alexnet example" OFF)
+option(FF_BUILD_DLRM "build DLRM example" OFF)
+option(FF_BUILD_XDL "build XDL example" OFF)
+option(FF_BUILD_INCEPTION "build inception example" OFF)
+option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
+option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+option(FF_BUILD_MOE "build mixture of experts example" OFF)
+option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
+option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
+option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
+option(FF_BUILD_MLP_UNIFY_INFERENCE "build mlp unify inference example" OFF)
+option(FF_BUILD_ALL_INFERENCE_EXAMPLES "build all inference examples. Overrides others" OFF)
+option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
+option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
+
+if(FF_BUILD_UNIT_TESTS)
+  set(BUILD_GMOCK OFF)
+  add_subdirectory(deps/googletest)
+  enable_testing()
+  add_subdirectory(tests/unit)
+endif()
 
   if(FF_BUILD_SUBSTITUTION_TOOL)
     add_subdirectory(tools/protobuf_to_json)
@@ -489,86 +544,113 @@ if(NOT BUILD_LEGION_ONLY)
     add_subdirectory(tools/substitutions_to_dot)
   endif()
 
-  if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/ResNet)
+if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
+  if (FF_GPU_BACKEND STREQUAL "hip_rocm")
+    SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
   endif()
-
-  if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/resnext50)
+  # Ensure Rust is installed
+  execute_process(COMMAND rustc --version
+                RESULT_VARIABLE RUST_COMMAND_RESULT
+                OUTPUT_VARIABLE RUSTC_OUTPUT
+                ERROR_QUIET)
+  if(NOT RUST_COMMAND_RESULT EQUAL 0)
+    message(FATAL_ERROR "Rust is not installed on the system. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
   endif()
-
-  if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/AlexNet)
+  # Ensure Cargo is installed
+  execute_process(COMMAND cargo --version
+                  RESULT_VARIABLE CARGO_RESULT
+                  OUTPUT_QUIET ERROR_QUIET)
+  if(NOT CARGO_RESULT EQUAL 0)
+    message(FATAL_ERROR "Rust is installed, but cargo is not. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
   endif()
+  add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
+  target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
+  target_link_libraries(flexflow tokenizers_cpp)
+endif()
+if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/ResNet)
+endif()
 
-  if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/MLP_Unify)
+if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/resnext50)
+endif()
+
+if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/AlexNet)
+endif()
+
+if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/MLP_Unify)
+endif()
+
+if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/split_test)
+endif()
+
+if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/split_test_2)
+endif()
+
+if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/InceptionV3)
+endif()
+
+#TODO: Once functional add to BUILD_ALL_EXAMPLES
+if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/candle_uno)
+endif()
+
+if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/DLRM)
+
+  #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
+  #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+
+  #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
+  #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+endif()
+
+if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/XDL)
+endif()
+
+if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/Transformer)
+endif()
+
+if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/mixture_of_experts)
+endif()
+
+if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(inference/spec_infer)
+  add_subdirectory(inference/incr_decoding)
+endif()
+
+
+# installation
+set(INCLUDE_DEST "include")
+set(LIB_DEST "lib")
+install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
+install(TARGETS flexflow DESTINATION ${LIB_DEST})
+# install python
+if (FF_USE_PYTHON)
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if (NOT FF_BUILD_FROM_PYPI)
+    install(
+      DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
+      DESTINATION ${PY_DEST}/flexflow
+      FILES_MATCHING 
+      PATTERN "*.py")
+  else()
+    # pip automatically installs all *.py files in the python/flexflow folder, but because flexflow_cffi_header.py is generated at build time, we have to install it manually.
+    install(
+      PROGRAMS ${FLEXFLOW_ROOT}/python/flexflow/core/flexflow_cffi_header.py
+      DESTINATION ${PY_DEST}/flexflow/core
+    )
+    # Use setup.py script to re-install the Python bindings library with the right library paths. 
+    # Need to put the instructions in a subfolder because of issue below:
+    # https://stackoverflow.com/questions/43875499/do-post-processing-after-make-install-in-cmake
+    add_subdirectory(cmake/pip_install)
   endif()
-
-  if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/split_test)
-  endif()
-
-  if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/split_test_2)
-  endif()
-
-  if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/InceptionV3)
-  endif()
-
-  #TODO: Once functional add to BUILD_ALL_EXAMPLES
-  if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/candle_uno)
-  endif()
-
-  if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/DLRM)
-
-    #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
-    #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-
-    #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
-    #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-  endif()
-
-  if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/XDL)
-  endif()
-
-  if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/Transformer)
-  endif()
-
-  if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
-    add_subdirectory(examples/cpp/mixture_of_experts)
-  endif()
-
-  # installation
-  set(INCLUDE_DEST "include")
-  set(LIB_DEST "lib")
-  install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
-  install(TARGETS flexflow DESTINATION ${LIB_DEST})
-  # install python
-  if (FF_USE_PYTHON)
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if (NOT FF_BUILD_FROM_PYPI)
-      install(
-        DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
-        DESTINATION ${PY_DEST}/flexflow
-        FILES_MATCHING 
-        PATTERN "*.py")
-    else()
-      # pip automatically installs all *.py files in the python/flexflow folder, but because flexflow_cffi_header.py is generated at build time, we have to install it manually.
-      install(
-        PROGRAMS ${FLEXFLOW_ROOT}/python/flexflow/core/flexflow_cffi_header.py
-        DESTINATION ${PY_DEST}/flexflow/core
-      )
-      # Use setup.py script to re-install the Python bindings library with the right library paths. 
-      # Need to put the instructions in a subfolder because of issue below:
-      # https://stackoverflow.com/questions/43875499/do-post-processing-after-make-install-in-cmake
-      add_subdirectory(cmake/pip_install)
-    endif()
-  endif()
-
 endif()

@@ -30,6 +30,8 @@ FF_USE_PYTHON   := 1
 SHARED_OBJECTS  := 1     # we build the shared lib for legion
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
+INSTALL_TOKENIZERS := $(shell $(FF_HOME)/scripts/install_tokenizer.sh)
+
 ifeq ($(shell uname -s), Darwin)
   PYTHON_EXT := dylib
 else

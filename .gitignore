@@ -15,6 +15,11 @@ __pycache__/
 # C extensions
 *.so
 
+/inference/weights/*
+/inference/tokenizer/*
+/inference/prompt/*
+/inference/output/*
+
 # Distribution / packaging
 .Python
 build/
@@ -83,10 +88,7 @@ docs/build/
 
 # Doxygen documentation
 docs/doxygen/output/
-
-# Exhale documentation
-docs/source/_doxygen/
-docs/source/c++_api/
+docs/doxygen/cpp_api/
 
 # PyBuilder
 .pybuilder/
@@ -179,6 +181,7 @@ train-labels-idx1-ubyte
 
 # Logs
 logs/
+gpt_tokenizer
 
 # pip version
 python/flexflow/version.txt

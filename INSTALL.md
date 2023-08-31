@@ -1,4 +1,4 @@
-# Installing FlexFlow
+# Building from source
 To build and install FlexFlow, follow the instructions below.
 
 ## 1. Download the source code
@@ -85,10 +85,11 @@ export FF_HOME=/path/to/FlexFlow
 ### Run FlexFlow Python examples
 The Python examples are in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python). The native, Keras integration and PyTorch integration examples are listed in `native`, `keras` and `pytorch` respectively.
 
-To run the Python examples, you have two options: you can use the `flexflow_python` interpreter, available in the `build` folder, or you can use the native Python interpreter. If you choose to use the native Python interpreter, you should either install FlexFlow, or, if you prefer to build without installing, export the following flags:
+To run the Python examples, you have two options: you can use the `flexflow_python` interpreter, available in the `build` folder, or you can use the native Python interpreter. If you choose to use the native Python interpreter, you should either install FlexFlow, or, if you prefer to build without installing, export the required environment flags by running the following command (edit the path if your build folder is not named `build`):
 
-* `export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/deps/legion/bindings/python:${PYTHONPATH}"`
-* `export LD_LIBRARY_PATH="${FF_HOME}/build:${FF_HOME}/build/deps/legion/lib:${LD_LIBRARY_PATH}"`
+```
+source ./build/set_python_envs.sh
+```
 
 **We recommend that you run the** `mnist_mlp` **test under** `native` **using the following cmd to check if FlexFlow has been installed correctly:**
 

@@ -1,5 +1,6 @@
 #ifndef _FLEXFLOW_HIP_HELPER_H_
 #define _FLEXFLOW_HIP_HELPER_H_
+#include "flexflow/accessor.h"
 #include "flexflow/ffconst.h"
 #include "legion.h"
 #include <hipblas.h>
@@ -133,9 +134,16 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
+template <typename T>
+T *download_tensor(T const *ptr, size_t num_elements);
+
+template <typename T>
+bool download_tensor(T const *ptr, T *dst, size_t num_elements);
+
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
-                                       Legion::Domain domain);
+                                       Legion::Domain domain,
+                                       DataType data_type = DT_FLOAT);
 
 hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 

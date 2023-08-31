@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
 # CC=mpicc
@@ -16,11 +15,26 @@
 # set build type
 BUILD_TYPE=${BUILD_TYPE:-Release}
 
+INFERENCE_TESTS=${INFERENCE_TESTS:-OFF}
+LIBTORCH_PATH=${LIBTORCH_PATH:-"$(realpath ../..)/libtorch"}
+if [[ "$INFERENCE_TESTS" == "ON" && ! -d "$LIBTORCH_PATH" ]]; then
+    cwd="$(pwd)"
+    cd ../..
+    wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
+    unzip libtorch-shared-with-deps-latest.zip
+    rm libtorch-shared-with-deps-latest.zip
+    LIBTORCH_PATH="$(pwd)/libtorch"
+    cd "$cwd"
+fi
+
 # set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
 # To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
 # Alternatively, set "FF_CUDA_ARCH=autodetect" to build FlexFlow for all architectures detected on the machine,
 # or set "FF_CUDA_ARCH=all" to build FlexFlow for all supported GPU architectures
 FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
+# FF_HIP_ARCH only supports building for a specific AMD architecture, a list of architectures separated by a comma
+# or all available architectures. TODO: support autodetect
+FF_HIP_ARCH=${FF_HIP_ARCH:-"all"}
 
 # set CUDNN dir in case cmake cannot autodetect a path
 CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
@@ -45,6 +59,7 @@ FF_UCX_URL=${FF_UCX_URL:-""}
 
 # build C++ examples
 FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES:-OFF}
+FF_BUILD_ALL_INFERENCE_EXAMPLES=${FF_BUILD_ALL_INFERENCE_EXAMPLES:-ON}
 
 # build C++ unit tests
 FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS:-OFF}
@@ -65,6 +80,9 @@ FF_MAX_DIM=${FF_MAX_DIM:-5}
 # set BUILD_LEGION_ONLY
 BUILD_LEGION_ONLY=${BUILD_LEGION_ONLY:-OFF}
 
+# set LEGION_MAX_RETURN_SIZE
+LEGION_MAX_RETURN_SIZE=${LEGION_MAX_RETURN_SIZE:-262144}
+
 # set ROCM path
 ROCM_PATH=${ROCM_PATH:-"/opt/rocm"}
 
@@ -82,7 +100,7 @@ fi
 
 function get_build_configs() {
     # Create a string with the values of the variables set in this script
-    BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} NCCL_DIR=${NCCL_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} BUILD_LEGION_ONLY=${BUILD_LEGION_ONLY} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_UCX_URL=${FF_UCX_URL} FF_LEGION_NETWORKS=${FF_LEGION_NETWORKS} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND} INSTALL_DIR=${INSTALL_DIR}"
+    BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} FF_HIP_ARCH=${FF_HIP_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} NCCL_DIR=${NCCL_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} BUILD_LEGION_ONLY=${BUILD_LEGION_ONLY} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_UCX_URL=${FF_UCX_URL} FF_LEGION_NETWORKS=${FF_LEGION_NETWORKS} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_ALL_INFERENCE_EXAMPLES=${FF_BUILD_ALL_INFERENCE_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND}"
 }
 
 if [[ -n "$1" && ( "$1" == "CMAKE_FLAGS" || "$1" == "CUDA_PATH" ) ]]; then

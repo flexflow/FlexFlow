@@ -24,9 +24,12 @@
 #include "flexflow/mapper.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
+#include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
@@ -35,10 +38,12 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -46,15 +51,21 @@
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
+#include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sampling.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/substitution.h"
 #include "flexflow/utils/random_utils.h"
 #include "flexflow/utils/test_utils.h"
@@ -591,11 +602,35 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
 }
 #endif
 
+/**
+ * @brief The ParallelDimMappingRecord class's constructor. It sets the object's
+ * type field equal to the value passed as the constructor's argument, and
+ * initializes all other fields to -1.
+ *
+ * @param[in]   type  The MappingRecordType to use to initialize the
+ * ParallelDimMappingRecord.
+ */
 ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
     : type(type), output_dim(-1), input_dim(-1), weight_dim(-1), output_idx(-1),
       input_idx(-1), weight_idx(-1) {}
 
 /*static*/
+/**
+ * @brief Builds and initializes a ParallelDimMappingRecord object of
+ * INPUT_OUTPUT MappingRecordType.
+ *
+ * This function should be used to create a ParallelDimMappingRecord to track an
+ * operator's dimension relation between the input and the output tensor
+ *
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ * @param[in]   output_dim  The index of the output dimension part of the
+ * dimension relation
+ */
 ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
     int input_idx,
     int input_dim,
@@ -619,6 +654,22 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
 }
 
 /*static*/
+/**
+ * @brief Builds and initializes a ParallelDimMappingRecord object of
+ * INPUT_WEIGHT MappingRecordType.
+ *
+ * This function should be used to create a ParallelDimMappingRecord to track an
+ * operator's dimension relation between the input and the weights tensor
+ *
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ * @param[in]   weight_dim  The index of the weight dimension part of the
+ * dimension relation
+ */
 ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
     int input_idx,
     int input_dim,
@@ -646,6 +697,39 @@ MappingRecordType ParallelDimMappingRecord::get_type() const {
 }
 
 /*static*/
+/** @brief A wrapper around the main version of the
+ * construct_weight_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and weight tensors. Unlike the other
+ * construct_weight_parallel_dims wrapper below, this function allows you to
+ * specify the MappingOperation for each pair of dimensions for which you will
+ * be creating a new ParallelDimMappingRecord.
+ *
+ * The function takes a vector of (int, MappingOperation, int) tuples, where the
+ * int members represent the indexes of the two dimensions in a relation, and
+ * the MappingOperation member specifies the type of mapping operation. Just
+ * like the other wrapper, this function simply calls the main version of
+ * construct_weight_parallel_dims for each pair, using the same values across
+ * all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of tuples, each including a pair of
+ * integers (representing the indexes of the input and weight dimensions in a
+ * relation), and a MappingOperation, specifying the mapping operation for the
+ * pair of dimensions.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ *
+ */
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
@@ -662,6 +746,30 @@ void Op::construct_weight_parallel_dims(
 }
 
 /*static*/
+/** @brief A wrapper around the main version of the
+ * construct_weight_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and weight tensors. The function takes a
+ * vector of (input, weight) dimension index pairs and simply calls the main
+ * version of construct_weight_parallel_dims for each such pair, using the same
+ * values across all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of integer pairs, each representing the
+ * indexes of the input and weight dimensions in a relation.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ *
+ */
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     std::vector<std::pair<int, int>> mappings,
@@ -674,6 +782,30 @@ void Op::construct_weight_parallel_dims(
 }
 
 /*static*/
+/**
+ * @brief Creates a new ParallelDimMappingRecord (of the INPUT_WEIGHT
+ * MappingRecordType flavor) and appends it to an existing vector of
+ * ParallelDimMappingRecord entries.
+ *
+ * This function creates a new ParallelDimMappingRecord to track a dimension
+ * relation between a dimension from the input tensor and a dimension from the
+ * weight tensor. This function should NOT be used to track dimension relations
+ * between the input and output tensors; construct_output_parallel_dims should
+ * be used instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   weight_dim  The index of the weight dimension part of the
+ * dimension relation
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ * @param[in]   operation   The parallelization operation (partition or
+ * replication) associated with the dimension relation
+ */
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     int input_dim,
@@ -685,12 +817,20 @@ void Op::construct_weight_parallel_dims(
       input_idx, input_dim, weight_idx, weight_dim, operation));
 }
 
+/** @brief  Calls the corresponding version of construct_weight_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
+ */
 void Op::register_weight_parallel_dims(
     std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) {
   Op::construct_weight_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, weight_idx);
 }
 
+/** @brief  Calls the corresponding version of construct_weight_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
+ */
 void Op::register_weight_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
     int input_idx,
@@ -699,6 +839,10 @@ void Op::register_weight_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, weight_idx);
 }
 
+/** @brief  Calls the corresponding version of construct_weight_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
+ */
 void Op::register_weight_parallel_dims(
     int input_dim,
     int weight_dim,
@@ -714,6 +858,39 @@ void Op::register_weight_parallel_dims(
 }
 
 /*static*/
+/** @brief A wrapper around the main version of the
+ * construct_output_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and output tensors. Unlike the other
+ * construct_output_parallel_dims wrapper below, this function allows you to
+ * specify the MappingOperation for each pair of dimensions for which you will
+ * be creating a new ParallelDimMappingRecord.
+ *
+ * The function takes a vector of (int, MappingOperation, int) tuples, where the
+ * int members represent the indexes of the two dimensions in a relation, and
+ * the MappingOperation member specifies the type of mapping operation. Just
+ * like the other wrapper, this function simply calls the main version of
+ * construct_output_parallel_dims for each pair, using the same values across
+ * all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of tuples, each including a pair of
+ * integers (representing the indexes of the input and output dimensions in a
+ * relation), and a MappingOperation, specifying the mapping operation for the
+ * pair of dimensions.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ *
+ */
 void Op::construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
@@ -730,6 +907,30 @@ void Op::construct_output_parallel_dims(
 }
 
 /*static*/
+/** @brief A wrapper around the main version of the
+ * construct_output_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and output tensors. The function takes a
+ * vector of (input, output) dimension index pairs and simply calls the main
+ * version of construct_output_parallel_dims for each such pair, using the same
+ * values across all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of integer pairs, each representing the
+ * indexes of the input and output dimensions in a relation.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ *
+ */
 void Op::construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     std::vector<std::pair<int, int>> mappings,
@@ -742,6 +943,30 @@ void Op::construct_output_parallel_dims(
 }
 
 /*static*/
+/**
+ * @brief Creates a new ParallelDimMappingRecord (of the INPUT_OUTPUT
+ * MappingRecordType flavor) and appends it to an existing vector of
+ * ParallelDimMappingRecord entries.
+ *
+ * This function creates a new ParallelDimMappingRecord to track a dimension
+ * relation between a dimension from the input tensor and a dimension from the
+ * output tensor. This function should NOT be used to track dimension relations
+ * between the input and weights tensors; construct_weight_parallel_dims should
+ * be used instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   output_dim  The index of the output dimension part of the
+ * dimension relation
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ * @param[in]   operation   The parallelization operation (partition or
+ * replication) associated with the dimension relation
+ */
 void Op::construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     int input_dim,
@@ -753,12 +978,20 @@ void Op::construct_output_parallel_dims(
       input_idx, input_dim, output_idx, output_dim, operation));
 }
 
+/** @brief  Calls the corresponding version of construct_output_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
+ */
 void Op::register_output_parallel_dims(
     std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx) {
   Op::construct_output_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, output_idx);
 }
 
+/** @brief  Calls the corresponding version of construct_output_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
+ */
 void Op::register_output_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
     int input_idx,
@@ -767,6 +1000,10 @@ void Op::register_output_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, output_idx);
 }
 
+/** @brief  Calls the corresponding version of construct_output_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
+ */
 void Op::register_output_parallel_dims(
     int input_dim,
     int output_dim,
@@ -975,6 +1212,50 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
   }
 }
 
+void Op::set_argumentmap_for_init_inference(FFModel const &ff,
+                                            ArgumentMap &argmap,
+                                            ParallelTensor const output0) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
+  MachineView const view = output0->machine_view;
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  switch (domain.get_dim()) {
+#ifdef FF_USE_NCCL
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
+      if (op_type == OP_ALLREDUCE) {                                           \
+        ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
+        handle.ncclComm = nccl_comms[idx++];                                   \
+      }                                                                        \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#else
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#endif
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -996,6 +1277,29 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
 }
 
+void Op::set_opmeta_from_futuremap_inference(FFModel const &ff,
+                                             FutureMap const &fm,
+                                             ParallelTensor const output) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      inference_meta[output][idx++] = fm.get_result<OpMeta *>(*it);            \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -1007,6 +1311,30 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       OpMeta *mp = meta[idx++];                                                \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_argumentmap_for_inference(FFModel const &ff,
+                                       ArgumentMap &argmap,
+                                       ParallelTensor const output) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = inference_meta[output][idx++];                              \
       argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
     }                                                                          \
     break;                                                                     \
@@ -1157,37 +1485,9 @@ OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
   }
 }
 
-FFModel::FFModel(FFConfig &_config)
-    : op_global_guid(OP_GUID_FIRST_VALID),
-      layer_global_guid(LAYER_GUID_FIRST_VALID),
-      tensor_global_guid(TENSOR_GUID_FIRST_VALID),
-      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
-      node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
-      loss_op(NULL), metrics_op(NULL), simulator(NULL) {
-  this->search = new PCG::SearchHelper(this);
-  this->graph_search = new PCG::GraphSearchHelper(this);
-
+FFRuntime::FFRuntime(FFConfig &config) {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
-  // Register machine views
-  register_all_machine_views(config.numNodes,
-                             config.workersPerNode,
-                             config.cpusPerNode,
-                             all_valid_views);
-  metrics_input = -1;
-  // Load strategy file
-  // Create field space
-  {
-    FieldAllocator allocator =
-        runtime->create_field_allocator(ctx, config.field_space);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
-  // Build training dataset
-  // if (config.datasetPath.length() == 0) {
-  //  dataLoader = NULL;
-  //} else {
-  //  dataLoader = new DataLoader(config.datasetPath);
-  //}
 
   ArgumentMap argmap;
   Rect<1> task_rect(Point<1>(0),
@@ -1200,6 +1500,9 @@ FFModel::FFModel(FFConfig &_config)
     // info.myRank = rank++;
     // info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
+    info.offload_reserve_space_size =
+        config.cpu_offload ? config.offload_reserve_space_size : 0;
+    info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
@@ -1221,6 +1524,50 @@ FFModel::FFModel(FFConfig &_config)
   }
 }
 
+FFRuntime *ffruntime_singleton = nullptr;
+
+FFModel::FFModel(FFConfig &_config, bool cpu_offload)
+    : op_global_guid(OP_GUID_FIRST_VALID),
+      layer_global_guid(LAYER_GUID_FIRST_VALID),
+      tensor_global_guid(TENSOR_GUID_FIRST_VALID),
+      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
+      node_global_guid(NODE_GUID_FIRST_VALID), current_transformer_layer_id(0),
+      config(_config), optimizer(NULL), loss_op(NULL), metrics_op(NULL),
+      simulator(NULL) {
+  this->search = new PCG::SearchHelper(this);
+  this->graph_search = new PCG::GraphSearchHelper(this);
+  this->cpu_offload = cpu_offload;
+
+  if (ffruntime_singleton == nullptr) {
+    ffruntime_singleton = new FFRuntime(_config);
+  }
+
+  Runtime *runtime = config.lg_hlr;
+  Context ctx = config.lg_ctx;
+  // Register machine views
+  register_all_machine_views(config.numNodes,
+                             config.workersPerNode,
+                             config.cpusPerNode,
+                             all_valid_views);
+  metrics_input = -1;
+  // Load strategy file
+  // Create field space
+  //{
+  //  FieldAllocator allocator =
+  //      runtime->create_field_allocator(ctx, config.field_space);
+  //  allocator.allocate_field(sizeof(float), FID_DATA);
+  //}
+  // Build training dataset
+  // if (config.datasetPath.length() == 0) {
+  //  dataLoader = NULL;
+  //} else {
+  //  dataLoader = new DataLoader(config.datasetPath);
+  //}
+  for (int idx = 0; idx < config.workersPerNode * config.numNodes; idx++) {
+    handlers[idx] = ffruntime_singleton->handlers[idx];
+  }
+}
+
 void FFModel::clear_graph_search_cache() {
   this->graph_search->clear_cache();
   this->search->clear_cache();
@@ -1231,7 +1578,7 @@ ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
   auto const &it = view_hash_to_nccl_comms.find(view.hash());
   if (it == view_hash_to_nccl_comms.end()) {
     assert(config.computationMode == COMP_MODE_INFERENCE);
-    return NULL;
+    return nullptr;
   } else {
     return it->second;
   }
@@ -1487,6 +1834,7 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
   for (int i = 0; i < NDIM; i++) {
     p->dims[i] = dims[NDIM - 1 - i];
   }
+
   assert(p->get_volume() > 0);
   assert(p->check_valid());
   return p;
@@ -1601,6 +1949,12 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
     case DT_INT64:
       allocator.allocate_field(sizeof(int64_t), FID_DATA);
       break;
+    case DT_INT4:
+      allocator.allocate_field(sizeof(char), FID_DATA);
+      break;
+    case DT_INT8:
+      allocator.allocate_field(sizeof(char), FID_DATA);
+      break;
     default:
       assert(false);
   }
@@ -1649,8 +2003,10 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
           runtime->get_logical_partition(ctx, tensor->region_grad, ip);
     }
   }
-  // Step 3: initialize the tensor
-  if (tensor->initializer != NULL) {
+  // Step 3: initialize the tensor; don't randomly initialize weights
+  // for inference
+  if (tensor->initializer != NULL &&
+      config.computationMode == COMP_MODE_TRAINING) {
     tensor->initializer->init(this, tensor);
   }
 }
@@ -1687,6 +2043,7 @@ void FFModel::map_weight_with_dim(ParallelTensor weight,
   switch (parallel_op->op_type) {
     case OP_LINEAR:
     case OP_EMBEDDING:
+    case OP_EXPERTS:
     case OP_MULTIHEAD_ATTENTION: {
       switch (tdim) {
 #define DIMFUNC(TDIM)                                                          \
@@ -2503,9 +2860,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type == OP_WEIGHT) {
       continue;
     }
-    // don't fuse parallel op since they have different parallel_is in
-    // forward/backward
-    if (operators[l]->is_parallel_op()) {
+    // don't fuse parallel op except allReduce since they have different
+    // parallel_is in forward/backward
+    if (operators[l]->is_parallel_op() &&
+        operators[l]->op_type != OP_ALLREDUCE) {
       continue;
     }
     size_t start = 0;
@@ -2548,9 +2906,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
               operators[i]->op_type == OP_WEIGHT) {
             continue;
           }
-          // don't fuse parallel op since they have different parallel_is in
-          // forward/backward
-          if (operators[i]->is_parallel_op()) {
+          // don't fuse parallel op except allReduce since they have different
+          // parallel_is in forward/backward
+          if (operators[i]->is_parallel_op() &&
+              operators[i]->op_type != OP_ALLREDUCE) {
             continue;
           }
           fused_op = new FusedOp(*this, operators[i]);
@@ -2635,7 +2994,8 @@ Op *FFModel::create_operator_from_layer(
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel) {
+      if (config.only_data_parallel &&
+          config.computationMode == COMP_MODE_TRAINING) {
         Repartition *part = new Repartition(
             *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
         operators.push_back(part);
@@ -2645,6 +3005,24 @@ Op *FFModel::create_operator_from_layer(
     case OP_MULTIHEAD_ATTENTION: {
       Op *op =
           MultiHeadAttention::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = SpecIncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = IncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = TreeIncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2722,6 +3100,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_RMS_NORM: {
+      Op *op = RMSNorm::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_LINEAR: {
       Op *op = Linear::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2762,6 +3145,26 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_ARG_TOPK: {
+      Op *op = ArgTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_BEAM_TOPK: {
+      Op *op = BeamTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SAMPLING: {
+      Op *op = Sampling::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_ARGMAX: {
+      Op *op = ArgMax::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2777,6 +3180,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_EXPERTS: {
+      Op *op = Experts::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     default:
       assert(false);
   }
@@ -2784,7 +3192,9 @@ Op *FFModel::create_operator_from_layer(
 
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
-  for (auto const &l : layers) {
+  // for (auto const &l : layers) {
+  for (int layer_idx = 0; layer_idx < layers.size(); layer_idx++) {
+    auto const &l = layers[layer_idx];
     std::vector<ParallelTensor> inputs;
     for (int i = 0; i < l->numInputs; i++) {
       // create new input tensors
@@ -2792,7 +3202,109 @@ void FFModel::create_operators_from_layers() {
              tensors_to_parallel_tensors.end());
       inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
     }
-    Op *op = create_operator_from_layer(l, inputs);
+    Op *op = nullptr;
+    // add a combine before arg_topk
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
+         l->op_type == OP_ARGMAX)) {
+      std::vector<ParallelTensor> partitioned_inputs;
+      assert(inputs.size() == 1);
+      Combine *comb = new Combine(*this,
+                                  inputs[0],
+                                  0 /*inner most dim*/,
+                                  config.tensor_parallelism_degree);
+      partitioned_inputs.push_back(comb->outputs[0]);
+      operators.push_back(comb);
+      op = create_operator_from_layer(l, partitioned_inputs);
+    } else {
+      op = create_operator_from_layer(l, inputs);
+    }
+    // add replicate operators after op if needed
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 && l->op_type == OP_EMBEDDING) {
+      assert(op->numOutputs == 1);
+      Replicate *repl = new Replicate(*this,
+                                      op->outputs[0],
+                                      op->outputs[0]->num_dims - 1,
+                                      config.tensor_parallelism_degree);
+      operators.push_back(repl);
+      op = repl;
+    } else if (config.computationMode == COMP_MODE_INFERENCE &&
+               config.tensor_parallelism_degree > 1 &&
+               (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+                l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+                 layers[layer_idx - 1]->op_type == OP_RELU &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+                 layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+                 layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+                 layers[layer_idx - 4]->op_type == OP_LINEAR &&
+                 layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+      assert(op->numOutputs == 1);
+      AllReduce *allreduce =
+          new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
+      operators.push_back(allreduce);
+      op = allreduce;
+    }
+#ifdef DEADCODE
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+         (l->op_type == OP_LINEAR && layer_idx + 3 <= layers.size() &&
+          layers[layer_idx + 1]->op_type == OP_RELU &&
+          layers[layer_idx + 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 6 <= layers.size() &&
+          layers[layer_idx + 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 2]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 5]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx + 5 <= layers.size() &&
+          layer_idx >= 1 && layers[layer_idx - 1]->op_type == OP_LINEAR &&
+          layers[layer_idx + 1]->op_type == OP_SIGMOID &&
+          layers[layer_idx + 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
+          layers[layer_idx + 4]->op_type == OP_LINEAR))) {
+      std::vector<ParallelTensor> partitioned_inputs;
+      assert(inputs.size() == 1);
+      Replicate *repl = new Replicate(*this,
+                                      inputs[0],
+                                      inputs[0]->num_dims - 1,
+                                      config.tensor_parallelism_degree);
+      partitioned_inputs.push_back(repl->outputs[0]);
+      operators.push_back(repl);
+      op = create_operator_from_layer(l, partitioned_inputs);
+    } else {
+      op = create_operator_from_layer(l, inputs);
+    }
+    // Op *op = create_operator_from_layer(l, inputs);
+    //  add reduce operators if needed
+    if (config.computationMode == COMP_MODE_INFERENCE &&
+        config.tensor_parallelism_degree > 1 &&
+        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+         (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+          layers[layer_idx - 1]->op_type == OP_RELU &&
+          layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+         (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+          layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+          layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+          layers[layer_idx - 4]->op_type == OP_LINEAR &&
+          layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+      assert(op->numOutputs == 1);
+      Reduction *reduct = new Reduction(*this,
+                                        op->outputs[0],
+                                        op->outputs[0]->num_dims - 1,
+                                        config.tensor_parallelism_degree);
+      operators.push_back(reduct);
+      op = reduct;
+    }
+#endif
     assert(op->numOutputs == l->numOutputs);
     for (int i = 0; i < op->numOutputs; i++) {
       tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
@@ -2861,6 +3373,7 @@ void FFModel::compile(LossType loss_type,
         ParallelTensor parallel_weight = nullptr;
         for (auto const &op : operators) {
           if (op->layer_guid == layer->layer_guid) {
+            std::cout << "opopop: " << op->name << "\n";
             assert(op->op_type == layer->op_type);
             assert(op->numWeights == layer->numWeights);
             parallel_weight = op->weights[i];
@@ -2920,6 +3433,7 @@ void FFModel::compile(LossType loss_type,
 
   for (size_t l = 0; l < operators.size(); l++) {
     Op *op = operators[l];
+
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != NULL);
     }
@@ -2928,13 +3442,16 @@ void FFModel::compile(LossType loss_type,
       assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
+
     op->map_output_tensors(*this);
     // for (int i = 0; i < op->numOutputs; i++) {
     //   // Output tensor
     //   map_tensor(op->outputs[i], op);
     // }
-    if (op->is_parallel_op()) {
-      ((ParallelOp *)op)->create_input_partition(*this);
+    if (config.computationMode == COMP_MODE_TRAINING) {
+      if (op->is_parallel_op()) {
+        ((ParallelOp *)op)->create_input_partition(*this);
+      }
     }
     // op->map_output_tensors(*this);
   }
@@ -3035,7 +3552,7 @@ void FFModel::compile(LossType loss_type,
              operators[i]->op_guid);
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j]->region;
-        printf("inputs[%d] region(%d,%d,%d)\n",
+        printf("\tinputs[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3043,7 +3560,7 @@ void FFModel::compile(LossType loss_type,
       }
       for (int j = 0; j < op->numOutputs; j++) {
         LogicalRegion handle = op->outputs[j]->region;
-        printf("outputs[%d] region(%d,%d,%d)\n",
+        printf("\toutputs[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3051,7 +3568,7 @@ void FFModel::compile(LossType loss_type,
       }
       for (int j = 0; j < op->numWeights; j++) {
         LogicalRegion handle = op->weights[j]->region;
-        printf("weights[%d] region(%d,%d,%d)\n",
+        printf("\tweights[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3064,22 +3581,22 @@ void FFModel::compile(LossType loss_type,
   assert(final_operator->numOutputs == 1);
   for (size_t i = 0; i < operators.size(); i++) {
     Op *op = operators[i];
-    printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
+    log_model.print("operator[%zu]: type(%d)", i, operators[i]->op_type);
     for (int j = 0; j < op->numInputs; j++) {
       LogicalRegion handle = op->inputs[j]->region;
-      printf("inputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
+      log_model.print("\tinputs[%d] region(%d,%d,%d)",
+                      j,
+                      handle.get_index_space().get_id(),
+                      handle.get_field_space().get_id(),
+                      handle.get_tree_id());
     }
     for (int j = 0; j < op->numOutputs; j++) {
       LogicalRegion handle = op->outputs[j]->region;
-      printf("outputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
+      log_model.print("\toutputs[%d] region(%d,%d,%d)",
+                      j,
+                      handle.get_index_space().get_id(),
+                      handle.get_field_space().get_id(),
+                      handle.get_tree_id());
     }
   }
   // assert(final_operator->outputs[0].num_dims == 2);
@@ -3122,18 +3639,17 @@ void FFModel::compile(LossType loss_type,
       assert(false && "Unsupported dim");
     }
   }
-  // init optimizer
-  assert(optimizer != NULL);
-  optimizer->init();
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    // init optimizer
+    assert(optimizer != NULL);
+    optimizer->init();
+  }
 
 #ifdef FF_USE_NCCL
-  if (config.computationMode == COMP_MODE_TRAINING) {
-    // init all nccl communicators
-    for (size_t l = 0; l < operators.size(); l++) {
-      // Only create nccl for weights
-      if (operators[l]->op_type != OP_WEIGHT) {
-        continue;
-      }
+  for (size_t l = 0; l < operators.size(); l++) {
+    // Only create nccl for weights in training
+    if ((operators[l]->op_type == OP_WEIGHT &&
+         config.computationMode == COMP_MODE_TRAINING)) {
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==
           view_hash_to_nccl_comms.end()) {
@@ -3480,10 +3996,13 @@ struct DefaultConfig {
   const static int cpusPerNode = 0;
   const static size_t searchBudget = -1;
   const static size_t simulatorWorkSpaceSize =
-      (size_t)2 * 1024 * 1024 * 1024; // 2GB
+      (size_t)2 * 1024 * 1024 * 1024; // 2 GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
-  const static bool onlyDataParallel = false;
+  const static size_t offloadReserveSpaceSize =
+      (size_t)8 * 1024 * 1024 * 1024; // 8 GB
+  const static bool cpuOffload = false;
+  const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
@@ -3514,7 +4033,13 @@ FFConfig::FFConfig() {
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   computationMode = COMP_MODE_TRAINING;
+  cpu_offload = DefaultConfig::cpuOffload;
+  offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
+  quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
+  data_parallelism_degree = 1;
+  tensor_parallelism_degree = 1;
+  pipeline_parallelism_degree = 1;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
@@ -3560,7 +4085,7 @@ FFConfig::FFConfig() {
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
   lg_ctx = Runtime::get_context();
-  field_space = runtime->create_field_space(lg_ctx);
+  // field_space = runtime->create_field_space(lg_ctx);
 }
 
 void FFConfig::parse_args(char **argv, int argc) {
@@ -3616,8 +4141,39 @@ void FFConfig::parse_args(char **argv, int argc) {
       export_strategy_file = std::string(argv[++i]);
       continue;
     }
+    if ((!strcmp(argv[i], "-offload"))) {
+      cpu_offload = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "-offload-reserve-space-size")) {
+      offload_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--4bit-quantization"))) {
+      quantization_type = DT_INT4;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--8bit-quantization"))) {
+      quantization_type = DT_INT8;
+      continue;
+    }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {
       only_data_parallel = true;
+      continue;
+    }
+    // data parallelism degree
+    if (!strcmp(argv[i], "-data-parallelism-degree")) {
+      data_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // tensor parallelism degree
+    if (!strcmp(argv[i], "-tensor-parallelism-degree")) {
+      tensor_parallelism_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    // pipeline parallelism degree
+    if (!strcmp(argv[i], "-pipeline-parallelism-degree")) {
+      pipeline_parallelism_degree = std::stoi(argv[++i]);
       continue;
     }
     if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
@@ -3752,6 +4308,124 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  // RequestManager load_tokens
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_TOKENS_TASK_ID,
+                                   "RequestManager Load Tokens");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_tokens_task>(
+          registrar, "RequestManager Load Tokens Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_tokens_task>(
+          registrar);
+    }
+  }
+  // RequestManager load position tokens
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_POSITION_TASK_ID,
+                                   "RequestManager Load Position tokens");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_positions_task>(
+          registrar, "RequestManager Load Position Tokens Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_positions_task>(
+          registrar);
+    }
+  }
+  // RequestManager prepare_next_batch
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_TASK_ID,
+                                   "RequestManager Prepare Next Batch");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BatchConfig,
+          RequestManager::prepare_next_batch_task>(
+          registrar, "RequestManager Prepare Next Batch Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BatchConfig,
+                                     RequestManager::prepare_next_batch_task>(
+          registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_beam
+  {
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+                                   "RequestManager Prepare Next Batch (Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_beam_task>(
+          registrar, "RequestManager Prepare Next Batch (Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_beam_task>(
+              registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_init
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+        "RequestManager Prepare Next Batch (Init Beam)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          BeamSearchBatchConfig,
+          RequestManager::prepare_next_batch_init_task>(
+          registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<BeamSearchBatchConfig,
+                                  RequestManager::prepare_next_batch_init_task>(
+              registrar);
+    }
+  }
+  // RequestManager prepare_next_batch_verify
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
+        "RequestManager Prepare Next Batch (Verify)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(
+          registrar, "RequestManager Prepare Next Batch (Verify) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_verify_task>(registrar);
+    }
+  }
   // ElementUnary task
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID,
@@ -3844,6 +4518,63 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<ElementBinary::backward_task>(registrar);
+    }
+  }
+  // Experts
+  {
+    TaskVariantRegistrar registrar(EXPERTS_INIT_TASK_ID, "Experts Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Experts::init_task>(
+          registrar, "Experts Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Experts::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_FWD_TASK_ID, "Experts Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::forward_task>(
+          registrar, "Experts Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_BWD_TASK_ID, "Experts Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::backward_task>(
+          registrar, "Experts Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_INF_TASK_ID, "Experts Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Experts::inference_task>(
+          registrar, "Experts Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Experts::inference_task>(registrar);
     }
   }
   // Cast
@@ -4426,6 +5157,35 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<LayerNorm::forward_task>(registrar);
     }
   }
+  // rms norm task
+  {
+    TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID, "rmsnorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, RMSNorm::init_task>(
+          registrar, "rmsnorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, RMSNorm::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RMSNROM_FWD_TASK_ID, "rmsnorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::forward_task>(
+          registrar, "rmsnorm_fwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::forward_task>(registrar);
+    }
+  }
   {
     TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -4453,6 +5213,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<OpMeta *, Linear::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_INF_TASK_ID, "Linear Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Linear::inference_task>(
+          registrar, "Linear Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Linear::inference_task>(registrar);
     }
   }
   {
@@ -4567,6 +5341,22 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Softmax::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        Softmax::inference_task>(
+          registrar, "softmax_inf_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, Softmax::inference_task>(
+          registrar);
     }
   }
   // compute Loss
@@ -4883,6 +5673,149 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<TopK::backward_task>(registrar);
     }
   }
+  // ArgTopk task
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INIT_TASK_ID, "ArgTopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ArgTopK::init_task>(
+          registrar, "ArgTopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ArgTopK::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INF_TASK_ID, "ArgTopK Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgTopK::inference_task>(
+          registrar, "ArgTopK Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, ArgTopK::inference_task>(
+          registrar);
+    }
+  }
+  // BeamTopk task
+  {
+    TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
+          registrar, "BeamTopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, BeamTopK::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeamTopK Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        BeamTopK::inference_task>(
+          registrar, "BeamTopK Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     BeamTopK::inference_task>(registrar);
+    }
+  }
+  // Sampling task
+  {
+    TaskVariantRegistrar registrar(SAMPLING_INIT_TASK_ID, "Sampling Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Sampling::init_task>(
+          registrar, "Sampling Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Sampling::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SAMPLING_INF_TASK_ID, "Sampling Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        Sampling::inference_task>(
+          registrar, "Sampling Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, Sampling::inference_task>(
+          registrar);
+    }
+  }
+  // ArgMax task
+  {
+    TaskVariantRegistrar registrar(ARGMAX_INIT_TASK_ID, "ArgMax Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ArgMax::init_task>(
+          registrar, "ArgMax Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ArgMax::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_BEAM_INF_TASK_ID,
+                                   "ArgMax Beam Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        ArgMax::inference_task_beam>(
+          registrar, "ArgMax Inference Task Beam");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     ArgMax::inference_task_beam>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ARGMAX_NORM_INF_TASK_ID,
+                                   "ArgMax Norm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        ArgMax::inference_task_norm>(
+          registrar, "ArgMax Inference Task Norm");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<InferenceResult, ArgMax::inference_task_norm>(
+              registrar);
+    }
+  }
   // Transpose task
   {
     TaskVariantRegistrar registrar(TRANSPOSE_INIT_TASK_ID, "Transpose Init");
@@ -4976,6 +5909,119 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  // MultiHeadAttention task
+  {
+    TaskVariantRegistrar registrar(INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+                                   "IncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *,
+                                        IncMultiHeadSelfAttention::init_task>(
+          registrar, "IncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     IncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+                                   "IncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          IncMultiHeadSelfAttention::inference_task>(
+          registrar, "IncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<IncMultiHeadSelfAttention::inference_task>(
+          registrar);
+    }
+  }
+  // speculative MultiHeadAttention task
+  {
+    TaskVariantRegistrar registrar(
+        SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+        "Speculative IncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          OpMeta *,
+          SpecIncMultiHeadSelfAttention::init_task>(
+          registrar, "Speculative IncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     SpecIncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(
+        SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+        "Speculative IncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          SpecIncMultiHeadSelfAttention::inference_task>(
+          registrar, "Speculative IncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          SpecIncMultiHeadSelfAttention::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(
+        TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+        "TreeIncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          OpMeta *,
+          TreeIncMultiHeadSelfAttention::init_task>(
+          registrar, "TreeIncMultiHeadSelfAttention Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     TreeIncMultiHeadSelfAttention::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(
+        TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+        "TreeIncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeIncMultiHeadSelfAttention::inference_task>(
+          registrar, "TreeIncMultiHeadSelfAttention Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeIncMultiHeadSelfAttention::inference_task>(registrar);
+    }
+  }
   // NoOp
   {
     TaskVariantRegistrar registrar(NOOP_INIT_TASK_ID, "Weight NCCL Init");
@@ -5018,6 +6064,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<FusedOp::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::inference_task>(
+          registrar, "FusedOp Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::inference_task>(registrar);
     }
   }
   {
@@ -5127,6 +6187,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
   }
   // Replicate
   {
+    TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Replicate::init_task>(
+          registrar, "Replicate init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Replicate::init_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(REPLICATE_FWD_TASK_ID, "Replicate Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -5156,6 +6230,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
   }
   // Reduction
   {
+    TaskVariantRegistrar registrar(REDUCTION_INIT_TASK_ID, "Reduction Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Reduction::init_task>(
+          registrar, "Reduction init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, Reduction::init_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(REDUCTION_FWD_TASK_ID, "Reduction Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -5181,6 +6269,64 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Reduction::backward_task>(registrar);
+    }
+  }
+  // AllReduce
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INIT_TASK_ID, "AllReduce Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
+          registrar, "AllReduce init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, AllReduce::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
+                                   "AllReduce Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::inference_task>(
+          registrar, "AllReduce Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::forward_task>(
+          registrar, "AllReduce Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::backward_task>(
+          registrar, "AllReduce Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::backward_task>(registrar);
     }
   }
   // FusedParallelOp
@@ -5414,12 +6560,12 @@ void register_flexflow_internal_tasks(Runtime *runtime,
 #endif
   // Search
   {
-    TaskVariantRegistrar registrar(STRATEGY_SEARCH_TASK_ID, "Stretegy Search");
+    TaskVariantRegistrar registrar(STRATEGY_SEARCH_TASK_ID, "Strategy Search");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<Simulator::strategy_search_task>(
-          registrar, "Stretegy Search Task");
+          registrar, "Strategy Search Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
@@ -5459,6 +6605,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<UtilityTasks::dummy_task>(registrar);
+    }
+  }
+  // Tensor Equal task
+  {
+    TaskVariantRegistrar registrar(TENSOR_EQUAL_TASK_ID, "Tensor Equal");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<bool,
+                                        ParallelTensorBase::tensor_equal_task>(
+          registrar, "Tensor Equal Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime
+          ->register_task_variant<bool, ParallelTensorBase::tensor_equal_task>(
+              registrar);
     }
   }
 }

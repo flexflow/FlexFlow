@@ -1,6 +1,7 @@
 #ifndef _OPERATOR_H
 #define _OPERATOR_H
 
+#include "flexflow/batch_config.h"
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
 #include "flexflow/parallel_tensor.h"
@@ -19,11 +20,33 @@ enum class MappingRecordType { INPUT_OUTPUT, INPUT_WEIGHT };
 
 enum class MappingOperation { PARTITION, REPLICATE };
 
+/** @brief  A class to keep track of a dimension relation between two tensors
+ * used by an operator.
+ *
+ * Dimension relations are one-to-one mappings between the dimensions of the
+ * input, weights, and output tensors of an operator. Introduced in the Unity
+ * paper, dimension relations allow FlexFlow to keep track of an operator's
+ * parallelization plans as part of the Parallel Computation Graph (PCG).
+ *
+ * Each ParallelDimMappingRecord only keeps track of a single dimension
+ * relation.
+ *
+ * ParallelDimMappingRecord objects must be initialized with a
+ * MappingRecordType, which can be INPUT_OUTPUT, if the ParallelDimMappingRecord
+ * is tracking a dimension relation between the input and the output tensor, or
+ * INPUT_WEIGHT, if the ParallelDimMappingRecord is tracking a dimension
+ * relation between the input tensor and the weights tensor.
+ *
+ */
 class ParallelDimMappingRecord {
 private:
   ParallelDimMappingRecord(MappingRecordType);
 
 public:
+  /**
+   * @brief We disable this constructor because ParallelDimMappingRecord objects
+   * must specify the MappingRecordType upon creation.
+   */
   ParallelDimMappingRecord() = delete;
 
   static ParallelDimMappingRecord input_output_record(
@@ -185,8 +208,22 @@ public:
   virtual bool get_weight_parameter(TNParameter, DIMParameter, int *) const;
   // Pure virtual functions that must be implemented
   virtual void init(FFModel const &) = 0;
+  virtual void init_inference(FFModel const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) {
+    assert(false);
+  };
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
+  // Pure virtual functions for inference
+  virtual Legion::FutureMap inference(FFModel const &,
+                                      BatchConfigFuture const &,
+                                      std::vector<ParallelTensor> const &,
+                                      std::vector<ParallelTensor> const &,
+                                      MachineView const *mv = nullptr) {
+    assert(false);
+  };
   virtual void print_layer(FFModel const &model) = 0;
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
@@ -242,12 +279,21 @@ public:
 #endif
 protected:
   void set_argumentmap_for_init(FFModel const &ff, Legion::ArgumentMap &argmap);
+  void set_argumentmap_for_init_inference(FFModel const &ff,
+                                          Legion::ArgumentMap &argmap,
+                                          ParallelTensor const output0);
   void set_argumentmap_for_forward(FFModel const &ff,
                                    Legion::ArgumentMap &argmap);
+  void set_argumentmap_for_inference(FFModel const &ff,
+                                     Legion::ArgumentMap &argmap,
+                                     ParallelTensor const output0);
   void set_argumentmap_for_backward(FFModel const &ff,
                                     Legion::ArgumentMap &argmap);
   void set_opmeta_from_futuremap(FFModel const &ff,
                                  Legion::FutureMap const &fm);
+  void set_opmeta_from_futuremap_inference(FFModel const &ff,
+                                           Legion::FutureMap const &fm,
+                                           ParallelTensor const output0);
   void solve_parallel_dim_mappings(
       std::vector<ParallelDim const *> const &inputs,
       std::vector<ParallelDim *> const &weights,
@@ -267,8 +313,10 @@ public:
   ParallelParameter weights[MAX_NUM_WEIGHTS];
   bool trainableInputs[MAX_NUM_INPUTS];
   OpMeta *meta[MAX_NUM_WORKERS];
+  std::map<ParallelTensor, OpMeta *[MAX_NUM_WORKERS]> inference_meta;
   int numInputs, numWeights, numOutputs;
   bool profiling;
+  bool add_bias_only_once;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif

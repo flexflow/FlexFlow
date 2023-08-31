@@ -16,8 +16,11 @@
 #include "flexflow/dominators.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/aggregate.h"
+#include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
@@ -25,19 +28,26 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sampling.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -1953,14 +1963,61 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
     }
     curr_best_graph = std::unique_ptr<Graph>(graph);
     MachineView data_parallel_view;
-    data_parallel_view.device_type = MachineView::GPU;
-    data_parallel_view.ndims = 1;
-    data_parallel_view.dim[0] =
-        model->config.numNodes * model->config.workersPerNode;
-    data_parallel_view.stride[0] = 1;
-    data_parallel_view.start_device_id = 0;
+    int degree, num_transformer_layers_per_stage;
+    if (model->config.computationMode == COMP_MODE_TRAINING) {
+      data_parallel_view.device_type = MachineView::GPU;
+      data_parallel_view.ndims = 1;
+      data_parallel_view.dim[0] =
+          model->config.numNodes * model->config.workersPerNode;
+      data_parallel_view.stride[0] = 1;
+      data_parallel_view.start_device_id = 0;
+    } else {
+      // Currently assume a 1D machine view is needed
+      assert(model->config.data_parallelism_degree == 1 ||
+             model->config.tensor_parallelism_degree == 1);
+      degree = model->config.data_parallelism_degree *
+               model->config.tensor_parallelism_degree;
+      num_transformer_layers_per_stage =
+          model->current_transformer_layer_id /
+              model->config.pipeline_parallelism_degree +
+          1;
+    }
     for (auto const &node : curr_best_graph->inEdges) {
-      curr_optimal_views[node.first] = data_parallel_view;
+      Op const *op = node.first.ptr;
+      if (model->config.computationMode == COMP_MODE_TRAINING) {
+        curr_optimal_views[node.first] = data_parallel_view;
+      } else {
+        MachineView mv;
+        mv.device_type = MachineView::GPU;
+        mv.ndims = 1;
+        int total_parallel_degree = 1;
+        for (int i = 0; i < op->outputs[0]->num_dims; i++) {
+          total_parallel_degree *= op->outputs[0]->dims[i].degree;
+        }
+        mv.dim[0] = total_parallel_degree;
+        mv.stride[0] = 1;
+        LayerID layer_guid = op->layer_guid;
+        if (op->op_type == OP_INPUT) {
+          // All inputs are assigned to the first stage
+          layer_guid.transformer_layer_id = 0;
+        } else if (layer_guid == LayerID::NO_ID) {
+          // Assert that we only have a single input
+          while (op->layer_guid == LayerID::NO_ID) {
+            assert(op->numInputs == 1);
+            op = op->inputs[0]->owner_op;
+            assert(op != nullptr);
+          }
+          layer_guid = op->layer_guid;
+        }
+        mv.start_device_id = degree * (layer_guid.transformer_layer_id /
+                                       num_transformer_layers_per_stage);
+        assert(mv.start_device_id + degree - 1 <
+               model->config.numNodes * model->config.workersPerNode);
+        curr_optimal_views[node.first] = mv;
+        for (int i = 0; i < node.first.ptr->numOutputs; i++) {
+          assert(node.first.ptr->outputs[i]->is_valid_machine_view(mv));
+        }
+      }
     }
   } else {
     // Main step to optimize the PCG of an FFModel
@@ -2229,23 +2286,17 @@ GraphOptimalViewSerialized
       case OP_EMBEDDING: {
         Embedding *embed = (Embedding *)op;
         sez.serialize(embed->layer_guid.id);
+        sez.serialize(embed->layer_guid.transformer_layer_id);
         sez.serialize(embed->num_entries);
         sez.serialize(embed->out_channels);
         sez.serialize(embed->aggr);
         sez.serialize(embed->data_type);
         break;
       }
-      case OP_EW_ADD:
-      case OP_EW_SUB:
-      case OP_EW_MUL:
-      case OP_EW_MAX:
-      case OP_EW_MIN: {
-        sez.serialize(op->op_type);
-        break;
-      }
       case OP_MULTIHEAD_ATTENTION: {
         MultiHeadAttention *attn = (MultiHeadAttention *)op;
         sez.serialize(attn->layer_guid.id);
+        sez.serialize(attn->layer_guid.transformer_layer_id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_heads);
         sez.serialize(attn->qProjSize);
@@ -2254,6 +2305,71 @@ GraphOptimalViewSerialized
         sez.serialize(attn->bias);
         sez.serialize(attn->add_bias_kv);
         sez.serialize(attn->add_zero_attn);
+        break;
+      }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+        IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)op;
+        sez.serialize(attn->layer_guid.id);
+        sez.serialize(attn->layer_guid.transformer_layer_id);
+        sez.serialize(attn->oProjSize);
+        sez.serialize(attn->num_q_heads);
+        sez.serialize(attn->qProjSize);
+        sez.serialize(attn->vProjSize);
+        sez.serialize(attn->dropout);
+        sez.serialize(attn->bias);
+        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->add_zero_attn);
+        sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->scaling_query);
+        sez.serialize(attn->scaling_factor);
+        sez.serialize(attn->qk_prod_scaling);
+        sez.serialize(attn->quantization_type);
+        sez.serialize(attn->offload);
+        sez.serialize(attn->num_kv_heads);
+        sez.serialize(attn->tensor_parallelism_degree);
+        break;
+      }
+      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
+        SpecIncMultiHeadSelfAttention *attn =
+            (SpecIncMultiHeadSelfAttention *)op;
+        sez.serialize(attn->layer_guid.id);
+        sez.serialize(attn->layer_guid.transformer_layer_id);
+        sez.serialize(attn->oProjSize);
+        sez.serialize(attn->num_q_heads);
+        sez.serialize(attn->qProjSize);
+        sez.serialize(attn->vProjSize);
+        sez.serialize(attn->dropout);
+        sez.serialize(attn->bias);
+        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->add_zero_attn);
+        sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->scaling_query);
+        sez.serialize(attn->scaling_factor);
+        sez.serialize(attn->qk_prod_scaling);
+        sez.serialize(attn->num_kv_heads);
+        break;
+      }
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+        TreeIncMultiHeadSelfAttention *attn =
+            (TreeIncMultiHeadSelfAttention *)op;
+        sez.serialize(attn->layer_guid.id);
+        sez.serialize(attn->layer_guid.transformer_layer_id);
+        sez.serialize(attn->oProjSize);
+        sez.serialize(attn->num_q_heads);
+        sez.serialize(attn->qProjSize);
+        sez.serialize(attn->vProjSize);
+        sez.serialize(attn->dropout);
+        sez.serialize(attn->bias);
+        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->add_zero_attn);
+        sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->scaling_query);
+        sez.serialize(attn->scaling_factor);
+        sez.serialize(attn->qk_prod_scaling);
+        sez.serialize(attn->quantization_type);
+        sez.serialize(attn->offload);
+        sez.serialize(attn->num_kv_heads);
+        sez.serialize(attn->tensor_parallelism_degree);
         break;
       }
       case OP_SOFTMAX: {
@@ -2283,6 +2399,11 @@ GraphOptimalViewSerialized
         Combine *combine = (Combine *)op;
         sez.serialize(combine->combine_dim);
         sez.serialize(combine->combine_degree);
+        break;
+      }
+      case OP_ALLREDUCE: {
+        AllReduce *allreduce = (AllReduce *)op;
+        sez.serialize(allreduce->allreduce_dim);
         break;
       }
       case OP_FUSED_PARALLEL: {
@@ -2339,6 +2460,18 @@ void FFModel::register_all_machine_views(
       view.ndims = 1;
       view.dim[0] = i;
       view.stride[0] = 1;
+      view.start_device_id = 0;
+      valid_views.push_back(view);
+    }
+  }
+  // No-parallelism views
+  for (int i = 1; i <= num_nodes * gpus_per_node; i++) {
+    if (num_nodes * gpus_per_node % i == 0) {
+      MachineView view;
+      view.device_type = MachineView::GPU;
+      view.ndims = 1;
+      view.dim[0] = i;
+      view.stride[0] = 0;
       view.start_device_id = 0;
       valid_views.push_back(view);
     }
@@ -2499,10 +2632,11 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         AggrMode aggr;
         int num_entries, out_channels;
-        size_t id;
+        size_t id, transformer_layer_id;
         DataType data_type;
         dez.deserialize(id);
-        LayerID layer_guid(id);
+        dez.deserialize(transformer_layer_id);
+        LayerID layer_guid(id, transformer_layer_id);
         dez.deserialize(num_entries);
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
@@ -2522,11 +2656,7 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_EW_MUL:
       case OP_EW_MAX:
       case OP_EW_MIN: {
-        assert(num_inputs == 2);
-        OperatorType op_type;
-        dez.deserialize(op_type);
-        node = get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
-                                                 {op_type});
+        node = ElementBinary::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_CONV2D: {
@@ -2577,9 +2707,10 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
         bool bias, add_bias_kv, add_zero_attn;
-        size_t id;
+        size_t id, transformer_layer_id;
         dez.deserialize(id);
-        LayerID layer_guid(id);
+        dez.deserialize(transformer_layer_id);
+        LayerID layer_guid(id, transformer_layer_id);
         dez.deserialize(embed_dim);
         dez.deserialize(num_heads);
         dez.deserialize(k_dim);
@@ -2603,8 +2734,168 @@ void FFModel::deserialize_graph_optimal_view(
             {inputs[0], inputs[1], inputs[2]}, params);
         break;
       }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(num_inputs == 1);
+        int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
+            tensor_parallelism_degree;
+        float dropout, scaling_factor;
+        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+            scaling_query, qk_prod_scaling, offload;
+        DataType quantization_type;
+        size_t id, transformer_layer_id;
+        dez.deserialize(id);
+        dez.deserialize(transformer_layer_id);
+        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(embed_dim);
+        dez.deserialize(num_q_heads);
+        dez.deserialize(k_dim);
+        dez.deserialize(v_dim);
+        dez.deserialize(dropout);
+        dez.deserialize(bias);
+        dez.deserialize(add_bias_kv);
+        dez.deserialize(add_zero_attn);
+        dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(scaling_query);
+        dez.deserialize(scaling_factor);
+        dez.deserialize(qk_prod_scaling);
+        dez.deserialize(quantization_type);
+        dez.deserialize(offload);
+        dez.deserialize(num_kv_heads);
+        dez.deserialize(tensor_parallelism_degree);
+
+        IncMultiHeadSelfAttentionParams params;
+        params.embed_dim = embed_dim;
+        params.num_q_heads = num_q_heads;
+        params.kdim = k_dim;
+        params.vdim = v_dim;
+        params.dropout = dropout;
+        params.bias = bias;
+        params.add_bias_kv = add_bias_kv;
+        params.add_zero_attn = add_zero_attn;
+        params.layer_guid = layer_guid;
+        params.apply_rotary_embedding = apply_rotary_embedding;
+        params.scaling_query = scaling_query;
+        params.scaling_factor = scaling_factor;
+        params.qk_prod_scaling = qk_prod_scaling;
+        params.quantization_type = quantization_type;
+        params.offload = offload;
+        params.num_kv_heads = num_kv_heads;
+        params.tensor_parallelism_degree = tensor_parallelism_degree;
+        node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
+        break;
+      }
+      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(num_inputs == 1);
+        int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads;
+        float dropout, scaling_factor;
+        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+            scaling_query, qk_prod_scaling;
+        size_t id, transformer_layer_id;
+        dez.deserialize(id);
+        dez.deserialize(transformer_layer_id);
+        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(embed_dim);
+        dez.deserialize(num_q_heads);
+        dez.deserialize(k_dim);
+        dez.deserialize(v_dim);
+        dez.deserialize(dropout);
+        dez.deserialize(bias);
+        dez.deserialize(add_bias_kv);
+        dez.deserialize(add_zero_attn);
+        dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(scaling_query);
+        dez.deserialize(scaling_factor);
+        dez.deserialize(qk_prod_scaling);
+        dez.deserialize(num_kv_heads);
+
+        SpecIncMultiHeadSelfAttentionParams params;
+        params.embed_dim = embed_dim;
+        params.num_q_heads = num_q_heads;
+        params.kdim = k_dim;
+        params.vdim = v_dim;
+        params.dropout = dropout;
+        params.bias = bias;
+        params.add_bias_kv = add_bias_kv;
+        params.add_zero_attn = add_zero_attn;
+        params.layer_guid = layer_guid;
+        params.apply_rotary_embedding = apply_rotary_embedding;
+        params.scaling_query = scaling_query;
+        params.scaling_factor = scaling_factor;
+        params.qk_prod_scaling = qk_prod_scaling;
+        params.num_kv_heads = num_kv_heads;
+        node = get_or_create_node<SpecIncMultiHeadSelfAttention>(inputs[0],
+                                                                 params);
+        break;
+      }
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(num_inputs == 1);
+        int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
+            tensor_parallelism_degree;
+        float dropout, scaling_factor;
+        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+            scaling_query, qk_prod_scaling, offload;
+        DataType quantization_type;
+        size_t id, transformer_layer_id;
+        dez.deserialize(id);
+        dez.deserialize(transformer_layer_id);
+        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(embed_dim);
+        dez.deserialize(num_q_heads);
+        dez.deserialize(k_dim);
+        dez.deserialize(v_dim);
+        dez.deserialize(dropout);
+        dez.deserialize(bias);
+        dez.deserialize(add_bias_kv);
+        dez.deserialize(add_zero_attn);
+        dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(scaling_query);
+        dez.deserialize(scaling_factor);
+        dez.deserialize(qk_prod_scaling);
+        dez.deserialize(quantization_type);
+        dez.deserialize(offload);
+        dez.deserialize(num_kv_heads);
+        dez.deserialize(tensor_parallelism_degree);
+
+        TreeIncMultiHeadSelfAttentionParams params;
+        params.embed_dim = embed_dim;
+        params.num_q_heads = num_q_heads;
+        params.kdim = k_dim;
+        params.vdim = v_dim;
+        params.dropout = dropout;
+        params.bias = bias;
+        params.add_bias_kv = add_bias_kv;
+        params.add_zero_attn = add_zero_attn;
+        params.layer_guid = layer_guid;
+        params.apply_rotary_embedding = apply_rotary_embedding;
+        params.scaling_query = scaling_query;
+        params.scaling_factor = scaling_factor;
+        params.qk_prod_scaling = qk_prod_scaling;
+        params.quantization_type = quantization_type;
+        params.offload = offload;
+        params.num_kv_heads = num_kv_heads;
+        params.tensor_parallelism_degree = tensor_parallelism_degree;
+        node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
+                                                                 params);
+        break;
+      }
       case OP_TOPK: {
         node = TopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_ARG_TOPK: {
+        node = ArgTopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_BEAM_TOPK: {
+        node = BeamTopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_SAMPLING: {
+        node = Sampling::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_ARGMAX: {
+        node = ArgMax::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_GROUP_BY: {
@@ -2612,17 +2903,19 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_AGGREGATE: {
-        // node = Aggregate::deserialize(*this, dez, inputs, num_inputs);
-        int n;
-        float lambda_bal;
-        dez.deserialize(n);
-        dez.deserialize(lambda_bal);
-        assert(num_inputs == n + 4);
-        AggregateParams params;
-        params.n = n;
-        params.lambda_bal = lambda_bal;
-        node = get_or_create_node<Aggregate>(
-            {std::begin(inputs), std::begin(inputs) + num_inputs}, params);
+        node = Aggregate::deserialize(
+            *this,
+            dez,
+            {std::begin(inputs), std::begin(inputs) + num_inputs},
+            num_inputs);
+        break;
+      }
+      case OP_EXPERTS: {
+        node = Experts::deserialize(
+            *this,
+            dez,
+            {std::begin(inputs), std::begin(inputs) + num_inputs},
+            num_inputs);
         break;
       }
       case OP_POOL2D: {
@@ -2646,6 +2939,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_TRANSPOSE: {
         node = Transpose::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RMS_NORM: {
+        node = RMSNorm::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_COMBINE: {
@@ -2682,6 +2979,13 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(reduction_degree);
         node = get_or_create_node<Reduction>(inputs[0],
                                              {reduction_dim, reduction_degree});
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(num_inputs == 1);
+        int allreduce_dim;
+        dez.deserialize(allreduce_dim);
+        node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
         break;
       }
       case OP_FUSED_PARALLEL: {

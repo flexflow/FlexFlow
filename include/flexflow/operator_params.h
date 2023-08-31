@@ -3,8 +3,11 @@
 
 #include "flexflow/ops/aggregate_params.h"
 #include "flexflow/ops/aggregate_spec_params.h"
+#include "flexflow/ops/arg_topk_params.h"
+#include "flexflow/ops/argmax_params.h"
 #include "flexflow/ops/attention_params.h"
 #include "flexflow/ops/batch_matmul_params.h"
+#include "flexflow/ops/beam_topk_params.h"
 #include "flexflow/ops/cast_params.h"
 #include "flexflow/ops/concat_params.h"
 #include "flexflow/ops/conv_2d_params.h"
@@ -12,18 +15,25 @@
 #include "flexflow/ops/element_binary_params.h"
 #include "flexflow/ops/element_unary_params.h"
 #include "flexflow/ops/embedding_params.h"
+#include "flexflow/ops/experts_params.h"
 #include "flexflow/ops/flat_params.h"
 #include "flexflow/ops/gather_params.h"
 #include "flexflow/ops/groupby_params.h"
+#include "flexflow/ops/inc_multihead_self_attention_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
 #include "flexflow/ops/pool_2d_params.h"
 #include "flexflow/ops/reduce_params.h"
 #include "flexflow/ops/reshape_params.h"
+#include "flexflow/ops/rms_norm_params.h"
+#include "flexflow/ops/sampling_params.h"
 #include "flexflow/ops/softmax_params.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "flexflow/ops/split_params.h"
 #include "flexflow/ops/topk_params.h"
 #include "flexflow/ops/transpose_params.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention_params.h"
+#include "flexflow/parallel_ops/allreduce_params.h"
 #include "flexflow/parallel_ops/combine_params.h"
 #include "flexflow/parallel_ops/fused_parallel_op_params.h"
 #include "flexflow/parallel_ops/partition_params.h"
@@ -51,17 +61,26 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        LayerNormParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
+                                       IncMultiHeadSelfAttentionParams,
+                                       BeamTopKParams,
+                                       SpecIncMultiHeadSelfAttentionParams,
+                                       TreeIncMultiHeadSelfAttentionParams,
+                                       RMSNormParams,
                                        Pool2DParams,
                                        ReduceParams,
                                        ReshapeParams,
                                        SplitParams,
                                        TopKParams,
+                                       ArgTopKParams,
+                                       SamplingParams,
+                                       ArgMaxParams,
                                        SoftmaxParams,
                                        TransposeParams,
                                        RepartitionParams,
                                        ReplicateParams,
                                        ReductionParams,
                                        CombineParams,
+                                       AllReduceParams,
                                        FusedParallelOpParams>;
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op);

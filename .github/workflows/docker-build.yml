@@ -7,6 +7,7 @@ on:
       - ".github/workflows/docker-build.yml"
   push:
     branches:
+      - "inference"
       - "master"
   schedule:
     # Run every week on Sunday at midnight PT (3am ET / 8am UTC) to keep the docker images updated
@@ -25,25 +26,42 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
-        cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6", "11.7", "11.8"]
+        gpu_backend_version: ["11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8", "12.0", "5.3", "5.4", "5.5", "5.6"]
         # The CUDA version doesn't matter when building for hip_rocm, so we just pick one arbitrarily (11.8) to avoid building for hip_rocm once per number of CUDA version supported
         exclude:
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.3"
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.4"
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.5"
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.6"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.1"
+            gpu_backend_version: "11.1"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.2"
+            gpu_backend_version: "11.2"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.3"
+            gpu_backend_version: "11.3"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.5"
+            gpu_backend_version: "11.4"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.6"
+            gpu_backend_version: "11.5"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.7"
+            gpu_backend_version: "11.6"
+          - gpu_backend: "hip_rocm"
+            gpu_backend_version: "11.7"
+          - gpu_backend: "hip_rocm"
+            gpu_backend_version: "11.8"
+          - gpu_backend: "hip_rocm"
+            gpu_backend_version: "12.0"
       fail-fast: false
     env:
       FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-      cuda_version: ${{ matrix.cuda_version }}
+      gpu_backend_version: ${{ matrix.gpu_backend_version }}
+      # one of the two variables below will be unused
+      cuda_version: ${{ matrix.gpu_backend_version }}
+      hip_version: ${{ matrix.gpu_backend_version }}
       branch_name: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Checkout Git Repository
@@ -53,8 +71,8 @@ jobs:
 
       - name: Free additional space on runner
         env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
             .github/workflows/helpers/free_space_on_runner.sh
@@ -64,17 +82,19 @@ jobs:
 
       - name: Build Docker container
         env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
           if [[ $deploy_needed == "true" ]] ; then
             export FF_CUDA_ARCH=all
+            export FF_HIP_ARCH=all
             ./docker/build.sh flexflow
           elif [[ $build_needed == "true" ]]; then
             export FF_CUDA_ARCH=70
+            export FF_HIP_ARCH=gfx1100,gfx1036
             ./docker/build.sh flexflow
           else
             echo "Skipping build to save time"
@@ -83,11 +103,15 @@ jobs:
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
         env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
+            if [[ $FF_GPU_BACKEND == "cuda" ]]; then
+              docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
+            else
+              docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "python -c 'import flexflow.core; exit()'"
+            fi
           else
             echo "Skipping test to save time"
           fi
@@ -96,7 +120,7 @@ jobs:
         if: github.repository_owner == 'flexflow'
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
         run: |
           if [[ $deploy_needed == "true" ]]; then
             ./docker/publish.sh flexflow-environment

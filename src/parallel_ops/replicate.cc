@@ -75,7 +75,7 @@ Replicate::Replicate(FFModel &model,
   dims[replicate_dim].degree *= replicate_degree;
   ParallelTensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
+      numdim, dims, _input->data_type, this);
   // inputs[0]->print("Replicate::input");
   // outputs[0]->print("Replicate::output");
 }
@@ -108,16 +108,85 @@ void Replicate::create_input_partition(FFModel &ff) {
                                output_grad_lp);
 }
 
-void Replicate::init(FFModel const &ff) {
-  // Do nothing
+void Replicate::create_input_partition_inference(
+    FFModel &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
+  assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
+  // input_lp is an aliased partitioning along the replica dim
+  ff.create_aliased_partition(batch_outputs[0]->num_dims,
+                              batch_outputs[0]->dims,
+                              replicate_dim,
+                              batch_outputs[0]->parallel_is,
+                              batch_inputs[0]->region,
+                              inference_input_lps[batch_inputs[0]]);
+}
+
+OpMeta *Replicate::init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
+  Replicate *repl = (Replicate *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  ReplicateMeta *meta = new ReplicateMeta(handle, repl);
+  meta->input_type[0] = repl->inputs[0]->data_type;
+  meta->output_type[0] = repl->outputs[0]->data_type;
+  assert(meta->input_type[0] == meta->output_type[0]);
+  return meta;
+}
+
+void Replicate::init_inference(FFModel const &ff,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(REPLICATE_FWD_TASK_ID,
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(REPLICATE_INIT_TASK_ID,
+                         batch_outputs[0]->parallel_is,
+                         TaskArgument(this, sizeof(Replicate)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
+
+void Replicate::init(FFModel const &ff) {
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(REPLICATE_INIT_TASK_ID,
                          outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(this, sizeof(Replicate)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -132,15 +201,58 @@ void Replicate::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
+FutureMap Replicate::inference(FFModel const &ff,
+                               BatchConfigFuture const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  DataType data_type = batch_inputs[0]->data_type;
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(REPLICATE_FWD_TASK_ID,
+                         batch_outputs[0]->parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Replicate::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = outputs[0]->parallel_is;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(REPLICATE_FWD_TASK_ID,
                          outputs[0]->parallel_is,
                          TaskArgument(NULL, 0),
@@ -233,6 +345,9 @@ void Replicate::forward_task(Task const *task,
                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
+
+  ReplicateMeta const *m = *((ReplicateMeta **)task->local_args);
+
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
@@ -243,12 +358,24 @@ void Replicate::forward_task(Task const *task,
     assert(output_domain.hi()[i] == input_domain.hi()[i]);
   }
   assert(input_domain.get_volume() == output_domain.get_volume());
-  float const *input_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *output_ptr = helperGetTensorPointerRW<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  forward_kernel<float>(input_ptr, output_ptr, input_domain.get_volume());
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  assert(input.data_type == output.data_type);
+
+  if (input.data_type == DT_HALF) {
+    forward_kernel<half>(
+        input.get_half_ptr(), output.get_half_ptr(), input_domain.get_volume());
+  } else if (input.data_type == DT_FLOAT) {
+    forward_kernel<float>(input.get_float_ptr(),
+                          output.get_float_ptr(),
+                          input_domain.get_volume());
+  } else {
+    assert(false && "Unspported data type");
+  }
 }
 
 void Replicate::backward_task(Task const *task,

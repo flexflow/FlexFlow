@@ -22,6 +22,15 @@ public:
         const Input input,
         char const *name = nullptr);
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override {

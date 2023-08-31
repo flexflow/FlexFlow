@@ -52,10 +52,16 @@ SoftmaxParams Softmax::get_params() const {
   return params;
 }
 
-Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
+Tensor FFModel::softmax(const Tensor _input,
+                        int dim,
+                        DataType data_type,
+                        char const *name) {
+  if (data_type = DT_NONE) {
+    data_type = _input->data_type;
+  }
   Layer *sm = new Layer(this,
                         OP_SOFTMAX,
-                        DT_FLOAT,
+                        data_type,
                         name,
                         1 /*inputs*/,
                         0 /*weights*/,
@@ -67,7 +73,7 @@ Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
     dims[i] = _input->dims[i];
   }
   sm->outputs[0] = create_tensor_legion_ordering(
-      numdims, dims, DT_FLOAT, sm, 0, true /*create_grad*/);
+      numdims, dims, data_type, sm, 0, true /*create_grad*/);
   sm->add_int_property("softmax_dim", dim);
   layers.push_back(sm);
   return sm->outputs[0];
@@ -106,7 +112,7 @@ Softmax::Softmax(FFModel &model,
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[numdim - 1 - i];
   }
-  outputs[0] = model.create_parallel_tensor(numdim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor(numdim, dims, data_type, this);
 }
 
 Softmax::Softmax(FFModel &model,
@@ -114,6 +120,43 @@ Softmax::Softmax(FFModel &model,
                  const ParallelTensor input,
                  char const *name)
     : Softmax(model, input, params.dim, name) {}
+
+void Softmax::init_inference(FFModel const &ff,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(SOFTMAX_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Softmax)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_DISCARD,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
 
 void Softmax::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -184,8 +227,47 @@ OpMeta *Softmax::init_task(Task const *task,
     domain = input_domain;
   }
   SoftmaxMeta *m = new SoftmaxMeta(handle, softmax, domain);
+  m->input_type = softmax->inputs[0]->data_type;
+  m->output_type = softmax->outputs[0]->data_type;
   // checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   return m;
+}
+
+FutureMap Softmax::inference(FFModel const &ff,
+                             BatchConfigFuture const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Softmax op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(SOFTMAX_INF_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::forward(FFModel const &ff) {
@@ -222,10 +304,17 @@ void Softmax::forward_task(Task const *task,
                            Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
+  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   switch (in_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (m->output_type == DT_HALF) {                                           \
+      return forward_task_with_dim<half, DIM>(task, regions, ctx, runtime);    \
+    } else if (m->output_type == DT_FLOAT) {                                   \
+      return forward_task_with_dim<float, DIM>(task, regions, ctx, runtime);   \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -237,7 +326,7 @@ void Softmax::forward_task(Task const *task,
   regions[0](I): input
   regions[1](O): output
 */
-template <int NDIM>
+template <typename DT, int NDIM>
 void Softmax::forward_task_with_dim(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
@@ -246,15 +335,14 @@ void Softmax::forward_task_with_dim(Task const *task,
   assert(task->regions.size() == 2);
   // const Softmax* softmax = (Softmax*) task->args;
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  TensorAccessorR<float, NDIM> acc_input(
+  TensorAccessorR<DT, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, NDIM> acc_output(regions[1],
-                                          task->regions[1],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
-
+  TensorAccessorW<DT, NDIM> acc_output(regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
   forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
 }
 
@@ -292,10 +380,17 @@ void Softmax::backward_task(Task const *task,
                             Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
+  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   switch (in_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (m->output_type == DT_HALF) {                                           \
+      return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
+    } else if (m->output_type == DT_FLOAT) {                                   \
+      return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -310,7 +405,7 @@ void Softmax::backward_task(Task const *task,
 // Note that the backward task of softmax is actually a no op (i.e., input_grad
 // = output_grad) since the upstream cross_entropy_loss function computes
 // performs softmax_cross_entropy_loss to avoid intermediate zeros
-template <int NDIM>
+template <typename DT, int NDIM>
 void Softmax::backward_task_with_dim(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
@@ -319,19 +414,49 @@ void Softmax::backward_task_with_dim(Task const *task,
   assert(task->regions.size() == 2);
   // const Softmax* softmax = (Softmax*) task->args;
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  TensorAccessorW<float, NDIM> acc_input_grad(regions[0],
-                                              task->regions[0],
-                                              FID_DATA,
-                                              ctx,
-                                              runtime,
-                                              true /*readOutput*/);
-  TensorAccessorR<float, NDIM> acc_output_grad(
+  TensorAccessorW<DT, NDIM> acc_input_grad(regions[0],
+                                           task->regions[0],
+                                           FID_DATA,
+                                           ctx,
+                                           runtime,
+                                           true /*readOutput*/);
+  TensorAccessorR<DT, NDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   // make sure the image indices match!
   assert(acc_input_grad.rect == acc_output_grad.rect);
 
   backward_kernel_wrapper(
       m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+}
+
+InferenceResult
+    Softmax::inference_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM:                                                                    \
+    if (m->output_type == DT_HALF) {                                           \
+      forward_task_with_dim<half, DIM>(task, regions, ctx, runtime);           \
+      break;                                                                   \
+    } else if (m->output_type == DT_FLOAT) {                                   \
+      forward_task_with_dim<float, DIM>(task, regions, ctx, runtime);          \
+      break;                                                                   \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  // FIXME: replace this with actual result
+  InferenceResult ir;
+  return ir;
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {

@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/inference.h"
 #include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
@@ -30,6 +31,7 @@
 #include "optimizer.h"
 #include "parallel_tensor.h"
 #include "recompile.h"
+#include "runtime.h"
 #include "simulator.h"
 #include "tensor.h"
 #include "tl/optional.hpp"
@@ -55,6 +57,10 @@ enum TaskIDs {
   ELEMENTUNARY_INIT_TASK_ID,
   ELEMENTUNARY_FWD_TASK_ID,
   ELEMENTUNARY_BWD_TASK_ID,
+  EXPERTS_INIT_TASK_ID,
+  EXPERTS_FWD_TASK_ID,
+  EXPERTS_BWD_TASK_ID,
+  EXPERTS_INF_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_INIT_PARA_TASK_ID,
   CONV2D_FWD_TASK_ID,
@@ -99,6 +105,7 @@ enum TaskIDs {
   LAYERNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
+  LINEAR_INF_TASK_ID,
   LINEAR_FWD_TASK_ID,
   LINEAR_BWD_TASK_ID,
   LINEAR_BWD2_TASK_ID,
@@ -109,6 +116,7 @@ enum TaskIDs {
   SOFTMAX_INIT_TASK_ID,
   SOFTMAX_FWD_TASK_ID,
   SOFTMAX_BWD_TASK_ID,
+  SOFTMAX_INF_TASK_ID,
   CONCAT_INIT_TASK_ID,
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
@@ -127,16 +135,36 @@ enum TaskIDs {
   TOPK_INIT_TASK_ID,
   TOPK_FWD_TASK_ID,
   TOPK_BWD_TASK_ID,
+  ARG_TOPK_INIT_TASK_ID,
+  ARG_TOPK_INF_TASK_ID,
+  SAMPLING_INIT_TASK_ID,
+  SAMPLING_INF_TASK_ID,
+  ARGMAX_INIT_TASK_ID,
+  ARGMAX_BEAM_INF_TASK_ID,
+  ARGMAX_NORM_INF_TASK_ID,
   TRANSPOSE_INIT_TASK_ID,
   TRANSPOSE_FWD_TASK_ID,
   TRANSPOSE_BWD_TASK_ID,
   ATTENTION_INIT_TASK_ID,
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
+  RMSNROM_INIT_TASK_ID,
+  RMSNROM_FWD_TASK_ID,
+  BEAM_TOPK_INIT_TASK_ID,
+  BEAM_TOPK_INF_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+  SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+  TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
   FUSEDOP_BWD_TASK_ID,
+  FUSEDOP_INF_TASK_ID,
   NOOP_INIT_TASK_ID,
   // Metrics tasks
   METRICS_COMP_TASK_ID,
@@ -190,9 +218,20 @@ enum TaskIDs {
   PIPELINE_INIT_TASK_ID,
   PIPELINE_FWD_TASK_ID,
   PIPELINE_BWD_TASK_ID,
+  ALLREDUCE_INIT_TASK_ID,
+  ALLREDUCE_INF_TASK_ID,
+  ALLREDUCE_FWD_TASK_ID,
+  ALLREDUCE_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
   FUSED_PARALLELOP_FWD_TASK_ID,
   FUSED_PARALLELOP_BWD_TASK_ID,
+  // InferenceManager & RequestManager
+  RM_LOAD_TOKENS_TASK_ID,
+  RM_LOAD_POSITION_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -216,6 +255,8 @@ enum TaskIDs {
   // Make sure PYTHON_TOP_LEVEL_TASK_ID is
   // consistent with python/main.cc
   PYTHON_TOP_LEVEL_TASK_ID = 11111,
+  // Tensor Equal Task
+  TENSOR_EQUAL_TASK_ID,
 };
 
 enum ShardingID {
@@ -259,23 +300,33 @@ class Dropout;
 class ElementBinary;
 class ElementUnary;
 class Embedding;
+class Experts;
 class Flat;
 class Gather;
 class Group_by;
 class LayerNorm;
 class Linear;
 class MultiHeadAttention;
+class IncMultiHeadSelfAttention;
+class TreeIncMultiHeadSelfAttention;
 class Pool2D;
 class Reduce;
 class Reshape;
 class Softmax;
 class Split;
 class TopK;
+class ArgTopK;
 class Transpose;
+class RMSNorm;
+class BeamTopK;
+class SpecIncMultiHeadSelfAttention;
+class Sampling;
+class ArgMax;
 class Combine;
 class Repartition;
 class Reduction;
 class Replicate;
+class AllReduce;
 class FusedParallelOp;
 class ParallelOpInfo;
 
@@ -325,12 +376,13 @@ std::vector<ParallelTensorShape>
 
 class FFModel {
 public:
-  FFModel(FFConfig &config);
+  FFModel(FFConfig &config, bool cpu_offload = false);
 
   static constexpr float PROPAGATION_CHANCE = 0.25;
   static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
   static constexpr float PROPAGATION_SIZE_WEIGHT = 1.0;
 
+  bool cpu_offload;
   // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor x, char const *name = NULL);
@@ -422,7 +474,7 @@ public:
                  char const *name = NULL);
   // Add an embedding layer
   Tensor embedding(const Tensor input,
-                   int num_entires,
+                   int num_entries,
                    int outDim,
                    AggrMode aggr,
                    DataType dtype = DT_FLOAT,
@@ -468,11 +520,12 @@ public:
                 PoolType type = POOL_MAX,
                 ActiMode activation = AC_MODE_NONE,
                 char const *name = NULL);
-  // Add a batch_norm layer
+  // Add a layer_norm layer
   Tensor layer_norm(const Tensor input,
                     std::vector<int> const &axes,
                     bool elementwise_affine,
                     float eps,
+                    DataType data_type = DT_NONE,
                     char const *name = NULL);
   // Add a batch_norm layer
   Tensor
@@ -483,12 +536,24 @@ public:
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
+  // Add a root mean square layer
+  Tensor rms_norm(const Tensor input,
+                  float eps,
+                  int dim,
+                  DataType data_type = DT_NONE,
+                  char const *name = NULL);
+  // Add a beam search top k layer
+  Tensor beam_top_k(const Tensor input,
+                    int max_beam_size,
+                    bool sorted,
+                    char const *name = NULL);
+
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,
                ActiMode activation = AC_MODE_NONE,
                bool use_bias = true,
-               DataType data_type = DT_FLOAT,
+               DataType data_type = DT_NONE,
                Layer const *shared_op = NULL,
                Initializer *kernel_initializer = NULL,
                Initializer *bias_initializer = NULL,
@@ -500,6 +565,16 @@ public:
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
+  // Add an experts layer
+  Tensor experts(
+      Tensor const *inputs,
+      int num_experts,
+      int experts_start_idx,
+      int experts_output_dim_size,
+      float alpha,
+      int experts_num_layers = 1,        // number of linear layers per expert
+      int experts_internal_dim_size = 0, // hidden dimension for internal layers
+      char const *name = NULL);
   // Add a mean layer
   Tensor mean(const Tensor input,
               std::vector<int> const &dims,
@@ -521,7 +596,10 @@ public:
   // Add a flat layer
   Tensor flat(const Tensor input, char const *name = NULL);
   // Add a softmax layer
-  Tensor softmax(const Tensor input, int dim = -1, char const *name = NULL);
+  Tensor softmax(const Tensor input,
+                 int dim = -1,
+                 DataType data_type = DT_NONE,
+                 char const *name = NULL);
   // Create input tensors and constants
   Tensor transpose(const Tensor input,
                    std::vector<int> const &perm,
@@ -539,6 +617,13 @@ public:
              int k,
              bool sorted,
              char const *name = NULL);
+  Tensor arg_top_k(const Tensor input,
+                   // Tensor *outputs,
+                   int k,
+                   bool sorted,
+                   char const *name = NULL);
+  Tensor argmax(const Tensor input, bool beam_search, char const *name = NULL);
+  Tensor sampling(const Tensor input, float top_p, char const *name = NULL);
   Tensor multihead_attention(const Tensor query,
                              const Tensor key,
                              const Tensor value,
@@ -550,8 +635,117 @@ public:
                              bool bias = true,
                              bool add_bias_kv = false,
                              bool add_zero_attn = false,
+                             DataType data_type = DT_NONE,
                              Initializer *kernel_initializer = NULL,
                              char const *name = NULL);
+  Tensor inc_multihead_self_attention(const Tensor input,
+                                      int embed_dim,
+                                      int num_heads,
+                                      int kdim = 0,
+                                      int vdim = 0,
+                                      float dropout = 0.0f,
+                                      bool bias = false,
+                                      bool add_bias_kv = false,
+                                      bool add_zero_attn = false,
+                                      DataType data_type = DT_NONE,
+                                      Initializer *kernel_initializer = NULL,
+                                      bool apply_rotary_embedding = false,
+                                      bool scaling_query = false,
+                                      float scaling_factor = 1.0f,
+                                      bool qk_prod_scaling = true,
+                                      char const *name = NULL);
+  Tensor
+      spec_inc_multihead_self_attention(const Tensor input,
+                                        int embed_dim,
+                                        int num_heads,
+                                        int kdim = 0,
+                                        int vdim = 0,
+                                        float dropout = 0.0f,
+                                        bool bias = false,
+                                        bool add_bias_kv = false,
+                                        bool add_zero_attn = false,
+                                        DataType data_type = DT_NONE,
+                                        Initializer *kernel_initializer = NULL,
+                                        bool apply_rotary_embedding = false,
+                                        bool scaling_query = false,
+                                        float scaling_factor = 1.0f,
+                                        bool qk_prod_scaling = true,
+                                        char const *name = NULL);
+  Tensor inc_multihead_self_attention_verify(
+      const Tensor input,
+      int embed_dim,
+      int num_heads,
+      int kdim = 0,
+      int vdim = 0,
+      float dropout = 0.0f,
+      bool bias = false,
+      bool add_bias_kv = false,
+      bool add_zero_attn = false,
+      DataType data_type = DT_NONE,
+      Initializer *kernel_initializer = NULL,
+      bool apply_rotary_embedding = false,
+      bool scaling_query = false,
+      float scaling_factor = 1.0f,
+      bool qk_prod_scaling = true,
+      char const *name = NULL);
+  Tensor inc_multiquery_self_attention(const Tensor input,
+                                       int embed_dim,
+                                       int num_q_heads,
+                                       int num_kv_heads,
+                                       int kdim = 0,
+                                       int vdim = 0,
+                                       float dropout = 0.0f,
+                                       bool bias = false,
+                                       bool add_bias_kv = false,
+                                       bool add_zero_attn = false,
+                                       DataType data_type = DT_NONE,
+                                       Initializer *kernel_initializer = NULL,
+                                       bool apply_rotary_embedding = false,
+                                       bool scaling_query = false,
+                                       float scaling_factor = 1.0f,
+                                       bool qk_prod_scaling = true,
+                                       char const *name = NULL);
+  Tensor
+      spec_inc_multiquery_self_attention(const Tensor input,
+                                         int embed_dim,
+                                         int num_q_heads,
+                                         int num_kv_heads,
+                                         int kdim = 0,
+                                         int vdim = 0,
+                                         float dropout = 0.0f,
+                                         bool bias = false,
+                                         bool add_bias_kv = false,
+                                         bool add_zero_attn = false,
+                                         DataType data_type = DT_NONE,
+                                         Initializer *kernel_initializer = NULL,
+                                         bool apply_rotary_embedding = false,
+                                         bool scaling_query = false,
+                                         float scaling_factor = 1.0f,
+                                         bool qk_prod_scaling = true,
+                                         char const *name = NULL);
+  Tensor inc_multiquery_self_attention_verify(
+      const Tensor input,
+      int embed_dim,
+      int num_q_heads,
+      int num_kv_heads,
+      int kdim = 0,
+      int vdim = 0,
+      float dropout = 0.0f,
+      bool bias = false,
+      bool add_bias_kv = false,
+      bool add_zero_attn = false,
+      DataType data_type = DT_NONE,
+      Initializer *kernel_initializer = NULL,
+      bool apply_rotary_embedding = false,
+      bool scaling_query = false,
+      float scaling_factor = 1.0f,
+      bool qk_prod_scaling = true,
+      char const *name = NULL);
+  // ========================================
+  // Inference APIs
+  // ========================================
+  GenerationResult generate(std::string const &text, int max_seq_length);
+
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
                                        DataType data_type,
@@ -683,6 +877,7 @@ public:
     auto input_shapes = get_input_shape<typename T::Input>(input);
 
     if (!params.is_valid(input_shapes)) {
+      printf("!params.is_valid(input_shapes)\n");
       return PCG::Node::INVALID_NODE;
     }
 
@@ -690,7 +885,7 @@ public:
 
     std::pair<typename ToShape<typename T::Input>::type, Params> key{
         input_shapes, params};
-    auto &cache = get<std::unordered_map<
+    auto &cache = FlexFlow::get<std::unordered_map<
         std::pair<typename ToShape<typename T::Input>::type, Params>,
         T *>>(this->cached_ops);
     auto const &it = cache.find(key);
@@ -765,8 +960,14 @@ public:
                           std::vector<Legion::PhysicalRegion> const &regions,
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
+  // ========================================
+  // Internal APIs that should not be invoked from applications
+  // ========================================
   void reset_metrics();
   void init_operators();
+  void init_operators_inference(
+      std::vector<ParallelTensor> const &batch_inputs,
+      std::vector<ParallelTensor> const &batch_outputs);
   void prefetch();
   void forward(int seq_length = -1);
   void compute_metrics();
@@ -783,6 +984,9 @@ public:
                LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
+  void compile_inference();
+  void set_transformer_layer_id(int id);
+  void set_position_offset(int offset);
   void graph_optimize(size_t budget,
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
@@ -839,6 +1043,9 @@ public:
 public:
   size_t op_global_guid, layer_global_guid;
   size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
+  size_t current_transformer_layer_id;
+  // positional embedding start offset
+  int position_offset;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;
@@ -883,6 +1090,9 @@ public:
                          ElementUnary *>,
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
+      std::unordered_map<
+          std::pair<std::vector<ParallelTensorShape>, ExpertsParams>,
+          Experts *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
@@ -903,6 +1113,21 @@ public:
                                               ParallelTensorShape>,
                                    MultiHeadAttentionParams>,
                          MultiHeadAttention *>,
+      std::unordered_map<
+          std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionParams>,
+          IncMultiHeadSelfAttention *>,
+      std::unordered_map<std::pair<ParallelTensorShape, BeamTopKParams>,
+                         BeamTopK *>,
+      std::unordered_map<std::pair<ParallelTensorShape, SamplingParams>,
+                         Sampling *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ArgMaxParams>,
+                         ArgMax *>,
+      std::unordered_map<
+          std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
+          SpecIncMultiHeadSelfAttention *>,
+      std::unordered_map<
+          std::pair<ParallelTensorShape, TreeIncMultiHeadSelfAttentionParams>,
+          TreeIncMultiHeadSelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
                          Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
@@ -911,8 +1136,12 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
       std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ArgTopKParams>,
+                         ArgTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
                          Transpose *>,
+      std::unordered_map<std::pair<ParallelTensorShape, RMSNormParams>,
+                         RMSNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
@@ -921,6 +1150,8 @@ public:
                          Reduction *>,
       std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
                          Combine *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AllReduceParams>,
+                         AllReduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
                          FusedParallelOp *>>
       cached_ops;

@@ -374,6 +374,7 @@ void Reduce::serialize(Legion::Serializer &sez) const {
   }
   sez.serialize(params.keepdims);
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
 }
 
 using PCG::Node;
@@ -392,9 +393,10 @@ Node Reduce::deserialize(FFModel &ff,
     axes.push_back(dim_idx);
   }
   dez.deserialize(keepdims);
-  size_t id;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
 
   return ff.get_or_create_node<Reduce>(inputs[0], {axes, keepdims, layer_guid});
 }

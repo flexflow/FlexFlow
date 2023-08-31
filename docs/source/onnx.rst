@@ -1,3 +1,4 @@
+:tocdepth: 1
 *************
 ONNX Support
 *************

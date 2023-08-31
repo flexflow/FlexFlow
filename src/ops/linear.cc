@@ -1,4 +1,5 @@
 #include "flexflow/ops/linear.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/layer.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
@@ -12,9 +13,12 @@ using Legion::ArgumentMap;
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
 using Legion::InlineLauncher;
+using Legion::Machine;
+using Legion::Memory;
 using Legion::PhysicalRegion;
 using Legion::Predicate;
 using Legion::Rect;
@@ -40,14 +44,33 @@ Tensor FFModel::dense(const Tensor input,
                       RegularizerMode kernel_reg_type,
                       float kernel_reg_lambda,
                       char const *name) {
-  Layer *li = new Layer(this,
-                        OP_LINEAR,
-                        data_type,
-                        name,
-                        1 /*inputs*/,
-                        use_bias ? 2 : 1 /*weights*/,
-                        1 /*outputs*/,
-                        input);
+  if (data_type == DT_NONE) {
+    data_type = input->data_type;
+  }
+  DataType quantization_type = cpu_offload ? config.quantization_type : DT_NONE;
+  bool offload = cpu_offload;
+  Layer *li = nullptr;
+  if (data_type != input->data_type) {
+    Tensor casted_input = cast(input, data_type, "type cast for dense");
+    li = new Layer(this,
+                   OP_LINEAR,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   use_bias ? 2 : 1 /*weights*/,
+                   1 /*outputs*/,
+                   casted_input);
+  } else {
+    li = new Layer(this,
+                   OP_LINEAR,
+                   data_type,
+                   name,
+                   1 /*inputs*/,
+                   use_bias ? 2 : 1 /*weights*/,
+                   1 /*outputs*/,
+                   input);
+  }
+
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
@@ -60,14 +83,18 @@ Tensor FFModel::dense(const Tensor input,
   }
   {
     int dims[2] = {input->dims[0], outDim};
-    li->weights[KERNEL_IDX] =
-        create_weight_legion_ordering(2,
-                                      dims,
-                                      data_type,
-                                      li,
-                                      true /*create_grad*/,
-                                      kernel_initializer,
-                                      CHOSEN_SYNC_TYPE);
+    if (quantization_type != DT_NONE) {
+      dims[0] =
+          get_quantization_to_byte_size(data_type, quantization_type, dims[0]);
+    }
+    li->weights[KERNEL_IDX] = create_weight_legion_ordering(
+        2,
+        dims,
+        quantization_type == DT_NONE ? data_type : quantization_type,
+        li,
+        true /*create_grad*/,
+        kernel_initializer,
+        CHOSEN_SYNC_TYPE);
   }
   if (use_bias) {
     int dims[1] = {outDim};
@@ -84,6 +111,8 @@ Tensor FFModel::dense(const Tensor input,
   li->add_int_property("activation", activation);
   li->add_int_property("kernel_reg_type", kernel_reg_type);
   li->add_float_property("kernel_reg_lambda", kernel_reg_lambda);
+  li->add_int_property("quantization_type", quantization_type);
+  li->add_int_property("offload", offload);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -103,6 +132,10 @@ Op *Linear::create_operator_from_layer(
   RegularizerMode kernel_reg_type = (RegularizerMode)value;
   float kernel_reg_lambda;
   layer->get_float_property("kernel_reg_lambda", kernel_reg_lambda);
+  layer->get_int_property("quantization_type", value);
+  DataType quantization_type = (DataType)value;
+  layer->get_int_property("offload", value);
+  bool offload = (bool)value;
   return new Linear(model,
                     layer->layer_guid,
                     inputs[0],
@@ -112,6 +145,8 @@ Op *Linear::create_operator_from_layer(
                     kernel_reg_lambda,
                     use_bias,
                     layer->data_type,
+                    quantization_type,
+                    offload,
                     false /*allocate_weights*/,
                     layer->name);
 }
@@ -133,6 +168,8 @@ Linear::Linear(FFModel &model,
              other.kernel_reg_lambda,
              other.use_bias,
              other.data_type,
+             other.quantization_type,
+             other.offload,
              allocate_weights,
              other.name) {}
 
@@ -150,6 +187,8 @@ Linear::Linear(FFModel &model,
              params.kernel_reg_lambda,
              params.use_bias,
              params.data_type,
+             params.quantization_type,
+             params.offload,
              allocate_weights,
              name) {}
 
@@ -162,6 +201,8 @@ Linear::Linear(FFModel &model,
                float _kernel_reg_lambda,
                bool _use_bias,
                DataType _data_type,
+               DataType _quantization_type,
+               bool _offload,
                bool allocate_weights,
                char const *name)
     : Op(model,
@@ -175,6 +216,7 @@ Linear::Linear(FFModel &model,
          _input),
       out_channels(out_dim), activation(_activation), use_bias(_use_bias),
       kernel_reg_type(_kernel_reg_type), kernel_reg_lambda(_kernel_reg_lambda),
+      quantization_type(_quantization_type), offload(_offload),
       replica(ParallelTensorBase::NO_TENSOR) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
@@ -189,18 +231,37 @@ Linear::Linear(FFModel &model,
   LinearParams params = this->get_params();
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
+  kernel_shape.dims[0].size = this->in_channels;
+  bias_shape.dims[0].degree = _input->dims[_input->num_dims - 1].degree;
+  bias_shape.dims[0].parallel_idx =
+      _input->dims[_input->num_dims - 1].parallel_idx;
+  bias_shape.dims[1].size = bias_shape.dims[1].degree = 1;
+  bias_shape.dims[1].parallel_idx = -1;
+  bias_shape.dims[bias_shape.num_dims - 1].size =
+      bias_shape.dims[bias_shape.num_dims - 1].degree = 1;
+  for (int i = 0; i < input_shape.num_dims - 1; i++) {
+    if (_input->dims[i].degree > 1) {
+      bias_shape.dims[bias_shape.num_dims - 1].size *= _input->dims[i].degree;
+      bias_shape.dims[bias_shape.num_dims - 1].degree *= _input->dims[i].degree;
+      bias_shape.dims[bias_shape.num_dims - 1].parallel_idx =
+          _input->dims[i].parallel_idx;
+    }
+  }
 
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
-
-    weights[KERNEL_IDX] =
-        model.create_parallel_weight_legion_ordering(kernel_shape.num_dims,
-                                                     kernel_shape.dims,
-                                                     _data_type,
-                                                     NULL /*owner_op*/,
-                                                     true /*create_grad*/,
-                                                     kernel_initializer,
-                                                     CHOSEN_SYNC_TYPE);
+    if (quantization_type != DT_NONE) {
+      kernel_shape.dims[0].size = get_quantization_to_byte_size(
+          data_type, quantization_type, kernel_shape.dims[0].size);
+    }
+    weights[KERNEL_IDX] = model.create_parallel_weight_legion_ordering(
+        kernel_shape.num_dims,
+        kernel_shape.dims,
+        quantization_type == DT_NONE ? _data_type : quantization_type,
+        NULL /*owner_op*/,
+        true /*create_grad*/,
+        kernel_initializer,
+        CHOSEN_SYNC_TYPE);
 
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
@@ -213,6 +274,7 @@ Linear::Linear(FFModel &model,
                                                        true /*create_grad*/,
                                                        bias_initializer,
                                                        CHOSEN_SYNC_TYPE);
+      add_bias_only_once = _input->dims[0].degree > 1;
     }
   }
 
@@ -220,7 +282,7 @@ Linear::Linear(FFModel &model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_shape.num_dims, output_shape.dims, _data_type, this);
 
-  assert(check_output_input_weight_parallel_dims(allocate_weights));
+  // assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
 void Linear::init(FFModel const &ff) {
@@ -243,18 +305,24 @@ void Linear::init(FFModel const &ff) {
   //     RegionRequirement(input_lps[0], 0/*projection id*/,
   //                       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   // launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
-  launcher.add_field(0, FID_DATA);
+  launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(2, FID_DATA);
   // launcher.add_region_requirement(
   //     RegionRequirement(weights[1]->part, 0/*projection id*/,
   //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
@@ -271,6 +339,67 @@ void Linear::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void Linear::init_inference(FFModel const &ff,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  // assert(check_output_input_weight_same_machine_view());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(LINEAR_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Linear)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  // launcher.add_region_requirement(
+  //     RegionRequirement(input_lps[0], 0/*projection id*/,
+  //                       READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  // launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  launcher.add_field(2, FID_DATA);
+  // launcher.add_region_requirement(
+  //     RegionRequirement(weights[1]->part, 0/*projection id*/,
+  //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
+  // launcher.add_field(3, FID_DATA);
+  if (ff.config.computationMode == COMP_MODE_TRAINING) {
+    // Add inputs[0].region_grad to avoid Legion warning
+    // launcher.add_region_requirement(
+    //    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    //        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+    // launcher.add_field(2, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
+
 /*
   regions[0](O): output
   regions[1](I): kernel
@@ -280,12 +409,37 @@ OpMeta *Linear::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  switch (out_domain.get_dim()) {
+  Linear const *linear = (Linear *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  GenericTensorAccessorW output =
+      helperGetGenericTensorAccessorWO(linear->inputs[0]->data_type,
+                                       regions[0],
+                                       task->regions[0],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  switch (output.domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return init_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (output.data_type == DT_HALF) {                                         \
+      if (linear->quantization_type != DT_NONE) {                              \
+        return init_task_with_dim<half, char, DIM>(                            \
+            task, regions, ctx, runtime);                                      \
+      } else {                                                                 \
+        return init_task_with_dim<half, half, DIM>(                            \
+            task, regions, ctx, runtime);                                      \
+      }                                                                        \
+    } else if (output.data_type == DT_FLOAT) {                                 \
+      if (linear->quantization_type != DT_NONE) {                              \
+        return init_task_with_dim<float, char, DIM>(                           \
+            task, regions, ctx, runtime);                                      \
+      } else {                                                                 \
+        return init_task_with_dim<float, float, DIM>(                          \
+            task, regions, ctx, runtime);                                      \
+      }                                                                        \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -294,7 +448,7 @@ OpMeta *Linear::init_task(Task const *task,
   return NULL;
 }
 
-template <int NDIM>
+template <typename DT, typename WT, int NDIM>
 OpMeta *Linear::init_task_with_dim(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
@@ -305,38 +459,55 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   FFHandler handle = *((FFHandler const *)task->local_args);
   // TensorAccessorR<float, 2> acc_input(
   //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, NDIM> acc_output(regions[0],
-                                          task->regions[0],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
-  TensorAccessorW<float, NDIM> acc_kernel(regions[1],
-                                          task->regions[1],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
+  TensorAccessorR<DT, NDIM> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<DT, NDIM> acc_output(regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
+  TensorAccessorW<WT, NDIM> acc_kernel(regions[2],
+                                       task->regions[2],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
+
   // TensorAccessorR<float, 1> acc_bias(
   //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  // int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
-  int in_dim = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
+  int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
+  // int in_dim = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
-  printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
-         in_dim,
-         out_dim,
-         batch_size);
-  LinearMeta *m = new LinearMeta(handle, batch_size);
+  // printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
+  //        in_dim,
+  //        out_dim,
+  //        batch_size);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  if (linear->offload) {
+    // cpu-offload enabled
+    // use offload_reserved_space
+    gpu_mem_allocator.register_reserved_work_space(
+        handle.offload_reserve_space, handle.offload_reserve_space_size);
+  }
+
+  LinearMeta *m = new LinearMeta(
+      handle, batch_size, linear, gpu_mem_allocator, in_dim * out_dim);
   m->activation = linear->activation;
   m->kernel_reg_type = linear->kernel_reg_type;
   m->kernel_reg_lambda = linear->kernel_reg_lambda;
   m->use_bias = linear->use_bias;
+  m->add_bias_only_once = linear->add_bias_only_once;
   m->profiling = linear->profiling;
   m->trainableInputs[0] = linear->trainableInputs[0];
-  m->input_type = linear->inputs[0]->data_type;
-  m->weight_type = linear->weights[0]->data_type;
-  m->output_type = linear->outputs[0]->data_type;
+  m->weight_ptr_type = m->input_type[0];
+  m->quantization_type = linear->quantization_type;
+  m->offload = linear->offload;
   std::strcpy(m->op_name, linear->name);
 
   init_kernel(m, batch_size, out_dim);
@@ -386,16 +557,139 @@ void Linear::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+FutureMap Linear::inference(FFModel const &ff,
+                            BatchConfigFuture const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Linear op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(LINEAR_INF_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  launcher.add_field(2, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(3, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+void Linear::inference_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  Domain input_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  if (m->quantization_type == DT_NONE) {
+    assert(m->input_type[0] == m->weight_type[0]);
+  }
+  assert(m->input_type[0] == m->output_type[0]);
+
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+
+  int batch_size = bc->num_active_tokens();
+  GenericTensorAccessorR bias;
+  if (m->use_bias &&
+      !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {
+    bias = helperGetGenericTensorAccessorRO(m->weight_type[1],
+                                            regions[3],
+                                            task->regions[3],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime);
+    assert(bias.domain.get_volume() == static_cast<size_t>(out_dim));
+  }
+  forward_kernel_wrapper(m,
+                         input.ptr,
+                         output.ptr,
+                         weight.ptr,
+                         bias.ptr,
+                         in_dim,
+                         out_dim,
+                         batch_size);
+}
+
 void Linear::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  Domain in_domain = runtime->get_index_space_domain(
+  Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  switch (in_domain.get_dim()) {
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  if (m->quantization_type == DT_NONE) {
+    assert(m->input_type[0] == m->weight_type[0]);
+  }
+  assert(m->input_type[0] == m->output_type[0]);
+  switch (input_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (m->output_type[0] == DT_HALF) {                                        \
+      if (m->quantization_type != DT_NONE) {                                   \
+        return forward_task_with_dim<half, char, DIM>(                         \
+            task, regions, ctx, runtime);                                      \
+      } else {                                                                 \
+        return forward_task_with_dim<half, half, DIM>(                         \
+            task, regions, ctx, runtime);                                      \
+      }                                                                        \
+    } else if (m->output_type[0] == DT_FLOAT) {                                \
+      if (m->quantization_type != DT_NONE) {                                   \
+        return forward_task_with_dim<float, char, DIM>(                        \
+            task, regions, ctx, runtime);                                      \
+      } else {                                                                 \
+        return forward_task_with_dim<float, float, DIM>(                       \
+            task, regions, ctx, runtime);                                      \
+      }                                                                        \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -409,7 +703,7 @@ void Linear::forward_task(Task const *task,
   regions[2](I): kernel
   regions[3](I): bias
 */
-template <int NDIM>
+template <typename DT, typename WT, int NDIM>
 void Linear::forward_task_with_dim(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
@@ -419,25 +713,26 @@ void Linear::forward_task_with_dim(Task const *task,
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
 
-  TensorAccessorR<float, NDIM> acc_input(
+  TensorAccessorR<DT, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, NDIM> acc_output(regions[1],
-                                          task->regions[1],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
-  TensorAccessorR<float, NDIM> acc_kernel(
+  TensorAccessorW<DT, NDIM> acc_output(regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
+  TensorAccessorR<WT, NDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
   assert(acc_output.rect.volume() == static_cast<size_t>(out_dim * batch_size));
   assert(acc_input.rect.volume() == static_cast<size_t>(in_dim * batch_size));
-  assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
-  float const *acc_bias_ptr = NULL;
-  if (m->use_bias) {
-    TensorAccessorR<float, 3> acc_bias(
+  // assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
+  DT const *acc_bias_ptr = nullptr;
+  if (m->use_bias &&
+      !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {
+    TensorAccessorR<DT, NDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(acc_bias.rect.volume() == static_cast<size_t>(out_dim));
     acc_bias_ptr = acc_bias.ptr;
@@ -535,10 +830,21 @@ void Linear::backward_task(Task const *task,
                            Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  if (m->quantization_type == DT_NONE) {
+    assert(m->input_type[0] == m->weight_type[0]);
+  }
+  assert(m->input_type[0] == m->output_type[0]);
   switch (in_domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    if (m->output_type[0] == DT_HALF) {                                        \
+      return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
+    } else if (m->output_type[0] == DT_FLOAT) {                                \
+      return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
+    } else {                                                                   \
+      assert(false && "Unsupported data type");                                \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -555,7 +861,7 @@ void Linear::backward_task(Task const *task,
   regions[5](I/O): filter_grad
   regions[6](I/O): bias_grad
 */
-template <int NDIM>
+template <typename DT, int NDIM>
 void Linear::backward_task_with_dim(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
@@ -567,9 +873,9 @@ void Linear::backward_task_with_dim(Task const *task,
   assert(task->regions.size() ==
          (5 + static_cast<size_t>(m->trainableInputs[0]) +
           static_cast<size_t>(m->use_bias)));
-  float *input_grad = NULL;
+  DT *input_grad = nullptr;
   size_t rid = 0;
-  TensorAccessorR<float, NDIM> acc_input(
+  TensorAccessorR<DT, NDIM> acc_input(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
   if (m->trainableInputs[0]) {
@@ -577,39 +883,39 @@ void Linear::backward_task_with_dim(Task const *task,
         ctx, task->regions[rid].region.get_index_space());
     if (domain.get_dim() == NDIM + 1) {
       assert(domain.get_volume() == acc_input.rect.volume());
-      input_grad = helperGetTensorPointerWO<float>(
+      input_grad = helperGetTensorPointerWO<DT>(
           regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
     } else {
-      TensorAccessorW<float, NDIM> acc_replica_grad(regions[rid],
-                                                    task->regions[rid],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime,
-                                                    true /*readOutput*/);
+      TensorAccessorW<DT, NDIM> acc_replica_grad(regions[rid],
+                                                 task->regions[rid],
+                                                 FID_DATA,
+                                                 ctx,
+                                                 runtime,
+                                                 true /*readOutput*/);
       assert(acc_replica_grad.rect.volume() == acc_input.rect.volume());
       input_grad = acc_replica_grad.ptr;
     }
     rid++;
   }
-  TensorAccessorR<float, NDIM> acc_output(
+  TensorAccessorR<DT, NDIM> acc_output(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
-  TensorAccessorW<float, NDIM> acc_output_grad(regions[rid],
-                                               task->regions[rid],
-                                               FID_DATA,
-                                               ctx,
-                                               runtime,
-                                               true /*readOutput*/);
+  TensorAccessorW<DT, NDIM> acc_output_grad(regions[rid],
+                                            task->regions[rid],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime,
+                                            true /*readOutput*/);
   rid++;
-  TensorAccessorR<float, NDIM> acc_kernel(
+  TensorAccessorR<DT, NDIM> acc_kernel(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
-  TensorAccessorW<float, NDIM> acc_kernel_grad(regions[rid],
-                                               task->regions[rid],
-                                               FID_DATA,
-                                               ctx,
-                                               runtime,
-                                               true /*readOutput*/);
+  TensorAccessorW<DT, NDIM> acc_kernel_grad(regions[rid],
+                                            task->regions[rid],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime,
+                                            true /*readOutput*/);
   rid++;
   // make sure the sizes match
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
@@ -621,17 +927,17 @@ void Linear::backward_task_with_dim(Task const *task,
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   assert(acc_kernel_grad.rect.volume() ==
          static_cast<size_t>(in_dim * out_dim));
-  float *acc_bias_grad_ptr = NULL;
+  DT *acc_bias_grad_ptr = nullptr;
   if (m->use_bias) {
-    TensorAccessorW<float, 3> acc_bias_grad(regions[rid],
-                                            task->regions[rid],
-                                            FID_DATA,
-                                            ctx,
-                                            runtime,
-                                            true /*readOutput*/);
+    TensorAccessorW<DT, 3> acc_bias_grad(regions[rid],
+                                         task->regions[rid],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime,
+                                         true /*readOutput*/);
     rid++;
     assert(acc_bias_grad.rect.volume() == static_cast<size_t>(out_dim));
-    acc_bias_grad_ptr = static_cast<float *>(acc_bias_grad.ptr);
+    acc_bias_grad_ptr = static_cast<DT *>(acc_bias_grad.ptr);
   }
   assert(rid == regions.size());
 
@@ -807,9 +1113,9 @@ bool Linear::measure_operator_cost(Simulator *sim,
   m->activation = activation;
   m->kernel_reg_type = kernel_reg_type;
   m->kernel_reg_lambda = kernel_reg_lambda;
-  m->input_type = inputs[0]->data_type;
-  m->weight_type = this->data_type;
-  m->output_type = outputs[0]->data_type;
+  m->input_type[0] = inputs[0]->data_type;
+  m->weight_type[0] = this->data_type;
+  m->output_type[0] = outputs[0]->data_type;
   assert(m->profiling == false);
 
   init_kernel(m, output_n, output_c);
@@ -925,12 +1231,15 @@ bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
 
 void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->out_channels);
   sez.serialize(this->activation);
   sez.serialize(this->kernel_reg_type);
   sez.serialize(this->kernel_reg_lambda);
   sez.serialize(this->use_bias);
   sez.serialize(this->data_type);
+  sez.serialize(this->quantization_type);
+  sez.serialize(this->offload);
 }
 
 /* static */
@@ -946,15 +1255,20 @@ Node Linear::deserialize(FFModel &ff,
   float kernel_reg_lambda;
   bool use_bias;
   DataType data_type;
-  size_t id;
+  DataType quantization_type;
+  bool offload;
+  size_t id, transformer_layer_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id);
   dez.deserialize(out_channels);
   dez.deserialize(activation);
   dez.deserialize(kernel_reg_type);
   dez.deserialize(kernel_reg_lambda);
   dez.deserialize(use_bias);
   dez.deserialize(data_type);
+  dez.deserialize(quantization_type);
+  dez.deserialize(offload);
 
   LinearParams params;
   params.activation = activation;
@@ -964,6 +1278,8 @@ Node Linear::deserialize(FFModel &ff,
   params.use_bias = use_bias;
   params.data_type = data_type;
   params.layer_guid = layer_guid;
+  params.quantization_type = quantization_type;
+  params.offload = offload;
   return ff.get_or_create_node<Linear>(inputs[0], params);
 }
 
@@ -976,6 +1292,8 @@ LinearParams Linear::get_params() const {
   params.activation = this->activation;
   params.kernel_reg_type = this->kernel_reg_type;
   params.kernel_reg_lambda = this->kernel_reg_lambda;
+  params.quantization_type = this->quantization_type;
+  params.offload = this->offload;
 
   return params;
 }
@@ -999,6 +1317,11 @@ bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
   return is_valid;
 }
 
+/** @brief  A wrapper around the main version of the solve_dims function.
+ *
+ * It takes a the input tensor as a parameter, instead of the input's
+ * ParallelTensorShape.
+ */
 void LinearParams::solve_dims(const ParallelTensor input,
                               ParallelDim output_dims[MAX_TENSOR_DIM],
                               int *output_ndims,
@@ -1015,6 +1338,13 @@ void LinearParams::solve_dims(const ParallelTensor input,
                    bias_ndims);
 }
 
+/** @brief  A wrapper around the main version of the solve_dims function.
+ *
+ * For each of the output, weights, and bias tensors, it takes a
+ * ParallelTensorShape argument, instead of a pointer to an integer variable to
+ * record the number of dimensions, plus a ParallelDim array to record all the
+ * information regarding each dimension.
+ */
 void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
                               ParallelTensorShape &output_shape,
                               ParallelTensorShape &kernel_shape,
@@ -1041,11 +1371,14 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
 
   std::vector<ParallelDimMappingRecord> mapping;
   this->construct_mappings(mapping, input_shape);
+  // sets the is_replica_dim field to true for the dimensions that are used to
+  // record the number of replicas
   this->mark_replica_dims(input_shape, output_dims, kernel_dims, bias_dims);
 
   solve_parallel_dim_mappings(
       mapping, {input_shape.dims}, {kernel_dims, bias_dims}, {output_dims});
 
+  // sets the dimension sizes of the output, weights, and bias tensors
   this->calculate_nonreplica_dim_sizes(input_shape,
                                        output_dims,
                                        output_ndims,
@@ -1055,6 +1388,34 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
                                        bias_ndims);
 }
 
+/** @brief  Create a map between each of a tensor's dimension name and its
+ * corresponding index
+ *
+ * The tensor dimension names are defined as follows. For the input tensor, the
+ * first dimension is called INPUT_CHANNEL, and generally corresponds to number
+ * of floats needed to store a single element from the input dataset. For
+ * example, when each element in the dataset is a flattened MNIST image, the
+ * INPUT_CHANNEL dimension will have a size of 28x28=784. The second to last and
+ * last dimensions in the input tensor are, respectively, the INPUT_SAMPLE and
+ * INPUT_REPLICA dimensions. The size of the INPUT_SAMPLE dimension generally
+ * corresponds to the batch size used for training. The size of the
+ * INPUT_REPLICA tells us how many replicas of the tensors have been created.
+ * The dimensions of the output tensor are named analogously: the first
+ * dimension is OUTPUT_CHANNEL, the second to last is OUTPUT_SAMPLE, and the
+ * last one is OUTPUT_REPLICA. Both the input and output tensor may have
+ * additional dimensions, without a name, between {INPUT,OUTPUT}_CHANNEL and
+ * {INPUT,OUTPUT}_SAMPLE. For instance, when the input data comes in textual
+ * form, it is common to have an additional dimension representing the sequence
+ * length. When it comes to the weights, the dimensions are named simply as
+ * KERNEL_CHANNEL_IN (first dimension of a weight's tensor), KERNEL_CHANNEL_OUT
+ * (second dimension) and BIAS_CHANNEL_OUT (first dimension of the bias tensor)
+ *
+ * @param[in] input_shape   A ParallelTensorShape object representing the shape
+ * of the ParallelTensor used for the input to the operator
+ * @return dimension_names  A map from each LinearParams::NamedDimensions to the
+ * index corresponding to that dimension in the input, weight, (bias), or output
+ * tensor.
+ */
 std::unordered_map<LinearParams::NamedDimensions, int>
     LinearParams::get_dimension_names(
         ParallelTensorShape const &input_shape) const {
@@ -1071,6 +1432,43 @@ std::unordered_map<LinearParams::NamedDimensions, int>
           {BIAS_CHANNEL_OUT, 0}};
 }
 
+/** @brief  Sets the size field of ParallelDim objects passed as arguments to
+ * the expected (non-replica) dimensions of the output, weights, and bias
+ * tensors. In addition, it sets the output_ndims, kernel_ndims and bias_ndims
+ * variables to the number of dimensions (including the replica dimensions) of,
+ * respectively, the ouput, weights, and bias tensors.
+ *
+ * The number of dimensions, and dimension sizes of the output, weights, and
+ * bias dimensions are set as follows. The number of dimensions of all three
+ * tensors are copied from the dimensions of the input tensor. The replica
+ * dimensions are not subtracted or otherwise excluded. The size of the output
+ * tensor dimensions are also copied from the input tensor, with the exception
+ * of the last dimension (replica dimension), which is not set, and the first
+ * dimension, whose size is set equal to the out_channels member of the
+ * LinearParams struct, which in turn is set by the outDim parameter of the
+ * FModel::dense function. When it comes to the size of the weights dimensions,
+ * the first dimension is set to have size equal to the quotient of the size of
+ * the INPUT_CHANNEL dimension of the input (first dimension) and the degree
+ * (number of partitions) of the same input dimension. The second dimension of
+ * the the weights tensor is set equal to out_channels, just like the first
+ * dimension of the output tensor. Finally, the size of the first dimension of
+ * the bias tensor is also set equal to the value of out_channels.
+ *
+ * @param[in]   input_shape   A required argument recording the dimensions of
+ * the input tensor
+ * @param[out]  output_dims   An array of ParallelDim objects representing the
+ * dimensions of the output tensor
+ * @param[out]  output_ndims  The number of dimensions (including the replica
+ * dimension(s)) of the output tensor
+ * @param[out]  kernel_dims   An array of ParallelDim objects representing the
+ * dimensions of the weights tensor
+ * @param[out]  kernel_ndims  The number of dimensions (including the replica
+ * dimension(s)) of the weights tensor
+ * @param[out]  bias_dims     An array of ParallelDim objects representing the
+ * dimensions of the bias tensor
+ * @param[out]  bias_ndims    The number of dimensions (including the replica
+ * dimension(s)) of the bias tensor
+ */
 void LinearParams::calculate_nonreplica_dim_sizes(
     ParallelTensorShape const &input_shape,
     ParallelDim output_dims[MAX_TENSOR_DIM],
@@ -1103,6 +1501,20 @@ void LinearParams::calculate_nonreplica_dim_sizes(
   }
 }
 
+/** @brief Switch the is_replica_dim field to true in each ParallelDim of
+ *         the output, weight and bias tensor, if the corresponding dimension
+ *         is used to keep track of the number of replicas
+ *
+ * @param[in]   input_shape   A required argument recording the dimensions of
+ * the input tensor
+ * @param[out]  output_dims   An array of ParallelDim objects representing the
+ * dimensions of the output tensor
+ * @param[out]  kernel_dims   An array of ParallelDim objects representing the
+ * dimensions of the weights tensor
+ * @param[out]  bias_dims     An array of ParallelDim objects representing the
+ * dimensions of the bias tensor
+ *
+ */
 void LinearParams::mark_replica_dims(
     ParallelTensorShape const &input_shape,
     ParallelDim output_dims[MAX_TENSOR_DIM],
@@ -1179,6 +1591,8 @@ size_t hash<FlexFlow::LinearParams>::operator()(
   hash_combine(key, params.activation);
   hash_combine(key, params.kernel_reg_type);
   hash_combine(key, params.kernel_reg_lambda);
+  hash_combine(key, params.quantization_type);
+  hash_combine(key, params.offload);
   return key;
 }
 }; // namespace std
