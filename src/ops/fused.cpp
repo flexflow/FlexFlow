@@ -37,6 +37,7 @@
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
+#include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -45,6 +46,7 @@ namespace FlexFlow {
 using Legion::Context;
 using Legion::coord_t;
 using Legion::Domain;
+using Legion::Future;
 using Legion::LogicalPartition;
 using Legion::LogicalRegion;
 using Legion::PhysicalRegion;
@@ -417,7 +419,7 @@ __host__ void
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
-  BatchConfig const *bc = (BatchConfig *)task->args;
+   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
   }
