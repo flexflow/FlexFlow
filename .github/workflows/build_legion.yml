@@ -1,58 +1,57 @@
-name: "build"
+name: "prebuild-legion"
 on:
-  pull_request:
-    paths:
-      - "include/**"
-      - "cmake/**"
-      - "config/**"
-      - "deps/**"
-      - "python/**"
-      - "src/**"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/build.yml"
   push:
     branches:
-      - "master"
+      - "inference"
     paths:
-      - "include/**"
       - "cmake/**"
       - "config/**"
-      - "deps/**"
-      - "python/**"
-      - "src/**"
+      - "deps/legion/**"
       - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/build.yml"
   workflow_dispatch:
 concurrency:
-  group: build-${{ github.head_ref || github.run_id }}
+  group: prebuild-legion-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   prebuild-legion:
     name: Prebuild Legion with CMake
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, cpu_only]
     defaults:
       run:
         shell: bash -l {0} # required to use an activated conda environment
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
-        cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6", "11.7", "11.8"]
-        python_version: ["3.8", "3.9", "3.10", "3.11", "latest"]
-        # The CUDA version doesn't matter when building for hip_rocm, so we just pick one arbitrarily (11.8) to avoid building for hip_rocm once per number of CUDA version supported
+        gpu_backend_version: ["11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8", "12.0", "5.3", "5.4", "5.5", "5.6"]
+        python_version: ["3.8", "3.9", "3.10", "3.11"]
         exclude:
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.3"
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.4"
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.5"
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.6"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.1"
+            gpu_backend_version: "11.1"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.2"
+            gpu_backend_version: "11.2"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.3"
+            gpu_backend_version: "11.3"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.5"
+            gpu_backend_version: "11.4"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.6"
+            gpu_backend_version: "11.5"
           - gpu_backend: "hip_rocm"
-            cuda_version: "11.7"
+            gpu_backend_version: "11.6"
+          - gpu_backend: "hip_rocm"
+            gpu_backend_version: "11.7"
+          - gpu_backend: "hip_rocm"
+            gpu_backend_version: "11.8"
+          - gpu_backend: "hip_rocm"
+            gpu_backend_version: "12.0"
       fail-fast: false
     steps:
       - name: Checkout Git Repository
@@ -63,37 +62,18 @@ jobs:
       - name: Free additional space on runner
         run: .github/workflows/helpers/free_space_on_runner.sh
 
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.11
-        id: cuda-toolkit
-        with:
-          cuda: "11.8.0"
-          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
-          use-github-cache: "false"
-
-      - name: Install system dependencies
-        run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
-
-      - name: Install conda and FlexFlow dependencies
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          activate-environment: flexflow
-          environment-file: conda/environment.yml
-          auto-activate-base: false
-
       - name: Build Legion
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-        run: |
-          bash launch_prebuilding.sh
+        run: ./.github/workflows/helpers/launch_prebuilding.sh
 
       - name: Archive compiled Legion library (CUDA)
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         uses: actions/upload-artifact@v3
         with:
-          name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}
-          path: build/export/legion_ubuntu-20.04-${{ matrix.cuda_version }}-${{ matrix.gpu_backend }}-${{ matrix.python_version }}.tar.gz #how to incororate the cuda version + how to deal with python version
+          name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}-${{ matrix.gpu_backend_version }}_py${{ matrix.python_version }}
+          path: prebuilt_legion_assets/legion_ubuntu-20.04_${{ matrix.gpu_backend }}-${{ matrix.gpu_backend_version }}_py${{ matrix.python_version }}.tar.gz
 
   create-release:
     name: Create new release
