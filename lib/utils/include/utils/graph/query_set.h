@@ -2,7 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
 #include "utils/bidict.h"
-#include "utils/containers.decl"
+#include "utils/containers.decl.h"
 #include "utils/exception.h"
 #include "utils/optional.h"
 #include <unordered_set>

@@ -1,5 +1,5 @@
 #include "doctest/doctest.h"
-#include "utils/containers.h"
+#include "utils/containers.decl.h"
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>

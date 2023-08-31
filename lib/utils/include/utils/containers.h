@@ -2,7 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_INL
 
 #include "bidict.h"
-#include "containers.decl"
+#include "containers.decl.h"
 #include "invoke.h"
 #include "required_core.h"
 #include "type_traits_core.h"

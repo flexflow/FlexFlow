@@ -2,7 +2,7 @@
 #define _FLEXFLOW_UTILS_TUPLE_H
 
 #include "utils/any.h"
-#include "utils/exception.h"
+#include "utils/exception.decl.h"
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
