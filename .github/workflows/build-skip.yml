@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        gpu_backend: ["cuda", "hip_rocm"]
+        gpu_backend: ["cuda"]
       fail-fast: false
     steps:
       - run: 'echo "No build required"'

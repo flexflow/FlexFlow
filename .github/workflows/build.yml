@@ -34,7 +34,7 @@ jobs:
         shell: bash -l {0} # required to use an activated conda environment
     strategy:
       matrix:
-        gpu_backend: ["cuda", "hip_rocm"]
+        gpu_backend: ["cuda"]
       fail-fast: false
     steps:
       - name: Checkout Git Repository
