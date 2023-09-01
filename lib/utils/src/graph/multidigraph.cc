@@ -102,6 +102,9 @@ std::unordered_set<Node>
   return this->ptr->query_nodes(q);
 }
 
+MultiDiGraphView::MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr)
+    : ptr(ptr) {}
+
 std::unordered_set<MultiDiEdge>
     MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
   return this->ptr->query_edges(q);

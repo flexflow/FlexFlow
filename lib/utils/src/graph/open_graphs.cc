@@ -27,6 +27,10 @@ OpenMultiDiGraphView::operator MultiDiGraphView() const {
   return as_multidigraph(*this);
 }
 
+OpenMultiDiGraphView::OpenMultiDiGraphView(
+    std::shared_ptr<IOpenMultiDiGraphView const> ptr)
+    : ptr(ptr) {}
+
 OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)
     : ptr(other.ptr) {}
 

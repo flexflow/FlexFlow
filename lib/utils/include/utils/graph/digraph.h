@@ -37,7 +37,7 @@ public:
       unsafe_create_without_ownership(IDiGraphView const &graphView);
 
 private:
-  DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
+  DiGraphView(std::shared_ptr<IDiGraphView const> ptr);
 
   friend struct GraphInternal;
 

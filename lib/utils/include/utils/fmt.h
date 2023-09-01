@@ -1,22 +1,14 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_FMT_H
 #define _FLEXFLOW_UTILS_INCLUDE_FMT_H
 
-#include "fmt/core.h"
-#include "fmt/format.h"
-#include "utils/containers.decl"
+#include "utils/containers.decl.h"
+#include "utils/fmt.decl.h"
+#include "utils/test_types.h"
 #include "utils/type_traits_core.h"
-#include <unordered_set>
 
 namespace FlexFlow {
 
-template <typename T, typename Enable = void>
-struct is_fmtable : std::false_type {};
-
-template <typename T>
-struct is_fmtable<T, void_t<decltype(fmt::format("{}", std::declval<T>()))>>
-    : std::true_type {};
-
-template <typename T, typename = void>
+template <typename T, typename Enable>
 struct already_has_ostream_operator : std::false_type {};
 
 template <>
@@ -43,12 +35,18 @@ operator<<(std::ostream &s, T const &t) {
 }
 */
 
+#define CHECK_FMTABLE(...)                                                     \
+  static_assert(::FlexFlow::is_fmtable<__VA_ARGS__>::value,                    \
+                #__VA_ARGS__ " must be fmtable");
+
 // This will not
 template <typename T>
 typename std::enable_if<!already_has_ostream_operator<T>::value,
                         std::ostream &>::type
     operator<<(std::ostream &s, T const &t) {
-  std::string result = fmt::format("{}", t);
+  CHECK_FMTABLE(T);
+
+  std::string result = fmt::to_string(t);
   return s << result;
 }
 
@@ -63,17 +61,30 @@ typename std::enable_if<!already_has_ostream_operator<T>::value,
 namespace fmt {
 
 template <typename T>
-struct formatter<::std::unordered_set<T>> : formatter<::std::string> {
-  template <typename FormatContext>
-  auto format(::std::unordered_set<T> const &m, FormatContext &ctx)
-      -> decltype(ctx.out()) {
-    std::string result =
-        join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
-          return fmt::to_string(t);
-        });
-    return formatter<std::string>::format(result, ctx);
-  }
-};
+template <typename FormatContext>
+auto formatter<::std::unordered_set<T>>::format(
+    ::std::unordered_set<T> const &m, FormatContext &ctx)
+    -> decltype(ctx.out()) {
+  CHECK_FMTABLE(T);
+
+  std::string result = join_strings(
+      m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
+  return formatter<std::string>::format(result, ctx);
+}
+
+template <typename T>
+template <typename FormatContext>
+auto formatter<::std::vector<T>>::format(::std::vector<T> const &m,
+                                         FormatContext &ctx)
+    -> decltype(ctx.out()) {
+  CHECK_FMTABLE(T);
+  std::string result = join_strings(
+      m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
+  return formatter<std::string>::format(result, ctx);
+}
+
+CHECK_FMTABLE(std::vector<int>);
+CHECK_FMTABLE(std::unordered_set<int>);
 
 } // namespace fmt
 
