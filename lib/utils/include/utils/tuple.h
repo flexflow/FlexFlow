@@ -31,26 +31,6 @@ struct index_of : index_of_impl<T, 0, Types...> {};
 
 } // namespace TupleUtils
 
-template <typename T, typename... Types>
-T &get(std::tuple<Types...> &t) noexcept {
-  return std::get<TupleUtils::index_of<T, Types...>::value>(t);
-}
-
-template <typename T, typename... Types>
-T &&get(std::tuple<Types...> &&t) noexcept {
-  return std::move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
-}
-
-template <typename T, typename... Types>
-T const &get(std::tuple<Types...> const &t) noexcept {
-  return std::get<TupleUtils::index_of<T, Types...>::value>(t);
-}
-
-template <typename T, typename... Types>
-T const &&get(std::tuple<Types...> const &&t) noexcept {
-  return move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
-}
-
 template <int Idx, typename Visitor, typename... Types>
 void visit_tuple_impl(Visitor &v, std::tuple<Types...> const &tup) {
   v(Idx, std::get<Idx>(tup));
