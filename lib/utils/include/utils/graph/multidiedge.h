@@ -26,6 +26,7 @@ struct MultiDiEdge {
   NodePort srcIdx, dstIdx;
 };
 FF_VISITABLE_STRUCT(MultiDiEdge, src, dst, srcIdx, dstIdx);
+FF_VISIT_FMTABLE(MultiDiEdge);
 
 struct MultiDiInput {
   Node node;

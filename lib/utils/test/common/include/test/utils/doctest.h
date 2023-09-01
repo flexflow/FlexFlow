@@ -1,9 +1,11 @@
 #include "doctest/doctest.h"
-#include "utils/containers.h"
+#include "utils/containers.decl.h"
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+using namespace FlexFlow;
 
 namespace doctest {
 

@@ -1,26 +1,12 @@
-set(target utils-ffi)
-
-project(${target})
-file(GLOB_RECURSE FFI_SRC
-     CONFIGURE_DEPENDS
-     LIST_DIRECTORIES False
-     src/*.cc)
-add_library(
-  ${target}
-  SHARED
-  ${FFI_SRC}
-)
-target_include_directories(
-  ${target}
-  PUBLIC
+ff_add_library(
+  NAME
+    utils-ffi
+  SRC_PATTERNS
+    src/*.cc
+  PUBLIC_INCLUDE
     include/
-  PRIVATE
+  PRIVATE_INCLUDE
     src/
-)
-target_link_libraries(
-  ${target}
-  PRIVATE
+  PRIVATE_DEPS
     utils
 )
-
-ff_set_cxx_properties(${target})

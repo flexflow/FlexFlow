@@ -29,6 +29,7 @@ set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
 
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
 set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
+set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 function(define_ff_vars target)
   target_compile_definitions(${target} PRIVATE 
@@ -111,6 +112,8 @@ include(invoke)
 include(any)
 #include(gtest)
 #include(fmt)
+
+include(flexflow-utils)
 
 # TODO @lockshaw remove me
 # https://discourse.nixos.org/t/get-clangd-to-find-standard-headers-in-nix-shell/11268/6

@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_TYPE_TRAITS_H
 
 #include "utils/invoke.h"
+#include "utils/metafunction.h"
 #include "utils/type_traits_core.h"
 #include "utils/visitable_core.h"
 #include <iostream>
@@ -51,6 +52,13 @@ struct is_rc_copy_virtual_compliant
                   std::has_virtual_destructor<T>> {};
 
 template <typename T, typename Enable = void>
+struct is_clonable : std::false_type {};
+
+template <typename T>
+struct is_clonable<T, void_t<decltype(std::declval<T>().clone())>>
+    : std::true_type {};
+
+template <typename T, typename Enable = void>
 struct is_streamable : std::false_type {};
 
 template <typename T>
@@ -93,28 +101,39 @@ struct is_hashable<
     void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
     : std::true_type {};
 
-template <template <typename, typename = void> class Cond,
-          typename Enable,
-          typename... Ts>
+#define CHECK_HASHABLE(...)                                                    \
+  static_assert(is_hashable<__VA_ARGS__>::value,                               \
+                #__VA_ARGS__ " should be hashable (but is not)");
+
+template <template <typename...> class Cond, typename... Ts>
 struct elements_satisfy_impl;
 
-template <template <typename, typename = void> class Cond, typename T>
-struct elements_satisfy : elements_satisfy_impl<Cond, void, T> {};
+template <template <typename...> class Cond, typename Head, typename... Ts>
+struct elements_satisfy_impl<Cond, Head, Ts...>
+    : conjunction<Cond<Head>, elements_satisfy_impl<Cond, Ts...>> {};
 
-template <template <typename, typename = void> class Cond, typename T>
-struct elements_satisfy_impl<
-    Cond,
-    typename std::enable_if<is_visitable<T>::value>::type,
-    T> : elements_satisfy<Cond, visit_as_tuple_t<T>> {};
+template <template <typename...> class Cond>
+struct elements_satisfy_impl<Cond> : std::true_type {};
 
-template <template <typename, typename = void> class Cond,
-          typename Head,
-          typename... Ts>
-struct elements_satisfy<Cond, std::tuple<Head, Ts...>>
-    : conjunction<Cond<Head>, elements_satisfy<Cond, std::tuple<Ts...>>> {};
+template <template <typename...> class Cond, typename T, typename Enable = void>
+struct elements_satisfy {
+  static_assert(!is_nary_metafunction<Cond, 1>::value,
+                "Cannot call elements_satisfy with a metafunction with more "
+                "than 1 argument");
+};
 
-template <template <typename, typename = void> class Cond>
-struct elements_satisfy<Cond, std::tuple<>> : std::true_type {};
+template <template <typename...> class Cond, typename T>
+struct elements_satisfy<Cond,
+                        T,
+                        enable_if_t<(is_nary_metafunction<Cond, 1>::value &&
+                                     is_visitable<T>::value)>>
+    : elements_satisfy<Cond, visit_as_tuple_t<T>> {};
+
+template <template <typename...> class Cond, typename... Ts>
+struct elements_satisfy<Cond,
+                        std::tuple<Ts...>,
+                        enable_if_t<is_nary_metafunction<Cond, 1>::value>>
+    : elements_satisfy_impl<Cond, Ts...> {};
 
 static_assert(
     elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");

@@ -1,3 +1,6 @@
+# ctest-created files
+Testing/
+
 # clang compilation db
 compile_commands.json
 

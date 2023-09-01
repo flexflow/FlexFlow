@@ -3,11 +3,13 @@
 
 #include "adjacency_digraph.h"
 #include "digraph.h"
+#include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "open_graphs.h"
 #include "tl/optional.hpp"
 #include "undirected.h"
 #include "utils/bidict.h"
+#include "utils/graph/digraph_interfaces.h"
 #include "utils/visitable.h"
 #include <memory>
 #include <vector>
@@ -84,26 +86,10 @@ private:
 enum class LRDirection { LEFT, RIGHT };
 
 struct JoinNodeKey {
-  JoinNodeKey() = delete;
-  JoinNodeKey(Node const &, LRDirection);
-
-  bool operator==(JoinNodeKey const &) const;
-  bool operator<(JoinNodeKey const &) const;
-
   Node node;
-  LRDirection direction;
+  req<LRDirection> direction;
 };
-
-} // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<::FlexFlow::JoinNodeKey> {
-  std::size_t operator()(::FlexFlow::JoinNodeKey const &) const;
-};
-} // namespace std
-
-namespace FlexFlow {
+FF_VISITABLE_STRUCT(JoinNodeKey, node, direction);
 
 struct JoinedNodeView {
 public:
@@ -220,9 +206,10 @@ private:
 
 struct ContractNodeView : public IDiGraphView {
   ContractNodeView() = delete;
-  explicit ContractNodeView(DiGraphView const &,
+  explicit ContractNodeView(DiGraphView const &g,
                             Node const &removed,
-                            Node const &into);
+                            Node const &into)
+      : g(g), from(removed), to(into) {}
 
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
@@ -239,8 +226,8 @@ private:
 struct OpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
 public:
   OpenMultiDiSubgraphView() = delete;
-  explicit OpenMultiDiSubgraphView(OpenMultiDiGraphView const &,
-                                   std::unordered_set<Node> const &);
+  OpenMultiDiSubgraphView(OpenMultiDiGraphView const &,
+                          std::unordered_set<Node> const &);
 
   std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &) const override;
@@ -276,6 +263,18 @@ private:
   DiGraphView g;
 };
 
+struct ViewUndirectedGraphAsDiGraph : public IDiGraphView {
+public:
+  explicit ViewUndirectedGraphAsDiGraph(UndirectedGraphView const &);
+
+  std::unordered_set<DirectedEdge>
+      query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+private:
+  UndirectedGraphView g;
+};
+
 struct ViewDiGraphAsMultiDiGraph : public IMultiDiGraphView {
 public:
   explicit ViewDiGraphAsMultiDiGraph(DiGraphView const &);
@@ -304,7 +303,8 @@ private:
 struct ViewOpenMultiDiGraphAsMultiDiGraph : public IMultiDiGraphView {
 public:
   ViewOpenMultiDiGraphAsMultiDiGraph() = delete;
-  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const &);
+  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const &g)
+      : g(g) {}
 
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &) const override;
@@ -347,7 +347,5 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 }
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::JoinNodeKey, node, direction);
 
 #endif
