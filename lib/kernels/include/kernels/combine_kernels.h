@@ -10,8 +10,7 @@ struct CombinePerDeviceState {
   req<DataType> data_type;
 };
 
-FF_VISITABLE_STRUCT_NO_EQ(CombinePerDeviceState,
-                          data_type);
+FF_VISITABLE_STRUCT_NO_EQ(CombinePerDeviceState, data_type);
 
 namespace Kernels {
 namespace Combine {

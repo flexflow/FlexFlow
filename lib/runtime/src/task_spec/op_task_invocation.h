@@ -5,9 +5,8 @@
 #include "index_task_invocation.h"
 #include "legion.h"
 #include "op_arg_ref.h"
-#include "op_tensor_spec.h"
-#include "variadic_tensor_ref.h"
 #include "op_task_signature.h"
+#include "op_tensor_spec.h"
 #include "runtime/config.h"
 #include "runtime/profiling.h"
 #include "serialization.h"
@@ -16,6 +15,7 @@
 #include "utils/bidict.h"
 #include "utils/optional.h"
 #include "utils/stack_map.h"
+#include "variadic_tensor_ref.h"
 #include <typeindex>
 #include <unordered_map>
 #include <unordered_set>

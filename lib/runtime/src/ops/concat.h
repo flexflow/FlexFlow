@@ -2,8 +2,8 @@
 #define _FLEXFLOW_CONCAT_H
 
 #include "op-attrs/ops/concat.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -77,7 +77,6 @@ CostMetrics
 
 #endif
 
-
 // bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
 //   return lhs.axis == rhs.axis;
 // }
@@ -89,7 +88,8 @@ CostMetrics
 // }
 
 // Tensor
-//     FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
+//     FFModel::concat(int n, Tensor const *tensors, int axis, char const *name)
+//     {
 //   Layer *concat = new Layer(this,
 //                             OP_CONCAT,
 //                             DT_FLOAT,
@@ -178,7 +178,6 @@ CostMetrics
 //                char const *name)
 //     : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
-
 // void Concat::init(FFModel const &ff) {
 //   this->execute_task(ff, CONCAT_INIT_TASK_ID, get_init_task_signature());
 //   // assert(check_output_input_weight_same_parallel_is());
@@ -210,18 +209,17 @@ CostMetrics
 //   //   launcher.add_field(i + 1, FID_DATA);
 //   // }
 //   // for (int i = 0; i < numInputs; i++) {
-//   //   launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
+//   // launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
 //   //                                                     0 /*projection id*/,
 //   //                                                     WRITE_ONLY,
 //   //                                                     EXCLUSIVE,
-//   //                                                     inputs[i]->region_grad));
+//   // inputs[i]->region_grad));
 //   //   launcher.add_field(i + numInputs + 1, FID_DATA);
 //   // }
 //   // FutureMap fm = runtime->execute_index_space(ctx, launcher);
 //   // fm.wait_all_results();
 //   // set_opmeta_from_futuremap(ff, fm);
 // }
-
 
 // void Concat::forward(FFModel const &ff) {
 //   this->execute_task(ff, CONCAT_FWD_TASK_ID, get_fwd_task_signature());
@@ -259,7 +257,6 @@ CostMetrics
   regions[1..numInputs](I): inputs
 */
 
-
 // void Concat::backward(FFModel const &ff) {
 //   this->execute_task(ff, CONCAT_BWD_TASK_ID, get_bwd_task_signature());
 //   // ArgumentMap argmap;
@@ -278,14 +275,14 @@ CostMetrics
 //   //                                                   0 /*projection id*/,
 //   //                                                   READ_ONLY,
 //   //                                                   EXCLUSIVE,
-//   //                                                   outputs[0]->region_grad));
+//   // outputs[0]->region_grad));
 //   // launcher.add_field(0, FID_DATA);
 //   // for (int i = 0; i < numInputs; i++) {
-//   //   launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
+//   // launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
 //   //                                                     0 /*projection id*/,
 //   //                                                     READ_WRITE,
 //   //                                                     EXCLUSIVE,
-//   //                                                     inputs[i]->region_grad));
+//   // inputs[i]->region_grad));
 //   //   // LogicalRegion lr = inputs[i]->region_grad;
 //   //   // printf("concat[%d]: region(%d,%d,%d)\n", i+1,
 //   //   // lr.get_index_space().get_id(), lr.get_field_space().get_id(),
@@ -309,7 +306,6 @@ CostMetrics
 //       return Op::get_int_parameter(para, value);
 //   }
 // }
-
 
 // bool Concat::measure_operator_cost(Simulator *sim,
 //                                    MachineView const &mv,
@@ -337,12 +333,14 @@ CostMetrics
 //         (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
 //     out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
 //   }
-//   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   cost_metrics.inputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
 //   Domain out_domain = sub_output.get_domain();
-//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-//   GenericTensorAccessorW output_acc(DT_FLOAT, out_domain, output_ptr);
-//   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
+//   DT_FLOAT); GenericTensorAccessorW output_acc(DT_FLOAT, out_domain,
+//   output_ptr); cost_metrics.outputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
 //   out_of_memory = out_of_memory || (output_ptr == NULL);
 //   if (out_of_memory) {
@@ -372,10 +370,11 @@ CostMetrics
 //           (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
 //       out_of_memory = out_of_memory || (input_grad_ptrs[i] == NULL);
 //       input_grad_accs[i] =
-//           GenericTensorAccessorW(DT_FLOAT, in_domains[i], input_grad_ptrs[i]);
+//           GenericTensorAccessorW(DT_FLOAT, in_domains[i],
+//           input_grad_ptrs[i]);
 //     }
-//     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-//     float *output_grad_ptr =
+//     cost_metrics.inputs_memory +=
+//     cost_metrics.total_mem_diff_from(sim->offset); float *output_grad_ptr =
 //         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
 //     GenericTensorAccessorR output_grad_acc(
 //         DT_FLOAT, out_domain, output_grad_ptr);
@@ -389,7 +388,8 @@ CostMetrics
 //       return true;
 //     }
 //     backward = [&](ffStream_t stream) {
-//       backward_kernel(stream, m, output_grad_acc, input_grad_accs, numInputs);
+//       backward_kernel(stream, m, output_grad_acc, input_grad_accs,
+//       numInputs);
 //     };
 //   }
 
@@ -397,9 +397,8 @@ CostMetrics
 
 //   if (sim->computationMode == COMP_MODE_TRAINING) {
 //     printf(
-//         "[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-//         name,
-//         cost_metrics.forward_time,
+//         "[Measure Concat] name(%s) forward_time(%.4lf)
+//         backward_time(%.4lf)\n", name, cost_metrics.forward_time,
 //         cost_metrics.backward_time);
 //   } else {
 //     printf("[Measure Concat] name(%s) forward_time(%.4lf)\n",

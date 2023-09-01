@@ -15,7 +15,6 @@ OpTensorSpec input_tensor(int);
 OpTensorSpec output_tensor(int);
 OpTensorSpec weight_tensor(int);
 
-
 } // namespace FlexFlow
 
 #endif
