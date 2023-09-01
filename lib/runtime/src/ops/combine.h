@@ -2,8 +2,8 @@
 #define _FLEXFLOW_COMBINE_H
 
 #include "op-attrs/ops/combine.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -112,7 +112,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //       output_grad_ptr, input_grad_ptr, output_grad_domain.get_volume());
 // }
 
-
 // void Combine::backward_task(Task const *task,
 //                             std::vector<PhysicalRegion> const &regions,
 //                             Context ctx,
@@ -171,7 +170,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //   return rf;
 // }
 
-
 // void Combine::init(FFModel const &ff) {
 //   parallel_is = outputs[0]->parallel_is;
 //   ArgumentMap argmap;
@@ -188,7 +186,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //                          0 /*mapper_id*/,
 //                          outputs[0]->machine_view.hash());
 //   launcher.add_region_requirement(RegionRequirement(
-//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
+//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE,
+//       inputs[0]->region));
 //   launcher.add_field(0, FID_DATA);
 //   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
 //                                                     0 /*projection id*/,
@@ -232,7 +231,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //                          0 /*mapper_id*/,
 //                          outputs[0]->machine_view.hash());
 //   launcher.add_region_requirement(RegionRequirement(
-//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
+//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE,
+//       inputs[0]->region));
 //   launcher.add_field(0, FID_DATA);
 //   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
 //                                                     0 /*projection id*/,
@@ -273,8 +273,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //   launcher.add_field(1, FID_DATA);
 //   runtime->execute_index_space(ctx, launcher);
 // }
-
-
 
 // CombineParams Combine::get_params() const {
 //   CombineParams params;
@@ -338,9 +336,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 // template <typename DT>
 // void Combine::forward_task_with_type(Task const *task,
-//                                      std::vector<PhysicalRegion> const &regions,
-//                                      Context ctx,
-//                                      Runtime *runtime) {
+//                                      std::vector<PhysicalRegion> const
+//                                      &regions, Context ctx, Runtime *runtime)
+//                                      {
 //   Domain input_domain = runtime->get_index_space_domain(
 //       ctx, task->regions[0].region.get_index_space());
 //   Domain output_domain = runtime->get_index_space_domain(

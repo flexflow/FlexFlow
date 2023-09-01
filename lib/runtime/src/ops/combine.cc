@@ -26,12 +26,7 @@ using Legion::Task;
 
 using namespace FlexFlow::Kernels::Combine;
 
-enum Slots {
-  INPUT,
-  OUTPUT,
-  PROFILING,
-  PER_DEVICE_STATE
-};
+enum Slots { INPUT, OUTPUT, PROFILING, PER_DEVICE_STATE };
 
 OpTaskInvocation init(CombineAttrs const &attrs) {
   OpTaskBinding binding;
@@ -44,7 +39,8 @@ OpTaskInvocation init(CombineAttrs const &attrs) {
 OpTaskInvocation forward(CombineAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<CombinePerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<CombinePerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
 
   binding.bind(INPUT, input_tensor(0));
@@ -61,7 +57,7 @@ OpTaskInvocation backward(CombineAttrs const &attrs) {
 
 static DeviceSpecific<CombinePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
-  
+
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
 
   DeviceSpecific<CombinePerDeviceState> per_device_state =
@@ -171,5 +167,4 @@ void register_task<COMBINE_BWD_TASK_ID>() {
 
 }; // namespace FlexFlow
 
-namespace std {
-}; // namespace std
+namespace std {}; // namespace std
