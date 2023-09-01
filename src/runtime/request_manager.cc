@@ -66,9 +66,12 @@ RequestManager::RequestManager()
 }
 
 void RequestManager::register_tokenizer(ModelType type,
+                                        int bos_token_id,
+                                        int eos_token_id,
                                         std::string const &path) {
-  // bos id
   this->model_type = type;
+  this->bos_token_id = bos_token_id;
+  this->eos_token_id = eos_token_id;
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
   if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
@@ -157,7 +160,7 @@ RequestManager::RequestGuid
   }
 
   if (get_num_ssms() == 0) {
-    std::cout << "No small speculative model registered yet, using incremental "
+    std::cout << "No small speculative model registered, using incremental "
                  "decoding."
               << std::endl;
   } else {
@@ -198,9 +201,7 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  if (this->model_bos_map.find(this->model_type) != this->model_bos_map.end()) {
-    request.tokens.push_back(this->model_bos_map.at(this->model_type));
-  }
+  request.tokens.push_back(bos_token_id);
 
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
   if (tokens.size() > BatchConfig::MAX_PROMPT_LENGTH) {
@@ -220,7 +221,7 @@ RequestManager::RequestGuid
   request.initial_len = request.tokens.size();
 
   if (get_num_ssms() == 0) {
-    std::cout << "No small speculative model registered yet, using incremental "
+    std::cout << "No small speculative model registered, using incremental "
                  "decoding."
               << std::endl;
   } else {
@@ -330,19 +331,12 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                            old_bc.requestsInfo[i].num_tokens_in_batch;
     assert(processed_tokens < request.tokens.size());
     bool request_completed = false;
-    printf("model_type = %d\n", this->model_type);
+    // printf("model_type = %d\n", this->model_type);
     if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
       request_completed = true;
-    } else if (this->model_eos_map.find(this->model_type) !=
-               this->model_eos_map.end()) {
-      TokenId eos_token_id = this->model_eos_map.at(this->model_type);
-      printf("request_tokens.back() == %d eos_token_id = %d\n",
-             request.tokens.back(),
-             eos_token_id);
+    } else if (request.tokens.back() == eos_token_id) {
       // Encounter EOS token id
-      if (request.tokens.back() == eos_token_id) {
-        request_completed = true;
-      }
+      request_completed = true;
     }
     if (request_completed) {
       request.status = Request::COMPLETED;
@@ -351,9 +345,6 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                         request.tokens.size());
       std::string output = this->tokenizer_->Decode(request.tokens);
 
-      // for (int i = 0; i < request.tokens.size(); i++) {
-      //   std::cout << request.tokens.at(i) << "\n";
-      // }
       {
         // update generation result and trigger future
         GenerationResult &gr = request_generation_results[request.guid];
