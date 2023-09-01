@@ -69,4 +69,8 @@ struct StringMaker<std::vector<T>> {
     return doctest_print_container(vec, "[ ", ", ", " ]").c_str();
   }
 };
+
+#define STATIC_CHECK(...) static_assert(__VA_ARGS__, ""); CHECK(__VA_ARGS__);
+#define STATIC_CHECK_FALSE(...) static_assert(!(__VA_ARGS__), ""); CHECK_FALSE(__VA_ARGS__);
+
 } // namespace doctest

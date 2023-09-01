@@ -24,24 +24,34 @@ struct adl_serializer<::FlexFlow::req<T>> {
 };
 } // namespace nlohmann
 
-namespace fmt {
+/* namespace fmt { */
 
-template <typename T>
-struct formatter<::FlexFlow::req<T>> : formatter<T> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::req<T> const &t, FormatContext &ctx)
-      -> decltype(ctx.out()) {
-    return formatter<T>::format(static_cast<T>(t), ctx);
-  }
-};
+/* template <typename T> */
+/* struct formatter<::FlexFlow::req<T>> : formatter<T> { */
+/*   template <typename FormatContext> */
+/*   auto format(::FlexFlow::req<T> const &t, FormatContext &ctx) */
+/*       -> decltype(ctx.out()) { */
+/*     return formatter<T>::format(static_cast<T>(t), ctx); */
+/*   } */
+/* }; */
 
-} // namespace fmt
+/* } // namespace fmt */
 
 namespace FlexFlow {
 static_assert(is_json_serializable<req<int>>::value, "");
 static_assert(is_json_deserializable<req<int>>::value, "");
 static_assert(is_jsonable<req<int>>::value, "");
-static_assert(is_fmtable<req<int>>::value, "");
+CHECK_FMTABLE(req<int>);
+CHECK_FMTABLE(std::vector<std::string>);
+CHECK_FMTABLE(required_inheritance_impl<std::vector<std::string>>);
+static_assert(
+  std::is_base_of<
+    required_inheritance_impl<std::vector<std::string>>,
+    req<std::vector<std::string>>
+  >::value, ""
+);
+CHECK_FMTABLE(req<std::vector<std::string>>);
+
 } // namespace FlexFlow
 
 #endif
