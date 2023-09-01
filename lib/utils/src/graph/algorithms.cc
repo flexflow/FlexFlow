@@ -76,9 +76,11 @@ std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &edge) {
   return visit(GetNodesFunctor{}, edge);
 }
 
-std::unordered_set<Node> query_nodes(IGraphView const &g,
+std::unordered_set<Node> query_nodes(GraphView const &g,
                                      std::unordered_set<Node> const &nodes) {
   return g.query_nodes({nodes});
+}
+
 std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const &g) {
   return flatmap(get_edges(g), [](MultiDiEdge const &e) {
     return std::unordered_set<NodePort>{e.srcIdx, e.dstIdx};
