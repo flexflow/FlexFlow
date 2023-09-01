@@ -2,8 +2,8 @@
 #include "kernels/conv_2d_kernels.h"
 #include "legion/legion_utilities.h"
 #include "mpark/variant.hpp"
-#include "utils/hash-utils.h"
 #include "op-attrs/get_output_shapes.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -57,10 +57,10 @@ OpTaskInvocation backward(Conv2DAttrs const &attrs) {
 
 static DeviceSpecific<Conv2DPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
-  
+
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<Conv2DAttrs>(ATTRS);
-  
+
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t biasTensor;
   ffTensorDescriptor_t outputTensor;
@@ -71,20 +71,20 @@ static DeviceSpecific<Conv2DPerDeviceState>
   ffConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   ffConvolutionBwdDataAlgo_t bwdDataAlgo;
 
-    DeviceSpecific<Conv2DPerDeviceState> per_device_state =
+  DeviceSpecific<Conv2DPerDeviceState> per_device_state =
       acc.create_device_specific<Conv2DPerDeviceState>(
-        init_kernel(handle,
-                    inputTensor,
-                    biasTensor,
-                    outputTensor,
-                    filterDesc,
-                    actiDesc,
-                    convDesc,
-                    fwdAlgo,
-                    bwdFilterAlgo,
-                    bwdDataAlgo,
-                    attrs.activation,
-                    attrs.use_bias));
+          init_kernel(handle,
+                      inputTensor,
+                      biasTensor,
+                      outputTensor,
+                      filterDesc,
+                      actiDesc,
+                      convDesc,
+                      fwdAlgo,
+                      bwdFilterAlgo,
+                      bwdDataAlgo,
+                      attrs.activation,
+                      attrs.use_bias));
 
   return per_device_state;
 }
@@ -100,7 +100,8 @@ static DeviceSpecific<Conv2DPerDeviceState>
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state = acc.get_argument<Conv2DPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<Conv2DPerDeviceState>(PER_DEVICE_STATE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto filter = acc.get_tensor<Permissions::RO>(FILTER);
@@ -108,13 +109,13 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   return profile(forward_kernel,
-          profiling,
-          "[Conv2d] forward_time = %.2lfms\n",
-          &per_device_state,
-          input.get_float_ptr(),
-          output.get_float_ptr(),
-          filter.get_float_ptr(),
-          bias.get_float_ptr());
+                 profiling,
+                 "[Conv2d] forward_time = %.2lfms\n",
+                 &per_device_state,
+                 input.get_float_ptr(),
+                 output.get_float_ptr(),
+                 filter.get_float_ptr(),
+                 bias.get_float_ptr());
 }
 
 static void forward_task(Task const *task,
@@ -127,7 +128,8 @@ static void forward_task(Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state = acc.get_argument<Conv2DPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<Conv2DPerDeviceState>(PER_DEVICE_STATE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -139,16 +141,16 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto bias_grad = acc.get_tensor_grad<Permissions::RW>(BIAS);
 
   return profile(backward_kernel,
-                profiling,
-                "[Conv2d] backward_time = %.2lfms\n",
-                &per_device_state,
-                input.get_float_ptr(),
-                input_grad.get_float_ptr(),
-                output.get_float_ptr(),
-                output_grad.get_float_ptr(),
-                filter.get_float_ptr(),
-                filter_grad.get_float_ptr(),
-                bias_grad.get_float_ptr());
+                 profiling,
+                 "[Conv2d] backward_time = %.2lfms\n",
+                 &per_device_state,
+                 input.get_float_ptr(),
+                 input_grad.get_float_ptr(),
+                 output.get_float_ptr(),
+                 output_grad.get_float_ptr(),
+                 filter.get_float_ptr(),
+                 filter_grad.get_float_ptr(),
+                 bias_grad.get_float_ptr());
 }
 
 static void backward_task(Task const *task,
@@ -166,7 +168,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   InputParallelTensorDesc const &bias_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &mv) {
-  
+
   auto env = sim.new_environment();
 
   ParallelTensorShape output_shape = get_output_shape(attrs, input_shape.shape);
@@ -175,15 +177,14 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   init_binding.bind_arg(ATTRS, attrs);
   init_binding.bind_arg(HANDLE, ff_handle());
 
-  auto init_accessor =
-      env.get_init_accessor(CONV2D_INIT_TASK_ID, init_binding);
+  auto init_accessor = env.get_init_accessor(CONV2D_INIT_TASK_ID, init_binding);
   DeviceSpecific<Conv2DPerDeviceState> per_device_state =
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-                   
+
   fwd_binding.bind(INPUT, input_shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind(FILTER, filter_shape);

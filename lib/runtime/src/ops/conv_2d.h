@@ -2,8 +2,8 @@
 #define _FLEXFLOW_CONV_2D_H
 
 #include "op-attrs/ops/conv_2d.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -135,8 +135,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 #endif
 
-
-
 // Tensor FFModel::conv2d(Tensor const &input,
 //                        int outChannels,
 //                        int kernelH,
@@ -166,7 +164,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //                        use_bias};
 
 //   TensorShape output_shape = get_output_shape(attrs, input->get_shape());
-//   Tensor output = this->tensor_mgr.create(output_shape, CreateGrad::YES, conv);
+//   Tensor output = this->tensor_mgr.create(output_shape, CreateGrad::YES,
+//   conv);
 
 //   std::vector<Tensor> weights;
 
@@ -181,7 +180,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //   }
 
 //   Layer *conv =
-//       this->layer_mgr.create(attrs, DT_FLOAT, name, {input}, weights, {output});
+//       this->layer_mgr.create(attrs, DT_FLOAT, name, {input}, weights,
+//       {output});
 
 //   //{
 //   //  int numdims = 4;
@@ -230,7 +230,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //                     false /*allocate_weights*/
 //   );
 // }
-
 
 /* void Conv2DParams::mark_replica_dims( */
 /*     ParallelTensorShape const &input, */
@@ -399,8 +398,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   } */
 /* } */
 
-
-
 // Conv2D::Conv2D(FFModel &model,
 //                Conv2D const &other,
 //                const ParallelTensor input,
@@ -468,8 +465,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   return is_valid; */
 /* } */
 
-
-
 // Conv2D::Conv2D(FFModel &model,
 //                LayerID const &_layer_guid,
 //                const ParallelTensor input,
@@ -520,7 +515,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //                                 &bias_ndims);
 
 //   if (allocate_weights) {
-//     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
+//     Initializer *kernel_initializer = new GlorotUniform(std::rand()
+//     /*seed*/);
 
 //     weights[Conv2DKernel::INDEX] =
 //         model.create_parallel_weight_legion_ordering(kernel_ndims,
@@ -551,7 +547,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //   assert(check_output_input_weight_parallel_dims(allocate_weights));
 // }
 
-
 // tl::optional<RecordFormatter> Conv2D::as_dot() const {
 //   RecordFormatter rr;
 //   RecordFormatter r;
@@ -570,7 +565,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 //   return rr;
 // }
-
 
 // bool Conv2D::estimate_sync_cost(Simulator *sim,
 //                                 MachineView const &view,
@@ -614,7 +608,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   regions[3](I): bias
 */
 
-
 // void Conv2D::forward(FFModel const &ff) {
 //   this->execute_task(ff, CONV2D_FWD_TASK_ID, get_fwd_task_signature());
 // }
@@ -622,7 +615,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 // void Conv2D::backward(FFModel const &ff) {
 //   this->execute_task(ff, CONV2D_bWD_TASK_ID, get_bwd_task_signature());
 // }
-
 
 // TaskSpec Conv2D::get_tasks_spec() const {
 //   OpTasksSpec spec {
@@ -695,7 +687,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 /*   return spec; */
 /* } */
 
-
 /*
   regions[0]: input
   regions[1]: output
@@ -705,83 +696,82 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   regions[5](O): input_grad
 */
 
-
 // void Conv2D::init(FFModel const &ff) {
 //   this->execute_task(ff, CONV2D_INIT_TASK_ID, get_init_task_signature());
-  // assert(check_output_input_weight_same_parallel_is());
-  // parallel_is = outputs[0]->parallel_is;
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_init(ff, argmap);
-  // IndexLauncher launcher(CONV2D_INIT_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(this, sizeof(Conv2D)),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   inputs[0]->region));
-  // launcher.add_field(0, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   WRITE_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region));
-  // launcher.add_field(1, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[0]->region));
-  // launcher.add_field(2, FID_DATA);
-  // // launcher.add_region_requirement(
-  // //     RegionRequirement(weights[1]->part, 0/*projection id*/,
-  // //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
-  // // launcher.add_field(3, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-  //                                                   0 /*projection id*/,
-  //                                                   WRITE_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[0]->region_grad));
-  // launcher.add_field(3, FID_DATA);
-  // // launcher.add_region_requirement(
-  // //     RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-  // //                       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
-  // // launcher.add_field(4, FID_DATA);
-  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  // fm.wait_all_results();
-  // set_opmeta_from_futuremap(ff, fm);
+// assert(check_output_input_weight_same_parallel_is());
+// parallel_is = outputs[0]->parallel_is;
+// ArgumentMap argmap;
+// Context ctx = ff.config.lg_ctx;
+// Runtime *runtime = ff.config.lg_hlr;
+// set_argumentmap_for_init(ff, argmap);
+// IndexLauncher launcher(CONV2D_INIT_TASK_ID,
+//                        parallel_is,
+//                        TaskArgument(this, sizeof(Conv2D)),
+//                        argmap,
+//                        Predicate::TRUE_PRED,
+//                        false /*must*/,
+//                        0 /*mapper_id*/,
+//                        outputs[0]->machine_view.hash());
+// launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+//                                                   0 /*projection id*/,
+//                                                   READ_ONLY,
+//                                                   EXCLUSIVE,
+//                                                   inputs[0]->region));
+// launcher.add_field(0, FID_DATA);
+// launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+//                                                   0 /*projection id*/,
+//                                                   WRITE_ONLY,
+//                                                   EXCLUSIVE,
+//                                                   outputs[0]->region));
+// launcher.add_field(1, FID_DATA);
+// launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+//                                                   0 /*projection id*/,
+//                                                   READ_ONLY,
+//                                                   EXCLUSIVE,
+//                                                   weights[0]->region));
+// launcher.add_field(2, FID_DATA);
+// // launcher.add_region_requirement(
+// //     RegionRequirement(weights[1]->part, 0/*projection id*/,
+// //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
+// // launcher.add_field(3, FID_DATA);
+// launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+//                                                   0 /*projection id*/,
+//                                                   WRITE_ONLY,
+//                                                   EXCLUSIVE,
+//                                                   weights[0]->region_grad));
+// launcher.add_field(3, FID_DATA);
+// // launcher.add_region_requirement(
+// //     RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+// //                       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
+// // launcher.add_field(4, FID_DATA);
+// FutureMap fm = runtime->execute_index_space(ctx, launcher);
+// fm.wait_all_results();
+// set_opmeta_from_futuremap(ff, fm);
 // }
 
-  // printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
-  //        input_n,
-  //        input_c,
-  //        input_h,
-  //        input_w);
-  // printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
-  //        output_n,
-  //        output_c,
-  //        output_h,
-  //        output_w);
+// printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
+//        input_n,
+//        input_c,
+//        input_h,
+//        input_w);
+// printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
+//        output_n,
+//        output_c,
+//        output_h,
+//        output_w);
 
-  // printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h,
-  // conv->padding_w, conv->stride_h, conv->stride_w);
-  // int pad_h =
-  //     ((output_h - 1) * attrs.stride_h + attrs.kernel_h - input_h + 1) / 2;
-  // int pad_w =
-  //     ((output_w - 1) * attrs.stride_w + attrs.kernel_w - input_w + 1) / 2;
-  // if (pad_h != attrs.padding_h) {
-  //   printf("Warning: changing conv_padding_h to satisfy output_h size\n");
-  // }
-  // if (pad_w != attrs.padding_w) {
-  //   printf("Warning: changing conv_padding_w to satisfy output_w size\n");
-  // }
+// printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h,
+// conv->padding_w, conv->stride_h, conv->stride_w);
+// int pad_h =
+//     ((output_h - 1) * attrs.stride_h + attrs.kernel_h - input_h + 1) / 2;
+// int pad_w =
+//     ((output_w - 1) * attrs.stride_w + attrs.kernel_w - input_w + 1) / 2;
+// if (pad_h != attrs.padding_h) {
+//   printf("Warning: changing conv_padding_h to satisfy output_h size\n");
+// }
+// if (pad_w != attrs.padding_w) {
+//   printf("Warning: changing conv_padding_w to satisfy output_w size\n");
+// }
 
 //   size_t rid = 0;
 //   TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
