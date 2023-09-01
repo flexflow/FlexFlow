@@ -15,10 +15,6 @@ public:
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
-  IMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
@@ -30,18 +26,18 @@ public:
         std::make_shared<T const>(std::forward<Args>(args)...));
   }
 
-private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
+  static MultiDiGraphView
+      unsafe_create_without_ownership(IMultiDiGraphView const &);
 
-  friend struct MultiDiGraph;
-  friend MultiDiGraphView unsafe(IMultiDiGraphView const &);
+private:
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr);
+
+  friend struct GraphInternal;
 
 private:
   std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
-
-MultiDiGraphView unsafe(IMultiDiGraphView const &);
 
 struct MultiDiGraph {
 public:
@@ -73,11 +69,13 @@ public:
   static typename std::enable_if<std::is_base_of<IMultiDiGraph, T>::value,
                                  MultiDiGraph>::type
       create() {
-    return MultiDiGraph(make_unique<T>());
+    return MultiDiGraph(make_cow_ptr<T>());
   }
 
 private:
-  MultiDiGraph(std::unique_ptr<IMultiDiGraph>);
+  MultiDiGraph(cow_ptr_t<IMultiDiGraph>);
+
+  friend struct GraphInternal;
 
 private:
   cow_ptr_t<IMultiDiGraph> ptr;

@@ -23,8 +23,10 @@ VISITABLE_STRUCT(::FlexFlow::Layer, attrs, name);
 MAKE_VISIT_HASHABLE(::FlexFlow::Layer);
 
 namespace FlexFlow {
-static_assert(is_well_behaved_value_type<Layer>::value, "");
-static_assert(is_fmtable<Layer>::value, "Layer must be fmtable");
+
+FF_VISIT_FMTABLE(Layer);
+CHECK_FMTABLE(Layer);
+
 } // namespace FlexFlow
 
 #endif

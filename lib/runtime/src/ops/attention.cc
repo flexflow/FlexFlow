@@ -85,7 +85,7 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   return {ATTENTION_BWD_TASK_ID, b};
 }
 
-static DeviceSpecificArg<MHAPerDeviceState>
+static DeviceSpecific<MHAPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
@@ -133,7 +133,7 @@ static DeviceSpecificArg<MHAPerDeviceState>
   assert(qoSeqLength == output.shape[legion_dim_t(1)]);
   assert(oProjSize == output.shape[legion_dim_t(0)]);
 
-  DeviceSpecificArg<MHAPerDeviceState> per_device_state =
+  DeviceSpecific<MHAPerDeviceState> per_device_state =
       acc.create_device_specific<MHAPerDeviceState>(
           init_kernel(handle,
                       allocator,
@@ -155,7 +155,7 @@ static DeviceSpecificArg<MHAPerDeviceState>
   return per_device_state;
 }
 
-static DeviceSpecificArg<MHAPerDeviceState>
+static DeviceSpecific<MHAPerDeviceState>
     init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
@@ -274,7 +274,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto init_accessor =
       env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
-  DeviceSpecificArg<MHAPerDeviceState> per_device_state =
+  DeviceSpecific<MHAPerDeviceState> per_device_state =
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;

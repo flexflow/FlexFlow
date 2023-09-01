@@ -3,7 +3,7 @@
 #include "model.h"
 #include "runtime/task_spec/typed_task_invocation.h"
 #include "task_spec/concrete_args_format.h"
-#include "task_spec/device_specific_arg.h"
+#include "task_spec/device_specific.h"
 #include "task_spec/future_args_format.h"
 #include "task_spec/task_argument_accessor.h"
 #include "task_spec/task_invocation_args_format.h"
@@ -296,7 +296,7 @@ template <>
 void register_task<FF_INIT_TASK_ID>() {
   TaskSignature sig;
   sig.add_arg_slot<FFInitInfo>(FF_INIT_INFO);
-  sig.add_return_value<DeviceSpecificArg<PerDeviceFFHandle>>();
+  sig.add_return_value<DeviceSpecific<PerDeviceFFHandle>>();
 
   register_task(FF_INIT_TASK_ID, "cuda init task", sig, ff_init_task);
 }

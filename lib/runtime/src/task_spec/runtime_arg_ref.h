@@ -2,7 +2,7 @@
 #define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_RUNTIME_ARG_REF_H
 
 #include "arg_ref.h"
-#include "device_specific_arg.h"
+#include "device_specific.h"
 
 namespace FlexFlow {
 
@@ -14,7 +14,7 @@ using RuntimeArgRef = ArgRef<RuntimeArgRefType, T>;
 using RuntimeArgRefSpec = ArgRefSpec<RuntimeArgRefType>;
 
 RuntimeArgRef<ProfilingSettings> profiling_settings();
-RuntimeArgRef<DeviceSpecificArg<PerDeviceFFHandle>> ff_handle();
+RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> ff_handle();
 
 } // namespace FlexFlow
 
