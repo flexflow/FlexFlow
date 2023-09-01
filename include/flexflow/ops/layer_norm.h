@@ -24,19 +24,19 @@ public:
             float _eps,
             bool allocate_weights,
             char const *name);
-  void init(FFModel const &);
+  void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
-  void forward(FFModel const &);
-  void backward(FFModel const &);
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   Legion::FutureMap inference(FFModel const &,
                               BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
-  void print_layer(FFModel const &model) {
+  void print_layer(FFModel const &model) override {
     assert(0);
   }
   static Op *
@@ -68,7 +68,7 @@ public:
                             Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
-                             CostMetrics &cost_metrics) const;
+                             CostMetrics &cost_metrics) const override;
   template <typename T>
   static void forward_kernel(LayerNormMeta const *m,
                              T const *input_ptr,

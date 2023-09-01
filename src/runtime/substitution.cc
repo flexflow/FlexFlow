@@ -1488,6 +1488,8 @@ OpX *create_opx(sl::Operator const &op,
         case OP_REPLICATE:
           degree_key = PM_REPLICATE_DEGREE;
           break;
+        default:
+          break;
       }
 
       if (degree_key.has_value()) {
@@ -1509,6 +1511,8 @@ OpX *create_opx(sl::Operator const &op,
           break;
         case OP_REPLICATE:
           dim_key = PM_REPLICATE_DIM;
+          break;
+        default:
           break;
       }
 
