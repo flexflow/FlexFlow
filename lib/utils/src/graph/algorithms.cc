@@ -630,14 +630,13 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,
 
 std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &g,
                                             GraphSplit const &s) {
-  return 
-      set_union(
-          g.query_edges(
-              MultiDiEdgeQuery::all().with_src_nodes(s.first).with_dst_nodes(
-                  s.second)),
-          g.query_edges(
-              MultiDiEdgeQuery::all().with_src_nodes(s.second).with_dst_nodes(
-                  s.first)));
+  return set_union(
+      g.query_edges(
+          MultiDiEdgeQuery::all().with_src_nodes(s.first).with_dst_nodes(
+              s.second)),
+      g.query_edges(
+          MultiDiEdgeQuery::all().with_src_nodes(s.second).with_dst_nodes(
+              s.first)));
 }
 
 std::unordered_set<MultiDiEdge> get_cut_set(OpenMultiDiGraphView const &graph,
@@ -654,7 +653,8 @@ bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
     result.equate(edge, split_edge(edge));
   }
   return result;
-  return generate_bidict(get_cut_set(graph, split), [](MultiDiEdge const &e) { return split_edge(e); });
+  return generate_bidict(get_cut_set(graph, split),
+                         [](MultiDiEdge const &e) { return split_edge(e); });
 }
 
 std::unordered_set<MultiDiEdge> get_cut(OpenMultiDiGraphView const &g,
