@@ -37,20 +37,20 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   handle_unimplemented_hip_kernel(OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION);
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("SpecIncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,

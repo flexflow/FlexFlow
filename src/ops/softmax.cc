@@ -56,7 +56,7 @@ Tensor FFModel::softmax(const Tensor _input,
                         int dim,
                         DataType data_type,
                         char const *name) {
-  if (data_type = DT_NONE) {
+  if (data_type == DT_NONE) {
     data_type = _input->data_type;
   }
   Layer *sm = new Layer(this,

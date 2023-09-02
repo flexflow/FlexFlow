@@ -54,7 +54,8 @@ void Op::inner_measure_operator_cost(Simulator *sim,
   checkCUDA(hipEventRecord(sim->end_event, stream));
   checkCUDA(hipEventSynchronize(sim->end_event));
   float milliseconds;
-  hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  checkCUDA(
+      hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event));
   cost_metrics.forward_time = milliseconds / sim->repeat_times;
 
   // measure backward time
@@ -68,7 +69,8 @@ void Op::inner_measure_operator_cost(Simulator *sim,
     }
     checkCUDA(hipEventRecord(sim->end_event, stream));
     checkCUDA(hipEventSynchronize(sim->end_event));
-    hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+    checkCUDA(
+        hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event));
     cost_metrics.backward_time = milliseconds / sim->repeat_times;
   } else {
     cost_metrics.backward_time = 0.0f;
