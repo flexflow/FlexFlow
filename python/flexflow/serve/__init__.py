@@ -133,8 +133,9 @@ def init(
     ):
         raise ValueError("Cannot pass both configs_dict and individual args")
 
-    if configs_dict is not None and type(configs_dict) != dict:
-        raise TypeError("configs_dict is not a dictionary")
+    if configs_dict is not None:
+        if type(configs_dict) != dict:
+            raise TypeError("configs_dict is not a dictionary")
     else:
         # Add named key-value arguments into dictionary
         configs_dict["num_gpus"] = num_gpus
