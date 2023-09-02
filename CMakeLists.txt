@@ -218,7 +218,6 @@ message(STATUS "CPU architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(ROCM_PATH "/opt/rocm" CACHE STRING "Default ROCM installation directory.")
-  set(GPU_TARGETS "gfx1036;gfx1100" CACHE STRING "The GPU TARGETs")
 endif()
 
 # CUDA
