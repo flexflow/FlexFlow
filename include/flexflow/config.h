@@ -22,7 +22,7 @@
 #include <cublas_v2.h>
 #include <cudnn.h>
 #elif defined(FF_USE_HIP_ROCM)
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #include <miopen/miopen.h>
 #else
 #error "Unknown device"

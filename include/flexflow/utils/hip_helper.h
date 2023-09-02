@@ -3,7 +3,7 @@
 #include "flexflow/accessor.h"
 #include "flexflow/ffconst.h"
 #include "legion.h"
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #include <miopen/miopen.h>
 #ifdef FF_USE_NCCL
 #include <rccl.h>

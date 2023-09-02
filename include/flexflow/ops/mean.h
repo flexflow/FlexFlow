@@ -11,10 +11,10 @@ public:
        std::vector<int> const &dims,
        bool keepdims,
        char const *name);
-  void init(FFModel const &);
-  void forward(FFModel const &);
-  void backward(FFModel const &);
-  void print_layer(FFModel const &model) {
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override {
     assert(0);
   }
 
@@ -32,7 +32,7 @@ public:
                             Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
-                             CostMetrics &cost_metrics) const;
+                             CostMetrics &cost_metrics) const override;
 };
 
 }; // namespace FlexFlow

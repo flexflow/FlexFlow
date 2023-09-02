@@ -221,8 +221,6 @@ if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(GPU_TARGETS "gfx1036;gfx1100" CACHE STRING "The GPU TARGETs")
 endif()
 
-# ZLIB
-
 # CUDA
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cuda)

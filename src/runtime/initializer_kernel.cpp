@@ -19,7 +19,7 @@
 #include "flexflow/utils/hip_helper.h"
 #include <ctime>
 #include <hip/hip_runtime.h>
-#include <hiprand.h>
+#include <hiprand/hiprand.h>
 #include <random>
 
 namespace FlexFlow {
