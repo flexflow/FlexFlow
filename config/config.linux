@@ -91,6 +91,8 @@ if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
 elif [["$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" || "$FF_GPU_BACKEND" == "hip_rocm"]]; then
     # enable NCCL
     FF_USE_NCCL=${FF_USE_NCCL:-ON}
+else
+    FF_USE_NCCL=OFF
 fi
 
 function get_build_configs() {
