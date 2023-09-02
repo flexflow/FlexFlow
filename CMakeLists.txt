@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 project(FlexFlow)
-
-add_definitions(-w)
 
 
 include(ExternalProject)
@@ -377,7 +374,7 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
   endif()
 
-  list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH} "/home/xinhaoc/FlexFlow/protobuf")
+  list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
 
   find_package(hip REQUIRED)
 
