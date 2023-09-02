@@ -34,19 +34,19 @@ void forward_kernel_wrapper(CastMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   Internal::forward_kernel<IDT, ODT>(input_ptr, output_ptr, volume, stream);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[%s] forward time (CF) = %.2fms\n", "Cast", elapsed);
     // print_tensor<IDT>(input_ptr, 32, "[Cast:forward:input]");
     // print_tensor<ODT>(output_ptr, 32, "[Cast:forward:output]");

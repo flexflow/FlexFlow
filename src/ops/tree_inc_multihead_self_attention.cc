@@ -343,7 +343,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     // dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
-          data_type, quantization_type, dims[2].size);
+          data_type, quantization_type, dims[1].size);
     }
     // dims[2].degree = 1;
     // dims[2].parallel_idx = -1;
@@ -454,7 +454,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     // dims[2].size = qParas + kParas + vParas + oParas;
     if (quantization_type != DT_NONE) {
       dims[1].size = get_quantization_to_byte_size(
-          data_type, quantization_type, dims[2].size);
+          data_type, quantization_type, dims[1].size);
     }
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
