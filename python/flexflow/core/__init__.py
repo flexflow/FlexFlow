@@ -20,6 +20,7 @@ from __future__ import absolute_import
 import atexit
 import os
 import sys
+import warnings
 from typing import Optional
 
 from flexflow.config import *
@@ -116,7 +117,7 @@ def flexflow_runtime_init(configs_dict: Optional[dict] = None, **kwargs):
             # Pass parameters to the FlexFlow C++ runtime via command line arguments
             for arg in ff_args:
                 if arg not in ff_arg_to_sysarg:
-                    raise RuntimeWarning("Ignoring parameter {arg}: not recognized.")
+                    warnings.warn(f"Ignoring parameter {arg}: not recognized.")
                 else:
                     sys_arg = [arg]
                     if type(ff_args[arg]) == bool and ff_args[arg] is not True:
@@ -137,4 +138,4 @@ def flexflow_runtime_init(configs_dict: Optional[dict] = None, **kwargs):
         flexflow_library.initialize()
         set_flexflow_initialized()
     else:
-        raise RuntimeWarning("Attempting to initialize FlexFlow more than once")
+        warnings.warn("Attempting to initialize FlexFlow more than once")
