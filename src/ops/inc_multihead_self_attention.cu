@@ -1010,20 +1010,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    // size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
-    // size_t qkv_max_proj_size =
-    //     BatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_q_heads;
-
     size_t qkv_max_proj_size =
         BatchConfig::MAX_NUM_TOKENS *
         (qProjSize * num_q_heads + kProjSize * num_kv_heads +
          vProjSize * num_kv_heads);
-    // std::cout << "num_kv_heads: " << BatchConfig::MAX_NUM_TOKENS << ", "
-    //           << qProjSize << ", " << kProjSize << ", " << vProjSize << ", "
-    //           << num_q_heads << ", " << num_kv_heads << ", " <<
-    //           qkv_max_proj_size
-    //           << std::endl;
-    // assert(false);
     size_t key_cache_size = 0, value_cache_size = 0;
     switch (infer_mode) {
       case INC_DECODING_MODE:
