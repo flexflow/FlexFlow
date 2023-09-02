@@ -117,7 +117,7 @@ void Sampling::forward_kernel(SamplingMeta const *m,
                               int const batch_size,
                               hipStream_t stream) {
 
-                                size_t temp_storage_bytes = m->temp_storage_bytes;
+  size_t temp_storage_bytes = m->temp_storage_bytes;
   // checkCUDA(hipcub::DeviceSegmentedRadixSort::SortPairsDescending(
   //     m->d_temp_storage,
   //     temp_storage_bytes,
@@ -134,19 +134,29 @@ void Sampling::forward_kernel(SamplingMeta const *m,
   //     stream));
   return;
   int parallelism = batch_size;
-  hipLaunchKernelGGL(init_random_kernel, GET_BLOCKS(parallelism), min(CUDA_NUM_THREADS, parallelism), 0, stream,
-  m->state, batch_size, rand());
+  hipLaunchKernelGGL(init_random_kernel,
+                     GET_BLOCKS(parallelism),
+                     min(CUDA_NUM_THREADS, parallelism),
+                     0,
+                     stream,
+                     m->state,
+                     batch_size,
+                     rand());
   // sampling
-   hipLaunchKernelGGL(HIP_KERNEL_NAME(sampling_topp_kernel<DT, SamplingNumThreads>),
-   batch_size, SamplingNumThreads, 0, stream,
-   batch_size,
-          length,
-          m->state,
-          static_cast<DT *>(m->sorted_logits),
-          m->sorted_idx,
-          indices_ptr,
-          top_p);
- }
+  hipLaunchKernelGGL(
+      HIP_KERNEL_NAME(sampling_topp_kernel<DT, SamplingNumThreads>),
+      batch_size,
+      SamplingNumThreads,
+      0,
+      stream,
+      batch_size,
+      length,
+      m->state,
+      static_cast<DT *>(m->sorted_logits),
+      m->sorted_idx,
+      indices_ptr,
+      top_p);
+}
 
 /*static*/
 void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
@@ -182,7 +192,7 @@ SamplingMeta::SamplingMeta(FFHandler handler,
                            GenericTensorAccessorW input,
                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {
-      DataType data_type = op->data_type;
+  DataType data_type = op->data_type;
 
   size_t begin_offset_size, end_offset_size;
   begin_offset_size = end_offset_size = batch_size + 1;
@@ -255,7 +265,7 @@ SamplingMeta::SamplingMeta(FFHandler handler,
   gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
   d_temp_storage =
       gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
-    }
+}
 
 SamplingMeta::~SamplingMeta(void) {}
 }; // namespace FlexFlow

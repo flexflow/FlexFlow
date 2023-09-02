@@ -31,9 +31,8 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     bool scaling_query,
                                     float scaling_factor);
 
-
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  template <typename DT>
+template <typename DT>
 __global__ void
     apply_rotary_embedding(DT *input_ptr,
                            cuFloatComplex *complex_input,
@@ -48,7 +47,7 @@ __global__ void
                            int q_array_size,
                            bool q_tensor);
 #elif defined(FF_USE_HIP_ROCM)
-  template <typename DT>
+template <typename DT>
 __global__ void
     apply_rotary_embedding(DT *input_ptr,
                            hipFloatComplex *complex_input,
@@ -63,7 +62,6 @@ __global__ void
                            int q_array_size,
                            bool q_tensor);
 #endif
-
 
 template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,

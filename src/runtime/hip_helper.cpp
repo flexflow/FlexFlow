@@ -270,8 +270,8 @@ __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   assert(dst != nullptr);
-  checkCUDA(
-      hipMemcpyAsync(dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
+  checkCUDA(hipMemcpyAsync(
+      dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
   // checkCUDA(hipDeviceSynchronize());
   return true;
 }

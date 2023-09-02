@@ -336,11 +336,11 @@ __device__ void mergeShards(int num_shards,
 
 template <typename T>
 __global__ void argmax_forward_kernel(T const *__restrict__ input,
-                                        size_t shared_memory_size,
-                                        int length,
-                                        int k,
-                                        float *__restrict__ output,
-                                        int *__restrict__ indices) {
+                                      size_t shared_memory_size,
+                                      int length,
+                                      int k,
+                                      float *__restrict__ output,
+                                      int *__restrict__ indices) {
   __shared__ char shared_memory[48 << 10];
   int const batch_index = blockIdx.x;
   T const *batch_input = input + batch_index * length;
@@ -425,7 +425,6 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                      k,
                      prob_ptr,
                      indices_ptr);
-
 }
 
 /*static*/
@@ -496,7 +495,6 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
   size_t total_size = prob_size * sizeof(float);
   gpu_mem_allocator.create_legion_instance(reserveInst, total_size);
   probs = gpu_mem_allocator.allocate_instance<float>(prob_size);
-  
 }
 ArgMaxMeta::~ArgMaxMeta(void) {
   if (reserveInst != Realm::RegionInstance::NO_INST) {

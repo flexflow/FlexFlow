@@ -31,13 +31,13 @@
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
+#include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
-#include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -343,7 +343,8 @@ __host__ void FusedOp::forward_task(Task const *task,
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].domain.get_volume());
         break;
-      }case OP_SOFTMAX: {
+      }
+      case OP_SOFTMAX: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -419,7 +420,7 @@ __host__ void
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
-   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
   }
