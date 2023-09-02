@@ -29,21 +29,31 @@ void RequestManager::load_tokens_task(
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
 
-  BatchConfig const batch_config = *((BatchConfig *)task->args);
+  // BatchConfig const batch_config = *((BatchConfig *)task->args);
+  BatchConfig const *batch_config = BatchConfig::from_future(task->futures[0]);
   BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
-  for (int i = 0; i < batch_config.num_tokens; i++) {
-    dram_copy[i] = batch_config.tokensInfo[i].token_id;
+
+  // Extreme long prompts are not supported, only load up to MAX_NUM_TOKENS as
+  // prompt
+  if (batch_config->num_tokens > BatchConfig::MAX_NUM_TOKENS) {
+    printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
+           BatchConfig::MAX_NUM_TOKENS);
+    printf("Got: %d tokens\n", batch_config->num_tokens);
+  }
+
+  for (int i = 0; i < batch_config->num_tokens; i++) {
+    dram_copy[i] = batch_config->tokensInfo[i].token_id;
   }
   TokenId *fb_ptr = helperGetTensorPointerWO<TokenId>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  assert(batch_config.num_tokens <= domain.get_volume());
+  assert(batch_config->num_tokens <= domain.get_volume());
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpyAsync(fb_ptr,
                            dram_copy,
-                           sizeof(TokenId) * batch_config.num_tokens,
+                           sizeof(TokenId) * batch_config->num_tokens,
                            hipMemcpyHostToDevice,
                            stream));
 }
@@ -55,22 +65,23 @@ void RequestManager::load_positions_task(
     Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
-  BatchConfig const batch_config = *((BatchConfig *)task->args);
-  int offset = 2;
+  BatchConfig const *batch_config = BatchConfig::from_future(task->futures[0]);
+
+  int const offset = *((int const *)task->args);
   int *pos_ptr = helperGetTensorPointerWO<int>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   int dram_copy[BatchConfig::MAX_NUM_TOKENS];
 
-  for (int i = 0; i < batch_config.num_tokens; i++) {
-    dram_copy[i] = batch_config.tokensInfo[i].abs_depth_in_request + offset;
+  for (int i = 0; i < batch_config->num_tokens; i++) {
+    dram_copy[i] = batch_config->tokensInfo[i].abs_depth_in_request + offset;
   }
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpyAsync(pos_ptr,
                            dram_copy,
-                           sizeof(int) * batch_config.num_tokens,
+                           sizeof(int) * batch_config->num_tokens,
                            hipMemcpyHostToDevice,
                            stream));
 }
