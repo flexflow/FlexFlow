@@ -14,6 +14,9 @@
 #include "math.h"
 #include <cfloat>
 #include <complex>
+#if defined(FF_USE_HIP_ROCM)
+#include <hip/hip_complex.h>
+#endif
 
 namespace FlexFlow {
 
@@ -191,6 +194,10 @@ public:
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t qk_tensor;
   cuFloatComplex *complex_input;
+#elif defined(FF_USE_HIP_ROCM)
+  miopenTensorDescriptor_t qk_tensor;
+  //  typedef hipFloatComplex attFloatComplex;
+  hipFloatComplex *complex_input;
 #endif
 };
 

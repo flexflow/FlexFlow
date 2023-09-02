@@ -1426,7 +1426,7 @@ flexflow_generation_result_t
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::string const text_str(input_text);
   GenerationResult result = handle->generate(text_str, max_seq_length);
-  DEBUG_PRINT("[Model] generate %p %s %i", handle, text, max_seq_length);
+  DEBUG_PRINT("[Model] generate %p %s %i", handle, text_str, max_seq_length);
   assert(result.output_tokens.size() <= max_seq_length);
   output_length_and_tokens[0] = result.output_tokens.size();
   std::copy(result.output_tokens.begin(),
