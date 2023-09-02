@@ -158,7 +158,7 @@ struct GetFunctor {
 template <typename T>
 visit_as_tuple_t<T> as_tuple(T const &t) {
   GetFunctor<T> func(t);
-  return seq_transform(func, seq_enumerate_t<visit_as_tuple_t<T>>{});
+  return seq_transform(func, seq_enumerate_tuple_t<visit_as_tuple_t<T>>{});
 }
 
 template <typename T>

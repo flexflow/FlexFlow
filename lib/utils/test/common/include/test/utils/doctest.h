@@ -1,5 +1,5 @@
 #include "doctest/doctest.h"
-#include "utils/containers.decl.h"
+#include "utils/containers.h"
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
@@ -9,14 +9,14 @@ using namespace FlexFlow;
 
 namespace doctest {
 
-template <typename InputIt, typename Stringifiable = std::string>
+template <typename InputIt, typename Stringifiable = std::string, typename F>
 std::string
     doctest_print_container(InputIt first,
                             InputIt last,
                             std::string const &open,
                             std::string const &delimiter,
                             std::string const &close,
-                            std::function<Stringifiable(InputIt)> const &f) {
+                            F const &f) {
   if (first == last) {
     return open + "(empty)" + close;
   } else {
@@ -31,7 +31,7 @@ std::string doctest_print_container(InputIt first,
                                     std::string const &delimiter,
                                     std::string const &close) {
   return doctest_print_container<InputIt, decltype(*first)>(
-      first, last, open, delimiter, close, [](InputIt ref) { return *ref; });
+      first, last, open, delimiter, close, [](auto const &x) { return x; });
 }
 
 template <typename Container>
@@ -72,5 +72,9 @@ struct StringMaker<std::vector<T>> {
 
 #define STATIC_CHECK(...) static_assert(__VA_ARGS__, ""); CHECK(__VA_ARGS__);
 #define STATIC_CHECK_FALSE(...) static_assert(!(__VA_ARGS__), ""); CHECK_FALSE(__VA_ARGS__);
+#define STATIC_CHECK_SAME(...) static_assert(std::is_same_v<__VA_ARGS__>, ""); CHECK(std::is_same_v<__VA_ARGS__>);
+
+#define STATIC_REQUIRE(...) static_assert(__VA_ARGS__, ""); REQUIRE(__VA_ARGS__);
+#define STATIC_REQUIRE_FALSE(...) static_assert(!(__VA_ARGS__), ""); REQUIRE_FALSE(__VA_ARGS__);
 
 } // namespace doctest

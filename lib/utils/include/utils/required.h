@@ -24,19 +24,6 @@ struct adl_serializer<::FlexFlow::req<T>> {
 };
 } // namespace nlohmann
 
-/* namespace fmt { */
-
-/* template <typename T> */
-/* struct formatter<::FlexFlow::req<T>> : formatter<T> { */
-/*   template <typename FormatContext> */
-/*   auto format(::FlexFlow::req<T> const &t, FormatContext &ctx) */
-/*       -> decltype(ctx.out()) { */
-/*     return formatter<T>::format(static_cast<T>(t), ctx); */
-/*   } */
-/* }; */
-
-/* } // namespace fmt */
-
 namespace FlexFlow {
 static_assert(is_json_serializable<req<int>>::value, "");
 static_assert(is_json_deserializable<req<int>>::value, "");

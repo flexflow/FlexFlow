@@ -129,6 +129,16 @@ using cmp = test_type_t<CMP>;
 using hash_cmp = test_type_t<HASHABLE, CMP>;
 using plusable = test_type_t<PLUS, PLUSEQ>;
 using fmtable = test_type_t<FMT>;
+
+template <typename T1, typename T2>
+struct both;
+
+template <capability... C1, capability... C2>
+struct both<test_type_t<C1...>, test_type_t<C2...>> : type_identity<test_type_t<C1..., C2...>> {};
+
+template <typename T1, typename T2>
+using both_t = typename both<T1, T2>::type;
+
 using well_behaved_value_type = test_type_t<
   EQ, 
   COPY_CONSTRUCTIBLE,
@@ -136,6 +146,10 @@ using well_behaved_value_type = test_type_t<
   COPY_ASSIGNABLE,
   MOVE_ASSIGNABLE
 >;
+
+using wb_hash = both_t<hash_cmp, well_behaved_value_type>;
+using wb_hash_fmt = both_t<fmtable, wb_hash>;
+using wb_fmt = both_t<fmtable, well_behaved_value_type>;
 
 } // namespace test_types
 } // namespace FlexFlow
@@ -148,9 +162,9 @@ template <
                                     // std::enable_if<::FlexFlow::test_types::has_capability<::FlexFlow::test_types::HASHABLE>::value,
                                     // bool>::type>
 struct hash<::FlexFlow::test_types::test_type_t<CAPABILITIES...>> {
+  template <::FlexFlow::test_types::capability C = ::FlexFlow::test_types::HASHABLE>
   typename std::enable_if<
-      ::FlexFlow::test_types::has_capability<::FlexFlow::test_types::HASHABLE,
-                                             CAPABILITIES...>::value,
+      ::FlexFlow::test_types::has_capability<C, CAPABILITIES...>::value,
       size_t>::type
       operator()(
           ::FlexFlow::test_types::test_type_t<CAPABILITIES...> const &) const;

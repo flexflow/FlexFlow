@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_TYPE_TRAITS_H
 #define _FLEXFLOW_UTILS_INCLUDE_TYPE_TRAITS_H
 
+#include "utils/type_traits.decl.h"
 #include "utils/invoke.h"
 #include "utils/metafunction.h"
 #include "utils/type_traits_core.h"
@@ -10,39 +11,6 @@
 
 namespace FlexFlow {
 
-#define DEBUG_PRINT_TYPE(...)                                                  \
-  using Hello =                                                                \
-      typename __VA_ARGS__ ::some_type_field_that_probably_will_never_exist
-
-#define RC_COPY_VIRTUAL_MSG                                                    \
-  "https://isocpp.github.io/CppCoreGuidelines/"                                \
-  "CppCoreGuidelines#Rc-copy-virtual"
-
-#define CHECK_RC_COPY_VIRTUAL_COMPLIANT(...)                                   \
-  static_assert(                                                               \
-      !std::is_copy_constructible<__VA_ARGS__>::value,                         \
-      #__VA_ARGS__                                                             \
-      " should not be copy-constructible. See " RC_COPY_VIRTUAL_MSG);          \
-  static_assert(!std::is_copy_assignable<__VA_ARGS__>::value,                  \
-                #__VA_ARGS__                                                   \
-                " should not be copy-assignable. See " RC_COPY_VIRTUAL_MSG);   \
-  static_assert(                                                               \
-      !std::is_move_constructible<__VA_ARGS__>::value,                         \
-      #__VA_ARGS__                                                             \
-      " should not be move-constructible. See " RC_COPY_VIRTUAL_MSG);          \
-  static_assert(!std::is_move_assignable<__VA_ARGS__>::value,                  \
-                #__VA_ARGS__                                                   \
-                " should not be move-assignable. See " RC_COPY_VIRTUAL_MSG);   \
-  static_assert(std::has_virtual_destructor<__VA_ARGS__>::value,               \
-                #__VA_ARGS__                                                   \
-                " should have a virtual destructor. See " RC_COPY_VIRTUAL_MSG)
-
-#define CHECK_NOT_ABSTRACT(...)                                                \
-  static_assert(                                                               \
-      !std::is_abstract<__VA_ARGS__>::value,                                   \
-      #__VA_ARGS__                                                             \
-      " should not be abstract (are you missing a virtual method override?)");
-
 template <typename T>
 struct is_rc_copy_virtual_compliant
     : conjunction<negation<disjunction<std::is_copy_constructible<T>,
@@ -51,7 +19,7 @@ struct is_rc_copy_virtual_compliant
                                        std::is_move_assignable<T>>>,
                   std::has_virtual_destructor<T>> {};
 
-template <typename T, typename Enable = void>
+template <typename T, typename Enable>
 struct is_clonable : std::false_type {};
 
 template <typename T>
@@ -65,7 +33,7 @@ template <typename T>
 struct is_streamable<T, void_t<decltype(std::cout << std::declval<T>())>>
     : std::true_type {};
 
-template <typename T, typename Enable = void>
+template <typename T, typename Enable>
 struct is_lt_comparable : std::false_type {};
 
 template <typename T>
@@ -84,7 +52,7 @@ struct elements_satisfy_impl<Cond, Head, Ts...>
 template <template <typename...> class Cond>
 struct elements_satisfy_impl<Cond> : std::true_type {};
 
-template <template <typename...> class Cond, typename T, typename Enable = void>
+template <template <typename...> class Cond, typename T, typename Enable>
 struct elements_satisfy {
   static_assert(!is_nary_metafunction<Cond, 1>::value,
                 "Cannot call elements_satisfy with a metafunction with more "
@@ -106,6 +74,15 @@ struct elements_satisfy<Cond,
 
 static_assert(
     elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");
+
+template <typename... Ts> struct types_are_all_same : std::false_type {};
+
+template <> struct types_are_all_same<> : std::true_type {};
+
+template <typename T> struct types_are_all_same<T> : std::true_type {};
+
+template <typename Head, typename Next, typename... Rest>
+struct types_are_all_same<Head, Next, Rest...> : conjunction<std::is_same<Head, Next>, types_are_all_same<Head, Rest...>> {};
 
 } // namespace FlexFlow
 

@@ -3,11 +3,13 @@
 
 #include "utils/bidict.h"
 #include "utils/invoke.h"
-#include "utils/optional.decl"
+#include "utils/optional.decl.h"
 #include "utils/required_core.h"
 #include "utils/type_traits_core.h"
 #include <string>
 #include <vector>
+#include "utils/sequence.decl.h"
+#include "utils/type_traits.decl.h"
 
 namespace FlexFlow {
 
@@ -29,6 +31,9 @@ std::string
 
 template <typename Container>
 std::string join_strings(Container const &c, std::string const &delimiter);
+
+template <typename Container, typename F>
+std::string join_strings(Container const &c, std::string const &delimiter, F const &f);
 
 template <typename Container>
 typename Container::const_iterator
@@ -223,6 +228,18 @@ template <typename F,
           typename Out = decltype(std::declval<F>()(std::declval<In>()))>
 std::vector<Out> transform(std::vector<In> const &v, F const &f);
 
+template <typename F, typename... Ts>
+auto transform(std::tuple<Ts...> const &tup, F const &f);
+
+template <typename F, typename... Ts>
+void for_each(std::tuple<Ts...> const &tup, F const &f);
+
+template <typename Head, typename... Rest>
+enable_if_t<
+  types_are_all_same_v<Head, Rest...>,
+  std::vector<Head>
+> to_vector(std::tuple<Head, Rest...> const &tup);
+
 template <typename F, typename C>
 auto transform(req<C> const &c, F const &f)
     -> decltype(transform(std::declval<C>(), std::declval<F>()));
@@ -250,9 +267,13 @@ std::vector<size_t> count(size_t n);
 
 template <typename In,
           typename F,
-          typename Out = typename decltype(std::declval<F>()(
-              std::declval<In>()))::value_type>
+          typename Out = get_element_type_t<std::invoke_result_t<F, In>>>
 std::vector<Out> flatmap(std::vector<In> const &v, F const &f);
+
+template <typename F,
+          typename = std::enable_if_t<
+            std::is_same_v<std::decay_t<std::invoke_result_t<F, char>>, std::string>>>
+std::string flatmap(std::string const &v, F const &f);
 
 template <typename In,
           typename F,
@@ -268,6 +289,9 @@ void inplace_sorted_by(C &c, F const &f);
 
 template <typename C, typename F, typename Elem = typename C::value_type>
 std::vector<Elem> sorted_by(C const &c, F const &f);
+
+template <typename C, typename Elem = typename C::value_type>
+std::vector<Elem> sorted(C const &c);
 
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);

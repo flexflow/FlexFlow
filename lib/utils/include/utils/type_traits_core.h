@@ -143,6 +143,9 @@ template <typename T, typename Enable = void>
 struct is_equal_comparable : std::false_type {};
 
 template <typename T>
+inline constexpr bool is_equal_comparable_v = is_equal_comparable<T>::value;
+
+template <typename T>
 struct is_equal_comparable<
     T,
     void_t<decltype(std::declval<T>() == std::declval<T>())>>
@@ -162,6 +165,9 @@ struct is_neq_comparable<
     void_t<decltype((bool)(std::declval<T>() != std::declval<T>()))>>
     : std::true_type {};
 
+template <typename T>
+inline constexpr bool is_neq_comparable_v = is_neq_comparable<T>::value;
+
 template <typename T, typename Enable = void>
 struct is_hashable : std::false_type {};
 
@@ -179,8 +185,6 @@ struct is_plusable<
     T,
     void_t<decltype((T)(std::declval<T>() + std::declval<T>()))>>
     : std::true_type {};
-
-static_assert(is_plusable<int>::value, "");
 
 template <typename T, typename Enable = void>
 struct is_minusable : std::false_type {};

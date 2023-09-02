@@ -47,6 +47,10 @@
   }                                                                            \
   static_assert(true, "")
 
+#define CHECK_VISITABLE(...) \
+  static_assert(::FlexFlow::is_visitable<__VA_ARGS__>::value, #__VA_ARGS__ " should be visitable (but is not)" ); \
+  DEBUG_PRINT_TYPE(__VA_ARGS__)
+
 namespace FlexFlow {
 
 template <typename T>

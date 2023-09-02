@@ -5,6 +5,8 @@
 #include "utils/fmt.decl.h"
 #include "utils/test_types.h"
 #include "utils/type_traits_core.h"
+#include "utils/exception.decl.h"
+#include "utils/string.h"
 
 namespace FlexFlow {
 
@@ -26,23 +28,8 @@ struct already_has_ostream_operator<char[N]> : std::true_type {};
 template <>
 struct already_has_ostream_operator<char const *> : std::true_type {};
 
-// This will create an error
-/*
 template <typename T>
-std::ostream &
-operator<<(std::ostream &s, T const &t) {
-  return s << "FlexFlow::ostream<<";
-}
-*/
-
-#define CHECK_FMTABLE(...)                                                     \
-  static_assert(::FlexFlow::is_fmtable<__VA_ARGS__>::value,                    \
-                #__VA_ARGS__ " must be fmtable");
-
-// This will not
-template <typename T>
-typename std::enable_if<!already_has_ostream_operator<T>::value,
-                        std::ostream &>::type
+enable_if_t<!already_has_ostream_operator_v<T>, std::ostream &>
     operator<<(std::ostream &s, T const &t) {
   CHECK_FMTABLE(T);
 
@@ -50,41 +37,107 @@ typename std::enable_if<!already_has_ostream_operator<T>::value,
   return s << result;
 }
 
-// template <typename T>
-// typename std::enable_if<is_fmtable<T>::value, std::ostream &>::type
-// operator<<(std::ostream &s, T const &t) {
-//     return s << fmt::to_string(t);
-// }
+template <typename T>
+std::string element_to_string(T const &t) {
+  return fmt::to_string(t);
+}
 
-} // namespace FlexFlow
+std::string element_to_string(char const s[]);
+template <> std::string element_to_string(std::string const &s);
+template <> std::string element_to_string(char const &c);
+
+}
 
 namespace fmt {
 
 template <typename T>
-template <typename FormatContext>
-auto formatter<::std::unordered_set<T>>::format(
-    ::std::unordered_set<T> const &m, FormatContext &ctx)
-    -> decltype(ctx.out()) {
-  CHECK_FMTABLE(T);
+auto formatter<
+  ::std::vector<T>, 
+  ::std::enable_if_t<::FlexFlow::is_fmtable_v<T>, char>
+>::format(::std::vector<T> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
 
-  std::string result = join_strings(
-      m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
+  std::string result = surrounded('[', ']', ::FlexFlow::join_strings(m, ", ", [](T const &t) { return element_to_string(t); }));
   return formatter<std::string>::format(result, ctx);
 }
 
 template <typename T>
-template <typename FormatContext>
-auto formatter<::std::vector<T>>::format(::std::vector<T> const &m,
-                                         FormatContext &ctx)
-    -> decltype(ctx.out()) {
-  CHECK_FMTABLE(T);
-  std::string result = join_strings(
-      m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
+auto formatter<
+  ::std::list<T>, 
+  ::std::enable_if_t<::FlexFlow::is_fmtable_v<T>, char>
+>::format(::std::list<T> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
+
+  std::string result = surrounded('[', ']', join_strings(m, ", ", [](T const &t) { return element_to_string(t); }));
   return formatter<std::string>::format(result, ctx);
 }
 
-CHECK_FMTABLE(std::vector<int>);
-CHECK_FMTABLE(std::unordered_set<int>);
+template <typename T>
+auto formatter<
+  ::std::unordered_set<T>, 
+  ::std::enable_if_t<::FlexFlow::is_fmtable_v<T>, char>
+>::format(::std::unordered_set<T> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
+
+  std::string result = surrounded('{', '}', join_strings(sorted(m), ", ", [](T const &t) { return element_to_string(t); }));
+  return formatter<std::string>::format(result, ctx);
+}
+
+template <typename T>
+auto formatter<
+  ::std::set<T>, 
+  ::std::enable_if_t<::FlexFlow::is_fmtable_v<T>, char>
+>::format(::std::set<T> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
+
+  std::string result = surrounded('{', '}', join_strings(sorted(m), ", ", [](T const &t) { return element_to_string(t); }));
+  return formatter<std::string>::format(result, ctx);
+}
+
+template <typename K, typename V>
+auto formatter<
+  ::std::unordered_map<K, V>, 
+  ::std::enable_if_t<::FlexFlow::all_is_fmtable_v<K, V>, char> 
+>::format(::std::unordered_map<K, V> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
+
+  std::string result = surrounded('{', '}', join_strings(sorted(m), ", ", [](std::pair<K, V> const &kv) { return fmt::format("{}: {}", element_to_string(kv.first), element_to_string(kv.second)); }));
+  return formatter<std::string>::format(result, ctx);
+}
+
+template <typename K, typename V>
+auto formatter<
+  ::std::map<K, V>, 
+  ::std::enable_if_t<::FlexFlow::all_is_fmtable_v<K, V>, char> 
+>::format(::std::map<K, V> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
+
+  std::string result = surrounded('{', '}', join_strings(sorted(m), ", ", [](std::pair<K, V> const &kv) { return fmt::format("{}: {}", element_to_string(kv.first), element_to_string(kv.second)); }));
+  return formatter<std::string>::format(result, ctx);
+}
+
+template <typename T1, typename T2>
+auto formatter<
+  ::std::pair<T1, T2>, 
+  ::std::enable_if_t<::FlexFlow::all_is_fmtable_v<T1, T2>, char> 
+>::format(::std::pair<T1, T2> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
+
+  std::string result = fmt::format("<{}, {}>", element_to_string(m.first), element_to_string(m.second));
+  return formatter<std::string>::format(result, ctx);
+}
+
+template <typename... Ts>
+auto formatter<
+  ::std::tuple<Ts...>, 
+  ::std::enable_if_t<::FlexFlow::all_is_fmtable_v<Ts...>, char> 
+>::format(::std::tuple<Ts...> const &m, format_context &ctx) const {
+  using namespace ::FlexFlow;
+
+  std::vector<std::string> v = to_vector(transform(m, [](auto const &t) { return element_to_string(t); }));
+  std::string result = surrounded('<', '>', join_strings(v, ", ", [](std::string const &s) { return s; }));
+  return formatter<std::string>::format(result, ctx);
+}
 
 } // namespace fmt
 
