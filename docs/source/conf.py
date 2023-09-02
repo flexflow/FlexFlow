@@ -139,6 +139,7 @@ def manual_post_processing(app, exception):
                 content = content.replace('href="./SERVE.md"', 'href="serve_overview.html"')
                 content = content.replace('href="./docs/source/keras.rst"', 'href="keras.html"')
                 content = content.replace('href="./docs/source/onnx.rst"', 'href="onnx.html"')
+                content = content.replace('href="#speculative-inference"', 'href="#id1"')
                 
 
                 html_file.write_text(content)

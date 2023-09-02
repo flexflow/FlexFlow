@@ -6,8 +6,9 @@
 
 ## News 🔥:
 
+* [09/02/2023] Adding AMD GPU support, released Docker images for ROCM 5.3->5.6
 * [08/16/2023] Adding Starcoder model support
-* [08/14/2023] Released Dockerfile for different CUDA versions
+* [08/14/2023] Released Docker image for different CUDA versions
 
 ## Install FlexFlow
 
@@ -31,10 +32,10 @@ pip install flexflow
 If you run into any issue during the install, or if you would like to use the C++ API without needing to install from source, you can also use our pre-built Docker package for different CUDA versions and the `hip_rocm` backend. To download and run our pre-built Docker container:
 
 ```bash
-docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-11.8:latest
+docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-12.0:latest
 ```
 
-To download a Docker container for a backend other than CUDA v11.8, you can replace the `cuda-11.8` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm`). More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](../docker/README.md).
+To download a Docker container for a backend other than CUDA v12.0, you can replace the `cuda-12.0` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.4`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm-5.3`, `hip_rocm-5.4`, `hip_rocm-5.5`, `hip_rocm-5.6`). More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](./docker/README.md).
 
 ### Build from source
 
