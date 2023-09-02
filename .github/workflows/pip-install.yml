@@ -69,7 +69,7 @@ jobs:
           # Remove build folder to check that the installed version can run independently of the build files
           rm -rf build
 
-      - name: Check availability of Python flexflow.core module
+      - name: Check availability of flexflow modules in Python
         run: |
           export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
           sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"

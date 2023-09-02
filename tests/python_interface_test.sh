@@ -38,10 +38,10 @@ export BUILD_FOLDER
 installation_status=${1:-"before-installation"}
 echo "Running Python interface tests (installation status: ${installation_status})"
 if [[ "$installation_status" == "before-installation" ]]; then
-	# Import flexflow.core module in Python
+	# Check availability of flexflow modules in Python
 	export PYTHONPATH="${FF_HOME}/python:${BUILD_FOLDER}/deps/legion/bindings/python:${PYTHONPATH}"
 	export LD_LIBRARY_PATH="${BUILD_FOLDER}:${LD_LIBRARY_PATH}"
-	python -c "import flexflow.core; exit()"
+	python -c "import flexflow.core; import flexflow.serve as ff; exit()"
 	unset PYTHONPATH
 	unset LD_LIBRARY_PATH
 	# Run a single-gpu test using the flexflow_python interpreter
@@ -53,8 +53,8 @@ if [[ "$installation_status" == "before-installation" ]]; then
 	unset PYTHONPATH
 	unset LD_LIBRARY_PATH
 elif [[ "$installation_status" == "after-installation" ]]; then
-	# Import flexflow.core module in Python
-	python -c "import flexflow.core; exit()"
+	# Check availability of flexflow modules in Python
+	python -c "import flexflow.core; import flexflow.serve as ff; exit()"
 	# Run a single-gpu test using the flexflow_python interpreter
 	check_python_interface flexflow_python after-installation
 	# Run a single-gpu test using the native python interpreter

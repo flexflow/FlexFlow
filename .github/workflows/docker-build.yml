@@ -100,7 +100,7 @@ jobs:
             echo "Skipping build to save time"
           fi
 
-      - name: Check availability of Python flexflow.core module
+      - name: Check availability of flexflow modules in Python
         if: ${{ matrix.gpu_backend == 'cuda' }}
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}

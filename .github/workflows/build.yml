@@ -131,7 +131,7 @@ jobs:
           cd build
           ./tests/unit/unit-test
 
-      - name: Check availability of Python flexflow modules
+      - name: Check availability of flexflow modules in Python
         run: |
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
             export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
