@@ -31,7 +31,7 @@ Tensor FFModel::unary(OperatorType op,
   // if (x->data_type < DT_FLOAT) {
   if (false) {
     dtype = DT_FLOAT;
-    std::string str = nullptr ? "" : std::string(name);
+    std::string str = (name == nullptr) ? "" : std::string(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
     ele = new Layer(this,
                     op,

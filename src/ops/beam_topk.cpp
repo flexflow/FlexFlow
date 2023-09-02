@@ -638,9 +638,9 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   if (input.data_type == DT_HALF) {
@@ -668,12 +668,12 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[BeamTopK] forward time = %.2lfms\n", elapsed);
   }
 }

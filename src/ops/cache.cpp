@@ -43,10 +43,10 @@ void Cache::cache_forward(Task const *task,
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  hipMemcpy(output_ptr,
-            batch_ptrs[batch_ctr],
-            c->inputs[0]->get_volume() * sizeof(T),
-            hipMemcpyHostToDevice);
+  checkCUDA(hipMemcpy(output_ptr,
+                      batch_ptrs[batch_ctr],
+                      c->inputs[0]->get_volume() * sizeof(T),
+                      hipMemcpyHostToDevice));
 }
 
 template <typename T>
@@ -61,10 +61,10 @@ float Cache::cache_update(Task const *task,
   T const *input_ptr = helperGetTensorPointerRW<T>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   T *host_input = (T *)c->batch_cmp;
-  hipMemcpy(host_input,
-            input_ptr,
-            c->inputs[0]->get_volume() * sizeof(T),
-            hipMemcpyDeviceToHost);
+  checkCUDA(hipMemcpy(host_input,
+                      input_ptr,
+                      c->inputs[0]->get_volume() * sizeof(T),
+                      hipMemcpyDeviceToHost));
   float cache_score = c->score_f(&m->cache_score,
                                  host_input,
                                  c->batch_ptrs[batch_ctr],

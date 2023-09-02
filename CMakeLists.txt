@@ -223,9 +223,6 @@ if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(ROCM_PATH "/opt/rocm" CACHE STRING "Default ROCM installation directory.")
 endif()
 
-# ZLIB
-include(zlib)
-
 # CUDA
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cuda)

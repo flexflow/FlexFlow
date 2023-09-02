@@ -47,12 +47,10 @@ __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
                                             unsigned int delta,
                                             int width = warpSize,
                                             unsigned int mask = 0xffffffff) {
-#if 0
 #ifndef __HIP_PLATFORM_HCC__
-    return __shfl_down_sync(mask, value, delta, width);
+  return __shfl_down_sync(mask, value, delta, width);
 #else
-    return __shfl_down(value, delta, width);
-#endif
+  return __shfl_down(value, delta, width);
 #endif
 }
 
