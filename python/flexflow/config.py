@@ -16,35 +16,43 @@
 import os
 
 # python binding
-_FF_PYTHON_BINDING = 'cffi'
+_FF_PYTHON_BINDING = "cffi"
 
-if 'FF_USE_CFFI' in os.environ:
-  use_pybind = not int(os.environ['FF_USE_CFFI'])
+if "FF_USE_CFFI" in os.environ:
+    use_pybind = not int(os.environ["FF_USE_CFFI"])
 else:
-  use_pybind = False
+    use_pybind = False
 
 if use_pybind:
-  _FF_PYTHON_BINDING = 'pybind11'
+    _FF_PYTHON_BINDING = "pybind11"
 else:
-  _FF_PYTHON_BINDING = 'cffi'
-  
+    _FF_PYTHON_BINDING = "cffi"
+
+
 def flexflow_python_binding():
-  return _FF_PYTHON_BINDING
+    return _FF_PYTHON_BINDING
 
-# build docs
-_FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
-  
-# init import
-# It is used to run __init__.py in flexflow/core
-# The following cases __init__.py is not needed:
-# 1. build docs = True
-_FF_INIT_IMPORT = _FF_BUILD_DOCS == False
 
-def flexflow_init_import():
-  return _FF_INIT_IMPORT
-  
+_FF_ALREADY_INITIALIZED = False
+
+
+def flexflow_already_initialized():
+    global _FF_ALREADY_INITIALIZED
+    return _FF_ALREADY_INITIALIZED
+
+
+def set_flexflow_initialized():
+    global _FF_ALREADY_INITIALIZED
+    if _FF_ALREADY_INITIALIZED == True:
+        raise RuntimeError(
+            "Attempting to set _FF_ALREADY_INITIALIZED=True, but _FF_ALREADY_INITIALIZED is already True"
+        )
+    _FF_ALREADY_INITIALIZED = True
+
+
 # FlexFlow dir
 _FF_DIR = os.path.dirname(os.path.realpath(__file__))
 
+
 def flexflow_dir():
-  return _FF_DIR
+    return _FF_DIR
