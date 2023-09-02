@@ -238,7 +238,7 @@ __host__ void
   int idx = 0;
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
-    printf(" %.20lf", (float)host_ptr[idx]);
+    printf(" %.4lf", (float)host_ptr[idx]);
     if (idx >= 16) {
       break;
     }
