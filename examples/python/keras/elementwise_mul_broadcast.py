@@ -1,6 +1,6 @@
 from flexflow.keras.layers import Dense, Input, Reshape, Multiply
 import flexflow.keras.optimizers
-
+import flexflow.core as ff
 import numpy as np
 
 def broadcast1():
@@ -92,8 +92,22 @@ def broadcast_both():
     epochs = 2
   )
 
+def get_configs():
+  import argparse,json
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+    "-config-file",
+    help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
+    type=str,
+    default="",
+  )
+  args = parser.parse_args()
+  with open(args.config_file) as f:
+    return json.load(f)
 
 if __name__ == '__main__':
+    configs = get_configs()
+    ff.init_flexflow_runtime(configs)
     broadcast1()
     broadcast2()
     broadcast_both()

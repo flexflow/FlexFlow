@@ -59,6 +59,7 @@ ff_arg_to_sysarg = {
     "import_strategy": "--import-strategy",
     "export": "--export",
     "export_strategy": "--export-strategy",
+    "only_data_parallel": "--only-data-parallel",
     "enable_parameter_parallel": "--enable-parameter-parallel",
     "enable_attribute_parallel": "--enable-attribute-parallel",
     "allow_tensor_op_math_conversion": "--allow-tensor-op-math-conversion",
@@ -86,56 +87,59 @@ ff_arg_to_sysarg = {
     "offload_reserve_space_size": "-offload-reserve-space-size",
     "use_4bit_quantization": "--4bit-quantization",
     "use_8bit_quantization": "--8bit-quantization",
+    # Legion Python ONLY:
+    "num_legion_python_processes": "-ll:py",
 }
 
 
-def flexflow_runtime_init(configs_dict: Optional[dict] = None, **kwargs):
+def init_flexflow_runtime(configs_dict: Optional[dict] = None, **kwargs):
     if not flexflow_already_initialized():
         os.environ["NCCL_LAUNCH_MODE"] = "PARALLEL"
-        from legion_cffi import ffi, is_legion_python
+        from legion_cffi import is_legion_python
         from .flexflowlib import flexflow_library
+
+        # Either a configs_dict dictionary, or individual key-value parameters should be passed. Not both.
+        if configs_dict is not None and len(kwargs.items()) > 0:
+            raise ValueError("Cannot pass both configs_dict and individual args")
+        ff_args = configs_dict if configs_dict is not None else dict(kwargs.items())
+        # Check presence of mandatory parameters
+        if (
+            "num_gpus" not in ff_args
+            or "memory_per_gpu" not in ff_args
+            or "zero_copy_memory_per_node" not in ff_args
+        ):
+            raise ValueError(
+                "Missing one of the following required configs: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
+            )
+        if is_legion_python and not ff_args.get("num_legion_python_processes", None):
+            ff_args["num_legion_python_processes"] = 1
+        # Remove any existing arguments to avoid interferences
+        sys.argv = [sys.argv[0]]
+        # Pass parameters to the FlexFlow C++ runtime via command line arguments
+        for arg in ff_args:
+            if arg not in ff_arg_to_sysarg:
+                warnings.warn(f"Ignoring parameter {arg}: not recognized.")
+            else:
+                sys_arg = [ff_arg_to_sysarg[arg]]
+                if type(ff_args[arg]) == bool:
+                    if ff_args[arg] is not True:
+                        continue
+                else:
+                    sys_arg += [str(ff_args[arg])]
+                sys.argv += sys_arg
 
         # Default python mode
         if is_legion_python == False:
             print("Using Default Python")
-
-            # Either a configs_dict dictionary, or individual key-value parameters should be passed. Not both.
-            if configs_dict is not None and len(kwargs.items()) > 0:
-                raise ValueError("Cannot pass both configs_dict and individual args")
-            ff_args = configs_dict if configs_dict is not None else dict(kwargs.items())
-            # Check presence of mandatory parameters
-            if (
-                "num_gpus" not in ff_args
-                or "memory_per_gpu" not in ff_args
-                or "zero_copy_memory_per_node" not in ff_args
-            ):
-                raise ValueError(
-                    "Missing one of the following required configs: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
-                )
-            # Remove any existing arguments to avoid interferences
-            sys.argv = [sys.argv[0]]
-            # Pass parameters to the FlexFlow C++ runtime via command line arguments
-            for arg in ff_args:
-                if arg not in ff_arg_to_sysarg:
-                    warnings.warn(f"Ignoring parameter {arg}: not recognized.")
-                else:
-                    sys_arg = [ff_arg_to_sysarg[arg]]
-                    if type(ff_args[arg]) == bool:
-                        if ff_args[arg] is not True:
-                            continue
-                    else:
-                        sys_arg += [str(ff_args[arg])]
-                    sys.argv += sys_arg
-
             from legion_top import (
                 legion_canonical_python_main,
                 legion_canonical_python_cleanup,
             )
-
             legion_canonical_python_main(sys.argv)
             atexit.register(legion_canonical_python_cleanup)
         else:
             print("Using Legion Python")
+
         flexflow_library.initialize()
         set_flexflow_initialized()
     else:

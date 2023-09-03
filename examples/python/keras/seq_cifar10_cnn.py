@@ -54,6 +54,21 @@ def top_level_task():
 
   model.fit(x_train, y_train, epochs=80, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
+def get_configs():
+  import argparse,json
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+    "-config-file",
+    help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
+    type=str,
+    default="",
+  )
+  args = parser.parse_args()
+  with open(args.config_file) as f:
+    return json.load(f)
+
 if __name__ == "__main__":
   print("Sequantial model, cifar10 cnn")
+  configs = get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

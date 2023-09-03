@@ -193,4 +193,4 @@ def init(
     if configs_dict.get("fusion", None) is None:
         configs_dict["fusion"] = True
 
-    flexflow_runtime_init(configs_dict)
+    init_flexflow_runtime(configs_dict)

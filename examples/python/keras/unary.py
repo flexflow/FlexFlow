@@ -59,7 +59,21 @@ def top_level_task():
   add_test()
   subtract_test()
 
+def get_configs():
+  import argparse,json
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+    "-config-file",
+    help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
+    type=str,
+    default="",
+  )
+  args = parser.parse_args()
+  with open(args.config_file) as f:
+    return json.load(f)
 
 if __name__ == "__main__":
   print("alexnet keras")
+  configs = get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

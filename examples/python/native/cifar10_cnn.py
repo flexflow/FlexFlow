@@ -2,7 +2,7 @@ from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 
 from accuracy import ModelAccuracy
-import argparse
+import argparse, json
 
 
 def top_level_task():
@@ -90,7 +90,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--test_acc",
                         action="store_true", help="Test accuracy flag")
+    parser.add_argument(
+        "-config-file",
+        help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
+        type=str,
+        default="",
+    )
     args, unknown = parser.parse_known_args()
+    with open(args.config_file) as f:
+        init_flexflow_runtime(json.load(f))
     if args.test_acc:
         print("Testing cifar10 cnn training accuracy")
         test_accuracy()
