@@ -51,11 +51,6 @@ if [[ -f "$FF_HOME/build/examples/cpp/AlexNet/alexnet" ]]; then
 	# TODO: fix split tests
 	# "$FF_HOME"/build/examples/cpp/split_test/split_test -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	# "$FF_HOME"/build/examples/cpp/split_test_2/split_test_2 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-	# Inference examples
-	# if [ $(( GPU_AVAILABLE )) -lt $(( 4 )) ]; then echo "Skipping LLAMA test because it requires 4 GPUs, but only $GPU_AVAILABLE are available. " ; exit 1; fi
-	# "$FF_HOME"/build/examples/cpp/inference/LLAMA/LLAMA -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize 30000 --only-data-parallel
-	#"$FF_HOME"/build/examples/cpp/inference/mixture_of_experts/inference_moe -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
-	#"$FF_HOME"/build/examples/cpp/inference/transformers/inference_transformers -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 else
 	python_packages=$(python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))")
 	OLD_PATH="$PATH"
@@ -84,11 +79,6 @@ else
 			# TODO: fix split tests 
 			# split_test -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			# split_test_2 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-			# Inference examples
-			# if [ $(( GPU_AVAILABLE )) -lt $(( 4 )) ]; then echo "Skipping LLAMA test because it requires 4 GPUs, but only $GPU_AVAILABLE are available. " ; exit 1; fi
-			# LLAMA -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize 30000 --only-data-parallel
-			#inference_moe -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
-			#inference_transformers -ll:gpu "$GPUS" -ll:util 8 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --only-data-parallel
 		fi
 	done
 	export PATH="$OLD_PATH"
