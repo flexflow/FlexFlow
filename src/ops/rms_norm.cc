@@ -431,7 +431,7 @@ Op *RMSNorm::materialize(FFModel &ff,
                          ParallelTensor inputs[],
                          int num_inputs) const {
   RMSNormParams params = get_params();
-  return new RMSNorm(ff, params, inputs[0], this->name);
+  return new RMSNorm(ff, params, inputs[0], true, this->name);
 }
 
 void RMSNorm::backward(FFModel const &ff) {}

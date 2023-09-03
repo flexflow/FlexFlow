@@ -8,6 +8,9 @@
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <curand.h>
 #include <curand_kernel.h>
+#elif defined(FF_USE_HIP_ROCM)
+#include <hiprand.h>
+#include <hiprand/hiprand_kernel.h>
 #endif
 #include "flexflow/utils/memory_allocator.h"
 
@@ -26,6 +29,8 @@ public:
   Realm::RegionInstance reserveInst;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   curandState *state;
+#elif defined(FF_USE_HIP_ROCM)
+  hiprandState *state;
 #endif
   SamplingMeta(FFHandler handle,
                Op const *op,

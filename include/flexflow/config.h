@@ -22,14 +22,18 @@
 #include <cublas_v2.h>
 #include <cudnn.h>
 #elif defined(FF_USE_HIP_ROCM)
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #include <miopen/miopen.h>
 #else
 #error "Unknown device"
 #endif
 #include "tl/optional.hpp"
 #ifdef FF_USE_NCCL
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <nccl.h>
+#else
+#include <rccl.h>
+#endif
 #endif
 
 namespace FlexFlow {

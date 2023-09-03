@@ -638,9 +638,9 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   if (input.data_type == DT_HALF) {
@@ -668,12 +668,12 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[BeamTopK] forward time = %.2lfms\n", elapsed);
   }
 }
@@ -683,23 +683,42 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler,
                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler) {
   DataType data_type = op->inputs[0]->data_type;
-  checkCUDA(hipMalloc(&parent_ids,
-                      sizeof(int) * BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(hipMalloc(&acc_probs,
-                      sizeof(data_type_size(data_type)) *
-                          BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(hipMalloc(&block_start_index,
-                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(hipMalloc(&request_id,
-                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
-  checkCUDA(hipMalloc(&tokens_per_request,
-                      sizeof(int) * BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                          BeamSearchBatchConfig::MAX_NUM_REQUESTS));
+  size_t parent_id_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t acc_probs_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH *
+                          BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t block_start_index_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                                  BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t request_id_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                           BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t tokens_per_request_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
+                                   BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  size_t totalSize = sizeof(int) * parent_id_size +
+                     data_type_size(data_type) * acc_probs_size +
+                     sizeof(int) * block_start_index_size +
+                     sizeof(int) * request_id_size +
+                     sizeof(int) * tokens_per_request_size;
+
+  gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
+  parent_ids = gpu_mem_allocator.allocate_instance<int>(parent_id_size);
+  if (data_type == DT_FLOAT) {
+    acc_probs = gpu_mem_allocator.allocate_instance<float>(acc_probs_size);
+  } else if (data_type == DT_HALF) {
+    acc_probs = gpu_mem_allocator.allocate_instance<half>(acc_probs_size);
+  } else {
+    assert(false);
+  }
+
+  block_start_index =
+      gpu_mem_allocator.allocate_instance<int>(block_start_index_size);
+  request_id = gpu_mem_allocator.allocate_instance<int>(request_id_size);
+  tokens_per_request =
+      gpu_mem_allocator.allocate_instance<int>(tokens_per_request_size);
 }
 
-BeamTopKMeta::~BeamTopKMeta(void) {}
+BeamTopKMeta::~BeamTopKMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
 }; // namespace FlexFlow
