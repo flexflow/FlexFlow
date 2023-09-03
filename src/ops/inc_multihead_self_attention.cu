@@ -114,6 +114,17 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
 }
 
 template <typename DT>
+__global__ void scaling_query_kernel(DT *input_ptr,
+                                     int qProjSize,
+                                     int num_tokens,
+                                     int num_q_heads,
+                                     float scaling_factor) {
+  CUDA_KERNEL_LOOP(i, num_tokens * (qProjSize * num_q_heads)) {
+    input_ptr[i] *= scaling_factor;
+  }
+}
+
+template <typename DT>
 __global__ void
     apply_rotary_embedding_native(DT *input_ptr,
                                   cuFloatComplex *complex_input,
@@ -305,6 +316,15 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                     m->num_kv_heads,
                                     *m->scaling_query,
                                     m->scaling_factor);
+  } else if (m->scaling_query) {
+    scaling_query_kernel<<<GET_BLOCKS(parallelism),
+                           min(CUDA_NUM_THREADS, parallelism),
+                           0,
+                           stream>>>(output_ptr,
+                                     num_tokens,
+                                     m->num_q_heads,
+                                     m->qProjSize,
+                                     m->scaling_factor);
   }
   if (*m->apply_rotary_embedding) {
     /*q&k*/
