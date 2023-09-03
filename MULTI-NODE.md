@@ -19,7 +19,7 @@ You can also use your own GPU cluster, as long as all machines are interconnecte
 
 ## 2. Configure and build FlexFlow
 
-Follow steps 1 to 5 in [INSTALL.md](INSTALL.md) to download the source code, install system dependencies, install the Python dependencies, configure the FlexFlow build, and build FlexFlow **on each instance at the same path**. 
+Follow steps 1 to 5 in the [Build from source guide](https://flexflow.readthedocs.io/en/latest/installation.html) to download the source code, install system dependencies, install the Python dependencies, configure the FlexFlow build, and build FlexFlow **on each instance at the same path**. 
 
 You can skip step 2 (Install system dependencies) if you have spun up instances with Deep Learning AMI, which comes preconfigured with CUDA. Otherwise, you need to install system dependencies on each instance.
 
@@ -66,6 +66,6 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOy5NKYdE8Cwgid59rx6xMqyj9vLaWuXIwy/BSRiK4su
 
 ## 4. Test FlexFlow
 
-Follow step 6 in [INSTALL.md](INSTALL.md) to set environment variables.
+Follow step 6 in the [Build from source guide](https://flexflow.readthedocs.io/en/latest/installation.html) to set environment variables.
 
 A script to run a Python example on multiple nodes is available at `scripts/mnist_mlp_run.sh`. You can run the script using [`mpirun`](https://www.open-mpi.org/doc/current/man1/mpirun.1.php) (if you configured it in step 3) or [`srun`](https://slurm.schedmd.com/srun.html).
