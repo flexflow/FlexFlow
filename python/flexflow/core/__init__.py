@@ -119,9 +119,10 @@ def flexflow_runtime_init(configs_dict: Optional[dict] = None, **kwargs):
                 if arg not in ff_arg_to_sysarg:
                     warnings.warn(f"Ignoring parameter {arg}: not recognized.")
                 else:
-                    sys_arg = [arg]
-                    if type(ff_args[arg]) == bool and ff_args[arg] is not True:
-                        continue
+                    sys_arg = [ff_arg_to_sysarg[arg]]
+                    if type(ff_args[arg]) == bool:
+                        if ff_args[arg] is not True:
+                            continue
                     else:
                         sys_arg += [str(ff_args[arg])]
                     sys.argv += sys_arg
