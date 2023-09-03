@@ -20,6 +20,8 @@ fi
 if [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
     # Install CUDNN
     ./install_cudnn.sh
+    # Install NCCL
+    ./install_nccl.sh
 fi
 # Install HIP dependencies if needed
 if [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; then
