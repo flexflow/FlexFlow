@@ -7,7 +7,7 @@ cd "${BASH_SOURCE[0]%/*}"
 
 # General dependencies
 echo "Installing apt dependencies..."
-sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev libhdf5-dev && \
+sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev libhdf5-dev jq && \
     sudo rm -rf /var/lib/apt/lists/*
 
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-"cuda"}
