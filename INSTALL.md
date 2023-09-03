@@ -30,7 +30,7 @@ If you are planning to build the Python interface, you will need to install seve
 
 The `conda` environment can be created and activated as:
 ```
-conda env create -f conda/environment.yml
+conda env create -f conda/flexflow.yml
 conda activate flexflow
 ```
 
