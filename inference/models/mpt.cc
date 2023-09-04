@@ -24,6 +24,7 @@ void MPT::create_mpt_model(FFModel &ff,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
                            InferenceMode mode,
+                           GenerationConfig generationConfig,
                            bool use_full_precision) {
   MPTConfig mpt_config(model_config_file_path);
   mpt_config.print();
@@ -50,7 +51,7 @@ void MPT::create_mpt_model(FFModel &ff,
   if (use_full_precision) {
     hidden_states = ff.embedding(input,
                                  mpt_config.vocab_size,
-                                 mpt_config.word_embed_proj_dim,
+                                 mpt_config.hidden_size,
                                  AGGR_MODE_NONE,
                                  DT_FLOAT,
                                  NULL,
@@ -58,7 +59,7 @@ void MPT::create_mpt_model(FFModel &ff,
   } else {
     hidden_states = ff.embedding(input,
                                  mpt_config.vocab_size,
-                                 mpt_config.word_embed_proj_dim,
+                                 mpt_config.hidden_size,
                                  AGGR_MODE_NONE,
                                  DT_HALF,
                                  NULL,
@@ -66,14 +67,15 @@ void MPT::create_mpt_model(FFModel &ff,
   }
 
   Layer *embedding = ff.layers.back();
-  weights_layers.emplace("embed_tokens_weight", embedding);
+  weights_layers.emplace("transformer_wte_weight", embedding);
 
   for (int i = 0; i < mpt_config.n_layers; i++) {
     ff.set_transformer_layer_id(i);
 
     Tensor residual = hidden_states;
 
-    Tensor layernorm_output = ff.layer_norm(hidden_states, axes, true, 1e-05);
+    Tensor layernorm_output =
+        ff.layer_norm(hidden_states, axes, true, 1e-05, false);
     Layer *norm_1 = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_norm_1_weight",
                            norm_1);
@@ -150,7 +152,7 @@ void MPT::create_mpt_model(FFModel &ff,
                            attention_layer);
 
     hidden_states = ff.add(attn_outputs, residual);
-    layernorm_output = ff.layer_norm(hidden_states, axes, true, 1e-05);
+    layernorm_output = ff.layer_norm(hidden_states, axes, true, 1e-05, false);
     Layer *norm_2 = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_norm_2_weight",
                            norm_2);
@@ -162,39 +164,38 @@ void MPT::create_mpt_model(FFModel &ff,
     hidden_states = ff.dense(
         hidden_states, 4 * mpt_config.hidden_size, AC_MODE_NONE, false);
     Layer *up_proj = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_up_proj_weight",
-                           up_proj);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_ffn_up_proj_weight", up_proj);
     hidden_states = ff.gelu(hidden_states);
     Tensor intermediate_output =
         ff.dense(hidden_states, mpt_config.hidden_size, AC_MODE_NONE, false);
     Layer *down_proj = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_down_proj_weight",
-                           down_proj);
-    hidden_states = ff.add(hidden_states, residual);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_ffn_down_proj_weight", down_proj);
+
+    hidden_states = ff.add(intermediate_output, residual);
   }
 
   // final
-  Tensor all_final_norm = ff.layer_norm(hidden_states, axes, true, 1e-05);
+  Tensor all_final_norm =
+      ff.layer_norm(hidden_states, axes, true, 1e-05, false);
   Layer *norm_f = ff.layers.back();
-  weights_layers.emplace("norm_f_weight", norm_f);
+  weights_layers.emplace("transformer_norm_f_weight", norm_f);
 
   Tensor lm_head =
       ff.dense(all_final_norm, mpt_config.vocab_size, AC_MODE_NONE, false);
   Layer *lm_head_layer = ff.layers.back();
-  weights_layers.emplace("embed_tokens_weight_lm_head", lm_head_layer);
+  weights_layers.emplace("lm_head_weight", lm_head_layer);
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
-    // output = ff.beam_top_k(softmax, mpt_config.max_beam_width, false);
     output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {
-    // output = ff.arg_top_k(lm_head, /*k=*/1, false);
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
 
   //------------------- compile the model --------------------------------
-  std::cout << "------start compile ----------" << std::endl;
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
@@ -205,7 +206,6 @@ void MPT::create_mpt_model(FFModel &ff,
                             mpt_config.hidden_size / mpt_config.n_heads,
                             ff.config.tensor_parallelism_degree);
   fileloader.load_weights(&ff, weights_layers, use_full_precision);
-  std::cout << "------finished loading weights----------" << std::endl;
   im->init_operators_inference(&ff);
 }
 

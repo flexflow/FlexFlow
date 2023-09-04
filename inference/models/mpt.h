@@ -33,18 +33,10 @@ public:
         try {
           json model_config;
           config_file >> model_config;
-          do_layer_norm_before = model_config["do_layer_norm_before"];
-          dropout = model_config["dropout"];
-          enable_bias = model_config["enable_bias"];
-          ffn_dim = model_config["ffn_dim"];
           hidden_size = model_config["d_model"];
-          layer_norm_elementwise_affine =
-              model_config["layer_norm_elementwise_affine"];
-          max_position_embeddings = model_config["max_position_embeddings"];
           n_heads = model_config["n_heads"];
           n_layers = model_config["n_layers"];
           vocab_size = model_config["vocab_size"];
-          word_embed_proj_dim = model_config["word_embed_proj_dim"];
         } catch (json::exception const &e) {
           std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
           assert(false);
@@ -62,39 +54,21 @@ public:
 
     void print() const {
       std::cout << "MPT Config:" << std::endl;
-      std::cout << "\tdo_layer_norm_before: " << do_layer_norm_before
-                << std::endl;
-      std::cout << "\tdropout: " << dropout << std::endl;
-      std::cout << "\tenable_bias: " << enable_bias << std::endl;
-      std::cout << "\tffn_dim: " << ffn_dim << std::endl;
       std::cout << "\thidden_size: " << hidden_size << std::endl;
-      std::cout << "\tlayer_norm_elementwise_affine: "
-                << layer_norm_elementwise_affine << std::endl;
-      std::cout << "\tmax_position_embeddings: " << max_position_embeddings
-                << std::endl;
       std::cout << "\tn_heads: " << n_heads << std::endl;
       std::cout << "\tn_layers: " << n_layers << std::endl;
       std::cout << "\tvocab_size: " << vocab_size << std::endl;
-      std::cout << "\tword_embed_proj_dim: " << word_embed_proj_dim
-                << std::endl;
-
-      std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
-      std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
-      std::cout << "\tmax_beam_width: " << max_beam_width << std::endl;
-      std::cout << "\tmax_beam_depth: " << max_beam_depth << std::endl;
     }
 
     int max_seq_len, max_num_tokens, max_beam_width, max_beam_depth;
-    bool do_layer_norm_before, enable_bias, layer_norm_elementwise_affine;
-    float dropout;
-    int ffn_dim, hidden_size, max_position_embeddings, n_heads, n_layers,
-        vocab_size, word_embed_proj_dim;
+    int hidden_size, n_heads, n_layers, vocab_size;
   };
 
   static void create_mpt_model(FFModel &ff,
                                std::string const &model_config_file_path,
                                std::string const &weight_file_path,
                                InferenceMode mode,
+                               GenerationConfig generationConfig,
                                bool use_full_precision = false);
 };
 

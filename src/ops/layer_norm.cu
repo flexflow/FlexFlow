@@ -29,6 +29,7 @@ LayerNormMeta::LayerNormMeta(FFHandler handle,
                              MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
+  use_bias = ln->use_bias;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
   profiling = ln->profiling;
@@ -99,11 +100,11 @@ __global__ void RowwiseMomentsCUDAKernel(
     int64_t N, float eps, T const *X, T *mean, T *rstd) {
   __shared__ float m_shared[C10_WARP_SIZE];
   __shared__ float v_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     sum1 += static_cast<float>(X[index]);
     sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
@@ -127,9 +128,9 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N,
                                            T const *beta,
                                            T *Y) {
   using T_ACC = T;
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
     const T_ACC beta_v =
@@ -186,14 +187,15 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                      input.get_float_ptr(),
                                      output.get_float_ptr(),
                                      gamma.get_float_ptr(),
-                                     beta.get_float_ptr(),
+                                     m->use_bias ? beta.get_float_ptr()
+                                                 : nullptr,
                                      stream);
   } else if (m->input_type[0] == DT_HALF) {
     LayerNorm::forward_kernel<half>(m,
                                     input.get_half_ptr(),
                                     output.get_half_ptr(),
                                     gamma.get_half_ptr(),
-                                    beta.get_half_ptr(),
+                                    m->use_bias ? beta.get_half_ptr() : nullptr,
                                     stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
@@ -218,11 +220,11 @@ __global__ void ComputeInternalGradientsCUDAKernel(
   using T_ACC = T;
   __shared__ T_ACC ds_shared[C10_WARP_SIZE];
   __shared__ T_ACC db_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   T_ACC sum1 = 0;
   T_ACC sum2 = 0;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
     sum1 +=
@@ -247,7 +249,7 @@ __global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
                                                      T *c1,
                                                      T *c2) {
   using T_ACC = T;
-  const int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t const index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < M) {
     const T_ACC s = T_ACC(1) / static_cast<T_ACC>(N);
     const T_ACC a = (db[index] * static_cast<T_ACC>(mean[index]) - ds[index]) *
@@ -270,9 +272,9 @@ __global__ void LayerNormBackwardCUDAKenrel(int64_t N,
                                             T const *c,
                                             T *dX) {
   using T_ACC = T;
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
     dX[index] =
@@ -291,12 +293,12 @@ __global__ void GammaBetaBackwardSimpleCUDAKernel(int64_t M,
                                                   T *dg,
                                                   T *db) {
   using T_ACC = T;
-  const int64_t j = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t const j = blockIdx.x * blockDim.x + threadIdx.x;
   if (j < N) {
     T_ACC sum1 = 0;
     T_ACC sum2 = 0;
     for (int64_t i = 0; i < M; ++i) {
-      const int64_t index = i * N + j;
+      int64_t const index = i * N + j;
       sum1 += dg == nullptr ? T_ACC(0)
                             : static_cast<T_ACC>(dY[index]) *
                                   (static_cast<T_ACC>(X[index]) -
@@ -325,17 +327,17 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   using T_ACC = T;
   __shared__ T_ACC g_shared[kColwiseReduceTileSize][kColwiseReduceTileSize + 1];
   __shared__ T_ACC b_shared[kColwiseReduceTileSize][kColwiseReduceTileSize + 1];
-  const int64_t j = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t const j = blockIdx.x * blockDim.x + threadIdx.x;
   T_ACC dg_sum1 = 0;
   T_ACC dg_sum2 = 0;
   T_ACC db_sum1 = 0;
   T_ACC db_sum2 = 0;
   if (j < N) {
     for (int64_t i = threadIdx.y; i < M; i += blockDim.y * 2) {
-      const int64_t i1 = i;
-      const int64_t i2 = i + blockDim.y;
-      const int64_t index1 = i1 * N + j;
-      const int64_t index2 = i2 * N + j;
+      int64_t const i1 = i;
+      int64_t const i2 = i + blockDim.y;
+      int64_t const index1 = i1 * N + j;
+      int64_t const index2 = i2 * N + j;
       dg_sum1 += dg == nullptr ? T_ACC(0)
                                : static_cast<T_ACC>(dY[index1]) *
                                      (static_cast<T_ACC>(X[index1]) -
@@ -362,7 +364,7 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   sum1 = WarpReduceSum(sum1);
   sum2 = WarpReduceSum(sum2);
   if (threadIdx.x == 0) {
-    const int64_t j = blockIdx.x * blockDim.x + threadIdx.y;
+    int64_t const j = blockIdx.x * blockDim.x + threadIdx.y;
     if (j < N) {
       if (dg != nullptr) {
         dg[j] = sum1;
@@ -377,7 +379,7 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   sum1 = WarpReduceSum(sum1);
   sum2 = WarpReduceSum(sum2);
   if (threadIdx.x == 0) {
-    const int64_t j = blockIdx.x * blockDim.x + threadIdx.y + blockDim.y;
+    int64_t const j = blockIdx.x * blockDim.x + threadIdx.y + blockDim.y;
     if (j < N) {
       if (dg != nullptr) {
         dg[j] = sum1;
@@ -399,8 +401,8 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                                 T *gamma_grad_ptr,
                                 T *beta_grad_ptr,
                                 cudaStream_t stream) {
-  const int64_t M = m->effective_batch_size;
-  const int64_t N = m->effective_num_elements;
+  int64_t const M = m->effective_batch_size;
+  int64_t const N = m->effective_num_elements;
   ComputeInternalGradientsCUDAKernel<T>
       <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
           N,
@@ -409,7 +411,7 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
           gamma_ptr,
           static_cast<T *>(m->ds_ptr),
           static_cast<T *>(m->db_ptr));
-  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
+  int64_t const B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
   ComputeGradientFusedParamsCUDAKernel<T>
       <<<B, kCUDANumThreads, 0, stream>>>(M,
                                           N,
@@ -422,7 +424,7 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
   if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
     if (M < 512) {
       // For small batch size, do colwise reduce directly
-      const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
+      int64_t const B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
       GammaBetaBackwardSimpleCUDAKernel<T>
           <<<B, kCUDANumThreads, 0, stream>>>(M,
                                               N,
@@ -433,7 +435,7 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                                               gamma_grad_ptr,
                                               beta_grad_ptr);
     } else {
-      const int64_t B =
+      int64_t const B =
           (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
       constexpr int kThreadX = kColwiseReduceTileSize;
       constexpr int kThreadY = kColwiseReduceTileSize / 2;

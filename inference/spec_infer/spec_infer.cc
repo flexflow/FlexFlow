@@ -16,6 +16,7 @@
 #include "flexflow/inference.h"
 #include "models/falcon.h"
 #include "models/llama.h"
+#include "models/mpt.h"
 #include "models/opt.h"
 #include <filesystem>
 #include <nlohmann/json.hpp>
@@ -165,6 +166,9 @@ void get_model_meta(FilePaths &file_paths,
     } else if (str == "RWForCausalLM") {
       model_metadata.llm_model_type = ModelType::FALCON;
       break;
+    } else if (str == "MPTForCausalLM") {
+      model_metadata.llm_model_type = ModelType::MPT;
+      break;
     }
   }
   model_metadata.bos_token_id = llm_model_config["bos_token_id"];
@@ -212,6 +216,9 @@ void get_model_meta(FilePaths &file_paths,
         break;
       } else if (str == "RWForCausalLM") {
         ssm_model_type = ModelType::FALCON;
+        break;
+      } else if (str == "MPTForCausalLM") {
+        ssm_model_type = ModelType::MPT;
         break;
       }
     }
@@ -293,6 +300,13 @@ void FlexFlow::top_level_task(Task const *task,
                                 model_metadata.llm_weights_path,
                                 TREE_VERIFY_MODE,
                                 use_full_precision);
+  } else if (model_metadata.llm_model_type == ModelType::MPT) {
+    MPT::create_mpt_model(tree_model,
+                          model_metadata.llm_model_config_path,
+                          model_metadata.llm_weights_path,
+                          TREE_VERIFY_MODE,
+                          generationConfig,
+                          use_full_precision);
   } else {
     assert(false && "Invalid LLM model type passed (or no type was passed).");
   }
@@ -332,6 +346,13 @@ void FlexFlow::top_level_task(Task const *task,
           model_metadata.ssm_model_weights_paths[ssm_id],
           BEAM_SEARCH_MODE,
           use_full_precision);
+    } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::MPT) {
+      MPT::create_mpt_model(beam_model,
+                            model_metadata.ssm_model_config_paths[ssm_id],
+                            model_metadata.ssm_model_weights_paths[ssm_id],
+                            BEAM_SEARCH_MODE,
+                            generationConfig,
+                            use_full_precision);
     } else {
       assert(false && "Invalid SSM model type passed.");
     }
