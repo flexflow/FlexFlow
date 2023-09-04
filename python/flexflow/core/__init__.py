@@ -86,9 +86,7 @@ ff_arg_to_sysarg = {
     "offload": "-offload",
     "offload_reserve_space_size": "-offload-reserve-space-size",
     "use_4bit_quantization": "--4bit-quantization",
-    "use_8bit_quantization": "--8bit-quantization",
-    # Legion Python ONLY:
-    "num_legion_python_processes": "-ll:py",
+    "use_8bit_quantization": "--8bit-quantization"
 }
 
 
@@ -111,10 +109,10 @@ def init_flexflow_runtime(configs_dict: Optional[dict] = None, **kwargs):
             raise ValueError(
                 "Missing one of the following required configs: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
             )
-        if is_legion_python and not ff_args.get("num_legion_python_processes", None):
-            ff_args["num_legion_python_processes"] = 1
+
         # Remove any existing arguments to avoid interferences
         sys.argv = [sys.argv[0]]
+
         # Pass parameters to the FlexFlow C++ runtime via command line arguments
         for arg in ff_args:
             if arg not in ff_arg_to_sysarg:

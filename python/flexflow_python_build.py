@@ -50,7 +50,10 @@ lines = [
     '\texport PYTHONPATH="$PYTHON_FOLDER:$BUILD_FOLDER/deps/legion/bindings/python:$PYTHONPATH"',
     '\t$BUILD_FOLDER/deps/legion/bin/legion_python "$@"',
     'else',
-    '\tlegion_python "$@"',
+    '\tPYLIB_PATH="$(python3 -m flexflow.findpylib)"',
+    '\tPYLIB_DIR="$(dirname "$PYLIB_PATH")"',
+    '\texport LD_LIBRARY_PATH="$PYLIB_DIR:$LD_LIBRARY_PATH"',
+    '\tlegion_python "$@ -ll:py 1"',
     'fi'
 ]
 with open(flexflow_python_path, "w+") as flexflow_python_file:
