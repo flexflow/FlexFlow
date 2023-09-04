@@ -6,8 +6,6 @@
 
 namespace FlexFlow {
 
-enum class TensorDimensionAttribute { SIZE, DEGREE };
-
 enum class TensorAttributeKey { DIM_SIZES, DIM_DEGREES };
 
 using TensorAttributeValue = variant<int, std::vector<int>>;
@@ -15,9 +13,7 @@ using TensorAttributeValue = variant<int, std::vector<int>>;
 using TensorAttributeConstraint =
     AttributeConstraint<TensorAttributeKey, TensorAttributeValue>;
 
-struct ParallelTensorPattern {
-  std::unordered_set<TensorAttributeConstraint> attribute_constraints;
-};
+using ParallelTensorPattern = AttributePattern<TensorAttributeKey, TensorAttributeValue>;
 
 optional<TensorAttributeValue>
     evaluate_attribute_expr(ParallelTensor const &tensor_shape,

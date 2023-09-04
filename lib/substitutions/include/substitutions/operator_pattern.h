@@ -47,12 +47,9 @@ enum class OperatorAttributeKey {
 using OperatorAttributeValue =
     variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
 
-using OperatorAttributeConstraint =
-    AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
+using OperatorAttributeConstraint = AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
 
-struct OperatorPattern {
-  std::unordered_set<OperatorAttributeConstraint> attribute_constraints;
-};
+using OperatorPattern = AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 
 optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,

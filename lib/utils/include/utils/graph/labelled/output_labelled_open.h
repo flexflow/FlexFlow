@@ -23,7 +23,7 @@ struct OutputLabelledOpenMultiDiGraph {
   NodeLabel const &at(Node const &) const {
     NOT_IMPLEMENTED();
   }
-  NodeLabel &at(Node const &) const {
+  NodeLabel &at(Node const &) {
     NOT_IMPLEMENTED();
   }
 

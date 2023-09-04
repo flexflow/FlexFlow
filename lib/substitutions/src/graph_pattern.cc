@@ -188,19 +188,19 @@ bool assignment_satisfies(ParallelComputationGraph const &pcg,
                           GraphPattern const &pattern,
                           MultiDiGraphPatternMatch const &patternMatch) {
   bool result = true;
-  for (auto const &kv : patternMatch.nodeAssignment) {
+  for (auto const &kv : patternMatch.node_assignment) {
     auto patternNode = kv.first;
     auto pcgNode = kv.second;
     optional<bool> constraintResult =
-        satisfies(pcg.at(pcgNode), pattern.at(patternNode));
+        satisfies(pcg->at(pcgNode), pattern->at(patternNode));
     result &= constraintResult.value_or(false);
   }
 
-  for (auto const &kv : patternMatch.edgeAssignment) {
+  for (auto const &kv : patternMatch.edge_assignment) {
     auto patternEdge = kv.first;
     auto pcgEdge = kv.second;
     optional<bool> constraintResult =
-        satisfies(pcg.at(pcgEdge), pattern.at(patternEdge));
+        satisfies(pcg->at(pcgEdge), pattern->at(patternEdge));
     result &= constraintResult.value_or(false);
   }
 

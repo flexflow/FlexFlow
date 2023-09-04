@@ -5,42 +5,29 @@
 
 namespace FlexFlow {
 
-using GraphAttributeValue =
-    variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
-
 // NOTE(@wmdi) I am not sure whether these should be part of attribute expr.
-struct NodeAttrAccess {
+struct OperatorAttrAccess {
   Node node;
   AttributeExpr<OperatorAttributeKey> attr_expr;
 };
 
-struct EdgeAttrAccess {
-  OpenMultiDiEdge edge;
-  AttributeExpr<TensorAttributeKey> attr_expr;
-};
-
 struct AttrConstant {
-  GraphAttributeValue value;
+  OperatorAttributeValue value;
 };
 
-using GraphAttributeExpr =
-    variant<NodeAttrAccess, EdgeAttrAccess, AttrConstant>;
+using OperatorAttributeExpr =
+    variant<OperatorAttrAccess, AttrConstant>;
 
 // NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
 // define the assignment for each operator type.
 struct OperatorAttrAssignment {
-  std::unordered_map<OperatorAttributeKey, GraphAttributeExpr> assignment;
-};
-
-struct ParallelTensorAttrAssignment {
-  std::unordered_map<TensorAttributeKey, GraphAttributeExpr> assignment;
+  std::unordered_map<OperatorAttributeKey, OperatorAttributeExpr> assignments;
 };
 
 struct OutputGraphExpr
     : public strong_typedef<
           OutputGraphExpr,
-          OutputLabelledOpenMultiDiGraph<OperatorAttrAssignment,
-                                         ParallelTensorAttrAssignment>> {
+          NodeLabelledOpenMultiDiGraph<OperatorAttrAssignment>> {
   using strong_typedef::strong_typedef;
 };
 

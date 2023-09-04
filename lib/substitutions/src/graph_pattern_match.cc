@@ -4,28 +4,6 @@
 
 namespace FlexFlow {
 
-// MultiDiGraphPatternMatch narrow_match(MultiDiGraphPatternMatch const &match,
-//                                  OpenMultiDiGraphView const &pattern) {
-//   MultiDiGraphPatternMatch result;
-//   std::unordered_set<Node> nodes = get_nodes(pattern);
-//   for (auto const &kv : match.node_assignment) {
-//     Node pattern_node = kv.first;
-//     if (contains(nodes, pattern_node)) {
-//       result.node_assignment.equate(kv.first, kv.second);
-//     }
-//   }
-
-//   std::unordered_set<OpenMultiDiEdge> edges = get_edges(pattern);
-//   for (auto const &kv : match.edge_assignment) {
-//     OpenMultiDiEdge pattern_edge = kv.first;
-//     if (contains(edges, pattern_edge)) {
-//       result.edge_assignment.equate(kv.first, kv.second);
-//     }
-//   }
-
-//   return result;
-// }
-
 GraphSplit split_pattern(OpenMultiDiGraphView const &pattern) {
   std::vector<Node> topological_ordering = get_topological_ordering(pattern);
   assert(topological_ordering.size() >= 2);

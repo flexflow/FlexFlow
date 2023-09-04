@@ -28,6 +28,11 @@ struct AttributeConstraint {
   V attribute_value;
 };
 
+template <typename K, typename V>
+struct AttributePattern {
+  std::unordered_set<AttributeConstraint<K, V>> attribute_constraints;
+};
+
 } // namespace FlexFlow
 
 #endif
