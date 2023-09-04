@@ -28,7 +28,7 @@ check_python_interface() {
 			EXE="flexflow_python"
 		fi
 		echo "Running a single-GPU Python test to check the Python interface (flexflow_python interpreter)"
-		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	else
 		echo "Invalid Python interpreter"
 		exit 1

@@ -62,11 +62,14 @@ def get_configs():
     "-config-file",
     help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
     type=str,
-    default="",
+    default=None,
   )
   args = parser.parse_args()
-  with open(args.config_file) as f:
-    return json.load(f)
+  if args.config_file is not None:
+    with open(args.config_file) as f:
+      return json.load(f)
+  else:
+    return None
 
 if __name__ == '__main__':
     configs = get_configs()
