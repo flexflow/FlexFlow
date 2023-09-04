@@ -2,17 +2,12 @@
 #define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_H
 
 #include "arg_ref.h"
-#include "concrete_arg.h"
-#include "index_arg.h"
 #include "kernels/ff_handle.h"
-#include "parallel_tensor_guid_t.h"
 #include "pcg/machine_view.h"
 #include "profiling.h"
 #include "serialization.h"
-#include "task_signature.h"
+#include "task_spec/task_signature.h"
 #include "tasks.h"
-#include "typed_future.h"
-#include "typed_future_map.h"
 #include "utils/type_index.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
