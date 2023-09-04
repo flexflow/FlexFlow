@@ -26,7 +26,7 @@ def top_level_task():
     if args.config_file is not None:
         with open(args.config_file) as f:
             configs_dict = json.load(f)
-    flexflow.core.init_flexflow_runtime(configs_dict)
+    init_flexflow_runtime(configs_dict)
 
     operator_name = args.operator
     OUT_DIR = os.path.join("tests", "align", "out", operator_name)
