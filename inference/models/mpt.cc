@@ -84,7 +84,7 @@ void MPT::create_mpt_model(FFModel &ff,
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         attn_outputs = ff.spec_inc_multihead_self_attention(
-            hidden_states,
+            layernorm_output,
             mpt_config.hidden_size,
             mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
@@ -104,7 +104,7 @@ void MPT::create_mpt_model(FFModel &ff,
       }
       case TREE_VERIFY_MODE: {
         attn_outputs = ff.inc_multihead_self_attention_verify(
-            hidden_states,
+            layernorm_output,
             mpt_config.hidden_size,
             mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
@@ -124,7 +124,7 @@ void MPT::create_mpt_model(FFModel &ff,
       }
       case INC_DECODING_MODE: {
         attn_outputs = ff.inc_multihead_self_attention(
-            hidden_states,
+            layernorm_output,
             mpt_config.hidden_size,
             mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
@@ -161,14 +161,14 @@ void MPT::create_mpt_model(FFModel &ff,
 
     // MLP
     //  output = self.ffn(layernorm_output, residual)
-    hidden_states = ff.dense(
-        hidden_states, 4 * mpt_config.hidden_size, AC_MODE_NONE, false);
+    layernorm_output = ff.dense(
+        layernorm_output, 4 * mpt_config.hidden_size, AC_MODE_NONE, false);
     Layer *up_proj = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_ffn_up_proj_weight", up_proj);
-    hidden_states = ff.gelu(hidden_states);
+    layernorm_output = ff.gelu(layernorm_output);
     Tensor intermediate_output =
-        ff.dense(hidden_states, mpt_config.hidden_size, AC_MODE_NONE, false);
+        ff.dense(layernorm_output, mpt_config.hidden_size, AC_MODE_NONE, false);
     Layer *down_proj = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_ffn_down_proj_weight", down_proj);

@@ -30,6 +30,28 @@ using Legion::Memory;
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
+// only used by MPT model. https://arxiv.org/abs/2108.12409
+template <typename DT>
+__global__ void apply_position_bias_qkprd(DT *input_ptr,
+                                          int num_tokens,
+                                          int num_total_tokens,
+                                          int num_heads) {
+  CUDA_KERNEL_LOOP(i, num_tokens * num_total_tokens * num_heads) {
+
+    // get head_idx,
+    int head_idx = i / (num_tokens * num_total_tokens);
+    int position_idx = (i / num_total_tokens) % num_tokens;
+    position_idx = position_idx + 1 - num_tokens;
+    // 8 is alibi_bias_max in
+    // https://huggingface.co/mosaicml/mpt-30b/blob/main/config.json
+    float base = (float)(head_idx + 1) * 8 / num_heads;
+    float slopes = 1.0 / pow(2, base);
+    // get position_idx
+    // qkprod + bias
+    input_ptr[i] += static_cast<DT>(position_idx * slopes);
+  }
+}
+
 template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
@@ -290,7 +312,6 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_kv_heads,
                                        compute_type,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
   // apply rotary emmmbedding for q and k
   // step1 change the k, v to complex tensor
   int num_tokens = bc->num_active_tokens();
@@ -650,6 +671,12 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       }
     }
+    size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+    apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+                                min((size_t)CUDA_NUM_THREADS, parallelism),
+                                0,
+                                stream>>>(
+        C, num_new_tokens, total_tokens, m->num_q_heads);
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
     assert(num_new_tokens <= total_tokens);
