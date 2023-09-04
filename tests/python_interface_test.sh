@@ -20,7 +20,7 @@ check_python_interface() {
 	if [[ "$interpreter" == "python" ]]; then
 		EXE="python"
 		echo "Running a single-GPU Python test to check the Python interface (native python interpreter)"
-		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py /tmp/flexflow/multi_gpu_tests/test_params.json
+		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
 	elif [[ "$interpreter" == "flexflow_python" ]]; then
 		if [[ "$installation_status" == "before-installation" ]]; then
 			EXE="$BUILD_FOLDER"/flexflow_python
@@ -28,7 +28,7 @@ check_python_interface() {
 			EXE="flexflow_python"
 		fi
 		echo "Running a single-GPU Python test to check the Python interface (flexflow_python interpreter)"
-		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py /tmp/flexflow/multi_gpu_tests/test_params.json
+		$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
 	else
 		echo "Invalid Python interpreter"
 		exit 1

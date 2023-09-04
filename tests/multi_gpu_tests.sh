@@ -46,50 +46,50 @@ echo "$test_params_40_epochs" > /tmp/flexflow/multi_gpu_tests/test_params_40_epo
 echo "$test_params_5_epochs_no_batch_size" > /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
 
 #Sequential model tests
-$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn.py /tmp/flexflow/multi_gpu_tests/test_params.json
-#$EXE "$FF_HOME"/examples/python/keras/seq_reuters_mlp.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/seq_cifar10_cnn.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp_net2net.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn_net2net.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn_nested.py /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+#$EXE "$FF_HOME"/examples/python/keras/seq_reuters_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/seq_cifar10_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp_net2net.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn_net2net.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn_nested.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
 
 #Keras other
-$EXE "$FF_HOME"/examples/python/keras/callback.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/unary.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/reshape.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/elementwise_mul_broadcast.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/reduce_sum.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/identity_loss.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/elementwise_max_min.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/rsqrt.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/gather.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/regularizer.py /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/callback.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/unary.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/reshape.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/elementwise_mul_broadcast.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/reduce_sum.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/identity_loss.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/elementwise_max_min.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/rsqrt.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/gather.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/regularizer.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
 
 #Functional API
-$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp_concat.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp_concat2.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_mnist_cnn.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_mnist_cnn_concat.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_nested.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_cifar10_alexnet.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp_net2net.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_net2net.py /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp_concat.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp_concat2.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_mnist_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_mnist_cnn_concat.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_nested.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_cifar10_alexnet.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_mnist_mlp_net2net.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_net2net.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
 
 #Python
-$EXE "$FF_HOME"/examples/python/native/print_layers.py /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
-$EXE "$FF_HOME"/examples/python/native/split.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/native/alexnet.py /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
-$EXE "$FF_HOME"/examples/python/native/mnist_mlp.py /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
-$EXE "$FF_HOME"/examples/python/native/mnist_cnn.py /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
-$EXE "$FF_HOME"/examples/python/native/cifar10_cnn.py /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
-$EXE "$FF_HOME"/examples/python/native/cifar10_cnn_attach.py /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
-$EXE "$FF_HOME"/examples/python/native/mnist_mlp_attach.py /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
+$EXE "$FF_HOME"/examples/python/native/print_layers.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
+$EXE "$FF_HOME"/examples/python/native/split.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/native/alexnet.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
+$EXE "$FF_HOME"/examples/python/native/mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
+$EXE "$FF_HOME"/examples/python/native/mnist_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
+$EXE "$FF_HOME"/examples/python/native/cifar10_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
+$EXE "$FF_HOME"/examples/python/native/cifar10_cnn_attach.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
+$EXE "$FF_HOME"/examples/python/native/mnist_mlp_attach.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
 
 #Possible crash
-$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_model.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_seq_model.py /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/native/cifar10_cnn_concat.py /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
+$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_model.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_seq_model.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
+$EXE "$FF_HOME"/examples/python/native/cifar10_cnn_concat.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
