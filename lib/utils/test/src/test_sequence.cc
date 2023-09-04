@@ -19,22 +19,16 @@ TEST_CASE("seq_head") {
 
 TEST_CASE("seq_tail") {
   SUBCASE("seq_tail with non-empty sequence") {
-    STATIC_CHECK_SAME(
-      seq_tail_t<seq<1, 2, 3, 4>>,
-      seq<2, 3, 4>
-    );
+    CHECK_SAME_TYPE(seq_tail_t<seq<1, 2, 3, 4>>, seq<2, 3, 4>);
   }
 
   SUBCASE("seq_tail with empty sequence") {
-    STATIC_CHECK_SAME(seq_tail_t<seq<>>, seq<>);
+    CHECK_SAME_TYPE(seq_tail_t<seq<>>, seq<>);
   }
 }
 
 TEST_CASE("seq_prepend") {
-  STATIC_CHECK_SAME(
-    seq_prepend_t<1, seq<2, 3>>,
-    seq<1, 2, 3>
-  );
+  CHECK_SAME_TYPE(seq_prepend_t<1, seq<2, 3>>, seq<1, 2, 3>);
 }
 
 TEST_CASE("seq_append") {

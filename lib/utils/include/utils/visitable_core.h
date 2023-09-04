@@ -47,14 +47,18 @@
   }                                                                            \
   static_assert(true, "")
 
-#define CHECK_VISITABLE(...) \
-  static_assert(::FlexFlow::is_visitable<__VA_ARGS__>::value, #__VA_ARGS__ " should be visitable (but is not)" ); \
+#define CHECK_VISITABLE(...)                                                   \
+  static_assert(::FlexFlow::is_visitable<__VA_ARGS__>::value,                  \
+                #__VA_ARGS__ " should be visitable (but is not)");             \
   DEBUG_PRINT_TYPE(__VA_ARGS__)
 
 namespace FlexFlow {
 
 template <typename T>
 using is_visitable = ::visit_struct::traits::is_visitable<T>;
+
+template <typename T>
+inline constexpr bool is_visitable_v = is_visitable<T>::value;
 
 template <typename T, int i, typename Enable = void>
 struct visit_as_tuple_helper;

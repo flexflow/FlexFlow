@@ -7,7 +7,9 @@
 #include "required_core.h"
 #include "type_traits_core.h"
 #include "utils/exception.h"
+#include "utils/fmt.h"
 #include "utils/optional.h"
+#include "utils/sequence.h"
 #include "utils/type_traits.h"
 #include <algorithm>
 #include <cassert>
@@ -20,8 +22,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utils/sequence.h"
-#include "utils/fmt.h"
 
 namespace FlexFlow {
 
@@ -45,7 +45,8 @@ std::string join_strings(InputIt first,
 template <typename InputIt>
 std::string
     join_strings(InputIt first, InputIt last, std::string const &delimiter) {
-  return join_strings<InputIt>(first, last, delimiter, [](auto const &r) { return r; });
+  return join_strings<InputIt>(
+      first, last, delimiter, [](auto const &r) { return r; });
 }
 
 template <typename Container>
@@ -54,7 +55,8 @@ std::string join_strings(Container const &c, std::string const &delimiter) {
 }
 
 template <typename Container, typename F>
-std::string join_strings(Container const &c, std::string const &delimiter, F const &f) {
+std::string
+    join_strings(Container const &c, std::string const &delimiter, F const &f) {
   return join_strings(c.cbegin(), c.cend(), delimiter, f);
 }
 
@@ -510,19 +512,20 @@ std::vector<Out> transform(std::vector<In> const &v, F const &f) {
 
 template <typename F, typename... Ts>
 auto transform(std::tuple<Ts...> const &tup, F const &f) {
-  return seq_transform([&](auto idx) { return f(std::get<decltype(idx)::value>(tup)); }, seq_enumerate_args_t<Ts...>{});
+  return seq_transform(
+      [&](auto idx) { return f(std::get<decltype(idx)::value>(tup)); },
+      seq_enumerate_args_t<Ts...>{});
 }
 
 template <typename F, typename... Ts>
 void for_each(std::tuple<Ts...> const &tup, F const &f) {
-  seq_for_each([&](auto idx) { f(std::get<decltype(idx)::value>(tup)); }, seq_enumerate_args_t<Ts...>{});
+  seq_for_each([&](auto idx) { f(std::get<decltype(idx)::value>(tup)); },
+               seq_enumerate_args_t<Ts...>{});
 }
 
 template <typename Head, typename... Rest>
-enable_if_t<
-  types_are_all_same_v<Head, Rest...>,
-  std::vector<Head>
-> to_vector(std::tuple<Head, Rest...> const &tup) {
+enable_if_t<types_are_all_same_v<Head, Rest...>, std::vector<Head>>
+    to_vector(std::tuple<Head, Rest...> const &tup) {
   std::vector<Head> result;
   for_each(tup, [&](Head const &h) { result.push_back(h); });
   return result;
@@ -638,16 +641,31 @@ void inplace_sorted_by(C &c, F const &f) {
   std::sort(c.begin(), c.end(), custom_comparator);
 }
 
-template <typename C, typename F, typename Elem>
-std::vector<Elem> sorted_by(C const &c, F const &f) {
+template <typename T>
+struct sorted_elem_type<T> : type_identity<typename T::value_type> {};
+
+template <typename K, typename V>
+struct sorted_elem_type<std::unordered_map<K, V>>
+    : type_identity<std::pair<K, V>> {};
+
+template <typename K, typename V>
+struct sorted_elem_type<std::map<K, V>> : type_identity<std::pair<K, V>> {};
+
+template <typename C, typename F>
+std::vector<sorted_elem_type_t<C>> sorted_by(C const &c, F const &f) {
+  using Elem = sorted_elem_type_t<C>;
+
   std::vector<Elem> result(c.begin(), c.end());
   inplace_sorted_by(result, f);
   return result;
 }
 
-template <typename C, typename Elem>
-std::vector<Elem> sorted(C const &c) {
-  return sorted_by(c, [](Elem const &lhs, Elem const &rhs) { return lhs < rhs; });
+template <typename C>
+std::vector<sorted_elem_type_t<C>> sorted(C const &c) {
+  using Elem = sorted_elem_type_t<C>;
+
+  return sorted_by(c,
+                   [](Elem const &lhs, Elem const &rhs) { return lhs < rhs; });
 }
 
 template <typename T, typename F>

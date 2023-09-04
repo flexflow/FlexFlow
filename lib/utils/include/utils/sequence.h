@@ -2,11 +2,11 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_SEQUENCE_H
 
 #include "optional.h"
+#include "sequence.decl.h"
+#include "utils/exception.h"
 #include "utils/tuple.h"
 #include "utils/visitable_core.h"
 #include <utility>
-#include "sequence.decl.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -58,7 +58,8 @@ struct seq_enumerate_args {
 };
 
 template <typename... Args>
-struct seq_enumerate_tuple<std::tuple<Args...>> : seq_enumerate_args<Args...> {};
+struct seq_enumerate_tuple<std::tuple<Args...>> : seq_enumerate_args<Args...> {
+};
 
 template <typename F, int X, int... S>
 struct seq_transform_type<F, seq<X, S...>>
@@ -84,7 +85,7 @@ std::tuple<> seq_transform(F const &f, seq<> const &) {
   return {};
 }
 
-template <typename F, typename... Ts> 
+template <typename F, typename... Ts>
 void seq_for_each(F const &f, std::tuple<Ts...> const &) {
   seq_for_each(f, seq_enumerate_args_t<Ts...>{});
 }
@@ -96,7 +97,7 @@ void seq_for_each(F const &f, seq<X, S...> const &) {
 }
 
 template <typename F>
-void seq_for_each(F const &f, seq<> const &) { }
+void seq_for_each(F const &f, seq<> const &) {}
 
 template <typename F, int X, int... S>
 auto seq_select(F const &f, int i, seq<X, S...> const &s)

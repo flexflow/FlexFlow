@@ -23,4 +23,14 @@ Gen<std::unordered_set<T>> subset_of(C const &sets) {
 
 } // namespace rc
 
+namespace FlexFlow {
+
+template <typename T>
+T some() {
+  rc::Random r{};
+  return rc::gen::arbitrary<T>()(r).value();
+}
+
+} // namespace FlexFlow
+
 #endif

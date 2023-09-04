@@ -1,9 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_TYPE_TRAITS_H
 #define _FLEXFLOW_UTILS_INCLUDE_TYPE_TRAITS_H
 
-#include "utils/type_traits.decl.h"
+#include "utils/fmt.h"
 #include "utils/invoke.h"
 #include "utils/metafunction.h"
+#include "utils/type_traits.decl.h"
 #include "utils/type_traits_core.h"
 #include "utils/visitable_core.h"
 #include <iostream>
@@ -75,14 +76,55 @@ struct elements_satisfy<Cond,
 static_assert(
     elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");
 
-template <typename... Ts> struct types_are_all_same : std::false_type {};
+template <template <typename...> class Cond, typename... Ts>
+struct violating_element_impl;
 
-template <> struct types_are_all_same<> : std::true_type {};
+template <template <typename...> class Cond, typename Head, typename... Ts>
+struct violating_element_impl<Cond, Head, Ts...>
+    : type_identity<
+          std::conditional_t<Cond<Head>::value,
+                             typename violating_element_impl<Cond, Ts...>::type,
+                             Head>> {};
 
-template <typename T> struct types_are_all_same<T> : std::true_type {};
+template <template <typename...> class Cond>
+struct violating_element_impl<Cond> : type_identity<void> {
+  /* static_assert(false, "violating_element failed: all elemnts satisfy the
+   * given condition>"); */
+};
+
+template <template <typename...> class Cond, typename T, typename Enable>
+struct violating_element {
+  static_assert(!is_nary_metafunction<Cond, 1>::value,
+                "Cannot call violating_element with a metafunction with more "
+                "than 1 argument");
+};
+
+template <template <typename...> class Cond, typename T>
+struct violating_element<Cond,
+                         T,
+                         enable_if_t<(is_nary_metafunction<Cond, 1>::value &&
+                                      is_visitable<T>::value)>>
+    : violating_element<Cond, visit_as_tuple_t<T>> {};
+
+template <template <typename...> class Cond, typename... Ts>
+struct violating_element<Cond,
+                         std::tuple<Ts...>,
+                         enable_if_t<is_nary_metafunction<Cond, 1>::value>>
+    : violating_element_impl<Cond, Ts...> {};
+
+template <typename... Ts>
+struct types_are_all_same : std::false_type {};
+
+template <>
+struct types_are_all_same<> : std::true_type {};
+
+template <typename T>
+struct types_are_all_same<T> : std::true_type {};
 
 template <typename Head, typename Next, typename... Rest>
-struct types_are_all_same<Head, Next, Rest...> : conjunction<std::is_same<Head, Next>, types_are_all_same<Head, Rest...>> {};
+struct types_are_all_same<Head, Next, Rest...>
+    : conjunction<std::is_same<Head, Next>, types_are_all_same<Head, Rest...>> {
+};
 
 } // namespace FlexFlow
 

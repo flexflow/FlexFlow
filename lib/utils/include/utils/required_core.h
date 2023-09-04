@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 
+#include "fmt.decl.h"
 #include "hash-utils-core.h"
+#include "test_types.h"
 #include "type_traits_core.h"
 #include <vector>
-#include "test_types.h"
-#include "fmt.decl.h"
 
 namespace FlexFlow {
 
@@ -41,6 +41,7 @@ public:
   explicit operator TT() const {
     return static_cast<TT>(this->m_value);
   }
+
 private:
   T m_value;
 };
@@ -62,8 +63,10 @@ struct required_inheritance_impl : public T {
   required_inheritance_impl(required_inheritance_impl<T> const &) = default;
   required_inheritance_impl(required_inheritance_impl<T> &&) = default;
 
-  required_inheritance_impl<T> &operator=(required_inheritance_impl<T> const &) = default;
-  required_inheritance_impl<T> &operator=(required_inheritance_impl<T> &&) = default;
+  required_inheritance_impl<T> &
+      operator=(required_inheritance_impl<T> const &) = default;
+  required_inheritance_impl<T> &
+      operator=(required_inheritance_impl<T> &&) = default;
 
   template <typename TT>
   required_inheritance_impl(
@@ -82,12 +85,14 @@ struct required_inheritance_impl : public T {
 };
 
 template <typename T, typename = std::enable_if_t<is_equal_comparable_v<T>>>
-bool operator==(required_inheritance_impl<T> const &lhs, const required_inheritance_impl<T>& rhs) {
+bool operator==(required_inheritance_impl<T> const &lhs,
+                required_inheritance_impl<T> const &rhs) {
   return static_cast<T>(lhs) == static_cast<T>(rhs);
 }
 
 template <typename T, typename = std::enable_if_t<is_neq_comparable_v<T>>>
-bool operator!=(required_inheritance_impl<T> const &lhs, const required_inheritance_impl<T>& rhs) {
+bool operator!=(required_inheritance_impl<T> const &lhs,
+                required_inheritance_impl<T> const &rhs) {
   return static_cast<T>(lhs) != static_cast<T>(rhs);
 }
 
@@ -128,17 +133,15 @@ struct remove_req<req<T>> {
 template <typename T>
 using remove_req_t = typename remove_req<T>::type;
 
-static_assert(is_equal_comparable<required_inheritance_impl<std::vector<int>>>::value, "");
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(required_inheritance_impl<test_types::well_behaved_value_type>);
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(required_wrapper_impl<test_types::well_behaved_value_type>);
+static_assert(
+    is_equal_comparable<required_inheritance_impl<std::vector<int>>>::value,
+    "");
 CHECK_FMTABLE(required_wrapper_impl<int>);
 CHECK_FMTABLE(required_wrapper_impl<test_types::fmtable>);
 CHECK_FMTABLE(required_inheritance_impl<std::string>);
 CHECK_FMTABLE(required_inheritance_impl<test_types::fmtable>);
 CHECK_FMTABLE(required<int>);
 CHECK_FMTABLE(required<std::string>);
-
-/* static_assert(std::is_same<decltype(std::declval<required_wrapper_impl<int>>() + std::declval<required_wrapper_impl<int>>()), required_wrapper_impl<int>>::value, ""); */
 
 static_assert(std::is_copy_constructible<req<int>>::value, "");
 

@@ -89,7 +89,7 @@ void dc_check(char const *d, testable &&t, bool v = false) {
  */
 template <class testable>
 inline void dc_check(testable &&t, bool v = false) {
-  check("", t, v);
+  dc_check("", t, v);
 }
 
 #define RC_SUBCASE(NAME) rc

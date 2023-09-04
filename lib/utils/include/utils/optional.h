@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 
-#include "utils/fmt.h"
 #include "utils/exception.h"
+#include "utils/fmt.h"
 #include "utils/optional.decl.h"
 
 namespace FlexFlow {

@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_STRONG_TYPEDEF_H
 #define _FLEXFLOW_UTILS_INCLUDE_STRONG_TYPEDEF_H
 
+#include "strong_typedef.decl.h"
 #include "utils/fmt.h"
 #include <functional>
 #include <string>
@@ -84,6 +85,17 @@ T underlying_type_impl(strong_typedef<Tag, T>);
 
 template <typename T>
 using underlying_type_t = decltype(underlying_type_impl(std::declval<T>()));
+template <typename T, typename Enable = void>
+struct is_strong_typedef : std::false_type {};
+
+template <typename T>
+struct is_strong_typedef<T,
+                         ::FlexFlow::void_t<::FlexFlow::underlying_type_t<T>>>
+    : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_strong_typedef_v = is_strong_typedef<T>::value;
+
 // derived from
 // https://github.com/foonathan/type_safe/blob/3612e2828b4b4e0d1cc689373e63a6d59d4bfd79/include/type_safe/strong_typedef.hpp
 template <typename StrongTypedef>
@@ -226,6 +238,10 @@ struct numerical_typedef : strong_typedef<StrongTypedef, T> {
   }                                                                            \
   MAKE_TYPEDEF_PRINTABLE(::FlexFlow::TYPEDEF_NAME, TYPEDEF_SHORTNAME);         \
   namespace FlexFlow {                                                         \
-  static_assert(true, "");
+  inline std::ostream &operator<<(std::ostream &s, TYPEDEF_NAME const &t) {    \
+    return (s << fmt::to_string(t));                                           \
+  }                                                                            \
+  static_assert(is_fmtable_v<TYPEDEF_NAME>);                                   \
+  static_assert(is_streamable<TYPEDEF_NAME>::value);
 
 #endif

@@ -21,14 +21,6 @@ struct supports_rc_arbitrary<T,
 /* struct supports_rc_arbitrary<T, ::FlexFlow::void_t<Arbitrary<T>>> :
  * std::true_type { }; */
 
-template <typename T, typename Enable = void>
-struct is_strong_typedef : std::false_type {};
-
-template <typename T>
-struct is_strong_typedef<T,
-                         ::FlexFlow::void_t<::FlexFlow::underlying_type_t<T>>>
-    : std::true_type {};
-
 template <typename Tag>
 struct Arbitrary<Tag, ::FlexFlow::enable_if_t<is_strong_typedef<Tag>::value>> {
   static Gen<Tag> arbitrary() {

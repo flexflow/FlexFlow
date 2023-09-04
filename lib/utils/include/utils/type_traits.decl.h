@@ -11,8 +11,9 @@
 namespace FlexFlow {
 
 #define DEBUG_PRINT_TYPE(...)                                                  \
-  using Hello =                                                                \
-      typename __VA_ARGS__ ::some_type_field_that_probably_will_never_exist
+  using debug_print_fake_type = __VA_ARGS__;                                   \
+  using debug_print_fake_type_2 =                                              \
+      typename debug_print_fake_type::the_type_that_is_causing_the_failure
 
 #define RC_COPY_VIRTUAL_MSG                                                    \
   "https://isocpp.github.io/CppCoreGuidelines/"                                \
@@ -43,23 +44,40 @@ namespace FlexFlow {
       #__VA_ARGS__                                                             \
       " should not be abstract (are you missing a virtual method override?)");
 
-template <typename T> struct is_rc_copy_virtual_compliant;
-template <typename T> inline constexpr bool is_rc_copy_virtual_compliant_v = is_rc_copy_virtual_compliant<T>::value;
+template <typename T>
+struct is_rc_copy_virtual_compliant;
+template <typename T>
+inline constexpr bool is_rc_copy_virtual_compliant_v =
+    is_rc_copy_virtual_compliant<T>::value;
 
-template <typename T, typename Enable = void> struct is_clonable;
-template <typename T> inline constexpr bool is_clonable_v = is_clonable<T>::value;
+template <typename T, typename Enable = void>
+struct is_clonable;
+template <typename T>
+inline constexpr bool is_clonable_v = is_clonable<T>::value;
 
-template <typename T, typename Enable = void> struct is_lt_comparable;
-template <typename T> inline constexpr bool is_lt_comparable_v = is_lt_comparable<T>::value;
+template <typename T, typename Enable = void>
+struct is_lt_comparable;
+template <typename T>
+inline constexpr bool is_lt_comparable_v = is_lt_comparable<T>::value;
 
-template <template <typename...> class Cond, typename T, typename Enable = void> 
-  struct elements_satisfy;
-template <template <typename...> class Cond, typename T> 
-  inline constexpr bool elements_satisfy_v = elements_satisfy<Cond, T>::value;
+template <template <typename...> class Cond, typename T, typename Enable = void>
+struct elements_satisfy;
+template <template <typename...> class Cond, typename T>
+inline constexpr bool elements_satisfy_v = elements_satisfy<Cond, T>::value;
 
-template <typename... Ts> struct types_are_all_same;
-template <typename... Ts> inline constexpr bool types_are_all_same_v = types_are_all_same<Ts...>::value;
+template <template <typename...> class Cond, typename T, typename Enable = void>
+struct violating_element;
+template <template <typename...> class Cond, typename T>
+using violating_element_t = typename violating_element<Cond, T>::type;
 
+template <typename T>
+struct THE_FAILING_ELEMENT_IS : std::is_same<T, void> {
+}; // for helping out with static assertion messages
+
+template <typename... Ts>
+struct types_are_all_same;
+template <typename... Ts>
+inline constexpr bool types_are_all_same_v = types_are_all_same<Ts...>::value;
 
 } // namespace FlexFlow
 
