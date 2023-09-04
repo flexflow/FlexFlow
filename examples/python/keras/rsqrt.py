@@ -47,7 +47,7 @@ def get_configs():
     type=str,
     default=None,
   )
-  args = parser.parse_args()
+  args, unknown = parser.parse_known_args()
   if args.config_file is not None:
     with open(args.config_file) as f:
       return json.load(f)
