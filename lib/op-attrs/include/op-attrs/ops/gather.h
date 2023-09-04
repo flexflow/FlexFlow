@@ -12,6 +12,8 @@ struct GatherAttrs {
   ff_dim_t dim;
 };
 FF_VISITABLE_STRUCT(GatherAttrs, dim);
+FF_VISIT_FMTABLE(GatherAttrs);
+
 CHECK_VALID_OP_ATTR(GatherAttrs);
 
 } // namespace FlexFlow

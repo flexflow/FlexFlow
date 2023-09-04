@@ -13,9 +13,16 @@ enum class PoolOp {
   AVG,
 };
 
+std::string format_as(PoolOp);
+
 struct Pool2DAttrs {
-  req<int> kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  req<PoolOp> pool_type;
+  int kernel_h;
+  int kernel_w;
+  int stride_h;
+  int stride_w;
+  int padding_h;
+  int padding_w;
+  PoolOp pool_type;
   req<Activation> activation;
 };
 FF_VISITABLE_STRUCT(Pool2DAttrs,
@@ -27,32 +34,10 @@ FF_VISITABLE_STRUCT(Pool2DAttrs,
                     padding_w,
                     pool_type,
                     activation);
+FF_VISIT_FMTABLE(Pool2DAttrs);
+
 CHECK_VALID_OP_ATTR(Pool2DAttrs);
 
 } // namespace FlexFlow
-
-namespace fmt {
-
-template <>
-struct formatter<::FlexFlow::PoolOp> : formatter<string_view> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::PoolOp o, FormatContext &ctx) const
-      -> decltype(ctx.out()) {
-    using namespace FlexFlow;
-
-    string_view name = "unknown";
-    switch (o) {
-      case PoolOp::AVG:
-        name = "Avg";
-        break;
-      case PoolOp::MAX:
-        name = "Max";
-        break;
-    }
-    return formatter<string_view>::format(name, ctx);
-  }
-};
-
-} // namespace fmt
 
 #endif

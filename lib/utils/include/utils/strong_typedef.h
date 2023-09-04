@@ -2,7 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_STRONG_TYPEDEF_H
 
 #include "strong_typedef.decl.h"
-#include "utils/fmt.h"
+#include "utils/fmt.decl.h"
 #include <functional>
 #include <string>
 #include <type_traits>

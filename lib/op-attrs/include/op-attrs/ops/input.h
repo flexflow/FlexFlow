@@ -8,6 +8,8 @@ namespace FlexFlow {
 
 struct InputAttrs {};
 FF_VISITABLE_STRUCT(InputAttrs);
+FF_VISIT_FMTABLE(InputAttrs);
+
 CHECK_VALID_OP_ATTR(InputAttrs);
 
 } // namespace FlexFlow

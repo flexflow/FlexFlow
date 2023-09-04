@@ -13,6 +13,8 @@ struct ReductionAttrs {
   req<int> reduction_degree;
 };
 FF_VISITABLE_STRUCT(ReductionAttrs, reduction_dim, reduction_degree);
+FF_VISIT_FMTABLE(ReductionAttrs);
+
 CHECK_VALID_OP_ATTR(ReductionAttrs);
 
 } // namespace FlexFlow

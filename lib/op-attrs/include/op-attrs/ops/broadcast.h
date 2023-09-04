@@ -11,6 +11,7 @@ struct BroadcastAttrs {
   req<stack_vector<int, MAX_TENSOR_DIM>> target_dims;
 };
 FF_VISITABLE_STRUCT(BroadcastAttrs, target_dims);
+FF_VISIT_FMTABLE(BroadcastAttrs);
 
 CHECK_VALID_OP_ATTR(BroadcastAttrs);
 

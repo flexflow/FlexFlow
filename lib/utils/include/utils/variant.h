@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_VARIANT_H
 
 #include "mpark/variant.hpp"
+#include "utils/fmt.h"
 #include "utils/optional.h"
 #include "utils/type_traits.h"
 
@@ -211,6 +212,14 @@ optional<variant<T1, T2, Trest...>> narrow(VariantIn const &v) {
 template <typename VariantOut, typename VariantIn>
 optional<VariantOut> cast(VariantIn const &v) {
   return narrow<VariantOut>(widen<variant_join<VariantIn, VariantOut>>(v));
+}
+
+template <typename... Ts>
+std::string format_as(variant<Ts...> const &v) {
+  static_assert(pretty_elements_satisfy<is_fmtable, decltype(v)>::value,
+                "All elements of variant must be fmtable");
+
+  return visit([](auto const &t) { return fmt::to_string(t); }, v);
 }
 
 } // namespace FlexFlow

@@ -12,6 +12,8 @@ struct TransposeAttrs {
   req<stack_vector<ff_dim_t, MAX_TENSOR_DIM>> perm;
 };
 FF_VISITABLE_STRUCT(TransposeAttrs, perm);
+FF_VISIT_FMTABLE(TransposeAttrs);
+
 CHECK_VALID_OP_ATTR(TransposeAttrs);
 
 } // namespace FlexFlow

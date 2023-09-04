@@ -15,40 +15,22 @@ enum class AggregateOp {
   AVG,
 };
 
+std::string format_as(AggregateOp const &);
+CHECK_FMTABLE(AggregateOp);
+
 struct EmbeddingAttrs {
-  req<int> num_entries, out_channels;
-  req<AggregateOp> aggr;
+  int num_entries;
+  int out_channels;
+  AggregateOp aggr;
   req<DataType> data_type;
 };
 FF_VISITABLE_STRUCT(EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
+FF_VISIT_FMTABLE(EmbeddingAttrs);
+
 CHECK_VALID_OP_ATTR(EmbeddingAttrs);
 
 TensorShape get_weights_shape(EmbeddingAttrs const &, TensorShape const &);
 
 } // namespace FlexFlow
-
-namespace fmt {
-
-template <>
-struct formatter<::FlexFlow::AggregateOp> : formatter<string_view> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::AggregateOp o, FormatContext &ctx) const
-      -> decltype(ctx.out()) {
-    using namespace FlexFlow;
-
-    string_view name = "unknown";
-    switch (o) {
-      case AggregateOp::SUM:
-        name = "Sum";
-        break;
-      case AggregateOp::AVG:
-        name = "Avg";
-        break;
-    }
-    return formatter<string_view>::format(name, ctx);
-  }
-};
-
-} // namespace fmt
 
 #endif

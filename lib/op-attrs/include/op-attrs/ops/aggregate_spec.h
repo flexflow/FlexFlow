@@ -8,10 +8,11 @@
 namespace FlexFlow {
 
 struct AggregateSpecAttrs {
-  req<int> n;
+  int n;
   req<float> lambda_bal;
 };
 FF_VISITABLE_STRUCT(AggregateSpecAttrs, n, lambda_bal);
+FF_VISIT_FMTABLE(AggregateSpecAttrs);
 
 ParallelTensorShape
     get_output_shape(AggregateSpecAttrs const &,

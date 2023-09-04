@@ -9,10 +9,12 @@
 namespace FlexFlow {
 
 struct SplitAttrs {
-  req<stack_vector<int, MAX_NUM_OUTPUTS>> splits;
+  stack_vector<int, MAX_NUM_OUTPUTS> splits;
   ff_dim_t axis;
 };
 FF_VISITABLE_STRUCT(SplitAttrs, splits, axis);
+FF_VISIT_FMTABLE(SplitAttrs);
+
 CHECK_VALID_OP_ATTR(SplitAttrs);
 
 } // namespace FlexFlow

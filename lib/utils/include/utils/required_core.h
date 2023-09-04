@@ -103,6 +103,8 @@ T format_as(required_inheritance_impl<T> const &r) {
 
 template <typename T, typename Enable = void>
 struct required : public required_wrapper_impl<T> {
+  static_assert(std::is_default_constructible_v<T>);
+
   using required_wrapper_impl<T>::required_wrapper_impl;
 };
 
@@ -114,6 +116,8 @@ T format_as(required<T> const &r) {
 template <typename T>
 struct required<T, typename std::enable_if<std::is_class<T>::value>::type>
     : public required_inheritance_impl<T> {
+  static_assert(std::is_default_constructible_v<T>);
+
   using required_inheritance_impl<T>::required_inheritance_impl;
 };
 

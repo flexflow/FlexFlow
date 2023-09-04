@@ -8,10 +8,12 @@
 namespace FlexFlow {
 
 struct Group_byAttrs {
-  req<int> n;
+  int n;
   req<float> alpha;
 };
 FF_VISITABLE_STRUCT(Group_byAttrs, n, alpha);
+FF_VISIT_FMTABLE(Group_byAttrs);
+
 CHECK_VALID_OP_ATTR(Group_byAttrs);
 
 } // namespace FlexFlow

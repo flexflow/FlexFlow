@@ -74,6 +74,10 @@ template <typename T>
 struct THE_FAILING_ELEMENT_IS : std::is_same<T, void> {
 }; // for helping out with static assertion messages
 
+template <template <typename...> typename Cond, typename T>
+using pretty_elements_satisfy =
+    THE_FAILING_ELEMENT_IS<violating_element_t<Cond, T>>;
+
 template <typename... Ts>
 struct types_are_all_same;
 template <typename... Ts>

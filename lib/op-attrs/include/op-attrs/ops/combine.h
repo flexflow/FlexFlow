@@ -13,6 +13,8 @@ struct CombineAttrs {
   req<int> combine_degree;
 };
 FF_VISITABLE_STRUCT(CombineAttrs, combine_dim, combine_degree);
+FF_VISIT_FMTABLE(CombineAttrs);
+
 CHECK_VALID_OP_ATTR(CombineAttrs);
 
 } // namespace FlexFlow

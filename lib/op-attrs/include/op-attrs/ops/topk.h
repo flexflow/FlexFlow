@@ -8,10 +8,12 @@
 namespace FlexFlow {
 
 struct TopKAttrs {
-  req<int> k;
+  int k;
   req<bool> sorted;
 };
 FF_VISITABLE_STRUCT(TopKAttrs, k, sorted);
+FF_VISIT_FMTABLE(TopKAttrs);
+
 CHECK_VALID_OP_ATTR(TopKAttrs);
 
 } // namespace FlexFlow

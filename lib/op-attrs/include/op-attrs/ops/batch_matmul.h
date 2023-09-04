@@ -8,9 +8,11 @@
 namespace FlexFlow {
 
 struct BatchMatmulAttrs {
-  req<int> a_seq_length_dim, b_seq_length_dim;
+  int a_seq_length_dim;
+  req<int> b_seq_length_dim;
 };
 FF_VISITABLE_STRUCT(BatchMatmulAttrs, a_seq_length_dim, b_seq_length_dim);
+FF_VISIT_FMTABLE(BatchMatmulAttrs);
 
 CHECK_VALID_OP_ATTR(BatchMatmulAttrs);
 

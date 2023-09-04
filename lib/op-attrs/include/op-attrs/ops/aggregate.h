@@ -12,10 +12,11 @@
 namespace FlexFlow {
 
 struct AggregateAttrs {
-  req<int> n;
+  int n;
   req<float> lambda_bal;
 };
 FF_VISITABLE_STRUCT(AggregateAttrs, n, lambda_bal);
+FF_VISIT_FMTABLE(AggregateAttrs);
 
 DataType get_datatype(AggregateAttrs const &);
 bool is_valid(AggregateAttrs const &,

@@ -66,65 +66,24 @@ using SharedOperatorAttrs = variant<AggregateAttrs,
                                     SoftmaxAttrs,
                                     TopKAttrs,
                                     TransposeAttrs>;
-
-CHECK_VALID_OP_ATTR(AggregateAttrs);
-
-static_assert(is_valid_opattr<AggregateAttrs>::value, "");
-static_assert(is_valid_opattr<AggregateSpecAttrs>::value, "");
-static_assert(is_valid_opattr<BatchMatmulAttrs>::value, "");
-static_assert(is_valid_opattr<CastAttrs>::value, "");
-static_assert(is_valid_opattr<ConcatAttrs>::value, "");
-static_assert(is_valid_opattr<Conv2DAttrs>::value, "");
-static_assert(is_valid_opattr<DropoutAttrs>::value, "");
-static_assert(is_valid_opattr<ElementBinaryAttrs>::value, "");
-static_assert(is_valid_opattr<ElementScalarUnaryAttrs>::value, "");
-static_assert(is_valid_opattr<ElementUnaryAttrs>::value, "");
-static_assert(is_valid_opattr<EmbeddingAttrs>::value, "");
-static_assert(is_valid_opattr<FlatAttrs>::value, "");
-static_assert(is_valid_opattr<GatherAttrs>::value, "");
-static_assert(is_valid_opattr<Group_byAttrs>::value, "");
-static_assert(is_valid_opattr<InputAttrs>::value, "");
-static_assert(is_valid_opattr<LayerNormAttrs>::value, "");
-static_assert(is_valid_opattr<LinearAttrs>::value, "");
-static_assert(is_valid_opattr<MultiHeadAttentionAttrs>::value, "");
-static_assert(is_valid_opattr<NoopAttrs>::value, "");
-static_assert(is_valid_opattr<Pool2DAttrs>::value, "");
-static_assert(is_valid_opattr<ReduceAttrs>::value, "");
-static_assert(is_valid_opattr<ReshapeAttrs>::value, "");
-static_assert(is_valid_opattr<SplitAttrs>::value, "");
-static_assert(is_valid_opattr<SoftmaxAttrs>::value, "");
-static_assert(is_valid_opattr<TopKAttrs>::value, "");
-static_assert(is_valid_opattr<TransposeAttrs>::value, "");
+CHECK_WELL_BEHAVED_VALUE_TYPE(SharedOperatorAttrs);
+CHECK_FMTABLE(SharedOperatorAttrs);
 
 using ParallelOperatorAttrs =
     variant<CombineAttrs, ReductionAttrs, RepartitionAttrs, ReplicateAttrs>;
+CHECK_WELL_BEHAVED_VALUE_TYPE(ParallelOperatorAttrs);
+CHECK_FMTABLE(ParallelOperatorAttrs);
 
 using ComputationGraphAttrs =
     variant_join<SharedOperatorAttrs, variant<BroadcastAttrs>>;
 using CompGraphOperatorAttrs = ComputationGraphAttrs;
+CHECK_WELL_BEHAVED_VALUE_TYPE(ComputationGraphAttrs);
+CHECK_FMTABLE(ComputationGraphAttrs);
 
 using PCGOperatorAttrs =
     variant_join<SharedOperatorAttrs, ParallelOperatorAttrs>;
-
-static_assert(is_equal_comparable<ComputationGraphAttrs>::value,
-              "ComputationGraphAttrs must support ==");
-static_assert(elements_satisfy<is_valid_opattr, ComputationGraphAttrs>::value,
-              "");
-static_assert(is_neq_comparable<ComputationGraphAttrs>::value,
-              "ComputationGraphAttrs must support !=");
-static_assert(is_lt_comparable<ComputationGraphAttrs>::value,
-              "ComputationGraphAttrs must support <");
-static_assert(is_hashable<ComputationGraphAttrs>::value,
-              "ComputationGraphAttrs must be hashable");
-
-static_assert(is_equal_comparable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must support ==");
-static_assert(is_neq_comparable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must support !=");
-static_assert(is_lt_comparable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must support <");
-static_assert(is_hashable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must be hashable");
+CHECK_WELL_BEHAVED_VALUE_TYPE(PCGOperatorAttrs);
+CHECK_FMTABLE(PCGOperatorAttrs);
 
 /* OperatorType get_op_type(CompGraphOperatorAttrs const &); */
 /* OperatorType get_op_type(PCGOperatorAttrs const &); */
