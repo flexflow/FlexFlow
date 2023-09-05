@@ -319,17 +319,19 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
         }
       }
       // add alibi position bias to qk production
-      if (*m->position_bias) {
-        size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
-        hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_position_bias_qkprd<DT>),
-                           GET_BLOCKS(parallelism),
-                           min((size_t)CUDA_NUM_THREADS, parallelism),
-                           0,
-                           C,
-                           num_new_tokens,
-                           total_tokens,
-                           m->num_q_heads);
-      }
+      // add alibi position bias to qk production
+    if (*m->position_bias) {
+      size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+      apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+                                  min((size_t)CUDA_NUM_THREADS, parallelism),
+                                  0,
+                                  stream>>>(C,
+                                            num_new_tokens,
+                                            total_tokens,
+                                            m->num_q_heads,
+                                            m->global_num_q_heads,
+                                            shard_id);
+    }
 
       // Fill all elements above diagonal in qk prods with -inf to force
       // causal attention.

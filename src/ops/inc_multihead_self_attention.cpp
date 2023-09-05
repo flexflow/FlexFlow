@@ -991,7 +991,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _bias,
     bool _scaling_query,
     bool _qk_prod_scaling,
-    boll _position_bias,
+    bool _position_bias,
     bool _add_bias_kv,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
