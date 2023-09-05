@@ -70,6 +70,7 @@ public:
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
   bool request_completed[MAX_NUM_REQUESTS];
+  bool request_running[MAX_NUM_TOKENS];
 };
 
 class TreeVerifyBatchConfig : public BatchConfig {
