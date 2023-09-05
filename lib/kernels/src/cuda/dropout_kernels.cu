@@ -16,6 +16,7 @@
 // #include "kernels/cuda_helper.h"
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
+#include "device.h"
 
 
 namespace FlexFlow {

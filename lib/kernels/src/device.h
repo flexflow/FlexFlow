@@ -3,7 +3,6 @@
 
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
-#include "op-attrs/ffconst.h"
 
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>

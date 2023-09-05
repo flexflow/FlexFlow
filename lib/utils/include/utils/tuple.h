@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_TUPLE_H
 #define _FLEXFLOW_UTILS_TUPLE_H
 
-#include "utils/any.h"
 #include "utils/exception.decl.h"
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include "utils/any.h"
 
 // Adapted from
 // https://github.com/bitwizeshift/BackportCpp/blob/4f33a7f9b219f169e60d8ed2fd5731a3a23288e4/include/bpstd/tuple.hpp
@@ -46,33 +46,33 @@ void visit_tuple(Visitor &v, std::tuple<Types...> const &tup) {
   visit_tuple_impl<0>(v, tup);
 }
 
-struct tuple_get_visitor {
-  tuple_get_visitor() = delete;
-  tuple_get_visitor(int requested_idx, any &result)
-      : requested_idx(requested_idx), result(result) {}
+//struct tuple_get_visitor {
+//  tuple_get_visitor() = delete;
+//  tuple_get_visitor(int requested_idx, any &result)
+//      : requested_idx(requested_idx), result(result) {}
+//
+//  int requested_idx;
+//  any &result;
+//
+//  template <typename T>
+//  void operator()(int idx, T const &t) {
+//    if (idx == requested_idx) {
+//      result = t;
+//    }
+//  }
+//};
 
-  int requested_idx;
-  any &result;
-
-  template <typename T>
-  void operator()(int idx, T const &t) {
-    if (idx == requested_idx) {
-      result = t;
-    }
-  }
-};
-
-template <typename... Types>
-any get(std::tuple<Types...> const &t, int idx) {
-  size_t tuple_size = std::tuple_size<decltype(t)>::value;
-  if (idx < 0 || idx >= tuple_size) {
-    throw mk_runtime_error(
-        "Error: idx {} out of bounds for tuple of size {}", idx, tuple_size);
-  }
-  any result;
-  visit_tuple(t, tuple_get_visitor{idx, result});
-  return result;
-}
+//template <typename... Types>
+//any get(std::tuple<Types...> const &t, int idx) {
+//  size_t tuple_size = std::tuple_size<decltype(t)>::value;
+//  if (idx < 0 || idx >= tuple_size) {
+//    throw mk_runtime_error(
+//        "Error: idx {} out of bounds for tuple of size {}", idx, tuple_size);
+//  }
+//  any result;
+//  visit_tuple(t, tuple_get_visitor{idx, result});
+//  return result;
+//}
 
 template <typename T, typename Tup>
 struct tuple_prepend_type;

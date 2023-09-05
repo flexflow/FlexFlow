@@ -17,6 +17,7 @@ target_include_directories(
   ${project_target}
   PRIVATE
     src/cuda/
+    src/
   PUBLIC
     include/
 )
@@ -33,5 +34,5 @@ define_ff_vars(kernels)
 set_target_properties(
   ${project_target} 
   PROPERTIES 
-  CUDA_STANDARD 11
+  CUDA_STANDARD 17
 )
