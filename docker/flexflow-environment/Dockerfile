@@ -79,7 +79,7 @@ RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind1
 # Install CPU-only Pytorch and related dependencies
 RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
 RUN conda install -c conda-forge onnx transformers>=4.31.0 sentencepiece einops
-RUN pip3 install tensorflow
+RUN pip3 install tensorflow notebook
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
