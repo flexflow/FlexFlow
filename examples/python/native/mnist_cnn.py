@@ -93,11 +93,14 @@ if __name__ == "__main__":
         "-config-file",
         help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
         type=str,
-        default="",
+        default=None,
     )
     args, unknown = parser.parse_known_args()
-    with open(args.config_file) as f:
-        init_flexflow_runtime(json.load(f))
+    configs_dict = None
+    if args.config_file is not None:
+        with open(args.config_file) as f:
+            configs_dict = json.load(f)
+    init_flexflow_runtime(configs_dict)
     if args.test_acc:
         print("Testing mnist cnn training accuracy")
         test_accuracy()

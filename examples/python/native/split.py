@@ -96,5 +96,5 @@ def get_configs():
 if __name__ == "__main__":
   print("cifar10 cnn split")
   configs = get_configs()
-  ff.init_flexflow_runtime(configs)
+  init_flexflow_runtime(configs)
   top_level_task()
