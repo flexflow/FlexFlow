@@ -27,10 +27,10 @@ from flexflow.config import *
 
 # check which python binding to use
 if flexflow_python_binding() == "pybind11":
-    print("Using pybind11 flexflow bindings.")
+    # print("Using pybind11 flexflow bindings.")
     from .flexflow_pybind11 import *
 else:
-    print("Using cffi flexflow bindings.")
+    # print("Using cffi flexflow bindings.")
     from .flexflow_cffi import *
 
 ff_arg_to_sysarg = {
@@ -98,7 +98,7 @@ def init_flexflow_runtime(configs_dict: Optional[dict] = None, **kwargs):
 
         # Default python mode
         if is_legion_python == False:
-            print("Using Default Python")
+            # print("Using Default Python")
             from legion_top import (
                 legion_canonical_python_main,
                 legion_canonical_python_cleanup,
@@ -137,7 +137,7 @@ def init_flexflow_runtime(configs_dict: Optional[dict] = None, **kwargs):
             legion_canonical_python_main(sys.argv)
             atexit.register(legion_canonical_python_cleanup)
         else:
-            print("Using FlexFlow Python")
+            # print("Using FlexFlow Python")
             if configs_dict is not None or len(kwargs.items()) > 0:
                 warnings.warn("init_flexflow_runtime are ignored when using the FlexFlow Python interpreter")
 
