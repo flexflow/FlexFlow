@@ -131,21 +131,6 @@ def top_level_task():
   # print(dweight)
   # dweight_tensor.inline_unmap(ffconfig)
 
-def get_configs():
-  import argparse,json
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-    "-config-file",
-    help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
-    type=str,
-    default=None,
-  )
-  args, unknown = parser.parse_known_args()
-  if args.config_file is not None:
-    with open(args.config_file) as f:
-      return json.load(f)
-  else:
-    return None
 
 if __name__ == "__main__":
   print("mnist mlp attach")
