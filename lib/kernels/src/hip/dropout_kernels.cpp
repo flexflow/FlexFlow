@@ -24,13 +24,18 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::Memory;
 
-DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
-                                             bool profiling,
-                                             float rate,
-                                             unsigned long long seed,
-                                             Memory gpu_mem,
-                                             Domain const &output_domain)
-    : PerDeviceOpState(handler) {
+namespace Kernels {
+namespace Dropout {
+
+DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
+                                  float rate,
+                                  unsigned long long seed,
+                                  ArrayShape output_domain,
+                                  Allocator allocator) {
+  void *reserveSpace;
+  void *dropoutState;
+  size_t reserveSpaceSize;
+  size_t dropoutStateSize;
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenCreateDropoutDescriptor(&dropoutDesc));
@@ -69,16 +74,6 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
                                         MIOPEN_RNG_PSEUDO_XORWOW));
 }
 
-DropoutPerDeviceState::~DropoutPerDeviceState(void) {
-  reserveInst.destroy();
-  checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
-  checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
-  checkCUDNN(miopenDestroyDropoutDescriptor(dropoutDesc));
-}
-
-namespace Kernels {
-namespace Dropout {
-
 void forward_kernel(hipStream_t stream,
                     DropoutPerDeviceState *m,
                     float const *input_ptr,
@@ -111,6 +106,16 @@ void backward_kernel(hipStream_t stream,
                                    input_grad_ptr,
                                    m->reserveSpace,
                                    m->reserveSpaceSize));
+}
+
+void cleanup_kernel(Realm::RegionInstance reserveInst,
+                    ffTensorDescriptor_t inputTensor,
+                    ffTensorDescriptor_t outputTensor,
+                    ffDropoutDescriptor_t dropoutDesc) {
+  reserveInst.destroy();
+  checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
+  checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
+  checkCUDNN(miopenDestroyDropoutDescriptor(dropoutDesc));
 }
 
 } // namespace Dropout
