@@ -136,8 +136,6 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
     cudaEventDestroy(t_end);
     printf("[ArgMax] forward time = %.2lfms\n", elapsed);
   }
-
-  print_tensor<float>(input.get_float_ptr(), 32, "res");
 }
 
 ArgMaxMeta::ArgMaxMeta(FFHandler handler,
