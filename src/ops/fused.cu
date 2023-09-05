@@ -893,7 +893,9 @@ __host__ void
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
-        assert(fused->op_num_weights[op] == 2 * (int)(m->elementwise_affine));
+        if (m->elementwise_affine) {
+          assert(fused->op_num_weights[op] == 1 + (int)(m->use_bias));
+        }
         GenericTensorAccessorR gamma, beta;
         if (m->elementwise_affine) {
           gamma = my_weight_accessor[0];
