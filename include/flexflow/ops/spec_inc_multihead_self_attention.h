@@ -40,6 +40,7 @@ public:
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                bool _position_bias,
                                 bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
@@ -58,6 +59,7 @@ public:
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                bool _position_bias,
                                 bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
@@ -120,7 +122,7 @@ public:
   float dropout, scaling_factor;
   bool bias;
   bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling;
+      qk_prod_scaling, position_bias;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
 };

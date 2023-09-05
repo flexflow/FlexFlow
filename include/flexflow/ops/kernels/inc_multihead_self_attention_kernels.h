@@ -12,6 +12,12 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
+__global__ void apply_position_bias_qkprd(DT *input_ptr,
+                                          int num_tokens,
+                                          int num_total_tokens,
+                                          int num_heads);
+
+template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
                                   int num_tokens,

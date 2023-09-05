@@ -30,6 +30,32 @@ using Legion::Memory;
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
+// only used by MPT model. https://arxiv.org/abs/2108.12409
+template <typename DT>
+__global__ void apply_position_bias_qkprd(DT *input_ptr,
+                                          int num_tokens,
+                                          int num_total_tokens,
+                                          int num_heads) {
+  CUDA_KERNEL_LOOP(i, num_tokens * num_total_tokens * num_heads) {
+
+    // get head_idx,
+    int head_idx = i / (num_tokens * num_total_tokens);
+    int position_idx = (i / num_tokens) % num_total_tokens;
+    position_idx = position_idx + 1 - num_total_tokens;
+    // 8 is alibi_bias_max in
+    // https://huggingface.co/mosaicml/mpt-30b/blob/main/config.json
+    float base = (float)(head_idx + 1) * 8 / num_heads;
+    float slopes = 1.0 / pow(2, base);
+    // if(i == 0){
+    //   printf("see position: %d, %f, %f, %f\n", position_idx, base, slopes,
+    //   position_idx * slopes);
+    // }
+    // get position_idx
+    // qkprod + bias
+    input_ptr[i] += static_cast<DT>(position_idx * slopes);
+  }
+}
+
 template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
@@ -343,7 +369,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        *m->scaling_query,
                        m->scaling_factor);
   } else if (m->scaling_query) {
-    hipLaunchKernelGGL(scaling_query_kernel(apply_proj_bias_qkv<DT>),
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(scaling_query_kernel<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
                        0,
@@ -644,6 +670,18 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                         HIPBLAS_GEMM_DEFAULT));
       }
     }
+    // add alibi position bias to qk production
+    if (*m->position_bias) {
+      size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_position_bias_qkprd<DT>),
+                         GET_BLOCKS(parallelism),
+                         min((size_t)CUDA_NUM_THREADS, parallelism),
+                         0,
+                         C,
+                         num_new_tokens,
+                         total_tokens,
+                         m->num_q_heads);
+    }
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
     assert(num_new_tokens <= total_tokens);
@@ -922,6 +960,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
+                                    attn->position_bias,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
@@ -949,6 +988,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _bias,
     bool _scaling_query,
     bool _qk_prod_scaling,
+    boll _position_bias,
     bool _add_bias_kv,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
@@ -1006,6 +1046,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   scaling_factor = _scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
   *qk_prod_scaling = _qk_prod_scaling;
+  position_bias = (bool *)calloc(1, sizeof(bool));
+  *position_bias = _position_bias;
   // Currently do not support adding bias to key/value projection
   assert(!_add_bias_kv);
 

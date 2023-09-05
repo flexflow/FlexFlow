@@ -40,14 +40,16 @@ __global__ void apply_position_bias_qkprd(DT *input_ptr,
 
     // get head_idx,
     int head_idx = i / (num_tokens * num_total_tokens);
-    int position_idx = (i / num_total_tokens) % num_tokens;
-    position_idx = position_idx + 1 - num_tokens;
+    int position_idx = (i / num_tokens) % num_total_tokens;
+    position_idx = position_idx + 1 - num_total_tokens;
     // 8 is alibi_bias_max in
     // https://huggingface.co/mosaicml/mpt-30b/blob/main/config.json
     float base = (float)(head_idx + 1) * 8 / num_heads;
     float slopes = 1.0 / pow(2, base);
-    // get position_idx
-    // qkprod + bias
+    // if(i == 0){
+    //   printf("see position: %d, %f, %f, %f\n", position_idx, base, slopes,
+    //   position_idx * slopes);
+    // }
     input_ptr[i] += static_cast<DT>(position_idx * slopes);
   }
 }
@@ -671,12 +673,16 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       }
     }
-    size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
-    apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
-                                min((size_t)CUDA_NUM_THREADS, parallelism),
-                                0,
-                                stream>>>(
-        C, num_new_tokens, total_tokens, m->num_q_heads);
+    // add alibi position bias to qk production
+    if (*m->position_bias) {
+      size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+      apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+                                  min((size_t)CUDA_NUM_THREADS, parallelism),
+                                  0,
+                                  stream>>>(
+          C, num_new_tokens, total_tokens, m->num_q_heads);
+    }
+
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
     assert(num_new_tokens <= total_tokens);
@@ -953,6 +959,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
+                                    attn->position_bias,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
@@ -980,6 +987,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _bias,
     bool _scaling_query,
     bool _qk_prod_scaling,
+    bool _position_bias,
     bool _add_bias_kv,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
@@ -1037,6 +1045,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   scaling_factor = _scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
   *qk_prod_scaling = _qk_prod_scaling;
+  position_bias = (bool *)calloc(1, sizeof(bool));
+  *position_bias = _position_bias;
   // Currently do not support adding bias to key/value projection
   assert(!_add_bias_kv);
 

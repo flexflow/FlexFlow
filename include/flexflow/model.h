@@ -654,6 +654,7 @@ public:
                                       bool scaling_query = false,
                                       float scaling_factor = 1.0f,
                                       bool qk_prod_scaling = true,
+                                      bool position_bias = false,
                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(const Tensor input,
@@ -671,6 +672,7 @@ public:
                                         bool scaling_query = false,
                                         float scaling_factor = 1.0f,
                                         bool qk_prod_scaling = true,
+                                        bool position_bias = false,
                                         char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
       const Tensor input,
@@ -688,6 +690,7 @@ public:
       bool scaling_query = false,
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
+      bool position_bias = false,
       char const *name = NULL);
   Tensor inc_multiquery_self_attention(const Tensor input,
                                        int embed_dim,
@@ -705,6 +708,7 @@ public:
                                        bool scaling_query = false,
                                        float scaling_factor = 1.0f,
                                        bool qk_prod_scaling = true,
+                                       bool position_bias = false,
                                        char const *name = NULL);
   Tensor
       spec_inc_multiquery_self_attention(const Tensor input,
@@ -723,6 +727,7 @@ public:
                                          bool scaling_query = false,
                                          float scaling_factor = 1.0f,
                                          bool qk_prod_scaling = true,
+                                         bool position_bias = false,
                                          char const *name = NULL);
   Tensor inc_multiquery_self_attention_verify(
       const Tensor input,
@@ -741,6 +746,7 @@ public:
       bool scaling_query = false,
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
+      bool position_bias = false,
       char const *name = NULL);
   // ========================================
   // Inference APIs

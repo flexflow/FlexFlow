@@ -59,7 +59,7 @@ LayerNormParams LayerNorm::get_params() const {
   return params;
 }
 
-Tensor FFModel::layer_norm(Tensor const input,
+Tensor FFModel::layer_norm(const Tensor input,
                            std::vector<int> const &axes,
                            bool elementwise_affine,
                            float eps,
@@ -201,7 +201,7 @@ LayerNorm::LayerNorm(FFModel &model,
 
 LayerNorm::LayerNorm(FFModel &model,
                      LayerID const &_layer_guid,
-                     ParallelTensor const _input,
+                     const ParallelTensor _input,
                      std::vector<int> const &_axes,
                      bool _elementwise_affine,
                      bool _use_bias,

@@ -73,6 +73,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              bool scaling_query,
                                              float scaling_factor,
                                              bool qk_prod_scaling,
+                                             bool position_bias,
                                              char const *name) {
   return inc_multiquery_self_attention(input,
                                        embed_dim,
@@ -90,6 +91,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                        scaling_query,
                                        scaling_factor,
                                        qk_prod_scaling,
+                                       position_bias,
                                        name);
 }
 
@@ -109,6 +111,7 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
                                               bool scaling_query,
                                               float scaling_factor,
                                               bool qk_prod_scaling,
+                                              bool position_bias,
                                               char const *name) {
   if (data_type == DT_NONE) {
     data_type = input->data_type;
@@ -201,6 +204,7 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
   li->add_int_property("scaling_query", scaling_query);
   li->add_float_property("scaling_factor", scaling_factor);
   li->add_int_property("qk_prod_scaling", qk_prod_scaling);
+  li->add_int_property("position_bias", position_bias);
   li->add_int_property("quantization_type", quantization_type);
   li->add_int_property("offload", offload);
   li->add_int_property("tensor_parallelism_degree",
@@ -241,6 +245,9 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   layer->get_float_property("scaling_factor", scaling_factor);
   layer->get_int_property("qk_prod_scaling", value);
   bool qk_prod_scaling = (bool)value;
+  layer->get_int_property("position_bias", value);
+  bool position_bias = (bool)value;
+
   layer->get_int_property("quantization_type", value);
   DataType quantization_type = (DataType)value;
   layer->get_int_property("offload", value);
@@ -264,6 +271,7 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        scaling_query,
                                        scaling_factor,
                                        qk_prod_scaling,
+                                       position_bias,
                                        false /*allocate_weights*/,
                                        quantization_type,
                                        offload,
@@ -288,6 +296,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
+    bool _position_bias,
     bool allocate_weights,
     DataType _quantization_type,
     bool _offload,
@@ -310,8 +319,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
-      offload(_offload), tensor_parallelism_degree(_tensor_parallelism_degree) {
+      qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias),
+      quantization_type(_quantization_type), offload(_offload),
+      tensor_parallelism_degree(_tensor_parallelism_degree) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   numOutputs = 1;
@@ -398,6 +408,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
+    bool _position_bias,
     bool allocate_weights,
     DataType _quantization_type,
     bool _offload,
@@ -421,8 +432,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), quantization_type(_quantization_type),
-      offload(_offload), tensor_parallelism_degree(_tensor_parallelism_degree)
+      qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias),
+      quantization_type(_quantization_type), offload(_offload),
+      tensor_parallelism_degree(_tensor_parallelism_degree)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -515,6 +527,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 other.scaling_query,
                                 other.scaling_factor,
                                 other.qk_prod_scaling,
+                                other.position_bias,
                                 allocate_weights,
                                 other.quantization_type,
                                 other.offload,
@@ -543,6 +556,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 params.scaling_query,
                                 params.scaling_factor,
                                 params.qk_prod_scaling,
+                                params.position_bias,
                                 allocate_weights,
                                 params.quantization_type,
                                 params.offload,
@@ -1632,7 +1646,8 @@ bool operator==(IncMultiHeadSelfAttentionParams const &lhs,
          lhs.apply_rotary_embedding == rhs.apply_rotary_embedding &&
          lhs.scaling_query == rhs.scaling_query &&
          lhs.scaling_factor == rhs.scaling_factor &&
-         lhs.qk_prod_scaling == rhs.qk_prod_scaling;
+         lhs.qk_prod_scaling == rhs.qk_prod_scaling &&
+         lhs.position_bias == rhs.position_bias;
 }
 
 IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
@@ -1650,6 +1665,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.scaling_query = this->scaling_query;
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
+  params.position_bias = this->position_bias,
   params.tensor_parallelism_degree = this->tensor_parallelism_degree,
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
@@ -1678,6 +1694,7 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.scaling_query);
   hash_combine(key, params.scaling_factor);
   hash_combine(key, params.qk_prod_scaling);
+  hash_combine(key, params.position_bias);
   hash_combine(key, params.quantization_type);
   hash_combine(key, params.offload);
   hash_combine(key, params.tensor_parallelism_degree);

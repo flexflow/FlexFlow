@@ -99,7 +99,8 @@ void MPT::create_mpt_model(FFModel &ff,
             /*scaling query*/ true,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
-            /*qk_prod_scaling*/ false);
+            /*qk_prod_scaling*/ false,
+            /*position_bias*/ true);
         break;
       }
       case TREE_VERIFY_MODE: {
@@ -119,7 +120,8 @@ void MPT::create_mpt_model(FFModel &ff,
             /*scaling query*/ true,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
-            /*qk_prod_scaling*/ false);
+            /*qk_prod_scaling*/ false,
+            /*position_bias*/ true);
         break;
       }
       case INC_DECODING_MODE: {
@@ -139,7 +141,8 @@ void MPT::create_mpt_model(FFModel &ff,
             /*scaling query*/ true,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
-            /*qk_prod_scaling*/ false);
+            /*qk_prod_scaling*/ false,
+            /*position_bias*/ true);
         break;
       }
       default: {

@@ -103,7 +103,8 @@ void RequestManager::register_tokenizer(ModelType type,
     this->tokenizer_ =
         Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
   } else if (model_type == ModelType::FALCON ||
-             model_type == ModelType::STARCODER) {
+             model_type == ModelType::STARCODER ||
+             model_type == ModelType::MPT) {
     std::string falcon_tokenizer_path = join_path({path, "tokenizer.json"});
     this->tokenizer_ =
         Tokenizer::FromBlobJSON(LoadBytesFromFile(falcon_tokenizer_path));
@@ -201,8 +202,9 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  request.tokens.push_back(bos_token_id);
-
+  if (bos_token_id >= 0) {
+    request.tokens.push_back(bos_token_id);
+  }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
   if (tokens.size() > BatchConfig::MAX_PROMPT_LENGTH) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
