@@ -62,7 +62,6 @@ struct Request {
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
 
-  
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 

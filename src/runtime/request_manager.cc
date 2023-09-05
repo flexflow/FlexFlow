@@ -562,10 +562,10 @@ BeamSearchBatchConfig
                old_bc.tokensInfo[result_index].token_id,
                tree_outputs.back().second,
                token_id);
-      } 
+      }
       result_index++;
     }
-    
+
     if (request.status == Request::RUNNING) {
       std::vector<std::pair<BatchConfig::TokenId, int>> verified_tokens =
           traverse_verify_tree(guid, dfs_tree_inputs.at(guid), tree_outputs);
@@ -618,10 +618,10 @@ BeamSearchBatchConfig
           std::ofstream outputFile(output_filepath);
           if (outputFile.is_open()) {
             outputFile << "end-to-end latency: " << std::fixed
-                      << std::setprecision(3) << total_request_run_time
-                      << std::endl;
+                       << std::setprecision(3) << total_request_run_time
+                       << std::endl;
             outputFile << "num decoding steps: " << profile_info.decoding_steps
-                      << std::endl;
+                       << std::endl;
             outputFile << "token IDs: ";
             for (int i = 0; i < request.tokens.size(); i++) {
               outputFile << request.tokens[i];
@@ -650,7 +650,8 @@ BeamSearchBatchConfig
         // Normal Request Info
         new_bc.requestsInfo[i].token_start_offset =
             verified_tokens.front().second;
-        new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
+        new_bc.requestsInfo[i].request_guid =
+            old_bc.requestsInfo[i].request_guid;
         new_bc.requestsInfo[i].max_sequence_length =
             old_bc.requestsInfo[i].max_sequence_length;
         new_bc.requestsInfo[i].num_tokens_in_batch = verified_tokens.size();
@@ -727,7 +728,7 @@ BeamSearchBatchConfig
       assert(false);
     }
   }
-  
+
   // Step 2: Initialize new request
   for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
     if (new_bc.request_completed[i]) {
@@ -779,7 +780,8 @@ BeamSearchBatchConfig
           new_bc.num_tokens++;
         }
 
-        // if (new_bc.requestsInfo[i].num_tokens_in_batch < new_request.initial_len) {
+        // if (new_bc.requestsInfo[i].num_tokens_in_batch <
+        // new_request.initial_len) {
         //   all_requests[new_request.guid].status = Request::PENDING;
         //   new_bc.request_running[i] = false;
         //   std::cout << "Request " << new_request.guid << " is pending"
@@ -791,17 +793,18 @@ BeamSearchBatchConfig
         //             << std::endl;
         // }
         all_requests[new_request.guid].status = Request::PENDING;
-        all_requests[new_request.guid].ssm_cache_size = new_bc.requestsInfo[i].num_tokens_in_batch;
+        all_requests[new_request.guid].ssm_cache_size =
+            new_bc.requestsInfo[i].num_tokens_in_batch;
         new_bc.request_running[i] = false;
-        std::cout << "SSM KV Cache Size: " << all_requests[new_request.guid].ssm_cache_size << std::endl;
-        std::cout << "LLM KV Cache Size: " << all_requests[new_request.guid].llm_cache_size << std::endl;
+        std::cout << "SSM KV Cache Size: "
+                  << all_requests[new_request.guid].ssm_cache_size << std::endl;
+        std::cout << "LLM KV Cache Size: "
+                  << all_requests[new_request.guid].llm_cache_size << std::endl;
 
         std::cout << "load " << new_bc.requestsInfo[i].num_tokens_in_batch
                   << " tokens for request " << new_request.guid << std::endl;
         std::cout << "total prompt in request: " << new_request.initial_len
                   << std::endl;
-
-
 
         if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
           break;
@@ -912,15 +915,15 @@ BeamSearchBatchConfig
       // how many sub request in current request
       // why is sub_requests has MAX_NUM_REQUESTS * MAX_BEAM_WIDTH entries?
       new_bc.sub_requests[i] = old_bc.beamRequestsInfo[i].beam_size;
-      
+
       // update the parentid, accumalated_probs, depth, and token_ids
       new_bc.beamRequestsInfo[i].beam_size =
-        old_bc.beamRequestsInfo[i].beam_size;
+          old_bc.beamRequestsInfo[i].beam_size;
       new_bc.beamRequestsInfo[i].max_depth =
-        old_bc.beamRequestsInfo[i].max_depth;
+          old_bc.beamRequestsInfo[i].max_depth;
       if (request.status == Request::RUNNING) {
         new_bc.beamRequestsInfo[i].current_depth =
-          old_bc.beamRequestsInfo[i].current_depth + 1;
+            old_bc.beamRequestsInfo[i].current_depth + 1;
         new_bc.request_running[i] = true;
         // do the slot exchange to minimize the cache exchange in kernel.
         update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id), i);
@@ -928,14 +931,13 @@ BeamSearchBatchConfig
         // if the request is pending, we need to update the beam search
         // metadata based on the initial length
         new_bc.beamRequestsInfo[i].current_depth =
-          old_bc.beamRequestsInfo[i].current_depth;
+            old_bc.beamRequestsInfo[i].current_depth;
         new_bc.request_running[i] = false;
       }
 
-
-
       // do the slot exchange to minimize the cache exchange in kernel.
-      // update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id), i);
+      // update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id),
+      // i);
 
       if (new_bc.requestsInfo[i].token_start_offset + 1 >=
           request.tokens.size()) {
@@ -1036,9 +1038,10 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     // Profiling
     profiling_requests[new_bc.requestsInfo[i].request_guid].decoding_steps += 1;
 
-    if(request.status == Request::RUNNING) {
+    if (request.status == Request::RUNNING) {
       new_bc.request_running[i] = true;
-      std::cout << "[Verify] Request " << request.guid << " is running" << std::endl;
+      std::cout << "[Verify] Request " << request.guid << " is running"
+                << std::endl;
 
       // Get the dfs tree
       std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>>
@@ -1062,9 +1065,12 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       }
 
       // Normal Request Info
-      new_bc.requestsInfo[i].token_start_offset = dfs_tree_inputs.front().second;
-      new_bc.requestsInfo[i].request_guid = old_batches.at(0).requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length = old_batches.at(0).requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].token_start_offset =
+          dfs_tree_inputs.front().second;
+      new_bc.requestsInfo[i].request_guid =
+          old_batches.at(0).requestsInfo[i].request_guid;
+      new_bc.requestsInfo[i].max_sequence_length =
+          old_batches.at(0).requestsInfo[i].max_sequence_length;
       // TODO: Check this
       new_bc.requestsInfo[i].num_tokens_in_batch = 0;
       new_bc.request_completed[i] = false;
@@ -1101,25 +1107,26 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
         if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
           assert(false &&
-                "Exceeding the space available in the TreeVerify batch");
+                 "Exceeding the space available in the TreeVerify batch");
           break;
         }
 
         new_bc.requestsInfo[i].token_start_offset = request.tokens.size() - 1;
       }
 
-
       // Committed Tokens
       if (committed_tokens.find(guid) != committed_tokens.end()) {
-        if (dfs_tree_inputs.at(0).second == request.initial_len +
-                                                committed_tokens.at(guid).size() -
-                                                1) { // commit prompt
+        if (dfs_tree_inputs.at(0).second ==
+            request.initial_len + committed_tokens.at(guid).size() -
+                1) { // commit prompt
           // for (int j = 0; j < request.initial_len; j++) {
-          //   new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index = j;
-          //   new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+          //   new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index
+          //   = j;
+          //   new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index
+          //   =
           //       i;
-          //   new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth = j;
-          //   if (verbose) {
+          //   new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth
+          //   = j; if (verbose) {
           //     std::cout << new_bc.num_tokens_to_commit
           //               << "- committed_token.token_depth: " << j
           //               << ", token_index: " << j << std::endl;
@@ -1131,14 +1138,16 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           auto committed_token = committed_tokens.at(guid).at(0);
           new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
               committed_token.second;
-          new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index = i;
+          new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+              i;
           new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
               committed_token.first;
           if (verbose) {
             std::cout << new_bc.num_tokens_to_commit
                       << "- committed_token.token_depth: "
                       << committed_token.first
-                      << ", token_index: " << committed_token.second << std::endl;
+                      << ", token_index: " << committed_token.second
+                      << std::endl;
           }
           new_bc.num_tokens_to_commit++;
         }
@@ -1172,18 +1181,19 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
                   << new_bc.num_tokens_to_commit << std::endl;
       }
 
-
       // add prompt to the dfs tree
       // if (committed_tokens.find(guid) != committed_tokens.end()) {
       //   if (dfs_tree_inputs.at(0).second == request.initial_len +
-      //                                           committed_tokens.at(guid).size() -
-      //                                           1) { // commit prompt
+      //                                           committed_tokens.at(guid).size()
+      //                                           - 1) { // commit prompt
       //     for (int j = 0; j < request.initial_len; j++) {
-      //       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index = j;
-      //       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+      //       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index
+      //       = j;
+      //       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index
+      //       =
       //           i;
-      //       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth = j;
-      //       if (verbose) {
+      //       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth
+      //       = j; if (verbose) {
       //         std::cout << new_bc.num_tokens_to_commit
       //                   << "- committed_token.token_depth: " << j
       //                   << ", token_index: " << j << std::endl;
@@ -1195,14 +1205,16 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       //     auto committed_token = committed_tokens.at(guid).at(0);
       //     new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
       //         committed_token.second;
-      //     new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index = i;
+      //     new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index
+      //     = i;
       //     new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
       //         committed_token.first;
       //     if (verbose) {
       //       std::cout << new_bc.num_tokens_to_commit
       //                 << "- committed_token.token_depth: "
       //                 << committed_token.first
-      //                 << ", token_index: " << committed_token.second << std::endl;
+      //                 << ", token_index: " << committed_token.second <<
+      //                 std::endl;
       //     }
       //     new_bc.num_tokens_to_commit++;
       //   }
@@ -1222,12 +1234,13 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         // Normal Token Info
         new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
         new_bc.tokensInfo[new_bc.num_tokens].token_id = token.first;
-        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = token.second;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+            token.second;
 
         // TODO: Add committed token info
         if (verbose) {
-          std::cout << "committed_tokens.size(): " << new_bc.num_tokens_to_commit
-                    << std::endl;
+          std::cout << "committed_tokens.size(): "
+                    << new_bc.num_tokens_to_commit << std::endl;
         }
 
         new_bc.num_tokens++;
@@ -1241,42 +1254,48 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       std::cout << "new_bc.num_tokens: " << new_bc.num_tokens << std::endl;
     } else if (request.status == Request::PENDING) {
       new_bc.request_running[i] = false;
-      std::cout << "[Verify] Request " << request.guid << " is pending" << std::endl;
+      std::cout << "[Verify] Request " << request.guid << " is pending"
+                << std::endl;
       std::cout << "SSM KV Cache Size: " << request.ssm_cache_size << std::endl;
       std::cout << "LLM KV Cache Size: " << request.llm_cache_size << std::endl;
 
-
       // Normal Request Info
       new_bc.requestsInfo[i].token_start_offset = request.llm_cache_size;
-      new_bc.requestsInfo[i].request_guid = old_batches.at(0).requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length = old_batches.at(0).requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].request_guid =
+          old_batches.at(0).requestsInfo[i].request_guid;
+      new_bc.requestsInfo[i].max_sequence_length =
+          old_batches.at(0).requestsInfo[i].max_sequence_length;
 
       new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
           BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
           (int)request.initial_len - new_bc.requestsInfo[i].token_start_offset);
 
-
       if (committed_tokens.find(guid) != committed_tokens.end()) {
         for (int j = 0; j < committed_tokens.at(guid).size(); j++) {
           auto token = committed_tokens.at(guid).at(j);
-          new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index = token.second;
+          new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
+              token.second;
           new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
               i;
-          new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth = token.first;
+          new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
+              token.first;
 
           new_bc.num_tokens_to_commit++;
           request.llm_cache_size++;
         }
-        std::cout << "[Verify] Committed Tokens from last loading batch: " << new_bc.num_tokens_to_commit << std::endl;
+        std::cout << "[Verify] Committed Tokens from last loading batch: "
+                  << new_bc.num_tokens_to_commit << std::endl;
       }
 
       if (request.llm_cache_size < request.initial_len) {
         // Initialization (prompt) phase
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
-          new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[request.llm_cache_size + j];
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = request.llm_cache_size + j;
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              request.tokens[request.llm_cache_size + j];
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+              request.llm_cache_size + j;
 
           new_bc.num_tokens++;
         }
@@ -1284,7 +1303,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         std::cout << "new_bc.num_tokens: " << new_bc.num_tokens << std::endl;
         if (new_bc.num_tokens >= BatchConfig::MAX_NUM_TOKENS) {
           assert(false &&
-                "Exceeding the space available in the TreeVerify batch");
+                 "Exceeding the space available in the TreeVerify batch");
           break;
         }
       } else {
@@ -1294,24 +1313,24 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
           new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens.back();
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = request.tokens.size() - 1;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+              request.tokens.size() - 1;
 
           new_bc.num_tokens++;
           new_bc.requestsInfo[i].num_tokens_in_batch++;
           std::cout << "new_bc.num_tokens: " << new_bc.num_tokens << std::endl;
-          std::cout << "new_bc.requestsInfo[i].num_tokens_in_batch: " << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
+          std::cout << "new_bc.requestsInfo[i].num_tokens_in_batch: "
+                    << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
 
-          
-          dfs_tree_inputs[guid] = std::vector<std::pair<BatchConfig::TokenId, int>>{ std::make_pair(request.tokens.back(), request.tokens.size() - 1) };
+          dfs_tree_inputs[guid] =
+              std::vector<std::pair<BatchConfig::TokenId, int>>{std::make_pair(
+                  request.tokens.back(), request.tokens.size() - 1)};
         }
       }
 
     } else {
       assert(false && "Request status is not RUNNING or PENDING");
     }
-
-
-
   }
 
   if (verbose) {
