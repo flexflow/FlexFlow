@@ -5,7 +5,9 @@
 #include <stdexcept>
 #include <vector>
 
-float randf();
+float randf() {
+  return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+}
 
 template <typename T>
 T select_random(std::vector<T> const &values) {

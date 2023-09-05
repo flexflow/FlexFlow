@@ -120,7 +120,7 @@ SplitAST sp_decomposition(DiGraphView const &g) {
 }
 
 SplitAST parallel_decomposition(DiGraphView const &g) {
-  std::vector<std::unordered_set<Node>> weakly_connected_components =
+  std::unordered_set<std::unordered_set<Node>> weakly_connected_components =
       get_weakly_connected_components(g);
   assert(weakly_connected_components.size() > 1);
 
@@ -131,6 +131,17 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
 
   return split;
 }
+
+SplitASTNode::SplitASTNode(SplitType type) : SplitASTNode(type, {}) {}
+
+SplitASTNode::SplitASTNode(SplitType type,
+                           SplitAST const &lhs,
+                           SplitAST const &rhs)
+    : SplitASTNode(type, {lhs, rhs}) {}
+
+SplitASTNode::SplitASTNode(SplitType type,
+                           std::vector<SplitAST> const &children)
+    : type(type), children(children) {}
 
 struct FlattenAST {
   void add_flattened_child_to_parent(SplitASTNode &parent,
@@ -225,7 +236,7 @@ std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
   for (Node const &node : get_nodes(MultiDiGraphView(ext))) {
     node_map.emplace(node, g.add_node());
   }
-  for (NodePort const &node_port : get_node_ports(ext)) {
+  for (NodePort const &node_port : get_present_node_ports(ext)) {
     node_port_map.emplace(node_port, g.add_node_port());
   }
   for (MultiDiEdge const &edge : get_edges(ext)) {

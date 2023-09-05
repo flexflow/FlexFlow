@@ -10,6 +10,16 @@ Node AdjacencyMultiDiGraph::add_node() {
   return node;
 }
 
+NodePort AdjacencyMultiDiGraph::add_node_port() {
+  auto nodePort = NodePort{this->next_node_port};
+  this->next_node_port++;
+  return nodePort;
+}
+
+void AdjacencyMultiDiGraph::add_node_port_unsafe(NodePort const &nodePort) {
+  this->next_node_port = std::max(this->next_node_port, nodePort.value() + 1);
+}
+
 void AdjacencyMultiDiGraph::add_node_unsafe(Node const &node) {
   adjacency[node];
   this->next_node_idx = std::max(this->next_node_idx, node.value() + 1);

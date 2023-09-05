@@ -24,17 +24,6 @@ struct adl_serializer<::FlexFlow::req<T>> {
 };
 } // namespace nlohmann
 
-namespace std {
-
-template <typename T>
-struct hash<::FlexFlow::req<T>> {
-  size_t operator()(::FlexFlow::req<T> const &r) const {
-    return get_std_hash(static_cast<T>(r));
-  }
-};
-
-} // namespace std
-
 namespace fmt {
 
 template <typename T>

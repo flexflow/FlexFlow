@@ -28,9 +28,7 @@ struct NodeQuery {
 
   query_set<Node> nodes;
 
-  static NodeQuery all() {
-    NOT_IMPLEMENTED();
-  }
+  static NodeQuery all();
 };
 FF_VISITABLE_STRUCT(NodeQuery, nodes);
 
@@ -53,11 +51,7 @@ struct GraphView {
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
-  IGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
-
-  static GraphView unsafe_create(IGraphView const &);
+  static GraphView unsafe_create_without_ownership(IGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
@@ -67,7 +61,9 @@ struct GraphView {
   }
 
 private:
-  GraphView(std::shared_ptr<IGraphView const>);
+  GraphView(std::shared_ptr<IGraphView const> ptr);
+
+  friend struct GraphInternal;
 
 private:
   std::shared_ptr<IGraphView const> ptr;
@@ -89,7 +85,7 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraph);
 struct Graph {
 public:
   Graph() = delete;
-  Graph(Graph const &);
+  Graph(Graph const &) = default;
 
   Graph &operator=(Graph);
 
@@ -104,11 +100,13 @@ public:
   template <typename T>
   static typename std::enable_if<std::is_base_of<IGraph, T>::value, Graph>::type
       create() {
-    return Graph(make_unique<T>());
+    return Graph(make_cow_ptr<T>());
   }
 
 private:
-  Graph(std::unique_ptr<IGraph>);
+  Graph(cow_ptr_t<IGraph>);
+
+  friend struct GraphInternal;
 
 private:
   cow_ptr_t<IGraph> ptr;

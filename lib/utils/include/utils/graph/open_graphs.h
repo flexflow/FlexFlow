@@ -4,7 +4,7 @@
 #include "multidigraph.h"
 #include "node.h"
 #include "open_graph_interfaces.h"
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
 
@@ -17,14 +17,12 @@ public:
 
   OpenMultiDiGraphView() = delete;
 
+  operator MultiDiGraphView() const;
+
   friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
-  std::unordered_set<Edge> query_edges(EdgeQuery const &);
-
-  IOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T, typename... Args>
   static
@@ -36,9 +34,10 @@ public:
   }
 
 private:
-  OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const>);
+  OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr);
 
-private:
+  friend struct GraphInternal;
+
   std::shared_ptr<IOpenMultiDiGraphView const> ptr;
 };
 
@@ -49,8 +48,6 @@ public:
 
   OpenMultiDiGraph() = delete;
   OpenMultiDiGraph(OpenMultiDiGraph const &);
-
-  OpenMultiDiGraph &operator=(OpenMultiDiGraph);
 
   friend void swap(OpenMultiDiGraph &, OpenMultiDiGraph &);
 
@@ -69,11 +66,13 @@ public:
   static typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value,
                                  OpenMultiDiGraph>::type
       create() {
-    return OpenMultiDiGraph(make_unique<T>());
+    return make_cow_ptr<T>();
   }
 
 private:
-  OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph>);
+  OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> ptr);
+
+  friend struct GraphInternal;
 
 private:
   cow_ptr_t<IOpenMultiDiGraph> ptr;
@@ -91,10 +90,6 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
-
-  IUpwardOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<
@@ -162,10 +157,6 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
-
-  IDownwardOpenMultiDiGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<

@@ -6,6 +6,7 @@
 #include "utils/graph/multidiedge.h"
 #include "utils/graph/multidigraph_interfaces.h"
 #include "utils/strong_typedef.h"
+#include "utils/type_traits.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
