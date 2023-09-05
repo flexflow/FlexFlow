@@ -688,7 +688,9 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   assert(attn->qoSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
   assert(attn->kvSeqLength == input.domain.hi()[1] - input.domain.lo()[1] + 1);
   int num_q_heads = attn->num_q_heads / attn->tensor_parallelism_degree;
-  int num_kv_heads = attn->num_kv_heads / attn->tensor_parallelism_degree;
+  int num_kv_heads =
+      attn->num_kv_heads / attn->tensor_parallelism_degree +
+      (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
 
   assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
