@@ -59,6 +59,10 @@ struct Request {
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
   int initial_len;
+  int ssm_cache_size = 0;
+  int llm_cache_size = 0;
+
+  
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
