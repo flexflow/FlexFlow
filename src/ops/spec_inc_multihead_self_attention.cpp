@@ -528,28 +528,32 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       hipStream_t stream) {
   // here because we need postion info in infernece 1
-  hipMemcpyAsync(m->token_infos,
-                 &(bc->tokensInfo),
-                 bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
-  hipMemcpyAsync(m->request_infos,
-                 &(bc->requestsInfo),
-                 bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
-  hipMemcpyAsync(m->beam_token_infos,
-                 &(bc->beamTokenInfo),
-                 bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
-                     sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
-  hipMemcpyAsync(m->beam_request_infos,
-                 &(bc->beamRequestsInfo),
-                 bc->MAX_NUM_REQUESTS *
-                     sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
+  checkCUDA(
+      hipMemcpyAsync(m->token_infos,
+                     &(bc->tokensInfo),
+                     bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
+                     hipMemcpyHostToDevice,
+                     stream));
+  checkCUDA(
+      hipMemcpyAsync(m->request_infos,
+                     &(bc->requestsInfo),
+                     bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
+                     hipMemcpyHostToDevice,
+                     stream));
+  checkCUDA(
+      hipMemcpyAsync(m->beam_token_infos,
+                     &(bc->beamTokenInfo),
+                     bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
+                         sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
+                     hipMemcpyHostToDevice,
+                     stream));
+  checkCUDA(hipMemcpyAsync(
+      m->beam_request_infos,
+      &(bc->beamRequestsInfo),
+      bc->MAX_NUM_REQUESTS *
+          sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
+      hipMemcpyHostToDevice,
+      stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -710,7 +714,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
            gpu_mem_allocator.instance_allocated_size);
   }
 
-  hipStreamSynchronize(stream);
+  checkCUDA(hipStreamSynchronize(stream));
 }
 
 SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(void) {
