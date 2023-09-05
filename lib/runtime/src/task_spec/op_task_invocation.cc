@@ -39,9 +39,20 @@ std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
   return this->tensor_bindings;
 }
 
-std::unordered_map<slot_id, OpTaskBinding::ArgSpec> const &
+std::unordered_map<slot_id, OpArgSpec> const &
     OpTaskBinding::get_arg_bindings() const {
   return this->arg_bindings;
+}
+
+OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
+  OpTaskBinding bwd;
+  bwd.bind_args_from_fwd(fwd);
+  bwd.bind_tensors_from_fwd(fwd);
+  for (auto const & [key, spec] : fwd.get_tensor_bindings()) {
+    slot_id slot = key.first;
+    bwd.bind_grad(slot, spec);
+  }
+  return bwd;
 }
 
 } // namespace FlexFlow

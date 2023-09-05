@@ -83,6 +83,14 @@ struct OpTaskBinding {
     this->insert_arg_spec(name, CheckedTypedFutureMap::create(fm));
   }
 
+  void bind_args_from_fwd(OpTaskBinding const &fwd) {
+    this->arg_bindings = fwd.get_arg_bindings();
+  }
+
+  void bind_tensors_from_fwd(OpTaskBinding const &fwd) {
+    this->tensor_bindings = fwd.get_tensor_bindings();
+  }
+
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
       get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
