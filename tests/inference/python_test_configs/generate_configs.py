@@ -64,7 +64,7 @@ os.chdir(dname)
 
 
 # Generate incremental decoding configs
-all_models = mpt_models
+all_models = llama_models + opt_models + falcon_models + mpt_models
 for model_name in all_models:
     for full_precision in (True, False):
         for parallelism_degrees in parallelism_settings:
@@ -93,33 +93,33 @@ for model_name in all_models:
             with open(test_configs_file, "w+") as outfile:
                 json.dump(ff_init_configs, outfile, indent=4)
 
-# # Generate speculative inference configs
-# model_pairs = [llama_models, opt_models]
-# for model_pair in model_pairs:
-#     for full_precision in (True, False):
-#         for parallelism_degrees in parallelism_settings:
-#             big_model, small_model = model_pair
-#             tp, pp = parallelism_degrees
+# Generate speculative inference configs
+model_pairs = [llama_models, opt_models]
+for model_pair in model_pairs:
+    for full_precision in (True, False):
+        for parallelism_degrees in parallelism_settings:
+            big_model, small_model = model_pair
+            tp, pp = parallelism_degrees
 
-#             # Skip fully tp tests
-#             if tp > 2:
-#                 continue
+            # Skip fully tp tests
+            if tp > 2:
+                continue
 
-#             _, after_slash = big_model.rsplit("/", maxsplit=1)
-#             filename = "spec_infer-" + "python-" + after_slash + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
-#             test_configs_file = "./" + filename + ".json"
-#             output_file = os.path.join(output_folder, filename+".txt")
+            _, after_slash = big_model.rsplit("/", maxsplit=1)
+            filename = "spec_infer-" + "python-" + after_slash + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
+            test_configs_file = "./" + filename + ".json"
+            output_file = os.path.join(output_folder, filename+".txt")
             
-#             ff_init_configs["tensor_parallelism_degree"] = tp
-#             ff_init_configs["pipeline_parallelism_degree"] = pp
-#             ff_init_configs["llm_model"] = big_model
-#             ff_init_configs["full_precision"] = full_precision
-#             ff_init_configs["output_file"] = output_file
-#             ff_init_configs["prompt"] = prompt_file
+            ff_init_configs["tensor_parallelism_degree"] = tp
+            ff_init_configs["pipeline_parallelism_degree"] = pp
+            ff_init_configs["llm_model"] = big_model
+            ff_init_configs["full_precision"] = full_precision
+            ff_init_configs["output_file"] = output_file
+            ff_init_configs["prompt"] = prompt_file
             
-#             ssm_configs["ssms"][0]["ssm_model"] = small_model
-#             ssm_configs["ssms"][0]["full_precision"] = full_precision
-#             ff_init_configs.update(ssm_configs)
+            ssm_configs["ssms"][0]["ssm_model"] = small_model
+            ssm_configs["ssms"][0]["full_precision"] = full_precision
+            ff_init_configs.update(ssm_configs)
 
-#             with open(test_configs_file, "w+") as outfile:
-#                 json.dump(ff_init_configs, outfile, indent=4)
+            with open(test_configs_file, "w+") as outfile:
+                json.dump(ff_init_configs, outfile, indent=4)

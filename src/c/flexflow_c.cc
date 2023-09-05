@@ -621,8 +621,13 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
   for (int i = 0; i < n; i++) {
     axes_vec.push_back(axes[i]);
   }
-  Tensor tensor = handle->layer_norm(
-      input, axes_vec, elementwise_affine, eps, use_bias, input->data_type, name);
+  Tensor tensor = handle->layer_norm(input,
+                                     axes_vec,
+                                     elementwise_affine,
+                                     eps,
+                                     use_bias,
+                                     input->data_type,
+                                     name);
   DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps "
               "%f, name %s",
               tensor,

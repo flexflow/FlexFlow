@@ -35,23 +35,22 @@ template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,
                                           int num_tokens,
                                           int num_total_tokens,
-                                          int num_heads) {
+                                          int num_heads,
+                                          int global_num_q_heads,
+                                          int shard_id) {
   CUDA_KERNEL_LOOP(i, num_tokens * num_total_tokens * num_heads) {
-
     // get head_idx,
-    int head_idx = i / (num_tokens * num_total_tokens);
+    int head_idx = i / (num_tokens * num_total_tokens) + (num_heads * shard_id);
     int position_idx = (i / num_tokens) % num_total_tokens;
     position_idx = position_idx + 1 - num_total_tokens;
     // 8 is alibi_bias_max in
     // https://huggingface.co/mosaicml/mpt-30b/blob/main/config.json
-    float base = (float)(head_idx + 1) * 8 / num_heads;
+    float base = (float)(head_idx + 1) * 8 / global_num_q_heads;
     float slopes = 1.0 / pow(2, base);
     // if(i == 0){
     //   printf("see position: %d, %f, %f, %f\n", position_idx, base, slopes,
     //   position_idx * slopes);
     // }
-    // get position_idx
-    // qkprod + bias
     input_ptr[i] += static_cast<DT>(position_idx * slopes);
   }
 }
@@ -373,6 +372,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
                        0,
+                       stream,
                        output_ptr,
                        num_tokens,
                        m->num_q_heads,
@@ -677,10 +677,13 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                          GET_BLOCKS(parallelism),
                          min((size_t)CUDA_NUM_THREADS, parallelism),
                          0,
+                         stream,
                          C,
                          num_new_tokens,
                          total_tokens,
-                         m->num_q_heads);
+                         m->num_q_heads,
+                         m->global_num_q_heads,
+                         shard_id);
     }
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.

@@ -338,10 +338,13 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                            GET_BLOCKS(parallelism),
                            min((size_t)CUDA_NUM_THREADS, parallelism),
                            0,
+                           stream,
                            C,
                            num_new_tokens,
                            total_tokens,
-                           m->num_q_heads);
+                           m->num_q_heads,
+                           m->global_num_q_heads,
+                           shard_id);
       }
 
       // Fill all elements above diagonal in qk prods with -inf to force
