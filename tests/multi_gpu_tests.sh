@@ -32,11 +32,12 @@ test_params=$(jq -n --arg num_gpus "$GPUS" --arg memory_per_gpu "$FSIZE" --arg z
 test_params_5_epochs=$(echo "$test_params" | jq '. + {"epochs": 5}')
 test_params_40_epochs=$(echo "$test_params" | jq '. + {"epochs": 40}')
 test_params_5_epochs_no_batch_size=$(echo "$test_params_5_epochs" | jq 'del(.batch_size)')
+test_params_40_epochs_no_batch_size=$(echo "$test_params_40_epochs" | jq 'del(.batch_size)')
 mkdir -p /tmp/flexflow/multi_gpu_tests
 echo "$test_params" > /tmp/flexflow/multi_gpu_tests/test_params.json
 echo "$test_params_5_epochs" > /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
-echo "$test_params_40_epochs" > /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
 echo "$test_params_5_epochs_no_batch_size" > /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
+echo "$test_params_40_epochs_no_batch_size" > /tmp/flexflow/multi_gpu_tests/test_params_40_epochs_no_batch_size.json
 
 #Sequential model tests
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
@@ -74,10 +75,10 @@ $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_net2net.py -config-file /
 #Python
 $EXE "$FF_HOME"/examples/python/native/print_layers.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
 $EXE "$FF_HOME"/examples/python/native/split.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/native/alexnet.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
+$EXE "$FF_HOME"/examples/python/native/alexnet.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs_no_batch_size.json
 $EXE "$FF_HOME"/examples/python/native/mnist_mlp.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
 $EXE "$FF_HOME"/examples/python/native/mnist_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs.json
-$EXE "$FF_HOME"/examples/python/native/cifar10_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
+$EXE "$FF_HOME"/examples/python/native/cifar10_cnn.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs_no_batch_size.json
 $EXE "$FF_HOME"/examples/python/native/cifar10_cnn_attach.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
 $EXE "$FF_HOME"/examples/python/native/mnist_mlp_attach.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_5_epochs_no_batch_size.json
 
@@ -85,4 +86,4 @@ $EXE "$FF_HOME"/examples/python/native/mnist_mlp_attach.py -config-file /tmp/fle
 $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
 $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_model.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
 $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_seq_model.py -config-file /tmp/flexflow/multi_gpu_tests/test_params.json
-$EXE "$FF_HOME"/examples/python/native/cifar10_cnn_concat.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs.json
+$EXE "$FF_HOME"/examples/python/native/cifar10_cnn_concat.py -config-file /tmp/flexflow/multi_gpu_tests/test_params_40_epochs_no_batch_size.json
