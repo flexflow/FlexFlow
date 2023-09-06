@@ -518,15 +518,15 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   if (m->handle.offload_reserve_space != nullptr) {
     // Note that we update weight_ptr and bias_ptr when uploading weight and
     // bias
-    hipMemcpyAsync(m->weight_ptr,
-                   weight_ptr,
-                   m->weightSize,
-                   hipMemcpyHostToDevice,
-                   stream);
+    checkCUDA(hipMemcpyAsync(m->weight_ptr,
+                             weight_ptr,
+                             m->weightSize,
+                             hipMemcpyHostToDevice,
+                             stream));
     weight_ptr = static_cast<DT *>(m->weight_ptr);
     if (m->biasSize > 0) {
-      hipMemcpyAsync(
-          m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream);
+      checkCUDA(hipMemcpyAsync(
+          m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
       bias_ptr = static_cast<DT *>(m->bias_ptr);
     }
   }
@@ -534,12 +534,13 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // Note that m->num_active_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
   // keys/values to the key-value cache
-  hipMemcpyAsync(m->committed_token_infos,
-                 &(bc->committed_tokens),
-                 bc->num_tokens_to_commit *
-                     sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
+  checkCUDA(
+      hipMemcpyAsync(m->committed_token_infos,
+                     &(bc->committed_tokens),
+                     bc->num_tokens_to_commit *
+                         sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
+                     hipMemcpyHostToDevice,
+                     stream));
   commit_tokens<DT>(m, bc, stream);
 
   // After commit we update m->num_active_tokens to be the number of active
@@ -548,16 +549,16 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   // here because we need postion info in infernece 1
   if (m->offload && m->biasSize > 0) {
-    hipMemcpyAsync(
-        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream);
+    checkCUDA(hipMemcpyAsync(
+        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
-  hipMemcpyAsync(m->token_infos,
-                 &(bc->tokensInfo),
-                 bc->MAX_NUM_TOKENS *
-                     sizeof(TreeVerifyBatchConfig::PerTokenInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
+  checkCUDA(hipMemcpyAsync(m->token_infos,
+                           &(bc->tokensInfo),
+                           bc->MAX_NUM_TOKENS *
+                               sizeof(TreeVerifyBatchConfig::PerTokenInfo),
+                           hipMemcpyHostToDevice,
+                           stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -719,7 +720,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     }
   }
 
-  hipStreamSynchronize(stream);
+  checkCUDA(hipStreamSynchronize(stream));
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {

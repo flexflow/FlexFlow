@@ -15,7 +15,7 @@
 
 from flexflow.keras.layers import Dense, Input, Reshape, Multiply
 import flexflow.keras.optimizers
-
+import flexflow.core as ff
 import numpy as np
 
 def test_reduce_sum1():
@@ -74,6 +74,8 @@ def test_reduce_sum3():
 
 
 if __name__ == "__main__":
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   test_reduce_sum1()
   test_reduce_sum2()
   test_reduce_sum3()

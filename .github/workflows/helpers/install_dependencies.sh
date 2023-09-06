@@ -7,7 +7,7 @@ cd "${BASH_SOURCE[0]%/*}"
 
 # General dependencies
 echo "Installing apt dependencies..."
-sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev libhdf5-dev && \
+sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev libhdf5-dev jq && \
     sudo rm -rf /var/lib/apt/lists/*
 
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-"cuda"}
@@ -20,6 +20,8 @@ fi
 if [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
     # Install CUDNN
     ./install_cudnn.sh
+    # Install NCCL
+    ./install_nccl.sh
 fi
 # Install HIP dependencies if needed
 if [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; then

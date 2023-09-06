@@ -395,11 +395,11 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
   if (m->quantization_type != DT_NONE) {
     // copy weight_ptr to quantized_weight_ptr, do compression and store in
     // m->weight_ptr
-    hipMemcpyAsync(m->quantized_weight_ptr,
-                   weight.get_byte_ptr(),
-                   m->quantized_weightSize,
-                   hipMemcpyHostToDevice,
-                   stream);
+    checkCUDA(hipMemcpyAsync(m->quantized_weight_ptr,
+                             weight.get_byte_ptr(),
+                             m->quantized_weightSize,
+                             hipMemcpyHostToDevice,
+                             stream));
 
     if (m->quantization_type == DT_INT4) {
       int parallelism = m->qProjSize * m->qSize * m->num_q_heads / 2;
@@ -427,17 +427,17 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
     }
   } else {
     if (data_type == DT_FLOAT) {
-      hipMemcpyAsync(m->weight_ptr,
-                     weight.get_float_ptr(),
-                     m->weightSize,
-                     hipMemcpyHostToDevice,
-                     stream);
+      checkCUDA(hipMemcpyAsync(m->weight_ptr,
+                               weight.get_float_ptr(),
+                               m->weightSize,
+                               hipMemcpyHostToDevice,
+                               stream));
     } else if (data_type == DT_HALF) {
-      hipMemcpyAsync(m->weight_ptr,
-                     weight.get_half_ptr(),
-                     m->weightSize,
-                     hipMemcpyHostToDevice,
-                     stream);
+      checkCUDA(hipMemcpyAsync(m->weight_ptr,
+                               weight.get_half_ptr(),
+                               m->weightSize,
+                               hipMemcpyHostToDevice,
+                               stream));
     } else {
       assert(false);
     }
@@ -456,15 +456,16 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // here because we need postion info in infernece 1
 
   if (m->offload && m->biasSize > 0) {
-    hipMemcpyAsync(
-        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream);
+    checkCUDA(hipMemcpyAsync(
+        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
-  hipMemcpyAsync(m->token_infos,
-                 &(bc->tokensInfo),
-                 bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
+  checkCUDA(hipMemcpyAsync(m->token_infos,
+                           &(bc->tokensInfo),
+                           bc->num_active_tokens() *
+                               sizeof(BatchConfig::PerTokenInfo),
+                           hipMemcpyHostToDevice,
+                           stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -1132,7 +1133,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
              gpu_mem_allocator.reserved_allocated_size);
     }
   }
-  hipStreamSynchronize(stream);
+  checkCUDA(hipStreamSynchronize(stream));
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {}
