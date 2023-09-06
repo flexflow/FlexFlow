@@ -124,7 +124,7 @@ struct lazy_tuple_prepend {
 template <int IDX, typename T>
 struct normalize_idx
     : std::integral_constant<int,
-                             ((IDX < 0) ? (std::tuple_size<T>::value + IDX)
+                             ((IDX < 0) ? (((int)std::tuple_size<T>::value) + IDX)
                                         : IDX)> {};
 
 template <int start, int end, int cur, typename T>

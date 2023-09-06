@@ -51,7 +51,7 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
                                    Realm::Point<1, coord_t>(totalSize - 1));
     std::vector<size_t> field_sizes;
     field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
+    Realm::RegionInstance::create_instance(allocator,
                                            gpu_mem,
                                            bounds,
                                            field_sizes,
@@ -121,3 +121,4 @@ void cleanup_kernel(Realm::RegionInstance reserveInst,
 } // namespace Dropout
 } // namespace Kernels
 } // namespace FlexFlow
+

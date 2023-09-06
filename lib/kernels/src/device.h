@@ -1,8 +1,10 @@
 #ifndef _FLEXFLOW_KERNELS_SRC_DEVICE_H
 #define _FLEXFLOW_KERNELS_SRC_DEVICE_H
 
+#include "op-attrs/datatype.h"
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
+#include "kernels/datatype_dispatch.h"
 
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>
@@ -54,6 +56,8 @@ inline int GET_BLOCKS(int const N) {
   int ret = (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
+
+using ::FlexFlow::DataType;
 
 __global__ void scale_kernel(float *ptr, size_t size, float a, float b);
 
@@ -127,3 +131,4 @@ ffCudnnDataType_t ff_to_cudnn_datatype(DataType type);
 void handle_unimplemented_kernel(OperatorType op_type);
 
 #endif
+
