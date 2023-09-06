@@ -3,8 +3,8 @@
 
 namespace FlexFlow {
 
-OpTaskSignature get_signature(task_id_t const &) {
-  NOT_IMPLEMENTED();
+OpTaskSignature get_op_signature(task_id_t const & task_id) {
+  return OpTaskSignature::task_sig_map.at(task_id);
 }
 
 OpTensorSpec::OpTensorSpec(TensorRole _role, int _idx)
@@ -48,7 +48,7 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   OpTaskBinding bwd;
   bwd.bind_args_from_fwd(fwd);
   bwd.bind_tensors_from_fwd(fwd);
-  for (auto const & [key, spec] : fwd.get_tensor_bindings()) {
+  for (auto const &[key, spec] : fwd.get_tensor_bindings()) {
     slot_id slot = key.first;
     bwd.bind_grad(slot, spec);
   }

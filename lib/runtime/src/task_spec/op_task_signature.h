@@ -80,6 +80,8 @@ struct OpTaskSignature {
     NOT_IMPLEMENTED();
   }
 
+  static std::unordered_map<task_id_t, OpTaskSignature> task_sig_map;
+
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots();
   void set_arg_types(std::unordered_map<slot_id, std::type_index> const &);
   std::unordered_map<slot_id, std::type_index> get_arg_types();
@@ -89,8 +91,7 @@ private:
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
 
-template <task_id_t>
-OpTaskSignature get_signature();
+OpTaskSignature get_op_signature(task_id_t);
 
 template <typename F>
 void register_task(task_id_t,

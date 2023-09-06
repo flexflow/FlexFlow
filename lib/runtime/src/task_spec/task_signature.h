@@ -42,6 +42,8 @@ struct TaskSignature {
   template <typename T>
   void add_variadic_arg_slot(slot_id name);
 
+  static std::unordered_map<task_id_t, TaskSignature> task_sig_map;
+
   optional<ParallelTensorSlotSpec> get_slot(slot_id) const;
   optional<std::type_index> get_arg_slot(slot_id) const;
   optional<std::type_index> get_return_type() const;
