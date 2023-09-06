@@ -3,7 +3,7 @@
 
 namespace FlexFlow {
 
-OpTaskSignature get_op_signature(task_id_t const & task_id) {
+OpTaskSignature get_op_signature(task_id_t const &task_id) {
   return OpTaskSignature::task_sig_map.at(task_id);
 }
 

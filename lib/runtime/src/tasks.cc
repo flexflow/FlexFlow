@@ -949,7 +949,7 @@ void register_task(task_id_t task_id,
     registrar.set_leaf();
     Runtime::register_task_variant<func>(registrar);
   }
-  // cpu task      
+  // cpu task
   {
     if (cpu_func) {
       TaskVariantRegistrar registrar(task_id, name);
@@ -957,7 +957,7 @@ void register_task(task_id_t task_id,
       registrar.set_leaf();
       Runtime::register_task_variant<cpu_func>(registrar);
     }
-  }          
+  }
 }
 
 using Signature = variant<TaskSignature, OpTaskSignature>;
@@ -965,7 +965,7 @@ using Signature = variant<TaskSignature, OpTaskSignature>;
 template <typename F>
 void register_task(task_id_t task_id,
                    std::string const &name,
-                   Signature const & sig,
+                   Signature const &sig,
                    F const &func) {
   Signature::task_sig_map.insert(task_id, sig);
   register_task<F>(task_id, name, func);
@@ -974,12 +974,11 @@ void register_task(task_id_t task_id,
 template <typename F>
 void register_task(task_id_t task_id,
                    std::string const &name,
-                   Signature const & sig,
+                   Signature const &sig,
                    F const &func,
                    F const &cpu_func) {
   Signature::task_sig_map.insert(task_id, sig);
   register_task<F>(task_id, name, func, cpu_func);
 }
-
 
 } // namespace FlexFlow

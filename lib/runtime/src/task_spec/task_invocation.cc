@@ -1,6 +1,6 @@
 #include "task_invocation.h"
-#include "task_signature.h"
 #include "legion.h"
+#include "task_signature.h"
 
 using namespace Legion;
 
@@ -12,11 +12,7 @@ void TaskBinding::insert_arg_spec(slot_id name, ArgSpec const &arg_spec) {
 }
 
 TaskSignature get_signature(task_id_t task_id) {
-  if (TaskSignature::task_sig_map.count(task_id)) {
-    return TaskSignature::task_sig_map.at(task_id);
-  } else {
-    throw mk_runtime_error("Unknown task id {}. Please report this as an issue.", task_id);
-  }
+  return TaskSignature::task_sig_map.at(task_id);
 }
 
 template <typename F>
@@ -31,7 +27,7 @@ void register_task(task_id_t task_id,
     registrar.set_leaf();
     Runtime::register_task_variant<func>(registrar);
   }
-  // cpu task      
+  // cpu task
   {
     if (cpu_func) {
       TaskVariantRegistrar registrar(task_id, name);
@@ -39,13 +35,13 @@ void register_task(task_id_t task_id,
       registrar.set_leaf();
       Runtime::register_task_variant<cpu_func>(registrar);
     }
-  }          
+  }
 }
 
 template <typename F>
 void register_task(task_id_t task_id,
                    std::string const &name,
-                   TaskSignature const & sig,
+                   TaskSignature const &sig,
                    F const &func) {
   TaskSignature::task_sig_map.insert(task_id, sig);
   register_task<F>(task_id, name, func);
@@ -54,7 +50,7 @@ void register_task(task_id_t task_id,
 template <typename F>
 void register_task(task_id_t task_id,
                    std::string const &name,
-                   TaskSignature const & sig,
+                   TaskSignature const &sig,
                    F const &func,
                    F const &cpu_func) {
   TaskSignature::task_sig_map.insert(task_id, sig);
