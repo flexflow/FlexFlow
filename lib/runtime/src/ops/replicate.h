@@ -2,8 +2,8 @@
 #define _FLEXFLOW_REPLICATE_H
 
 #include "op-attrs/ops/replicate.h"
-#include "op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,7 @@ OpTaskInvocation backward(ReplicateAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReplicateAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 
