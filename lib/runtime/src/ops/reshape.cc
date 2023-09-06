@@ -47,10 +47,9 @@ bool ReshapeParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
-enum slots {INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE };
+enum slots { INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE };
 
-
-OpTaskInvocation init(ReshapeAttrs const & attrs) {
+OpTaskInvocation init(ReshapeAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(INPUT, input_tensor(0));
@@ -59,7 +58,7 @@ OpTaskInvocation init(ReshapeAttrs const & attrs) {
   return {RESHAPE_INIT_TASK_ID, binding};
 }
 
-OpTaskInvocation forward(ReshapeAttrs const & attrs) {
+OpTaskInvocation forward(ReshapeAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(PER_DEVICE_STATE, per_device_op_state<ReshapeMeta>());
@@ -70,17 +69,19 @@ OpTaskInvocation forward(ReshapeAttrs const & attrs) {
   return {RESHAPE_FWD_TASK_ID, binding};
 }
 
-OpTaskInvocation backward(ReshapeAttrs const & attrs) {
+OpTaskInvocation backward(ReshapeAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
   return {RESHAPE_BWD_TASK_ID, binding};
 }
 
-static  DeviceSpecific<ReshapePerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecific<ReshapePerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   NOT_IMPLEMENTED();
 }
 
-static  DeviceSpecific<ReshapePerDeviceState> init_task(Task const *task,
+static DeviceSpecific<ReshapePerDeviceState>
+    init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
               Runtime *runtime) {
@@ -89,7 +90,19 @@ static  DeviceSpecific<ReshapePerDeviceState> init_task(Task const *task,
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  auto per_device_state =
+      acc.get_argument<DeviceSpecific<ReshapePerDeviceState>>(PER_DEVICE_STATE);
+  Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+
+  return profile(forward_kernel,
+                 profiling,
+                 "[Reshape] forward time = %.2lfms\n",
+                 &per_device_state,
+                 input,
+                 output);
 }
 
 static void forward_task(Task const *task,
@@ -101,7 +114,19 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  auto per_device_state =
+      acc.get_argument<DeviceSpecific<ReshapePerDeviceState>>(PER_DEVICE_STATE);
+  Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  auto input_grad = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output_grad = acc.get_tensor<Permissions::WO>(OUTPUT);
+
+  return profile(backward_kernel,
+                 profiling,
+                 "[Reshape] backward time = %.2lfms\n",
+                 &per_device_state,
+                 input_grad,
+                 output_grad);
 }
 
 static void backward_task(Task const *task,
@@ -112,24 +137,29 @@ static void backward_task(Task const *task,
   backward_task_impl(acc);
 }
 
-
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReshapeAttrs const &attrs,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
 
-    NOT_IMPLEMENTED();
-  }
+  // reshape has no cost
+  // Note(lamda):if reshape has cost, we can optimize this implementation
+
+  float forward_time = 0.0;
+  float backward_time = 0.0;
+  float sync_time = 0.0;
+  return make_metrics(forward_time, backward_time, sync_time, env);
+}
 
 template <>
 void register_task<RESHAPE_INIT_TASK_ID>() {
-    OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init(OpTaskType::INIT);
 
-    init.add_input_slots(INPUT);
-    init.add_output_slots(OUTPUT);
+  init.add_input_slots(INPUT);
+  init.add_output_slots(OUTPUT);
 
-    register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task);
+  register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task);
 }
 
 template <>
@@ -147,7 +177,8 @@ void register_task<RESHAPE_FWD_TASK_ID>() {
 
 template <>
 void register_task<RESHAPE_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_binding(get_op_signature(RESHAPE_FWD_TASK_ID));
+  OpTaskSignature bwd =
+      infer_bwd_binding(get_op_signature(RESHAPE_FWD_TASK_ID));
 
   register_task(RESHAPE_BWD_TASK_ID, "Reshape Bwd", bwd, backward_task);
 }
@@ -182,7 +213,8 @@ void register_task<RESHAPE_BWD_TASK_ID>() {
 //     std::vector<ParallelTensor> const &inputs) {
 //   std::vector<int> shape;
 //   layer->get_int_vector_property("shape", shape);
-//   return new Reshape(model, layer->layer_guid, inputs[0], shape, layer->name);
+//   return new Reshape(model, layer->layer_guid, inputs[0], shape,
+//   layer->name);
 // }
 
 // Reshape::Reshape(FFModel &model,
@@ -280,9 +312,9 @@ void register_task<RESHAPE_BWD_TASK_ID>() {
 // }
 
 // PerDeviceOpState *Reshape::init_task(Task const *task,
-//                                      std::vector<PhysicalRegion> const &regions,
-//                                      Context ctx,
-//                                      Runtime *runtime) {
+//                                      std::vector<PhysicalRegion> const
+//                                      &regions, Context ctx, Runtime *runtime)
+//                                      {
 //   Reshape const *reshape = (Reshape *)task->args;
 //   FFHandler handle = *((FFHandler const *)task->local_args);
 //   ReshapeMeta *m = new ReshapeMeta(handle);
@@ -461,13 +493,13 @@ void register_task<RESHAPE_BWD_TASK_ID>() {
 //   }
 
 //   sim->free_all();
-//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-//   assert(input_ptr != NULL);
-//   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(),
+//   DT_FLOAT); assert(input_ptr != NULL); cost_metrics.inputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
-//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-//   assert(output_ptr != NULL);
-//   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
+//   DT_FLOAT); assert(output_ptr != NULL); cost_metrics.outputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
 //   assert(sub_output.get_volume() == sub_input.get_volume());
 //   size_t num_elements = sub_input.get_volume();
@@ -480,7 +512,8 @@ void register_task<RESHAPE_BWD_TASK_ID>() {
 //     float *input_grad_ptr =
 //         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
 //     assert(input_grad_ptr != NULL);
-//     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//     cost_metrics.inputs_memory +=
+//     cost_metrics.total_mem_diff_from(sim->offset);
 
 //     float *output_grad_ptr =
 //         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
@@ -497,9 +530,8 @@ void register_task<RESHAPE_BWD_TASK_ID>() {
 
 //   if (sim->computationMode == COMP_MODE_TRAINING) {
 //     printf(
-//         "[Measure Reshape] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-//         name,
-//         cost_metrics.forward_time,
+//         "[Measure Reshape] name(%s) forward_time(%.4lf)
+//         backward_time(%.4lf)\n", name, cost_metrics.forward_time,
 //         cost_metrics.backward_time);
 //   } else {
 //     printf("[Measure Reshape] name(%s) forward_time(%.4lf)\n",
@@ -567,4 +599,4 @@ void register_task<RESHAPE_BWD_TASK_ID>() {
 //   return key;
 // }
 
-}; // namespace std
+}; // namespace FlexFlow

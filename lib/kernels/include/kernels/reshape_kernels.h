@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-struct ReshapePerDeviceState  {
+struct ReshapePerDeviceState {
   req<DataType> data_type;
 };
 
@@ -21,12 +21,12 @@ namespace Kernels {
 namespace Reshape {
 
 void forward_kernel(ffStream_t stream,
-                    ReshapePerDeviceState const & meta,
+                    ReshapePerDeviceState const &meta,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
-                     ReshapePerDeviceState const & meta,
+                     ReshapePerDeviceState const &meta,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output);
 

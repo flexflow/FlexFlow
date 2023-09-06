@@ -2,8 +2,8 @@
 #define _FLEXFLOW_REPLICATE_H
 
 #include "op-attrs/ops/replicate.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
