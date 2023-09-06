@@ -1,0 +1,10 @@
+ff_add_test_executable(
+  NAME
+    op-attrs-test
+  SRC_PATTERNS
+    *.cc
+  DEPS
+    op-attrs
+    doctest
+    utils-test-common
+)
