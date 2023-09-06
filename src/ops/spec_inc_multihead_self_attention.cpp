@@ -332,6 +332,20 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                           HIPBLAS_GEMM_DEFAULT));
         }
       }
+      if (*m->position_bias) {
+        size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_position_bias_qkprd<DT>),
+                           GET_BLOCKS(parallelism),
+                           min((size_t)CUDA_NUM_THREADS, parallelism),
+                           0,
+                           stream,
+                           C,
+                           num_new_tokens,
+                           total_tokens,
+                           m->num_q_heads,
+                           m->global_num_q_heads,
+                           shard_id);
+      }
 
       // Fill all elements above diagonal in qk prods with -inf to force
       // causal attention.
@@ -660,6 +674,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
+                                    attn->position_bias,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,

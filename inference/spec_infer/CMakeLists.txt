@@ -10,7 +10,8 @@ set(CPU_SRC
   ../file_loader.cc
   ../models/llama.cc
   ../models/opt.cc
-  ../models/falcon.cc)
+  ../models/falcon.cc
+  ../models/mpt.cc)
 
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   cuda_add_executable(${project_target} ${CPU_SRC})

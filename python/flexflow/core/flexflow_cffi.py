@@ -1567,10 +1567,10 @@ class FFModel(object):
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
     
-  def layer_norm(self, input, axes, elementwise_affine=True, eps=1e-5, name=None):
+  def layer_norm(self, input, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
-    handle = ffc().flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, c_name)
+    handle = ffc().flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.LAYER_NORM, name)
     return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
 
@@ -1591,6 +1591,9 @@ class FFModel(object):
             
     :param name: the name of the layer. Default is None.
     :type name: string
+
+    :param name:  Whether to add use bias in layer normalization
+    :type name: bool
 
     :returns:  Tensor -- the output tensor.
     """
@@ -2109,7 +2112,7 @@ class FFModel(object):
                               bias=True, add_bias_kv=False, add_zero_attn=False, 
                               data_type=DataType.DT_NONE, kernel_initializer=None, 
                               apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                              qk_prod_scaling=True, name=None):
+                              qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     In inference mode, the attention is computed using incremental decoding.
@@ -2158,6 +2161,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2167,7 +2173,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc().flexflow_model_add_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
   
@@ -2177,7 +2183,7 @@ class FFModel(object):
                                    bias=True, add_bias_kv=False, add_zero_attn=False, 
                                    data_type=DataType.DT_NONE, kernel_initializer=None, 
                                    apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                   qk_prod_scaling=True, name=None):
+                                   qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (beam search) mode.
@@ -2226,6 +2232,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2235,7 +2244,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc().flexflow_model_add_spec_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_spec_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
   
@@ -2245,7 +2254,7 @@ class FFModel(object):
                                           bias=True, add_bias_kv=False, add_zero_attn=False, 
                                           data_type=DataType.DT_NONE, kernel_initializer=None, 
                                           apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                          qk_prod_scaling=True, name=None):
+                                          qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (tree verify) mode.
@@ -2294,6 +2303,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2303,7 +2315,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc().flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
   
@@ -2313,7 +2325,7 @@ class FFModel(object):
                               bias=True, add_bias_kv=False, add_zero_attn=False, 
                               data_type=DataType.DT_NONE, kernel_initializer=None, 
                               apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                              qk_prod_scaling=True, name=None):
+                              qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the multi-query head attention, which allows a different number of Q and KV heads,
     and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     In inference mode, the attention is computed using incremental decoding.
@@ -2365,6 +2377,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2374,7 +2389,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc().flexflow_model_add_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
   
@@ -2384,7 +2399,7 @@ class FFModel(object):
                                    bias=True, add_bias_kv=False, add_zero_attn=False, 
                                    data_type=DataType.DT_NONE, kernel_initializer=None, 
                                    apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                   qk_prod_scaling=True, name=None):
+                                   qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the multi-query head attention, which allows a different number of Q and KV heads,
     and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (beam search) mode.
@@ -2436,6 +2451,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2445,7 +2463,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc().flexflow_model_add_spec_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_spec_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
   
@@ -2455,7 +2473,7 @@ class FFModel(object):
                                           bias=True, add_bias_kv=False, add_zero_attn=False, 
                                           data_type=DataType.DT_NONE, kernel_initializer=None, 
                                           apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                          qk_prod_scaling=True, name=None):
+                                          qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the multi-query head attention, which allows a different number of Q and KV heads,
     and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (tree verify) mode.
@@ -2507,6 +2525,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2516,7 +2537,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc().flexflow_model_add_inc_multiquery_self_attention_verify(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multiquery_self_attention_verify(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
   

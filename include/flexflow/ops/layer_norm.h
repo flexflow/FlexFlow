@@ -21,6 +21,7 @@ public:
             const ParallelTensor _input,
             std::vector<int> const &axes,
             bool _elementwise_affine,
+            bool _use_bias,
             float _eps,
             bool allocate_weights,
             char const *name);
@@ -100,7 +101,7 @@ public:
                                       T *beta_grad_ptr);
 
 public:
-  bool elementwise_affine;
+  bool elementwise_affine, use_bias;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
   std::vector<int> axes;
@@ -114,7 +115,7 @@ public:
   ~LayerNormMeta(void);
 
 public:
-  bool elementwise_affine;
+  bool elementwise_affine, use_bias;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
   void *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;

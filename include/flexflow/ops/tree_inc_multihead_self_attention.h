@@ -40,6 +40,7 @@ public:
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                bool _position_bias,
                                 bool allocate_weights,
                                 DataType _quantization_type,
                                 bool _offload,
@@ -61,6 +62,7 @@ public:
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                bool _position_bias,
                                 bool allocate_weights,
                                 DataType _quantization_type,
                                 bool _offload,
@@ -123,7 +125,7 @@ public:
   float dropout, scaling_factor;
   bool bias;
   bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling;
+      qk_prod_scaling, position_bias;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
