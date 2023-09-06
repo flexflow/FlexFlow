@@ -16,6 +16,7 @@
 #include "reshape.h"
 #include "kernels/reshape_kernels.h"
 #include "legion/legion_utilities.h"
+#include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -75,7 +76,51 @@ OpTaskInvocation backward(ReshapeAttrs const & attrs) {
   return {RESHAPE_BWD_TASK_ID, binding};
 }
 
+static  DeviceSpecific<ReshapePerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
 
+static  DeviceSpecific<ReshapePerDeviceState> init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
+
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
+}
+
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
+
+
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+                                  ReshapeAttrs const &attrs,
+                                  InputParallelTensorDesc const &input,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &machine_view) {
+
+    NOT_IMPLEMENTED();
+  }
 
 template <>
 void register_task<RESHAPE_INIT_TASK_ID>() {
