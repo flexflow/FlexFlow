@@ -9,7 +9,7 @@
 #include <curand.h>
 #include <curand_kernel.h>
 #elif defined(FF_USE_HIP_ROCM)
-#include <hiprand.h>
+#include <hiprand/hiprand.h>
 #include <hiprand/hiprand_kernel.h>
 #endif
 #include "flexflow/utils/memory_allocator.h"

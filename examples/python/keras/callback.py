@@ -20,6 +20,7 @@ from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetr
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import backend as K
 from accuracy import ModelAccuracy
+import flexflow.core as ff
 
 import numpy as np
 
@@ -68,4 +69,6 @@ def top_level_task():
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn callback")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

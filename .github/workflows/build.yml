@@ -67,7 +67,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: flexflow
-          environment-file: conda/environment.yml
+          environment-file: conda/flexflow.yml
           auto-activate-base: false
 
       - name: Build FlexFlow
@@ -131,15 +131,14 @@ jobs:
           cd build
           ./tests/unit/unit-test
 
-      - name: Check availability of Python flexflow.core module
+      - name: Check availability of flexflow modules in Python
         run: |
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
             export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
           fi
           # Remove build folder to check that the installed version can run independently of the build files
           rm -rf build
-          export CPU_ONLY_TEST=1
-          python -c "import flexflow.core; exit()"
+          python -c "import flexflow.core; import flexflow.serve as ff; exit()"
 
   makefile-build:
     name: Build FlexFlow with the Makefile
@@ -186,5 +185,4 @@ jobs:
 
           cd python
           make -j $n_build_cores
-          export CPU_ONLY_TEST=1
           python -c 'import flexflow.core'
