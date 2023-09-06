@@ -63,6 +63,7 @@ jobs:
       cuda_version: ${{ matrix.gpu_backend_version }}
       hip_version: ${{ matrix.gpu_backend_version }}
       branch_name: ${{ github.head_ref || github.ref_name }}
+    timeout-minutes: 480
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
