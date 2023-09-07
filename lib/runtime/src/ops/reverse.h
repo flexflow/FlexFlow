@@ -2,7 +2,7 @@
 #define _FLEXFLOW_REVERSE_H_
 
 #include "op-attrs/ops/reverse.h"
-#include "op_task_invocation.h"
+#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {
@@ -20,7 +20,7 @@ OpTaskInvocation backward(ReverseAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReverseAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 
