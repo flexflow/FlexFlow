@@ -14,9 +14,9 @@
  */
 
 #include "softmax.h"
+#include "kernels/softmax_kernels.h"
 #include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
-#include "kernels/softmax_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -54,21 +54,23 @@ SoftmaxParams Softmax::get_params() const {
   return params;
 }
 
-OpTaskInvocation init(SoftmaxAttrs const & attrs) {
+OpTaskInvocation init(SoftmaxAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(HANDLE, ff_handle());.
+  binding.bind_arg(HANDLE, ff_handle());
+  .
 
-  // binding.bind(INPUT, input_tensor(0));
-  // binding.bind(OUTPUT, output_tensor(0));
+      // binding.bind(INPUT, input_tensor(0));
+      // binding.bind(OUTPUT, output_tensor(0));
 
-  return {SOFTMAX_INIT_TASK_ID, binding};
+      return {SOFTMAX_INIT_TASK_ID, binding};
 }
 
-OpTaskInvocation forward(SoftmaxAttrs const & attrs) {
+OpTaskInvocation forward(SoftmaxAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<SoftmaxPerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<SoftmaxPerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
 
   binding.bind(INPUT, input_tensor(0));
@@ -77,32 +79,45 @@ OpTaskInvocation forward(SoftmaxAttrs const & attrs) {
   return {SOFTMAX_FWD_TASK_ID, binding};
 }
 
-OpTaskInvocation backward(SoftmaxAttrs const & attrs) {
+OpTaskInvocation backward(SoftmaxAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
   return {SOFTMAX_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<SoftmaxPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecific<SoftmaxPerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   ffTensorDescriptor_t inputTensor;
-  DeviceSpecific<SoftmaxPerDeviceState> per_device_state = acc.create_device_specific<SoftmaxPerDeviceState>(
+  DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
+      acc.create_device_specific<SoftmaxPerDeviceState>(
           init_kernel(handle, inputTensor));
   return per_device_state;
-
 }
 
-static DeviceSpecific<SoftmaxPerDeviceState>    init_task(Task const *task,
+static DeviceSpecific<SoftmaxPerDeviceState>
+    init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
               Runtime *runtime) {
- TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return init_task_impl(acc);
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  auto input = acc.get_tensor<Permissions::RO>(A_INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto per_device_state =
+      acc.get_argument<SoftmaxPerDeviceState>(PER_DEVICE_STATE);
+
+  return profile(forward_kernel,
+                 profiling,
+                 "[SoftMax] forward_time = %.2lfms\n",
+                 per_device_state,
+                 input.get_float_ptr(),
+                 output.get_float_ptr(), );
 }
 
 static void forward_task(Task const *task,
@@ -114,38 +129,105 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  assert(input_grad.shape == input.shape);
+
+  auto output_grad = acc.get_tensor<Permissions::RO>(OUTPUT);
+  auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
+  assert(output_grad.shape == output.shape);
+
+  return profile(
+      backward_kernel,
+      profiling,
+      "[SoftMax] backward_time = %.2lfms\n",
+      per_device_state,
+      input_grad.get_float_ptr(),
+      output_grad.get_float_ptr(),
+      output_grad.shape.volume(), // Note(lambda): get num_elements, maybe wrong
+  );
 }
 
 static void backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
-                          Runtime *runtime) { 
+                          Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   backward_task_impl(acc);
-  }
+}
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SoftmaxAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  NOT_IMPLEMENTED();
+  auto env = sim.new_environment();
+
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
+
+  SimTaskBinding init_binding;
+  // Note: what should init_binding?
+  init_binding.bind(INPUT, input);
+  init_binding.bind(OUTPUT, output_shape);
+  init_binding.bind_arg(ATTRS, attrs);
+  init_binding.bind_arg(PROFILING, settings);
+  init_binding.bind_arg(HANDLE, ff_handle());
+
+  auto init_accessor =
+      env.get_init_accessor(SOFTMAX_INIT_TASK_ID, init_binding);
+  DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
+
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind(INPUT, input);
+  fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto fwd_accessor = env.get_fwd_accessor(SOFTMAX_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(SOFTMAX_BWD_TASK_ID, bwd_binding);
+
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
 template <>
 void register_task<SOFTMAX_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
 
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+
+  // Note: we don't add_input(INPUT) and add_output_slot(OUTPUT) here, because
+  // init_task_impl doesn't need input, output, just need PerDeviceFFHandle
+  register_task(SOFTMAX_INIT_TASK_ID, "SoftMax Init", init, init_task);
 }
 
 template <>
 void register_task<SOFTMAX_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
 
+  fwd.add_arg_slot<bool>(PROFILING);
+  fwd.add_unchecked_arg_slot<SoftmaxPerDeviceState>(PER_DEVICE_STATE);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+
+  register_task(SOFTMAX_FWD_TASK_ID, "SoftMax Fwd", fwd, forward_task);
 }
 
 template <>
 void register_task<SOFTMAX_BWD_TASK_ID>() {
-  
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(SOFTMAX_FWD_TASK_ID));
+
+  register_task(SOFTMAX_BWD_TASK_ID, "SoftMax Bwd", bwd, backward_task);
 }
 
 // Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
@@ -248,9 +330,9 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //   regions[1]: output
 //  */
 // PerDeviceOpState *Softmax::init_task(Task const *task,
-//                                      std::vector<PhysicalRegion> const &regions,
-//                                      Context ctx,
-//                                      Runtime *runtime) {
+//                                      std::vector<PhysicalRegion> const
+//                                      &regions, Context ctx, Runtime *runtime)
+//                                      {
 //   assert(regions.size() == 2);
 //   assert(task->regions.size() == 2);
 //   Softmax const *softmax = (Softmax *)task->args;
@@ -319,8 +401,8 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //   Domain in_domain = runtime->get_index_space_domain(
 //       ctx, task->regions[0].region.get_index_space());
 //   switch (in_domain.get_dim()) {
-// #define DIMFUNC(DIM)                                                           \
-//   case DIM:                                                                    \
+// #define DIMFUNC(DIM) \
+//   case DIM: \
 //     return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
 //     LEGION_FOREACH_N(DIMFUNC)
 // #undef DIMFUNC
@@ -335,9 +417,9 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 // */
 // template <int NDIM>
 // void Softmax::forward_task_with_dim(Task const *task,
-//                                     std::vector<PhysicalRegion> const &regions,
-//                                     Context ctx,
-//                                     Runtime *runtime) {
+//                                     std::vector<PhysicalRegion> const
+//                                     &regions, Context ctx, Runtime *runtime)
+//                                     {
 //   assert(regions.size() == 2);
 //   assert(task->regions.size() == 2);
 //   // const Softmax* softmax = (Softmax*) task->args;
@@ -389,8 +471,8 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //   Domain in_domain = runtime->get_index_space_domain(
 //       ctx, task->regions[0].region.get_index_space());
 //   switch (in_domain.get_dim()) {
-// #define DIMFUNC(DIM)                                                           \
-//   case DIM:                                                                    \
+// #define DIMFUNC(DIM) \
+//   case DIM: \
 //     return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
 //     LEGION_FOREACH_N(DIMFUNC)
 // #undef DIMFUNC
@@ -403,14 +485,15 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //   regions[0](I/O): input_grad
 //   regions[1](I): output_grad
 // */
-// // Note that the backward task of softmax is actually a no op (i.e., input_grad
+// // Note that the backward task of softmax is actually a no op (i.e.,
+// input_grad
 // // = output_grad) since the upstream cross_entropy_loss function computes
 // // performs softmax_cross_entropy_loss to avoid intermediate zeros
 // template <int NDIM>
 // void Softmax::backward_task_with_dim(Task const *task,
-//                                      std::vector<PhysicalRegion> const &regions,
-//                                      Context ctx,
-//                                      Runtime *runtime) {
+//                                      std::vector<PhysicalRegion> const
+//                                      &regions, Context ctx, Runtime *runtime)
+//                                      {
 //   assert(regions.size() == 2);
 //   assert(task->regions.size() == 2);
 //   // const Softmax* softmax = (Softmax*) task->args;
@@ -427,7 +510,8 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //   assert(acc_input_grad.rect == acc_output_grad.rect);
 
 //   backward_kernel_wrapper(
-//       m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+//       m, acc_input_grad.ptr, acc_output_grad.ptr,
+//       acc_input_grad.rect.volume());
 // }
 
 // bool Softmax::get_int_parameter(PMParameter para, int *value) const {
@@ -451,16 +535,17 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //     return false;
 //   }
 
-//   SoftmaxMeta *m = new SoftmaxMeta(sim->handler, this, sub_output.get_domain());
+//   SoftmaxMeta *m = new SoftmaxMeta(sim->handler, this,
+//   sub_output.get_domain());
 
 //   sim->free_all();
-//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-//   assert(input_ptr != NULL);
-//   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(),
+//   DT_FLOAT); assert(input_ptr != NULL); cost_metrics.inputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
-//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-//   assert(output_ptr != NULL);
-//   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
+//   DT_FLOAT); assert(output_ptr != NULL); cost_metrics.outputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
 //   std::function<void()> forward, backward;
 //   forward = [&] { forward_kernel_wrapper(m, input_ptr, output_ptr); };
@@ -468,7 +553,8 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //     float *input_grad_ptr =
 //         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
 //     assert(input_grad_ptr != NULL);
-//     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//     cost_metrics.inputs_memory +=
+//     cost_metrics.total_mem_diff_from(sim->offset);
 
 //     float *output_grad_ptr =
 //         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
@@ -511,4 +597,4 @@ void register_task<SOFTMAX_BWD_TASK_ID>() {
 //   hash_combine(key, params.dim);
 //   return key;
 // }
-}; // namespace std
+}; // namespace FlexFlow

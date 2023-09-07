@@ -7,10 +7,10 @@
 
 namespace FlexFlow {
 
-//Note(lambda): SoftmaxPerDeviceState may need add more elements
+// Note(lambda): SoftmaxPerDeviceState may need add more elements
 struct SoftmaxPerDeviceState {
-    PerDeviceFFHandle handle;
-    ffTensorDescriptor_t inputTensor; 
+  PerDeviceFFHandle handle;
+  ffTensorDescriptor_t inputTensor;
 };
 
 FF_VISITABLE_STRUCT_NO_EQ(SoftmaxPerDeviceState, handle, inputTensor);
@@ -18,7 +18,8 @@ FF_VISITABLE_STRUCT_NO_EQ(SoftmaxPerDeviceState, handle, inputTensor);
 namespace Kernels {
 namespace Softmax {
 
-SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const&, ffTensorDescriptor_t const&);
+SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &,
+                                  ffTensorDescriptor_t const &);
 
 void forward_kernel(ffStream_t stream,
                     SoftmaxPerDeviceState const *m,
