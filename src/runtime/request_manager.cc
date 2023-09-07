@@ -1275,7 +1275,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         std::cout << "[Verify] Committed Tokens from last loading batch: "
                   << new_bc.num_tokens_to_commit << std::endl;
       }
-      
+
       // Normal Request Info
       new_bc.requestsInfo[i].token_start_offset = request.llm_cache_size;
       new_bc.requestsInfo[i].request_guid =
@@ -1287,7 +1287,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
           BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
           (int)request.initial_len - new_bc.requestsInfo[i].token_start_offset);
-
 
       if (request.llm_cache_size < request.initial_len) {
         // Initialization (prompt) phase
