@@ -2,8 +2,8 @@
 #define _FLEXFLOW_SPLIT_H
 
 #include "op-attrs/ops/split.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
