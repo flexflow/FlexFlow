@@ -41,7 +41,8 @@ using Legion::TaskLauncher;
 
 bool operator==(LayerNormParams const &lhs, LayerNormParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && lhs.axes == rhs.axes &&
-         lhs.elementwise_affine == rhs.elementwise_affine;
+         lhs.elementwise_affine == rhs.elementwise_affine &&
+         lhs.use_bias == rhs.use_bias;
 }
 
 bool LayerNormParams::is_valid(ParallelTensorShape const &input) const {
@@ -54,6 +55,7 @@ LayerNormParams LayerNorm::get_params() const {
   params.axes = this->axes;
   params.elementwise_affine = this->elementwise_affine;
   params.eps = this->eps;
+  params.use_bias = this->use_bias;
   return params;
 }
 
@@ -61,6 +63,7 @@ Tensor FFModel::layer_norm(const Tensor input,
                            std::vector<int> const &axes,
                            bool elementwise_affine,
                            float eps,
+                           bool use_bias,
                            DataType data_type,
                            char const *name) {
   // In PyTorch, axes must be the sizes of the last axes.size() dimensions of
@@ -97,7 +100,7 @@ Tensor FFModel::layer_norm(const Tensor input,
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
-  int num_weights = elementwise_affine ? 2 : 0;
+  int num_weights = elementwise_affine ? (use_bias ? 2 : 1) : 0;
   Layer *ln = nullptr;
   if (data_type != input->data_type) {
     Tensor casted_input = cast(input, data_type, "type cast for layer_norm");
@@ -126,7 +129,7 @@ Tensor FFModel::layer_norm(const Tensor input,
                                                  ln,
                                                  0,
                                                  true /*create_grad*/);
-  if (num_weights == 2) {
+  if (num_weights > 0) {
     int numdims = axes.size();
     int dims[numdims];
     for (int i = 0; i < numdims; i++) {
@@ -139,15 +142,18 @@ Tensor FFModel::layer_norm(const Tensor input,
                                                    true /*create_grad*/,
                                                    nullptr,
                                                    CHOSEN_SYNC_TYPE);
-    ln->weights[1] = create_weight_legion_ordering(numdims,
-                                                   dims,
-                                                   input->data_type,
-                                                   ln,
-                                                   true /*create_grad*/,
-                                                   nullptr,
-                                                   CHOSEN_SYNC_TYPE);
+    if (num_weights == 2) {
+      ln->weights[1] = create_weight_legion_ordering(numdims,
+                                                     dims,
+                                                     input->data_type,
+                                                     ln,
+                                                     true /*create_grad*/,
+                                                     nullptr,
+                                                     CHOSEN_SYNC_TYPE);
+    }
   }
   ln->add_int_property("elementwise_affine", elementwise_affine);
+  ln->add_int_property("use_bias", use_bias);
   ln->add_int_vector_property("axes", axes);
   ln->add_float_property("eps", eps);
   layers.push_back(ln);
@@ -161,6 +167,8 @@ Op *LayerNorm::create_operator_from_layer(
   long long value;
   layer->get_int_property("elementwise_affine", value);
   bool elementwise_affine = (bool)value;
+  layer->get_int_property("use_bias", value);
+  bool use_bias = (bool)value;
   std::vector<int> axes;
   layer->get_int_vector_property("axes", axes);
   float eps;
@@ -170,6 +178,7 @@ Op *LayerNorm::create_operator_from_layer(
                        inputs[0],
                        axes,
                        elementwise_affine,
+                       use_bias,
                        eps,
                        false, // allocate_weights
                        layer->name);
@@ -185,6 +194,7 @@ LayerNorm::LayerNorm(FFModel &model,
                 input,
                 params.axes,
                 params.elementwise_affine,
+                params.use_bias,
                 params.eps,
                 allocate_weights,
                 name) {}
@@ -194,6 +204,7 @@ LayerNorm::LayerNorm(FFModel &model,
                      const ParallelTensor _input,
                      std::vector<int> const &_axes,
                      bool _elementwise_affine,
+                     bool _use_bias,
                      float _eps,
                      bool allocate_weights,
                      char const *name)
@@ -202,10 +213,11 @@ LayerNorm::LayerNorm(FFModel &model,
          _input->data_type,
          name,
          1 /*inputs*/,
-         _elementwise_affine ? 2 : 0 /*weights*/,
+         _elementwise_affine ? (_use_bias ? 2 : 1) : 0 /*weights*/,
          1 /*outputs*/,
          _input),
-      elementwise_affine(_elementwise_affine), eps(_eps), axes(_axes) {
+      elementwise_affine(_elementwise_affine), eps(_eps), axes(_axes),
+      use_bias(_use_bias) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -224,7 +236,7 @@ LayerNorm::LayerNorm(FFModel &model,
   }
   effective_num_elements = M;
   effective_batch_size = (inputs[0]->get_volume() / num_replicas) / M;
-  assert(elementwise_affine == (numWeights == 2));
+  assert(use_bias == (numWeights == 2));
   if (numWeights > 0 && allocate_weights) {
     ParallelTensorShape beta_gamma_shape = _input->get_shape();
     for (int i = axes.size(); i < beta_gamma_shape.num_dims - 1; i++) {
@@ -291,12 +303,15 @@ void LayerNorm::init_inference(FFModel const &ff,
                                                       EXCLUSIVE,
                                                       weights[0]->region));
     launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
-    launcher.add_field(3, FID_DATA);
+
+    if (use_bias) {
+      launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                        0 /*projection id*/,
+                                                        READ_ONLY,
+                                                        EXCLUSIVE,
+                                                        weights[1]->region));
+      launcher.add_field(3, FID_DATA);
+    }
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -337,12 +352,14 @@ void LayerNorm::init(FFModel const &ff) {
                                                       EXCLUSIVE,
                                                       weights[0]->region));
     launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
-    launcher.add_field(3, FID_DATA);
+    if (use_bias) {
+      launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                        0 /*projection id*/,
+                                                        READ_ONLY,
+                                                        EXCLUSIVE,
+                                                        weights[1]->region));
+      launcher.add_field(3, FID_DATA);
+    }
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -397,12 +414,15 @@ void LayerNorm::forward(FFModel const &ff) {
                                                       READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[0]->region));
-    launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
+    if (use_bias) {
+      launcher.add_field(2, FID_DATA);
+      launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                        0 /*projection id*/,
+                                                        READ_ONLY,
+                                                        EXCLUSIVE,
+                                                        weights[1]->region));
+    }
+
     launcher.add_field(3, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -449,12 +469,15 @@ FutureMap LayerNorm::inference(FFModel const &ff,
                                                       EXCLUSIVE,
                                                       weights[0]->region));
     launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
-    launcher.add_field(3, FID_DATA);
+
+    if (use_bias) {
+      launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                        0 /*projection id*/,
+                                                        READ_ONLY,
+                                                        EXCLUSIVE,
+                                                        weights[1]->region));
+      launcher.add_field(3, FID_DATA);
+    }
   }
   return runtime->execute_index_space(ctx, launcher);
 }
@@ -492,20 +515,23 @@ void LayerNorm::forward_task(Task const *task,
   assert(in_domain.get_volume() ==
          m->effective_num_elements * m->effective_batch_size);
   if (m->elementwise_affine) {
-    assert(regions.size() == 4);
+    assert(m->use_bias == (regions.size() == 4));
     Domain gamma_domain = runtime->get_index_space_domain(
         ctx, task->regions[2].region.get_index_space());
-    // gamma_ptr = helperGetTensorPointerRW<float>(
-    //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
     gamma = helperGetGenericTensorAccessorRO(
         m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    Domain beta_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3].region.get_index_space());
-    // beta_ptr = helperGetTensorPointerRW<float>(
-    //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    beta = helperGetGenericTensorAccessorRO(
-        m->input_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    assert(gamma_domain == beta_domain);
+    if (m->use_bias) {
+      Domain beta_domain = runtime->get_index_space_domain(
+          ctx, task->regions[3].region.get_index_space());
+      beta = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                              regions[3],
+                                              task->regions[3],
+                                              FID_DATA,
+                                              ctx,
+                                              runtime);
+      assert(gamma_domain == beta_domain);
+    }
+
     assert(gamma_domain.get_volume() == m->effective_num_elements);
     int numdims = gamma_domain.get_dim();
     size_t vol = 1;
@@ -573,12 +599,15 @@ void LayerNorm::backward(FFModel const &ff) {
                                                       weights[0]->region_grad));
     launcher.add_field(4, FID_DATA);
     // regions[5](I/O): beta_grad
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part_grad,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region_grad));
-    launcher.add_field(5, FID_DATA);
+    if (use_bias) {
+      launcher.add_region_requirement(
+          RegionRequirement(weights[1]->part_grad,
+                            0 /*projection id*/,
+                            READ_WRITE,
+                            EXCLUSIVE,
+                            weights[1]->region_grad));
+      launcher.add_field(5, FID_DATA);
+    }
   }
   runtime->execute_index_space(ctx, launcher);
 }
@@ -615,7 +644,7 @@ void LayerNorm::backward_task(Task const *task,
   assert(in_domain.get_volume() ==
          m->effective_num_elements * m->effective_batch_size);
   if (m->elementwise_affine) {
-    assert(regions.size() == 6);
+    assert(m->use_bias == (regions.size() == 6));
     Domain gamma_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
     gamma_ptr = helperGetTensorPointerRO<float>(
@@ -624,12 +653,16 @@ void LayerNorm::backward_task(Task const *task,
         ctx, task->regions[4].region.get_index_space());
     gamma_grad_ptr = helperGetTensorPointerRW<float>(
         regions[4], task->regions[4], FID_DATA, ctx, runtime);
-    Domain beta_grad_domain = runtime->get_index_space_domain(
-        ctx, task->regions[5].region.get_index_space());
-    beta_grad_ptr = helperGetTensorPointerRW<float>(
-        regions[5], task->regions[5], FID_DATA, ctx, runtime);
+    if (m->use_bias) {
+      Domain beta_grad_domain = runtime->get_index_space_domain(
+          ctx, task->regions[5].region.get_index_space());
+      beta_grad_ptr = helperGetTensorPointerRW<float>(
+          regions[5], task->regions[5], FID_DATA, ctx, runtime);
+      assert(gamma_domain == beta_grad_domain);
+    }
+
     assert(gamma_domain == gamma_grad_domain);
-    assert(gamma_domain == beta_grad_domain);
+
     assert(gamma_domain.get_volume() == m->effective_num_elements);
   } else {
     assert(regions.size() == 3);
@@ -752,6 +785,7 @@ void LayerNorm::serialize(Legion::Serializer &sez) const {
   }
   sez.serialize(this->elementwise_affine);
   sez.serialize(this->eps);
+  sez.serialize(this->use_bias);
 }
 
 using PCG::Node;
@@ -764,6 +798,7 @@ Node LayerNorm::deserialize(FFModel &ff,
   size_t num_axes;
   std::vector<int> axes;
   bool elementwise_affine;
+  bool use_bias;
   float eps;
   size_t id, transformer_layer_id;
   dez.deserialize(id);
@@ -777,12 +812,14 @@ Node LayerNorm::deserialize(FFModel &ff,
   }
   dez.deserialize(elementwise_affine);
   dez.deserialize(eps);
+  dez.deserialize(use_bias);
 
   LayerNormParams params;
   params.layer_guid = layer_guid;
   params.axes = axes;
   params.elementwise_affine = elementwise_affine;
   params.eps = eps;
+  params.use_bias = use_bias;
   return ff.get_or_create_node<LayerNorm>(inputs[0], params);
 }
 
@@ -805,6 +842,7 @@ size_t hash<FlexFlow::LayerNormParams>::operator()(
     hash_combine(key, n);
   }
   hash_combine(key, params.elementwise_affine);
+  hash_combine(key, params.use_bias);
   return key;
 }
 }; // namespace std

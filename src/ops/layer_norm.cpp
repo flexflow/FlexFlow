@@ -31,6 +31,7 @@ LayerNormMeta::LayerNormMeta(FFHandler handle,
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
+  use_bias = ln->use_bias;
   eps = ln->eps;
   checkCUDA(hipMalloc(&mean_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(hipMalloc(&rstd_ptr, sizeof(float) * effective_batch_size));
@@ -171,14 +172,15 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                      input.get_float_ptr(),
                                      output.get_float_ptr(),
                                      gamma.get_float_ptr(),
-                                     beta.get_float_ptr(),
+                                     m->use_bias ? beta.get_float_ptr()
+                                                 : nullptr,
                                      stream);
   } else if (m->input_type[0] == DT_HALF) {
     LayerNorm::forward_kernel<half>(m,
                                     input.get_half_ptr(),
                                     output.get_half_ptr(),
                                     gamma.get_half_ptr(),
-                                    beta.get_half_ptr(),
+                                    m->use_bias ? beta.get_half_ptr() : nullptr,
                                     stream);
   } else {
     assert(false && "unsupport datatype in layernorm");

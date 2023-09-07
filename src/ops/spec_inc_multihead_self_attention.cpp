@@ -332,6 +332,20 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                           HIPBLAS_GEMM_DEFAULT));
         }
       }
+      if (*m->position_bias) {
+        size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_position_bias_qkprd<DT>),
+                           GET_BLOCKS(parallelism),
+                           min((size_t)CUDA_NUM_THREADS, parallelism),
+                           0,
+                           stream,
+                           C,
+                           num_new_tokens,
+                           total_tokens,
+                           m->num_q_heads,
+                           m->global_num_q_heads,
+                           shard_id);
+      }
 
       // Fill all elements above diagonal in qk prods with -inf to force
       // causal attention.
@@ -528,28 +542,32 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       hipStream_t stream) {
   // here because we need postion info in infernece 1
-  hipMemcpyAsync(m->token_infos,
-                 &(bc->tokensInfo),
-                 bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
-  hipMemcpyAsync(m->request_infos,
-                 &(bc->requestsInfo),
-                 bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
-  hipMemcpyAsync(m->beam_token_infos,
-                 &(bc->beamTokenInfo),
-                 bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
-                     sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
-  hipMemcpyAsync(m->beam_request_infos,
-                 &(bc->beamRequestsInfo),
-                 bc->MAX_NUM_REQUESTS *
-                     sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
+  checkCUDA(
+      hipMemcpyAsync(m->token_infos,
+                     &(bc->tokensInfo),
+                     bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
+                     hipMemcpyHostToDevice,
+                     stream));
+  checkCUDA(
+      hipMemcpyAsync(m->request_infos,
+                     &(bc->requestsInfo),
+                     bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
+                     hipMemcpyHostToDevice,
+                     stream));
+  checkCUDA(
+      hipMemcpyAsync(m->beam_token_infos,
+                     &(bc->beamTokenInfo),
+                     bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
+                         sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
+                     hipMemcpyHostToDevice,
+                     stream));
+  checkCUDA(hipMemcpyAsync(
+      m->beam_request_infos,
+      &(bc->beamRequestsInfo),
+      bc->MAX_NUM_REQUESTS *
+          sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
+      hipMemcpyHostToDevice,
+      stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -656,6 +674,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
+                                    attn->position_bias,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
@@ -710,7 +729,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
            gpu_mem_allocator.instance_allocated_size);
   }
 
-  hipStreamSynchronize(stream);
+  checkCUDA(hipStreamSynchronize(stream));
 }
 
 SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(void) {

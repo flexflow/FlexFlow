@@ -3237,6 +3237,9 @@ void FFModel::create_operators_from_layers() {
                 (l->op_type == OP_LINEAR && layer_idx >= 2 &&
                  layers[layer_idx - 1]->op_type == OP_RELU &&
                  layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+                 layers[layer_idx - 1]->op_type == OP_GELU &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
                 (l->op_type == OP_LINEAR && layer_idx >= 5 &&
                  layers[layer_idx - 1]->op_type == OP_EW_MUL &&
                  layers[layer_idx - 2]->op_type == OP_EW_MUL &&

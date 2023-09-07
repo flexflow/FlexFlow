@@ -6,7 +6,7 @@
 #include <hipblas/hipblas.h>
 #include <miopen/miopen.h>
 #ifdef FF_USE_NCCL
-#include <rccl.h>
+#include <rccl/rccl.h>
 #endif
 
 #define FatalError(s)                                                          \

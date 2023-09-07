@@ -49,6 +49,7 @@ ff_init_configs.update(llm_configs)
 llama_models = ["decapoda-research/llama-7b-hf", "JackFram/llama-160m"]
 opt_models = ["facebook/opt-6.7b", "facebook/opt-125m"]
 falcon_models = ["tiiuae/falcon-7b",]
+mpt_models = ["mosaicml/mpt-7b", ]
 # starcoder_models = ["bigcode/starcoderbase-7b",]
 parallelism_settings = [(1,4), (2,2), (4,1)]
 
@@ -63,7 +64,7 @@ os.chdir(dname)
 
 
 # Generate incremental decoding configs
-all_models = llama_models + opt_models + falcon_models
+all_models = llama_models + opt_models + falcon_models + mpt_models
 for model_name in all_models:
     for full_precision in (True, False):
         for parallelism_degrees in parallelism_settings:

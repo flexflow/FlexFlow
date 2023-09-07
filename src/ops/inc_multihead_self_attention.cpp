@@ -30,6 +30,31 @@ using Legion::Memory;
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
+// only used by MPT model. https://arxiv.org/abs/2108.12409
+template <typename DT>
+__global__ void apply_position_bias_qkprd(DT *input_ptr,
+                                          int num_tokens,
+                                          int num_total_tokens,
+                                          int num_heads,
+                                          int global_num_q_heads,
+                                          int shard_id) {
+  CUDA_KERNEL_LOOP(i, num_tokens * num_total_tokens * num_heads) {
+    // get head_idx,
+    int head_idx = i / (num_tokens * num_total_tokens) + (num_heads * shard_id);
+    int position_idx = (i / num_tokens) % num_total_tokens;
+    position_idx = position_idx + 1 - num_total_tokens;
+    // 8 is alibi_bias_max in
+    // https://huggingface.co/mosaicml/mpt-30b/blob/main/config.json
+    float base = (float)(head_idx + 1) * 8 / global_num_q_heads;
+    float slopes = 1.0 / pow(2, base);
+    // if(i == 0){
+    //   printf("see position: %d, %f, %f, %f\n", position_idx, base, slopes,
+    //   position_idx * slopes);
+    // }
+    input_ptr[i] += static_cast<DT>(position_idx * slopes);
+  }
+}
+
 template <typename DT>
 __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
@@ -102,6 +127,16 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
     if (scaling_query && qkv_index == 0) {
       input_ptr[i] *= scaling_factor;
     }
+  }
+}
+template <typename DT>
+__global__ void scaling_query_kernel(DT *input_ptr,
+                                     int qProjSize,
+                                     int num_tokens,
+                                     int num_q_heads,
+                                     float scaling_factor) {
+  CUDA_KERNEL_LOOP(i, num_tokens * (qProjSize * num_q_heads)) {
+    input_ptr[i] *= scaling_factor;
   }
 }
 
@@ -332,6 +367,17 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        m->num_kv_heads,
                        *m->scaling_query,
                        m->scaling_factor);
+  } else if (m->scaling_query) {
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(scaling_query_kernel<DT>),
+                       GET_BLOCKS(parallelism),
+                       min(CUDA_NUM_THREADS, parallelism),
+                       0,
+                       stream,
+                       output_ptr,
+                       num_tokens,
+                       m->num_q_heads,
+                       m->qProjSize,
+                       m->scaling_factor);
   }
   if (*m->apply_rotary_embedding) {
     /*q&k*/
@@ -395,11 +441,11 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
   if (m->quantization_type != DT_NONE) {
     // copy weight_ptr to quantized_weight_ptr, do compression and store in
     // m->weight_ptr
-    hipMemcpyAsync(m->quantized_weight_ptr,
-                   weight.get_byte_ptr(),
-                   m->quantized_weightSize,
-                   hipMemcpyHostToDevice,
-                   stream);
+    checkCUDA(hipMemcpyAsync(m->quantized_weight_ptr,
+                             weight.get_byte_ptr(),
+                             m->quantized_weightSize,
+                             hipMemcpyHostToDevice,
+                             stream));
 
     if (m->quantization_type == DT_INT4) {
       int parallelism = m->qProjSize * m->qSize * m->num_q_heads / 2;
@@ -427,17 +473,17 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
     }
   } else {
     if (data_type == DT_FLOAT) {
-      hipMemcpyAsync(m->weight_ptr,
-                     weight.get_float_ptr(),
-                     m->weightSize,
-                     hipMemcpyHostToDevice,
-                     stream);
+      checkCUDA(hipMemcpyAsync(m->weight_ptr,
+                               weight.get_float_ptr(),
+                               m->weightSize,
+                               hipMemcpyHostToDevice,
+                               stream));
     } else if (data_type == DT_HALF) {
-      hipMemcpyAsync(m->weight_ptr,
-                     weight.get_half_ptr(),
-                     m->weightSize,
-                     hipMemcpyHostToDevice,
-                     stream);
+      checkCUDA(hipMemcpyAsync(m->weight_ptr,
+                               weight.get_half_ptr(),
+                               m->weightSize,
+                               hipMemcpyHostToDevice,
+                               stream));
     } else {
       assert(false);
     }
@@ -456,15 +502,16 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // here because we need postion info in infernece 1
 
   if (m->offload && m->biasSize > 0) {
-    hipMemcpyAsync(
-        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream);
+    checkCUDA(hipMemcpyAsync(
+        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
-  hipMemcpyAsync(m->token_infos,
-                 &(bc->tokensInfo),
-                 bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
-                 hipMemcpyHostToDevice,
-                 stream);
+  checkCUDA(hipMemcpyAsync(m->token_infos,
+                           &(bc->tokensInfo),
+                           bc->num_active_tokens() *
+                               sizeof(BatchConfig::PerTokenInfo),
+                           hipMemcpyHostToDevice,
+                           stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -623,6 +670,21 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                         compute_type,
                                         HIPBLAS_GEMM_DEFAULT));
       }
+    }
+    // add alibi position bias to qk production
+    if (*m->position_bias) {
+      size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_position_bias_qkprd<DT>),
+                         GET_BLOCKS(parallelism),
+                         min((size_t)CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream,
+                         C,
+                         num_new_tokens,
+                         total_tokens,
+                         m->num_q_heads,
+                         m->global_num_q_heads,
+                         shard_id);
     }
     // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
@@ -902,6 +964,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
+                                    attn->position_bias,
                                     attn->add_bias_kv,
                                     attn->scaling_factor,
                                     weight,
@@ -929,6 +992,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _bias,
     bool _scaling_query,
     bool _qk_prod_scaling,
+    bool _position_bias,
     bool _add_bias_kv,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
@@ -986,6 +1050,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   scaling_factor = _scaling_factor;
   qk_prod_scaling = (bool *)calloc(1, sizeof(bool));
   *qk_prod_scaling = _qk_prod_scaling;
+  position_bias = (bool *)calloc(1, sizeof(bool));
+  *position_bias = _position_bias;
   // Currently do not support adding bias to key/value projection
   assert(!_add_bias_kv);
 
@@ -1132,7 +1198,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
              gpu_mem_allocator.reserved_allocated_size);
     }
   }
-  hipStreamSynchronize(stream);
+  checkCUDA(hipStreamSynchronize(stream));
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {}

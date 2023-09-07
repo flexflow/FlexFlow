@@ -75,7 +75,10 @@ def top_level_task():
 
   model.fit([x_train, x_train], y_train, epochs=160, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
+
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn concat model")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()
   gc.collect()

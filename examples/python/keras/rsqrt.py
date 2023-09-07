@@ -16,7 +16,7 @@
 from flexflow.keras.layers import Dense, Input
 from flexflow.keras.backend.internal import rsqrt
 import flexflow.keras.optimizers
-
+import flexflow.core as ff
 import numpy as np
 
 def test_rsqrt():
@@ -40,4 +40,6 @@ def test_rsqrt():
 
 
 if __name__ == "__main__":
+    configs = ff.get_configs()
+    ff.init_flexflow_runtime(configs)
     test_rsqrt()
