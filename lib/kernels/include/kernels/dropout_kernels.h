@@ -11,31 +11,26 @@ namespace FlexFlow {
 
 struct DropoutPerDeviceState {
 public:
-  //Have values when passed in
-  PerDeviceFFHandle handler;
+  PerDeviceFFHandle handle;
   float rate;
   unsigned long long seed;
   ArrayShape output_domain;
   Allocator allocator;
-
-  // Realm::RegionInstance reserveInst;
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffDropoutDescriptor_t dropoutDesc;
-
   void *reserveSpace;
   void *dropoutStates;
   size_t reserveSpaceSize;
   req<size_t> dropoutStateSize;
 };
 
-FF_VISITABLE_STRUCT_NO_EQ(DropoutPerDeviceState,
-                          handler,
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(DropoutPerDeviceState,
+                          handle,
                           rate,
                           seed,
                           output_domain,
                           allocator,
-                          reserveInst,
                           inputTensor,
                           outputTensor,
                           dropoutDesc,
@@ -47,7 +42,7 @@ FF_VISITABLE_STRUCT_NO_EQ(DropoutPerDeviceState,
 namespace Kernels {
 namespace Dropout {
 
-DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
+DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   float rate,
                                   unsigned long long seed,
                                   ArrayShape const &output_domain,
