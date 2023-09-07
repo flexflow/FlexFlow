@@ -5,6 +5,7 @@
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
 #include "kernels/datatype_dispatch.h"
+#include "op-attrs/op.h"
 
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>
@@ -15,6 +16,11 @@
 #endif
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+typedef cudnnStatus_t ffStatus_t;
+typedef cudnnTensorDescriptor_t ffTensorDescriptor_t;
+typedef cudaDataType_t ffDataType_t;
+typedef cudnnDataType_t ffCudnnDataType_t;
+
 #define FF_CUDNN_STATUS_SUCCESS CUDNN_STATUS_SUCCESS
 #define FF_CURAND_STATUS_SUCESS CURAND_STATUS_SUCCESS
 #elif defined(FF_USE_HIP_ROCM)
@@ -58,6 +64,7 @@ inline int GET_BLOCKS(int const N) {
 }
 
 using ::FlexFlow::DataType;
+using ::FlexFlow::OperatorType;
 
 __global__ void scale_kernel(float *ptr, size_t size, float a, float b);
 

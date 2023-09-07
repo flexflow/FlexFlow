@@ -13,36 +13,27 @@
  * limitations under the License.
  */
 
-// #include "kernels/cuda_helper.h"
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
 #include "device.h"
 
-
 namespace FlexFlow {
-
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::Memory;
 
 namespace Kernels {
 namespace Dropout {
 
-DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
+DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   float rate,
                                   unsigned long long seed,
                                   ArrayShape output_domain,
                                   Allocator allocator) {
-  Realm::RegionInstance reserveInst,
-  ffTensorDescriptor_t inputTensor,
-  ffTensorDescriptor_t outputTensor,
-  ffDropoutDescriptor_t dropoutDesc,
-
-  void *reserveSpace,
-  void *dropoutState,
-  size_t reserveSpaceSize,
-  size_t dropoutStateSize
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffDropoutDescriptor_t dropoutDesc;
+  void *reserveSpace;
+  void *dropoutStates;
+  size_t reserveSpaceSize;
+  size_t dropoutStateSize;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
@@ -58,24 +49,21 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
   }
   checkCUDNN(cudnnSetDropoutDescriptor(
       dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed));
-  DropoutPerDeviceSate per_device_state = {
-                                            handler,
+  DropoutPerDeviceSate per_device_state = {handle,
                                             rate,
                                             seed,
                                             &output_domain,
                                             allocator,
-                                            reserveInst,
                                             inputTensor,
                                             outputTensor,
                                             dropoutDesc,
                                             reserveSpace,
-                                            dropoutState,
+                                            dropoutStates,
                                             reserveSpaceSize,
-                                            dropoutStateSize
-                                            };
+                                            dropoutStateSize};
   return per_device_state;
 }
-
+fdcgvhbjknlm
 void forward_kernel(cudaStream_t stream,
                     DropoutPerDeviceState *m,
                     float const *input_ptr,
@@ -108,11 +96,11 @@ void backward_kernel(cudaStream_t stream,
                                   m->reserveSpaceSize));
 }
 
-void cleanup_kernel(Realm::RegionInstance reserveInst,
+void cleanup_kernel(Allocator allocator,
                     ffTensorDescriptor_t inputTensor,
                     ffTensorDescriptor_t outputTensor,
                     ffDropoutDescriptor_t dropoutDesc) {
-  reserveInst.destroy();
+  allocator.deallocate();
   checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
   checkCUDNN(cudnnDestroyDropoutDescriptor(dropoutDesc));
