@@ -16,505 +16,285 @@
 #include "batch_norm.h"
 #include "kernels/batch_norm_kernels.h"
 #include "legion/legion_utilities.h"
-#include "task_spec.h"
-
-using namespace FlexFlow::Kernels::BatchNorm;
 
 namespace FlexFlow {
 
+using namespace FlexFlow::Kernels::BatchNorm;
+
+using Legion::Context;
+using Legion::PhysicalRegion;
+using Legion::Runtime;
+using Legion::Task;
+
 enum Slots {
-  INPUT,
-  SCALE,
-  BIAS,
-  OUTPUT,
-  INPUT_GRAD,
-  SCALE_GRAD,
-  BIAS_GRAD,
-  OUTPUT_GRAD,
+  INPUT,  // tensor
+  SCALE,  // tensor
+  BIAS,   // tensor
+  OUTPUT, // tensor
   ATTRS,
-  PROFILING
-}
+  PROFILING,
+  PER_DEVICE_STATE,
+  RELU,
+  HANDLE
+};
 
-Tensor
-    FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
-  assert(input->num_dims == 4); /*NCHW*/
-  Layer *bm = new Layer(this,
-                        OP_BATCHNORM,
-                        DT_FLOAT,
-                        name,
-                        1 /*inputs*/,
-                        2 /*weights*/,
-                        1 /*outputs*/,
-                        input);
-  int numdims = 4;
-  bm->outputs[0] = create_tensor_legion_ordering(
-      numdims, input->dims, DT_FLOAT, bm, 0, true /*create_grad*/);
-  bm->add_int_property("relu", relu);
-  layers.push_back(bm);
-  return bm->outputs[0];
-}
-
-/*
-  locals[0] = scale
-  locals[1] = bias
-*/
-BatchNorm::BatchNorm(FFModel &model,
-                     const ParallelTensor _input,
-                     const ParallelTensor _scale,
-                     const ParallelTensor _bias,
-                     bool _relu,
-                     char const *name)
-    : Op(model,
-         OP_BATCHNORM,
-         DT_FLOAT,
-         name,
-         1 /*inputs*/,
-         2 /*weights*/,
-         1 /*outputs*/,
-         _input,
-         _scale,
-         _bias),
-      relu(_relu) {
-  assert(_input->num_dims == 4);
-  numOutputs = 1;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->num_dims; i++) {
-    dims[i] = _input->dims[_input->num_dims - 1 - i];
-  }
-  outputs[0] =
-      model.create_parallel_tensor(_input->num_dims, dims, DT_FLOAT, this);
-  return;
-}
-
-static OpTaskSignature get_init_task_signature() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<BatchNormAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
-
-  // init.add_input_slot(INPUT);
-  // init.add_param_slot(SCALE);
-  // init.add_param_slot(BIAS);
-  init.add_output_slot(OUTPUT);
-}
-
-static OpTaskSignature get_fwd_task_signature() {
-  OpTaskSignature fwd(OpTaskType::FWD);
-
-  fwd.add_arg_slot<BatchNormAttrs>(ATTRS);
-
-  fwd.add_input_slot(INPUT);
-  fwd.add_param_slot(SCALE);
-  fwd.add_param_slot(BIAS);
-  fwd.add_output_slot(OUTPUT, WRITE_DISCARD);
-
-  return fwd;
-}
-
-static OpTaskSignature get_bwd_task_signature() {
-  OpTaskSignature bwd(OpTaskType::BWD);
-
-  bwd.add_arg_slot<BatchNormAttrs>(ATTRS);
-
-  bwd.add_input_slot(INPUT);
-  bwd.add_input_grad_slot(INPUT_GRAD, READ_WRITE);
-  bwd.add_param_slot(SCALE);
-  bwd.add_param_grad_slot(SCALE_GRAD, READ_WRITE);
-  bwd.add_param_grad_slot(BIAS_GRAD, READ_WRITE);
-  bwd.add_output_grad_slot(OUTPUT_GRAD);
-
-  return bwd;
-}
-
-OpTaskBinding BatchNorm::get_init_task_binding() const {
+OpTaskInvocation init(BatchNormAttrs const &attrs) {
   OpTaskBinding binding;
-
-  binding.bind_arg(ATTRS, this->attrs);
-  binding.bind_arg(PROFILING, this->profiling);
-
-  // binding.bind(INPUT, input_tensor(0));
-  // binding.bind(SCALE, param_tensor(0));
-  // binding.bind(BIAS, param_tensor(1));
-  binding.bind(OUTPUT, output_tensor(0));
-
-  return binding;
-}
-
-OpTaskBinding BatchNorm::get_fwd_task_binding() const {
-  OpTaskBinding binding;
-
-  binding.bind_arg(ATTRS, this->attrs);
 
   binding.bind(INPUT, input_tensor(0));
-  binding.bind(SCALE, param_tensor(0));
-  binding.bind(BIAS, param_tensor(1));
+  binding.bind(BIAS, input_tensor(2));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return binding;
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PROFILING, profiling_settings());
+  binding.bind_arg(HANDLE, ff_handle());
+
+  return {BATCHNORM_INIT_TASK_ID, binding};
 }
 
-OpTaskBinding BatchNorm::get_bwd_task_binding() const {
+OpTaskInvocation forward(BatchNormAttrs const &attrs) {
   OpTaskBinding binding;
-
-  binding.bind_arg(ATTRS, this->attrs);
+  binding.bind_arg(PROFILING, profiling_settings());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<BatchNormPerDeviceState>());
 
   binding.bind(INPUT, input_tensor(0));
-  binding.bind(INPUT_GRAD, input_tensor(0).grad());
-  binding.bind(SCALE, param_tensor(0));
-  binding.bind(SCALE_GRAD, param_tensor(0).grad());
-  binding.bind(BIAS_GRAD, param_tensor(1).grad());
-  binding.bind(OUTPUT_GRAD, output_tensor(0).grad());
+  binding.bind(SCALE, input_tensor(1));
+  binding.bind(BIAS, input_tensor(2));
+  binding.bind(OUTPUT, output_tensor(0));
 
-  return binding;
+  return {BATCHNORM_FWD_TASK_ID, binding};
 }
 
-void BatchNorm::init(FFModel const &ff) {
-  this->execute_task(ff, BATCHNORM_INIT_TASK_ID, get_init_task_signature());
-  // assert(check_output_input_weight_same_parallel_is());
-  // parallel_is = outputs[0]->parallel_is;
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_init(ff, argmap);
-  // IndexLauncher launcher(BATCHNORM_INIT_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(this, sizeof(BatchNorm)),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   inputs[0]->region));
-  // launcher.add_field(0, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   WRITE_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region));
-  // launcher.add_field(1, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(weights[0]->region,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[0]->region));
-  // launcher.add_field(2, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(weights[1]->region,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[1]->region));
-  // launcher.add_field(3, FID_DATA);
-  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  // fm.wait_all_results();
-  // set_opmeta_from_futuremap(ff, fm);
+OpTaskInvocation backward(BatchNormAttrs const &attrs) {
+  OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
+
+  return {BATCHNORM_BWD_TASK_ID, binding};
 }
 
-/*
-  regions[0]: input
-  regions[1]: output
-  regions[2](I): scale
-  regions[3](I): bias
-*/
-PerDeviceOpState *
-    BatchNorm::init_task(Task const *task,
+static DeviceSpecific<BatchNormPerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
+  Allocator allocator = acc.get_allocator();
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto const &attrs = acc.get_argument<BatchNormAttrs>(ATTRS);
+
+  int output_w = output.shape[legion_dim_t(0)];
+  int output_h = output.shape[legion_dim_t(1)];
+  int output_c = output.shape[legion_dim_t(2)];
+  int output_n = output.shape[legion_dim_t(3)];
+
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffTensorDescriptor_t biasTensor;
+  ffActivationDescriptor_t actiDesc;
+  ffBatchNormMode_t mode;
+
+  size_t totalSize = sizeof(float) * output_c * 4;
+  float *runningMean = (float *)allocator.allocate(totalSize);
+  float *runningVar = (float *)runningMean + output_c;
+  float *saveMean = (float *)runningVar + output_c;
+  float *saveVar = (float *)saveMean + output_c;
+
+  DeviceSpecific<BatchNormPerDeviceState> per_device_state =
+      acc.create_device_specific<BatchNormPerDeviceState>(
+          init_kernel(handle,
+                      allocator,
+                      inputTensor,
+                      outputTensor,
+                      biasTensor,
+                      actiDesc,
+                      mode,
+                      runningMean,
+                      runningVar,
+                      saveMean,
+                      saveVar,
+                      output_n,
+                      output_c,
+                      output_h,
+                      output_w,
+                      profiling,
+                      attrs.relu));
+
+  return per_device_state;
+}
+
+static DeviceSpecific<BatchNormPerDeviceState>
+    init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  auto per_device_state =
+      acc.get_argument<BatchNormPerDeviceState>(PER_DEVICE_STATE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto scale = acc.get_tensor<Permissions::RO>(SCALE);
+  auto bias = acc.get_tensor<Permissions::RO>(SCALE);
+
+  return profile(forward_kernel,
+                 profiling,
+                 "[BatchNorm] forward_time = %.2lfms\n",
+                 &per_device_state,
+                 input.get_float_ptr(),
+                 output.get_float_ptr(),
+                 scale.get_float_ptr(),
+                 bias.get_float_ptr());
+}
+
+static void forward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  FFHandler handle = *((FFHandler const *)task->local_args);
-
-  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
-
-  int output_w = output.shape[0];
-  int output_h = output.shape[1];
-  int output_c = output.shape[2];
-  int output_n = output.shape[3];
-
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
-  BatchNormPerDeviceState *m = new BatchNormPerDeviceState(
-      handle, bm, gpu_mem, output_n, output_c, output_h, output_w);
-  return m;
+  forward_task_impl(acc);
 }
 
-void BatchNorm::forward(FFModel const &ff) {
-  this->execute_task(ff, BATCHNORM_FWD_TASK_ID, get_fwd_task_signature());
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_forward(ff, argmap);
-  // IndexLauncher launcher(BATCHNORM_FWD_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(NULL, 0),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   inputs[0]->region));
-  // launcher.add_field(0, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   WRITE_DISCARD,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region));
-  // launcher.add_field(1, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(weights[0]->region,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[0]->region));
-  // launcher.add_field(2, FID_DATA);
-  // launcher.add_region_requirement(RegionRequirement(weights[1]->region,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[1]->region));
-  // launcher.add_field(3, FID_DATA);
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  auto per_device_state =
+      acc.get_argument<BatchNormPerDeviceState>(PER_DEVICE_STATE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  // runtime->execute_index_space(ctx, launcher);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
+  auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RW>(OUTPUT);
+  auto scale = acc.get_tensor<Permissions::RO>(SCALE);
+  auto scale_grad = acc.get_tensor_grad<Permissions::RW>(SCALE);
+  auto bias_grad = acc.get_tensor_grad<Permissions::RW>(BIAS);
+
+  return profile(backward_kernel,
+                 profiling,
+                 "[BatchNorm] backward_time = %.2lfms\n",
+                 &per_device_state,
+                 input.get_float_ptr(),
+                 output_grad.get_float_ptr(),
+                 output.get_float_ptr(),
+                 input_grad.get_float_ptr(),
+                 scale.get_float_ptr(),
+                 scale_grad.get_float_ptr(),
+                 bias_grad.get_float_ptr(),
+                 output.shape.get_volume());
 }
 
-/*
-  regions[0](I): input
-  regions[1](O): ouptut
-  regions[2](I): scale
-  regions[3](I): bias
-*/
-void BatchNorm::forward_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
-  // const BatchNorm* bm = (BatchNorm*) task->args;
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  BatchNormPerDeviceState *m = *((BatchNormPerDeviceState **)task->local_args);
-
-  auto input = acc.get_tensor<READ_ONLY>(INPUT);
-  auto output = acc.get_tensor<WRITE_DISCARD>(OUTPUT);
-  auto scale = acc.get_tensor<READ_ONLY>(SCALE);
-  auto bias = acc.get_tensor<READ_ONLY>(SCALE);
-
-  profile(forward_kernel,
-          m->profiling,
-          "[BatchNorm] forward_time = %.2lfms\n",
-          m,
-          input.get_float_ptr(),
-          output.get_float_ptr(),
-          scale.get_float_ptr(),
-          bias.get_float_ptr());
+  backward_task_impl(acc);
 }
 
-void BatchNorm::backward(FFModel const &ff) {
-  this->execute_task(ff, BATCHNORM_BWD_TASK_ID, get_bwd_task_signature());
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_backward(ff, argmap);
-  // IndexLauncher launcher(BATCHNORM_BWD_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(NULL, 0),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // // regions[0](I): input
-  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   inputs[0]->region));
-  // launcher.add_field(0, FID_DATA);
-  // // regions[1](I/O): input_grad (we only need grad tensors)
-  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_WRITE,
-  //                                                   EXCLUSIVE,
-  //                                                   inputs[0]->region_grad));
-  // launcher.add_field(1, FID_DATA);
-  // // regions[2](I): output
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region));
-  // launcher.add_field(2, FID_DATA);
-  // // regions[3](I/O): output_grad
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_WRITE,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region_grad));
-  // launcher.add_field(3, FID_DATA);
-  // // regions[4](I): filter
-  // launcher.add_region_requirement(RegionRequirement(weights[0]->region,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[0]->region));
-  // launcher.add_field(4, FID_DATA);
-  // // regions[5](I/O): filter_grad
-  // launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_WRITE,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[0]->region_grad));
-  // launcher.add_field(5, FID_DATA);
-  // // regions[6](I/O): bias_grad
-  // launcher.add_region_requirement(RegionRequirement(weights[1]->part_grad,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_WRITE,
-  //                                                   EXCLUSIVE,
-  //                                                   weights[1]->region_grad));
-  // launcher.add_field(6, FID_DATA);
-  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
+                                  BatchNormAttrs const &attrs,
+                                  InputParallelTensorDesc const &input_shape,
+                                  InputParallelTensorDesc const &scale_shape,
+                                  InputParallelTensorDesc const &bias_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &mv) {
+
+  // int output_w = sub_output.dims[0].size;
+  // int output_h = sub_output.dims[1].size;
+  // int output_c = sub_output.dims[2].size;
+  // int output_n = sub_output.dims[3].size;
+  // BatchNormPerDeviceState *m = new BatchNormPerDeviceState(
+  //     sim->handler, this, sim->memory, output_n, output_c, output_h,
+  //     output_w);
+
+  // sim->free_all();
+  // float *input_ptr = (float *)sim->allocate(sub_input.get_volume(),
+  // DT_FLOAT); assert(input_ptr != NULL); cost_metrics.inputs_memory +=
+  // cost_metrics.total_mem_diff_from(sim->offset);
+
+  // float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
+  // DT_FLOAT); assert(output_ptr != NULL); cost_metrics.outputs_memory +=
+  // cost_metrics.total_mem_diff_from(sim->offset);
+
+  // float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
+  // assert(bias_ptr != NULL);
+  // float *scale_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
+  // assert(scale_ptr != NULL);
+  // cost_metrics.weights_memory +=
+  // cost_metrics.total_mem_diff_from(sim->offset);
+
+  auto env = sim.new_environment();
+
+  ParallelTensorShape output_shape = get_output_shape(attrs);
+
+  SimTaskBinding init_binding;
+  init_binding.bind(INPUT, input_shape);
+  init_binding.bind(BIAS, bias_shape);
+  init_binding.bind(OUTPUT, output_shape);
+
+  init_binding.bind_arg(ATTRS, attrs);
+  init_binding.bind_arg(PROFILING, settings);
+  init_binding.bind_arg(HANDLE, ff_handle());
+
+  auto init_accessor =
+      env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
+  DeviceSpecific<BatchNormPerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
+
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind(INPUT, input_shape);
+  fwd_binding.bind(SCALE, scale_shape);
+  fwd_binding.bind(BIAS, bias_shape);
+  fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto fwd_accessor = env.get_fwd_accessor(ATTENTION_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(ATTENTION_BWD_TASK_ID, bwd_binding);
+
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-/*
-  regions[0](I): input
-  regions[1](I/O): input_grad
-  regions[2](I): output
-  regions[3](I/O): output_grad
-  regions[4](I): scale
-  regions[5](I/O): scale_grad
-  regions[6](I/O): bias_grad
-*/
-__host__ void
-    BatchNorm::backward_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  assert(regions.size() == 7);
-  assert(task->regions.size() == 7);
-  // float beta = 0.0f;
-  // const BatchNorm* bm = (BatchNorm*) task->args;
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  BatchNormPerDeviceState *m = *((BatchNormPerDeviceState **)task->local_args);
+template <>
+void register_task<BATCHNORM_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+  init.add_input_slot(INPUT);
+  init.add_input_slot(BIAS);
+  init.add_output_slot(OUTPUT);
+  init.add_arg_slot<BatchNormAttrs>(ATTRS);
+  init.add_arg_slot<bool>(PROFILING);
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
-  auto input = acc.get_tensor<READ_ONLY>(INPUT);
-  auto input_grad = acc.get_tensor_grad<READ_WRITE>(INPUT_GRAD);
-  auto output = acc.get_tensor<READ_ONLY>(OUTPUT);
-  auto output_grad = acc.get_tensor_grad<READ_WRITE>(OUTPUT_GRAD);
-  auto scale = acc.get_tensor<READ_ONLY>(SCALE);
-  auto scale_grad = acc.get_tensor_grad<READ_WRITE>(SCALE_GRAD);
-  auto bias_grad = acc.get_tensor_grad<READ_WRITE>(BIAS_GRAD);
-
-  profile(backward_kernel,
-          m->profiling,
-          "[BatchNorm] backward_time = %.2lfms\n",
-          m,
-          input.get_float_ptr(),
-          output_grad.get_float_ptr(),
-          output.get_float_ptr(),
-          input_grad.get_float_ptr(),
-          scale.get_float_ptr(),
-          scale_grad.get_float_ptr(),
-          bias_grad.get_float_ptr(),
-          output.get_volume());
+  register_task(BATCHNORM_INIT_TASK_ID, "BatchNorm Init", init, init_task);
 }
 
-bool BatchNorm::measure_operator_cost(Simulator *sim,
-                                      MachineView const &mv,
-                                      CostMetrics &cost_metrics) const {
-  ParallelTensorBase sub_input, sub_output;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-    return false;
-  }
-  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
-    return false;
-  }
+template <>
+void register_task<BATCHNORM_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
 
-  int output_w = sub_output.dims[0].size;
-  int output_h = sub_output.dims[1].size;
-  int output_c = sub_output.dims[2].size;
-  int output_n = sub_output.dims[3].size;
-  BatchNormPerDeviceState *m = new BatchNormPerDeviceState(
-      sim->handler, this, sim->memory, output_n, output_c, output_h, output_w);
+  fwd.add_input_slot(INPUT);
+  fwd.add_input_slot(SCALE);
+  fwd.add_input_slot(BIAS);
+  fwd.add_output_slot(OUTPUT);
+  fwd.add_arg_slot<bool>(PROFILING);
+  fwd.add_unchecked_arg_slot<BatchNormPerDeviceState>(PER_DEVICE_STATE);
 
-  sim->free_all();
-  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_ptr != NULL);
-  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  register_task(BATCHNORM_FWD_TASK_ID, "BatchNorm Fwd", fwd, forward_task);
+}
 
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+template <>
+void register_task<BATCHNORM_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(BATCHNORM_FWD_TASK_ID));
 
-  float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-  assert(bias_ptr != NULL);
-  float *scale_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-  assert(scale_ptr != NULL);
-  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  std::function<void()> forward, backward;
-  forward = [&](ffStream_t stream) {
-    forward_kernel(stream, m, input_ptr, output_ptr, scale_ptr, bias_ptr);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    float *input_grad_ptr =
-        (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-    assert(input_grad_ptr != NULL);
-    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-    float *output_grad_ptr =
-        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert(output_grad_ptr != NULL);
-    cost_metrics.outputs_memory +=
-        cost_metrics.total_mem_diff_from(sim->offset);
-
-    float *scale_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-    assert(scale_grad_ptr != NULL);
-    float *bias_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-    assert(bias_grad_ptr != NULL);
-    cost_metrics.weights_memory +=
-        cost_metrics.total_mem_diff_from(sim->offset);
-
-    backward = [&](ffStream_t stream) {
-      backward_kernel(stream,
-                      m,
-                      input_ptr,
-                      output_grad_ptr,
-                      output_ptr,
-                      input_grad_ptr,
-                      scale_ptr,
-                      scale_grad_ptr,
-                      bias_grad_ptr,
-                      sub_output.get_volume());
-    };
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf) "
-           "backward_time(%.4lf)\n",
-           name,
-           sub_input.get_volume(),
-           cost_metrics.forward_time,
-           cost_metrics.backward_time);
-  } else {
-    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf)\n",
-           name,
-           sub_input.get_volume(),
-           cost_metrics.forward_time);
-  }
-  // Free batchnormmeta
-  delete m;
-  return true;
+  register_task(BATCHNORM_BWD_TASK_ID, "BatchNorm Bwd", bwd, backward_task);
 }
 
 }; // namespace FlexFlow
