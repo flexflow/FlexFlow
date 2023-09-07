@@ -14,6 +14,7 @@
  */
 
 #include "softmax.h"
+#include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
 #include "kernels/softmax_kernels.h"
 
@@ -58,8 +59,8 @@ OpTaskInvocation init(SoftmaxAttrs const & attrs) {
 
   binding.bind_arg(HANDLE, ff_handle());.
 
-  binding.bind(INPUT, input_tensor(0));
-  binding.bind(OUTPUT, output_tensor(0));
+  // binding.bind(INPUT, input_tensor(0));
+  // binding.bind(OUTPUT, output_tensor(0));
 
   return {SOFTMAX_INIT_TASK_ID, binding};
 }
@@ -84,15 +85,68 @@ OpTaskInvocation backward(SoftmaxAttrs const & attrs) {
 
 static DeviceSpecific<SoftmaxPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-  auto input = acc.get_tensor<Permissions::RO>(INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
+  ffTensorDescriptor_t inputTensor;
   DeviceSpecific<SoftmaxPerDeviceState> per_device_state = acc.create_device_specific<SoftmaxPerDeviceState>(
-          init_kernel(handle, input));
+          init_kernel(handle, inputTensor));
   return per_device_state;
 
 }
 
+static DeviceSpecific<SoftmaxPerDeviceState>    init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+ TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
+
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
+}
+
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) { 
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+  }
+
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+                                  SoftmaxAttrs const &attrs,
+                                  InputParallelTensorDesc const &input_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &machine_view) {
+  NOT_IMPLEMENTED();
+}
+
+template <>
+void register_task<SOFTMAX_INIT_TASK_ID>() {
+
+}
+
+template <>
+void register_task<SOFTMAX_FWD_TASK_ID>() {
+
+}
+
+template <>
+void register_task<SOFTMAX_BWD_TASK_ID>() {
+  
+}
 
 // Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
 //   Layer *sm = new Layer(this,
