@@ -3,18 +3,25 @@
 
 #include "kernels/accessor.h"
 #include "kernels/device.h"
-#include "op-attrs/ffconst.h"
 
 namespace FlexFlow {
 
-class CastPerDeviceState : public PerDeviceOpState {
-public:
-  CastPerDeviceState(FFHandler handle);
-  DataType input_data_type, output_data_type;
+struct CastPerDeviceState {
+  PerDeviceFFHandle handle;
+  DataType input_data_type;
+  req<DataType> output_data_type;
 };
+
+FF_VISITABLE_STRUCT_NO_EQ(CastPerDeviceState,
+                          handle,
+                          input_data_type,
+                          output_data_type);
 
 namespace Kernels {
 namespace Cast {
+
+CastPerDeviceState
+    init_kernel(PerDeviceFFHandle const &, DataType input, DataType output);
 
 void forward_kernel(ffStream_t stream,
                     CastPerDeviceState const *,
