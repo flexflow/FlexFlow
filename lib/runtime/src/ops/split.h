@@ -20,7 +20,7 @@ OpTaskInvocation backward(SplitAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SplitAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
+                                  InputParallelTensorDes const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 
