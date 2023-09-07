@@ -2,7 +2,7 @@
 #define _FLEXFLOW_SOFTMAX_H
 
 #include "op-attrs/ops/softmax.h"
-#include "op_task_invocation.h"
+#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {
@@ -20,7 +20,7 @@ OpTaskInvocation backward(SoftmaxAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SoftmaxAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 
