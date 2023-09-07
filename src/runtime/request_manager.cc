@@ -1259,18 +1259,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       std::cout << "SSM KV Cache Size: " << request.ssm_cache_size << std::endl;
       std::cout << "LLM KV Cache Size: " << request.llm_cache_size << std::endl;
 
-      // Normal Request Info
-      new_bc.requestsInfo[i].token_start_offset = request.llm_cache_size;
-      new_bc.requestsInfo[i].request_guid =
-          old_batches.at(0).requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length =
-          old_batches.at(0).requestsInfo[i].max_sequence_length;
-
-      new_bc.request_completed[i] = false;
-      new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
-          BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
-          (int)request.initial_len - new_bc.requestsInfo[i].token_start_offset);
-
       if (committed_tokens.find(guid) != committed_tokens.end()) {
         for (int j = 0; j < committed_tokens.at(guid).size(); j++) {
           auto token = committed_tokens.at(guid).at(j);
@@ -1287,6 +1275,19 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         std::cout << "[Verify] Committed Tokens from last loading batch: "
                   << new_bc.num_tokens_to_commit << std::endl;
       }
+      
+      // Normal Request Info
+      new_bc.requestsInfo[i].token_start_offset = request.llm_cache_size;
+      new_bc.requestsInfo[i].request_guid =
+          old_batches.at(0).requestsInfo[i].request_guid;
+      new_bc.requestsInfo[i].max_sequence_length =
+          old_batches.at(0).requestsInfo[i].max_sequence_length;
+
+      new_bc.request_completed[i] = false;
+      new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
+          BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
+          (int)request.initial_len - new_bc.requestsInfo[i].token_start_offset);
+
 
       if (request.llm_cache_size < request.initial_len) {
         // Initialization (prompt) phase
