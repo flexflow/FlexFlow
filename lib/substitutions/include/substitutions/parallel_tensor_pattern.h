@@ -13,7 +13,8 @@ using TensorAttributeValue = variant<int, std::vector<int>>;
 using TensorAttributeConstraint =
     AttributeConstraint<TensorAttributeKey, TensorAttributeValue>;
 
-using ParallelTensorPattern = AttributePattern<TensorAttributeKey, TensorAttributeValue>;
+using ParallelTensorPattern =
+    AttributePattern<TensorAttributeKey, TensorAttributeValue>;
 
 optional<TensorAttributeValue>
     evaluate_attribute_expr(ParallelTensor const &tensor_shape,

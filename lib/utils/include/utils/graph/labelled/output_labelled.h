@@ -62,6 +62,10 @@ public:
     return this->ptr->add_node(l);
   }
 
+  NodePort add_node_port() {
+    return this->ptr->add_node_port();
+  }
+
   NodeLabel &at(Node const &n) {
     return this->ptr->at(n);
   }
@@ -82,6 +86,9 @@ public:
   }
   OutputLabel const &at(MultiDiOutput const &o) const {
     return this->ptr->at(o);
+  }
+  OutputLabel const &at(MultiDiEdge const &e) const {
+    return at(MultiDiOutput{e.src, e.srcIdx});
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {

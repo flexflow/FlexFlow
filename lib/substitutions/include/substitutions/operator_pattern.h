@@ -23,7 +23,7 @@ enum class OperatorAttributeKey {
   STRIDE_W,
   PADDING_H,
   PADDING_W,
-  AGGR_MODE,
+  AGGR,
   NUM_ENTRIES,
   OUT_CHANNELS,
   ACTIVATION,
@@ -42,14 +42,49 @@ enum class OperatorAttributeKey {
   PARALLEL_DIM,
   PARALLEL_DEGREE,
   PAD,
+  EMBED_DIM,
+  KDIM,
+  VDIM,
+  DROPOUT,
+  BIAS,
+  ADD_BIAS_KV,
+  ADD_ZERO_ATTN,
+  A_SEQ_LENGTH_DIM,
+  B_SEQ_LENGTH_DIM,
+  RELU,
+  TARGET_DIMS,
+  RATE,
+  SEED,
+  SHOULD_BROADCAST_LHS,
+  SHOULD_BROADCAST_RHS,
+  DIM,
+  ELEMENTWISE_AFFINE,
+  REGULARIZER,
+  SHAPE,
+  SPLITS,
+  K,
+  SORTED,
 };
 
-using OperatorAttributeValue =
-    variant<int, float, bool, std::vector<int>, OperatorType, Activation>;
+using OperatorAttributeValue = variant<int,
+                                       float,
+                                       bool,
+                                       stack_vector<int, MAX_TENSOR_DIM>,
+                                       OperatorType,
+                                       Activation,
+                                       ff_dim_t,
+                                       unsigned long long,
+                                       AggregateOp,
+                                       stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
+                                       RegularizerAttrs,
+                                       PoolOp,
+                                       TensorShape>;
 
-using OperatorAttributeConstraint = AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
+using OperatorAttributeConstraint =
+    AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
 
-using OperatorPattern = AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
+using OperatorPattern =
+    AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 
 optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,

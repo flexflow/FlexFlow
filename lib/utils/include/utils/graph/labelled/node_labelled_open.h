@@ -7,11 +7,12 @@ template <typename NodeLabel>
 struct NodeLabelledOpenMultiDiGraph {
   NodeLabelledOpenMultiDiGraph() = delete;
   NodeLabelledOpenMultiDiGraph(NodeLabelledOpenMultiDiGraph const &) = default;
-  NodeLabelledOpenMultiDiGraph &operator=(NodeLabelledOpenMultiDiGraph const &) = default;
+  NodeLabelledOpenMultiDiGraph &
+      operator=(NodeLabelledOpenMultiDiGraph const &) = default;
 
   operator OpenMultiDiGraphView();
 };
 
-}
+} // namespace FlexFlow
 
 #endif

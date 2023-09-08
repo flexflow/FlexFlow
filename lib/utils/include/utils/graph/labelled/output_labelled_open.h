@@ -13,7 +13,7 @@ struct OutputLabelledOpenMultiDiGraph {
   OutputLabelledOpenMultiDiGraph &
       operator=(OutputLabelledOpenMultiDiGraph const &) = default;
 
-  operator OpenMultiDiGraphView() {
+  operator OpenMultiDiGraphView() const {
     NOT_IMPLEMENTED();
   }
 
@@ -58,6 +58,10 @@ struct OutputLabelledOpenMultiDiGraph {
     NOT_IMPLEMENTED();
   }
   OutputLabel &at(MultiDiOutput const &) {
+    NOT_IMPLEMENTED();
+  }
+
+  OutputLabel const &at(OpenMultiDiEdge const &) const {
     NOT_IMPLEMENTED();
   }
 };

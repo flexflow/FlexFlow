@@ -9,23 +9,45 @@
 
 namespace FlexFlow {
 
-template <typename T, typename V>
-optional<V> evaluate_list_index_access(ListIndexAccess<T> const &index_access,
-                                       optional<V> const &v) {
+optional<OperatorAttributeValue> evaluate_list_index_access(int index,
+                                       optional<OperatorAttributeValue> const &v) {
+  if (!v.has_value() ||
+      !holds_alternative<stack_vector<int, MAX_TENSOR_DIM>>(v.value()) ||
+      !holds_alternative<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(v.value())) {
+    return nullopt;
+  }
+
+  if (index >= MAX_TENSOR_DIM) {
+    return nullopt;
+  }
+
+  if (holds_alternative<stack_vector<int, MAX_TENSOR_DIM>>(v.value())) {
+    return get<stack_vector<int, MAX_TENSOR_DIM>>(v.value()).at(index);
+  } else {
+    return get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(v.value()).at(index);
+  }
+}
+
+optional<TensorAttributeValue> evaluate_list_index_access(int const &index,
+                                       optional<TensorAttributeValue> const &v) {
   if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
     return nullopt;
   }
 
   auto vec = get<std::vector<int>>(v.value());
-  if (index_access.index >= vec.size()) {
+
+  if (index >= vec.size()) {
     return nullopt;
   }
 
-  return vec.at(index_access.index);
+  return vec.at(index);
 }
 
-template <typename V>
-optional<V> evaluate_list_size(optional<V> const &v) {
+optional<OperatorAttributeValue> evaluate_list_size(optional<OperatorAttributeValue> const &v) {
+  return MAX_TENSOR_DIM;
+}
+
+optional<TensorAttributeValue> evaluate_list_size(optional<TensorAttributeValue> const &v) {
   if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
     return nullopt;
   }
@@ -44,7 +66,7 @@ struct EvaluateOperatorAttributeExpr {
       operator()(ListIndexAccess<OperatorAttributeKey> const &index_access) {
     optional<OperatorAttributeValue> v =
         get_attribute(this->attrs, index_access.attribute_key);
-    return evaluate_list_index_access(index_access, v);
+    return evaluate_list_index_access(index_access.index, v);
   }
 
   optional<OperatorAttributeValue>
@@ -94,8 +116,9 @@ struct EvaluateTensorAttributeExpr {
 
   optional<TensorAttributeValue>
       operator()(ListIndexAccess<TensorAttributeKey> const &index_access) {
-    auto v = this->evaluate(index_access.attribute_key);
-    return evaluate_list_index_access(index_access, v);
+    optional<TensorAttributeValue> v =
+        this->evaluate(index_access.attribute_key);
+    return evaluate_list_index_access(index_access.index, v);
   }
 
   optional<TensorAttributeValue>
@@ -184,6 +207,13 @@ optional<bool> satisfies(ParallelTensor const &params,
       [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });
 }
 
+struct AlwaysTrueCriterion {
+  template <typename T>
+  bool operator()(T const &t) const {
+    return true;
+  }
+};
+
 bool assignment_satisfies(ParallelComputationGraph const &pcg,
                           GraphPattern const &pattern,
                           MultiDiGraphPatternMatch const &patternMatch) {
@@ -192,7 +222,7 @@ bool assignment_satisfies(ParallelComputationGraph const &pcg,
     auto patternNode = kv.first;
     auto pcgNode = kv.second;
     optional<bool> constraintResult =
-        satisfies(pcg->at(pcgNode), pattern->at(patternNode));
+        satisfies(pcg.value().at(pcgNode), pattern.value().at(patternNode));
     result &= constraintResult.value_or(false);
   }
 
@@ -200,11 +230,11 @@ bool assignment_satisfies(ParallelComputationGraph const &pcg,
     auto patternEdge = kv.first;
     auto pcgEdge = kv.second;
     optional<bool> constraintResult =
-        satisfies(pcg->at(pcgEdge), pattern->at(patternEdge));
+        satisfies(pcg.value().at(pcgEdge), pattern.value().at(patternEdge));
     result &= constraintResult.value_or(false);
   }
 
-  result &= pattern_matches(pattern, pcg, patternMatch);
+  result &= pattern_matches(pattern, pcg, patternMatch, AlwaysTrueCriterion{});
 
   return result;
 }
