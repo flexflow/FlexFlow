@@ -15,6 +15,7 @@
 
 #include "kernels/cuda_helper.h"
 #include "kernels/transpose_kernels.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -29,6 +30,19 @@ struct TransposeStrides {
 
 namespace Kernels {
 namespace Transpose {
+
+TransposePerDeviceState init_kernel(int num_dim, std::vector<int> const &perm) {
+
+  TransposePerDeviceState state;
+  state.num_dim = num_dim;
+  const int length = perm.size();
+
+  for (int i = 0; i < std::min(length,MAX_TENSOR_DIM); ++i) {
+    state.perm[i] = perm[i];
+  }
+
+  return state;
+} 
 
 void forward_kernel(cudaStream_t stream,
                     TransposePerDeviceState const *m,

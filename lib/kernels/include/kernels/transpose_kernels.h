@@ -2,18 +2,21 @@
 #define _FLEXFLOW_OPS_KERNELS_TRANSPOSE_KERNELS_H
 
 #include "kernels/device.h"
+#include <vector>
 
 namespace FlexFlow {
 
-class TransposePerDeviceState : public PerDeviceOpState {
-public:
-  TransposePerDeviceState(FFHandler handler) : PerDeviceOpState(handler){};
+struct TransposePerDeviceState {
   int num_dim;
   int perm[MAX_TENSOR_DIM];
 };
 
+FF_VISITABLE_STRUCT_NO_EQ(TransposePerDeviceState, num_dim, perm);
+
 namespace Kernels {
 namespace Transpose {
+
+TransposePerDeviceState init_kernel(int num_dim, std::vector<int> const &perm);
 
 void forward_kernel_wrapper(TransposePerDeviceState const *m,
                             float const *input_ptr,

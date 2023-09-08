@@ -2,7 +2,7 @@
 #define _FLEXFLOW_TRANSPOSE_H_
 
 #include "op-attrs/ops/transpose.h"
-#include "op_task_invocation.h"
+#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {
@@ -21,7 +21,7 @@ OpTaskInvocation backward(TransposeAttrs const &);
 CostMetrics
     measure_operator_cost(SimEnvFactory const &sim_factory,
                           TransposeAttrs const &attrs,
-                          std::vector<ParallelTensorShape> const &input_shapes,
+                          InputVariadicParallelTensorDesc const &input_descs, //Note:this may have some problem 
                           ProfilingSettings const &settings,
                           MachineView const &machine_view);
 
