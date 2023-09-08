@@ -5,14 +5,16 @@
 
 namespace FlexFlow {
 
-class TopKPerDeviceState : public PerDeviceOpState {
-public:
-  TopKPerDeviceState(FFHandler handle);
-  bool sorted;
+struct TopKPerDeviceState {
+  bool sorted;//Note: Does TopK needs a PerDeviceFFHandle handle?
 };
+
+FF_VISITABLE_STRUCT_NO_EQ(TopKPerDeviceState, sorted);
 
 namespace Kernels {
 namespace TopK {
+
+TopKPerDeviceState init_kernel(bool sorted);
 
 void forward_kernel(ffStream_t stream,
                     TopKPerDeviceState const *m,
