@@ -1,9 +1,9 @@
 #include "reduce.h"
 #include "kernels/reduce_kernels.h"
 #include "legion/legion_utilities.h"
+#include "op-attrs/get_output_shape.h"
 #include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
-#include "op-attrs/get_output_shape.h"
 #include "utils/type_traits_core.h"
 
 namespace FlexFlow {
@@ -48,27 +48,37 @@ ReduceParams Reduce::get_params() const {
   return params;
 }
 
-enum Slots {INPUT, OUTPUT, ATTRS, PROFILING, REDUCE, PER_DEVICE_STATE, HANDLE};
+enum Slots {
+  INPUT,
+  OUTPUT,
+  ATTRS,
+  PROFILING,
+  REDUCE,
+  PER_DEVICE_STATE,
+  HANDLE
+};
 
 OpTaskInvocation init(TransposeAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(HANDLE, ff_handle());.
-  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(HANDLE, ff_handle());
+  .binding.bind_arg(ATTRS, attrs);
 
   return {REDUCE_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<ReducePerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecific<ReducePerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto attrs = acc.get_argument<ReduceAttrs>(ATTRS);
   OperatorType = attrs.op_type;
-  //Note: How to set the reduction size?
+  // Note: How to set the reduction size?
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffReduceTensorDescriptor_t reduceDesc;
-  size_t reduction_size
-  DeviceSpecific<ReducePerDeviceState> per_device_state = acc.create_device_specific<ReducePerDeviceState>(init_kernel(handle, input, output, reduce_desc, op_type, reduction_size));
+  size_t reduction_size DeviceSpecific<ReducePerDeviceState> per_device_state =
+      acc.create_device_specific<ReducePerDeviceState>(init_kernel(
+          handle, input, output, reduce_desc, op_type, reduction_size));
   return per_device_state;
 }
 
@@ -81,18 +91,17 @@ static DeviceSpecific<TransposePerDeviceState>
   return init_task_impl(acc);
 }
 
-plate <>
-void register_task<TRANSPOSE_INIT_TASK_ID>() {
-    OpTaskSignature init(OpTaskType::INIT)
+plate<> void register_task<TRANSPOSE_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT)
 
-    init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-    init.add_arg_slot<ReduceAttrs>(ATTRS);
+      init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+  init.add_arg_slot<ReduceAttrs>(ATTRS);
 
-    register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task);
-} 
+  register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task);
+}
 
-//Note: forward_kernel only needs ReducePerDeviceState, input, output
-OpTaskInvocation forward(ReduceAttrs const & attrs) {
+// Note: forward_kernel only needs ReducePerDeviceState, input, output
+OpTaskInvocation forward(ReduceAttrs const &attrs) {
   OpTaskBinding binding;
 
   bind.bind_arg(PER_DEVICE_STATE, per_device_op_state<ReducePerDeviceState>());
@@ -104,9 +113,9 @@ OpTaskInvocation forward(ReduceAttrs const & attrs) {
   return {REDUCE_FWD_TASK_ID, binding};
 }
 
-
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state = acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -117,7 +126,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  "[Reduce] forward_time = %.2lfms\n",
                  &per_device_state,
                  input.get_float_ptr(),
-                  output.get_float_ptr());
+                 output.get_float_ptr());
 }
 
 static void forward_task(Task const *task,
@@ -141,14 +150,15 @@ void register_task<REDUCE_FWD_TASK_ID>() {
   register_task(REDUCE_FWD_TASK_ID, "Reduce::forward", fwd, forward_task);
 }
 
-OpTaskInvocation backward(ReduceAttrs const & attrs) {
+OpTaskInvocation backward(ReduceAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
   return {REDUCE_BWD_TASK_ID, binding};
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state = acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
@@ -159,7 +169,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  "[Reduce] backward_time = %.2lfms\n",
                  &per_device_state,
                  input.get_float_ptr(),
-                  output.get_float_ptr());
+                 output.get_float_ptr());
 }
 
 static void backward_task(Task const *task,
@@ -172,9 +182,10 @@ static void backward_task(Task const *task,
 
 template <>
 void register_task<REDUCE_BWD_TASK_ID>() {
-    OpTaskSignature bwd = infer_bwd_signature(get_op_signature(REDUCE_FWD_TASK_ID));
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(REDUCE_FWD_TASK_ID));
 
-    reister_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd, backward_task);
+  reister_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd, backward_task);
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
@@ -182,33 +193,34 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-    auto env = sim.new_environment();
+  auto env = sim.new_environment();
 
-    SimTaskBinding init_binding;
-    init_binding.bind_arg(ATTRS, attrs);  
-    binding.bind_arg(HANDLE, ff_handle());
+  SimTaskBinding init_binding;
+  init_binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(HANDLE, ff_handle());
 
-    auto init_accessor = env.get_init_accessor(REDUCE_INIT_TASK_ID, init_binding);
-    DeviceSpecific<ReducePerDeviceState> per_device_state = init_task_impl(init_accessor);
+  auto init_accessor = env.get_init_accessor(REDUCE_INIT_TASK_ID, init_binding);
+  DeviceSpecific<ReducePerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
 
-    SimTaskBinding fwd_binding;
-    ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-    fwd.bind(INPUT, input);
-    fwd.bind(OUTPUT, output_shape);
-    fwd.bind_arg(PROFILING, settings);
-    fwd.bind_arg(PER_DEVICE_STATE, per_device_state);
+  SimTaskBinding fwd_binding;
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
+  fwd.bind(INPUT, input);
+  fwd.bind(OUTPUT, output_shape);
+  fwd.bind_arg(PROFILING, settings);
+  fwd.bind_arg(PER_DEVICE_STATE, per_device_state);
 
-    SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-    auto fwd_accessor = env.get_fwd_accessor(REDUCE_FWD_TASK_ID, fwd_binding);
-    auto bwd_accessor = env.get_bwd_accessor(REDUCE_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor = env.get_fwd_accessor(REDUCE_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(REDUCE_BWD_TASK_ID, bwd_binding);
 
-    float forward_time = forward_task_impl(fwd_accessor).value();
-    float backward_time = backward_task_impl(bwd_accessor).value();
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
 
-    float sync_time = default_estimate_sync_time(env);
-    return make_metrics(forward_time, backward_time, sync_time, env);
-  }
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
+}
 
 // Tensor FFModel::reduce_sum(OperatorType op,
 //                            const Tensor input,
@@ -291,7 +303,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //                ReduceParams const &params,
 //                const ParallelTensor input,
 //                char const *name)
-//     : Reduce(model, params.op_type, input, params.axes, params.keepdims, name) {
+//     : Reduce(model, params.op_type, input, params.axes, params.keepdims,
+//     name) {
 // }
 
 // Reduce::Reduce(FFModel &model,
@@ -379,9 +392,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 // };
 
 // PerDeviceOpState *Reduce::init_task(Task const *task,
-//                                     std::vector<PhysicalRegion> const &regions,
-//                                     Context ctx,
-//                                     Runtime *runtime) {
+//                                     std::vector<PhysicalRegion> const
+//                                     &regions, Context ctx, Runtime *runtime)
+//                                     {
 //   Reduce *rd = (Reduce *)task->args;
 //   FFHandler handle = *((FFHandler *)task->local_args);
 //   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -491,16 +504,16 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //   }
 //   ReduceMeta *m = new ReduceMeta(sim->handler, this, sub_input.get_domain());
 //   sim->free_all();
-//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-//   assert(input_ptr != NULL);
-//   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-//   GenericTensorAccessorR input_acc(
+//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(),
+//   DT_FLOAT); assert(input_ptr != NULL); cost_metrics.inputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset); GenericTensorAccessorR
+//   input_acc(
 //       inputs[0]->data_type, sub_input.get_domain(), input_ptr);
 
-//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-//   assert(output_ptr != NULL);
-//   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-//   GenericTensorAccessorW output_acc(
+//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
+//   DT_FLOAT); assert(output_ptr != NULL); cost_metrics.outputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset); GenericTensorAccessorW
+//   output_acc(
 //       outputs[0]->data_type, sub_output.get_domain(), output_ptr);
 
 //   assert(m->profiling == false);
@@ -511,8 +524,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //     float *input_grad_ptr =
 //         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
 //     assert(input_grad_ptr != NULL);
-//     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-//     GenericTensorAccessorW input_grad_acc(
+//     cost_metrics.inputs_memory +=
+//     cost_metrics.total_mem_diff_from(sim->offset); GenericTensorAccessorW
+//     input_grad_acc(
 //         inputs[0]->data_type, sub_input.get_domain(), input_grad_ptr);
 
 //     float *output_grad_ptr =
@@ -597,4 +611,4 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 //   hash_combine(key, params.keepdims);
 //   return key;
 // }
-}; // namespace std
+}; // namespace FlexFlow
