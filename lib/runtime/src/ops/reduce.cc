@@ -4,6 +4,7 @@
 #include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
 #include "op-attrs/get_output_shape.h"
+#include "utils/type_traits_core.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -105,7 +106,18 @@ OpTaskInvocation forward(ReduceAttrs const & attrs) {
 
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  auto per_device_state = acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+
+  return profile(forward_kernel,
+                 profiling,
+                 "[Reduce] forward_time = %.2lfms\n",
+                 &per_device_state,
+                 input.get_float_ptr(),
+                  output.get_float_ptr());
 }
 
 static void forward_task(Task const *task,
@@ -136,7 +148,18 @@ OpTaskInvocation backward(ReduceAttrs const & attrs) {
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  auto per_device_state = acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+
+  return profile(backward_kernel,
+                 profiling,
+                 "[Reduce] backward_time = %.2lfms\n",
+                 &per_device_state,
+                 input.get_float_ptr(),
+                  output.get_float_ptr());
 }
 
 static void backward_task(Task const *task,
@@ -153,6 +176,39 @@ void register_task<REDUCE_BWD_TASK_ID>() {
 
     reister_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd, backward_task);
 }
+
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+                                  ReduceAttrs const &attrs,
+                                  InputParallelTensorDesc const &input,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &machine_view) {
+    auto env = sim.new_environment();
+
+    SimTaskBinding init_binding;
+    init_binding.bind_arg(ATTRS, attrs);  
+    binding.bind_arg(HANDLE, ff_handle());
+
+    auto init_accessor = env.get_init_accessor(REDUCE_INIT_TASK_ID, init_binding);
+    DeviceSpecific<ReducePerDeviceState> per_device_state = init_task_impl(init_accessor);
+
+    SimTaskBinding fwd_binding;
+    ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
+    fwd.bind(INPUT, input);
+    fwd.bind(OUTPUT, output_shape);
+    fwd.bind_arg(PROFILING, settings);
+    fwd.bind_arg(PER_DEVICE_STATE, per_device_state);
+
+    SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+    auto fwd_accessor = env.get_fwd_accessor(REDUCE_FWD_TASK_ID, fwd_binding);
+    auto bwd_accessor = env.get_bwd_accessor(REDUCE_BWD_TASK_ID, bwd_binding);
+
+    float forward_time = forward_task_impl(fwd_accessor).value();
+    float backward_time = backward_task_impl(bwd_accessor).value();
+
+    float sync_time = default_estimate_sync_time(env);
+    return make_metrics(forward_time, backward_time, sync_time, env);
+  }
 
 // Tensor FFModel::reduce_sum(OperatorType op,
 //                            const Tensor input,
