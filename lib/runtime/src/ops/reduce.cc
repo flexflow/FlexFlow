@@ -129,6 +129,30 @@ void register_task<REDUCE_FWD_TASK_ID>() {
   register_task(REDUCE_FWD_TASK_ID, "Reduce::forward", fwd, forward_task);
 }
 
+OpTaskInvocation backward(ReduceAttrs const & attrs) {
+  OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
+
+  return {REDUCE_BWD_TASK_ID, binding};
+}
+
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
+
+template <>
+void register_task<REDUCE_BWD_TASK_ID>() {
+    OpTaskSignature bwd = infer_bwd_signature(get_op_signature(REDUCE_FWD_TASK_ID));
+
+    reister_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd, backward_task);
+}
 
 // Tensor FFModel::reduce_sum(OperatorType op,
 //                            const Tensor input,
