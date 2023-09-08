@@ -67,6 +67,15 @@ ReducePerDeviceState::~ReducePerDeviceState(void) {
 namespace Kernels {
 namespace Reduce {
 
+ReducePerDeviceState init_kernel(PerDeviceFFhandle const & handle,
+    ffTensorDescriptor_t const & input_tensor,
+    ffTensorDescriptor_t const & outputTensor,
+    ffReduceTensorDescriptor_t const & reduceDesc,
+    OperatorType const & op_type,
+    size_t const &  reduction_size) {
+      return {handle, input_tensor, outputTensor, reduceDesc, op_type, reduction_size};
+}
+
 void forward_kernel(cudaStream_t stream,
                     ReducePerDeviceState const *m,
                     float const *input_ptr,

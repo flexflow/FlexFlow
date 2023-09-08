@@ -5,25 +5,28 @@
 
 namespace FlexFlow {
 
-class ReducePerDeviceState : public PerDeviceOpState {
-public:
-  ReducePerDeviceState(FFHandler handler,
-                       Reduce const *rd,
-                       Legion::Domain const &input_domain);
-  ~ReducePerDeviceState(void);
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnReduceTensorDescriptor_t reduceDesc;
-#else
-  miopenTensorDescriptor_t inputTensor, outputTensor;
-  miopenReduceTensorDescriptor_t reduceDesc;
-#endif
+struct ReducePerDeviceState {
+  PerDeviceFFHandle handle;
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffReduceTensorDescriptor_t reduceDesc;
   OperatorType op_type;
   size_t reduction_size;
 };
 
+FF_VISITABLE_STRUCT_NO_EQ(ReducePerDeviceState, handle, inputTensor, outputTensor, reduceDesc, op_type, reduction_size);
+
+
 namespace Kernels {
 namespace Reduce {
+
+ReducePerDeviceState init_kernel(PerDeviceFFhandle const &,
+                                ffTensorDescriptor_t const &,
+                                ffTensorDescriptor_t const &,
+                                ffReduceTensorDescriptor_t const &,
+                                OperatorType const &,
+                                size_t const &);
+
 void forward_kernel_wrapper(ReducePerDeviceState const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output);
