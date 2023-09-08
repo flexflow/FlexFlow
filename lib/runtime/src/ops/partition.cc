@@ -65,7 +65,14 @@ RepartitionParams Repartition::get_params() const {
   return params;
 }
 
+OpTaskInvocation init(RepartitionAttrs const & attrs) {
+  OpTaskBinding binding;
 
+  binding.bind_arg(HANDLE, ff_handle());
+  binding.bind(INPUT, input_tensor(0)); //use the input data type
+
+  return {REPARTITION_INIT_TASK_ID, binding};
+} 
 
 OpTaskInvocation forward(RepartitionAttrs const & attrs) {
   OpTaskBinding binding;
@@ -81,7 +88,25 @@ OpTaskInvocation forward(RepartitionAttrs const & attrs) {
 OpTaskInvocation backward(CastAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   return {REPARTITION_BWD_TASK_ID, binding};
+}
+
+static DeviceSpecific<RepartitionPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+
+  //Note: use the input data type 
+  DeviceSpecific<RepartitionPerDeviceState> per_device_state = acc.create_device_specific_state<RepartitionPerDeviceState>(init_kernel(handle, input.data_type));
+  return per_device_state;
+}
+
+static DeviceSpecific<RepartitionPerDeviceState> init_task(Task const *task,
+                                                           std::vector<PhysicalRegion> const &regions,
+                                                           Context ctx,
+                                                           Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -128,8 +153,24 @@ static void backward_task(Task const *task,
   backward_task_impl(acc);
 }
 
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+                                  RepartitionAttrs const &attrs,
+                                  InputParallelTensorDesc const &input,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &machine_view) {
+
+  }
+
 template <>
-void register_task<REPARTITION_INIT_TASK_ID>();
+void register_task<REPARTITION_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+
+  init.add_input_slot(INPUT);
+
+  register_task(REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task);
+}
 
 template <>
 void register_task<REPARTITION_FWD_TASK_ID>() {

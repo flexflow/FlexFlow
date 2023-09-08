@@ -6,12 +6,6 @@
 
 namespace FlexFlow {
 
-class RepartitionPerDeviceState : public PerDeviceOpState {
-public:
-  RepartitionPerDeviceState(FFHandler handle);
-  DataType data_type;
-};
-
 struct RepartitionPerDeviceState {
   PerDeviceFFHandle handle;
   DataType data_type;
