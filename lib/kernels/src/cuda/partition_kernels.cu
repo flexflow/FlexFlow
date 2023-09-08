@@ -54,6 +54,10 @@ struct BackwardKernel {
   }
 }
 
+RepartitionPerDeviceState init_kernel(PerDeviceFFHandle const &handle, DataType data_type) {
+  return {handle, data_type};
+}
+
 void forward_kernel(cudaStream_t stream,
                     RepartitionPerDeviceState const *m,
                     GenericTensorAccessorR const &input,

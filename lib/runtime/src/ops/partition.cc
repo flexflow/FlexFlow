@@ -65,6 +65,8 @@ RepartitionParams Repartition::get_params() const {
   return params;
 }
 
+
+
 OpTaskInvocation forward(RepartitionAttrs const & attrs) {
   OpTaskBinding binding;
 
@@ -124,6 +126,29 @@ static void backward_task(Task const *task,
                           Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   backward_task_impl(acc);
+}
+
+template <>
+void register_task<REPARTITION_INIT_TASK_ID>();
+
+template <>
+void register_task<REPARTITION_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_unchecked_arg_slot<RepartitionPerDeviceState>(PER_DEVICE_STATE);
+
+  register_task(REPARTITION_FWD_TASK_ID,  "Repartition Fwd", fwd, forward_task);
+}
+
+template <>
+void register_task<REPARTITION_BWD_TASK_ID>() {
+  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
+
+  registar_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd, backward_task);
 }
 
 // Repartition::Repartition(FFModel &model,
