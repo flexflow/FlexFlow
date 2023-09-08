@@ -40,7 +40,7 @@ optional<OperatorAttributeValue> get_attribute(CombineAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
-      return p.combine_legion_dim;
+      return p.combine_dim;
     case OperatorAttributeKey::PARALLEL_DIM:
       return p.combine_degree;
     default:
@@ -95,8 +95,6 @@ optional<OperatorAttributeValue> get_attribute(ElementBinaryAttrs const &p,
 optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
-    case OperatorAttributeKey::SCALAR:
-      return p.scalar;
     default:
       return nullopt;
   }
@@ -115,7 +113,7 @@ optional<OperatorAttributeValue> get_attribute(EmbeddingAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::DATA_TYPE:
       return p.data_type;
-    case OperatorAttributeKey::AGGR_MODE:
+    case OperatorAttributeKey::AGGR:
       return p.aggr;
     case OperatorAttributeKey::NUM_ENTRIES:
       return p.num_entries;
@@ -138,7 +136,7 @@ optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::AXIS:
-      return p.legion_dim;
+      return p.dim;
     default:
       return nullopt;
   }
@@ -224,7 +222,7 @@ optional<OperatorAttributeValue> get_attribute(ReductionAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
-      return p.reduction_legion_dim;
+      return p.reduction_dim;
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return p.reduction_degree;
     default:
@@ -236,7 +234,7 @@ optional<OperatorAttributeValue> get_attribute(RepartitionAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
-      return p.repartition_legion_dim;
+      return p.repartition_dim;
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return p.repartition_degree;
     default:
@@ -248,7 +246,7 @@ optional<OperatorAttributeValue> get_attribute(ReplicateAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::PARALLEL_OP_DIM:
-      return p.replicate_legion_dim;
+      return p.replicate_dim;
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return p.replicate_degree;
     default:
@@ -268,7 +266,7 @@ optional<OperatorAttributeValue> get_attribute(SplitAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::AXIS:
-      return p.legion_axis;
+      return p.axis;
     default:
       return nullopt;
   }
@@ -297,14 +295,6 @@ optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::PERMUTATION:
       return p.perm;
-    default:
-      return nullopt;
-  }
-}
-
-optional<OperatorAttributeValue> get_attribute(FusedParallelOpAttrs const &p,
-                                               OperatorAttributeKey key) {
-  switch (key) {
     default:
       return nullopt;
   }

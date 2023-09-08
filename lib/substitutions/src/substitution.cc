@@ -67,7 +67,7 @@ bool is_valid_operator_attribute_expr(GraphPattern const &pattern,
 bool is_valid_substitution(Substitution const &s) {
   for (Node const &node : get_nodes(s.output_graph_expr)) {
     for (OperatorAttributeExpr expr :
-         values(s.output_graph_expr->at(node).assignment)) {
+         values(s.output_graph_expr.value().at(node).assignments)) {
       if (!is_valid_operator_attribute_expr(s.input_graph, expr)) {
         return false;
       }
@@ -287,6 +287,38 @@ Operator get_operator_attrs(ParallelComputationGraph const &graph,
           TransposeAttrs{get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
               assignments.at(OperatorAttributeKey::PERMUTATION))},
           nullopt);
+    case Op::COMBINE:
+      return Operator(
+        CombineAttrs{
+          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
+        },
+        nullopt
+      );
+    case Op::REDUCTION:
+      return Operator(
+        ReductionAttrs{
+          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
+        },
+        nullopt
+      );
+    case Op::REPARTITION:
+      return Operator(
+        RepartitionAttrs{
+          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
+        },
+        nullopt
+      );
+    case Op::REPLICATE:
+      return Operator(
+        ReplicateAttrs{
+          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
+        },
+        nullopt
+      );
     default:
       break;
   }
@@ -315,7 +347,7 @@ ParallelComputationGraph
   }
   for (Node const &output_node : get_nodes(substitution.output_graph_expr)) {
     Node new_node = new_pcg.value().add_node(get_operator_attrs(
-        pcg, match, substitution.output_graph_expr->at(output_node)));
+        pcg, match, substitution.output_graph_expr.value().at(output_node)));
     node_mapping.equate(output_node, new_node);
   }
   for (OpenMultiDiEdge const &output_edge :

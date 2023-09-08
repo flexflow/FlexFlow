@@ -4,6 +4,7 @@
 #include "attribute_expr.h"
 #include "op-attrs/activation.h"
 #include "op-attrs/op.h"
+#include "op-attrs/datatype.h"
 #include "pcg/operator.h"
 #include <unordered_set>
 #include <vector>
@@ -64,6 +65,8 @@ enum class OperatorAttributeKey {
   SPLITS,
   K,
   SORTED,
+  COMBINE_DIM,
+  COMBINE_DEGREE,
 };
 
 using OperatorAttributeValue = variant<int,
@@ -78,7 +81,11 @@ using OperatorAttributeValue = variant<int,
                                        stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
                                        RegularizerAttrs,
                                        PoolOp,
-                                       TensorShape>;
+                                       TensorShape,
+                                       DataType>;
+
+FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>, attribute_key, index);
+FF_VISITABLE_STRUCT(ListSize<FlexFlow::OperatorAttributeKey>, attribute_key);
 
 using OperatorAttributeConstraint =
     AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;

@@ -10,12 +10,12 @@ enum class ConstraintType { EQUAL };
 template <typename T>
 struct ListIndexAccess {
   T attribute_key;
-  int index;
+  req<int> index;
 };
 
 template <typename T>
 struct ListSize {
-  T attribute_key;
+  req<T> attribute_key;
 };
 
 template <typename T>
