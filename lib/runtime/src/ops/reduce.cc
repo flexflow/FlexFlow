@@ -55,19 +55,17 @@ OpTaskInvocation init(TransposeAttrs const &attrs) {
   binding.bind_arg(HANDLE, ff_handle());.
   binding.bind_arg(ATTRS, attrs);
 
-  bind.bind(REDUCE, reduce_descriptor());//Note: how to bind ffReduceTensorDescriptor_t ?
-  binding.bind(INPUT, input_tensor(0));
-  binding.bind(OUTPUT, output_tensor(0));
+  return {REDUCE_INIT_TASK_ID, binding};
 }
 
 static DeviceSpecific<ReducePerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-  auto input = acc.get_tensor<Permissions::RO>(INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto attrs = acc.get_argument<ReduceAttrs>(ATTRS);
-  auto reduce_desc = acc.get_argument<ffReduceTensorDescriptor_t>(REDUCE); //Note: this may has some problem, I should ask Colin 
   OperatorType = attrs.op_type;
   //Note: How to set the reduction size?
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffReduceTensorDescriptor_t reduceDesc;
   size_t reduction_size
   DeviceSpecific<ReducePerDeviceState> per_device_state = acc.create_device_specific<ReducePerDeviceState>(init_kernel(handle, input, output, reduce_desc, op_type, reduction_size));
   return per_device_state;
@@ -87,24 +85,48 @@ void register_task<TRANSPOSE_INIT_TASK_ID>() {
     OpTaskSignature init(OpTaskType::INIT)
 
     init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-    init.add_arg_slot<ReducePerDeviceState>(ATTRS);
-
-    init.add_input_slot(INPUT);
-    init.add_output_slot(OUTPUT);
-    //Note:how to add reduce? 
+    init.add_arg_slot<ReduceAttrs>(ATTRS);
 
     register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task);
 } 
 
+//Note: forward_kernel only needs ReducePerDeviceState, input, output
 OpTaskInvocation forward(ReduceAttrs const & attrs) {
   OpTaskBinding binding;
 
   bind.bind_arg(PER_DEVICE_STATE, per_device_op_state<ReducePerDeviceState>());
   bind.bind_arg(PROFILING, profiling_tensor());
 
-  binding.bind(REDUCE, reduce_descriptor());//Note:this may have some problem, how to bind the ffReduceTensorDescriptor_t 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
+
+  return {REDUCE_FWD_TASK_ID, binding};
+}
+
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
+
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
+}
+
+template <>
+void register_task<REDUCE_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FORWARD);
+
+  fwd.add_unchecked_arg_slot<PerDeviceOpState>(PER_DEVICE_STATE);
+  fwd.add_arg_slot<ProfilingTensor>(PROFILING);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+
+  register_task(REDUCE_FWD_TASK_ID, "Reduce::forward", fwd, forward_task);
 }
 
 
