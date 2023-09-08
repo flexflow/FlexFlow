@@ -62,7 +62,7 @@ enum Slots {
   PER_DEVICE_STATE,
 };
 
-OpTaskInvocation init(TransposeAttrs const & attrs) {
+OpTaskInvocation init(TransposeAttrs const &attrs) {
   OpTaskBinding binding;
   binding.bind_arg(ATTRS, attrs);
   return {TRANSPOSE_INIT_TASK_ID, binding};
@@ -70,14 +70,17 @@ OpTaskInvocation init(TransposeAttrs const & attrs) {
 
 static DeviceSpecific<TransposePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
-    auto const & attrs = acc.get_argument<TransposeAttrs>(ATTRS);
-    std::vector<int> perm = attrs.perm;//default convert stack_vector to vector 
-    DeviceSpecific<TransposePerDeviceState> per_device_state = acc.get_per_device_state<TransposePerDeviceState>(init_kernel(perm.size(), perm));
+  auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
+  std::vector<int> perm = attrs.perm; // default convert stack_vector to vector
+  DeviceSpecific<TransposePerDeviceState> per_device_state =
+      acc.get_per_device_state<TransposePerDeviceState>(
+          init_kernel(perm.size(), perm));
 
-    return per_device_state;
+  return per_device_state;
 }
 
-static DeviceSpecific<TransposePerDeviceState>  init_task(Task const *task,
+static DeviceSpecific<TransposePerDeviceState>
+    init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
               Runtime *runtime) {
@@ -87,16 +90,17 @@ static DeviceSpecific<TransposePerDeviceState>  init_task(Task const *task,
 
 template <>
 void register_task<TRANSPOSE_INIT_TASK_ID>();
-  OpTaskSignature init(OpTaskType::INIT) 
+OpTaskSignature init(OpTaskType::INIT)
 
-  init.add_arg_slot<TransposeAttrs>(ATTRS);
-  register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init, init_task);
-}
+    init.add_arg_slot<TransposeAttrs>(ATTRS);
+register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init, init_task);
+} // namespace FlexFlow
 
 OpTaskInvocation forward(TransposeAttrs const &) {
   OpTaskBinding binding;
 
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<TransposePerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<TransposePerDeviceState>());
   binding.bind_arg(PROFILEING, profiling_settings());
 
   bind.bind(INPUT, input_tensor());
@@ -106,7 +110,35 @@ OpTaskInvocation forward(TransposeAttrs const &) {
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-   NOT_IMPLEMENTED();
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto per_device_state =
+      acc.get_per_device_state<TransposePerDeviceState>(PER_DEVICE_STATE);
+
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+
+  // copy from the old code
+  Task *task = acc.task;
+  Context ctx = acc.ctx;
+  Runtime *runtime = acc.runtime;
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Domain out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+
+  for (int i = 0; i < m->num_dim; i++) {
+    assert(out_domain.hi()[i] == in_domain.hi()[m->perm[i]]);
+    assert(out_domain.lo()[i] == in_domain.lo()[m->perm[i]]);
+  }
+
+  return profiling(forward_kernel,
+                   profiling,
+                   "[Transpose] Forward_time = %.2lf [ms]",
+                   &per_device_state,
+                   input.get_float_ptr(),
+                   output.get_float_ptr(),
+                   in_domain,
+                   out_domain);
 }
 
 static void forward_task(Task const *task,
@@ -118,7 +150,35 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-    NOT_IMPLEMENTED();
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto per_device_state =
+      acc.get_per_device_state<TransposePerDeviceState>(PER_DEVICE_STATE);
+
+  auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+
+  // copy from the old code
+  Task *task = acc.task;
+  Context ctx = acc.ctx;
+  Runtime *runtime = acc.runtime;
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Domain out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+
+  for (int i = 0; i < m->num_dim; i++) {
+    assert(out_domain.hi()[i] == in_domain.hi()[m->perm[i]]);
+    assert(out_domain.lo()[i] == in_domain.lo()[m->perm[i]]);
+  }
+
+  return profiling(backward_kernel,
+                   profiling,
+                   "[Transpose] Backward_time = %.2lf [ms]",
+                   &per_device_state,
+                   input_grad.get_float_ptr(),
+                   output_grad.get_float_ptr(),
+                   in_domain,
+                   out_domain);
 }
 
 static void backward_task(Task const *task,
@@ -138,10 +198,38 @@ OpTaskInvocation backward(TransposeAttrs const &) {
 CostMetrics
     measure_operator_cost(SimEnvFactory const &sim_factory,
                           TransposeAttrs const &attrs,
-                          InputVariadicParallelTensorDesc const &input_descs, //Note:this may have some problem 
+                          InputVariadicParallelTensorDesc const
+                              &input_descs, // Note:this may have some problem
                           ProfilingSettings const &settings,
                           MachineView const &machine_view) {
-  NOT_IMPLEMENTED();
+  auto env = sim.new_environment();
+
+  SimTaskBinding init_binding;
+  init_binding.bind_arg(ATTRS, attrs);
+
+  auto init_accessor =
+      env.get_init_accessor(TRANSPOSE_INIT_TASK_ID, init_binding);
+  DeviceSpecific<TransposePerDeviceState> per_device_state =
+      init_accessor.get_per_device_state<TransposePerDeviceState>();
+
+  ParallelTensorShape output_shape = get_output_shape(attrs, input_descs.shape);
+
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(INPUT, input_descs);
+  fwd_binding.bind_arg(OUTPUT, output_shape);
+
+  auto fwd_accessor = env.get_fwd_accessor(TRANSPOSE_FWD_TASK_ID, fwd_binding);
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(TRANSPOSE_BWD_TASK_ID, bwd_binding);
+
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 // Tensor FFModel::transpose(const Tensor input,
 //                           std::vector<int> const &_perm,
@@ -408,13 +496,13 @@ CostMetrics
 //   this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
 
 //   sim->free_all();
-//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-//   assert(input_ptr != NULL);
-//   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(),
+//   DT_FLOAT); assert(input_ptr != NULL); cost_metrics.inputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
-//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-//   assert(output_ptr != NULL);
-//   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
+//   DT_FLOAT); assert(output_ptr != NULL); cost_metrics.outputs_memory +=
+//   cost_metrics.total_mem_diff_from(sim->offset);
 
 //   assert(m->profiling == false);
 
@@ -430,7 +518,8 @@ CostMetrics
 //     float *input_grad_ptr =
 //         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
 //     assert(input_grad_ptr != NULL);
-//     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//     cost_metrics.inputs_memory +=
+//     cost_metrics.total_mem_diff_from(sim->offset);
 
 //     float *output_grad_ptr =
 //         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
@@ -508,4 +597,4 @@ CostMetrics
 //   }
 //   return key;
 // }
-}; // namespace std
+}; // namespace FlexFlow
