@@ -28,7 +28,6 @@ OpTaskInvocation init(DropoutAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(FF_HANDLE, ff_handle());
   binding.bind(OUTPUT, output_tensor(0));
 
@@ -59,7 +58,6 @@ static DeviceSpecific<DropoutPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   Allocator allocator = acc.get_allocator();
-  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
 
@@ -68,7 +66,6 @@ static DeviceSpecific<DropoutPerDeviceState>
             init_kernel(handle,
                         attrs.rate,
                         attrs.seed,
-                        profiling,
                         output.shape,
                         allocator));
   return per_device_state;
@@ -142,6 +139,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   SimTaskBinding init_binding;
   init_binding.bind_arg(FF_HANDLE, ff_handle());
   init_binding.bind_arg(ATTRS, attrs);
+  init_binding.bind(OUTPUT, output_shape);
 
   auto init_accessor =
       env.get_init_accessor(DROPOUT_INIT_TASK_ID, init_binding);
@@ -168,7 +166,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 template <>
 void register_task<DROPOUT_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
-  init.add_arg_slot<EnableProfiling>(PROFILING);
   init.add_arg_slot<DropoutAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
   init.add_output_slot(OUTPUT);
