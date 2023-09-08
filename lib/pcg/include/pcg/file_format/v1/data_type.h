@@ -45,7 +45,7 @@ struct adl_serializer<half> {
 
 namespace FlexFlow {
 static_assert(is_jsonable<half>::value, "");
-static_assert(is_json_serializable<V1DataTypeValue>::value, "");
+CHECK_AUTO_JSON_SERIALIZABLE(V1DataTypeValue);
 static_assert(is_json_deserializable<V1DataTypeValue>::value, "");
 static_assert(is_jsonable<V1DataTypeValue>::value, "");
 } // namespace FlexFlow

@@ -43,16 +43,87 @@ function(ff_set_cxx_properties target)
   )
 endfunction()
 
+function(ff_get_source_files)
+  file(GLOB_RECURSE SRC 
+       LIST_DIRECTORIES False
+       "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc")
+  list(FILTER SRC EXCLUDE REGEX "\\.test\\.")
+  set(FF_SOURCE_FILES ${SRC} PARENT_SCOPE)
+endfunction()
+
+function(ff_add_intree_test_executable)
+  ff_parse_args(
+    PREFIX 
+      FF_TEST_EXEC
+    ARGS
+      NAME
+    VARIADIC_ARGS
+      DEPS
+    PARSE
+      ${ARGN}
+  )
+
+  project(${FF_TEST_EXEC_NAME})
+  file(GLOB_RECURSE FF_SOURCE_FILES 
+       LIST_DIRECTORIES False
+       "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc")
+
+  add_executable(
+    ${FF_TEST_EXEC_NAME}
+    ${FF_SOURCE_FILES})
+
+  target_link_libraries(
+    ${FF_TEST_EXEC_NAME}
+    ${FF_TEST_EXEC_DEPS}
+    utils-testing)
+
+  define_ff_vars(${FF_TEST_EXEC_NAME})
+  ff_set_cxx_properties(${FF_TEST_EXEC_NAME})
+  doctest_discover_tests(${FF_TEST_EXEC_NAME})
+endfunction()
+
+function(ff_add_intree_test_executable)
+  ff_parse_args(
+    PREFIX 
+      FF_TEST_EXEC
+    FLAGS
+      NO_TEST_LIB
+    ARGS
+      NAME
+    VARIADIC_ARGS
+      DEPS
+    PARSE
+      ${ARGN}
+  )
+
+  project(${FF_TEST_EXEC_NAME})
+  file(GLOB_RECURSE FF_SOURCE_FILES 
+       LIST_DIRECTORIES False
+       "${CMAKE_CURRENT_SOURCE_DIR}/src/*.test.cc")
+
+  add_executable(
+    ${FF_TEST_EXEC_NAME}
+    ${FF_SOURCE_FILES})
+
+  target_link_libraries(
+    ${FF_TEST_EXEC_NAME}
+    ${FF_TEST_EXEC_DEPS}
+    utils-testing)
+
+  define_ff_vars(${FF_TEST_EXEC_NAME})
+  ff_set_cxx_properties(${FF_TEST_EXEC_NAME})
+  doctest_discover_tests(${FF_TEST_EXEC_NAME})
+endfunction()
+
 function(ff_add_library)
   ff_parse_args(
     PREFIX 
       FF_LIBRARY
+    FLAGS
+      NO_TEST_LIB
     ARGS
       NAME
     VARIADIC_ARGS
-      SRC_PATTERNS
-      PUBLIC_INCLUDE
-      PRIVATE_INCLUDE
       DEPS
       PRIVATE_DEPS
     PARSE
@@ -60,22 +131,19 @@ function(ff_add_library)
   )
   
   project(${FF_LIBRARY_NAME})
-  file(GLOB_RECURSE SRC
-       CONFIGURE_DEPENDS 
-       LIST_DIRECTORIES False
-       ${FF_LIBRARY_SRC_PATTERNS})
+  ff_get_source_files()
 
   add_library(
     ${FF_LIBRARY_NAME}
     SHARED
-    ${SRC})
+    ${FF_SOURCE_FILES})
 
   target_include_directories(
     ${FF_LIBRARY_NAME}
     PUBLIC
-      ${FF_LIBRARY_PUBLIC_INCLUDE}
+      "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE
-      ${FF_LIBRARY_PRIVATE_INCLUDE})
+      "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
   target_link_libraries(
     ${FF_LIBRARY_NAME}
@@ -86,6 +154,14 @@ function(ff_add_library)
   )
   define_ff_vars(${FF_LIBRARY_NAME})
   ff_set_cxx_properties(${FF_LIBRARY_NAME})
+
+  ff_add_intree_test_executable(
+    NAME
+      "${FF_LIBRARY_NAME}-tests"
+    ${FF_LIBRARY_NO_TEST_LIB}
+    DEPS
+      ${FF_LIBRARY_NAME}
+  )
 endfunction()
 
 function(ff_add_test_executable)
@@ -100,25 +176,27 @@ function(ff_add_test_executable)
       DEPS
     PARSE
       ${ARGN}
-      rapidcheck
-      doctest
   )
 
   project(${FF_TEST_EXEC_NAME})
-  file(GLOB_RECURSE SRC
-       CONFIGURE_DEPENDS
+  ff_get_source_files()
+  file(GLOB_RECURSE IN_TREE_FILES
        LIST_DIRECTORIES False
-       ${FF_TEST_EXEC_SRC_PATTERNS})
+       "${CMAKE_CURRENT_SOURCE_DIR}/src/*.test.cc")
+  list(APPEND FF_SOURCE_FILES ${IN_TREE_FILES})
 
   add_executable(
     ${FF_TEST_EXEC_NAME}
-    ${SRC})
+    ${FF_SOURCE_FILES})
 
   target_link_libraries(
     ${FF_TEST_EXEC_NAME}
-    ${FF_TEST_EXEC_DEPS})
+    ${FF_TEST_EXEC_DEPS}
+    rapidcheck
+    doctest)
 
   define_ff_vars(${FF_TEST_EXEC_NAME})
   ff_set_cxx_properties(${FF_TEST_EXEC_NAME})
   doctest_discover_tests(${FF_TEST_EXEC_NAME})
+
 endfunction()

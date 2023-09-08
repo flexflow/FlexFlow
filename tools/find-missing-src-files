@@ -1,0 +1,180 @@
+#! /usr/bin/env python3 
+
+import logging 
+import sys
+from pathlib import Path
+import json
+from enum import Enum
+from dataclasses import dataclass
+from typing import Set, Union
+from collections import defaultdict
+
+DIR = Path(__file__).parent
+LIB_DIR = DIR.parent / 'lib'
+
+_l = logging.getLogger(__file__)
+
+MINIMUM_PYTHON_VERSION = (3, 6)
+
+if MINIMUM_PYTHON_VERSION > (sys.version_info.major, sys.version_info.minor):
+  _l.error(f'Insufficient python version {sys.version_info.major}.{sys.version_info.minor}. '
+           f'At least {MINIMUM_PYTHON_VERSION[0]}.{MINIMUM_PYTHON_VERSION[1]} is required.')
+  exit(1)
+
+BLACKLISTED = [
+    LIB_DIR / 'compiler',
+    LIB_DIR / 'ffi',
+    LIB_DIR / 'kernels',
+    LIB_DIR / 'op-attrs',
+    LIB_DIR / 'pcg',
+    LIB_DIR / 'runtime',
+    LIB_DIR / 'substitutions'
+]
+
+class FileType(Enum):
+    SOURCE = 'source'
+    TEST = 'test'
+    HEADER = 'header'
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def all():
+        return [FileType.HEADER, FileType.SOURCE, FileType.TEST]
+
+    def others(self):
+        return set(FileType.all()) - {self}
+
+    def extension(self):
+        if self == FileType.HEADER:
+            return '.h'
+        elif self == FileType.SOURCE:
+            return '.cc'
+        else:
+            assert self == FileType.TEST
+            return '.test.cc'
+
+def normalize_path(p: Path):
+    if p.is_relative_to(LIB_DIR):
+        return p.relative_to(LIB_DIR)
+    else:
+        return p
+
+@dataclass(frozen=True)
+class InvalidFileFound:
+    file_type: FileType
+    path: Path
+
+    @classmethod
+    def create(cls, file_type, path):
+        return cls(
+            file_type=file_type,
+            path=normalize_path(path)
+        )
+
+@dataclass(frozen=True)
+class NoFileFound:
+    file_type: FileType
+    possible_paths: Set[Path]
+    because_of_path: Path
+
+    @classmethod
+    def create(cls, file_type, possible_paths, because_of_path):
+        return cls(
+            file_type=file_type,
+            possible_paths={normalize_path(p) for p in possible_paths},
+            because_of_path=normalize_path(because_of_path)
+        )
+
+def is_error(x):
+    return isinstance(x, (InvalidFileFound, NoFileFound))
+
+def get_library_root(file_path: Path, file_type: FileType) -> Union[Path, InvalidFileFound]:
+    for parent in file_path.parents:
+        if (parent / 'include').exists() and (parent / 'src').exists():
+            return parent
+    return InvalidFileFound.create(file_type=file_type, path=file_path)
+
+def get_relative_path(library_root: Path, file_type: FileType, path: Path) -> Union[Path, InvalidFileFound]:
+    include_path = library_root / 'include'
+    src_path = library_root / 'src'
+
+    if file_type == FileType.HEADER:
+        if path.is_relative_to(include_path):
+            return path.relative_to(include_path)
+        elif path.is_relative_to(src_path):
+            return path.relative_to(src_path)
+    else:
+        assert file_type in [FileType.SOURCE, FileType.TEST]
+        if path.is_relative_to(src_path):
+            return path.relative_to(src_path)
+
+    return InvalidFileFound.create(file_type=file_type, path=path)
+
+def get_possible_file_paths(file_type: FileType, library_root: Path, relative_path: Path) -> Set[Path]:
+    suffixed = relative_path.with_suffix(file_type.extension())
+    include_path = library_root / 'include'
+    src_path = library_root / 'src'
+
+    if file_type == FileType.HEADER:
+        return { include_path / suffixed, src_path / suffixed }
+    else:
+        return { src_path / suffixed }
+
+def check_expected_file_paths(file_type: FileType, library_root: Path, relative_path: Path, because_of_path: Path):
+    for other_type in file_type.others():
+        possible_paths = get_possible_file_paths(other_type, library_root, relative_path)
+        if any(p.exists() for p in possible_paths):
+            continue
+        yield NoFileFound.create(file_type=other_type, possible_paths=possible_paths, because_of_path=because_of_path)
+
+def should_ignore(path: Path):
+    return any(path.is_relative_to(sub_library) for sub_library in BLACKLISTED)
+
+def files_of_type(file_type: FileType):
+    for path in LIB_DIR.rglob(f'*{file_type.extension()}'):
+        if ''.join(path.suffixes) == file_type.extension():
+            yield path
+
+if __name__ == '__main__':
+    RETURN_CODE = 0
+
+    invalid_files = { t: set() for t in FileType.all() }
+    missing_files = { t: defaultdict(set) for t in FileType.all() }
+
+    def handle_error(e):
+        global RETURN_CODE 
+        RETURN_CODE = 1
+        if isinstance(e, InvalidFileFound):
+            invalid_files[e.file_type].add(str(e.path))
+        elif isinstance(e, NoFileFound):
+            missing_files[e.file_type][str(e.because_of_path)].update(str(p) for p in e.possible_paths)
+        else:
+            raise RuntimeError('Unhandled error type {type(e)}')
+
+    for file_type in FileType.all():
+        for path in files_of_type(file_type):
+            if should_ignore(path):
+                continue
+            library_root = get_library_root(path, file_type)
+            if is_error(library_root):
+                handle_error(library_root)
+                continue
+            relative_path = get_relative_path(library_root, file_type, path)
+            if is_error(relative_path):
+                handle_error(relative_path)
+                continue
+            for error_record in check_expected_file_paths(file_type, library_root, relative_path, path):
+                handle_error(error_record)
+
+    if RETURN_CODE != 0:
+        print(json.dumps({
+            'invalid_header_file_paths': list(invalid_files[FileType.HEADER]),
+            'invalid_source_file_paths': list(invalid_files[FileType.SOURCE]),
+            'invalid_test_file_paths': list(invalid_files[FileType.TEST]),
+            'missing_header_files': {k: list(v) for k, v in missing_files[FileType.HEADER].items()},
+            'missing_source_files': {k: list(v) for k, v in missing_files[FileType.SOURCE].items()},
+            'missing_test_files': {k: list(v) for k, v in missing_files[FileType.TEST].items()},
+        }, indent=2))
+    exit(RETURN_CODE)
