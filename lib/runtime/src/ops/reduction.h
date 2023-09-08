@@ -2,8 +2,8 @@
 #define _FLEXFLOW_REDUCTION_H
 
 #include "op-attrs/ops/combine.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,7 @@ OpTaskInvocation backward(ReductionAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReductionAttrs const &attrs,
-                                  InputParallelTensorDesc  const &input,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 
