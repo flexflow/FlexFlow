@@ -15,6 +15,7 @@
 
 #include "parallel_ops/partition.h"
 #include "kernels/partition_kernels.h"
+#include "op-attrs/get_output_shape.h"
 #include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
 
@@ -65,23 +66,23 @@ RepartitionParams Repartition::get_params() const {
   return params;
 }
 
-OpTaskInvocation init(RepartitionAttrs const & attrs) {
+OpTaskInvocation init(RepartitionAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(HANDLE, ff_handle());
-  binding.bind(INPUT, input_tensor(0)); //use the input data type
+  binding.bind(INPUT, input_tensor(0)); // use the input data type
 
   return {REPARTITION_INIT_TASK_ID, binding};
-} 
+}
 
-OpTaskInvocation forward(RepartitionAttrs const & attrs) {
+OpTaskInvocation forward(RepartitionAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
-  
+
   return {REPARTITION_FWD_TASK_ID, binding};
 }
 
@@ -92,35 +93,40 @@ OpTaskInvocation backward(CastAttrs const &attrs) {
   return {REPARTITION_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<RepartitionPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecific<RepartitionPerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
-  //Note: use the input data type 
-  DeviceSpecific<RepartitionPerDeviceState> per_device_state = acc.create_device_specific_state<RepartitionPerDeviceState>(init_kernel(handle, input.data_type));
+  // Note: use the input data type
+  DeviceSpecific<RepartitionPerDeviceState> per_device_state =
+      acc.create_device_specific_state<RepartitionPerDeviceState>(
+          init_kernel(handle, input.data_type));
   return per_device_state;
 }
 
-static DeviceSpecific<RepartitionPerDeviceState> init_task(Task const *task,
-                                                           std::vector<PhysicalRegion> const &regions,
-                                                           Context ctx,
-                                                           Runtime *runtime) {
+static DeviceSpecific<RepartitionPerDeviceState>
+    init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return init_task_impl(acc);
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-   auto per_device_state = acc.get_argument<RepartitionPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<RepartitionPerDeviceState>(PER_DEVICE_STATE);
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   return profiling(forward,
                    profiling,
-                  "[Reparition/Partition] forward_time = %.2lfms\n",
-                  &per_device_state,
-                  input,
-                  output);
+                   "[Reparition/Partition] forward_time = %.2lfms\n",
+                   &per_device_state,
+                   input,
+                   output);
 }
 
 static void forward_task(Task const *task,
@@ -133,16 +139,17 @@ static void forward_task(Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state = acc.get_argument<RepartitionPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<RepartitionPerDeviceState>(PER_DEVICE_STATE);
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
 
   return profiling(backward,
                    profiling,
-                  "[Reparition/Partition] backward_time = %.2lfms\n",
-                  &per_device_state,
-                  input_grad,
-                  output_grad);
+                   "[Reparition/Partition] backward_time = %.2lfms\n",
+                   &per_device_state,
+                   input_grad,
+                   output_grad);
 }
 
 static void backward_task(Task const *task,
@@ -158,8 +165,36 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
+  auto env = sim.new_environment();
 
-  }
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
+
+  SimTaskBinding init_binding;
+  init_binding.bind_arg(HANDLE, ff_handle());
+  init_binding.bind(INPUT, input); // use the input data type
+  auto init_accessor =
+      env.get_init_accessor(REPARTITION_INIT_TASK_ID, init_binding);
+
+  DeviceSpecific<RepartitionPerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
+
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind(INTPUT, input);
+  fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto fwd_accessor = env.get_accessor(REPARTITION_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_accessor(REPARTITION_BWD_TASK_ID, bwd_binding);
+
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
+}
 
 template <>
 void register_task<REPARTITION_INIT_TASK_ID>() {
@@ -176,18 +211,18 @@ template <>
 void register_task<REPARTITION_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
-
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<RepartitionPerDeviceState>(PER_DEVICE_STATE);
 
-  register_task(REPARTITION_FWD_TASK_ID,  "Repartition Fwd", fwd, forward_task);
+  register_task(REPARTITION_FWD_TASK_ID, "Repartition Fwd", fwd, forward_task);
 }
 
 template <>
 void register_task<REPARTITION_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
 
   registar_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd, backward_task);
 }
@@ -247,7 +282,8 @@ void register_task<REPARTITION_BWD_TASK_ID>() {
 //                          0 /*mapper_id*/,
 //                          outputs[0]->machine_view.hash());
 //   launcher.add_region_requirement(RegionRequirement(
-//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
+//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE,
+//       inputs[0]->region));
 //   launcher.add_field(0, FID_DATA);
 //   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
 //                                                     0 /*projection id*/,
@@ -291,7 +327,8 @@ void register_task<REPARTITION_BWD_TASK_ID>() {
 //                          0 /*mapper_id*/,
 //                          outputs[0]->machine_view.hash());
 //   launcher.add_region_requirement(RegionRequirement(
-//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
+//       input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE,
+//       inputs[0]->region));
 //   launcher.add_field(0, FID_DATA);
 //   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
 //                                                     0 /*projection id*/,
@@ -483,4 +520,4 @@ void register_task<REPARTITION_BWD_TASK_ID>() {
 //   hash_combine(key, params.repartition_degree);
 //   return key;
 // }
-}; // namespace std
+}; // namespace FlexFlow

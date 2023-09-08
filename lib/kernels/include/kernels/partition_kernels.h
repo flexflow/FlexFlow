@@ -16,7 +16,8 @@ FF_VISITABLE_STRUCT_NO_EQ(RepartitionPerDeviceState, handle, data_type);
 namespace Kernels {
 namespace Repartition {
 
-RepartitionPerDeviceState init_kernel(PerDeviceFFHandle const &handle, DataType data_type);
+RepartitionPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
+                                      DataType data_type);
 
 void forward_kernel(ffStream_t stream,
                     RepartitionPerDeviceState const *m,
