@@ -98,6 +98,14 @@ public:
     return this->ptr->query_edges(q);
   }
 
+  template <typename BaseImpl, typename... Args>
+  static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
+                                 OutputLabelledMultiDiGraph>::type
+      create(Args &&...args) {
+    return OutputLabelledMultiDiGraph(
+        std::make_shared<BaseImpl>(std::forward<Args>(args)...));
+  }
+
 private:
   OutputLabelledMultiDiGraph(
       std::unique_ptr<IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>> ptr)

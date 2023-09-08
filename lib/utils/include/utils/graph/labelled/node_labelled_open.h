@@ -11,6 +11,8 @@ struct NodeLabelledOpenMultiDiGraph {
       operator=(NodeLabelledOpenMultiDiGraph const &) = default;
 
   operator OpenMultiDiGraphView();
+
+  NodeLabel const &at(Node const &node) const;
 };
 
 } // namespace FlexFlow

@@ -289,36 +289,28 @@ Operator get_operator_attrs(ParallelComputationGraph const &graph,
           nullopt);
     case Op::COMBINE:
       return Operator(
-        CombineAttrs{
-          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
-        },
-        nullopt
-      );
+          CombineAttrs{
+              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
+          nullopt);
     case Op::REDUCTION:
       return Operator(
-        ReductionAttrs{
-          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
-        },
-        nullopt
-      );
+          ReductionAttrs{
+              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
+          nullopt);
     case Op::REPARTITION:
       return Operator(
-        RepartitionAttrs{
-          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
-        },
-        nullopt
-      );
+          RepartitionAttrs{
+              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
+          nullopt);
     case Op::REPLICATE:
       return Operator(
-        ReplicateAttrs{
-          get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-          get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))
-        },
-        nullopt
-      );
+          ReplicateAttrs{
+              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
+              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
+          nullopt);
     default:
       break;
   }

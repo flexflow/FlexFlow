@@ -9,8 +9,9 @@
 
 namespace FlexFlow {
 
-optional<OperatorAttributeValue> evaluate_list_index_access(int index,
-                                       optional<OperatorAttributeValue> const &v) {
+optional<OperatorAttributeValue>
+    evaluate_list_index_access(int index,
+                               optional<OperatorAttributeValue> const &v) {
   if (!v.has_value() ||
       !holds_alternative<stack_vector<int, MAX_TENSOR_DIM>>(v.value()) ||
       !holds_alternative<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(v.value())) {
@@ -28,8 +29,9 @@ optional<OperatorAttributeValue> evaluate_list_index_access(int index,
   }
 }
 
-optional<TensorAttributeValue> evaluate_list_index_access(int const &index,
-                                       optional<TensorAttributeValue> const &v) {
+optional<TensorAttributeValue>
+    evaluate_list_index_access(int const &index,
+                               optional<TensorAttributeValue> const &v) {
   if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
     return nullopt;
   }
@@ -43,11 +45,13 @@ optional<TensorAttributeValue> evaluate_list_index_access(int const &index,
   return vec.at(index);
 }
 
-optional<OperatorAttributeValue> evaluate_list_size(optional<OperatorAttributeValue> const &v) {
+optional<OperatorAttributeValue>
+    evaluate_list_size(optional<OperatorAttributeValue> const &v) {
   return MAX_TENSOR_DIM;
 }
 
-optional<TensorAttributeValue> evaluate_list_size(optional<TensorAttributeValue> const &v) {
+optional<TensorAttributeValue>
+    evaluate_list_size(optional<TensorAttributeValue> const &v) {
   if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
     return nullopt;
   }

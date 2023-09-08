@@ -3,8 +3,8 @@
 
 #include "attribute_expr.h"
 #include "op-attrs/activation.h"
-#include "op-attrs/op.h"
 #include "op-attrs/datatype.h"
+#include "op-attrs/op.h"
 #include "pcg/operator.h"
 #include <unordered_set>
 #include <vector>
@@ -84,7 +84,9 @@ using OperatorAttributeValue = variant<int,
                                        TensorShape,
                                        DataType>;
 
-FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>, attribute_key, index);
+FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>,
+                    attribute_key,
+                    index);
 FF_VISITABLE_STRUCT(ListSize<FlexFlow::OperatorAttributeKey>, attribute_key);
 
 using OperatorAttributeConstraint =
