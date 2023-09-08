@@ -104,9 +104,8 @@ static void forward_task(Task const *task,
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
-
   // Note: backward_kernel needs parameter Legion::coord_t const
   // *out_blk_sizes,Legion::coord_t in_blk_size, Legion::coord_t num_blks, int
   // numOutputs how to get these parameter?
