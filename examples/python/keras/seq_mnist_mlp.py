@@ -55,6 +55,9 @@ def top_level_task():
   model.fit(x_train, y_train, epochs=20, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
   model.evaluate(x=x_train, y=y_train)
 
+
 if __name__ == "__main__":
   print("Sequential model, mnist mlp")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

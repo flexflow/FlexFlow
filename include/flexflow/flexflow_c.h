@@ -256,6 +256,7 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle,
                                                 int *axes,
                                                 bool elementwise_affine,
                                                 float eps,
+                                                bool use_bias,
                                                 char const *name);
 
 flexflow_tensor_t
@@ -416,6 +417,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
@@ -435,6 +437,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
@@ -454,6 +457,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
@@ -474,6 +478,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
@@ -494,6 +499,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention_verify(
@@ -514,6 +520,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention_verify(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
@@ -935,6 +942,8 @@ void flexflow_request_manager_set_max_sequence_length(
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,
+    int bos_token_id,
+    int eos_token_id,
     char const *tokenizer_filepath);
 
 void flexflow_request_manager_register_output_filepath(

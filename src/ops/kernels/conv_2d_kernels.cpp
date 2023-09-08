@@ -174,15 +174,15 @@ void forward_kernel_wrapper(Conv2DMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   Internal::forward_kernel(
       m, input_ptr, output_ptr, filter_ptr, bias_ptr, stream);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     print_tensor<float>(input_ptr, 16, "[Conv2D:forward:input]");
     print_tensor<float>(filter_ptr, 16, "[Conv2D:forward:kernel]");
@@ -190,8 +190,8 @@ void forward_kernel_wrapper(Conv2DMeta const *m,
     print_tensor<float>(output_ptr, 16, "[Conv2D:forward:output]");
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s [Conv2D] forward time (CF) = %.2fms\n", m->op_name, elapsed);
   }
 }
@@ -209,9 +209,9 @@ void backward_kernel_wrapper(Conv2DMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   Internal::backward_kernel(m,
@@ -224,12 +224,12 @@ void backward_kernel_wrapper(Conv2DMeta const *m,
                             bias_grad_ptr,
                             stream);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s [Conv2D] backward time = %.2fms\n", m->op_name, elapsed);
     // print_tensor<4, float>(acc_output_grad.ptr, acc_output_grad.rect,
     // "[Conv2D:backward:output_grad]"); print_tensor<4,

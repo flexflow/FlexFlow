@@ -31,7 +31,7 @@ Tensor FFModel::unary(OperatorType op,
   // if (x->data_type < DT_FLOAT) {
   if (false) {
     dtype = DT_FLOAT;
-    std::string str = nullptr ? "" : std::string(name);
+    std::string str = (name == nullptr) ? "" : std::string(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
     ele = new Layer(this,
                     op,
@@ -741,7 +741,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(m,
                               input_ptr,
                               input_grad_ptr,

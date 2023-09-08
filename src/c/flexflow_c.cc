@@ -613,6 +613,7 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
                                                 int *axes,
                                                 bool elementwise_affine,
                                                 float eps,
+                                                bool use_bias,
                                                 char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -620,8 +621,13 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
   for (int i = 0; i < n; i++) {
     axes_vec.push_back(axes[i]);
   }
-  Tensor tensor = handle->layer_norm(
-      input, axes_vec, elementwise_affine, eps, input->data_type, name);
+  Tensor tensor = handle->layer_norm(input,
+                                     axes_vec,
+                                     elementwise_affine,
+                                     eps,
+                                     use_bias,
+                                     input->data_type,
+                                     name);
   DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps "
               "%f, name %s",
               tensor,
@@ -1071,6 +1077,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1091,6 +1098,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
                                                        scaling_query,
                                                        scaling_factor,
                                                        qk_prod_scaling,
+                                                       position_bias,
                                                        name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1112,6 +1120,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1133,6 +1142,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
                                                 scaling_query,
                                                 scaling_factor,
                                                 qk_prod_scaling,
+                                                position_bias,
                                                 name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1154,6 +1164,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1175,6 +1186,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
                                                   scaling_query,
                                                   scaling_factor,
                                                   qk_prod_scaling,
+                                                  position_bias,
                                                   name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1197,6 +1209,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1218,6 +1231,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
                                                         scaling_query,
                                                         scaling_factor,
                                                         qk_prod_scaling,
+                                                        position_bias,
                                                         name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1240,6 +1254,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1262,6 +1277,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
                                                  scaling_query,
                                                  scaling_factor,
                                                  qk_prod_scaling,
+                                                 position_bias,
                                                  name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1284,6 +1300,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention_verify(
     bool scaling_query,
     float scaling_factor,
     bool qk_prod_scaling,
+    bool position_bias,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1306,6 +1323,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention_verify(
                                                    scaling_query,
                                                    scaling_factor,
                                                    qk_prod_scaling,
+                                                   position_bias,
                                                    name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1426,7 +1444,7 @@ flexflow_generation_result_t
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::string const text_str(input_text);
   GenerationResult result = handle->generate(text_str, max_seq_length);
-  DEBUG_PRINT("[Model] generate %p %s %i", handle, text, max_seq_length);
+  DEBUG_PRINT("[Model] generate %p %s %i", handle, text_str, max_seq_length);
   assert(result.output_tokens.size() <= max_seq_length);
   output_length_and_tokens[0] = result.output_tokens.size();
   std::copy(result.output_tokens.begin(),
@@ -2416,12 +2434,15 @@ void flexflow_request_manager_set_max_sequence_length(
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,
+    int bos_token_id,
+    int eos_token_id,
     char const *tokenizer_filepath) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
   assert(tokenizer_filepath != nullptr &&
          "Cannot convert nullptr char * to std::string");
   std::string const tokenizer_filepath_str(tokenizer_filepath);
-  handle->register_tokenizer(model_type, tokenizer_filepath_str);
+  handle->register_tokenizer(
+      model_type, bos_token_id, eos_token_id, tokenizer_filepath_str);
   DEBUG_PRINT(
       "[RequestManager] register tokenizer %p %s", handle, tokenizer_filepath);
 }

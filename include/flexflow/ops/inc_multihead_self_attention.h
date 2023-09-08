@@ -14,6 +14,9 @@
 #include "math.h"
 #include <cfloat>
 #include <complex>
+#if defined(FF_USE_HIP_ROCM)
+#include <hip/hip_complex.h>
+#endif
 
 namespace FlexFlow {
 
@@ -40,6 +43,7 @@ public:
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
+                            bool _position_bias,
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
@@ -61,6 +65,7 @@ public:
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
+                            bool _position_bias,
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
@@ -122,7 +127,7 @@ public:
   float dropout, scaling_factor;
   bool bias;
   bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling;
+      qk_prod_scaling, position_bias;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
@@ -152,6 +157,7 @@ public:
                                 bool _bias,
                                 bool _scaling_query,
                                 bool _qk_prod_scaling,
+                                bool _position_bias,
                                 bool _add_bias_kv,
                                 float _scaling_factor,
                                 GenericTensorAccessorR const &weight,
@@ -176,6 +182,7 @@ public:
   bool *bias;
   bool *scaling_query;
   bool *qk_prod_scaling;
+  bool *position_bias;
   float scaling_factor;
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
@@ -191,6 +198,10 @@ public:
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t qk_tensor;
   cuFloatComplex *complex_input;
+#elif defined(FF_USE_HIP_ROCM)
+  miopenTensorDescriptor_t qk_tensor;
+  //  typedef hipFloatComplex attFloatComplex;
+  hipFloatComplex *complex_input;
 #endif
 };
 

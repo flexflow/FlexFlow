@@ -61,7 +61,7 @@ bool use_activation(ActiMode mode) {
   return false;
 }
 
-void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
+void init_kernel(LinearMeta *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     miopenActivationMode_t mode;
     switch (m->activation) {
@@ -99,9 +99,9 @@ void forward_kernel_wrapper(LinearMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   if (m->input_type[0] == DT_FLOAT) {
@@ -127,12 +127,12 @@ void forward_kernel_wrapper(LinearMeta const *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s [Linear] forward time = %.2lfms\n", m->op_name, elapsed);
     // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(),
     // "[Linear:forward:input]"); print_tensor<float>(acc_kernel.ptr,
@@ -159,9 +159,9 @@ void backward_kernel_wrapper(LinearMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   if (m->input_type[0] == DT_FLOAT) {
     Internal::backward_kernel<float>(m,
@@ -192,12 +192,12 @@ void backward_kernel_wrapper(LinearMeta const *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s Linear backward time = %.2lfms\n", m->op_name, elapsed);
     // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(),
     // "[Linear:backward:output_grad]");

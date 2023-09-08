@@ -15,19 +15,20 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import cffi
-import os
-import subprocess
-import logging
 import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from flexflow.type import ActiMode, RegularizerMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, InferenceMode, ModelType, OpType, ParameterSyncType, enum_to_int, int_to_enum
+from flexflow.config import *
+from .flexflowlib import ffi, flexflow_library
 
-_FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
-if not _FF_BUILD_DOCS:
-  from .flexflowlib import ffi, flexflow_library
+def ffc():
+  if not flexflow_already_initialized():
+    raise RuntimeError("Cannot use FlexFlow library before initializing FlexFlow")
   ffc = flexflow_library.lib
+  if ffc is None:
+    raise RuntimeError("FlexFlow library is None")
+  return ffc
 
 ff_tracing_id = 200
 
@@ -66,35 +67,35 @@ class Op(object):
     self.name = name
 
   def get_number_parameters(self):
-    return ffc.flexflow_op_get_num_parameters(self.handle)
+    return ffc().flexflow_op_get_num_parameters(self.handle)
 
   def get_parameter_by_id(self, id):
-    handle = ffc.flexflow_op_get_parameter_by_id(self.handle, id)
+    handle = ffc().flexflow_op_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
   def get_number_inputs(self):
-    return ffc.flexflow_op_get_num_inputs(self.handle)
+    return ffc().flexflow_op_get_num_inputs(self.handle)
 
   def get_input_by_id(self, id):
-    handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
+    handle = ffc().flexflow_op_get_input_by_id(self.handle, id)
     return Tensor(handle, False)
 
   def get_number_outputs(self):
-    return ffc.flexflow_op_get_num_outputs(self.handle)
+    return ffc().flexflow_op_get_num_outputs(self.handle)
 
   def get_output_by_id(self, id):
-    handle = ffc.flexflow_op_get_output_by_id(self.handle, id)
+    handle = ffc().flexflow_op_get_output_by_id(self.handle, id)
     return Tensor(handle, False)
 
   def init(self, model):
-    ffc.flexflow_op_init(self.handle, model.handle)
+    ffc().flexflow_op_init(self.handle, model.handle)
 
   def forward(self, model):
-    ffc.flexflow_op_forward(self.handle, model.handle)
+    ffc().flexflow_op_forward(self.handle, model.handle)
     #return Tensor(handle)
 
   def _add_to_model(self, model):
-    ffc.flexflow_op_add_to_model(self.handle, model.handle)
+    ffc().flexflow_op_add_to_model(self.handle, model.handle)
 
   def get_output_tensor(self):
     return self.get_output_by_id(0)
@@ -602,36 +603,36 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
 class FFConfig(object):
   __slots__ = ['handle', '_handle', 'enable_tracing']
   def __init__(self):
-    self.handle = ffc.flexflow_config_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_config_destroy)
+    self.handle = ffc().flexflow_config_create()
+    self._handle = ffi.gc(self.handle, ffc().flexflow_config_destroy)
     self.enable_tracing = False
 
   def parse_args(self):
-    ffc.flexflow_config_parse_args_default(self.handle)
+    ffc().flexflow_config_parse_args_default(self.handle)
 
   @property
   def batch_size(self):
-    return ffc.flexflow_config_get_batch_size(self.handle)
+    return ffc().flexflow_config_get_batch_size(self.handle)
 
   @property
   def workers_per_node(self):
-    return ffc.flexflow_config_get_workers_per_node(self.handle)
+    return ffc().flexflow_config_get_workers_per_node(self.handle)
 
   @property
   def num_nodes(self):
-    return ffc.flexflow_config_get_num_nodes(self.handle)
+    return ffc().flexflow_config_get_num_nodes(self.handle)
 
   @property
   def epochs(self):
-    return ffc.flexflow_config_get_epochs(self.handle)
+    return ffc().flexflow_config_get_epochs(self.handle)
     
   @property
   def enable_control_replication(self):
-    return ffc.flexflow_config_get_enable_control_replication(self.handle)
+    return ffc().flexflow_config_get_enable_control_replication(self.handle)
   
   @property
   def data_parallelism_degree(self):
-    return ffc.flexflow_config_get_data_parallelism_degree(self.handle)
+    return ffc().flexflow_config_get_data_parallelism_degree(self.handle)
   
   @data_parallelism_degree.setter
   def data_parallelism_degree(self, value):
@@ -639,11 +640,11 @@ class FFConfig(object):
       raise ValueError("The data parallelism degree must be specified as an integer number")
     elif value < 1:
       raise ValueError("The data parallelism degree cannot be lower than 1")
-    ffc.flexflow_config_set_data_parallelism_degree(self.handle, value)
+    ffc().flexflow_config_set_data_parallelism_degree(self.handle, value)
   
   @property
   def tensor_parallelism_degree(self):
-    return ffc.flexflow_config_get_tensor_parallelism_degree(self.handle)
+    return ffc().flexflow_config_get_tensor_parallelism_degree(self.handle)
   
   @tensor_parallelism_degree.setter
   def tensor_parallelism_degree(self, value):
@@ -651,11 +652,11 @@ class FFConfig(object):
       raise ValueError("The tensor parallelism degree must be specified as an integer number")
     elif value < 1:
       raise ValueError("The tensor parallelism degree cannot be lower than 1")
-    ffc.flexflow_config_set_tensor_parallelism_degree(self.handle, value)
+    ffc().flexflow_config_set_tensor_parallelism_degree(self.handle, value)
   
   @property
   def pipeline_parallelism_degree(self):
-    return ffc.flexflow_config_get_pipeline_parallelism_degree(self.handle)
+    return ffc().flexflow_config_get_pipeline_parallelism_degree(self.handle)
   
   @pipeline_parallelism_degree.setter
   def pipeline_parallelism_degree(self, value):
@@ -663,26 +664,26 @@ class FFConfig(object):
       raise ValueError("The pipeline parallelism degree must be specified as an integer number")
     elif value < 1:
       raise ValueError("The pipeline parallelism degree cannot be lower than 1")
-    ffc.flexflow_config_set_pipeline_parallelism_degree(self.handle, value)
+    ffc().flexflow_config_set_pipeline_parallelism_degree(self.handle, value)
     
   @property
   def python_data_loader_type(self):
-    return ffc.flexflow_config_get_python_data_loader_type(self.handle)
+    return ffc().flexflow_config_get_python_data_loader_type(self.handle)
   
   @property
   def cpu_offload(self):
-    return ffc.flexflow_config_get_offload(self.handle)
+    return ffc().flexflow_config_get_offload(self.handle)
 
   def get_current_time(self):
-    return ffc.flexflow_get_current_time(self.handle)
+    return ffc().flexflow_get_current_time(self.handle)
 
   def begin_trace(self, trace_id):
     if self.enable_tracing:
-      ffc.flexflow_begin_trace(self.handle, trace_id)
+      ffc().flexflow_begin_trace(self.handle, trace_id)
 
   def end_trace(self, trace_id):
     if self.enable_tracing:
-      ffc.flexflow_end_trace(self.handle, trace_id)
+      ffc().flexflow_end_trace(self.handle, trace_id)
 
 # -----------------------------------------------------------------------
 # Tensor
@@ -709,7 +710,7 @@ class Tensor(object):
     self.__get_dims()
     self.__get_data_type()
     # if (deallocate == True):
-    #   self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
+    #   self._handle = ffi.gc(self.handle, ffc().flexflow_tensor_destroy)
     # if (self.is_mapped() == True):
     #   self.mapped = True
 
@@ -719,13 +720,13 @@ class Tensor(object):
 
   def inline_map(self, ffmodel, ffconfig):
     assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_inline_map(self.handle, ffmodel.handle, ffconfig.handle);
+    ffc().flexflow_tensor_inline_map(self.handle, ffmodel.handle, ffconfig.handle);
     self.mapped = True
     assert self.num_dims > 0, "check dims"
 
   def inline_unmap(self, ffmodel, ffconfig):
     assert self.mapped == True, "Tensor is not inline mapped."
-    ffc.flexflow_tensor_inline_unmap(self.handle, ffmodel.handle, ffconfig.handle);
+    ffc().flexflow_tensor_inline_unmap(self.handle, ffmodel.handle, ffconfig.handle);
     self.mapped = False
 
   def get_array(self, ffmodel, ffconfig):
@@ -774,7 +775,7 @@ class Tensor(object):
     self.__detach_raw_ptr(ffconfig)
 
   def is_mapped(self):
-    return ffc.flexflow_tensor_is_mapped(self.handle)
+    return ffc().flexflow_tensor_is_mapped(self.handle)
     
   def set_tensor(self, ffmodel, np_array):
     assert np_array.__array_interface__['strides'] == None, "Parameter set_weights, numpy array strides is not None"
@@ -788,15 +789,15 @@ class Tensor(object):
     if np_array.dtype == np.float16:
       assert self.data_type == DataType.DT_HALF, "Wrong datatype"
       raw_ptr = ffi.cast("half*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
+      ret_val = ffc().flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     elif np_array.dtype == np.float32:
       assert self.data_type == DataType.DT_FLOAT, "Wrong datatype"
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
+      ret_val = ffc().flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     elif np_array.dtype == np.int32:
       assert self.data_type == DataType.DT_INT32, "Wrong datatype"
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_set_tensor_int(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
+      ret_val = ffc().flexflow_tensor_set_tensor_int(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     else:
       assert 0, "Unsupported datatype"
     fflogger.debug("set tensor raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
@@ -817,13 +818,13 @@ class Tensor(object):
     np_raw_ptr = np_array.__array_interface__['data']
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
+      ret_val = ffc().flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
+      ret_val = ffc().flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
     elif np_array.dtype == np.int64:
       raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
+      ret_val = ffc().flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
@@ -844,13 +845,13 @@ class Tensor(object):
     c_comm_type = enum_to_int(ParameterSyncType, comm_type)
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, True)
+      ret_val = ffc().flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, True)
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, True)
+      ret_val = ffc().flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, True)
     elif np_array.dtype == np.int64:
       raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, True)
+      ret_val = ffc().flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, True)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
@@ -871,7 +872,7 @@ class Tensor(object):
     c_comm_type = enum_to_int(ParameterSyncType, comm_type)
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, True)
+      ret_val = ffc().flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, True)
     else:
       assert 0, "unknown data type"
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
@@ -893,7 +894,7 @@ class Tensor(object):
     np_raw_ptr = np_array.__array_interface__['data']
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, False)
+      ret_val = ffc().flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, False)
     else:
       assert 0, "unknown data type"
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
@@ -903,29 +904,29 @@ class Tensor(object):
   def __get_raw_ptr(self, ffmodel, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"
     if (data_type == DataType.DT_HALF):
-      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
+      return ffc().flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
     elif (data_type == DataType.DT_FLOAT):
-      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
+      return ffc().flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
     elif (data_type == DataType.DT_INT32):
-      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, ffmodel.handle, ffconfig.handle)
+      return ffc().flexflow_tensor_get_raw_ptr_int32(self.handle, ffmodel.handle, ffconfig.handle)
     else:
       assert 0, "unknown data type"
 
   def __get_dims(self):
-    self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
+    self.num_dims = ffc().flexflow_tensor_get_num_dims(self.handle)
     # if (self.num_dims == 1):
-    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 0),)
+    #   self.dims = (ffc().flexflow_tensor_get_dim(self.handle, 0),)
     # elif (self.num_dims == 2):
-    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    #   self.dims = (ffc().flexflow_tensor_get_dim(self.handle, 1), ffc().flexflow_tensor_get_dim(self.handle, 0))
     # elif (self.num_dims == 3):
-    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    #   self.dims = (ffc().flexflow_tensor_get_dim(self.handle, 2), ffc().flexflow_tensor_get_dim(self.handle, 1), ffc().flexflow_tensor_get_dim(self.handle, 0))
     # elif (self.num_dims == 4):
-    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    #   self.dims = (ffc().flexflow_tensor_get_dim(self.handle, 3), ffc().flexflow_tensor_get_dim(self.handle, 2), ffc().flexflow_tensor_get_dim(self.handle, 1), ffc().flexflow_tensor_get_dim(self.handle, 0))
     # elif (self.num_dims == 5):
-    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 4), ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    #   self.dims = (ffc().flexflow_tensor_get_dim(self.handle, 4), ffc().flexflow_tensor_get_dim(self.handle, 3), ffc().flexflow_tensor_get_dim(self.handle, 2), ffc().flexflow_tensor_get_dim(self.handle, 1), ffc().flexflow_tensor_get_dim(self.handle, 0))
     # else:
     #   assert 0, "unknown num_dims"
-    d = ffc.flexflow_tensor_get_dims(self.handle)
+    d = ffc().flexflow_tensor_get_dims(self.handle)
     if (self.num_dims == 1):
       self.dims = (d[0],)
     elif (self.num_dims == 2):
@@ -940,7 +941,7 @@ class Tensor(object):
       assert 0, "unknown num_dims"
 
   def __get_data_type(self):
-    dtype = ffc.flexflow_tensor_get_data_type(self.handle)
+    dtype = ffc().flexflow_tensor_get_data_type(self.handle)
     if (dtype == 40):
       self.data_type = DataType.DT_BOOLEAN
     elif (dtype == 41):
@@ -957,7 +958,7 @@ class Tensor(object):
       assert 0, "unknown data type {}".format(dtype)
 
   def __get_owner_op(self, op_type):
-    op_handle = ffc.flexflow_tensor_get_owner_op(self.handle)
+    op_handle = ffc().flexflow_tensor_get_owner_op(self.handle)
     if op_handle.impl == ffi.NULL:
       self.owner_op = None
     else:
@@ -965,12 +966,12 @@ class Tensor(object):
 
   def __attach_raw_ptr(self, ffmodel, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffmodel.handle, ffconfig.handle, raw_ptr, column_major)
+    ffc().flexflow_tensor_attach_raw_ptr(self.handle, ffmodel.handle, ffconfig.handle, raw_ptr, column_major)
     self.mapped = True
 
   def __detach_raw_ptr(self, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    ffc.flexflow_tensor_detach_raw_ptr(self.handle, ffconfig.handle)
+    ffc().flexflow_tensor_detach_raw_ptr(self.handle, ffconfig.handle)
     self.mapped = False
 
 # -----------------------------------------------------------------------
@@ -996,7 +997,7 @@ class Parameter(Tensor):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
     fflogger.debug("set weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
-    ret_val = ffc.flexflow_tensor_set_tensor_float(self.parameter_handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
+    ret_val = ffc().flexflow_tensor_set_tensor_float(self.parameter_handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     assert ret_val == True, ret_val
 
   def get_weights(self, ffmodel):
@@ -1005,7 +1006,7 @@ class Parameter(Tensor):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
-    ret_val = ffc.flexflow_tensor_get_tensor_float(self.parameter_handle, ffmodel.handle, raw_ptr, False)
+    ret_val = ffc().flexflow_tensor_get_tensor_float(self.parameter_handle, ffmodel.handle, raw_ptr, False)
     assert ret_val == True
     return np_array
 
@@ -1025,8 +1026,8 @@ class FFModel(object):
 
     :returns:  FFModel -- the model.
     """
-    self.handle = ffc.flexflow_model_create(ffconfig.handle, ffconfig.cpu_offload)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
+    self.handle = ffc().flexflow_model_create(ffconfig.handle, ffconfig.cpu_offload)
+    self._handle = ffi.gc(self.handle, ffc().flexflow_model_destroy)
     self._layers = dict()
     self._nb_layers = 0
     self._ffconfig = ffconfig
@@ -1041,7 +1042,7 @@ class FFModel(object):
 
   def add_layer(self, op_type, name):
     layer_id = self._nb_layers
-    op_handle = ffc.flexflow_model_get_last_layer(self.handle)
+    op_handle = ffc().flexflow_model_get_last_layer(self.handle)
     self._layers[self._nb_layers] = convert_op_handle_to_op(op_type, op_handle, idx=layer_id, name=name)
     self._nb_layers += 1
 
@@ -1064,18 +1065,18 @@ class FFModel(object):
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
     num_dims = len(dims)
-    handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, c_data_type, create_grad);
+    handle = ffc().flexflow_tensor_create(self.handle, num_dims, c_dims, c_data_type, create_grad);
     return Tensor(handle)
 
   def map_tensor(self, tensor, parallel_op = None):
     op_handle = self.__get_op_handle(parallel_op)
-    ffc.flexflow_tensor_map(self.handle, tensor.handle, op_handle)
+    ffc().flexflow_tensor_map(self.handle, tensor.handle, op_handle)
 
   def create_constant(self, dims, value, data_type):
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
     num_dims = len(dims)
-    handle = ffc.flexflow_constant_create(self.handle, num_dims, c_dims, value, c_data_type);
+    handle = ffc().flexflow_constant_create(self.handle, num_dims, c_dims, value, c_data_type);
     return Tensor(handle)
 
   def exp(self, x, name=None):
@@ -1090,7 +1091,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_exp(self.handle, x.handle, c_name)
+    handle = ffc().flexflow_model_add_exp(self.handle, x.handle, c_name)
     self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
 
@@ -1106,7 +1107,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_sin(self.handle, x.handle, c_name)
+    handle = ffc().flexflow_model_add_sin(self.handle, x.handle, c_name)
     self.add_layer(OpType.SIN, name)
     return Tensor(handle, owner_op_type=OpType.SIN)
 
@@ -1122,7 +1123,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_cos(self.handle, x.handle, c_name)
+    handle = ffc().flexflow_model_add_cos(self.handle, x.handle, c_name)
     self.add_layer(OpType.COS, name)
     return Tensor(handle, owner_op_type=OpType.COS)
 
@@ -1142,7 +1143,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc().flexflow_model_add_add(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.ADD, name)
     return Tensor(handle, owner_op_type=OpType.ADD)
 
@@ -1161,7 +1162,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc().flexflow_model_add_subtract(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.SUBTRACT, name)
     return Tensor(handle, owner_op_type=OpType.SUBTRACT)
 
@@ -1180,7 +1181,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc().flexflow_model_add_multiply(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.MULTIPLY)
 
@@ -1199,7 +1200,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc().flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
@@ -1218,7 +1219,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_max(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc().flexflow_model_add_max(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.MAX, name)
     return Tensor(handle, owner_op_type=OpType.MAX)
 
@@ -1237,7 +1238,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_min(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc().flexflow_model_add_min(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.MIN, name)
     return Tensor(handle, owner_op_type=OpType.MIN)
 
@@ -1257,7 +1258,7 @@ class FFModel(object):
     """
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
-    handle = ffc.flexflow_model_add_reduce_sum(self.handle, input.handle, c_axes, len(axes), keepdims, c_name)
+    handle = ffc().flexflow_model_add_reduce_sum(self.handle, input.handle, c_axes, len(axes), keepdims, c_name)
     self.add_layer(OpType.REDUCE_SUM, name)
     return Tensor(handle, owner_op_type=OpType.REDUCE_SUM)
 
@@ -1273,7 +1274,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_rsqrt(self.handle, input.handle, c_name)
+    handle = ffc().flexflow_model_add_rsqrt(self.handle, input.handle, c_name)
     self.add_layer(OpType.RSQRT, name)
     return Tensor(handle, owner_op_type=OpType.RSQRT)
 
@@ -1292,7 +1293,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_pow(self.handle, input.handle, exponent, c_name)
+    handle = ffc().flexflow_model_add_pow(self.handle, input.handle, exponent, c_name)
     self.add_layer(OpType.POW, name)
     return Tensor(handle, owner_op_type=OpType.POW)
 
@@ -1318,7 +1319,7 @@ class FFModel(object):
     dims = list(dims)
     c_dims = ffi.new("int[]", dims)
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_mean(self.handle, input.handle, c_dims, len(dims), keepdims, c_name)
+    handle = ffc().flexflow_model_add_mean(self.handle, input.handle, c_dims, len(dims), keepdims, c_name)
     self.add_layer(OpType.MEAN, name)
     return Tensor(handle, owner_op_type=OpType.MEAN)
 
@@ -1414,7 +1415,7 @@ class FFModel(object):
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, groups, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
+    handle = ffc().flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, groups, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
@@ -1459,7 +1460,7 @@ class FFModel(object):
       (type(kernel_initializer) is UniformInitializer) or \
       (type(kernel_initializer) is NormInitializer), \
       f"Unknown initializer type: {kernel_initializer}"
-    handle = ffc.flexflow_model_add_embedding(
+    handle = ffc().flexflow_model_add_embedding(
       self.handle, input.handle, num_embeddings, embedding_dim, c_aggr, c_dtype,
       shared_op_handle, kernel_initializer.handle, c_name,
     )
@@ -1541,7 +1542,7 @@ class FFModel(object):
     c_name = get_c_name(name)
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation, c_name)
+    handle = ffc().flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation, c_name)
     self.add_layer(OpType.POOL2D, name)
     return Tensor(handle, owner_op_type=OpType.POOL2D)
 
@@ -1562,14 +1563,14 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu, c_name)
+    handle = ffc().flexflow_model_add_batch_norm(self.handle, input.handle, relu, c_name)
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
     
-  def layer_norm(self, input, axes, elementwise_affine=True, eps=1e-5, name=None):
+  def layer_norm(self, input, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
-    handle = ffc.flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, c_name)
+    handle = ffc().flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.LAYER_NORM, name)
     return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
 
@@ -1591,13 +1592,16 @@ class FFModel(object):
     :param name: the name of the layer. Default is None.
     :type name: string
 
+    :param name:  Whether to add use bias in layer normalization
+    :type name: bool
+
     :returns:  Tensor -- the output tensor.
     """
     if a_seq_length_dim is None:
       a_seq_length_dim = -1
     if b_seq_length_dim is None:
       b_seq_length_dim = -1
-    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle, a_seq_length_dim, b_seq_length_dim)
+    handle = ffc().flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle, a_seq_length_dim, b_seq_length_dim)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 
@@ -1658,7 +1662,7 @@ class FFModel(object):
       c_kernel_reg_type = enum_to_int(
         RegularizerMode, RegularizerMode.REG_MODE_NONE)
       kernel_reg_lambda = 0.0
-    handle = ffc.flexflow_model_add_dense(
+    handle = ffc().flexflow_model_add_dense(
       self.handle, input.handle, out_dim, c_activation, use_bias, c_datatype,
       shared_op_handle, kernel_init_handle, bias_init_handle,
       c_kernel_reg_type, kernel_reg_lambda, c_name)
@@ -1689,7 +1693,7 @@ class FFModel(object):
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis, c_name)
+    handle = ffc().flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis, c_name)
     self.add_layer(OpType.CONCAT, name)
     return Tensor(handle, owner_op_type=OpType.CONCAT)
 
@@ -1720,7 +1724,7 @@ class FFModel(object):
     c_split = ffi.new("int[]", split)
     c_outputs_handle_list = ffi.new("flexflow_tensor_t[256]")
     c_name = get_c_name(name)
-    ffc.flexflow_model_add_split(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis, c_name)
+    ffc().flexflow_model_add_split(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis, c_name)
     output_tensor_list = []
     for i in range(n):
       tensor_p_handle = ffi.new("flexflow_tensor_t*")
@@ -1742,7 +1746,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_flat(self.handle, input.handle, c_name)
+    handle = ffc().flexflow_model_add_flat(self.handle, input.handle, c_name)
     self.add_layer(OpType.FLAT, name)
     return Tensor(handle, owner_op_type=OpType.FLAT)
 
@@ -1758,7 +1762,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, axis, c_name)
+    handle = ffc().flexflow_model_add_softmax(self.handle, input.handle, axis, c_name)
     self.add_layer(OpType.SOFTMAX, name)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 
@@ -1781,7 +1785,7 @@ class FFModel(object):
     """
     c_name = get_c_name(name)
     c_shape = ffi.new("int[]", shape)
-    handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape, c_name)
+    handle = ffc().flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape, c_name)
     self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
 
@@ -1803,7 +1807,7 @@ class FFModel(object):
     :returns: Tensor -- the output tensor
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_gather(self.handle, input.handle, index.handle, dim, c_name)
+    handle = ffc().flexflow_model_add_gather(self.handle, input.handle, index.handle, dim, c_name)
     self.add_layer(OpType.GATHER, name)
     return Tensor(handle, owner_op_type=OpType.GATHER)
 
@@ -1823,7 +1827,7 @@ class FFModel(object):
     """
     c_name = get_c_name(name)
     c_perm = ffi.new("int[]", perm)
-    handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm, c_name)
+    handle = ffc().flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm, c_name)
     self.add_layer(OpType.TRANSPOSE, name)
     return Tensor(handle, owner_op_type=OpType.TRANSPOSE)
 
@@ -1844,7 +1848,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis, c_name)
+    handle = ffc().flexflow_model_add_reverse(self.handle, input.handle, axis, c_name)
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
@@ -1863,7 +1867,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_scalar_multiply(self.handle, input.handle, scalar, inplace, c_name)
+    handle = ffc().flexflow_model_add_scalar_multiply(self.handle, input.handle, scalar, inplace, c_name)
     self.add_layer(OpType.SCALAR_MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_MULTIPLY)
 
@@ -1882,7 +1886,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_scalar_add(self.handle, input.handle, scalar, inplace, c_name)
+    handle = ffc().flexflow_model_add_scalar_add(self.handle, input.handle, scalar, inplace, c_name)
     self.add_layer(OpType.SCALAR_ADD, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_ADD)
 
@@ -1901,7 +1905,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_scalar_sub(self.handle, input.handle, scalar, inplace, c_name)
+    handle = ffc().flexflow_model_add_scalar_sub(self.handle, input.handle, scalar, inplace, c_name)
     self.add_layer(OpType.SCALAR_SUB, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_SUB)
 
@@ -1920,7 +1924,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_scalar_truediv(self.handle, input.handle, scalar, inplace, c_name)
+    handle = ffc().flexflow_model_add_scalar_truediv(self.handle, input.handle, scalar, inplace, c_name)
     self.add_layer(OpType.SCALAR_TRUEDIV, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_TRUEDIV)
 
@@ -1936,7 +1940,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_gelu(self.handle, input.handle, c_name)
+    handle = ffc().flexflow_model_add_gelu(self.handle, input.handle, c_name)
     self.add_layer(OpType.GELU, name)
     return Tensor(handle, owner_op_type=OpType.GELU)
   
@@ -1952,7 +1956,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_relu(self.handle, input.handle, inplace, c_name)
+    handle = ffc().flexflow_model_add_relu(self.handle, input.handle, inplace, c_name)
     self.add_layer(OpType.RELU, name)
     return Tensor(handle, owner_op_type=OpType.RELU)
 
@@ -1968,7 +1972,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_identity(self.handle, input.handle, c_name)
+    handle = ffc().flexflow_model_add_identity(self.handle, input.handle, c_name)
     self.add_layer(OpType.IDENTITY, name)
     return Tensor(handle, owner_op_type=OpType.IDENTITY)
   
@@ -1984,7 +1988,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_sigmoid(self.handle, input.handle, c_name)
+    handle = ffc().flexflow_model_add_sigmoid(self.handle, input.handle, c_name)
     self.add_layer(OpType.SIGMOID, name)
     return Tensor(handle, owner_op_type=OpType.SIGMOID)
 
@@ -2000,7 +2004,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_tanh(self.handle, input.handle, c_name)
+    handle = ffc().flexflow_model_add_tanh(self.handle, input.handle, c_name)
     self.add_layer(OpType.TANH, name)
     return Tensor(handle, owner_op_type=OpType.TANH)
 
@@ -2016,7 +2020,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_elu(self.handle, input.handle, inplace, c_name)
+    handle = ffc().flexflow_model_add_elu(self.handle, input.handle, inplace, c_name)
     self.add_layer(OpType.ELU, name)
     return Tensor(handle, owner_op_type=OpType.ELU)
 
@@ -2042,7 +2046,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed, c_name)
+    handle = ffc().flexflow_model_add_dropout(self.handle, input.handle, rate, seed, c_name)
     self.add_layer(OpType.DROPOUT, name)
     return Tensor(handle, owner_op_type=OpType.DROPOUT)
     
@@ -2098,7 +2102,7 @@ class FFModel(object):
     """     
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
+    handle = ffc().flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
     self.add_layer(OpType.MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.MULTIHEAD_ATTENTION)
   
@@ -2108,7 +2112,7 @@ class FFModel(object):
                               bias=True, add_bias_kv=False, add_zero_attn=False, 
                               data_type=DataType.DT_NONE, kernel_initializer=None, 
                               apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                              qk_prod_scaling=True, name=None):
+                              qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     In inference mode, the attention is computed using incremental decoding.
@@ -2157,6 +2161,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2166,7 +2173,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_model_add_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
   
@@ -2176,7 +2183,7 @@ class FFModel(object):
                                    bias=True, add_bias_kv=False, add_zero_attn=False, 
                                    data_type=DataType.DT_NONE, kernel_initializer=None, 
                                    apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                   qk_prod_scaling=True, name=None):
+                                   qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (beam search) mode.
@@ -2225,6 +2232,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2234,7 +2244,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_model_add_spec_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_spec_inc_multihead_self_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
   
@@ -2244,7 +2254,7 @@ class FFModel(object):
                                           bias=True, add_bias_kv=False, add_zero_attn=False, 
                                           data_type=DataType.DT_NONE, kernel_initializer=None, 
                                           apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                          qk_prod_scaling=True, name=None):
+                                          qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the MultiHead Attention operation as described in Attention Is All You Need 
     which takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (tree verify) mode.
@@ -2293,6 +2303,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2302,7 +2315,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multihead_self_attention_verify(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
   
@@ -2312,7 +2325,7 @@ class FFModel(object):
                               bias=True, add_bias_kv=False, add_zero_attn=False, 
                               data_type=DataType.DT_NONE, kernel_initializer=None, 
                               apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                              qk_prod_scaling=True, name=None):
+                              qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the multi-query head attention, which allows a different number of Q and KV heads,
     and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     In inference mode, the attention is computed using incremental decoding.
@@ -2364,6 +2377,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2373,7 +2389,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_model_add_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
   
@@ -2383,7 +2399,7 @@ class FFModel(object):
                                    bias=True, add_bias_kv=False, add_zero_attn=False, 
                                    data_type=DataType.DT_NONE, kernel_initializer=None, 
                                    apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                   qk_prod_scaling=True, name=None):
+                                   qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the multi-query head attention, which allows a different number of Q and KV heads,
     and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (beam search) mode.
@@ -2435,6 +2451,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2444,7 +2463,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_model_add_spec_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_spec_inc_multiquery_self_attention(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION)
   
@@ -2454,7 +2473,7 @@ class FFModel(object):
                                           bias=True, add_bias_kv=False, add_zero_attn=False, 
                                           data_type=DataType.DT_NONE, kernel_initializer=None, 
                                           apply_rotary_embedding=False, scaling_query=False, scaling_factor=1.0,
-                                          qk_prod_scaling=True, name=None):
+                                          qk_prod_scaling=True, position_bias=False, name=None):
     """Defines the multi-query head attention, which allows a different number of Q and KV heads,
     and takes in the tensors :attr:`input`, and uses it for all three of query, key and values. 
     This operator only supports computing the attention in inference (tree verify) mode.
@@ -2506,6 +2525,9 @@ class FFModel(object):
 
     :param qk_prod_scaling: Whether to apply scaling to the QK product. Default is True.
     :type qk_prod_scaling: bool
+
+    :param position_bias: Whether to add position bias to the QK product. Default is False.
+    :type position_bias: bool
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -2515,7 +2537,7 @@ class FFModel(object):
     c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_model_add_inc_multiquery_self_attention_verify(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, c_name)
+    handle = ffc().flexflow_model_add_inc_multiquery_self_attention_verify(self.handle, input.handle, embed_dim, num_q_heads, num_kv_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, c_data_type, kernel_init_handle, apply_rotary_embedding, scaling_query, scaling_factor, qk_prod_scaling, position_bias, c_name)
     self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
   
@@ -2537,7 +2559,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_rms_norm(self.handle, input.handle, eps, dim, c_name)
+    handle = ffc().flexflow_model_add_rms_norm(self.handle, input.handle, eps, dim, c_name)
     self.add_layer(OpType.RMS_NORM, name)
     return Tensor(handle, owner_op_type=OpType.RMS_NORM)
   
@@ -2559,7 +2581,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_arg_top_k(self.handle, input.handle, k, sorted, c_name)
+    handle = ffc().flexflow_model_add_arg_top_k(self.handle, input.handle, k, sorted, c_name)
     self.add_layer(OpType.ARG_TOPK, name)
     return Tensor(handle, owner_op_type=OpType.ARG_TOPK)
 
@@ -2581,7 +2603,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_beam_top_k(self.handle, input.handle, max_beam_size, sorted, c_name)
+    handle = ffc().flexflow_model_add_beam_top_k(self.handle, input.handle, max_beam_size, sorted, c_name)
     self.add_layer(OpType.BEAM_TOPK, name)
     return Tensor(handle, owner_op_type=OpType.BEAM_TOPK)
   
@@ -2600,7 +2622,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_sampling(self.handle, input.handle, top_p, c_name)
+    handle = ffc().flexflow_model_add_sampling(self.handle, input.handle, top_p, c_name)
     self.add_layer(OpType.SAMPLING, name)
     return Tensor(handle, owner_op_type=OpType.SAMPLING)
   
@@ -2619,7 +2641,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_argmax(self.handle, input.handle, beam_search, c_name)
+    handle = ffc().flexflow_model_add_argmax(self.handle, input.handle, beam_search, c_name)
     self.add_layer(OpType.ARGMAX, name)
     return Tensor(handle, owner_op_type=OpType.ARGMAX)
 
@@ -2628,17 +2650,17 @@ class FFModel(object):
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_reset_metrics(self.handle)
+    ffc().flexflow_model_reset_metrics(self.handle)
 
   def init_layers(self):
     """Initialize layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_init_layers(self.handle)
+    ffc().flexflow_model_init_layers(self.handle)
 
   def prefetch(self):
-    ffc.flexflow_model_prefetch(self.handle)
+    ffc().flexflow_model_prefetch(self.handle)
 
   def forward(self, seq_length=None):
     """Forward propagation of all layers.
@@ -2647,7 +2669,7 @@ class FFModel(object):
     """
     if seq_length is None:
       seq_length = -1
-    ffc.flexflow_model_forward(self.handle, seq_length)
+    ffc().flexflow_model_forward(self.handle, seq_length)
 
   #TODO: seperate compute_metrics from backward
   def backward(self, seq_length=None):
@@ -2657,21 +2679,21 @@ class FFModel(object):
     """
     if seq_length is None:
       seq_length = -1
-    ffc.flexflow_model_backward(self.handle, seq_length)
+    ffc().flexflow_model_backward(self.handle, seq_length)
 
   def compute_metrics(self):
     """Compute performance metrics.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_compute_metrics(self.handle)
+    ffc().flexflow_model_compute_metrics(self.handle)
 
   def update(self):
     """Update weights and biases of all layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_update(self.handle)
+    ffc().flexflow_model_update(self.handle)
 
   def compile(self, optimizer=None, loss_type=None, metrics=None, comp_mode=None):
     """Configure the model for trainting. FlexFlow uses lazy initialization,
@@ -2708,7 +2730,7 @@ class FFModel(object):
     if comp_mode == None:
       comp_mode = CompMode.TRAINING
     c_comp_mode = enum_to_int(CompMode, comp_mode)
-    ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics), c_comp_mode)
+    ffc().flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics), c_comp_mode)
     for (ff_tensor, np_tensor) in self.attr_tensors.items():
       ff_tensor.set_tensor(self, np_tensor)
     print("Compiled ffmodel!")
@@ -2803,13 +2825,13 @@ class FFModel(object):
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_zero_gradients(self.handle)
+    ffc().flexflow_model_zero_gradients(self.handle)
 
   def set_optimizer(self, optimizer):
     if isinstance(optimizer, SGDOptimizer) == True:
-      ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+      ffc().flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
     elif isinstance(optimizer, AdamOptimizer) == True:
-      ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+      ffc().flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
     elif optimizer == None:
       pass
     else:
@@ -2818,7 +2840,7 @@ class FFModel(object):
   optimizer = property(fset=set_optimizer)
 
   def print_layers(self, id=-1):
-    ffc.flexflow_model_print_layers(self.handle, id)
+    ffc().flexflow_model_print_layers(self.handle, id)
 
   def get_layer_by_id(self, layer_id):
     return self._layers[layer_id]
@@ -2835,20 +2857,20 @@ class FFModel(object):
     return None
 
   def get_tensor_by_id(self, id):
-    handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
+    handle = ffc().flexflow_model_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
   @property
   def label_tensor(self):
-    handle = ffc.flexflow_model_get_label_tensor(self.handle)
+    handle = ffc().flexflow_model_get_label_tensor(self.handle)
     return Tensor(handle, deallocate=False)
 
   def get_perf_metrics(self):
-    handle = ffc.flexflow_model_get_perf_metrics(self.handle)
+    handle = ffc().flexflow_model_get_perf_metrics(self.handle)
     return PerfMetrics(handle)
   
   def set_transformer_layer_id(self, id):
-    ffc.flexflow_model_set_transformer_layer_id(self.handle, id)
+    ffc().flexflow_model_set_transformer_layer_id(self.handle, id)
     
   def create_data_loader(self, batch_tensor, full_array):
     """Create a SingleDataloader instance. 
@@ -2952,13 +2974,13 @@ class FFModel(object):
     np_raw_ptr = np_array.__array_interface__['data']
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
+      ret_val = ffc().flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
+      ret_val = ffc().flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
     elif np_array.dtype == np.int64:
       raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
+      ret_val = ffc().flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array   
@@ -2968,7 +2990,7 @@ class FFModel(object):
     max_num_chars = 36000
     c_output_text = ffi.new("char[]", max_num_chars)
     c_output_length_and_tokens = ffi.new("int[]", max_sequence_length + 100)
-    ffc.flexflow_model_generate(self.handle, c_input_text, max_num_chars, c_output_text, max_sequence_length, c_output_length_and_tokens)
+    ffc().flexflow_model_generate(self.handle, c_input_text, max_num_chars, c_output_text, max_sequence_length, c_output_length_and_tokens)
     output_length = c_output_length_and_tokens[0]
     output_tokens = []
     for i in range(output_length):
@@ -2977,7 +2999,7 @@ class FFModel(object):
     return GenerationResult(ffi.string(c_output_text), output_tokens)
   
   def set_position_offset(self, offset):
-    ffc.flexflow_model_set_position_offset(self.handle, offset)
+    ffc().flexflow_model_set_position_offset(self.handle, offset)
 
 # -----------------------------------------------------------------------
 # SGDOptimizer
@@ -2986,11 +3008,11 @@ class FFModel(object):
 class SGDOptimizer(object):
   __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, lr=0.01, momentum=0.0, nesterov=False, weight_decay=0.0):
-    self.handle = ffc.flexflow_sgd_optimizer_create(ffmodel.handle, lr, momentum, nesterov, weight_decay)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_sgd_optimizer_destroy)
+    self.handle = ffc().flexflow_sgd_optimizer_create(ffmodel.handle, lr, momentum, nesterov, weight_decay)
+    self._handle = ffi.gc(self.handle, ffc().flexflow_sgd_optimizer_destroy)
 
   def set_learning_rate(self, learning_rate):
-    ffc.flexflow_sgd_optimizer_set_lr(self.handle, learning_rate)
+    ffc().flexflow_sgd_optimizer_set_lr(self.handle, learning_rate)
 
 # -----------------------------------------------------------------------
 # AdamOptimizer
@@ -2999,11 +3021,11 @@ class SGDOptimizer(object):
 class AdamOptimizer(object):
   __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
-    self.handle = ffc.flexflow_adam_optimizer_create(ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_adam_optimizer_destroy)
+    self.handle = ffc().flexflow_adam_optimizer_create(ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon)
+    self._handle = ffi.gc(self.handle, ffc().flexflow_adam_optimizer_destroy)
 
   def set_learning_rate(self, learning_rate):
-    ffc.flexflow_adam_optimizer_set_lr(self.handle, learning_rate)
+    ffc().flexflow_adam_optimizer_set_lr(self.handle, learning_rate)
 
 # -----------------------------------------------------------------------
 # Initializer
@@ -3026,8 +3048,8 @@ class Initializer(object):
 class GlorotUniformInitializer(Initializer):
   __slots__ = ['glorot_handle', '_glorot_handle']
   def __init__(self, seed):
-    self.glorot_handle = ffc.flexflow_glorot_uniform_initializer_create(seed)
-    self._glorot_handle = ffi.gc(self.glorot_handle, ffc.flexflow_glorot_uniform_initializer_destroy)
+    self.glorot_handle = ffc().flexflow_glorot_uniform_initializer_create(seed)
+    self._glorot_handle = ffi.gc(self.glorot_handle, ffc().flexflow_glorot_uniform_initializer_destroy)
     super(GlorotUniformInitializer, self).__init__(self.glorot_handle)
 
 # -----------------------------------------------------------------------
@@ -3037,8 +3059,8 @@ class GlorotUniformInitializer(Initializer):
 class ZeroInitializer(Initializer):
   __slots__ = ['zero_handle', '_zero_handle']
   def __init__(self):
-    self.zero_handle = ffc.flexflow_zero_initializer_create()
-    self._zero_handle = ffi.gc(self.zero_handle, ffc.flexflow_zero_initializer_destroy)
+    self.zero_handle = ffc().flexflow_zero_initializer_create()
+    self._zero_handle = ffi.gc(self.zero_handle, ffc().flexflow_zero_initializer_destroy)
     super(ZeroInitializer, self).__init__(self.zero_handle)
 
 # -----------------------------------------------------------------------
@@ -3048,8 +3070,8 @@ class ZeroInitializer(Initializer):
 class UniformInitializer(Initializer):
   __slots__ = ['uniform_handle', '_uniform_handle']
   def __init__(self, seed, minv, maxv):
-    self.uniform_handle = ffc.flexflow_uniform_initializer_create(seed, minv, maxv)
-    self._uniform_handle = ffi.gc(self.uniform_handle, ffc.flexflow_uniform_initializer_destroy)
+    self.uniform_handle = ffc().flexflow_uniform_initializer_create(seed, minv, maxv)
+    self._uniform_handle = ffi.gc(self.uniform_handle, ffc().flexflow_uniform_initializer_destroy)
     super(UniformInitializer, self).__init__(self.uniform_handle)
 
 # -----------------------------------------------------------------------
@@ -3059,8 +3081,8 @@ class UniformInitializer(Initializer):
 class NormInitializer(Initializer):
   __slots__ = ['norm_handle', '_norm_handle']
   def __init__(self, seed, mean, stddev):
-    self.norm_handle = ffc.flexflow_norm_initializer_create(seed, mean, stddev)
-    self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
+    self.norm_handle = ffc().flexflow_norm_initializer_create(seed, mean, stddev)
+    self._norm_handle = ffi.gc(self.norm_handle, ffc().flexflow_norm_initializer_destroy)
     super(NormInitializer, self).__init__(self.norm_handle)
 
 # -----------------------------------------------------------------------
@@ -3071,10 +3093,10 @@ class PerfMetrics(object):
   __slots__= ['handle', '_handle']
   def __init__(self, handle):
     self.handle = handle
-    self._handle = ffi.gc(self.handle, ffc.flexflow_per_metrics_destroy)
+    self._handle = ffi.gc(self.handle, ffc().flexflow_per_metrics_destroy)
 
   def get_accuracy(self):
-    return ffc.flexflow_per_metrics_get_accuracy(self.handle)
+    return ffc().flexflow_per_metrics_get_accuracy(self.handle)
 
 # -----------------------------------------------------------------------
 # NetConfig
@@ -3082,9 +3104,9 @@ class PerfMetrics(object):
 
 class NetConfig(object):
   def __init__(self):
-    self.handle = ffc.flexflow_net_config_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_net_config_destroy)
-    cpath = ffc.flexflow_net_config_get_dataset_path(self.handle)
+    self.handle = ffc().flexflow_net_config_create()
+    self._handle = ffi.gc(self.handle, ffc().flexflow_net_config_destroy)
+    cpath = ffc().flexflow_net_config_get_dataset_path(self.handle)
     self.dataset_path = ffi.string(cpath)
 
 # -----------------------------------------------------------------------
@@ -3093,32 +3115,32 @@ class NetConfig(object):
 
 class DLRMConfig(object):
   def __init__(self):
-    self.handle = ffc.flexflow_dlrm_config_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_dlrm_config_destroy)
+    self.handle = ffc().flexflow_dlrm_config_create()
+    self._handle = ffi.gc(self.handle, ffc().flexflow_dlrm_config_destroy)
 
-    cstr = ffc.flexflow_dlrm_config_get_dataset_path(self.handle)
+    cstr = ffc().flexflow_dlrm_config_get_dataset_path(self.handle)
     self.dataset_path = ffi.string(cstr)
 
-    cstr = ffc.flexflow_dlrm_config_get_arch_interaction_op(self.handle)
+    cstr = ffc().flexflow_dlrm_config_get_arch_interaction_op(self.handle)
     self.arch_interaction_op = ffi.string(cstr)
 
-    self.sparse_feature_size = ffc.flexflow_dlrm_config_get_sparse_feature_size(self.handle)
-    self.sigmoid_bot = ffc.flexflow_dlrm_config_get_sigmoid_bot(self.handle)
-    self.sigmoid_top = ffc.flexflow_dlrm_config_get_sigmoid_top(self.handle)
-    self.embedding_bag_size = ffc.flexflow_dlrm_config_get_embedding_bag_size(self.handle)
-    self.loss_threshold = ffc.flexflow_dlrm_config_get_loss_threshold(self.handle)
+    self.sparse_feature_size = ffc().flexflow_dlrm_config_get_sparse_feature_size(self.handle)
+    self.sigmoid_bot = ffc().flexflow_dlrm_config_get_sigmoid_bot(self.handle)
+    self.sigmoid_top = ffc().flexflow_dlrm_config_get_sigmoid_top(self.handle)
+    self.embedding_bag_size = ffc().flexflow_dlrm_config_get_embedding_bag_size(self.handle)
+    self.loss_threshold = ffc().flexflow_dlrm_config_get_loss_threshold(self.handle)
 
-    mlp_bot_c = ffc.flexflow_dlrm_config_get_mlp_bot(self.handle)
+    mlp_bot_c = ffc().flexflow_dlrm_config_get_mlp_bot(self.handle)
     self.mlp_bot = []
     for i in range(0, mlp_bot_c[0]):
       self.mlp_bot.append(mlp_bot_c[i+1])
 
-    mlp_top_c = ffc.flexflow_dlrm_config_get_mlp_top(self.handle)
+    mlp_top_c = ffc().flexflow_dlrm_config_get_mlp_top(self.handle)
     self.mlp_top = []
     for i in range(0, mlp_top_c[0]):
       self.mlp_top.append(mlp_top_c[i+1])
 
-    embedding_size_c = ffc.flexflow_dlrm_config_get_embedding_size(self.handle)
+    embedding_size_c = ffc().flexflow_dlrm_config_get_embedding_size(self.handle)
     self.embedding_size = []
     for i in range(0, embedding_size_c[0]):
       self.embedding_size.append(embedding_size_c[i+1])
@@ -3136,39 +3158,39 @@ class SingleDataLoader(object):
       self.init_from_tensor(ffmodel, input, full_input, num_samples, data_type)
     else:
       self.init_from_ptr(ffmodel, input, full_input, num_samples, data_type)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_destroy)
+    self._handle = ffi.gc(self.handle, ffc().flexflow_single_dataloader_destroy)
     
   def init_from_tensor(self, ffmodel, input, full_input, num_samples, data_type):
     assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
     c_data_type = enum_to_int(DataType, data_type)
-    self.handle = ffc.flexflow_single_dataloader_create(ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type)
+    self.handle = ffc().flexflow_single_dataloader_create(ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type)
     
   def init_from_ptr(self, ffmodel, input, full_input, num_samples, data_type):
     # assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
     c_data_type = enum_to_int(DataType, data_type)
-    self.handle = ffc.flexflow_single_dataloader_create2(ffmodel.handle, input.handle, full_input, num_samples, c_data_type)
+    self.handle = ffc().flexflow_single_dataloader_create2(ffmodel.handle, input.handle, full_input, num_samples, c_data_type)
 
   @property
   def num_samples(self):
-    return ffc.flexflow_single_dataloader_get_num_samples(self.handle)
+    return ffc().flexflow_single_dataloader_get_num_samples(self.handle)
 
   @num_samples.setter
   def num_samples(self, samples):
-    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
+    ffc().flexflow_single_dataloader_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     """Ask the dataloder to load the next batch to the :attr:`batch_tensor`. 
              
     :returns:  None -- no returns.
     """
-    ffc.flowflow_single_dataloader_next_batch(self.handle, ffmodel.handle)
+    ffc().flowflow_single_dataloader_next_batch(self.handle, ffmodel.handle)
 
   def reset(self):
     """Reset the current position of the dataloder to 0. 
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_single_dataloader_reset(self.handle)
+    ffc().flexflow_single_dataloader_reset(self.handle)
 
 class RegionNdarray(object):
   __slots__ = ['__array_interface__']
@@ -3198,8 +3220,8 @@ class RegionNdarray(object):
 class BatchConfig(object):
   __slots__ = ['handle', '_handle']
   def __init__(self):
-    self.handle = ffc.flexflow_batch_config_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_batch_config_destroy)
+    self.handle = ffc().flexflow_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc().flexflow_batch_config_destroy)
 
 # -----------------------------------------------------------------------
 # TreeVerifyBatchConfig
@@ -3208,8 +3230,8 @@ class BatchConfig(object):
 class TreeVerifyBatchConfig(object):
   __slots__ = ['handle', '_handle']
   def __init__(self):
-    self.handle = ffc.flexflow_tree_verify_batch_config_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_tree_verify_batch_config_destroy)
+    self.handle = ffc().flexflow_tree_verify_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc().flexflow_tree_verify_batch_config_destroy)
 
 # -----------------------------------------------------------------------
 # BeamSearchBatchConfig
@@ -3218,8 +3240,8 @@ class TreeVerifyBatchConfig(object):
 class BatchConfig(object):
   __slots__ = ['handle', '_handle']
   def __init__(self):
-    self.handle = ffc.flexflow_beam_search_batch_config_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_beam_search_batch_config_destroy)
+    self.handle = ffc().flexflow_beam_search_batch_config_create()
+    self._handle = ffi.gc(self.handle, ffc().flexflow_beam_search_batch_config_destroy)
 
 # -----------------------------------------------------------------------
 # RequestManager
@@ -3228,20 +3250,20 @@ class BatchConfig(object):
 class RequestManager(object):
   __slots__ = ['handle']
   def __init__(self):
-    self.handle = ffc.flexflow_request_manager_get_request_manager()
-    #self._handle = ffi.gc(self.handle, ffc.flexflow_request_manager_destroy)
+    self.handle = ffc().flexflow_request_manager_get_request_manager()
+    #self._handle = ffi.gc(self.handle, ffc().flexflow_request_manager_destroy)
 
-  def register_tokenizer(self, model_type, tokenizer_filepath):
+  def register_tokenizer(self, model_type, bos_token_id, eos_token_id, tokenizer_filepath):
     c_model_type = enum_to_int(ModelType, model_type)
     c_tokenizer_filepath = get_c_name(tokenizer_filepath)
-    return ffc.flexflow_request_manager_register_tokenizer(self.handle, c_model_type, c_tokenizer_filepath)
+    return ffc().flexflow_request_manager_register_tokenizer(self.handle, c_model_type, bos_token_id, eos_token_id, c_tokenizer_filepath)
   
   def register_output_filepath(self, output_filepath):
     c_output_filepath = get_c_name(output_filepath)
-    return ffc.flexflow_request_manager_register_output_filepath(self.handle, c_output_filepath)
+    return ffc().flexflow_request_manager_register_output_filepath(self.handle, c_output_filepath)
 
   def register_ssm_model(self, model):
-    return ffc.flexflow_request_manager_register_ssm_model(self.handle, model.handle)
+    return ffc().flexflow_request_manager_register_ssm_model(self.handle, model.handle)
   
 # -----------------------------------------------------------------------
 # InferenceManager
@@ -3250,14 +3272,14 @@ class RequestManager(object):
 class InferenceManager(object):
   __slots__ = ['handle']
   def __init__(self):
-    self.handle = ffc.flexflow_inference_manager_get_inference_manager()
-    #self._handle = ffi.gc(self.handle, ffc.flexflow_inference_manager_destroy)
+    self.handle = ffc().flexflow_inference_manager_get_inference_manager()
+    #self._handle = ffi.gc(self.handle, ffc().flexflow_inference_manager_destroy)
 
   def compile_model_and_allocate_buffer(self, model):
-    ffc.flexflow_inference_manager_compile_model_and_allocate_buffer(self.handle, model.handle)
+    ffc().flexflow_inference_manager_compile_model_and_allocate_buffer(self.handle, model.handle)
 
   def init_operators_inference(self, model):
-    ffc.flexflow_inference_manager_init_operators_inference(self.handle, model.handle)
+    ffc().flexflow_inference_manager_init_operators_inference(self.handle, model.handle)
 
 # -----------------------------------------------------------------------
 # FileDataLoader
@@ -3267,8 +3289,8 @@ class FileDataLoader(object):
   __slots__ = ['handle', '_handle']
   def __init__(self, weight_file_path, num_q_heads, num_kv_heads, hidden_dim, qkv_inner_dim, tensor_parallelism_degree):
     c_weight_file_path = get_c_name(weight_file_path)
-    self.handle = ffc.flexflow_file_data_loader_create(c_weight_file_path, num_q_heads, num_kv_heads, hidden_dim, qkv_inner_dim, tensor_parallelism_degree)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_file_data_loader_destroy)
+    self.handle = ffc().flexflow_file_data_loader_create(c_weight_file_path, num_q_heads, num_kv_heads, hidden_dim, qkv_inner_dim, tensor_parallelism_degree)
+    self._handle = ffi.gc(self.handle, ffc().flexflow_file_data_loader_destroy)
   
   def load_weights(self, model, model_layers_with_weights, data_type):
     # Extract keys and values into arrays
@@ -3287,4 +3309,4 @@ class FileDataLoader(object):
     # Check data type and create use_full_precision boolean
     assert(data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF)
     use_full_precision = data_type == DataType.DT_FLOAT
-    ffc.flexflow_file_data_loader_load_weights(self.handle, model.handle, num_layers, layer_names_c, layer_handles_c, use_full_precision)
+    ffc().flexflow_file_data_loader_load_weights(self.handle, model.handle, num_layers, layer_names_c, layer_handles_c, use_full_precision)

@@ -76,9 +76,9 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   // print_tensor<float>(in1_ptr, in1_domain.get_volume(), "input1:");
   // print_tensor<float>(in2_ptr, in2_domain.get_volume(), "input2:");
@@ -86,12 +86,12 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
       m, in1.get_float_ptr(), in2.get_float_ptr(), out.get_float_ptr(), stream);
   // print_tensor<float>(out_ptr, in1_domain.get_volume(), "output:");
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     char const *opName;
     switch (m->op_type) {
       case OP_EW_ADD:
@@ -124,9 +124,9 @@ void backward_kernel_wrapper(ElementBinaryMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   Internal::backward_kernel(
@@ -135,12 +135,12 @@ void backward_kernel_wrapper(ElementBinaryMeta const *m,
   // CUDA_NUM_THREADS>>>( out_grad_domain.get_volume(), alpha, alpha,
   // ele->op_type, out_grad_ptr, in1_ptr, in2_ptr, in1_grad_ptr, in2_grad_ptr);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     char const *opName;
     switch (m->op_type) {
       case OP_EW_ADD:

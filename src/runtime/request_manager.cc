@@ -90,9 +90,12 @@ int RequestManager::get_max_sequence_length() {
 }
 
 void RequestManager::register_tokenizer(ModelType type,
+                                        int bos_token_id,
+                                        int eos_token_id,
                                         std::string const &path) {
-  // bos id
   this->model_type = type;
+  this->bos_token_id = bos_token_id;
+  this->eos_token_id = eos_token_id;
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
   if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
@@ -124,7 +127,8 @@ void RequestManager::register_tokenizer(ModelType type,
     this->tokenizer_ =
         Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
   } else if (model_type == ModelType::FALCON ||
-             model_type == ModelType::STARCODER) {
+             model_type == ModelType::STARCODER ||
+             model_type == ModelType::MPT) {
     std::string falcon_tokenizer_path = join_path({path, "tokenizer.json"});
     this->tokenizer_ =
         Tokenizer::FromBlobJSON(LoadBytesFromFile(falcon_tokenizer_path));
@@ -159,6 +163,7 @@ RequestManager::RequestGuid
 
   // Add a new request
   Request request;
+  request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
 
@@ -180,7 +185,7 @@ RequestManager::RequestGuid
   }
 
   if (get_num_ssms() == 0) {
-    std::cout << "No small speculative model registered yet, using incremental "
+    std::cout << "No small speculative model registered, using incremental "
                  "decoding."
               << std::endl;
   } else {
@@ -218,12 +223,12 @@ RequestManager::RequestGuid
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
+  request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
-  if (this->model_bos_map.find(this->model_type) != this->model_bos_map.end()) {
-    request.tokens.push_back(this->model_bos_map.at(this->model_type));
+  if (bos_token_id >= 0) {
+    request.tokens.push_back(bos_token_id);
   }
-
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
   if (tokens.size() > BatchConfig::MAX_PROMPT_LENGTH) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -242,7 +247,7 @@ RequestManager::RequestGuid
   request.initial_len = request.tokens.size();
 
   if (get_num_ssms() == 0) {
-    std::cout << "No small speculative model registered yet, using incremental "
+    std::cout << "No small speculative model registered, using incremental "
                  "decoding."
               << std::endl;
   } else {
@@ -277,7 +282,8 @@ bool RequestManager::is_request_completed(RequestGuid const &guid) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   assert(all_requests.find(guid) != all_requests.end());
   Request const &request = all_requests[guid];
-  return request.tokens.size() >= request.max_sequence_length;
+  // return request.tokens.size() >= request.max_sequence_length;
+  return request.status == Request::COMPLETED;
 }
 
 GenerationResult
@@ -350,17 +356,21 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     int processed_tokens = old_bc.requestsInfo[i].token_start_offset +
                            old_bc.requestsInfo[i].num_tokens_in_batch;
     assert(processed_tokens < request.tokens.size());
-    if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length
-        // || ir.results[t] == 0 TODO: replace this with <EOS>
-    ) {
+    bool request_completed = false;
+    // printf("model_type = %d\n", this->model_type);
+    if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
+      request_completed = true;
+    } else if (request.tokens.back() == eos_token_id) {
+      // Encounter EOS token id
+      request_completed = true;
+    }
+    if (request_completed) {
+      request.status = Request::COMPLETED;
       log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
                         old_bc.requestsInfo[i].request_guid,
                         request.tokens.size());
       std::string output = this->tokenizer_->Decode(request.tokens);
 
-      // for (int i = 0; i < request.tokens.size(); i++) {
-      //   std::cout << request.tokens.at(i) << "\n";
-      // }
       {
         // update generation result and trigger future
         GenerationResult &gr = request_generation_results[request.guid];
@@ -376,13 +386,12 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           profile_info.finish_time - profile_info.start_time;
       profiling_requests[request.guid] = profile_info;
       log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
-                        "finish(%.1lf) latency(%.1lf) acc_latency(%.1lf)",
+                        "finish(%.1lf) latency(%.1lf)",
                         request.guid,
                         profile_info.decoding_steps,
                         profile_info.start_time,
                         profile_info.finish_time,
-                        profile_info.finish_time - profile_info.start_time,
-                        total_request_run_time);
+                        profile_info.finish_time - profile_info.start_time);
       // Write output to file if needed:
       if (!output_filepath.empty()) {
         std::ofstream outputFile(output_filepath);
@@ -739,7 +748,7 @@ BeamSearchBatchConfig
           request.tokens.push_back(verified_tokens[j].first);
         }
       }
-
+      request.status = Request::COMPLETED;
       log_req_mgr.print("[Done] guid(%zu) with final length(%zu)",
                         request.guid,
                         request.tokens.size());
@@ -760,13 +769,12 @@ BeamSearchBatchConfig
           profile_info.finish_time - profile_info.start_time;
       profiling_requests[request.guid] = profile_info;
       log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
-                        "finish(%.1lf) latency(%.1lf) acc_latency(%.1lf)",
+                        "finish(%.1lf) latency(%.1lf)",
                         request.guid,
                         profile_info.decoding_steps,
                         profile_info.start_time,
                         profile_info.finish_time,
-                        profile_info.finish_time - profile_info.start_time,
-                        total_request_run_time);
+                        profile_info.finish_time - profile_info.start_time);
 
       // Write output to file if needed:
       if (!output_filepath.empty()) {
@@ -1663,7 +1671,7 @@ GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
     runtime->end_trace(ctx, 12346 /*trace_id*/);
   }
   GenerationResult gr = get_generation_result(guid);
-  assert(gr.output_tokens.size() >= max_seq_length);
+  // assert(gr.output_tokens.size() >= max_seq_length);
   return gr;
 }
 
@@ -1738,7 +1746,7 @@ GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
   }
 
   GenerationResult gr = get_generation_result(guid);
-  assert(gr.output_tokens.size() >= max_seq_length);
+  // assert(gr.output_tokens.size() >= max_seq_length);
   return gr;
 }
 

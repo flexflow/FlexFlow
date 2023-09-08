@@ -51,9 +51,15 @@ public:
 };
 
 struct Request {
+  enum Status {
+    PENDING = 101,
+    RUNNING = 102,
+    COMPLETED = 103,
+  };
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
   int initial_len;
+  Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
   std::vector<struct BeamTree> beam_trees;
@@ -80,10 +86,7 @@ class RequestManager {
 public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
-  // RequestManager(ModelType model_type,
-  //                std::string const &path,
-  //                bool verbose = false,
-  //                std::string output_filepath = "");
+
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
@@ -96,11 +99,13 @@ public:
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
   int register_ssm_model(FFModel *model);
-  void register_tokenizer(ModelType model_type, std::string const &path);
+  void register_tokenizer(ModelType model_type,
+                          int bos_token_id,
+                          int eos_token_id,
+                          std::string const &path);
   void register_output_filepath(std::string const &);
 
   FFModel *get_model(int model_id);
-  static void serve(FFModel *model);
 
   GenerationResult generate_incr_decoding(FFModel *model,
                                           std::string const &text,
@@ -206,6 +211,8 @@ private:
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
   ModelType model_type;
+  int bos_token_id;
+  int eos_token_id;
   std::string output_filepath;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> all_requests;
@@ -217,8 +224,6 @@ private:
   InferenceResultFuture last_irf;
   TreeVerifyBatchConfigFuture last_tree_bcf;
   InferenceResultFuture last_tree_irf;
-  const std::map<ModelType, int> model_bos_map = {
-      {ModelType::LLAMA, 0}, {ModelType::OPT, 2}, {ModelType::LLAMA2, 1}};
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,

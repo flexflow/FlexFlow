@@ -931,7 +931,7 @@ bool MultiHeadAttention::measure_operator_cost(
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(m,
                               query_ptr,
                               query_grad_ptr,

@@ -17,6 +17,7 @@
 #include "flexflow/request_manager.h"
 #include "models/falcon.h"
 #include "models/llama.h"
+#include "models/mpt.h"
 #include "models/opt.h"
 #include "models/starcoder.h"
 #include <wordexp.h>
@@ -151,7 +152,6 @@ void FlexFlow::top_level_task(Task const *task,
                                   /*parser_callback_t */ nullptr,
                                   /*allow_exceptions */ true,
                                   /*ignore_comments */ true);
-
   ModelType model_type = ModelType::UNKNOWN;
   auto architectures = model_config["architectures"];
   for (auto const &str : architectures) {
@@ -174,15 +174,25 @@ void FlexFlow::top_level_task(Task const *task,
     } else if (str == "GPTBigCodeForCausalLM") {
       model_type = ModelType::STARCODER;
       break;
+    } else if (str == "MPTForCausalLM") {
+      model_type = ModelType::MPT;
+      break;
     }
   }
+  int bos_token_id = model_config.find("bos_token_id") == model_config.end()
+                         ? -1
+                         : (int)model_config.at("bos_token_id");
+  int eos_token_id = model_config.find("eos_token_id") == model_config.end()
+                         ? -1
+                         : (int)model_config.at("eos_token_id");
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
-  rm->register_tokenizer(model_type, tokenizer_filepath);
+  rm->register_tokenizer(
+      model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
@@ -212,6 +222,13 @@ void FlexFlow::top_level_task(Task const *task,
                                       INC_DECODING_MODE,
                                       generationConfig,
                                       use_full_precision);
+  } else if (model_type == ModelType::MPT) {
+    MPT::create_mpt_model(model,
+                          config_filepath,
+                          weights_filepath,
+                          INC_DECODING_MODE,
+                          generationConfig,
+                          use_full_precision);
   } else {
     assert(false && "unknow model type");
   }

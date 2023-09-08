@@ -44,6 +44,9 @@ elif [[ "$cuda_version" == "11.7" ]]; then
 elif [[ "$cuda_version" == "11.8" ]]; then
     CUDNN_LINK=https://developer.download.nvidia.com/compute/redist/cudnn/v8.7.0/local_installers/11.8/cudnn-linux-x86_64-8.7.0.84_cuda11-archive.tar.xz
     CUDNN_TARBALL_NAME=cudnn-linux-x86_64-8.7.0.84_cuda11-archive.tar.xz
+elif [[ "$cuda_version" == "12.0" ]]; then
+    echo "CUDNN support for CUDA version 12.0 not yet added"
+    exit 1
 fi
 wget -c -q $CUDNN_LINK
 if [[ "$cuda_version" == "11.6" || "$cuda_version" == "11.7" || "$cuda_version" == "11.8" ]]; then
