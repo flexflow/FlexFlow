@@ -91,7 +91,7 @@ private:
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
 
-OpTaskSignature get_op_signature(task_id_t);
+OpTaskSignature get_op_signature(task_id_t const &);
 
 template <typename F>
 void register_task(task_id_t,
@@ -105,6 +105,9 @@ void register_task(task_id_t,
                    OpTaskSignature const &,
                    F const &func,
                    F const &cpu_func);
+
+template <task_id_t>
+OpTaskSignature fwd_signature();
 
 } // namespace FlexFlow
 

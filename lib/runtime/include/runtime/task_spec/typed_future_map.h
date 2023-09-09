@@ -30,6 +30,10 @@ public:
     return {this->future_map};
   }
 
+  std::type_index get_type_idx() const {
+    return this->type;
+  }
+
   template <typename T>
   static CheckedTypedFutureMap create(TypedFutureMap<T> const &fm) {
     return CheckedTypedFutureMap(type_index<T>(), fm.future_map);

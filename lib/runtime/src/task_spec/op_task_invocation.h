@@ -40,6 +40,30 @@ using OpArgSpec = variant<ConcreteArgSpec,
                           RuntimeArgRefSpec,
                           TaskInvocationSpec>;
 
+struct OpArgSpecTypeAccessor {
+  std::type_index operator()(ConcreteArgSpec& spec) {
+    return spec.get_type_tag().get_type_idx();
+  }
+  std::type_index operator()(IndexArgSpec& spec) {
+    return spec.get_type_tag().get_type_idx();
+  }
+  std::type_index operator()(OpArgRefSpec& spec) {
+    return spec.get_type_tag().get_type_idx();
+  }
+  std::type_index operator()(CheckedTypedFuture& spec) {
+    return spec.get_type_idx();
+  }
+  std::type_index operator()(CheckedTypedFutureMap& spec) {
+    return spec.get_type_idx();
+  }
+  std::type_index operator()(RuntimeArgRefSpec& spec) {
+    return spec.get_type_tag().get_type_idx();
+  }
+  std::type_index operator()(TaskInvocationSpec& spec) {
+    return spec.get_type_idx();
+  }
+};
+
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
@@ -91,6 +115,12 @@ struct OpTaskBinding {
     this->tensor_bindings = fwd.get_tensor_bindings();
   }
 
+  bool operator==(const OpTaskBinding& rhs) {
+    return this->get_arg_bindings() == rhs.get_arg_bindings() &&
+           this->get_tensor_bindings() == rhs.get_tensor_bindings();
+  }
+
+
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
       get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
@@ -133,7 +163,6 @@ public:
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
-OpTaskSignature get_op_signature(task_id_t const &);
 
 /* std::unordered_map<int, OpTensorSpec> get_regions_idxs(TaskArgumentFormat
  * const &); */

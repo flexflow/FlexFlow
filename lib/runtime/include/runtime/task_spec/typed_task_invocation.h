@@ -90,6 +90,10 @@ struct TaskInvocationSpec {
     return *this->invocation;
   }
 
+  std::type_index get_type_idx() const {
+    return this->type_idx;
+  }
+
   template <typename T>
   static TaskInvocationSpec
       create(TypedStandardTaskInvocation<T> const &invocation) {

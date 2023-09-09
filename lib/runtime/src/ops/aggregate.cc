@@ -411,7 +411,7 @@ static void backward_task(Legion::Task const *task,
 // }
 
 template <>
-void register_task<AGGREGATE_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature<AGGREGATE_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_untrainable_input_slot(GATE_PREDS);
@@ -422,7 +422,12 @@ void register_task<AGGREGATE_FWD_TASK_ID>() {
   fwd.add_arg_slot<AggregateAttrs>(ATTRS);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
-  register_task(AGGREGATE_FWD_TASK_ID, "Aggregate Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<AGGREGATE_FWD_TASK_ID>() {
+  register_task(AGGREGATE_FWD_TASK_ID, "Aggregate Fwd", fwd_signature<AGGREGATE_FWD_TASK_ID>(), forward_task);
 }
 
 template <>
