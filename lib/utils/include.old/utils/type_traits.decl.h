@@ -16,22 +16,6 @@ namespace FlexFlow {
       typename debug_print_fake_type::the_type_that_is_causing_the_failure
 
 
-#define CHECK_NOT_ABSTRACT(...)                                                \
-  static_assert(                                                               \
-      !std::is_abstract<__VA_ARGS__>::value,                                   \
-      #__VA_ARGS__                                                             \
-      " should not be abstract (are you missing a virtual method override?)");
-
-template <typename T, typename Enable = void>
-struct is_clonable;
-template <typename T>
-inline constexpr bool is_clonable_v = is_clonable<T>::value;
-
-template <typename T, typename Enable = void>
-struct is_lt_comparable;
-template <typename T>
-inline constexpr bool is_lt_comparable_v = is_lt_comparable<T>::value;
-
 template <template <typename...> class Cond, typename T, typename Enable = void>
 struct elements_satisfy;
 template <template <typename...> class Cond, typename T>

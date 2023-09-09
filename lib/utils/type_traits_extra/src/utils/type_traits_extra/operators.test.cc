@@ -1,7 +1,7 @@
-#include "testing.h"
+#include "utils/testing.h"
 #include "utils/type_traits_extra/operators.h"
+#include "utils/test_types/test_types.h"
 
-using namespace FlexFlow;
 using namespace FlexFlow::test_types;
 
 TEST_CASE("is_equal_comparable") {

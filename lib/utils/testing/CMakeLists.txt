@@ -3,6 +3,8 @@ ff_add_library(
     utils-testing
   DEPS
     utils-fmt_extra
+    utils-rapidcheck_extra
     rapidcheck
     doctest
+    utils-backports
 )

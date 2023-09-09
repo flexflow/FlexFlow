@@ -1,8 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_SMART_PTRS_INCLUDE_UTILS_SMART_PTRS_COW_PTR_T_H
 #define _FLEXFLOW_LIB_UTILS_SMART_PTRS_INCLUDE_UTILS_SMART_PTRS_COW_PTR_T_H
 
-namespace FlexFlow {
-
 #include "is_clonable.h" 
 #include <memory>
 #include <type_traits>
@@ -11,7 +9,7 @@ namespace FlexFlow {
 
 template <typename T>
 struct cow_ptr_t {
-  static_assert(is_clonable<T>::value,
+  static_assert(is_clonable_v<T>,
                 "cow_ptr_t requires the type to have a clone() method");
 
   cow_ptr_t(std::shared_ptr<T> const &ptr) : ptr(ptr) {}
@@ -30,7 +28,7 @@ struct cow_ptr_t {
     return *this->get();
   }
 
-  template <typename TT, typename = enable_if_t<std::is_base_of<TT, T>::value>>
+  template <typename TT, typename = std::enable_if_t<std::is_base_of_v<TT, T>>>
   operator cow_ptr_t<TT>() const {
     return cow_ptr_t<TT>(this->ptr);
   }

@@ -1,10 +1,17 @@
-#include "testing.h"
+#include "utils/testing.h"
 #include "utils/type_traits_extra/is_hashable.h"
 
-using namespace FlexFlow;
-using namespace FlexFlow::test_types;
+struct hashable_t {};
+struct not_hashable_t {};
+
+namespace std {
+template <>
+struct hash<hashable_t> {
+  size_t operator()(hashable_t const &) const;
+};
+}
 
 TEST_CASE("is_hashable") {
-  CHECK(is_hashable_v<hashable_t, hashable_t>);
-  CHECK_FALSE(is_hashable_v<none_t, none_t>);
+  CHECK(is_hashable_v<hashable_t>);
+  CHECK_FALSE(is_hashable_v<not_hashable_t>);
 }

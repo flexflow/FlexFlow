@@ -43,3 +43,9 @@
 [submodule "deps/any"]
 	path = deps/any
 	url = https://github.com/thelink2012/any.git
+[submodule "deps/nameof"]
+	path = deps/nameof
+	url = git@github.com:Neargye/nameof.git
+[submodule "deps/boost_preprocessor"]
+	path = deps/boost_preprocessor
+	url = https://github.com/boostorg/preprocessor.git

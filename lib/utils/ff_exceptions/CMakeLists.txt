@@ -1,1 +1,1 @@
-ff_add_library(NAME utils::ff_exceptions)
+ff_add_library(NAME utils-ff_exceptions)

@@ -3,4 +3,5 @@ ff_add_library(
     utils-fmt_extra
   DEPS
     fmt
+    utils-string_extra
 )

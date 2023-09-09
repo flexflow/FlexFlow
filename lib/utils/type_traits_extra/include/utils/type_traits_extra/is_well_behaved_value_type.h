@@ -4,6 +4,8 @@
 #include <type_traits>
 #include "is_hashable.h"
 #include "operators.h"
+#include "is_equal_comparable.h"
+#include "is_neq_comparable.h"
 
 namespace FlexFlow {
 
@@ -36,6 +38,9 @@ struct is_well_behaved_value_type_no_hash
 template <typename T>
 struct is_well_behaved_value_type
     : std::conjunction<is_well_behaved_value_type_no_hash<T>, is_hashable<T>> {};
+
+template <typename T>
+inline constexpr bool is_well_behaved_value_type_v = is_well_behaved_value_type<T>::value;
 
 #define CHECK_WELL_BEHAVED_VALUE_TYPE(...)                                     \
   CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(__VA_ARGS__);                          \

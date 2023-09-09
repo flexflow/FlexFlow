@@ -447,25 +447,6 @@ T get_first(std::unordered_set<T> const &s) {
   return *s.cbegin();
 }
 
-template <typename T, typename C>
-void extend(std::vector<T> &lhs, C const &rhs) {
-  lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
-  lhs.insert(lhs.end(), rhs.begin(), rhs.end());
-}
-
-template <typename T, typename C>
-void extend(std::unordered_set<T> &lhs, C const &rhs) {
-  lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
-  lhs.insert(rhs.cbegin(), rhs.cend());
-}
-
-template <typename C, typename E>
-void extend(C &lhs, optional<E> const &e) {
-  if (e.has_value()) {
-    return extend(lhs, e.value());
-  }
-}
-
 template <typename C, typename F>
 bool all_of(C const &c, F const &f) {
   for (auto const &v : c) {
@@ -581,24 +562,6 @@ bidict<size_t, T> enumerate(std::unordered_set<T> const &c) {
 }
 
 std::vector<size_t> count(size_t n);
-
-template <typename In, typename F, typename Out>
-std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
-  std::vector<Out> result;
-  for (auto const &elem : v) {
-    extend(result, f(elem));
-  }
-  return result;
-}
-
-template <typename F, typename>
-std::string flatmap(std::string const &s, F const &f) {
-  std::ostringstream oss;
-  for (char c : s) {
-    oss << f(c);
-  }
-  return oss.str();
-}
 
 template <typename C, typename Enable>
 struct get_element_type {

@@ -1,1 +1,6 @@
-ff_add_library(NAME utils-type_traits_extra)
+ff_add_library(
+  NAME utils-type_traits_extra
+  DEPS
+    nameof
+    boost_preprocessor
+)

@@ -3,6 +3,10 @@
 
 #include <type_traits>
 #include <iterator>
+#include "nameof.hpp"
+#include "debug_print_type.h"
+#include <unordered_set>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -12,9 +16,17 @@ struct supports_iterator_tag
                       typename std::iterator_traits<
                           typename C::iterator>::iterator_category> {};
 
+template <typename C, typename Tag>
+inline constexpr bool supports_iterator_tag_v = supports_iterator_tag<C, Tag>::value;
+
 #define CHECK_SUPPORTS_ITERATOR_TAG(TAG, ...)                                  \
-  static_assert(supports_iterator_tag<__VA_ARGS__, TAG>::value,                \
-                #__VA_ARGS__ " does not support required iterator tag " #TAG);
+  static_assert(supports_iterator_tag_v<__VA_ARGS__, TAG>,                \
+       #__VA_ARGS__ " does not support required iterator tag " #TAG); \
+  ERROR_PRINT_TYPE(WRAP_ARG(supports_iterator_tag_v<__VA_ARGS__, TAG>), "container_type", __VA_ARGS__); \
+
+using TTT = std::vector<int>;
+CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, TTT);
+CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, TTT);
 
 
 }
