@@ -19,7 +19,6 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Conv2D {
 
-
 miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
     miopenHandle_t handle,
     const miopenTensorDescriptor_t xDesc,
@@ -141,19 +140,19 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
 }
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                optional<Activation> activation,
-                bool use_bias,
-                int kernel_h,
-                int kernel_w,
-                int groups,
-                int pad_h,
-                int pad_w,
-                int stride_h,
-                int stride_w,
-                GenericTensorAccessorR const &input,
-                GenericTensorAccessorW const &output,
-                float const *filter_ptr,
-                float *filter_grad_ptr) {
+                                 optional<Activation> activation,
+                                 bool use_bias,
+                                 int kernel_h,
+                                 int kernel_w,
+                                 int groups,
+                                 int pad_h,
+                                 int pad_w,
+                                 int stride_h,
+                                 int stride_w,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &output,
+                                 float const *filter_ptr,
+                                 float *filter_grad_ptr) {
 
   miopenCreateTensorDescriptor inputTensor;
   miopenCreateTensorDescriptor biasTensor;
@@ -185,8 +184,8 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(miopenSet4dTensorDescriptor(
       inputTensor, miopenFloat, input_n, input_c, input_h, input_w));
 
-  checkCUDNN(miopenSet4dTensorDescriptor(
-      biasTensor, miopenFloat, 1, output_c, 1, 1));
+  checkCUDNN(
+      miopenSet4dTensorDescriptor(biasTensor, miopenFloat, 1, output_c, 1, 1));
 
   // Require that input_c is divisible by conv->groups
   assert(input_c % groups == 0);

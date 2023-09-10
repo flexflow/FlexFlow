@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_CONV_2D_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_CONV_2D_KERNELS_H
 
+#include "kernels/accessor.h"
 #include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/activation.h"
 #include "utils/visitable.h"
-#include "kernels/accessor.h"
 
 namespace FlexFlow {
 
@@ -26,36 +26,36 @@ struct Conv2DPerDeviceState {
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Conv2DPerDeviceState,
-                          handle,
-                          activation,
-                          use_bias,
-                          inputTensor,
-                          biasTensor,
-                          outputTensor,
-                          filterDesc,
-                          actiDesc,
-                          convDesc,
-                          fwdAlgo,
-                          bwdFilterAlgo,
-                          bwdDataAlgo);
+                                             handle,
+                                             activation,
+                                             use_bias,
+                                             inputTensor,
+                                             biasTensor,
+                                             outputTensor,
+                                             filterDesc,
+                                             actiDesc,
+                                             convDesc,
+                                             fwdAlgo,
+                                             bwdFilterAlgo,
+                                             bwdDataAlgo);
 
 namespace Kernels {
 namespace Conv2D {
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                optional<Activation> activation,
-                bool use_bias,
-                int kernel_h,
-                int kernel_w,
-                int groups,
-                int padding_h,
-                int padding_w,
-                int stride_h,
-                int stride_w,
-                GenericTensorAccessorR const &input,
-                GenericTensorAccessorW const &output,
-                float const *filter_ptr,
-                float *filter_grad_ptr);
+                                 optional<Activation> activation,
+                                 bool use_bias,
+                                 int kernel_h,
+                                 int kernel_w,
+                                 int groups,
+                                 int padding_h,
+                                 int padding_w,
+                                 int stride_h,
+                                 int stride_w,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &output,
+                                 float const *filter_ptr,
+                                 float *filter_grad_ptr);
 
 void forward_kernel(ffStream_t stream,
                     Conv2DPerDeviceState const &m,

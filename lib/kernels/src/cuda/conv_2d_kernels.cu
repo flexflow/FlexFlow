@@ -1,11 +1,10 @@
+#include "device.h"
 #include "kernels/conv_2d_kernels.h"
 #include "kernels/device.h"
-#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Conv2D {
-
 
 cudnnConvolutionBwdDataAlgo_t selectConvolutionBackwardDataAlgorithm(
     cudnnHandle_t handle,
@@ -125,19 +124,19 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
 }
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                optional<Activation> activation,
-                bool use_bias,
-                int kernel_h,
-                int kernel_w,
-                int groups,
-                int pad_h,
-                int pad_w,
-                int stride_h,
-                int stride_w,
-                GenericTensorAccessorW const &input,
-                GenericTensorAccessorW const &output,
-                float const *filter_ptr,
-                float *filter_grad_ptr) {
+                                 optional<Activation> activation,
+                                 bool use_bias,
+                                 int kernel_h,
+                                 int kernel_w,
+                                 int groups,
+                                 int pad_h,
+                                 int pad_w,
+                                 int stride_h,
+                                 int stride_w,
+                                 GenericTensorAccessorW const &input,
+                                 GenericTensorAccessorW const &output,
+                                 float const *filter_ptr,
+                                 float *filter_grad_ptr) {
 
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t biasTensor;
@@ -227,16 +226,16 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   float time;
   // select forward algorithm
   fwdAlgo = selectConvolutionForwardAlgorithm(handle.dnn,
-                                                 inputTensor,
-                                                 input.get_float_ptr(),
-                                                 filterDesc,
-                                                 filter_ptr,
-                                                 convDesc,
-                                                 handle.workSpace,
-                                                 handle.workSpaceSize,
-                                                 outputTensor,
-                                                 output.get_float_ptr(),
-                                                 &time);
+                                              inputTensor,
+                                              input.get_float_ptr(),
+                                              filterDesc,
+                                              filter_ptr,
+                                              convDesc,
+                                              handle.workSpace,
+                                              handle.workSpaceSize,
+                                              outputTensor,
+                                              output.get_float_ptr(),
+                                              &time);
 
   // select backward filter algorithm
   bwdFilterAlgo =
@@ -253,35 +252,34 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                                &time);
 
   // select backward data algorithm
-  bwdDataAlgo =
-      selectConvolutionBackwardDataAlgorithm(handle.dnn,
-                                             filterDesc,
-                                             filter_ptr,
-                                             outputTensor,
-                                             output.get_float_ptr(),
-                                             convDesc,
-                                             handle.workSpace,
-                                             handle.workSpaceSize,
-                                             inputTensor,
-                                             input.get_float_ptr(),
-                                             &time);
+  bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(handle.dnn,
+                                                       filterDesc,
+                                                       filter_ptr,
+                                                       outputTensor,
+                                                       output.get_float_ptr(),
+                                                       convDesc,
+                                                       handle.workSpace,
+                                                       handle.workSpaceSize,
+                                                       inputTensor,
+                                                       input.get_float_ptr(),
+                                                       &time);
   if (activation.has_value()) {
     checkCUDNN(cudnnSetActivationDescriptor(
         actiDesc, CUDNN_ACTIVATION_RELU, CUDNN_PROPAGATE_NAN, 0.0));
   }
 
   Conv2DPerDeviceState per_device_state = {handle,
-                          activation,
-                          use_bias,
-                          inputTensor,
-                          biasTensor,
-                          outputTensor,
-                          filterDesc,
-                          actiDesc,
-                          convDesc,
-                          fwdAlgo,
-                          bwdFilterAlgo,
-                          bwdDataAlgo};
+                                           activation,
+                                           use_bias,
+                                           inputTensor,
+                                           biasTensor,
+                                           outputTensor,
+                                           filterDesc,
+                                           actiDesc,
+                                           convDesc,
+                                           fwdAlgo,
+                                           bwdFilterAlgo,
+                                           bwdDataAlgo};
   return per_device_state;
 }
 
