@@ -69,7 +69,7 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
 fi
 
 CLANG_FORMAT_CONFIG="$GIT_ROOT/.clang-format-for-format-sh"
-mapfile -t FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c')
+mapfile -t FILES < <(git ls-files ':!:triton/**' '*.h' '*.cc' '*.cpp' '*.cu' '*.c' '*.decl')
 if [[ -f $CLANG_FORMAT_CONFIG ]]; then 
   "$CLANG_FORMAT_PATH" --style=file:"$CLANG_FORMAT_CONFIG" -i "${FILES[@]}"
 else 

@@ -34,6 +34,8 @@ jobs:
     if: github.repository_owner == 'flexflow'
     runs-on: self-hosted
     needs: gpu-ci-concierge
+    # 10h timeout, instead of default of 360min (6h)
+    timeout-minutes: 600
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
@@ -62,6 +64,7 @@ jobs:
           export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -70,6 +73,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
@@ -84,6 +88,8 @@ jobs:
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
+    # 10h timeout, instead of default of 360min (6h)
+    timeout-minutes: 600
     steps:
       - name: Install updated git version
         run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
@@ -109,6 +115,7 @@ jobs:
           export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -117,6 +124,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
@@ -155,6 +163,7 @@ jobs:
           export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -163,6 +172,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none

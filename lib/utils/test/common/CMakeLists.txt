@@ -1,0 +1,14 @@
+ff_add_library(
+  NAME
+    utils-test-common
+  SRC_PATTERNS
+    src/*.cc
+  PUBLIC_INCLUDE
+    include/
+  PRIVATE_INCLUDE
+    src/
+  DEPS
+    utils
+    rapidcheck
+    doctest
+)

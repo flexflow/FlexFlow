@@ -69,11 +69,10 @@ Performance auto-tuning flags:
 For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
 
 ## Contributing
+
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
 
 We welcome all contributions to FlexFlow from bug fixes to new features and extensions.
-
-Please subscribe to the FlexFlow users mailing list for 
 
 ## Citations
 * Colin Unger, Zhihao Jia, Wei Wu, Sina Lin, Mandeep Baines, Carlos Efrain Quintero Narvaez, Vinay Ramakrishnaiah, Nirmal Prajapati, Pat McCormick, Jamaludin Mohd-Yusof, Xi Luo, Dheevatsa Mudigere, Jongsoo Park, Misha Smelyanskiy, and Alex Aiken. [Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization](https://www.usenix.org/conference/osdi22/presentation/unger). In Proceedings of the Symposium on Operating Systems Design and Implementation (OSDI), July 2022. 

@@ -35,7 +35,13 @@ udi &udi::operator++() {
 
   std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(graph, {last});
   for (DirectedEdge const &e : outgoing) {
-    stack.push_back(e.dst);
+    auto it = std::find(stack.begin(), stack.end(), e.dst);
+    if (it == stack.end()) {
+      stack.push_back(e.dst);
+    } else {
+      stack.erase(it);
+      stack.push_back(e.dst);
+    }
   }
   return *this;
 }
@@ -99,12 +105,12 @@ bool cdi::operator!=(cdi const &other) const {
 
 bfi::bfs_iterator(DiGraphView const &g,
                   std::queue<Node> const &q,
-                  std::unordered_set<Node> const &seen)
+                  optional<std::unordered_set<Node>> const &seen)
     : graph(g), q(q), seen(seen) {}
 
 bfi::bfs_iterator(DiGraphView const &g,
                   std::unordered_set<Node> const &starting_points)
-    : graph(g) {
+    : graph(g), seen(std::unordered_set<Node>{}) {
   for (Node const &n : starting_points) {
     this->q.push(n);
   }
@@ -119,19 +125,20 @@ bfi::pointer bfi::operator->() {
 }
 
 bfi &bfi::operator++() {
-  Node const &current = this->operator*();
-  this->seen.insert(current);
+  Node current = this->operator*();
+  assert(this->seen.has_value());
+  this->seen.value().insert(current);
   this->q.pop();
 
   std::unordered_set<DirectedEdge> outgoing =
       get_outgoing_edges(graph, {current});
   for (DirectedEdge const &e : outgoing) {
-    if (!contains(this->seen, e.dst)) {
+    if (!contains(this->seen.value(), e.dst)) {
       this->q.push(e.dst);
     }
   }
 
-  while (!this->q.empty() && contains(this->seen, this->q.front())) {
+  while (!this->q.empty() && contains(this->seen.value(), this->q.front())) {
     this->q.pop();
   }
 
@@ -145,13 +152,17 @@ bfi bfi::operator++(int) {
 }
 
 bool bfi::operator==(bfi const &other) const {
-  return this->q == other.q && this->seen == other.seen &&
-         this->graph == other.graph;
+  return this->q == other.q &&
+         (!this->seen.has_value() || !other.seen.has_value() ||
+          this->seen == other.seen) &&
+         is_ptr_equal(this->graph, other.graph);
 }
 
 bool bfi::operator!=(bfi const &other) const {
   return this->q != other.q ||
-         this->seen != other.seen && this->graph != other.graph;
+         (this->seen.has_value() && other.seen.has_value() &&
+          this->seen != other.seen) &&
+             is_ptr_equal(this->graph, other.graph);
 }
 
 CheckedDFSView::CheckedDFSView(DiGraphView const &g,
@@ -214,7 +225,7 @@ bfs_iterator BFSView::cbegin() const {
 }
 
 bfs_iterator BFSView::cend() const {
-  return bfs_iterator(this->graph, std::queue<Node>{}, get_nodes(this->graph));
+  return bfs_iterator(this->graph, std::queue<Node>{}, nullopt);
 }
 
 bfs_iterator BFSView::begin() const {

@@ -5,18 +5,17 @@
 #include "utils/unique.h"
 #include "utils/variant.h"
 #include <memory>
+#include <type_traits>
 
 namespace FlexFlow {
 
 template <typename T>
 struct cow_ptr_t {
-  // static_assert(is_clonable<T>::value,
-  //               "cow_ptr_t requires the type to have a clone() method"); //
-  //               TODO:
-  //               https://github.com/flexflow/FlexFlow/issues/909#issue-1833470024
+  static_assert(is_clonable<T>::value,
+                "cow_ptr_t requires the type to have a clone() method");
 
-  cow_ptr_t(std::shared_ptr<T> ptr) : ptr(std::move(ptr)) {}
-  cow_ptr_t(std::unique_ptr<T> ptr) : ptr(std::move(ptr)) {}
+  cow_ptr_t(std::shared_ptr<T> const &ptr) : ptr(ptr) {}
+  cow_ptr_t(std::shared_ptr<T> &&ptr) : ptr(std::move(ptr)) {}
   cow_ptr_t(T const &val) : ptr(std::make_shared<T>(val)) {}
   cow_ptr_t(cow_ptr_t const &other) {
     this->ptr = other.ptr;
@@ -29,6 +28,11 @@ struct cow_ptr_t {
 
   T const &operator*() const {
     return *this->get();
+  }
+
+  template <typename TT, typename = enable_if_t<std::is_base_of<TT, T>::value>>
+  operator cow_ptr_t<TT>() const {
+    return cow_ptr_t<TT>(this->ptr);
   }
 
   std::shared_ptr<T const> operator->() const {
@@ -67,6 +71,11 @@ private:
 
   mutable std::shared_ptr<T> ptr = nullptr;
 };
+
+template <typename T, typename... Args>
+cow_ptr_t<T> make_cow_ptr(Args &&...args) {
+  return {std::make_shared<T>(std::forward<Args>(args)...)};
+}
 
 } // namespace FlexFlow
 

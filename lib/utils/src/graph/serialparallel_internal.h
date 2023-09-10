@@ -5,6 +5,7 @@
 #include "utils/graph/digraph.h"
 #include "utils/graph/node.h"
 #include "utils/graph/serialparallel.h"
+#include "utils/visitable.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -18,13 +19,14 @@ struct SplitASTNode;
 using SplitAST = mpark::variant<SplitASTNode, Node>;
 
 struct SplitASTNode {
-  SplitASTNode(SplitType);
-  SplitASTNode(SplitType, SplitAST const &, SplitAST const &);
-  SplitASTNode(SplitType, std::vector<SplitAST> const &);
+  SplitASTNode(SplitType type);
+  SplitASTNode(SplitType type, SplitAST const &lhs, SplitAST const &rhs);
+  SplitASTNode(SplitType type, std::vector<SplitAST> const &children);
 
   std::vector<SplitAST> children;
   SplitType type;
 };
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(SplitASTNode, children, type);
 
 SplitAST sp_decomposition(DiGraphView const &g);
 SplitAST parallel_decomposition(DiGraphView const &g);

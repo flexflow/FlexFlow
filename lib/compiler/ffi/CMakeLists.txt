@@ -1,28 +1,15 @@
-set(target compiler-ffi)
-project(${target} CXX)
-
-file(GLOB_RECURSE SRC
-     CONFIGURE_DEPENDS
-     LIST_DIRECTORIES False
-     src/*.cc)
-add_library(
-  ${target}
-  SHARED
-  ${SRC}
-)
-target_include_directories(
-  ${target}
-  PRIVATE
-    src/
-  PUBLIC
+ff_add_library(
+  NAME
+    compiler-ffi
+  SRC_PATTERNS
+    src/*.cc
+  PUBLIC_INCLUDE
     include/
-)
-target_link_libraries(
-  ${target}
-  PUBLIC
+  PRIVATE_INCLUDE
+    src/
+  DEPS
     utils-ffi
     pcg-ffi
-  PRIVATE
+  PRIVATE_DEPS
     compiler
 )
-ff_set_cxx_properties(${target})
