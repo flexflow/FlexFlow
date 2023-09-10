@@ -15,6 +15,7 @@
 #include "flexflow/graph.h"
 #include "flexflow/dominators.h"
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/arg_topk.h"
 #include "flexflow/ops/argmax.h"
@@ -2699,6 +2700,11 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_LAYERNORM: {
         node = LayerNorm::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        node = AddBiasResidualLayerNorm::deserialize(
+            *this, dez, inputs, num_inputs);
         break;
       }
       case OP_LINEAR: {

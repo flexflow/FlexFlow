@@ -16,6 +16,7 @@
 #include "flexflow/ops/fused.h"
 #include "flexflow/accessor.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
@@ -811,6 +812,11 @@ __host__ void
         }
         LayerNorm::forward_kernel_wrapper(
             m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        assert(false && "Operator AddBiasResidualLayerNorm does not support "
+                        "the forward() task");
         break;
       }
       case OP_SOFTMAX: {

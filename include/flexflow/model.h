@@ -103,6 +103,8 @@ enum TaskIDs {
   LAYERNORM_INIT_TASK_ID,
   LAYERNORM_FWD_TASK_ID,
   LAYERNORM_BWD_TASK_ID,
+  ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,
+  ADD_BIAS_RESIDUAL_LAYERNORM_INF_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_INF_TASK_ID,
@@ -305,6 +307,7 @@ class Flat;
 class Gather;
 class Group_by;
 class LayerNorm;
+class AddBiasResidualLayerNorm;
 class Linear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
@@ -528,6 +531,14 @@ public:
                     bool use_bias = true,
                     DataType data_type = DT_NONE,
                     char const *name = NULL);
+  // Add a add_bias_residual_layer_norm layer
+  Tensor add_bias_residual_layer_norm(const Tensor input,
+                                      std::vector<int> const &axes,
+                                      bool elementwise_affine,
+                                      float eps,
+                                      bool use_bias = true,
+                                      DataType data_type = DT_NONE,
+                                      char const *name = NULL);
   // Add a batch_norm layer
   Tensor
       batch_norm(const Tensor input, bool relu = true, char const *name = NULL);
@@ -1111,6 +1122,9 @@ public:
           Group_by *>,
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
+      std::unordered_map<
+          std::pair<ParallelTensorShape, AddBiasResidualLayerNormParams>,
+          AddBiasResidualLayerNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,

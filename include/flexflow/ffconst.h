@@ -159,6 +159,7 @@ enum OperatorType {
   OP_POW,   // https://pytorch.org/docs/stable/generated/torch.pow.html
   OP_MEAN,  // https://pytorch.org/docs/stable/generated/torch.mean.html
   OP_LAYERNORM,
+  OP_ADD_BIAS_RESIDUAL_LAYERNORM,
   OP_EXPERTS,
   OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
   OP_RMS_NORM,

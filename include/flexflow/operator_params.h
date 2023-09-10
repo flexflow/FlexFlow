@@ -1,6 +1,7 @@
 #ifndef _OPERATOR_PARAMS_H
 #define _OPERATOR_PARAMS_H
 
+#include "flexflow/ops/add_bias_residual_layer_norm_params.h"
 #include "flexflow/ops/aggregate_params.h"
 #include "flexflow/ops/aggregate_spec_params.h"
 #include "flexflow/ops/arg_topk_params.h"
@@ -59,6 +60,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        GatherParams,
                                        Group_byParams,
                                        LayerNormParams,
+                                       AddBiasResidualLayerNormParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
                                        IncMultiHeadSelfAttentionParams,
