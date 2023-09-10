@@ -28,6 +28,9 @@ enum Slots {
 OpTaskInvocation init(Conv2DAttrs const &attrs) {
   OpTaskBinding binding;
 
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(OUTPUT, output_tensor(0));
+  binding.bind(FILTER, weight_tensor(0));
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(HANDLE, ff_handle());
 
@@ -61,31 +64,27 @@ static DeviceSpecific<Conv2DPerDeviceState>
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<Conv2DAttrs>(ATTRS);
 
-  ffTensorDescriptor_t inputTensor;
-  ffTensorDescriptor_t biasTensor;
-  ffTensorDescriptor_t outputTensor;
-  ffFilterDescriptor_t filterDesc;
-  ffActivationDescriptor_t actiDesc;
-  ffConvolutionDescriptor_t convDesc;
-  ffConvolutionFwdAlgo_t fwdAlgo;
-  ffConvolutionBwdFilterAlgo_t bwdFilterAlgo;
-  ffConvolutionBwdDataAlgo_t bwdDataAlgo;
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto filter = acc.get_tensor<Permissions::RO>(FILTER);
+  auto filter_grad = acc.get_tensor_grad<Permissions::RW>(FILTER);
 
   DeviceSpecific<Conv2DPerDeviceState> per_device_state =
       acc.create_device_specific<Conv2DPerDeviceState>(
           init_kernel(handle,
-                      inputTensor,
-                      biasTensor,
-                      outputTensor,
-                      filterDesc,
-                      actiDesc,
-                      convDesc,
-                      fwdAlgo,
-                      bwdFilterAlgo,
-                      bwdDataAlgo,
                       attrs.activation,
-                      attrs.use_bias));
-
+                      attrs.use_bias,
+                      attrs.kernel_h,
+                      attrs.kernel_w,
+                      attrs.groups,
+                      attrs.padding_h,
+                      attrs.padding_w,
+                      attrs.stride_h,
+                      attrs.stride_w,
+                      input,
+                      output,
+                      filter.get_float_ptr(),
+                      filter_grad.get_float_ptr()));
   return per_device_state;
 }
 
@@ -174,6 +173,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   ParallelTensorShape output_shape = get_output_shape(attrs, input_shape.shape);
 
   SimTaskBinding init_binding;
+  init_binding.bind(INPUT, input_shape);
+  init_binding.bind(OUTPUT, output_shape);
+  init_binding.bind(FILTER, filter_shape);
   init_binding.bind_arg(ATTRS, attrs);
   init_binding.bind_arg(HANDLE, ff_handle());
 
@@ -206,6 +208,9 @@ template <>
 void register_task<CONV2D_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
+  init.add_input_slot(INPUT);
+  init.add_output_slot(OUTPUT);
+  init.add_weight_slot(FILTER);
   init.add_arg_slot<Conv2DAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
