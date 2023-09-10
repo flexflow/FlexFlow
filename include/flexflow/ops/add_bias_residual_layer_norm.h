@@ -12,19 +12,19 @@ public:
   using Params = AddBiasResidualLayerNormParams;
   using Input = ParallelTensor;
   AddBiasResidualLayerNorm(FFModel &model,
-            AddBiasResidualLayerNormParams const &params,
-            ParallelTensor input,
-            char const *name = nullptr,
-            bool allocate_weights = false);
+                           AddBiasResidualLayerNormParams const &params,
+                           ParallelTensor input,
+                           char const *name = nullptr,
+                           bool allocate_weights = false);
   AddBiasResidualLayerNorm(FFModel &model,
-            LayerID const &_layer_guid,
-            const ParallelTensor _input,
-            std::vector<int> const &axes,
-            bool _elementwise_affine,
-            bool _use_bias,
-            float _eps,
-            bool allocate_weights,
-            char const *name);
+                           LayerID const &_layer_guid,
+                           const ParallelTensor _input,
+                           std::vector<int> const &axes,
+                           bool _elementwise_affine,
+                           bool _use_bias,
+                           float _eps,
+                           bool allocate_weights,
+                           char const *name);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
@@ -60,24 +60,24 @@ public:
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
   static void inference_task(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime);
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   template <typename T>
   static void inference_kernel(AddBiasResidualLayerNormMeta const *m,
-                             T const *input_ptr,
-                             T *output_ptr,
-                             T const *gamma_ptr,
-                             T const *beta_ptr,
-                             ffStream_t stream);
+                               T const *input_ptr,
+                               T *output_ptr,
+                               T const *gamma_ptr,
+                               T const *beta_ptr,
+                               ffStream_t stream);
   static void inference_kernel_wrapper(AddBiasResidualLayerNormMeta const *m,
-                                     GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorW &output,
-                                     GenericTensorAccessorR const &gamma,
-                                     GenericTensorAccessorR const &beta);
+                                       GenericTensorAccessorR const &input,
+                                       GenericTensorAccessorW &output,
+                                       GenericTensorAccessorR const &gamma,
+                                       GenericTensorAccessorR const &beta);
 
 public:
   bool elementwise_affine, use_bias;
@@ -89,8 +89,8 @@ public:
 class AddBiasResidualLayerNormMeta : public OpMeta {
 public:
   AddBiasResidualLayerNormMeta(FFHandler handle,
-                AddBiasResidualLayerNorm const *ln,
-                MemoryAllocator &gpu_mem_allocator);
+                               AddBiasResidualLayerNorm const *ln,
+                               MemoryAllocator &gpu_mem_allocator);
   ~AddBiasResidualLayerNormMeta(void);
 
 public:

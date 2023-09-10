@@ -23,9 +23,10 @@ namespace FlexFlow {
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
-AddBiasResidualLayerNormMeta::AddBiasResidualLayerNormMeta(FFHandler handle,
-                             AddBiasResidualLayerNorm const *ln,
-                             MemoryAllocator &gpu_mem_allocator)
+AddBiasResidualLayerNormMeta::AddBiasResidualLayerNormMeta(
+    FFHandler handle,
+    AddBiasResidualLayerNorm const *ln,
+    MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   use_bias = ln->use_bias;
@@ -120,12 +121,12 @@ __global__ void RowwiseMomentsCUDAKernel(
 
 template <typename T>
 __global__ void AddBiasResidualLayerNormForwardCUDAKernel(int64_t N,
-                                           T const *X,
-                                           T const *mean,
-                                           T const *rstd,
-                                           T const *gamma,
-                                           T const *beta,
-                                           T *Y) {
+                                                          T const *X,
+                                                          T const *mean,
+                                                          T const *rstd,
+                                                          T const *gamma,
+                                                          T const *beta,
+                                                          T *Y) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
@@ -142,12 +143,13 @@ __global__ void AddBiasResidualLayerNormForwardCUDAKernel(int64_t N,
 
 /*static*/
 template <typename T>
-void AddBiasResidualLayerNorm::inference_kernel(AddBiasResidualLayerNormMeta const *m,
-                               T const *in_ptr,
-                               T *out_ptr,
-                               T const *gamma_ptr,
-                               T const *beta_ptr,
-                               cudaStream_t stream) {
+void AddBiasResidualLayerNorm::inference_kernel(
+    AddBiasResidualLayerNormMeta const *m,
+    T const *in_ptr,
+    T *out_ptr,
+    T const *gamma_ptr,
+    T const *beta_ptr,
+    cudaStream_t stream) {
   RowwiseMomentsCUDAKernel<T>
       <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
           m->effective_num_elements,
@@ -167,11 +169,12 @@ void AddBiasResidualLayerNorm::inference_kernel(AddBiasResidualLayerNormMeta con
 }
 
 /*static*/
-void AddBiasResidualLayerNorm::inference_kernel_wrapper(AddBiasResidualLayerNormMeta const *m,
-                                       GenericTensorAccessorR const &input,
-                                       GenericTensorAccessorW &output,
-                                       GenericTensorAccessorR const &gamma,
-                                       GenericTensorAccessorR const &beta) {
+void AddBiasResidualLayerNorm::inference_kernel_wrapper(
+    AddBiasResidualLayerNormMeta const *m,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW &output,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorR const &beta) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -182,20 +185,21 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(AddBiasResidualLayerNorm
     cudaEventRecord(t_start, stream);
   }
   if (m->input_type[0] == DT_FLOAT) {
-    AddBiasResidualLayerNorm::inference_kernel<float>(m,
-                                     input.get_float_ptr(),
-                                     output.get_float_ptr(),
-                                     gamma.get_float_ptr(),
-                                     m->use_bias ? beta.get_float_ptr()
-                                                 : nullptr,
-                                     stream);
+    AddBiasResidualLayerNorm::inference_kernel<float>(
+        m,
+        input.get_float_ptr(),
+        output.get_float_ptr(),
+        gamma.get_float_ptr(),
+        m->use_bias ? beta.get_float_ptr() : nullptr,
+        stream);
   } else if (m->input_type[0] == DT_HALF) {
-    AddBiasResidualLayerNorm::inference_kernel<half>(m,
-                                    input.get_half_ptr(),
-                                    output.get_half_ptr(),
-                                    gamma.get_half_ptr(),
-                                    m->use_bias ? beta.get_half_ptr() : nullptr,
-                                    stream);
+    AddBiasResidualLayerNorm::inference_kernel<half>(
+        m,
+        input.get_half_ptr(),
+        output.get_half_ptr(),
+        gamma.get_half_ptr(),
+        m->use_bias ? beta.get_half_ptr() : nullptr,
+        stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
   }
@@ -209,7 +213,8 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(AddBiasResidualLayerNorm
     cudaEventDestroy(t_end);
     printf("[AddBiasResidualLayerNorm] forward time (CF) = %.2fms\n", elapsed);
     // print_tensor<T>(in_ptr, 32, "[AddBiasResidualLayerNorm:forward:input]");
-    // print_tensor<T>(out_ptr, 32, "[AddBiasResidualLayerNorm:forward:output]");
+    // print_tensor<T>(out_ptr, 32,
+    // "[AddBiasResidualLayerNorm:forward:output]");
   }
 }
 

@@ -965,7 +965,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->add_bias_kv,
+                                    attn->final_bias,
                                     attn->scaling_factor,
                                     weight,
                                     gpu_mem_allocator,
@@ -993,7 +993,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _scaling_query,
     bool _qk_prod_scaling,
     bool _position_bias,
-    bool _add_bias_kv,
+    bool _final_bias,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
@@ -1053,7 +1053,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   position_bias = (bool *)calloc(1, sizeof(bool));
   *position_bias = _position_bias;
   // Currently do not support adding bias to key/value projection
-  assert(!_add_bias_kv);
+  assert(!_final_bias);
 
   // allocate weight and bias in the reserve space for cpu offloading
   if (offload) {

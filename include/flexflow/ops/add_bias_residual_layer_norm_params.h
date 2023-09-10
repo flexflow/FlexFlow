@@ -1,5 +1,7 @@
 #pragma once
 
+#include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
@@ -13,7 +15,8 @@ struct AddBiasResidualLayerNormParams {
   bool is_valid(ParallelTensorShape const &) const;
 };
 
-bool operator==(AddBiasResidualLayerNormParams const &, AddBiasResidualLayerNormParams const &);
+bool operator==(AddBiasResidualLayerNormParams const &,
+                AddBiasResidualLayerNormParams const &);
 
 } // namespace FlexFlow
 

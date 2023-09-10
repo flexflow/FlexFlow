@@ -65,8 +65,8 @@ Tensor FFModel::inc_multihead_self_attention_verify(
     int kdim,
     int vdim,
     float dropout,
-    bool bias,
-    bool add_bias_kv,
+    bool qkv_bias,
+    bool final_bias,
     bool add_zero_attn,
     DataType data_type,
     Initializer *kernel_initializer,
@@ -83,8 +83,8 @@ Tensor FFModel::inc_multihead_self_attention_verify(
                                               kdim,
                                               vdim,
                                               dropout,
-                                              bias,
-                                              add_bias_kv,
+                                              qkv_bias,
+                                              final_bias,
                                               add_zero_attn,
                                               data_type,
                                               kernel_initializer,
@@ -104,8 +104,8 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
     int kdim,
     int vdim,
     float dropout,
-    bool bias,
-    bool add_bias_kv,
+    bool qkv_bias,
+    bool final_bias,
     bool add_zero_attn,
     DataType data_type,
     Initializer *kernel_initializer,
@@ -121,7 +121,7 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
   DataType quantization_type = cpu_offload ? config.quantization_type : DT_NONE;
   bool offload = cpu_offload;
   Layer *li = nullptr;
-  int weight_num = bias ? 2 : 1;
+  int weight_num = (qkv_bias || final_bias) ? 2 : 1;
   if (data_type != input->data_type) {
     Tensor casted_input = cast(input, data_type, "type cast for IncMHA");
     li = new Layer(this,
@@ -180,10 +180,12 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
         kernel_initializer,
         CHOSEN_SYNC_TYPE);
   }
-  if (bias) {
+  if (qkv_bias || final_bias) {
     // q, k, v, o
-    int dims[1] = {qProjSize * num_q_heads +
-                   (kProjSize + vProjSize) * num_kv_heads + oProjSize};
+    int qkv_bias_size =
+        qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+    int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
+                   (final_bias ? oProjSize : 0)};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -198,8 +200,8 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
   li->add_int_property("num_kv_heads", num_kv_heads);
   li->add_int_property("kdim", kdim);
   li->add_int_property("vdim", vdim);
-  li->add_int_property("bias", bias);
-  li->add_int_property("add_bias_kv", add_bias_kv);
+  li->add_int_property("qkv_bias", qkv_bias);
+  li->add_int_property("final_bias", final_bias);
   li->add_int_property("add_zero_attn", add_zero_attn);
   li->add_float_property("dropout", dropout);
   li->add_int_property("apply_rotary_embedding", apply_rotary_embedding);
@@ -232,10 +234,10 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
   int vdim = value;
   float dropout;
   layer->get_float_property("dropout", dropout);
-  layer->get_int_property("bias", value);
-  bool bias = (bool)value;
-  layer->get_int_property("add_bias_kv", value);
-  bool add_bias_kv = (bool)value;
+  layer->get_int_property("qkv_bias", value);
+  bool qkv_bias = (bool)value;
+  layer->get_int_property("final_bias", value);
+  bool final_bias = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
   layer->get_int_property("apply_rotary_embedding", value);
@@ -263,8 +265,8 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
                                            kdim,
                                            vdim,
                                            dropout,
-                                           bias,
-                                           add_bias_kv,
+                                           qkv_bias,
+                                           final_bias,
                                            add_zero_attn,
                                            apply_rotary_embedding,
                                            scaling_query,
@@ -288,8 +290,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     int _kdim,
     int _vdim,
     float _dropout,
-    bool _bias,
-    bool _add_bias_kv,
+    bool _qkv_bias,
+    bool _final_bias,
     bool _add_zero_attn,
     bool _apply_rotary_embedding,
     bool _scaling_query,
@@ -307,11 +309,12 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_bias ? 2 : 1) /*weights*/,
+         (_qkv_bias || _final_bias ? 2 : 1) /*weights*/,
          1 /*outputs*/,
          _input),
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
-      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      qkv_bias(_qkv_bias), final_bias(_final_bias),
+      add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -365,11 +368,12 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         true /*create_grad*/,
         initializer,
         CHOSEN_SYNC_TYPE);
-    if (bias) {
+    if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size = qProjSize * num_q_heads +
-                                (kProjSize + vProjSize) * num_kv_heads +
-                                oProjSize;
+      int qkv_bias_size =
+          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+      bias_shape.dims[0].size =
+          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -401,8 +405,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     int _kdim,
     int _vdim,
     float _dropout,
-    bool _bias,
-    bool _add_bias_kv,
+    bool _qkv_bias,
+    bool _final_bias,
     bool _add_zero_attn,
     bool _apply_rotary_embedding,
     bool _scaling_query,
@@ -420,12 +424,13 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_bias ? 2 : 1) /*weights*/,
+         (_qkv_bias || _final_bias ? 2 : 1) /*weights*/,
          1 /*outputs*/,
          _input,
          _weight),
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
-      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      qkv_bias(_qkv_bias), final_bias(_final_bias),
+      add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -476,11 +481,12 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         true /*create_grad*/,
         initializer,
         CHOSEN_SYNC_TYPE);
-    if (bias) {
+    if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size = qProjSize * num_q_heads +
-                                (kProjSize + vProjSize) * num_kv_heads +
-                                oProjSize;
+      int qkv_bias_size =
+          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+      bias_shape.dims[0].size =
+          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -519,8 +525,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
                                     other.qProjSize,
                                     other.vProjSize,
                                     other.dropout,
-                                    other.bias,
-                                    other.add_bias_kv,
+                                    other.qkv_bias,
+                                    other.final_bias,
                                     other.add_zero_attn,
                                     other.apply_rotary_embedding,
                                     other.scaling_query,
@@ -548,8 +554,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
                                     params.kdim,
                                     params.vdim,
                                     params.dropout,
-                                    params.bias,
-                                    params.add_bias_kv,
+                                    params.qkv_bias,
+                                    params.final_bias,
                                     params.add_zero_attn,
                                     params.apply_rotary_embedding,
                                     params.scaling_query,
@@ -776,7 +782,7 @@ FutureMap TreeIncMultiHeadSelfAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
-  if (bias) {
+  if (qkv_bias || final_bias) {
     launcher.add_region_requirement(
         RegionRequirement(weights[1]->part,
                           0 /*projection id*/,
@@ -814,7 +820,8 @@ void TreeIncMultiHeadSelfAttention::inference_task(
 
   TreeIncMultiHeadSelfAttentionMeta *m =
       *((TreeIncMultiHeadSelfAttentionMeta **)task->local_args);
-  assert((*m->bias ? regions.size() == 4 : regions.size() == 3));
+  assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
+                                           : regions.size() == 3));
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -823,7 +830,7 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorR biases;
-  if (*m->bias) {
+  if (*m->qkv_bias || *m->final_bias) {
     biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
                                               regions[3],
                                               task->regions[3],
@@ -1664,7 +1671,7 @@ bool operator==(TreeIncMultiHeadSelfAttentionParams const &lhs,
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
          lhs.num_q_heads == rhs.num_q_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
-         lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
+         lhs.qkv_bias == rhs.qkv_bias && lhs.final_bias == rhs.final_bias &&
          lhs.add_zero_attn == rhs.add_zero_attn &&
          lhs.apply_rotary_embedding == rhs.apply_rotary_embedding &&
          lhs.scaling_query == rhs.scaling_query &&
@@ -1683,8 +1690,8 @@ TreeIncMultiHeadSelfAttentionParams
   params.kdim = this->kProjSize;
   params.vdim = this->vProjSize;
   params.dropout = this->dropout;
-  params.bias = this->bias;
-  params.add_bias_kv = this->add_bias_kv;
+  params.qkv_bias = this->qkv_bias;
+  params.final_bias = this->final_bias;
   params.add_zero_attn = this->add_zero_attn;
   params.apply_rotary_embedding = this->apply_rotary_embedding;
   params.scaling_query = this->scaling_query;
@@ -1708,8 +1715,8 @@ size_t hash<FlexFlow::TreeIncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.kdim);
   hash_combine(key, params.vdim);
   hash_combine(key, params.dropout);
-  hash_combine(key, params.bias);
-  hash_combine(key, params.add_bias_kv);
+  hash_combine(key, params.qkv_bias);
+  hash_combine(key, params.final_bias);
   hash_combine(key, params.add_zero_attn);
   hash_combine(key, params.apply_rotary_embedding);
   hash_combine(key, params.scaling_query);

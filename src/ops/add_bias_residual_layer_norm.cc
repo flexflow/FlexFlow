@@ -39,13 +39,15 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-bool operator==(AddBiasResidualLayerNormParams const &lhs, AddBiasResidualLayerNormParams const &rhs) {
+bool operator==(AddBiasResidualLayerNormParams const &lhs,
+                AddBiasResidualLayerNormParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && lhs.axes == rhs.axes &&
          lhs.elementwise_affine == rhs.elementwise_affine &&
          lhs.use_bias == rhs.use_bias;
 }
 
-bool AddBiasResidualLayerNormParams::is_valid(ParallelTensorShape const &input) const {
+bool AddBiasResidualLayerNormParams::is_valid(
+    ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -60,12 +62,12 @@ AddBiasResidualLayerNormParams AddBiasResidualLayerNorm::get_params() const {
 }
 
 Tensor FFModel::add_bias_residual_layer_norm(const Tensor input,
-                           std::vector<int> const &axes,
-                           bool elementwise_affine,
-                           float eps,
-                           bool use_bias,
-                           DataType data_type,
-                           char const *name) {
+                                             std::vector<int> const &axes,
+                                             bool elementwise_affine,
+                                             float eps,
+                                             bool use_bias,
+                                             DataType data_type,
+                                             char const *name) {
   // In PyTorch, axes must be the sizes of the last axes.size() dimensions of
   // the input tensor. However, since the tensor dimensions are reversed in
   // FlexFlow (batch size is the last dimension), we require that axes must be
@@ -91,7 +93,8 @@ Tensor FFModel::add_bias_residual_layer_norm(const Tensor input,
   int num_weights = elementwise_affine ? (use_bias ? 2 : 1) : 0;
   Layer *ln = nullptr;
   if (data_type != input->data_type) {
-    Tensor casted_input = cast(input, data_type, "type cast for add_bias_residual_layer_norm");
+    Tensor casted_input =
+        cast(input, data_type, "type cast for add_bias_residual_layer_norm");
     ln = new Layer(this,
                    OP_ADD_BIAS_RESIDUAL_LAYERNORM,
                    data_type,
@@ -162,40 +165,42 @@ Op *AddBiasResidualLayerNorm::create_operator_from_layer(
   float eps;
   layer->get_float_property("eps", eps);
   return new AddBiasResidualLayerNorm(model,
-                       layer->layer_guid,
-                       inputs[0],
-                       axes,
-                       elementwise_affine,
-                       use_bias,
-                       eps,
-                       false, // allocate_weights
-                       layer->name);
+                                      layer->layer_guid,
+                                      inputs[0],
+                                      axes,
+                                      elementwise_affine,
+                                      use_bias,
+                                      eps,
+                                      false, // allocate_weights
+                                      layer->name);
 }
 
-AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(FFModel &model,
-                     AddBiasResidualLayerNormParams const &params,
-                     ParallelTensor const input,
-                     char const *name,
-                     bool allocate_weights)
+AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
+    FFModel &model,
+    AddBiasResidualLayerNormParams const &params,
+    ParallelTensor const input,
+    char const *name,
+    bool allocate_weights)
     : AddBiasResidualLayerNorm(model,
-                params.layer_guid,
-                input,
-                params.axes,
-                params.elementwise_affine,
-                params.use_bias,
-                params.eps,
-                allocate_weights,
-                name) {}
+                               params.layer_guid,
+                               input,
+                               params.axes,
+                               params.elementwise_affine,
+                               params.use_bias,
+                               params.eps,
+                               allocate_weights,
+                               name) {}
 
-AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(FFModel &model,
-                     LayerID const &_layer_guid,
-                     const ParallelTensor _input,
-                     std::vector<int> const &_axes,
-                     bool _elementwise_affine,
-                     bool _use_bias,
-                     float _eps,
-                     bool allocate_weights,
-                     char const *name)
+AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
+    FFModel &model,
+    LayerID const &_layer_guid,
+    const ParallelTensor _input,
+    std::vector<int> const &_axes,
+    bool _elementwise_affine,
+    bool _use_bias,
+    float _eps,
+    bool allocate_weights,
+    char const *name)
     : Op(model,
          OP_ADD_BIAS_RESIDUAL_LAYERNORM,
          _input->data_type,
@@ -252,10 +257,11 @@ AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(FFModel &model,
   }
 }
 
-void AddBiasResidualLayerNorm::init_inference(FFModel const &ff,
-                               std::vector<ParallelTensor> const &batch_inputs,
-                               std::vector<ParallelTensor> const &batch_outputs,
-                               MachineView const *mv) {
+void AddBiasResidualLayerNorm::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -354,10 +360,11 @@ void AddBiasResidualLayerNorm::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *AddBiasResidualLayerNorm::init_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+OpMeta *AddBiasResidualLayerNorm::init_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   AddBiasResidualLayerNorm *ln = (AddBiasResidualLayerNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -365,7 +372,8 @@ OpMeta *AddBiasResidualLayerNorm::init_task(Task const *task,
                        .best_affinity_to(task->target_proc)
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
-  AddBiasResidualLayerNormMeta *meta = new AddBiasResidualLayerNormMeta(handle, ln, gpu_mem_allocator);
+  AddBiasResidualLayerNormMeta *meta =
+      new AddBiasResidualLayerNormMeta(handle, ln, gpu_mem_allocator);
   meta->input_type[0] = ln->inputs[0]->data_type;
   meta->output_type[0] = ln->outputs[0]->data_type;
   return meta;
@@ -379,11 +387,12 @@ void AddBiasResidualLayerNorm::backward(FFModel const &ff) {
   assert(false);
 }
 
-FutureMap AddBiasResidualLayerNorm::inference(FFModel const &ff,
-                               BatchConfigFuture const &bc,
-                               std::vector<ParallelTensor> const &batch_inputs,
-                               std::vector<ParallelTensor> const &batch_outputs,
-                               MachineView const *mv) {
+FutureMap AddBiasResidualLayerNorm::inference(
+    FFModel const &ff,
+    BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -391,7 +400,8 @@ FutureMap AddBiasResidualLayerNorm::inference(FFModel const &ff,
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
-  /* std::cout << "AddBiasResidualLayerNorm op machine_view: " << *(MachineView const *)mv
+  /* std::cout << "AddBiasResidualLayerNorm op machine_view: " << *(MachineView
+     const *)mv
             << std::endl; */
   IndexLauncher launcher(LAYERNORM_FWD_TASK_ID,
                          parallel_is,
@@ -439,11 +449,13 @@ FutureMap AddBiasResidualLayerNorm::inference(FFModel const &ff,
   regions[2](I/O): gamma
   regions[3](I/O): beta
 */
-void AddBiasResidualLayerNorm::inference_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  AddBiasResidualLayerNormMeta const *m = *((AddBiasResidualLayerNormMeta **)task->local_args);
+void AddBiasResidualLayerNorm::inference_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  AddBiasResidualLayerNormMeta const *m =
+      *((AddBiasResidualLayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
   float const *in_ptr = NULL;
   float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
@@ -500,9 +512,8 @@ void AddBiasResidualLayerNorm::inference_task(Task const *task,
   AddBiasResidualLayerNorm::inference_kernel_wrapper(m, in, out, gamma, beta);
 }
 
-bool AddBiasResidualLayerNorm::measure_operator_cost(Simulator *sim,
-                                      MachineView const &mv,
-                                      CostMetrics &cost_metrics) const {
+bool AddBiasResidualLayerNorm::measure_operator_cost(
+    Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
   return false;
 }
 
@@ -521,9 +532,9 @@ void AddBiasResidualLayerNorm::serialize(Legion::Serializer &sez) const {
 using PCG::Node;
 /*static*/
 Node AddBiasResidualLayerNorm::deserialize(FFModel &ff,
-                            Legion::Deserializer &dez,
-                            ParallelTensor inputs[],
-                            int num_inputs) {
+                                           Legion::Deserializer &dez,
+                                           ParallelTensor inputs[],
+                                           int num_inputs) {
   assert(num_inputs == 1);
   size_t num_axes;
   std::vector<int> axes;
@@ -554,8 +565,8 @@ Node AddBiasResidualLayerNorm::deserialize(FFModel &ff,
 }
 
 Op *AddBiasResidualLayerNorm::materialize(FFModel &ff,
-                           ParallelTensor inputs[],
-                           int num_inputs) const {
+                                          ParallelTensor inputs[],
+                                          int num_inputs) const {
   AddBiasResidualLayerNormParams params = get_params();
   return new AddBiasResidualLayerNorm(
       ff, params, inputs[0], this->name, true /*allocate_weights*/);

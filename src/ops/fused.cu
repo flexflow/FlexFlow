@@ -824,9 +824,10 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         IncMultiHeadSelfAttentionMeta const *m =
             (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        assert(fused->op_num_weights[op] ==
+               (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
-        if (*m->bias) {
+        if (*m->qkv_bias || *m->final_bias) {
           assert(fused->op_num_weights[op] == 2);
           biases = my_weight_accessor[1];
         }
@@ -849,9 +850,10 @@ __host__ void
         //     (TreeVerifyBatchConfig *)task->args;
         TreeVerifyBatchConfig const &tree_bc =
             Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
-        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        assert(fused->op_num_weights[op] ==
+               (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
-        if (*m->bias) {
+        if (*m->qkv_bias || *m->final_bias) {
           assert(fused->op_num_weights[op] == 2);
           biases = my_weight_accessor[1];
         }
@@ -874,9 +876,10 @@ __host__ void
         //     (BeamSearchBatchConfig *)task->args;
         BeamSearchBatchConfig const &beam_bc =
             Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
-        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        assert(fused->op_num_weights[op] ==
+               (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
-        if (*m->bias) {
+        if (*m->qkv_bias || *m->final_bias) {
           assert(fused->op_num_weights[op] == 2);
           biases = my_weight_accessor[1];
         }
