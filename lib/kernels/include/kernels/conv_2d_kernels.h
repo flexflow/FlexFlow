@@ -58,14 +58,14 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                 float *filter_grad_ptr);
 
 void forward_kernel(ffStream_t stream,
-                    Conv2DPerDeviceState const *m,
+                    Conv2DPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *filter_ptr,
                     float const *bias_ptr);
 
 void backward_kernel(ffStream_t stream,
-                     Conv2DPerDeviceState const *m,
+                     Conv2DPerDeviceState const &m,
                      float const *input_ptr,
                      float *input_grad_ptr,
                      float const *output_ptr,

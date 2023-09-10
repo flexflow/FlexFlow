@@ -62,8 +62,7 @@ static DeviceSpecific<Conv2DPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-  auto const &attrs = acc.get_argument<Conv2DAttrs>(ATTRS);
-
+  auto attrs = acc.get_argument<Conv2DAttrs>(ATTRS);
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto filter = acc.get_tensor<Permissions::RO>(FILTER);
