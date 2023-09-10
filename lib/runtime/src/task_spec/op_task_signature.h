@@ -68,16 +68,18 @@ struct OpTaskSignature {
   template <typename T>
   void add_arg_slot(slot_id name) {
     static_assert(is_serializable<T>::value, "Type must be serializable");
+    this->task_arg_types.insert({name, type_index<T>()});
   }
 
-  template <typename T>
-  void add_return_value();
+  // TODO: what is this function's purpose? OpTaskSignature doesn't need a return value
+  // template <typename T>
+  // void add_return_value();
 
   // adds arg_slot without checking is_serializable, used for arguments that are
   // deviceSpecific
   template <typename T>
   void add_unchecked_arg_slot(slot_id name) {
-    NOT_IMPLEMENTED();
+    this->task_arg_types.insert({name, type_index<T>()});
   }
 
   static std::unordered_map<task_id_t, OpTaskSignature> task_sig_map;
@@ -87,6 +89,7 @@ struct OpTaskSignature {
   std::unordered_map<slot_id, std::type_index> get_arg_types();
 
 private:
+  OpTaskType type;
   std::unordered_map<slot_id, std::type_index> task_arg_types;
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
