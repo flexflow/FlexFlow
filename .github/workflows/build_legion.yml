@@ -14,6 +14,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  start-oraicle-instance:
+    runs-on: ubuntu-latest
+    name: Turning on Oracle VM - flexflow-ci
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }} 
+      OCI_INSTANCE_ID: ${{ secrets.INSTANCE_ID_FFCI }}
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - name: Install Oci
+        run: pip install oci
+        
+      - name: Running script (START)
+        run: python3 docker/oracle_con.py --start --instance_id $OCI_INSTANCE_ID
+
   prebuild-legion:
     name: Prebuild Legion with CMake
     runs-on: [self-hosted, cpu_only]
@@ -104,3 +124,23 @@ jobs:
           TAG_NAME: ${{ env.RELEASE_DATETIME }}
           GITHUB_TOKEN: ${{ secrets.FLEXFLOW_TOKEN }}
         run: gh release create $TAG_NAME ./unwrapped_artifacts/*.tar.gz --repo flexflow/flexflow-third-party
+
+close-oraicle-instance:
+    runs-on: ubuntu-latest
+    name: Turning on Oracle VM - flexflow-ci
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }} 
+      OCI_INSTANCE_ID: ${{ secrets.INSTANCE_ID_FFCI }}
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - name: Install Oci
+        run: pip install oci
+        
+      - name: Running script (Close)
+        run: python3 docker/oracle_con.py --close --instance_id $OCI_INSTANCE_ID
