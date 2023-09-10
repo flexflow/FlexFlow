@@ -1,12 +1,9 @@
 #ifndef _FLEXFLOW_FUSED_H_
 #define _FLEXFLOW_FUSED_H_
 
+#include "config.h"
 #include "fused_op_attrs.h"
-#include "op_task_invocation.h"
-#include "utils/variant.h"
 #include "kernel/batch_matmul_kernels.h"
-#include "kernels/batch_norm_kernels.h"
-#include "kernel/reduce_kernels.h"
 #include "kernel/cast_kernels.h"
 #include "kernel/combine_kernels.h"
 #include "kernel/concat_kernels.h"
@@ -27,21 +24,42 @@
 #include "kernel/softmax_kernels.h"
 #include "kernel/top_k_kernels.h"
 #include "kernel/transpose_kernels.h"
-#include "config.h"
-
+#include "kernels/batch_norm_kernels.h"
+#include "op_task_invocation.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
-using AllDevice = variant<BatchMatmulPerDeviceState, BatchNormPerDeviceState, CastPerDeviceState, CombinePerDeviceState, ConcatPerDeviceState,  Conv2DPerDeviceState, DropoutPerDeviceState, ElementBinaryPerDeviceState, ElementUnaryPerDeviceState, EmbeddingPerDeviceState, FlatPerDeviceState, GatherPerDeviceState, GroupByPerDeviceState, LayerNormPerDeviceState, LinearPerDeviceState, RepartitionPerDeviceState, Pool2DPerDeviceState, ReducePerDeviceState, ReshapePerDeviceState, SoftmaxPerDeviceState, TopKPerDeviceState, TransposePerDeviceState>;//this can update to hold all device state
+using AllDevice = variant<BatchMatmulPerDeviceState,
+                          BatchNormPerDeviceState,
+                          CastPerDeviceState,
+                          CombinePerDeviceState,
+                          ConcatPerDeviceState,
+                          Conv2DPerDeviceState,
+                          DropoutPerDeviceState,
+                          ElementBinaryPerDeviceState,
+                          ElementUnaryPerDeviceState,
+                          EmbeddingPerDeviceState,
+                          FlatPerDeviceState,
+                          GatherPerDeviceState,
+                          GroupByPerDeviceState,
+                          LayerNormPerDeviceState,
+                          LinearPerDeviceState,
+                          RepartitionPerDeviceState,
+                          Pool2DPerDeviceState,
+                          ReducePerDeviceState,
+                          ReshapePerDeviceState,
+                          SoftmaxPerDeviceState,
+                          TopKPerDeviceState,
+                          TransposePerDeviceState>; // this can update to hold
+                                                    // all device state
 
-struct FusedPerDeviceOpState{
-    FusedOp fused_op;
-    int numOperators;
-    //maybe we can all xxxPerdeviceOpState here，use Variant to store all device 
-    AllDevice all_device;
+struct FusedPerDeviceOpState {
+  FusedOp fused_op;
+  int numOperators;
+  // maybe we can all xxxPerdeviceOpState here，use Variant to store all device
+  AllDevice all_device;
 };
-
-
 
 template <>
 void register_task<FUSEDOP_INIT_TASK_ID>();
