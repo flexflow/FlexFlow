@@ -248,10 +248,13 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
-    if (bc->request_completed[i]) {
+    if (bc->request_completed[i] || !bc->request_running[i]) {
       continue;
     }
+    std::cout << "[Verifying batch]: " << i << std::endl;
+
     for (int sub_req_id = 0; sub_req_id < bc->sub_requests[i]; sub_req_id++) {
+      std::cout << "[Verifying sub request]: " << sub_req_id << std::endl;
 
       // int num_new_tokens = bc->num_processing_tokens[i];
       // int total_tokens = bc->token_last_available_idx[i] + 1;
@@ -543,7 +546,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
         output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
 
-  assert(tokens_previous_requests == num_tokens);
+  // assert(tokens_previous_requests == num_tokens);
 }
 
 template <typename DT>

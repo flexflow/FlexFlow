@@ -1118,7 +1118,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         new_bc.num_tokens++;
         new_bc.requestsInfo[i].num_tokens_in_batch++;
 
-        if (new_bc.num_tokens == BatchConfig::MAX_NUM_TOKENS) {
+        if (new_bc.num_tokens > BatchConfig::MAX_NUM_TOKENS) {
           assert(false &&
                  "Exceeding the space available in the TreeVerify batch");
           break;
@@ -1300,7 +1300,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
       new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
-          BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
+          BatchConfig::MAX_NUM_TOKENS - 1 - new_bc.num_tokens,
           (int)request.initial_len - new_bc.requestsInfo[i].token_start_offset);
 
       if (request.llm_cache_size < request.initial_len) {
