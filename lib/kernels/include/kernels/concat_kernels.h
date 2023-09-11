@@ -18,14 +18,14 @@ namespace Concat {
 ConcatPerDeviceState init_kernel(ff_dim_t legion_axis);
 
 void forward_kernel(ffStream_t stream,
-                    ConcatPerDeviceState const *m,
+                    ConcatPerDeviceState const &m,
                     GenericTensorAccessorW const &output,
                     std::vector<FlexFlow::GenericTensorAccessorR> const &inputs,
                     int num_inputs);
 
 void backward_kernel(
     ffStream_t stream,
-    ConcatPerDeviceState const *m,
+    ConcatPerDeviceState const &m,
     GenericTensorAccessorR const &output_grad,
     std::vector<FlexFlow::GenericTensorAccessorW> const &input_grads,
     int num_inputs);

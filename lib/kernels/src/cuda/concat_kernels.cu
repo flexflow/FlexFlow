@@ -14,7 +14,8 @@
  */
 
 #include "kernels/concat_kernels.h"
-#include "kernels/cuda_helper.h"
+#include "device.h"
+#include "kernels/device.h"
 #include <cassert>
 
 namespace FlexFlow {
@@ -22,37 +23,38 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Concat {
 
-void init_meta(ConcatPerDeviceState *m, int legion_axis) {
-  m->legion_axis = legion_axis;
-}
-
 void calc_blk_size(size_t &num_blocks,
                    size_t &blk_size,
                    ArrayShape const &shape,
-                   int axis) {
+                   req<ff_dim_t> legion_axis) {
   num_blocks = 1;
   blk_size = 1;
   for (int d = 0; d < shape.num_dims(); d++) {
-    if (d <= axis) {
-      blk_size *= shape[d];
+    if (d <= legion_axis) {
+      blk_size *= shape[legion_dim_t(d)];
     } else {
-      num_blocks *= shape[d];
+      num_blocks *= shape[legion_dim_t(d)];
     }
   }
 }
 
+ConcatPerDeviceState init_kernel(ff_dim_t legion_axis) {
+  ConcatPerDeviceState per_device_state = {legion_axis};
+  return per_device_state;
+}
+
 void forward_kernel(cudaStream_t stream,
-                    ConcatPerDeviceState const *m,
+                    ConcatPerDeviceState const &m,
                     GenericTensorAccessorW const &output,
                     GenericTensorAccessorR const *inputs,
                     int num_inputs) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  calc_blk_size(num_blocks, output_blk_size, output.shape, m->legion_axis);
-  for (int i = 0; i < num_input; i++) {
+  calc_blk_size(num_blocks, output_blk_size, output.shape, m.legion_axis);
+  for (int i = 0; i < num_inputs; i++) {
     size_t input_num_blocks = 1;
     calc_blk_size(
-        input_num_blocks, input_blk_sizes[i], inputs[i].shape, m->legion_axis);
+        input_num_blocks, input_blk_sizes[i], inputs[i].shape, m.legion_axis);
     assert(input_num_blocks == num_blocks);
   }
 
@@ -74,22 +76,22 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     ConcatPerDeviceState const *m,
+                     ConcatPerDeviceState const &m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const *input_grads,
                      int num_inputs) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (output_grad.domain.get_dim()) {
+  switch (output_grad.shape.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     Rect<DIM> rect = output_grad.domain;                                       \
-    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, m->legion_axis);     \
+    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, m.legion_axis);     \
     for (int i = 0; i < num_inputs; i++) {                                     \
       rect = input_grads[i].domain;                                            \
       coord_t input_num_blocks = 1;                                            \
       calc_blk_size<DIM>(                                                      \
-          input_num_blocks, input_blk_sizes[i], rect, m->legion_axis);         \
+          input_num_blocks, input_blk_sizes[i], rect, m.legion_axis);         \
       assert(input_num_blocks == num_blocks);                                  \
     }                                                                          \
     break;                                                                     \
