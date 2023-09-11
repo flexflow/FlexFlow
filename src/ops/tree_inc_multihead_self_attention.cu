@@ -515,9 +515,6 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                   m->oProjSize);
   }
 
-  std::cout << "processed_tokens_in_batch: " << processed_tokens_in_batch
-            << std::endl;
-  std::cout << "num_active_tokens: " << bc->num_active_tokens() << std::endl;
   assert(processed_tokens_in_batch == bc->num_active_tokens());
 }
 

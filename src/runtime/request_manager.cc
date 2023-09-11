@@ -238,6 +238,7 @@ RequestManager::RequestGuid
   all_requests[request.guid] = request;
   {
     std::string output = "New request tokens:";
+    output = "[" + std::to_string(request.guid) + "]" + output;
     for (int i = 0; i < request.tokens.size(); i++) {
       output = output + " " + std::to_string(request.tokens[i]);
     }
@@ -523,6 +524,8 @@ BeamSearchBatchConfig
     size_t guid = old_bc.requestsInfo[i].request_guid;
     Request &request = all_requests[guid];
 
+    std::cout << "[ " << guid << " ]" << std::endl;
+
     // Verify this: get verified tokens from result
     std::vector<std::pair<BatchConfig::TokenId, int>> tree_outputs =
         std::vector<std::pair<BatchConfig::TokenId, int>>();
@@ -703,6 +706,8 @@ BeamSearchBatchConfig
       new_bc.request_completed[i] = false;
       new_bc.request_running[i] = false;
 
+      std::cout << "ssm_cache_size: " << request.ssm_cache_size << ", "
+                << "initial_len: " << request.initial_len << std::endl;
       assert(request.ssm_cache_size == request.initial_len);
 
       // Normal Request Info
@@ -949,11 +954,12 @@ BeamSearchBatchConfig
       // do the slot exchange to minimize the cache exchange in kernel.
       // update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id),
       // i);
-
-      if (new_bc.requestsInfo[i].token_start_offset + 1 >=
-          request.tokens.size()) {
+      std::cout << request.guid << std::endl;
+      if (new_bc.requestsInfo[i].token_start_offset >= request.tokens.size()) {
         // Incremental phase
         new_bc.requestsInfo[i].num_tokens_in_batch = 1;
+        std::cout << "Incremental phase: " << request.tokens.size()
+                  << std::endl;
       } else {
         // Prompt phase
         new_bc.requestsInfo[i].num_tokens_in_batch =
@@ -961,7 +967,11 @@ BeamSearchBatchConfig
                      (int)request.tokens.size() -
                          new_bc.requestsInfo[i].token_start_offset);
         request.ssm_cache_size += new_bc.requestsInfo[i].num_tokens_in_batch;
+        std::cout << "Prompt phase: " << request.tokens.size() << std::endl;
+        std::cout << "Update ssm cache size: " << request.ssm_cache_size
+                  << std::endl;
       }
+
       std::cout << "SSM KV Cache Size beam: " << request.ssm_cache_size
                 << std::endl;
       std::cout << "LLM KV Cache Size beam: " << request.llm_cache_size
@@ -1046,7 +1056,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     if (old_batches.at(0).request_completed[i]) {
       continue;
     } else if (old_batches.at(0).request_running[i]) {
-      max_prompt_load_size -= BeamSearchBatchConfig::MAX_BEAM_DEPTH;
+      max_prompt_load_size -= (BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1);
     }
   }
 
@@ -1316,6 +1326,11 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           max_prompt_load_size,
           (int)request.initial_len - new_bc.requestsInfo[i].token_start_offset);
       max_prompt_load_size -= new_bc.requestsInfo[i].num_tokens_in_batch;
+
+      std::cout << "max_prompt_load_size: " << max_prompt_load_size
+                << std::endl;
+      std::cout << "new_bc.requestsInfo[i].num_tokens_in_batch: " << i << ", "
+                << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
 
       if (request.llm_cache_size < request.initial_len) {
         // Initialization (prompt) phase
