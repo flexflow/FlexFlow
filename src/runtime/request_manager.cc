@@ -1041,6 +1041,15 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
   new_bc.num_tokens_to_commit = 0;
   new_bc.num_tokens = 0;
 
+  int max_prompt_load_size = BatchConfig::MAX_NUM_TOKENS;
+  for (int i = 0; i < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (old_batches.at(0).request_completed[i]) {
+      continue;
+    } else if (old_batches.at(0).request_running[i]) {
+      max_prompt_load_size -= BeamSearchBatchConfig::MAX_BEAM_DEPTH;
+    }
+  }
+
   for (int i = 0; i < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; i++) {
     if (old_batches.at(0).request_completed[i]) {
       continue;
@@ -1299,9 +1308,14 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           old_batches.at(0).requestsInfo[i].max_sequence_length;
 
       new_bc.request_completed[i] = false;
+      // new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
+      //     BatchConfig::MAX_NUM_TOKENS - 1 - new_bc.num_tokens,
+      //     (int)request.initial_len -
+      //     new_bc.requestsInfo[i].token_start_offset);
       new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
-          BatchConfig::MAX_NUM_TOKENS - 1 - new_bc.num_tokens,
+          max_prompt_load_size,
           (int)request.initial_len - new_bc.requestsInfo[i].token_start_offset);
+      max_prompt_load_size -= new_bc.requestsInfo[i].num_tokens_in_batch;
 
       if (request.llm_cache_size < request.initial_len) {
         // Initialization (prompt) phase
@@ -1316,7 +1330,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         }
 
         std::cout << "new_bc.num_tokens: " << new_bc.num_tokens << std::endl;
-        if (new_bc.num_tokens >= BatchConfig::MAX_NUM_TOKENS) {
+        if (new_bc.num_tokens > BatchConfig::MAX_NUM_TOKENS) {
           assert(false &&
                  "Exceeding the space available in the TreeVerify batch");
           break;
