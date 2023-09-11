@@ -66,12 +66,18 @@ public:
                              CostMetrics &cost_metrics) const override;
   template <typename T>
   static void inference_kernel(AddBiasResidualLayerNormMeta const *m,
+                               int attn_bias_dim,
+                               int residual_volume,
                                T const *input_ptr,
+                               T const *attn_bias_ptr,
+                               T const *residual_ptr,
                                T *output_ptr,
                                T const *gamma_ptr,
                                T const *beta_ptr,
                                ffStream_t stream);
   static void inference_kernel_wrapper(AddBiasResidualLayerNormMeta const *m,
+                                       int attn_bias_dim,
+                                       int residual_volume,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorW &output,
                                        GenericTensorAccessorR const &residual,

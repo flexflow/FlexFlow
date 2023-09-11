@@ -564,8 +564,18 @@ void AddBiasResidualLayerNorm::inference_task(
       ctx, task->regions[3].region.get_index_space());
   Domain gamma_domain, beta_domain;
 
+  assert(in_domain.get_volume() == out_domain.get_volume());
+  assert(in_domain.get_volume() == residual_domain.get_volume());
   assert(in_domain == out_domain);
   assert(residual_domain == in_domain);
+
+  coord_t attn_bias_dim =
+      attn_bias_domain.hi()[0] - attn_bias_domain.lo()[0] + 1;
+  assert((in_domain.hi()[0] - in_domain.lo()[0] + 1) == attn_bias_dim);
+  assert((residual_domain.hi()[0] - residual_domain.lo()[0] + 1) ==
+         attn_bias_dim);
+  assert((out_domain.hi()[0] - out_domain.lo()[0] + 1) == attn_bias_dim);
+
   assert(in_domain.get_volume() ==
          m->effective_num_elements * m->effective_batch_size);
 
@@ -605,7 +615,15 @@ void AddBiasResidualLayerNorm::inference_task(
   }
 
   AddBiasResidualLayerNorm::inference_kernel_wrapper(
-      m, input, output, residual, attn_bias, gamma, beta);
+      m,
+      (int)attn_bias_dim,
+      (int)in_domain.get_volume(),
+      input,
+      output,
+      residual,
+      attn_bias,
+      gamma,
+      beta);
 }
 
 bool AddBiasResidualLayerNorm::measure_operator_cost(
