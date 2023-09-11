@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/batch_matmul_kernels.h"
 #include "kernels/device.h"
-#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -26,10 +26,8 @@ BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                               int a_seq_length_dim,
                               int b_seq_length_dim) {
 
-  BMMPerDeviceState per_device_state = {handle,
-                                        allocator,
-                                        a_seq_length_dim,
-                                        b_seq_length_dim};
+  BMMPerDeviceState per_device_state = {
+      handle, allocator, a_seq_length_dim, b_seq_length_dim};
   return per_device_state;
 }
 
