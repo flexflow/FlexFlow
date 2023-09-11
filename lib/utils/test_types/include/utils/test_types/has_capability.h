@@ -3,12 +3,12 @@
 
 #include "capability.h"
 
-namespace FlexFlow {
+namespace FlexFlow::test_types {
 
-template <capability_t NEEDLE, capability... HAYSTACK>
+template <capability_t NEEDLE, capability_t... HAYSTACK>
 struct has_capability;
 
-template <capability_t NEEDLE, capability_t HEAD, capability... HAYSTACK>
+template <capability_t NEEDLE, capability_t HEAD, capability_t... HAYSTACK>
 struct has_capability<NEEDLE, HEAD, HAYSTACK...>
     : std::disjunction<capability_implies<HEAD, NEEDLE>,
                   has_capability<NEEDLE, HAYSTACK...>> {};

@@ -6,5 +6,5 @@ struct clonable_t {
 };
 
 TEST_CASE("cow_ptr_t") {
-  CHECK(make_cow_ptr<clonable_t>().get() != nullptr);
+  CHECK(make_cow_ptr<clonable_t>().get().get() != nullptr);
 }

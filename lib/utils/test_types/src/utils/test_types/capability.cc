@@ -1,5 +1,6 @@
 #include "utils/test_types/capability.h"
 #include "utils/ff_exceptions/ff_exceptions.h"
+#include <sstream>
 
 namespace FlexFlow::test_types {
 
@@ -16,7 +17,9 @@ std::string format_as(capability_t c) {
     case PLUSEQ: return "PLUSEQ";
     case FMT: return "FMT";
     default:
-      throw mk_runtime_error("Unknown capability {}", static_cast<int>(c));
+      std::ostringstream oss;
+      oss << "Unknown capability {}" << static_cast<int>(c);
+      throw mk_runtime_error(oss.str());
   }
 }
 

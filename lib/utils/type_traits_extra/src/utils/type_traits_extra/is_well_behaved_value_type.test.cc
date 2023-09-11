@@ -2,7 +2,10 @@
 #include "utils/type_traits_extra/is_well_behaved_value_type.h"
 #include <memory>
 
-struct example_well_behaved_value_type { };
+struct example_well_behaved_value_type { 
+  bool operator==(example_well_behaved_value_type const &) const;
+  bool operator!=(example_well_behaved_value_type const &) const;
+};
 
 namespace std {
 template <>

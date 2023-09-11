@@ -6,13 +6,6 @@
 #include "utils/type_traits_extra/is_streamable.h" 
 #include <ostream>
 
-#define MAKE_TYPEDEF_HASHABLE(TYPEDEF_NAME)                                    \
-  namespace std {                                                              \
-  template <>                                                                  \
-  struct hash<TYPEDEF_NAME> : ::FlexFlow::hashable<TYPEDEF_NAME> {};           \
-  }                                                                            \
-  static_assert(true, "")
-
 #define MAKE_TYPEDEF_PRINTABLE(TYPEDEF_NAME, TYPEDEF_SHORTNAME)                \
   namespace fmt {                                                              \
   template <>                                                                  \
@@ -26,12 +19,6 @@
   };                                                                           \
   }                                                                            \
   static_assert(true, "")
-
-#define FF_TYPEDEF_HASHABLE(TYPEDEF_NAME)                                      \
-  }                                                                            \
-  MAKE_TYPEDEF_HASHABLE(::FlexFlow::TYPEDEF_NAME);                             \
-  namespace FlexFlow {                                                         \
-  static_assert(true, "");
 
 #define FF_TYPEDEF_PRINTABLE(TYPEDEF_NAME, TYPEDEF_SHORTNAME)                  \
   }                                                                            \

@@ -1,5 +1,6 @@
 #include "utils/testing.h"
 #include "utils/type_traits_extra/implies.h"
+#include <utility>
 
 TEST_CASE("implies_v") {
   CHECK(implies_v<std::true_type, std::true_type>);
@@ -8,7 +9,8 @@ TEST_CASE("implies_v") {
   CHECK(implies_v<std::false_type, std::false_type>);
 }
 
-TEST_CASE_TEMPLATE("implies", T, 
+TEST_CASE_TEMPLATE("implies", 
+                   T, 
                    std::pair<std::true_type, std::true_type>,
                    std::pair<std::true_type, std::false_type>
                    ) {
