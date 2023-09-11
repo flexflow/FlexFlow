@@ -3,6 +3,8 @@
 
 #include "kernels/device.h"
 #include "kernels/ff_handle.h"
+#include "kernels/allocation.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -13,7 +15,7 @@ struct BMMPerDeviceState {
   req<int> b_seq_length_dim;
 };
 
-FF_VISITABLE_STRUCT_NO_EQ(
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
     BMMPerDeviceState, handle, allocator, a_seq_length_dim, b_seq_length_dim);
 
 namespace Kernels {
@@ -27,8 +29,8 @@ BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
 void forward_kernel(ffStream_t stream,
                     BMMPerDeviceState const &meta,
                     float *output_ptr,
-                    float const *lhs_input_ptr,
-                    float const *rhs_input_ptr,
+                    float const *a_input_ptr,
+                    float const *b_input_ptr,
                     int m,
                     int n,
                     int k,
