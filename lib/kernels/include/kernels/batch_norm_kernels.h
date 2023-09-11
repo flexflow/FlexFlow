@@ -28,22 +28,22 @@ struct BatchNormPerDeviceState {
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(BatchNormPerDeviceState,
-                                              handle,
-                                              allocator,
-                                              inputTensor,
-                                              outputTensor,
-                                              biasTensor,
-                                              actiDesc,
-                                              mode,
-                                              runningMean,
-                                              runningVar,
-                                              saveMean,
-                                              saveVar,
-                                              output_n,
-                                              output_c,
-                                              output_h,
-                                              output_w,
-                                              relu);
+                                             handle,
+                                             allocator,
+                                             inputTensor,
+                                             outputTensor,
+                                             biasTensor,
+                                             actiDesc,
+                                             mode,
+                                             runningMean,
+                                             runningVar,
+                                             saveMean,
+                                             saveVar,
+                                             output_n,
+                                             output_c,
+                                             output_h,
+                                             output_w,
+                                             relu);
 
 namespace Kernels {
 namespace BatchNorm {
