@@ -138,19 +138,21 @@ def init(
             raise TypeError("configs_dict is not a dictionary")
     else:
         # Add named key-value arguments into dictionary
-        configs_dict["num_gpus"] = num_gpus
-        configs_dict["memory_per_gpu"] = memory_per_gpu
-        configs_dict["zero_copy_memory_per_node"] = zero_copy_memory_per_node
-        configs_dict["legion_utility_processors"] = legion_utility_processors
-        configs_dict["data_parallelism_degree"] = data_parallelism_degree
-        configs_dict["tensor_parallelism_degree"] = tensor_parallelism_degree
-        configs_dict["pipeline_parallelism_degree"] = pipeline_parallelism_degree
-        configs_dict["offload"] = offload
-        configs_dict["offload_reserve_space_size"] = offload_reserve_space_size
-        configs_dict["use_4bit_quantization"] = use_4bit_quantization
-        configs_dict["use_8bit_quantization"] = use_8bit_quantization
-        configs_dict["profiling"] = profiling
-        configs_dict["fusion"] = fusion
+        configs_dict = {
+            "num_gpus": num_gpus,
+            "memory_per_gpu": memory_per_gpu,
+            "zero_copy_memory_per_node": zero_copy_memory_per_node,
+            "legion_utility_processors": legion_utility_processors,
+            "data_parallelism_degree": data_parallelism_degree,
+            "tensor_parallelism_degree": tensor_parallelism_degree,
+            "pipeline_parallelism_degree": pipeline_parallelism_degree,
+            "offload": offload,
+            "offload_reserve_space_size": offload_reserve_space_size,
+            "use_4bit_quantization": use_4bit_quantization,
+            "use_8bit_quantization": use_8bit_quantization,
+            "profiling": profiling,
+            "fusion": fusion
+        }
 
     # Check that mandatory configs are present
     required_keys = ["num_gpus", "memory_per_gpu", "zero_copy_memory_per_node"]
