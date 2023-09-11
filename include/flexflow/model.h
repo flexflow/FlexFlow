@@ -533,6 +533,7 @@ public:
                     char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
   Tensor add_bias_residual_layer_norm(const Tensor input,
+                                      const Tensor residual,
                                       std::vector<int> const &axes,
                                       bool elementwise_affine,
                                       float eps,
@@ -1123,7 +1124,8 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
       std::unordered_map<
-          std::pair<ParallelTensorShape, AddBiasResidualLayerNormParams>,
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    AddBiasResidualLayerNormParams>,
           AddBiasResidualLayerNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,

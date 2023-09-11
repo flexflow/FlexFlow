@@ -10,15 +10,16 @@ class AddBiasResidualLayerNormMeta;
 class AddBiasResidualLayerNorm : public Op {
 public:
   using Params = AddBiasResidualLayerNormParams;
-  using Input = ParallelTensor;
+  using Input = std::pair<ParallelTensor, ParallelTensor>;
   AddBiasResidualLayerNorm(FFModel &model,
-                           AddBiasResidualLayerNormParams const &params,
-                           ParallelTensor input,
+                           Params const &params,
+                           Input const &inputs,
                            char const *name = nullptr,
                            bool allocate_weights = false);
   AddBiasResidualLayerNorm(FFModel &model,
                            LayerID const &_layer_guid,
                            const ParallelTensor _input,
+                           const ParallelTensor _residual,
                            std::vector<int> const &axes,
                            bool _elementwise_affine,
                            bool _use_bias,
@@ -49,10 +50,7 @@ public:
                                Legion::Deserializer &d,
                                ParallelTensor inputs[],
                                int num_inputs);
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
-  // size_t get_params_hash() const override;
+
   AddBiasResidualLayerNormParams get_params() const;
 
   static OpMeta *init_task(Legion::Task const *task,
@@ -76,6 +74,8 @@ public:
   static void inference_kernel_wrapper(AddBiasResidualLayerNormMeta const *m,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorW &output,
+                                       GenericTensorAccessorR const &residual,
+                                       GenericTensorAccessorR const &attn_bias,
                                        GenericTensorAccessorR const &gamma,
                                        GenericTensorAccessorR const &beta);
 

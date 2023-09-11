@@ -12,7 +12,8 @@ struct AddBiasResidualLayerNormParams {
   bool elementwise_affine;
   float eps;
   bool use_bias;
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(
+      std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
 };
 
 bool operator==(AddBiasResidualLayerNormParams const &,
