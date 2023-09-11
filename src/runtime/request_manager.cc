@@ -143,17 +143,12 @@ RequestManager::RequestGuid
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
 
-  if (prompt.size() > BatchConfig::MAX_PROMPT_LENGTH) {
+  if (prompt.size() >= BatchConfig::MAX_SEQ_LENGTH) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
-              << BatchConfig::MAX_PROMPT_LENGTH << " tokens, but got "
+              << BatchConfig::MAX_SEQ_LENGTH << " tokens, but got "
               << prompt.size() << ".\n";
-    // Truncate the prompt to MAX_NUM_TOKENS
-    // request.tokens.insert(request.tokens.end(),
-    //                       prompt.begin(),
-    //                       prompt.begin() + BatchConfig::MAX_PROMPT_LENGTH);
-    // request.initial_len = BatchConfig::MAX_PROMPT_LENGTH;
+
     printf("tokens size: %zu\n", request.tokens.size());
-    // assert(false);
     return 0;
   } else {
     request.initial_len = prompt.size();
@@ -206,14 +201,12 @@ RequestManager::RequestGuid
     request.tokens.push_back(bos_token_id);
   }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
-  if (tokens.size() > BatchConfig::MAX_PROMPT_LENGTH) {
+  if (tokens.size() >= BatchConfig::MAX_SEQ_LENGTH) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
-              << BatchConfig::MAX_PROMPT_LENGTH << " tokens, but got "
+              << BatchConfig::MAX_SEQ_LENGTH << " tokens, but got "
               << tokens.size() << ".\n";
-    // Truncate the prompt to MAX_NUM_TOKENS
-    // tokens.resize(BatchConfig::MAX_PROMPT_LENGTH);
+
     printf("tokens size: %zu\n", tokens.size());
-    // assert(false);
     return 0;
   }
   for (int i = 0; i < tokens.size(); i++) {
@@ -959,15 +952,20 @@ BeamSearchBatchConfig
         // Incremental phase
         new_bc.requestsInfo[i].num_tokens_in_batch = 1;
         std::cout << "Incremental phase: " << request.tokens.size()
-                  << std::endl;
+                  << ", num_tokens_in_batch: "
+                  << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
       } else {
         // Prompt phase
         new_bc.requestsInfo[i].num_tokens_in_batch =
-            std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
+            // std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens,
+            std::min(BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens -
+                         BatchConfig::MAX_NUM_REQUESTS + i,
                      (int)request.tokens.size() -
                          new_bc.requestsInfo[i].token_start_offset);
         request.ssm_cache_size += new_bc.requestsInfo[i].num_tokens_in_batch;
-        std::cout << "Prompt phase: " << request.tokens.size() << std::endl;
+        std::cout << "Prompt phase: " << request.tokens.size()
+                  << ", num_tokens_in_batch:"
+                  << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
         std::cout << "Update ssm cache size: " << request.ssm_cache_size
                   << std::endl;
       }
